@@ -6,6 +6,9 @@
 		"dev": "electron ."
 	},
 	"dependencies": {
-		"electron": "^13.1.7"
+		"@apollo/client": "^3.10.8",
+		"@supabase/supabase-js": "^2.44.3",
+		"electron": "^13.1.7",
+		"graphql": "^16.9.0"
 	}
 }

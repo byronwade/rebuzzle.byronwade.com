@@ -1,3 +1,5 @@
+// main.js or renderer process file
+import { supabase, apolloClient } from "shared-utils";
 const { app, BrowserWindow } = require("electron");
 
 function createWindow() {

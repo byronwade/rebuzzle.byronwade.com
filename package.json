@@ -22,5 +22,10 @@
 	"workspaces": [
 		"apps/*",
 		"packages/*"
-	]
+	],
+	"dependencies": {
+		"@apollo/client": "^3.10.8",
+		"@supabase/supabase-js": "^2.44.3",
+		"graphql": "^16.9.0"
+	}
 }
