@@ -1,20 +1,26 @@
 {
 	"name": "rebuzzle",
-	"version": "1.0.0",
 	"private": true,
-	"workspaces": [
-		"apps/*",
-		"packages/*"
-	],
-	"packageManager": "npm@7.24.0",
-	"devDependencies": {
-		"turbo": "latest"
-	},
 	"scripts": {
-		"dev": "turbo run dev",
-		"build": "turbo run build",
+		"build": "turbo build",
+		"dev": "turbo dev",
+		"lint": "turbo lint",
+		"format": "prettier --write \"**/*.{ts,tsx,md}\"",
 		"dev:web": "turbo run dev --filter=web",
 		"dev:desktop": "turbo run dev --filter=desktop",
 		"dev:mobile": "turbo run dev --filter=mobile"
-	}
+	},
+	"devDependencies": {
+		"prettier": "^3.2.5",
+		"turbo": "^2.0.6",
+		"typescript": "^5.4.5"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"packageManager": "npm@10.8.1",
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	]
 }
