@@ -1,18 +1,22 @@
 "use client";
 import WanderBox from "@/components/wanderBox";
-import GameCard from "@/components/gameCard";
 import Image from "next/image";
-import { useContext } from "react";
+import { useContext, useState } from "react";
+import { useRouter } from "next/navigation";
 import GameContext from "@/context/GameContext";
+import CustomDialog from "@/components/CustomDialog";
 
-const Game = ({ gameData }) => {
-	const { feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint, countdown, setHint } = useContext(GameContext);
+const Game = () => {
+	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint } = useContext(GameContext);
+	const router = useRouter();
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [dialogContent, setDialogContent] = useState({ title: "", description: "" });
 
-	const { phrase, image, explanation } = gameData;
+	const { phrase, image } = gameData;
 
-	const stopGame = (explanation) => {
+	const stopGame = () => {
 		setGameOver(true);
-		exportGameData(false, explanation);
+		router.push("/rebus/loser");
 	};
 
 	const checkGuess = (guess) => {
@@ -27,17 +31,15 @@ const Game = ({ gameData }) => {
 
 		if (normalizedGuess === normalizedPhrase) {
 			setFeedback("Correct!");
-			alert("Congratulations! You've guessed the phrase.");
-			exportGameData(true, explanation);
 			setGameOver(true);
+			router.push("/rebus/winner");
 		} else {
 			setFeedback("Incorrect guess.");
 			setAttemptsLeft(attemptsLeft - 1);
 
 			if (attemptsLeft <= 1) {
-				alert("No attempts left. Game over!");
 				setFeedback(`Game over! The correct phrase was: "${phrase}"`);
-				stopGame(explanation);
+				stopGame();
 			}
 		}
 	};
@@ -48,17 +50,16 @@ const Game = ({ gameData }) => {
 		}
 	};
 
-	const exportGameData = (correct, explanation) => {
-		const gameData = {
-			phrase,
-			attempts: attemptsLeft,
-			correct,
-			explanation,
-		};
+	const handleEmptyBoxes = () => {
+		setDialogContent({
+			title: "Incomplete Guess",
+			description: "Please fill in all boxes.",
+		});
+		setDialogOpen(true);
 	};
 
 	return (
-		<>
+		<div className="container mx-auto px-4">
 			<div className="flex items-center justify-center p-4">
 				<div className="text-center">
 					<div className="space-x-4">
@@ -67,14 +68,12 @@ const Game = ({ gameData }) => {
 				</div>
 			</div>
 
-			<WanderBox phrase={phrase} onGuess={handleGuess} feedback={feedback} hint={hint} attemptsLeft={attemptsLeft} gameOver={gameOver} />
+			<WanderBox phrase={phrase} onGuess={handleGuess} onEmptyBoxes={handleEmptyBoxes} feedback={feedback} hint={hint} attemptsLeft={attemptsLeft} gameOver={gameOver} />
 
-			{gameOver && (
-				<div className="mt-4 text-center">
-					<GameCard gameData={gameData} />
-				</div>
-			)}
-		</>
+			<CustomDialog open={dialogOpen} onOpenChange={setDialogOpen} title={dialogContent.title}>
+				<div>{dialogContent.description}</div>
+			</CustomDialog>
+		</div>
 	);
 };
 

@@ -1,21 +1,17 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import GameContext from "@/context/GameContext";
 
-const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver }) => {
-	const { gameData } = useContext(GameContext);
-
+const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft, gameOver }) => {
 	const isPunctuation = (char) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
 
 	const words = phrase.split(" ");
 	const initialGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
-	const initialFeedback = words.map(() => "bg-white");
 	const [guess, setGuess] = useState(initialGuess);
-	const [feedbackState, setFeedbackState] = useState(initialFeedback);
+	const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-white")));
 
 	const handleChange = (event, wordIndex, charIndex) => {
-		if (gameOver) return; // Disable changes if the game is over
+		if (gameOver) return;
 		const newGuess = [...guess];
 		const inputChar = event.target.value.toUpperCase();
 
@@ -23,7 +19,6 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver }) 
 			newGuess[wordIndex][charIndex] = inputChar;
 			setGuess(newGuess);
 
-			// Automatically focus the next input box if a letter is entered
 			let nextCharIndex = charIndex + 1;
 			let nextWordIndex = wordIndex;
 
@@ -42,15 +37,13 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver }) 
 	};
 
 	const handleKeyDown = (event, wordIndex, charIndex) => {
-		if (gameOver) return; // Disable changes if the game is over
+		if (gameOver) return;
 		const newGuess = [...guess];
 		if (event.key === "Backspace") {
 			if (newGuess[wordIndex][charIndex] !== "") {
-				// Clear the current box
 				newGuess[wordIndex][charIndex] = "";
 				setGuess(newGuess);
 			} else {
-				// Move to the previous box and clear it
 				let prevCharIndex = charIndex - 1;
 				let prevWordIndex = wordIndex;
 
@@ -76,36 +69,40 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver }) 
 	};
 
 	const handleSubmit = () => {
-		if (gameOver) return; // Disable submit if the game is over
+		if (gameOver) return;
 		const fullGuess = guess.map((word) => word.join("")).join(" ");
 
-		// Check if all boxes are filled
 		const allBoxesFilled = guess.every((word) => word.every((char) => char !== ""));
 		if (!allBoxesFilled) {
-			alert("Please fill in all boxes.");
+			onEmptyBoxes();
 			return;
 		}
 
 		const normalizedGuess = fullGuess
-			.replace(/[^\w\s]|_/g, "")
+			.replace(/[^a-zA-Z0-9\s]/g, "")
 			.replace(/\s+/g, " ")
 			.toLowerCase();
 		const normalizedPhrase = phrase
-			.replace(/[^\w\s]|_/g, "")
+			.replace(/[^a-zA-Z0-9\s]/g, "")
 			.replace(/\s+/g, " ")
 			.toLowerCase();
 
 		const guessWords = normalizedGuess.split(" ");
 		const phraseWords = normalizedPhrase.split(" ");
 
-		const newFeedback = guessWords.map((word, wordIndex) => {
-			if (phraseWords[wordIndex] && guessWords[wordIndex] === phraseWords[wordIndex]) {
-				return "bg-green-500";
-			}
-			return "bg-red-500";
-		});
+		const newFeedback = guess.map((word, wordIndex) =>
+			word.map((char, charIndex) => {
+				if (char && phraseWords[wordIndex]) {
+					const guessWord = guessWords[wordIndex];
+					const phraseWord = phraseWords[wordIndex];
+					return guessWord === phraseWord ? "bg-green-500" : "bg-red-500";
+				}
+				return "bg-white";
+			})
+		);
 
-		setFeedbackState(newFeedback);
+		setGuessFeedback(newFeedback);
+
 		onGuess(fullGuess);
 	};
 
@@ -119,18 +116,7 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver }) 
 								{char}
 							</span>
 						) : (
-							<Input
-								key={charIndex}
-								id={`input-${wordIndex}-${charIndex}`}
-								type="text"
-								maxLength={1}
-								value={char}
-								onChange={(event) => handleChange(event, wordIndex, charIndex)}
-								onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)}
-								className={`w-12 h-12 text-center text-lg font-bold ${feedbackState[wordIndex]}`}
-								autoComplete="off" // Disable browser autocomplete suggestions
-								disabled={gameOver} // Disable input if the game is over
-							/>
+							<Input key={charIndex} id={`input-${wordIndex}-${charIndex}`} type="text" maxLength={1} value={char} onChange={(event) => handleChange(event, wordIndex, charIndex)} onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)} className={`w-12 h-12 text-center text-lg font-bold ${guessFeedback[wordIndex][charIndex]}`} autoComplete="off" disabled={gameOver} />
 						)
 					)}
 				</div>
