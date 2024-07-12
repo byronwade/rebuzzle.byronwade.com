@@ -2,23 +2,14 @@ import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-interface WanderBoxProps {
-	phrase: string;
-	onGuess: (guess: string) => void;
-	feedback: string;
-	hint: string;
-	attemptsLeft: number;
-	gameOver: boolean;
-}
-
-const WanderBox: React.FC<WanderBoxProps> = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver }) => {
-	const isPunctuation = (char: string) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
+const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver, guessFeedback }) => {
+	const isPunctuation = (char) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
 
 	const words = phrase.split(" ");
 	const initialGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
-	const [guess, setGuess] = useState<string[][]>(initialGuess);
+	const [guess, setGuess] = useState(initialGuess);
 
-	const handleChange = (event: React.ChangeEvent<HTMLInputElement>, wordIndex: number, charIndex: number) => {
+	const handleChange = (event, wordIndex, charIndex) => {
 		const newGuess = [...guess];
 		const inputChar = event.target.value.toUpperCase();
 
@@ -44,7 +35,7 @@ const WanderBox: React.FC<WanderBoxProps> = ({ phrase, onGuess, feedback, hint, 
 		}
 	};
 
-	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, wordIndex: number, charIndex: number) => {
+	const handleKeyDown = (event, wordIndex, charIndex) => {
 		const newGuess = [...guess];
 		if (event.key === "Backspace") {
 			if (newGuess[wordIndex][charIndex] !== "") {
@@ -88,9 +79,16 @@ const WanderBox: React.FC<WanderBoxProps> = ({ phrase, onGuess, feedback, hint, 
 		}
 
 		onGuess(fullGuess);
+	};
 
-		setGuess(initialGuess); // Clear the boxes by resetting to initial guess state
-		document.getElementById("input-0-0")?.focus(); // Always refocus on the first input box
+	const getBoxClass = (wordIndex) => {
+		if (guessFeedback[wordIndex] === "correct") {
+			return "bg-green-500";
+		} else if (guessFeedback[wordIndex] === "incorrect") {
+			return "bg-red-500";
+		} else {
+			return "bg-white";
+		}
 	};
 
 	return (
@@ -111,7 +109,7 @@ const WanderBox: React.FC<WanderBoxProps> = ({ phrase, onGuess, feedback, hint, 
 								value={char}
 								onChange={(event) => handleChange(event, wordIndex, charIndex)}
 								onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)}
-								className="w-12 h-12 text-center text-lg font-bold"
+								className={`w-12 h-12 text-center text-lg font-bold ${getBoxClass(wordIndex)}`}
 								autoComplete="off" // Disable browser autocomplete suggestions
 							/>
 						)

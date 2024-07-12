@@ -1,31 +1,18 @@
 "use client";
 import WanderBox from "@/components/wanderBox";
+import GameCard from "@/components/gameCard"; // Make sure to update the import path accordingly
 import Image from "next/image";
 import { useState, useEffect } from "react";
 
-interface GameSettings {
-	attempts: number;
-}
-
-interface GameData {
-	phrase: string;
-	image: string;
-	explanation: string;
-}
-
-interface HomeProps {
-	gameData: GameData;
-	settings: GameSettings;
-}
-
-const Game: React.FC<HomeProps> = ({ gameData, settings }) => {
-	const [guesses, setGuesses] = useState<string[]>([]);
-	const [feedback, setFeedback] = useState<string>("");
-	const [hint, setHint] = useState<string>("");
-	const [attemptsLeft, setAttemptsLeft] = useState<number>(settings.attempts);
-	const [gameOver, setGameOver] = useState<boolean>(false);
-	const [isHydrated, setIsHydrated] = useState<boolean>(false);
-	const [countdown, setCountdown] = useState<number>(0);
+const Game = ({ gameData, settings = { attempts: 3 } }) => {
+	const [guesses, setGuesses] = useState([]);
+	const [feedback, setFeedback] = useState("");
+	const [hint, setHint] = useState("");
+	const [attemptsLeft, setAttemptsLeft] = useState(settings.attempts);
+	const [gameOver, setGameOver] = useState(false);
+	const [isHydrated, setIsHydrated] = useState(false);
+	const [countdown, setCountdown] = useState(0);
+	const [guessFeedback, setGuessFeedback] = useState([]);
 
 	const { phrase, image, explanation } = gameData;
 
@@ -45,7 +32,7 @@ const Game: React.FC<HomeProps> = ({ gameData, settings }) => {
 		return () => clearInterval(interval);
 	}, []);
 
-	const formatCountdown = (milliseconds: number) => {
+	const formatCountdown = (milliseconds) => {
 		const totalSeconds = Math.floor(milliseconds / 1000);
 		const hours = Math.floor(totalSeconds / 3600);
 		const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -54,12 +41,12 @@ const Game: React.FC<HomeProps> = ({ gameData, settings }) => {
 		return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 	};
 
-	const stopGame = (reason: string) => {
+	const stopGame = (explanation) => {
 		setGameOver(true);
-		exportGameData(false, reason);
+		exportGameData(false, explanation);
 	};
 
-	const checkGuess = (guess: string) => {
+	const checkGuess = (guess) => {
 		const normalizedGuess = guess
 			.replace(/[^\w\s]|_/g, "")
 			.replace(/\s+/g, "")
@@ -72,37 +59,52 @@ const Game: React.FC<HomeProps> = ({ gameData, settings }) => {
 		if (normalizedGuess === normalizedPhrase) {
 			setFeedback("Correct!");
 			alert("Congratulations! You've guessed the phrase.");
-			exportGameData(true, "Guessed correctly");
+			exportGameData(true, explanation);
 			setGameOver(true);
+			setGuessFeedback(Array(phrase.length).fill("correct"));
 		} else {
 			setFeedback("Incorrect guess.");
 			setGuesses([...guesses, guess]);
-			setAttemptsLeft(attemptsLeft - 1); // Decrease attempts left
+			setAttemptsLeft(attemptsLeft - 1);
+
+			const wordFeedback = guess.split(" ").map((word, index) => {
+				const normalizedWord = word
+					.replace(/[^\w\s]|_/g, "")
+					.replace(/\s+/g, "")
+					.toLowerCase();
+				const phraseWords = phrase
+					.split(" ")
+					[index].replace(/[^\w\s]|_/g, "")
+					.replace(/\s+/g, "")
+					.toLowerCase();
+				return normalizedWord === phraseWords ? "correct" : "incorrect";
+			});
+			setGuessFeedback(wordFeedback);
 
 			if (attemptsLeft <= 1) {
 				alert("No attempts left. Game over!");
 				setFeedback(`Game over! The correct phrase was: "${phrase}"`);
-				stopGame(`No attempts left. Explanation: ${explanation}`);
+				stopGame(explanation);
 			}
 		}
 	};
 
-	const handleGuess = (guess: string) => {
+	const handleGuess = (guess) => {
 		if (attemptsLeft > 0 && !gameOver) {
 			checkGuess(guess);
 		}
 	};
 
-	const exportGameData = (correct: boolean, reason: string) => {
+	const exportGameData = (correct, explanation) => {
 		const gameData = {
 			phrase,
 			attempts: guesses.length,
 			correct,
 			guesses,
-			reason,
+			explanation, // Use explanation from gameData
 		};
 
-		setGuesses((prevGuesses) => [...prevGuesses, JSON.stringify(gameData, null, 2)]);
+		setGuesses((prevGuesses) => [...prevGuesses]);
 	};
 
 	return isHydrated ? (
@@ -115,7 +117,13 @@ const Game: React.FC<HomeProps> = ({ gameData, settings }) => {
 				</div>
 			</div>
 
-			<WanderBox phrase={phrase} onGuess={handleGuess} feedback={feedback} hint={hint} attemptsLeft={attemptsLeft} gameOver={gameOver} />
+			<WanderBox phrase={phrase} onGuess={handleGuess} feedback={feedback} hint={hint} attemptsLeft={attemptsLeft} gameOver={gameOver} guessFeedback={guessFeedback} />
+
+			{gameOver && (
+				<div className="mt-4 text-center">
+					<GameCard gameData={gameData} />
+				</div>
+			)}
 
 			<div className="mt-4 text-center">
 				{guesses.map((guess, index) => (

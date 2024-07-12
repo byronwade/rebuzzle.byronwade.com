@@ -1,16 +1,17 @@
+import React from "react";
 import { Button } from "./ui/button";
 
 const keys1 = ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"];
 const keys2 = ["A", "S", "D", "F", "G", "H", "J", "K", "L"];
 const keys3 = ["Z", "X", "C", "V", "B", "N", "M"];
 
-const Key = ({ keyValue, onClick }: { keyValue: string; onClick: (keyValue: string) => void }) => (
+const Key = ({ keyValue, onClick }) => (
 	<Button className="flex justify-center items-center rounded-md m-1" onClick={() => onClick(keyValue)}>
 		{keyValue}
 	</Button>
 );
 
-const Keyboard = ({ onKeyPress }: { onKeyPress: (keyValue: string) => void }) => {
+const Keyboard = ({ onKeyPress }) => {
 	return (
 		<div className="flex flex-col items-center mt-4">
 			<div className="flex">
