@@ -16,7 +16,9 @@ const fontSans = FontSans({
 export default function RootLayout({ children }) {
 	return (
 		<html lang="en">
-			<head />
+			<head>
+				<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+			</head>
 			<body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 					<GameProvider>{children}</GameProvider>
