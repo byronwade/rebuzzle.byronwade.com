@@ -2,7 +2,7 @@
 import { useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import GameContext from "@/context/GameContext";
-import GameCard from "@/components/GameCard";
+import GameCard from "@/components/gameCard";
 import Header from "@/components/header";
 
 const Winner = () => {
