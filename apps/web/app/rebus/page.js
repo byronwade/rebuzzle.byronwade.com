@@ -1,7 +1,9 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import Game from "@/components/game";
 import Header from "@/components/header";
+import { GameProvider } from "@/context/GameContext";
+import GameContext from "@/context/GameContext";
 
 // Server-side fetching function
 async function fetchPuzzleData() {
@@ -13,6 +15,7 @@ async function fetchPuzzleData() {
 }
 
 const App = () => {
+	const { setGameData } = useContext(GameContext);
 	const [currentGameData, setCurrentGameData] = useState(null);
 
 	useEffect(() => {
@@ -24,6 +27,7 @@ const App = () => {
 				explanation: data.explanation,
 			};
 			setCurrentGameData(gameData);
+			setGameData(gameData);
 		};
 
 		updateGameData();
@@ -31,18 +35,14 @@ const App = () => {
 		const interval = setInterval(updateGameData, 24 * 60 * 60 * 1000); // Update at midnight
 
 		return () => clearInterval(interval); // Clean up the interval on component unmount
-	}, []);
+	}, [setGameData]);
 
 	if (!currentGameData) return <div>Loading...</div>;
-
-	const settings = {
-		attempts: 4,
-	};
 
 	return (
 		<div className="mb-8">
 			<Header />
-			<Game gameData={currentGameData} settings={settings} />
+			<Game gameData={currentGameData} />
 		</div>
 	);
 };

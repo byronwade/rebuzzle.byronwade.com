@@ -1,19 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import GameContext from "@/context/GameContext";
 
-const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver, guessFeedback }) => {
+const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver }) => {
+	const { gameData } = useContext(GameContext);
+
 	const isPunctuation = (char) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
 
 	const words = phrase.split(" ");
 	const initialGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
+	const initialFeedback = words.map(() => "bg-white");
 	const [guess, setGuess] = useState(initialGuess);
+	const [feedbackState, setFeedbackState] = useState(initialFeedback);
 
 	const handleChange = (event, wordIndex, charIndex) => {
+		if (gameOver) return; // Disable changes if the game is over
 		const newGuess = [...guess];
 		const inputChar = event.target.value.toUpperCase();
 
-		if (/^[A-Z]$/.test(inputChar)) {
+		if (/^[A-Z0-9]$/.test(inputChar)) {
 			newGuess[wordIndex][charIndex] = inputChar;
 			setGuess(newGuess);
 
@@ -36,6 +42,7 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver, gu
 	};
 
 	const handleKeyDown = (event, wordIndex, charIndex) => {
+		if (gameOver) return; // Disable changes if the game is over
 		const newGuess = [...guess];
 		if (event.key === "Backspace") {
 			if (newGuess[wordIndex][charIndex] !== "") {
@@ -69,6 +76,7 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver, gu
 	};
 
 	const handleSubmit = () => {
+		if (gameOver) return; // Disable submit if the game is over
 		const fullGuess = guess.map((word) => word.join("")).join(" ");
 
 		// Check if all boxes are filled
@@ -78,17 +86,27 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver, gu
 			return;
 		}
 
-		onGuess(fullGuess);
-	};
+		const normalizedGuess = fullGuess
+			.replace(/[^\w\s]|_/g, "")
+			.replace(/\s+/g, " ")
+			.toLowerCase();
+		const normalizedPhrase = phrase
+			.replace(/[^\w\s]|_/g, "")
+			.replace(/\s+/g, " ")
+			.toLowerCase();
 
-	const getBoxClass = (wordIndex) => {
-		if (guessFeedback[wordIndex] === "correct") {
-			return "bg-green-500";
-		} else if (guessFeedback[wordIndex] === "incorrect") {
+		const guessWords = normalizedGuess.split(" ");
+		const phraseWords = normalizedPhrase.split(" ");
+
+		const newFeedback = guessWords.map((word, wordIndex) => {
+			if (phraseWords[wordIndex] && guessWords[wordIndex] === phraseWords[wordIndex]) {
+				return "bg-green-500";
+			}
 			return "bg-red-500";
-		} else {
-			return "bg-white";
-		}
+		});
+
+		setFeedbackState(newFeedback);
+		onGuess(fullGuess);
 	};
 
 	return (
@@ -109,8 +127,9 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver, gu
 								value={char}
 								onChange={(event) => handleChange(event, wordIndex, charIndex)}
 								onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)}
-								className={`w-12 h-12 text-center text-lg font-bold ${getBoxClass(wordIndex)}`}
+								className={`w-12 h-12 text-center text-lg font-bold ${feedbackState[wordIndex]}`}
 								autoComplete="off" // Disable browser autocomplete suggestions
+								disabled={gameOver} // Disable input if the game is over
 							/>
 						)
 					)}
@@ -122,7 +141,6 @@ const WanderBox = ({ phrase, onGuess, feedback, hint, attemptsLeft, gameOver, gu
 			<div className="mt-4">
 				{feedback && <p className="text-lg font-bold">{feedback}</p>}
 				{hint && <p className="text-md italic text-gray-500">{hint}</p>}
-				<p>Attempts Left: {attemptsLeft}</p>
 			</div>
 		</div>
 	);
