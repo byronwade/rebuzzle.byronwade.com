@@ -5,6 +5,7 @@ import { useContext } from "react";
 import GameContext from "@/context/GameContext";
 import CustomDialog from "@/components/CustomDialog";
 import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Component for "How to Play" dialog content
 const HowToPlayContent = () => {
@@ -56,14 +57,41 @@ export default function Header() {
 						<p>Next puzzle available in: {countdown}</p>
 					</div>
 					<div>
-						<span className="p-2 bg-black rounded-full text-white">{attemptsLeft}</span>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger>
+									<span className="p-2 bg-black rounded-full text-white">{attemptsLeft}</span>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>{attemptsLeft} attempts left</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					</div>
-					<button onClick={handleHowToPlayDialogOpen} aria-label="How to Play">
-						<InfoCircledIcon className="w-7 h-7" />
-					</button>
-					<button onClick={handleSettingsDialogOpen} aria-label="Settings">
-						<GearIcon className="w-7 h-7" />
-					</button>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger>
+								<button onClick={handleHowToPlayDialogOpen} aria-label="How to Play">
+									<InfoCircledIcon className="w-7 h-7" />
+								</button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>How to Play</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger>
+								<button onClick={handleSettingsDialogOpen} aria-label="Settings">
+									<GearIcon className="w-7 h-7" />
+								</button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Settings</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			</div>
 			<CustomDialog open={howToPlayDialogOpen} onOpenChange={setHowToPlayDialogOpen}>

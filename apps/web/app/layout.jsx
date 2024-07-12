@@ -3,6 +3,8 @@ import "@/styles/globals.css";
 import { Inter as FontSans } from "next/font/google";
 import { ThemeProvider } from "@/components/themeProvider";
 import { GameProvider } from "@/context/GameContext";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,8 @@ export default function RootLayout({ children }) {
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
 					<GameProvider>{children}</GameProvider>
 				</ThemeProvider>
+				<Analytics />
+				<SpeedInsights />
 			</body>
 		</html>
 	);
