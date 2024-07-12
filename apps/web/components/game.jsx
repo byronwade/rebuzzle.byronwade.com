@@ -5,9 +5,10 @@ import { useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import GameContext from "@/context/GameContext";
 import CustomDialog from "@/components/CustomDialog";
+import { Badge } from "@/components/ui/badge";
 
 const Game = () => {
-	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint } = useContext(GameContext);
+	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint, countdown } = useContext(GameContext);
 	const router = useRouter();
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [dialogContent, setDialogContent] = useState({ title: "", description: "" });
@@ -62,6 +63,9 @@ const Game = () => {
 		<div className="container mx-auto px-4">
 			<div className="flex items-center justify-center p-4">
 				<div className="text-center">
+					<Badge variant="outline" className="mb-4">
+						Next puzzle available in: {countdown}
+					</Badge>
 					<div className="space-x-4">
 						<Image src={image} alt="Rebus" width={500} height={500} className="rounded-md" />
 					</div>

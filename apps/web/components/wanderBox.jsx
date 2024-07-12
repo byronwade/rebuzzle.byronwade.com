@@ -116,7 +116,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 								{char}
 							</span>
 						) : (
-							<Input key={charIndex} id={`input-${wordIndex}-${charIndex}`} type="text" maxLength={1} value={char} onChange={(event) => handleChange(event, wordIndex, charIndex)} onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)} className={`w-12 h-12 text-center text-lg font-bold ${guessFeedback[wordIndex][charIndex]}`} autoComplete="off" disabled={gameOver} />
+							<Input key={charIndex} id={`input-${wordIndex}-${charIndex}`} type="text" maxLength={1} value={char} onChange={(event) => handleChange(event, wordIndex, charIndex)} onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)} className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-sm font-bold ${guessFeedback[wordIndex][charIndex]}`} autoComplete="off" disabled={gameOver} />
 						)
 					)}
 				</div>

@@ -6,6 +6,7 @@ import GameContext from "@/context/GameContext";
 import CustomDialog from "@/components/CustomDialog";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 // Component for "How to Play" dialog content
 const HowToPlayContent = () => {
@@ -52,22 +53,8 @@ export default function Header() {
 					</Link>
 					<p className="text-xs text-gray-500">Daily rebus puzzle games</p>
 				</div>
-				<div className="hidden md:flex space-x-8 items-center font-bold">
-					<div>
-						<p>Next puzzle available in: {countdown}</p>
-					</div>
-					<div>
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger>
-									<span className="p-2 bg-black rounded-full text-white">{attemptsLeft}</span>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>{attemptsLeft} attempts left</p>
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					</div>
+				<div className="flex space-x-8 items-center font-bold justify-center align-middle">
+					<Badge variant="outline">{attemptsLeft} attempts left</Badge>
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger>
