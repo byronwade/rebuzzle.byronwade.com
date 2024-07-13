@@ -1,14 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
 const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft, gameOver }) => {
 	const isPunctuation = (char) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
 
-	const words = phrase.split(" ");
+	const words = useMemo(() => (phrase ? phrase.split(" ") : []), [phrase]);
 	const initialGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
 	const [guess, setGuess] = useState(initialGuess);
 	const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-white")));
+
+	useEffect(() => {
+		// Reset guess and feedback when the phrase changes
+		const newGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
+		setGuess(newGuess);
+		setGuessFeedback(newGuess.map((word) => word.map(() => "bg-white")));
+	}, [phrase, words]);
 
 	const handleChange = (event, wordIndex, charIndex) => {
 		if (gameOver) return;

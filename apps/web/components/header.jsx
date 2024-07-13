@@ -1,7 +1,7 @@
-import { useState } from "react";
+// components/Header.jsx
+import { useContext, useState } from "react";
 import { InfoCircledIcon, GearIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
-import { useContext } from "react";
 import GameContext from "@/context/GameContext";
 import CustomDialog from "@/components/CustomDialog";
 import Image from "next/image";
@@ -14,7 +14,6 @@ const HowToPlayContent = () => {
 		<div className="text-left">
 			<h2 className="text-xl font-bold text-lg sm:text-xl">How to Play</h2>
 			<p className="mt-2 text-sm sm:text-base">Rebuzzle is a daily rebus puzzle game where you solve puzzles using clues. You have a limited number of attempts to guess the correct answer. The next puzzle will be available after the countdown ends. Good luck and have fun!</p>
-			{/* <Image src="/vercel.svg" alt="Example" className="mt-4" width={40} height={40} /> */}
 			<div className="mt-4">
 				<h3 className="text-lg font-bold text-base sm:text-lg">Step-by-Step Guide</h3>
 				<ol className="list-decimal list-inside text-sm sm:text-base">
@@ -66,7 +65,7 @@ const SettingsContent = () => {
 };
 
 export default function Header() {
-	const { attemptsLeft, countdown } = useContext(GameContext);
+	const { attemptsLeft } = useContext(GameContext);
 	const [howToPlayDialogOpen, setHowToPlayDialogOpen] = useState(false);
 	const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
@@ -91,7 +90,7 @@ export default function Header() {
 					<Badge variant="outline">{attemptsLeft} attempts left</Badge>
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger>
+							<TooltipTrigger asChild>
 								<button onClick={handleHowToPlayDialogOpen} aria-label="How to Play">
 									<InfoCircledIcon className="w-7 h-7" />
 								</button>
@@ -103,7 +102,7 @@ export default function Header() {
 					</TooltipProvider>
 					<TooltipProvider>
 						<Tooltip>
-							<TooltipTrigger>
+							<TooltipTrigger asChild>
 								<button onClick={handleSettingsDialogOpen} aria-label="Settings">
 									<GearIcon className="w-7 h-7" />
 								</button>

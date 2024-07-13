@@ -1,23 +1,32 @@
-"use client";
-import WanderBox from "@/components/wanderBox";
-import Image from "next/image";
-import { useContext, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useContext, useState, useEffect } from "react";
 import GameContext from "@/context/GameContext";
-import CustomDialog from "@/components/CustomDialog";
+import WanderBox from "@/components/wanderBox";
+import GameCard from "@/components/GameCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 const Game = () => {
-	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint, countdown } = useContext(GameContext);
-	const router = useRouter();
-	const [dialogOpen, setDialogOpen] = useState(false);
-	const [dialogContent, setDialogContent] = useState({ title: "", description: "" });
+	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint } = useContext(GameContext);
+	const [countdown, setCountdown] = useState("00:00:00");
 
-	const { phrase, image } = gameData;
+	useEffect(() => {
+		const interval = setInterval(() => {
+			const now = new Date();
+			const midnight = new Date(now);
+			midnight.setHours(24, 0, 0, 0);
+			const diff = midnight - now;
+			const hours = Math.floor(diff / (1000 * 60 * 60));
+			const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+			const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+			setCountdown(`${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`);
+		}, 1000);
+
+		return () => clearInterval(interval);
+	}, []);
 
 	const stopGame = () => {
 		setGameOver(true);
-		router.push("/rebus/loser");
 	};
 
 	const checkGuess = (guess) => {
@@ -25,21 +34,20 @@ const Game = () => {
 			.replace(/[^a-zA-Z0-9\s]/g, "")
 			.replace(/\s+/g, "")
 			.toLowerCase();
-		const normalizedPhrase = phrase
+		const normalizedPhrase = gameData.solution
 			.replace(/[^a-zA-Z0-9\s]/g, "")
 			.replace(/\s+/g, "")
 			.toLowerCase();
 
 		if (normalizedGuess === normalizedPhrase) {
-			setFeedback("Correct!");
-			setGameOver(true);
-			router.push("/rebus/winner");
+			setFeedback("Correct!"); // Set feedback as a string
+			stopGame();
 		} else {
-			setFeedback("Incorrect guess.");
-			setAttemptsLeft(attemptsLeft - 1);
+			setFeedback("Incorrect guess."); // Set feedback as a string
+			setAttemptsLeft((prevAttempts) => prevAttempts - 1);
 
 			if (attemptsLeft <= 1) {
-				setFeedback(`Game over! The correct phrase was: "${phrase}"`);
+				setFeedback(`Game over! The correct phrase was: "${gameData.solution}"`); // Set feedback as a string
 				stopGame();
 			}
 		}
@@ -52,12 +60,20 @@ const Game = () => {
 	};
 
 	const handleEmptyBoxes = () => {
-		setDialogContent({
-			title: "Incomplete Guess",
-			description: "Please fill in all boxes.",
-		});
-		setDialogOpen(true);
+		setFeedback("Incomplete Guess. Please fill in all boxes."); // Set feedback as a string
 	};
+
+	const handleCloseDialog = () => {
+		setGameOver(false); // Reset the game over state when closing
+		setFeedback(""); // Reset feedback to an empty string
+		setAttemptsLeft(3); // Reset attempts
+	};
+
+	if (!gameData) {
+		return <div>Loading...</div>;
+	}
+
+	const { solution: phrase, image_url: image } = gameData;
 
 	return (
 		<div className="container mx-auto px-4">
@@ -67,16 +83,14 @@ const Game = () => {
 						Next puzzle available in: {countdown}
 					</Badge>
 					<div className="space-x-4">
-						<Image src={image} alt="Rebus" width={500} height={500} className="rounded-md" />
+						<Image src={image} alt="Rebus" width={1980} height={1020} className="w-1/2 h-auto m-auto rounded-md" priority />
 					</div>
 				</div>
 			</div>
 
 			<WanderBox phrase={phrase} onGuess={handleGuess} onEmptyBoxes={handleEmptyBoxes} feedback={feedback} hint={hint} attemptsLeft={attemptsLeft} gameOver={gameOver} />
 
-			<CustomDialog open={dialogOpen} onOpenChange={setDialogOpen} title={dialogContent.title}>
-				<div>{dialogContent.description}</div>
-			</CustomDialog>
+			{gameOver && typeof feedback === "string" && <GameCard gameData={gameData} />}
 		</div>
 	);
 };
