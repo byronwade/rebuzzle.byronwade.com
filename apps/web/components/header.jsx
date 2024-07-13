@@ -18,7 +18,7 @@ const HowToPlayContent = () => {
 			<div className="mt-4">
 				<h3 className="text-lg font-bold">Step-by-Step Guide</h3>
 				<ol className="list-decimal list-inside">
-					<li className="mt-2">Guess the Puzzle: You will see a picture puzzle called a "rebus." Your job is to guess what words the picture stands for.</li>
+					<li className="mt-2">Guess the Puzzle: You will see a picture puzzle called a &quot;rebus.&quot; Your job is to guess what words the picture stands for.</li>
 					<li className="mt-2">Type Your Guess: There will be boxes where you can type your guess.</li>
 					<li className="mt-2">
 						Check Your Guess:
@@ -37,7 +37,7 @@ const HowToPlayContent = () => {
 							<li>
 								You can try to guess the puzzle up to <span className="font-bold">3 times</span>.
 							</li>
-							<li>If you still don't get it right after 3 tries, the game will explain the puzzle to you.</li>
+							<li>If you still don&apos;t get it right after 3 tries, the game will explain the puzzle to you.</li>
 						</ul>
 					</li>
 					<li className="mt-2">
