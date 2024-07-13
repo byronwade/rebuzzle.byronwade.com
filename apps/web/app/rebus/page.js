@@ -1,5 +1,5 @@
 "use client";
-import Game from "@/components/game";
+import Game from "@/components/Game";
 import Header from "@/components/Header";
 import { GameProvider } from "@/context/GameContext";
 

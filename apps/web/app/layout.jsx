@@ -1,7 +1,7 @@
 "use client";
 import "@/styles/globals.css";
 import { Inter as FontSans } from "next/font/google";
-import { ThemeProvider } from "@/components/themeProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 

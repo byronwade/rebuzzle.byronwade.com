@@ -4,7 +4,6 @@ import { InfoCircledIcon, GearIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import GameContext from "@/context/GameContext";
 import CustomDialog from "@/components/CustomDialog";
-import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 
@@ -12,10 +11,10 @@ import { Badge } from "@/components/ui/badge";
 const HowToPlayContent = () => {
 	return (
 		<div className="text-left">
-			<h2 className="text-xl font-bold text-lg sm:text-xl">How to Play</h2>
+			<h2 className="font-bold text-lg sm:text-xl">How to Play</h2>
 			<p className="mt-2 text-sm sm:text-base">Rebuzzle is a daily rebus puzzle game where you solve puzzles using clues. You have a limited number of attempts to guess the correct answer. The next puzzle will be available after the countdown ends. Good luck and have fun!</p>
 			<div className="mt-4">
-				<h3 className="text-lg font-bold text-base sm:text-lg">Step-by-Step Guide</h3>
+				<h3 className="font-bold text-base sm:text-lg">Step-by-Step Guide</h3>
 				<ol className="list-decimal list-inside text-sm sm:text-base">
 					<li className="mt-2">Guess the Puzzle: You will see a picture puzzle called a &quot;rebus.&quot; Your job is to guess what words the picture stands for.</li>
 					<li className="mt-2">Type Your Guess: There will be boxes where you can type your guess.</li>
