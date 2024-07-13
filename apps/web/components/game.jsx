@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import GameContext from "@/context/GameContext";
-import WanderBox from "@/components/WanderBox";
-import GameCard from "@/components/GameCard";
+import WanderBox from "@/components/wanderBox";
+import GameCard from "@/components/gameCard";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 
