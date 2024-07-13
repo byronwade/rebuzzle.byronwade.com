@@ -4,7 +4,7 @@ import { Inter as FontSans } from "next/font/google";
 import { ThemeProvider } from "@/components/themeProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-
+import { UserProvider } from "@/context/UserContext"; // Import UserProvider
 import { cn } from "@/lib/utils";
 
 const fontSans = FontSans({
@@ -19,11 +19,15 @@ export default function RootLayout({ children }) {
 				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 			</head>
 			<body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
-				<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-					{children}
-				</ThemeProvider>
-				<Analytics />
-				<SpeedInsights />
+				<UserProvider>
+					{" "}
+					{/* Wrap the application with UserProvider */}
+					<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+						{children}
+					</ThemeProvider>
+					<Analytics />
+					<SpeedInsights />
+				</UserProvider>
 			</body>
 		</html>
 	);

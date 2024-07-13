@@ -1,3 +1,4 @@
+"use state";
 // components/Header.jsx
 import { useContext, useState } from "react";
 import { InfoCircledIcon, GearIcon } from "@radix-ui/react-icons";
