@@ -11,13 +11,13 @@ import { Badge } from "@/components/ui/badge";
 // Component for "How to Play" dialog content
 const HowToPlayContent = () => {
 	return (
-		<div>
-			<h2 className="text-xl font-bold">How to Play</h2>
-			<p className="mt-2">Rebuzzle is a daily rebus puzzle game where you solve puzzles using clues. You have a limited number of attempts to guess the correct answer. The next puzzle will be available after the countdown ends. Good luck and have fun!</p>
+		<div className="text-left">
+			<h2 className="text-xl font-bold text-lg sm:text-xl">How to Play</h2>
+			<p className="mt-2 text-sm sm:text-base">Rebuzzle is a daily rebus puzzle game where you solve puzzles using clues. You have a limited number of attempts to guess the correct answer. The next puzzle will be available after the countdown ends. Good luck and have fun!</p>
 			{/* <Image src="/vercel.svg" alt="Example" className="mt-4" width={40} height={40} /> */}
 			<div className="mt-4">
-				<h3 className="text-lg font-bold">Step-by-Step Guide</h3>
-				<ol className="list-decimal list-inside">
+				<h3 className="text-lg font-bold text-base sm:text-lg">Step-by-Step Guide</h3>
+				<ol className="list-decimal list-inside text-sm sm:text-base">
 					<li className="mt-2">Guess the Puzzle: You will see a picture puzzle called a &quot;rebus.&quot; Your job is to guess what words the picture stands for.</li>
 					<li className="mt-2">Type Your Guess: There will be boxes where you can type your guess.</li>
 					<li className="mt-2">
