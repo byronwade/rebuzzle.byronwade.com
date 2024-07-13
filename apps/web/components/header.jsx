@@ -58,7 +58,7 @@ const SettingsContent = () => {
 		<div>
 			<h2 className="text-xl font-bold">Settings</h2>
 			<p className="mt-2">Here you can configure your game settings and preferences.</p>
-			{/* Add settings options here */}
+			<p>Will be added soon.</p>
 		</div>
 	);
 };
