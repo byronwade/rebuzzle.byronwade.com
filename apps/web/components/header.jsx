@@ -14,8 +14,42 @@ const HowToPlayContent = () => {
 		<div>
 			<h2 className="text-xl font-bold">How to Play</h2>
 			<p className="mt-2">Rebuzzle is a daily rebus puzzle game where you solve puzzles using clues. You have a limited number of attempts to guess the correct answer. The next puzzle will be available after the countdown ends. Good luck and have fun!</p>
-			<Image src="/vercel.svg" alt="Example" className="mt-4" width={40} height={40} />
-			{/* Add more content here as needed */}
+			{/* <Image src="/vercel.svg" alt="Example" className="mt-4" width={40} height={40} /> */}
+			<div className="mt-4">
+				<h3 className="text-lg font-bold">Step-by-Step Guide</h3>
+				<ol className="list-decimal list-inside">
+					<li className="mt-2">Guess the Puzzle: You will see a picture puzzle called a "rebus." Your job is to guess what words the picture stands for.</li>
+					<li className="mt-2">Type Your Guess: There will be boxes where you can type your guess.</li>
+					<li className="mt-2">
+						Check Your Guess:
+						<ul className="list-disc list-inside ml-4">
+							<li>
+								If the boxes turn <span className="text-green-500 font-bold">green</span>, it means you got the word right!
+							</li>
+							<li>
+								If the boxes turn <span className="text-red-500 font-bold">red</span>, it means the word is wrong.
+							</li>
+						</ul>
+					</li>
+					<li className="mt-2">
+						You Have 3 Tries:
+						<ul className="list-disc list-inside ml-4">
+							<li>
+								You can try to guess the puzzle up to <span className="font-bold">3 times</span>.
+							</li>
+							<li>If you still don't get it right after 3 tries, the game will explain the puzzle to you.</li>
+						</ul>
+					</li>
+					<li className="mt-2">
+						One Puzzle a Day:
+						<ul className="list-disc list-inside ml-4">
+							<li>You only get one new puzzle every day.</li>
+							<li>Take your time and think about the puzzle throughout the day.</li>
+						</ul>
+					</li>
+					<li className="mt-2">Have Fun! Enjoy trying to figure out the rebus puzzle with your friends and family!</li>
+				</ol>
+			</div>
 		</div>
 	);
 };
