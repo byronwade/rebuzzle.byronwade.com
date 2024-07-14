@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useState, useEffect } from "react";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { Info, BarChart2 } from "react-feather";
 import Link from "next/link";
 import GameContext from "@/context/GameContext";
 import { useUser } from "@/context/UserContext";
@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import Statistics from "@/components/Statistics"; // Import the Statistics component
 
 const HowToPlayContent = () => {
 	return (
@@ -69,6 +70,7 @@ export default function Header() {
 	const { attemptsLeft } = useContext(GameContext);
 	const [howToPlayDialogOpen, setHowToPlayDialogOpen] = useState(false);
 	const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+	const [statisticsDialogOpen, setStatisticsDialogOpen] = useState(false); // Add state for statistics dialog
 	const { user, loading, error, signOut } = useUser();
 
 	useEffect(() => {
@@ -83,6 +85,10 @@ export default function Header() {
 
 	const handleSettingsDialogOpen = () => {
 		setSettingsDialogOpen(true);
+	};
+
+	const handleStatisticsDialogOpen = () => {
+		setStatisticsDialogOpen(true);
 	};
 
 	if (loading) return <div>Loading...</div>;
@@ -103,7 +109,7 @@ export default function Header() {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<button onClick={handleHowToPlayDialogOpen} aria-label="How to Play">
-									<InfoCircledIcon className="w-7 h-7" />
+									<Info className="w-7 h-7" />
 								</button>
 							</TooltipTrigger>
 							<TooltipContent>
@@ -111,6 +117,20 @@ export default function Header() {
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
+					{user && (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button onClick={handleStatisticsDialogOpen} aria-label="Player Statistics">
+										<BarChart2 className="w-7 h-7" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Player Statistics</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)}
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Avatar>{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Guest" />}</Avatar>
@@ -144,6 +164,9 @@ export default function Header() {
 			</CustomDialog>
 			<CustomDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
 				<SettingsContent />
+			</CustomDialog>
+			<CustomDialog open={statisticsDialogOpen} onOpenChange={setStatisticsDialogOpen}>
+				<Statistics userId={user ? user.id : null} /> {/* Pass userId to the Statistics component */}
 			</CustomDialog>
 		</>
 	);

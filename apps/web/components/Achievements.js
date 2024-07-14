@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 
 const Achievements = ({ userId }) => {
 	const [achievements, setAchievements] = useState([]);
@@ -14,15 +15,25 @@ const Achievements = ({ userId }) => {
 	}, [userId]);
 
 	return (
-		<div>
-			<h2>Achievements</h2>
-			<ul>
-				{achievements.map((achievement) => (
-					<li key={achievement.id}>
-						{achievement.achievement_name} - {new Date(achievement.achievement_date).toLocaleDateString()}
-					</li>
-				))}
-			</ul>
+		<div className="w-96 mx-auto overflow-hidden shadow-lg mb-4">
+			<Card>
+				<CardHeader>
+					<CardTitle>Achievements</CardTitle>
+					<CardDescription>Here are your latest achievements</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div>
+						{achievements.map((achievement) => (
+							<div key={achievement.id}>
+								<div>{achievement.achievement_name}</div>
+								<div size="sm" color="gray">
+									{new Date(achievement.achievement_date).toLocaleDateString()}
+								</div>
+							</div>
+						))}
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 };

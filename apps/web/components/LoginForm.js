@@ -57,7 +57,6 @@ export function LoginForm() {
 			} else {
 				form.clearErrors("server");
 				setUser(data.user); // Update the user context
-				alert("Login successful!");
 				router.push("/rebus"); // Use router.push for client-side navigation
 			}
 		} catch (error) {

@@ -8,13 +8,13 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 	const words = useMemo(() => (phrase ? phrase.split(" ") : []), [phrase]);
 	const initialGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
 	const [guess, setGuess] = useState(initialGuess);
-	const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-white")));
+	const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-gray-200 dark:bg-gray-700")));
 
 	useEffect(() => {
 		// Reset guess and feedback when the phrase changes
 		const newGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
 		setGuess(newGuess);
-		setGuessFeedback(newGuess.map((word) => word.map(() => "bg-white")));
+		setGuessFeedback(newGuess.map((word) => word.map(() => "bg-gray-200 dark:bg-gray-700")));
 	}, [phrase, words]);
 
 	const handleChange = (event, wordIndex, charIndex) => {
@@ -102,9 +102,9 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 				if (char && phraseWords[wordIndex]) {
 					const guessWord = guessWords[wordIndex];
 					const phraseWord = phraseWords[wordIndex];
-					return guessWord === phraseWord ? "bg-green-500" : "bg-red-500";
+					return guessWord === phraseWord ? "bg-green-500 dark:bg-green-600 text-white" : "bg-red-500 dark:bg-red-600 text-white";
 				}
-				return "bg-white";
+				return "bg-gray-200 dark:bg-gray-700 text-black dark:text-white";
 			})
 		);
 
@@ -123,7 +123,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 								{char}
 							</span>
 						) : (
-							<Input key={charIndex} id={`input-${wordIndex}-${charIndex}`} type="text" maxLength={1} value={char} onChange={(event) => handleChange(event, wordIndex, charIndex)} onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)} className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-[16px] font-bold ${guessFeedback[wordIndex][charIndex]}`} autoComplete="off" disabled={gameOver} />
+							<Input key={charIndex} id={`input-${wordIndex}-${charIndex}`} type="text" maxLength={1} value={char} onChange={(event) => handleChange(event, wordIndex, charIndex)} onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)} className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-[16px] font-bold ${guessFeedback[wordIndex][charIndex]} focus:outline-none focus:ring-2 focus:ring-blue-500`} autoComplete="off" disabled={gameOver} />
 						)
 					)}
 				</div>

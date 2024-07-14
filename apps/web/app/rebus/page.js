@@ -1,23 +1,22 @@
-// pages/rebus.js
 "use client";
 import Game from "@/components/game";
 import Header from "@/components/header";
-import Achievements from "@/components/Achievements";
 import Leaderboard from "@/components/Leaderboard";
 import { useUser } from "@/context/UserContext";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation"; // Import useRouter from Next.js
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const App = () => {
-	const router = useRouter(); // Initialize useRouter
-
+	const router = useRouter();
 	const { user, loading, error } = useUser();
+	const [isGuest, setIsGuest] = useState(false);
 
 	useEffect(() => {
 		if (!loading && !user) {
-			const isGuest = new URLSearchParams(window.location.search).get("guest") === "true";
-			if (!isGuest) {
-				router.replace("/login"); // Redirect to login page if not authenticated and not a guest
+			const guestParam = new URLSearchParams(window.location.search).get("guest") === "true";
+			setIsGuest(guestParam);
+			if (!guestParam) {
+				router.replace("/rebus?guest=true");
 			}
 		}
 	}, [loading, user, router]);
@@ -26,10 +25,10 @@ const App = () => {
 	if (error) return <p>Error: {error}</p>;
 
 	return (
-		<div className="mb-8">
+		<div className="relative mb-8">
 			<Header />
 			<Game />
-			{!loading && !user && (
+			{!loading && !user && !isGuest && (
 				<div className="text-center mt-4">
 					<p>You need to log in to access this page.</p>
 					<p>
@@ -45,10 +44,11 @@ const App = () => {
 					</p>
 				</div>
 			)}
-			{!loading && user && (
+			{!loading && (user || isGuest) && (
 				<>
-					<Achievements userId={user.id} />
-					<Leaderboard />
+					<div className="absolute top-10 right-10 mt-16 ml-4">
+						<Leaderboard />
+					</div>
 				</>
 			)}
 		</div>

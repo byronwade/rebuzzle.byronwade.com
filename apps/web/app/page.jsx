@@ -31,22 +31,22 @@ function Home() {
 			<Head>
 				<script type="application/ld+json" dangerouslySetInnerHTML={addGameJsonLd()} key="game-jsonld" />
 			</Head>
-			<div className="flex items-center justify-center min-h-screen bg-gray-100">
+			<div className="flex items-center justify-center min-h-screen">
 				<div className="text-center">
 					<h1 className="text-6xl font-bold">Rebuzzle</h1>
 					<p className="text-gray-500 mb-4">Rebus Puzzles</p>
 					<p className="text-lg mb-8">Unravel the Picture, Reveal the Phrase!</p>
 					<div className="space-x-4">
 						<Link href="/rebus?guest=true">
-							<Button className="bg-gray-700 text-white px-4 py-2 rounded-md">Play as Guest</Button>
+							<Button variant="secondary">Play as Guest</Button>
 						</Link>
 						<Link href="/rebus">
-							<Button className="bg-green-700 text-white px-4 py-2 rounded-md">Play Logged In</Button>
+							<Button variant="success">Play Logged In</Button>
 						</Link>
 					</div>
 					<div className="space-x-4 mt-4">
 						<Link href="/signup">
-							<Button className="bg-black text-white px-4 py-2 rounded-md">Signup</Button>
+							<Button>Signup</Button>
 						</Link>
 					</div>
 					<p className="text-gray-500 mt-4">{gameVersion}</p>

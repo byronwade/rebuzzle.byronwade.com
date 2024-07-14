@@ -1,4 +1,3 @@
-// app/layouts/RootLayout.js
 "use client";
 import "@/styles/globals.css";
 import { Inter as FontSans } from "next/font/google";
@@ -20,7 +19,7 @@ export default function RootLayout({ children }) {
 			<head>
 				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 			</head>
-			<body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
+			<body className={cn("min-h-screen bg-white dark:bg-black font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
 				<UserProvider>
 					<GameProvider>
 						<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

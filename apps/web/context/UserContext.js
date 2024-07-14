@@ -1,7 +1,8 @@
-// context/UserContext.js
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "shared-utils";
-import { useRouter } from "next/navigation"; // Updated import to useRouter from next/router
+import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation"; // Import useRouter from Next.js
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 const UserContext = createContext();
 
@@ -15,7 +16,10 @@ export const UserProvider = ({ children }) => {
 		const getSession = async () => {
 			try {
 				setLoading(true);
-				const { data: session, error } = await supabase.auth.getSession();
+				const {
+					data: { session },
+					error,
+				} = await supabase.auth.getSession();
 				if (error) throw error;
 				setUser(session?.user ?? null);
 			} catch (error) {
@@ -27,13 +31,13 @@ export const UserProvider = ({ children }) => {
 
 		getSession();
 
-		const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+		const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
 			setUser(session?.user ?? null);
 			setLoading(false);
 		});
 
 		return () => {
-			authListener?.unsubscribe();
+			authListener?.subscription.unsubscribe();
 		};
 	}, []);
 
@@ -43,7 +47,7 @@ export const UserProvider = ({ children }) => {
 			console.error("Logout error:", error);
 		} else {
 			setUser(null);
-			router.push("/");
+			router.push("/rebus?guest=true"); // Redirect to /rebus as a guest
 		}
 	};
 
