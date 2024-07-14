@@ -82,7 +82,7 @@ const Game = () => {
 						Next puzzle available in: {countdown}
 					</Badge>
 					<div className="space-x-4">
-						<Image src={image} alt="Rebus" width={1980} height={1020} className="w-1/2 h-auto m-auto rounded-md" priority />
+						<Image src={image} alt="Rebus" width={1980} height={1020} className="w-full md:w-1/2 h-auto m-auto rounded-md" priority />
 					</div>
 				</div>
 			</div>

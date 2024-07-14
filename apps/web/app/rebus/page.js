@@ -46,7 +46,7 @@ const App = () => {
 			)}
 			{!loading && (user || isGuest) && (
 				<>
-					<div className="absolute top-10 right-10 mt-16 ml-4">
+					<div className="absolute top-10 right-10 mt-16 ml-4 hidden md:block">
 						<Leaderboard />
 					</div>
 				</>
