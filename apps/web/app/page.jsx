@@ -4,7 +4,7 @@ import Link from "next/link";
 import Head from "next/head";
 
 function Home() {
-	const gameVersion = "v1.0.0"; // Update this with the actual version
+	const gameVersion = "No. 0005"; // Update this with the actual version
 
 	function addGameJsonLd() {
 		return {
@@ -50,6 +50,7 @@ function Home() {
 						</Link>
 					</div>
 					<p className="text-gray-500 mt-4">{gameVersion}</p>
+					<p className="text-gray-500 mt-4">Made By Byron Wade</p>
 				</div>
 			</div>
 		</>
