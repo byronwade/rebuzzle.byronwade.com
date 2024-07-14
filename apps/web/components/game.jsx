@@ -2,12 +2,14 @@ import React, { useContext, useState, useEffect } from "react";
 import GameContext from "@/context/GameContext";
 import WanderBox from "@/components/wanderBox";
 import GameCard from "@/components/gameCard";
+import CustomDialog from "@/components/CustomDialog";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 
 const Game = () => {
 	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint } = useContext(GameContext);
 	const [countdown, setCountdown] = useState("00:00:00");
+	const [dialogOpen, setDialogOpen] = useState(false); // Add state for dialog open
 
 	useEffect(() => {
 		const interval = setInterval(() => {
@@ -24,8 +26,15 @@ const Game = () => {
 		return () => clearInterval(interval);
 	}, []);
 
+	useEffect(() => {
+		if (gameOver) {
+			setDialogOpen(true); // Open dialog when game is over
+		}
+	}, [gameOver]);
+
 	const stopGame = () => {
 		setGameOver(true);
+		setDialogOpen(true); // Open dialog when game is over
 	};
 
 	const checkGuess = (guess) => {
@@ -63,7 +72,8 @@ const Game = () => {
 	};
 
 	const handleCloseDialog = () => {
-		setGameOver(false); // Reset the game over state when closing
+		setDialogOpen(false); // Close the dialog
+		setGameOver(false); // Reset the game over state
 		setFeedback(""); // Reset feedback to an empty string
 		setAttemptsLeft(3); // Reset attempts
 	};
@@ -89,7 +99,9 @@ const Game = () => {
 
 			<WanderBox phrase={phrase} onGuess={handleGuess} onEmptyBoxes={handleEmptyBoxes} feedback={feedback} hint={hint} attemptsLeft={attemptsLeft} gameOver={gameOver} />
 
-			{gameOver && typeof feedback === "string" && <GameCard gameData={gameData} />}
+			<CustomDialog open={dialogOpen} onOpenChange={setDialogOpen} title={feedback.includes("Correct!") ? "Correct!" : `Game over! The correct phrase was: "${gameData.solution}"`}>
+				<GameCard gameData={gameData} onClose={handleCloseDialog} />
+			</CustomDialog>
 		</div>
 	);
 };

@@ -3,21 +3,21 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
 const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft, gameOver }) => {
-	const isPunctuation = (char) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
+  const isPunctuation = (char) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
 
-	const words = useMemo(() => (phrase ? phrase.split(" ") : []), [phrase]);
-	const initialGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
-	const [guess, setGuess] = useState(initialGuess);
-	const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-gray-200 dark:bg-gray-700")));
+  const words = useMemo(() => (phrase ? phrase.split(" ") : []), [phrase]);
+  const initialGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
+  const [guess, setGuess] = useState(initialGuess);
+  const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-gray-200 dark:bg-gray-700")));
 
-	useEffect(() => {
+  useEffect(() => {
 		// Reset guess and feedback when the phrase changes
 		const newGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
 		setGuess(newGuess);
 		setGuessFeedback(newGuess.map((word) => word.map(() => "bg-gray-200 dark:bg-gray-700")));
-	}, [phrase, words]);
+  }, [phrase, words]);
 
-	const handleChange = (event, wordIndex, charIndex) => {
+  const handleChange = (event, wordIndex, charIndex) => {
 		if (gameOver) return;
 		const newGuess = [...guess];
 		const inputChar = event.target.value.toUpperCase();
@@ -41,9 +41,9 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 				nextCharIndex = 0;
 			}
 		}
-	};
+  };
 
-	const handleKeyDown = (event, wordIndex, charIndex) => {
+  const handleKeyDown = (event, wordIndex, charIndex) => {
 		if (gameOver) return;
 		const newGuess = [...guess];
 		if (event.key === "Backspace") {
@@ -71,11 +71,12 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 				}
 			}
 		} else if (event.key === "Enter") {
+			event.preventDefault();
 			handleSubmit();
 		}
-	};
+  };
 
-	const handleSubmit = () => {
+  const handleSubmit = () => {
 		if (gameOver) return;
 		const fullGuess = guess.map((word) => word.join("")).join(" ");
 
@@ -111,9 +112,9 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 		setGuessFeedback(newFeedback);
 
 		onGuess(fullGuess);
-	};
+  };
 
-	return (
+  return (
 		<div className="flex flex-col items-center mt-4">
 			{guess.map((word, wordIndex) => (
 				<div key={wordIndex} className="flex space-x-2 mb-4">
@@ -131,12 +132,9 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, hint, attemptsLeft
 			<Button onClick={handleSubmit} disabled={gameOver}>
 				Submit Guess
 			</Button>
-			<div className="mt-4">
-				{feedback && <p className="text-lg font-bold">{feedback}</p>}
-				{hint && <p className="text-md italic text-gray-500">{hint}</p>}
-			</div>
+			<div className="mt-4">{feedback && <p className="text-sm">{feedback}</p>}</div>
 		</div>
-	);
+  );
 };
 
 export default WanderBox;

@@ -5,8 +5,9 @@ const CustomDialog = ({ open, onOpenChange, title, description, children }) => (
 		<DialogContent>
 			<DialogHeader>
 				{title && <DialogTitle>{title}</DialogTitle>}
-				{children ? children : <DialogDescription>{description}</DialogDescription>}
+				<DialogDescription>{description}</DialogDescription>
 			</DialogHeader>
+			{children}
 		</DialogContent>
 	</Dialog>
 );
