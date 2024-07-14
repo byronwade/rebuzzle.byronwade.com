@@ -1,10 +1,12 @@
+// app/layouts/RootLayout.js
 "use client";
 import "@/styles/globals.css";
 import { Inter as FontSans } from "next/font/google";
 import { ThemeProvider } from "@/components/themeProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { UserProvider } from "@/context/UserContext"; // Import UserProvider
+import { GameProvider } from "@/context/GameContext";
+import { UserProvider } from "@/context/UserContext";
 import { cn } from "@/lib/utils";
 
 const fontSans = FontSans({
@@ -20,13 +22,13 @@ export default function RootLayout({ children }) {
 			</head>
 			<body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
 				<UserProvider>
-					{" "}
-					{/* Wrap the application with UserProvider */}
-					<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-						{children}
-					</ThemeProvider>
-					<Analytics />
-					<SpeedInsights />
+					<GameProvider>
+						<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+							{children}
+						</ThemeProvider>
+						<Analytics />
+						<SpeedInsights />
+					</GameProvider>
 				</UserProvider>
 			</body>
 		</html>

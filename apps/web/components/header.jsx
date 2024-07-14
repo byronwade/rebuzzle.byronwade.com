@@ -1,14 +1,16 @@
-"use state";
-// components/Header.jsx
-import { useContext, useState } from "react";
-import { InfoCircledIcon, GearIcon } from "@radix-ui/react-icons";
+"use client";
+
+import { useContext, useState, useEffect } from "react";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import GameContext from "@/context/GameContext";
+import { useUser } from "@/context/UserContext";
 import CustomDialog from "@/components/CustomDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
-// Component for "How to Play" dialog content
 const HowToPlayContent = () => {
 	return (
 		<div className="text-left">
@@ -53,7 +55,6 @@ const HowToPlayContent = () => {
 	);
 };
 
-// Component for "Settings" dialog content
 const SettingsContent = () => {
 	return (
 		<div>
@@ -68,6 +69,13 @@ export default function Header() {
 	const { attemptsLeft } = useContext(GameContext);
 	const [howToPlayDialogOpen, setHowToPlayDialogOpen] = useState(false);
 	const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+	const { user, loading, error, signOut } = useUser();
+
+	useEffect(() => {
+		if (user) {
+			console.log("User data:", user);
+		}
+	}, [user]);
 
 	const handleHowToPlayDialogOpen = () => {
 		setHowToPlayDialogOpen(true);
@@ -76,6 +84,9 @@ export default function Header() {
 	const handleSettingsDialogOpen = () => {
 		setSettingsDialogOpen(true);
 	};
+
+	if (loading) return <div>Loading...</div>;
+	if (error) return <div>Error: {error}</div>;
 
 	return (
 		<>
@@ -100,18 +111,32 @@ export default function Header() {
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<button onClick={handleSettingsDialogOpen} aria-label="Settings">
-									<GearIcon className="w-7 h-7" />
-								</button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Settings</p>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Avatar>{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Guest" />}</Avatar>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent>
+							{user ? (
+								<>
+									<DropdownMenuItem>
+										<button onClick={handleSettingsDialogOpen}>Settings</button>
+									</DropdownMenuItem>
+									<DropdownMenuItem>
+										<button onClick={signOut}>Logout</button>
+									</DropdownMenuItem>
+								</>
+							) : (
+								<>
+									<DropdownMenuItem>
+										<Link href="/login">Login</Link>
+									</DropdownMenuItem>
+									<DropdownMenuItem>
+										<Link href="/signup">Sign Up</Link>
+									</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
 			<CustomDialog open={howToPlayDialogOpen} onOpenChange={setHowToPlayDialogOpen}>

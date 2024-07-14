@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "shared-utils";
 import { useUser } from "@/context/UserContext"; // Ensure this path is correct
-import { useRouter } from "next/navigation"; // Import useRouter from Next.js
 
 const zodResolver = (schema) => {
 	return async (data) => {
@@ -29,14 +28,14 @@ const zodResolver = (schema) => {
 	};
 };
 
-const loginSchema = z.object({
+const signupSchema = z.object({
 	email: z.string().email({ message: "Invalid email address" }),
 	password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
-export function LoginForm() {
+export function SignupForm() {
 	const form = useForm({
-		resolver: zodResolver(loginSchema),
+		resolver: zodResolver(signupSchema),
 		defaultValues: {
 			email: "",
 			password: "",
@@ -44,11 +43,10 @@ export function LoginForm() {
 	});
 
 	const { setUser } = useUser();
-	const router = useRouter(); // Initialize useRouter
 
-	const handleLogin = async (values) => {
+	const handleSignup = async (values) => {
 		try {
-			const { data, error } = await supabase.auth.signInWithPassword({
+			const { data, error } = await supabase.auth.signUp({
 				email: values.email,
 				password: values.password,
 			});
@@ -57,8 +55,8 @@ export function LoginForm() {
 			} else {
 				form.clearErrors("server");
 				setUser(data.user); // Update the user context
-				alert("Login successful!");
-				router.push("/rebus"); // Use router.push for client-side navigation
+				alert("Signup successful! Please check your email to confirm your account.");
+				window.location.href = "/rebus"; // Redirect to the main page after successful signup
 			}
 		} catch (error) {
 			form.setError("server", { type: "server", message: error.message });
@@ -68,12 +66,12 @@ export function LoginForm() {
 	return (
 		<Card className="mx-auto max-w-sm">
 			<CardHeader>
-				<CardTitle className="text-2xl">Login</CardTitle>
-				<CardDescription>Enter your email below to login to your account</CardDescription>
+				<CardTitle className="text-2xl">Sign Up</CardTitle>
+				<CardDescription>Enter your email below to create a new account</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(handleLogin)} className="space-y-8">
+					<form onSubmit={form.handleSubmit(handleSignup)} className="space-y-8">
 						<FormField
 							control={form.control}
 							name="email"
@@ -102,17 +100,14 @@ export function LoginForm() {
 						/>
 						{form.formState.errors.server && <p className="text-red-500">{form.formState.errors.server.message}</p>}
 						<Button type="submit" className="w-full">
-							Login
-						</Button>
-						<Button variant="outline" className="w-full">
-							Login with Google
+							Sign Up
 						</Button>
 					</form>
 				</Form>
 				<div className="mt-4 text-center text-sm">
-					Don&apos;t have an account?{" "}
-					<Link href="/signup" className="underline">
-						Sign up
+					Already have an account?{" "}
+					<Link href="/login" className="underline">
+						Login
 					</Link>
 				</div>
 			</CardContent>
