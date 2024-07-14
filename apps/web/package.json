@@ -33,6 +33,7 @@
 		"clsx": "^2.1.1",
 		"crypto": "^1.0.1",
 		"date-fns": "^3.6.0",
+		"dotenv": "^16.4.5",
 		"feather-icons": "^4.29.2",
 		"formidable": "^3.5.1",
 		"framer-motion": "^11.3.2",
@@ -41,6 +42,7 @@
 		"lucide-react": "^0.407.0",
 		"next": "^14.2.5",
 		"next-themes": "^0.3.0",
+		"node-cron": "^3.0.3",
 		"node-fetch": "^3.3.2",
 		"openai": "^4.52.7",
 		"react": "^18.3.1",
@@ -54,6 +56,7 @@
 		"tailwind-merge": "^2.4.0",
 		"tailwindcss-animate": "^1.0.7",
 		"uuid": "^10.0.0",
+		"web-push": "^3.6.7",
 		"zod": "^3.23.8"
 	},
 	"devDependencies": {

@@ -74,6 +74,14 @@ export default function Header() {
 	const { user, loading, error, signOut } = useUser();
 
 	useEffect(() => {
+		const hasSeenHowToPlay = localStorage.getItem("hasSeenHowToPlay");
+		if (!hasSeenHowToPlay) {
+			setHowToPlayDialogOpen(true);
+			localStorage.setItem("hasSeenHowToPlay", "true");
+		}
+	}, []);
+
+	useEffect(() => {
 		if (user) {
 			console.log("User data:", user);
 		}
