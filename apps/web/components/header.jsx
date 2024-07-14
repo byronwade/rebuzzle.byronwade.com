@@ -67,7 +67,6 @@ const SettingsContent = () => {
 };
 
 export default function Header() {
-	const { attemptsLeft } = useContext(GameContext);
 	const [howToPlayDialogOpen, setHowToPlayDialogOpen] = useState(false);
 	const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 	const [statisticsDialogOpen, setStatisticsDialogOpen] = useState(false); // Add state for statistics dialog
@@ -112,7 +111,6 @@ export default function Header() {
 					<p className="text-xs text-gray-500">Daily rebus puzzle games</p>
 				</div>
 				<div className="flex space-x-8 items-center font-bold justify-center align-middle">
-					<Badge variant="outline">{attemptsLeft} attempts left</Badge>
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>

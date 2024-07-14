@@ -40,7 +40,7 @@ function Home() {
 						<Link href="/rebus?guest=true">
 							<Button variant="secondary">Play as Guest</Button>
 						</Link>
-						<Link href="/rebus">
+						<Link href="/login">
 							<Button variant="success">Play Logged In</Button>
 						</Link>
 					</div>
