@@ -191,11 +191,11 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 					)}
 				</div>
 			))}
-			<div className="mt-4">{feedback && <p className="text-lg font-bold">{feedback}</p>}</div>
 			<Keyboard />
 			<Badge variant="outline" className="mt-4">
-				{attemptsLeft && <span>{attemptsLeft} Attempts Left</span>}
+				<span>{attemptsLeft} Attempts Left</span>
 			</Badge>
+			<div className="mt-4">{feedback && <p className="text-lg font-bold">{feedback}</p>}</div>
 		</div>
 	);
 };

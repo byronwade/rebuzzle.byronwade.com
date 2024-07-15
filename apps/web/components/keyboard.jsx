@@ -1,3 +1,4 @@
+// File: src/components/Keyboard.js or src/components/Keyboard/index.js
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useKeyboard } from "@/context/KeyboardContext";
