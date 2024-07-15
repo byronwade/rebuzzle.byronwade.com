@@ -144,7 +144,7 @@ const Game = () => {
 	const { solution: phrase, image_url: image } = gameData;
 
 	return (
-		<div className="container mx-auto px-4 mb-12">
+		<div className="container mx-auto px-4 pb-20">
 			<div className="flex items-center justify-center p-4">
 				<div className="text-center">
 					<Countdown />
