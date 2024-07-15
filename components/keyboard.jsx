@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
 import { useKeyboard } from "@/context/KeyboardContext";
 import { ArrowLeft } from "react-feather";

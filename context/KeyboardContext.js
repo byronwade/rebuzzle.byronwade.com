@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+"use client";
+
+import { createContext, useContext, useState, useCallback } from "react";
 
 const KeyboardContext = createContext();
 

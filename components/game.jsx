@@ -1,6 +1,4 @@
-// components/Game.jsx
 "use client";
-
 import React, { useContext, useState, useEffect } from "react";
 import GameContext from "@/context/GameContext";
 import WanderBox from "@/components/wanderBox";

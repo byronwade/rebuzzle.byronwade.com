@@ -1,3 +1,5 @@
+"use client";
+
 import React, { createContext, useState, useEffect } from "react";
 
 const GameContext = createContext();

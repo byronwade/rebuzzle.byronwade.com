@@ -1,4 +1,3 @@
-// app/layout.js
 "use client";
 import "@/styles/globals.css";
 import { Inter as FontSans } from "next/font/google";
@@ -9,35 +8,24 @@ import { GameProvider } from "@/context/GameContext";
 import { UserProvider } from "@/context/UserContext";
 import { KeyboardProvider } from "@/context/KeyboardContext";
 import { cn } from "@/lib/utils";
-import { useGoogleAnalytics } from "@/lib/useGoogleAnalytics";
+import { GoogleTagManager } from "@next/third-parties/google"; // Import GoogleTagManager
 
 const fontSans = FontSans({
 	subsets: ["latin"],
 	variable: "--font-sans",
 });
 
-export default function RootLayout({ children }) {
-	useGoogleAnalytics();
+const GTM_ID = "GTM-XYZ"; // Replace with your GTM ID
+const GA_ID = "G-FX184YC75H"; // Replace with your GA ID
 
+export default function RootLayout({ children }) {
 	return (
 		<html lang="en">
 			<head>
 				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-				<script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}></script>
-				<script
-					dangerouslySetInnerHTML={{
-						__html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_TRACKING_ID}', {
-                page_path: window.location.pathname,
-              });
-            `,
-					}}
-				/>
 			</head>
 			<body className={cn("min-h-screen bg-white dark:bg-black font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
+				<GoogleTagManager gtmId={GTM_ID} />
 				<UserProvider>
 					<GameProvider>
 						<KeyboardProvider>

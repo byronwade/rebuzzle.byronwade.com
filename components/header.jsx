@@ -1,13 +1,10 @@
 "use client";
-
-import { useContext, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Info, BarChart2 } from "react-feather";
 import Link from "next/link";
-import GameContext from "@/context/GameContext";
 import { useUser } from "@/context/UserContext";
 import CustomDialog from "@/components/CustomDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import Statistics from "@/components/Statistics"; // Import the Statistics component

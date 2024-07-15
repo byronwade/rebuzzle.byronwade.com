@@ -1,5 +1,6 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 
 const Statistics = ({ userId }) => {
 	const [stats, setStats] = useState(null);

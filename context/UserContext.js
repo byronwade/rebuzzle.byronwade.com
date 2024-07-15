@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+"use client";
+import { createContext, useContext, useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation"; // Import useRouter from Next.js
 

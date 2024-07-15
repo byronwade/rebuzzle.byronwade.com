@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+"use client";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Keyboard from "@/components/keyboard";
