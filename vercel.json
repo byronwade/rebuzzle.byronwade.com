@@ -2,7 +2,7 @@
 	"crons": [
 		{
 			"path": "/api/clear-cache",
-			"schedule": "0 */6 * * *" // Runs every 6 hours
+			"schedule": "0 */6 * * *"
 		}
 	]
 }
