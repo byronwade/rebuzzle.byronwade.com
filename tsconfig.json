@@ -22,6 +22,6 @@
 		},
 		"target": "ES2017"
 	},
-	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/rebus/page.js", "app/page.jsx", "app/layout.jsx", "components/game/WanderBox.jsx", "components/themeProvider.js", "components/keyboard.js", "components/header.js", "components/gameCard.js", "components/game.js"],
+	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/rebus/page.js", "app/page.js", "app/layout.js", "components/game/WanderBox.js", "components/themeProvider.js", "components/keyboard.js", "components/header.js", "components/gameCard.js", "components/game.js"],
 	"exclude": ["node_modules"]
 }

@@ -4,26 +4,19 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { trackEvent } from "@/lib/gtag";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 function Home() {
 	const gameVersion = "No. 0005";
-	const router = useRouter();
+	const pathname = usePathname();
 
 	useEffect(() => {
-		const handleRouteChange = (url) => {
-			trackEvent({
-				action: "page_view",
-				category: "Page",
-				label: url,
-			});
-		};
-
-		router.events.on("routeChangeComplete", handleRouteChange);
-		return () => {
-			router.events.off("routeChangeComplete", handleRouteChange);
-		};
-	}, [router.events]);
+		trackEvent({
+			action: "page_view",
+			category: "Page",
+			label: pathname,
+		});
+	}, [pathname]);
 
 	const handleButtonClick = (action, label) => {
 		trackEvent({
