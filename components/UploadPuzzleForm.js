@@ -19,7 +19,7 @@ import Image from "next/image";
 import stringSimilarity from "string-similarity";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
-import CustomDialog from "@/components/CustomDialog";
+import CustomDialog from "@/components/ui/CustomDialog";
 
 // Utility function to normalize strings
 const normalizeString = (str) => {

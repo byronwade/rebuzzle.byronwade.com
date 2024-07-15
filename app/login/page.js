@@ -1,6 +1,6 @@
 "use client";
 import { LoginForm } from "@/components/LoginForm";
-import Header from "@/components/header"; // Check if this path and component name are correct
+import Header from "@/components/Header"; // Check if this path and component name are correct
 
 const LoginPage = () => {
 	return (

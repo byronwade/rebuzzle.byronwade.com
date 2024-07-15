@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { trackEvent } from "@/lib/gtag";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
 function Home() {
 	const gameVersion = "No. 0005";
