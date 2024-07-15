@@ -1,30 +1,19 @@
+// components/Game.jsx
+"use client";
+
 import React, { useContext, useState, useEffect } from "react";
 import GameContext from "@/context/GameContext";
 import WanderBox from "@/components/wanderBox";
 import GameCard from "@/components/gameCard";
 import CustomDialog from "@/components/CustomDialog";
-import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
+import Loading from "@/components/Loading";
+import Countdown from "@/components/Countdown"; // Import the Countdown component
 
 const Game = () => {
 	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint } = useContext(GameContext);
-	const [countdown, setCountdown] = useState("00:00:00");
 	const [dialogOpen, setDialogOpen] = useState(false);
-
-	useEffect(() => {
-		const interval = setInterval(() => {
-			const now = new Date();
-			const midnight = new Date(now);
-			midnight.setHours(24, 0, 0, 0);
-			const diff = midnight - now;
-			const hours = Math.floor(diff / (1000 * 60 * 60));
-			const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-			const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-			setCountdown(`${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`);
-		}, 1000);
-
-		return () => clearInterval(interval);
-	}, []);
+	console.log("debugging");
 
 	useEffect(() => {
 		if (gameOver) {
@@ -79,7 +68,7 @@ const Game = () => {
 	};
 
 	if (!gameData) {
-		return <div>Loading...</div>;
+		return <Loading />;
 	}
 
 	const { solution: phrase, image_url: image } = gameData;
@@ -88,9 +77,7 @@ const Game = () => {
 		<div className="container mx-auto px-4">
 			<div className="flex items-center justify-center p-4">
 				<div className="text-center">
-					<Badge variant="outline" className="mb-4">
-						Next puzzle available in: {countdown}
-					</Badge>
+					<Countdown /> {/* Use the Countdown component */}
 					<div className="space-x-4">
 						<Image src={image} alt="Rebus" width={1980} height={1020} className="w-full md:w-1/2 h-auto m-auto rounded-md" priority />
 					</div>

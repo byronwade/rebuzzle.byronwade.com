@@ -5,6 +5,12 @@ const config = {
 	darkMode: ["class"],
 	content: ["./pages/**/*.{ts,tsx,js,jsx}", "./components/**/*.{ts,tsx,js,jsx}", "./app/**/*.{ts,tsx,js,jsx}", "./src/**/*.{ts,tsx,js,jsx}"],
 	prefix: "",
+
+	variants: {
+		extend: {
+			animation: ["responsive", "hover", "focus"],
+		},
+	},
 	theme: {
 		container: {
 			center: true,
@@ -72,11 +78,16 @@ const config = {
 					"0%,70%,100%": { opacity: "1" },
 					"20%,50%": { opacity: "0" },
 				},
+				bounce: {
+					"0%, 80%, 100%": { transform: "scale(0)" },
+					"40%": { transform: "scale(1)" },
+				},
 			},
 			animation: {
 				"accordion-down": "accordion-down 0.2s ease-out",
 				"accordion-up": "accordion-up 0.2s ease-out",
 				"caret-blink": "caret-blink 1.25s ease-out infinite",
+				bounce: "bounce 1.5s infinite ease-in-out",
 			},
 		},
 	},
