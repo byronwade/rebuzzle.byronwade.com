@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useUser } from "@/context/UserContext";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { trackEvent } from "@/lib/gtag";
 
 const zodResolver = (schema) => {
 	return async (data) => {
@@ -93,9 +94,25 @@ export function SettingsForm() {
 			// Update theme
 			setTheme(values.darkMode ? "dark" : "light");
 			localStorage.setItem("darkMode", values.darkMode); // Store the preference in local storage
+
+			// Track form submission
+			trackEvent({
+				action: "update_settings",
+				category: "Settings",
+				label: "Settings Updated",
+			});
 		} catch (error) {
 			form.setError("server", { type: "server", message: error.message });
 		}
+	};
+
+	const handleFieldChange = (field, value) => {
+		trackEvent({
+			action: "edit_field",
+			category: "Settings",
+			label: field,
+			value: value,
+		});
 	};
 
 	return (
@@ -110,7 +127,14 @@ export function SettingsForm() {
 							<FormItem>
 								<FormLabel>Username</FormLabel>
 								<FormControl>
-									<Input placeholder="Your username" {...field} />
+									<Input
+										placeholder="Your username"
+										{...field}
+										onChange={(e) => {
+											field.onChange(e);
+											handleFieldChange("username", e.target.value);
+										}}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -123,7 +147,14 @@ export function SettingsForm() {
 							<FormItem>
 								<FormLabel>Email</FormLabel>
 								<FormControl>
-									<Input placeholder="m@example.com" {...field} />
+									<Input
+										placeholder="m@example.com"
+										{...field}
+										onChange={(e) => {
+											field.onChange(e);
+											handleFieldChange("email", e.target.value);
+										}}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -145,7 +176,13 @@ export function SettingsForm() {
 							<FormItem className="flex items-center justify-between">
 								<FormLabel>Enable Notifications</FormLabel>
 								<FormControl>
-									<Switch checked={field.value} onCheckedChange={field.onChange} />
+									<Switch
+										checked={field.value}
+										onCheckedChange={(value) => {
+											field.onChange(value);
+											handleFieldChange("notifications", value);
+										}}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -164,6 +201,7 @@ export function SettingsForm() {
 											field.onChange(value);
 											setTheme(value ? "dark" : "light");
 											localStorage.setItem("darkMode", value); // Store the preference in local storage
+											handleFieldChange("darkMode", value);
 										}}
 									/>
 								</FormControl>
@@ -178,20 +216,32 @@ export function SettingsForm() {
 							<FormItem className="flex items-center justify-between">
 								<FormLabel>Email Updates</FormLabel>
 								<FormControl>
-									<Switch checked={field.value} onCheckedChange={field.onChange} />
+									<Switch
+										checked={field.value}
+										onCheckedChange={(value) => {
+											field.onChange(value);
+											handleFieldChange("emailUpdates", value);
+										}}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
 					/>
-					{/* <FormField
+					<FormField
 						control={form.control}
 						name="soundEffects"
 						render={({ field }) => (
 							<FormItem className="flex items-center justify-between">
 								<FormLabel>Sound Effects</FormLabel>
 								<FormControl>
-									<Switch checked={field.value} onCheckedChange={field.onChange} />
+									<Switch
+										checked={field.value}
+										onCheckedChange={(value) => {
+											field.onChange(value);
+											handleFieldChange("soundEffects", value);
+										}}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -204,12 +254,18 @@ export function SettingsForm() {
 							<FormItem className="flex items-center justify-between">
 								<FormLabel>Background Music</FormLabel>
 								<FormControl>
-									<Switch checked={field.value} onCheckedChange={field.onChange} />
+									<Switch
+										checked={field.value}
+										onCheckedChange={(value) => {
+											field.onChange(value);
+											handleFieldChange("music", value);
+										}}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
-					/> */}
+					/>
 					{form.formState.errors.server && <p className="text-red-500">{form.formState.errors.server.message}</p>}
 					<Button type="submit" className="w-full">
 						Update Settings

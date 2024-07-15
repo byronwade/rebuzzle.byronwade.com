@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useUser } from "@/context/UserContext";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "react-feather";
+import { trackEvent } from "@/lib/gtag";
 
 const zodResolver = (schema) => {
 	return async (data) => {
@@ -74,6 +75,11 @@ export function LoginForm() {
 			} else {
 				form.clearErrors("server");
 				setUser(data.user); // Update the user context
+				trackEvent({
+					action: "login",
+					category: "User",
+					label: "Login",
+				});
 				router.push("/rebus"); // Use router.push for client-side navigation
 			}
 		} catch (error) {
@@ -81,9 +87,18 @@ export function LoginForm() {
 		}
 	};
 
+	const handleBackButtonClick = () => {
+		trackEvent({
+			action: "click",
+			category: "Button",
+			label: "Back",
+		});
+		router.back();
+	};
+
 	return (
 		<div className="mx-auto max-w-sm">
-			<Button variant="link" onClick={() => router.back()} className="mr-2 p-0">
+			<Button variant="link" onClick={handleBackButtonClick} className="mr-2 p-0">
 				<ChevronLeft size={20} />
 				<span className="ml-1">Back</span>
 			</Button>

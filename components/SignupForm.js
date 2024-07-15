@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/lib/supabaseClient";
-import { useUser } from "@/context/UserContext"; // Ensure this path is correct
+import { useUser } from "@/context/UserContext";
+import { trackEvent } from "@/lib/gtag";
 
 const zodResolver = (schema) => {
 	return async (data) => {
@@ -71,7 +72,11 @@ export function SignupForm() {
 			} else {
 				form.clearErrors("server");
 				setUser(data.user); // Update the user context
-				alert("Signup successful! Please check your email to confirm your account.");
+				trackEvent({
+					action: "signup",
+					category: "User",
+					label: "Signup",
+				});
 				window.location.href = "/rebus"; // Redirect to the main page after successful signup
 			}
 		} catch (error) {
@@ -79,9 +84,18 @@ export function SignupForm() {
 		}
 	};
 
+	const handleBackButtonClick = () => {
+		trackEvent({
+			action: "click",
+			category: "Button",
+			label: "Back",
+		});
+		router.back();
+	};
+
 	return (
 		<div className="mx-auto max-w-sm">
-			<Button variant="link" onClick={() => router.back()} className="mr-2 p-0">
+			<Button variant="link" onClick={handleBackButtonClick} className="mr-2 p-0">
 				<ChevronLeft size={20} />
 				<span className="ml-1">Back</span>
 			</Button>
