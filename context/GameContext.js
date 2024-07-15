@@ -7,7 +7,6 @@ export const GameProvider = ({ children, initialData }) => {
 	const [feedback, setFeedback] = useState(""); // Initialize feedback as an empty string
 	const [attemptsLeft, setAttemptsLeft] = useState(3);
 	const [gameOver, setGameOver] = useState(false);
-	const [hint, setHint] = useState(initialData?.hint || "");
 
 	useEffect(() => {
 		if (!initialData) {
@@ -24,7 +23,6 @@ export const GameProvider = ({ children, initialData }) => {
 			});
 			const data = await response.json();
 			setGameData(data);
-			setHint(data.hint);
 			setGameOver(false);
 			setFeedback(""); // Reset feedback to an empty string
 			setAttemptsLeft(3);
@@ -44,8 +42,6 @@ export const GameProvider = ({ children, initialData }) => {
 				setAttemptsLeft,
 				gameOver,
 				setGameOver,
-				hint,
-				setHint,
 			}}
 		>
 			{children}

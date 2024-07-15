@@ -23,15 +23,14 @@ export default function RootLayout({ children }) {
 		<html lang="en">
 			<head>
 				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-				{/* Global Site Tag (gtag.js) - Google Analytics */}
-				<script async src={`https://www.googletagmanager.com/gtag/js?id=G-FX184YC75H`}></script>
+				<script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}></script>
 				<script
 					dangerouslySetInnerHTML={{
 						__html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', 'G-FX184YC75H', {
+              gtag('config', '${GA_TRACKING_ID}', {
                 page_path: window.location.pathname,
               });
             `,
