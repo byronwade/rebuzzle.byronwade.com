@@ -97,19 +97,19 @@ export default function Header() {
 
 	return (
 		<>
-			<div className="relative flex justify-between container mx-auto p-4">
+			<div className="relative flex justify-between container mx-auto p-2 px-4">
 				<div>
 					<Link href="/" className="flex items-center space-x-4 font-bold text-2xl">
 						Rebuzzle
 					</Link>
 					<p className="text-xs text-gray-500">Daily rebus puzzle games</p>
 				</div>
-				<div className="flex space-x-8 items-center font-bold justify-center align-middle">
+				<div className="flex space-x-4 items-center font-bold justify-center align-middle">
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<button onClick={handleHowToPlayDialogOpen} aria-label="How to Play">
-									<Info className="w-7 h-7" />
+									<Info className="w-6 h-6" />
 								</button>
 							</TooltipTrigger>
 							<TooltipContent>
@@ -123,7 +123,7 @@ export default function Header() {
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<button onClick={handleStatisticsDialogOpen} aria-label="Player Statistics">
-											<BarChart2 className="w-7 h-7" />
+											<BarChart2 className="w-6 h-6" />
 										</button>
 									</TooltipTrigger>
 									<TooltipContent>
@@ -135,7 +135,7 @@ export default function Header() {
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<button onClick={handleSettingsDialogOpen} aria-label="Settings">
-											<Settings className="w-7 h-7" />
+											<Settings className="w-6 h-6" />
 										</button>
 									</TooltipTrigger>
 									<TooltipContent>
@@ -147,7 +147,7 @@ export default function Header() {
 					)}
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Avatar className="cursor-pointer">{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Guest" />}</Avatar>
+							<Avatar className="cursor-pointer w-7 h-7">{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Guest" />}</Avatar>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent>
 							{user ? (
