@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import Keyboard from "@/components/Keyboard";
+import Keyboard from "@/components/keyboard";
 import { useKeyboard } from "@/context/KeyboardContext";
 
 const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, gameOver }) => {
