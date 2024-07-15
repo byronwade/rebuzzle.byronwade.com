@@ -11,7 +11,7 @@ import Statistics from "@/components/Statistics"; // Import the Statistics compo
 
 const HowToPlayContent = () => {
 	return (
-		<div className="text-left">
+		<div className="text-left p-4 pb-10">
 			<h2 className="font-bold text-lg sm:text-xl">How to Play</h2>
 			<p className="mt-2 text-sm sm:text-base">Rebuzzle is a daily rebus puzzle game where you solve puzzles using clues. You have a limited number of attempts to guess the correct answer. The next puzzle will be available after the countdown ends. Good luck and have fun!</p>
 			<div className="mt-4">

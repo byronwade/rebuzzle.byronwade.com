@@ -4,18 +4,28 @@ import { useEffect, useState } from "react";
 
 const Statistics = ({ userId }) => {
 	const [stats, setStats] = useState(null);
+	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
 		const fetchStatistics = async () => {
 			const response = await fetch(`/api/statistics?userId=${userId}`);
 			const data = await response.json();
 			setStats(data);
+			setLoading(false);
 		};
 
 		fetchStatistics();
 	}, [userId]);
 
-	const chartData = Object.entries(stats.guess_distribution).map(([guess, count]) => ({
+	if (loading) {
+		return <div>Loading...</div>;
+	}
+
+	if (!stats) {
+		return <div>No statistics available.</div>;
+	}
+
+	const chartData = Object.entries(stats.guess_distribution || {}).map(([guess, count]) => ({
 		guess,
 		count,
 	}));

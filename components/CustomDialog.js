@@ -1,23 +1,37 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+// components/CustomDialog.js
+import React, { useEffect } from "react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { X } from "react-feather";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 const CustomDialog = ({ open, onOpenChange, title, description, children }) => {
-	const handleKeyDown = (event) => {
-		if (event.key === "Enter") {
-			event.preventDefault();
-			event.stopPropagation();
-		}
-	};
+	const isDesktop = useMediaQuery("(min-width: 768px)");
+
+	if (isDesktop) {
+		return (
+			<Dialog open={open} onOpenChange={onOpenChange}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>{title}</DialogTitle>
+						<DialogDescription>{description}</DialogDescription>
+					</DialogHeader>
+					{children}
+				</DialogContent>
+			</Dialog>
+		);
+	}
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent onKeyDown={handleKeyDown}>
-				<DialogHeader>
-					{title && <DialogTitle>{title}</DialogTitle>}
-					{description && <DialogDescription>{description}</DialogDescription>}
-				</DialogHeader>
+		<Drawer open={open} onOpenChange={onOpenChange}>
+			<DrawerContent>
+				<DrawerHeader>
+					<DrawerTitle>{title}</DrawerTitle>
+					<DrawerDescription>{description}</DrawerDescription>
+				</DrawerHeader>
 				{children}
-			</DialogContent>
-		</Dialog>
+			</DrawerContent>
+		</Drawer>
 	);
 };
 
