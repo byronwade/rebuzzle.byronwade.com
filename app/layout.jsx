@@ -8,7 +8,7 @@ import { GameProvider } from "@/context/GameContext";
 import { UserProvider } from "@/context/UserContext";
 import { KeyboardProvider } from "@/context/KeyboardContext";
 import { cn } from "@/lib/utils";
-import { GoogleTagManager } from "@next/third-parties/google"; // Import GoogleTagManager
+import { GoogleTagManager, GoogleAnalytics } from "@next/third-parties/google"; // Import GoogleTagManager
 
 const fontSans = FontSans({
 	subsets: ["latin"],
@@ -16,6 +16,7 @@ const fontSans = FontSans({
 });
 
 const GTM_ID = "GTM-XYZ"; // Replace with your GTM ID
+const GA_ID = "G-FX184YC75H"; // Replace with your GA ID
 
 export default function RootLayout({ children }) {
 	return (
@@ -25,6 +26,7 @@ export default function RootLayout({ children }) {
 			</head>
 			<body className={cn("min-h-screen bg-white dark:bg-black font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
 				<GoogleTagManager gtmId={GTM_ID} />
+				<GoogleAnalytics gaId={GA_ID} />
 				<UserProvider>
 					<GameProvider>
 						<KeyboardProvider>

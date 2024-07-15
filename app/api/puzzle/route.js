@@ -5,18 +5,18 @@ let cache = null;
 let cacheTimestamp = null;
 
 export async function GET(request) {
-	const now = new Date();
-	const localToday = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+    const now = new Date();
+	const utcToday = now.toISOString().split("T")[0];
 
-	const headers = {
+    const headers = {
 		"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
 		Pragma: "no-cache",
 		Expires: "0",
 		"Surrogate-Control": "no-store",
 	};
 
-	try {
-		const { data: todayData, error: todayError } = await supabase.from("puzzles").select("*").eq("puzzle_date", localToday).limit(1);
+    try {
+		const { data: todayData, error: todayError } = await supabase.from("puzzles").select("*").eq("puzzle_date", utcToday).limit(1);
 
 		if (todayError) throw todayError;
 
@@ -37,7 +37,7 @@ export async function GET(request) {
 
 // Clear cache periodically
 if (typeof global.clearCacheInterval === "undefined") {
-	global.clearCacheInterval = setInterval(() => {
+    global.clearCacheInterval = setInterval(() => {
 		cache = null;
 		cacheTimestamp = null;
 		console.log("Cache cleared periodically");
