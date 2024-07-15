@@ -3,11 +3,11 @@ import { useState, useEffect } from "react";
 import { Info, BarChart2, Settings } from "react-feather";
 import Link from "next/link";
 import { useUser } from "@/context/UserContext";
-import CustomDialog from "@/components/CustomDialog";
+import CustomDialog from "@/components/ui/CustomDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import Statistics from "@/components/Statistics";
+import Statistics from "@/components/game/Statistics";
 import { SettingsForm } from "@/components/SettingsForm";
 
 const HowToPlayContent = () => {

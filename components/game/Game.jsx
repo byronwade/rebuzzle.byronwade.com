@@ -1,12 +1,12 @@
 "use client";
 import React, { useContext, useState, useEffect } from "react";
 import GameContext from "@/context/GameContext";
-import WanderBox from "@/components/wanderBox";
-import GameCard from "@/components/gameCard";
-import CustomDialog from "@/components/CustomDialog";
+import WanderBox from "@/components/game/WanderBox";
+import GameCard from "@/components/game/GameCard";
+import CustomDialog from "@/components/ui/CustomDialog";
 import Image from "next/image";
 import Loading from "@/components/Loading";
-import Countdown from "@/components/Countdown";
+import Countdown from "@/components/utility/Countdown";
 import { trackEvent } from "@/lib/gtag";
 import { useUser } from "@/context/UserContext";
 

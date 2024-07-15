@@ -1,6 +1,6 @@
 "use client";
-import Game from "@/components/game";
-import Header from "@/components/header";
+import Game from "@/components/game/Game";
+import Header from "@/components/Header";
 
 const App = () => {
 	return (

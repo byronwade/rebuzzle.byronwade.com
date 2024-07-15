@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import Keyboard from "@/components/keyboard";
+import Keyboard from "@/components/game/Keyboard";
 import { useKeyboard } from "@/context/KeyboardContext";
 
 const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) => {
@@ -162,7 +162,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 				<span>{attemptsLeft} Attempts Left</span>
 			</Badge>
 			{guess.map((word, wordIndex) => (
-				<div key={wordIndex} className="flex space-x-2 mb-4">
+				<div key={wordIndex} className="flex space-x-1 mb-2">
 					{word.map((char, charIndex) =>
 						isPunctuation(char) ? (
 							<span key={charIndex} className="text-2xl flex items-center justify-center">
