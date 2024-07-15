@@ -185,6 +185,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 								onFocus={() => handleFocus(wordIndex, charIndex)}
 								className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-[16px] font-bold ${guessFeedback[wordIndex][charIndex]} focus:outline-none focus:ring-2 focus:ring-blue-500`}
 								autoComplete="off"
+								inputMode="none"
 								disabled={gameOver}
 							/>
 						)
