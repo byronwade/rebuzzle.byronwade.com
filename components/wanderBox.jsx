@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Keyboard from "@/components/keyboard";
 import { useKeyboard } from "@/context/KeyboardContext";
+import CustomDialog from "@/components/CustomDialog";
 
-const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, gameOver }) => {
+const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) => {
 	const { pressedKey } = useKeyboard();
 	const isPunctuation = (char) => /[.,\/#!$%\^&\*;:{}=\-_`~()'"]/.test(char);
 
@@ -14,6 +15,8 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 	const [guess, setGuess] = useState(initialGuess);
 	const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-gray-200 dark:bg-gray-700")));
 	const [focusedInput, setFocusedInput] = useState({ wordIndex: 0, charIndex: 0 });
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [dialogMessage, setDialogMessage] = useState("");
 
 	useEffect(() => {
 		const newGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
@@ -22,7 +25,6 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 	}, [phrase, words]);
 
 	useEffect(() => {
-		// Focus the first input element when the component mounts
 		const firstInput = document.querySelector("input[id^='input-']");
 		if (firstInput) {
 			firstInput.focus();
@@ -133,7 +135,8 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 
 		const allBoxesFilled = guess.every((word) => word.every((char) => char !== ""));
 		if (!allBoxesFilled) {
-			onEmptyBoxes();
+			setDialogMessage("Incomplete Guess. Please fill in all boxes.");
+			setDialogOpen(true);
 			return;
 		}
 
@@ -166,39 +169,43 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 	};
 
 	return (
-		<div className="flex flex-col items-center mt-4">
-			<Badge variant="outline" className="mb-4">
-				<span>{attemptsLeft} Attempts Left</span>
-			</Badge>
-			{guess.map((word, wordIndex) => (
-				<div key={wordIndex} className="flex space-x-2 mb-4">
-					{word.map((char, charIndex) =>
-						isPunctuation(char) ? (
-							<span key={charIndex} className="text-2xl flex items-center justify-center">
-								{char}
-							</span>
-						) : (
-							<Input
-								key={charIndex}
-								id={`input-${wordIndex}-${charIndex}`}
-								type="text"
-								maxLength={1}
-								value={char}
-								onChange={(event) => handleChange(event, wordIndex, charIndex)}
-								onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)}
-								onFocus={() => handleFocus(wordIndex, charIndex)}
-								className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-[16px] font-bold ${guessFeedback[wordIndex][charIndex]} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-								autoComplete="off"
-								inputMode="none"
-								disabled={gameOver}
-							/>
-						)
-					)}
-				</div>
-			))}
-			<Keyboard />
-			<div className="mt-4">{feedback && <p className="text-lg font-bold">{feedback}</p>}</div>
-		</div>
+		<>
+			<div className="flex flex-col items-center mt-4">
+				<Badge variant="outline" className="mb-4">
+					<span>{attemptsLeft} Attempts Left</span>
+				</Badge>
+				{guess.map((word, wordIndex) => (
+					<div key={wordIndex} className="flex space-x-2 mb-4">
+						{word.map((char, charIndex) =>
+							isPunctuation(char) ? (
+								<span key={charIndex} className="text-2xl flex items-center justify-center">
+									{char}
+								</span>
+							) : (
+								<Input
+									key={charIndex}
+									id={`input-${wordIndex}-${charIndex}`}
+									type="text"
+									maxLength={1}
+									value={char}
+									onChange={(event) => handleChange(event, wordIndex, charIndex)}
+									onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)}
+									onFocus={() => handleFocus(wordIndex, charIndex)}
+									className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-[16px] font-bold ${guessFeedback[wordIndex][charIndex]} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+									autoComplete="off"
+									inputMode="none"
+									disabled={gameOver}
+								/>
+							)
+						)}
+					</div>
+				))}
+				<Keyboard />
+			</div>
+			<CustomDialog open={dialogOpen} onOpenChange={setDialogOpen} title="Feedback">
+				<p>{dialogMessage}</p>
+			</CustomDialog>
+		</>
 	);
 };
 

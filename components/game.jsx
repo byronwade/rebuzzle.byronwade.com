@@ -11,12 +11,26 @@ import { trackEvent } from "@/lib/gtag";
 import { useUser } from "@/context/UserContext";
 
 const Game = () => {
-	const { user } = useUser();
-	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver } = useContext(GameContext);
-	const [dialogOpen, setDialogOpen] = useState(false);
-	console.log("debugging");
+  const { user } = useUser();
+  const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver } = useContext(GameContext);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState("");
 
-	useEffect(() => {
+  useEffect(() => {
+		const handleGlobalKeyDown = (event) => {
+			if (event.key === "Enter" && dialogOpen) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
+		};
+
+		window.addEventListener("keydown", handleGlobalKeyDown);
+		return () => {
+			window.removeEventListener("keydown", handleGlobalKeyDown);
+		};
+  }, [dialogOpen]);
+
+  useEffect(() => {
 		if (gameOver) {
 			setDialogOpen(true);
 			const eventDetails = {
@@ -32,14 +46,15 @@ const Game = () => {
 			// Save the event to the database
 			// saveGameEvent(user?.id, eventDetails);
 		}
-	}, [gameOver, feedback, user]);
+  }, [gameOver, feedback, user]);
 
-	const stopGame = () => {
+  const stopGame = (message) => {
 		setGameOver(true);
+		setDialogMessage(message);
 		setDialogOpen(true);
-	};
+  };
 
-	useEffect(() => {
+  useEffect(() => {
 		if (gameData) {
 			const eventDetails = {
 				action: "start_game",
@@ -54,9 +69,9 @@ const Game = () => {
 			// Save game start to the database
 			// saveGameEvent(user?.id, eventDetails);
 		}
-	}, [gameData, user]);
+  }, [gameData, user]);
 
-	const checkGuess = (guess) => {
+  const checkGuess = (guess) => {
 		const normalizedGuess = guess
 			.replace(/[^a-zA-Z0-9\s]/g, "")
 			.replace(/\s+/g, "")
@@ -68,19 +83,19 @@ const Game = () => {
 
 		if (normalizedGuess === normalizedPhrase) {
 			setFeedback("Correct!");
-			stopGame();
+			stopGame("Correct! You guessed the phrase.");
 		} else {
 			setFeedback("Incorrect guess.");
 			setAttemptsLeft((prevAttempts) => prevAttempts - 1);
 
 			if (attemptsLeft <= 1) {
 				setFeedback(`Game over! The correct phrase was: "${gameData.solution}"`);
-				stopGame();
+				stopGame(`Game over! The correct phrase was: "${gameData.solution}"`);
 			}
 		}
-	};
+  };
 
-	const handleGuess = (guess) => {
+  const handleGuess = (guess) => {
 		if (attemptsLeft > 0 && !gameOver) {
 			checkGuess(guess);
 
@@ -102,26 +117,28 @@ const Game = () => {
 			// Save the guess attempt to the database
 			// saveGameEvent(user?.id, eventDetails);
 		}
-	};
+  };
 
-	const handleEmptyBoxes = () => {
+  const handleEmptyBoxes = () => {
 		setFeedback("Incomplete Guess. Please fill in all boxes.");
-	};
+		setDialogMessage("Incomplete Guess. Please fill in all boxes.");
+		setDialogOpen(true);
+  };
 
-	const handleCloseDialog = () => {
+  const handleCloseDialog = () => {
 		setDialogOpen(false);
 		setGameOver(false);
 		setFeedback("");
 		setAttemptsLeft(3);
-	};
+  };
 
-	if (!gameData) {
+  if (!gameData) {
 		return <Loading />;
-	}
+  }
 
-	const { solution: phrase, image_url: image } = gameData;
+  const { solution: phrase, image_url: image } = gameData;
 
-	return (
+  return (
 		<div className="container mx-auto px-4">
 			<div className="flex items-center justify-center p-4">
 				<div className="text-center">
@@ -134,11 +151,11 @@ const Game = () => {
 
 			<WanderBox phrase={phrase} onGuess={handleGuess} onEmptyBoxes={handleEmptyBoxes} feedback={feedback} attemptsLeft={attemptsLeft} gameOver={gameOver} />
 
-			<CustomDialog open={dialogOpen} onOpenChange={setDialogOpen} title={feedback.includes("Correct!") ? "Correct!" : `Game over! The correct phrase was: "${gameData.solution}"`}>
+			<CustomDialog open={dialogOpen} onOpenChange={setDialogOpen} title={dialogMessage}>
 				<GameCard gameData={gameData} onClose={handleCloseDialog} />
 			</CustomDialog>
 		</div>
-	);
+  );
 };
 
 export default Game;
