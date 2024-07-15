@@ -1,7 +1,6 @@
 // pages/index.js
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import Head from "next/head";
 
 function Home() {
 	const gameVersion = "No. 0005"; // Update this with the actual version
@@ -28,9 +27,9 @@ function Home() {
 
 	return (
 		<>
-			<Head>
+			<head>
 				<script type="application/ld+json" dangerouslySetInnerHTML={addGameJsonLd()} key="game-jsonld" />
-			</Head>
+			</head>
 			<div className="flex items-center justify-center min-h-screen">
 				<div className="text-center">
 					<h1 className="text-6xl font-bold">Rebuzzle</h1>

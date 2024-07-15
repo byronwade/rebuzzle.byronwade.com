@@ -7,7 +7,8 @@ import CustomDialog from "@/components/CustomDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import Statistics from "@/components/Statistics"; // Import the Statistics component
+import Statistics from "@/components/Statistics";
+import { SettingsForm } from "@/components/SettingsForm";
 
 const HowToPlayContent = () => {
 	return (
@@ -54,13 +55,7 @@ const HowToPlayContent = () => {
 };
 
 const SettingsContent = () => {
-	return (
-		<div>
-			<h2 className="text-xl font-bold">Settings</h2>
-			<p className="mt-2">Here you can configure your game settings and preferences.</p>
-			<p>Will be added soon.</p>
-		</div>
-	);
+	return <SettingsForm />;
 };
 
 export default function Header() {
