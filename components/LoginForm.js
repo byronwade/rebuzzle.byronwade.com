@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { supabase } from "@/lib/supabaseClient";
 import { useUser } from "@/context/UserContext"; // Ensure this path is correct
 import { useRouter } from "next/navigation"; // Import useRouter from Next.js
+import { ChevronLeft } from "react-feather";
 
 const zodResolver = (schema) => {
 	return async (data) => {
@@ -65,56 +66,62 @@ export function LoginForm() {
 	};
 
 	return (
-		<Card className="mx-auto max-w-sm">
-			<CardHeader>
-				<CardTitle className="text-2xl">Login</CardTitle>
-				<CardDescription>Enter your email below to login to your account</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Form {...form}>
-					<form onSubmit={form.handleSubmit(handleLogin)} className="space-y-8">
-						<FormField
-							control={form.control}
-							name="email"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Email</FormLabel>
-									<FormControl>
-										<Input placeholder="m@example.com" {...field} inputMode="none" />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="password"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Password</FormLabel>
-									<FormControl>
-										<Input type="password" {...field} inputMode="none" />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						{form.formState.errors.server && <p className="text-red-500">{form.formState.errors.server.message}</p>}
-						<Button type="submit" className="w-full">
-							Login
-						</Button>
-						<Button variant="outline" className="w-full">
-							Login with Google
-						</Button>
-					</form>
-				</Form>
-				<div className="mt-4 text-center text-sm">
-					Don&apos;t have an account?{" "}
-					<Link href="/signup" className="underline">
-						Sign up
-					</Link>
-				</div>
-			</CardContent>
-		</Card>
+		<div className="mx-auto max-w-sm">
+			<Button variant="link" onClick={() => router.back()} className="mr-2 p-0">
+				<ChevronLeft size={20} />
+				<span className="ml-1">Back</span>
+			</Button>
+			<Card className="mx-auto max-w-sm">
+				<CardHeader>
+					<CardTitle className="text-2xl">Login</CardTitle>
+					<CardDescription>Enter your email below to login to your account</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Form {...form}>
+						<form onSubmit={form.handleSubmit(handleLogin)} className="space-y-8">
+							<FormField
+								control={form.control}
+								name="email"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Email</FormLabel>
+										<FormControl>
+											<Input placeholder="m@example.com" {...field} inputMode="none" />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="password"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Password</FormLabel>
+										<FormControl>
+											<Input type="password" {...field} inputMode="none" />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							{form.formState.errors.server && <p className="text-red-500">{form.formState.errors.server.message}</p>}
+							<Button type="submit" className="w-full">
+								Login
+							</Button>
+							<Button variant="outline" className="w-full">
+								Login with Google
+							</Button>
+						</form>
+					</Form>
+					<div className="mt-4 text-center text-sm">
+						Don&apos;t have an account?{" "}
+						<Link href="/signup" className="underline">
+							Sign up
+						</Link>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
