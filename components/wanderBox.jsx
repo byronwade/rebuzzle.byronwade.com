@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Keyboard from "@/components/keyboard";
 import { useKeyboard } from "@/context/KeyboardContext";
-import CustomDialog from "@/components/CustomDialog";
 
 const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) => {
 	const { pressedKey } = useKeyboard();
@@ -15,8 +14,6 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 	const [guess, setGuess] = useState(initialGuess);
 	const [guessFeedback, setGuessFeedback] = useState(initialGuess.map((word) => word.map(() => "bg-gray-200 dark:bg-gray-700")));
 	const [focusedInput, setFocusedInput] = useState({ wordIndex: 0, charIndex: 0 });
-	const [dialogOpen, setDialogOpen] = useState(false);
-	const [dialogMessage, setDialogMessage] = useState("");
 
 	useEffect(() => {
 		const newGuess = words.map((word) => Array.from(word).map((char) => (isPunctuation(char) ? char : "")));
@@ -34,9 +31,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 
 	useEffect(() => {
 		if (pressedKey) {
-			console.log("Pressed Key:", pressedKey);
 			const { wordIndex, charIndex } = focusedInput;
-			console.log("Focused Input:", focusedInput);
 			if (pressedKey === "Backspace") {
 				handleKeyDown({ key: "Backspace" }, wordIndex, charIndex);
 			} else if (pressedKey === "Enter") {
@@ -48,7 +43,6 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 	}, [pressedKey]);
 
 	const handleChange = (event, wordIndex, charIndex) => {
-		console.log("handleChange called with:", { wordIndex, charIndex, value: event.target.value });
 		if (gameOver) return;
 		if (wordIndex === undefined || charIndex === undefined) return;
 		if (!guess[wordIndex] || guess[wordIndex][charIndex] === undefined) return;
@@ -68,7 +62,6 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 					if (!isPunctuation(words[nextWordIndex][nextCharIndex])) {
 						const nextInput = document.getElementById(`input-${nextWordIndex}-${nextCharIndex}`);
 						if (nextInput) {
-							console.log("Focusing next input:", `input-${nextWordIndex}-${nextCharIndex}`);
 							nextInput.focus();
 							setFocusedInput({ wordIndex: nextWordIndex, charIndex: nextCharIndex });
 						}
@@ -79,13 +72,10 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 				nextWordIndex++;
 				nextCharIndex = 0;
 			}
-		} else {
-			console.log("Invalid character:", inputChar);
 		}
 	};
 
 	const handleKeyDown = (event, wordIndex, charIndex) => {
-		console.log("handleKeyDown called with:", { wordIndex, charIndex, key: event.key });
 		if (gameOver) return;
 		if (wordIndex === undefined || charIndex === undefined) return;
 		if (!guess[wordIndex] || guess[wordIndex][charIndex] === undefined) return;
@@ -104,7 +94,6 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 						if (!isPunctuation(words[prevWordIndex][prevCharIndex])) {
 							const prevInput = document.getElementById(`input-${prevWordIndex}-${prevCharIndex}`);
 							if (prevInput) {
-								console.log("Focusing previous input:", `input-${prevWordIndex}-${prevCharIndex}`);
 								prevInput.focus();
 								setFocusedInput({ wordIndex: prevWordIndex, charIndex: prevCharIndex });
 							}
@@ -135,8 +124,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 
 		const allBoxesFilled = guess.every((word) => word.every((char) => char !== ""));
 		if (!allBoxesFilled) {
-			setDialogMessage("Incomplete Guess. Please fill in all boxes.");
-			setDialogOpen(true);
+			onEmptyBoxes();
 			return;
 		}
 
@@ -169,43 +157,38 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 	};
 
 	return (
-		<>
-			<div className="flex flex-col items-center mt-4">
-				<Badge variant="outline" className="mb-4">
-					<span>{attemptsLeft} Attempts Left</span>
-				</Badge>
-				{guess.map((word, wordIndex) => (
-					<div key={wordIndex} className="flex space-x-2 mb-4">
-						{word.map((char, charIndex) =>
-							isPunctuation(char) ? (
-								<span key={charIndex} className="text-2xl flex items-center justify-center">
-									{char}
-								</span>
-							) : (
-								<Input
-									key={charIndex}
-									id={`input-${wordIndex}-${charIndex}`}
-									type="text"
-									maxLength={1}
-									value={char}
-									onChange={(event) => handleChange(event, wordIndex, charIndex)}
-									onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)}
-									onFocus={() => handleFocus(wordIndex, charIndex)}
-									className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-[16px] font-bold ${guessFeedback[wordIndex][charIndex]} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-									autoComplete="off"
-									inputMode="none"
-									disabled={gameOver}
-								/>
-							)
-						)}
-					</div>
-				))}
-				<Keyboard />
-			</div>
-			<CustomDialog open={dialogOpen} onOpenChange={setDialogOpen} title="Feedback">
-				<p>{dialogMessage}</p>
-			</CustomDialog>
-		</>
+		<div className="flex flex-col items-center mt-4">
+			<Badge variant="outline" className="mb-4">
+				<span>{attemptsLeft} Attempts Left</span>
+			</Badge>
+			{guess.map((word, wordIndex) => (
+				<div key={wordIndex} className="flex space-x-2 mb-4">
+					{word.map((char, charIndex) =>
+						isPunctuation(char) ? (
+							<span key={charIndex} className="text-2xl flex items-center justify-center">
+								{char}
+							</span>
+						) : (
+							<Input
+								key={charIndex}
+								id={`input-${wordIndex}-${charIndex}`}
+								type="text"
+								maxLength={1}
+								value={char}
+								onChange={(event) => handleChange(event, wordIndex, charIndex)}
+								onKeyDown={(event) => handleKeyDown(event, wordIndex, charIndex)}
+								onFocus={() => handleFocus(wordIndex, charIndex)}
+								className={`md:w-12 md:h-12 w-10 h-10 text-center md:text-lg text-[16px] font-bold ${guessFeedback[wordIndex][charIndex]} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+								autoComplete="off"
+								inputMode="none"
+								disabled={gameOver}
+							/>
+						)
+					)}
+				</div>
+			))}
+			<Keyboard />
+		</div>
 	);
 };
 
