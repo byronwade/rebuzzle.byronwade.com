@@ -166,6 +166,9 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 
 	return (
 		<div className="flex flex-col items-center mt-4">
+			<Badge variant="outline" className="mb-4">
+				<span>{attemptsLeft} Attempts Left</span>
+			</Badge>
 			{guess.map((word, wordIndex) => (
 				<div key={wordIndex} className="flex space-x-2 mb-4">
 					{word.map((char, charIndex) =>
@@ -193,9 +196,6 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, feedback, attemptsLeft, game
 				</div>
 			))}
 			<Keyboard />
-			<Badge variant="outline" className="mt-4">
-				<span>{attemptsLeft} Attempts Left</span>
-			</Badge>
 			<div className="mt-4">{feedback && <p className="text-lg font-bold">{feedback}</p>}</div>
 		</div>
 	);
