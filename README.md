@@ -1,81 +1,119 @@
-# Turborepo starter
+# Rebus Quest
 
-This is an official starter Turborepo.
+Rebus Quest is an engaging and addictive puzzle game where players solve daily rebus puzzles. The game challenges players to guess the phrase depicted by combining images, symbols, and text within six tries. Each day presents a new puzzle, encouraging players to return and maintain their streaks.
 
-## Using this example
+## How to Play
 
-Run the following command:
+1. **Guess the Phrase in 6 tries.**
+   - Each guess must be a valid rebus puzzle phrase.
+   - The color of the tiles will change to show how close your guess was to the phrase.
 
-```sh
-npx create-turbo@latest
-```
+### Examples:
+- **Green Tile**: A part of your guess is in the phrase and in the correct spot.
+- **Yellow Tile**: A part of your guess is in the phrase but in the wrong spot.
+- **Gray Tile**: A part of your guess is not in the phrase in any spot.
 
-## What's inside?
+## Detailed Gameplay Instructions
 
-This Turborepo includes the following packages/apps:
+1. **Starting the Game**:
+   - Each day, a new rebus puzzle phrase is presented.
+   - Players have 6 tries to guess the phrase.
 
-### Apps and Packages
+2. **Making a Guess**:
+   - Input your guess in the provided text field.
+   - Ensure each guess is a valid phrase that could represent the rebus puzzle.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+3. **Color Feedback**:
+   - **Green Tile**: A part of your guess (symbol, word, or letter) is correct and in the right spot.
+   - **Yellow Tile**: A part of your guess is correct but in the wrong spot.
+   - **Gray Tile**: A part of your guess is not in the phrase at all.
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+4. **Using Hints**:
+   - Use hint credits to reveal letters or provide clues about the phrase.
 
-### Utilities
+5. **Winning the Game**:
+   - If you guess the phrase correctly within 6 tries, you win and can share your results.
 
-This Turborepo has some additional tools already setup for you:
+6. **Daily Streaks and Achievements**:
+   - Maintain a streak by solving puzzles consecutively each day.
+   - Earn achievements and unlock rewards for milestones.
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+### Example Puzzles:
 
-### Build
+1. **Rebus Puzzle**: An image of an eye + a picture of a phone = "iPhone"
+   - **Guess**: "iPhone"
+   - **Feedback**: If "iPhone" is correct, tiles would turn green indicating correct placement.
 
-To build all apps and packages, run the following command:
+2. **Rebus Puzzle**: An image of a clock + a picture of wings = "Time Flies"
+   - **Guess**: "Time Passes"
+   - **Feedback**: "Time" might be green, indicating correct placement, but "Passes" would be yellow or gray depending on the closeness to the correct word "Flies".
 
-```
-cd my-turborepo
-pnpm build
-```
+## Game Interface Design
 
-### Develop
+### Home Screen
+- **Logo and Game Title**: Display the game logo prominently at the top with the name "Rebus Quest."
+- **Daily Puzzle**: A large, central button or card showing the current day's puzzle, with a countdown timer until the next puzzle.
+- **Streak Indicator**: A visual indicator showing the user's current streak of consecutive days played.
+- **Menu Buttons**: Easy access buttons for "Hints," "Leaderboards," "Achievements," and "Settings."
+- **Profile Icon**: User profile icon with quick access to account settings and progress.
 
-To develop all apps and packages, run the following command:
+### Puzzle Screen
+- **Rebus Image**: Large, clear image of the rebus puzzle in the center of the screen.
+- **Input Field**: Below the rebus image, a text field where users can type their guesses.
+- **Hint Button**: A button to use hints, showing the number of available hint credits.
+- **Submit Button**: A prominent button to submit the answer, with instant feedback on whether the answer is correct or not.
+- **Clue and Feedback**: Area to display feedback, such as "Almost there!" or "Try another word."
 
-```
-cd my-turborepo
-pnpm dev
-```
+### Hints Screen
+- **Hint Options**: Different levels of hints, e.g., reveal a letter, reveal a related word, or provide a near solution.
+- **Hint Credits**: Display the number of hint credits available and options to earn or purchase more.
 
-### Remote Caching
+### Achievements Screen
+- **Achievements List**: Visual list of achievements with icons, descriptions, and progress bars.
+- **Unlocked Rewards**: Highlight unlocked rewards and encourage users to achieve more.
 
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+### Leaderboards Screen
+- **Daily/Weekly/All-Time**: Tabs to switch between different leaderboard categories.
+- **User Rankings**: Display user rankings with usernames, profile pictures, and points/streaks.
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
+### Settings Screen
+- **Profile Settings**: Options to edit profile, link social media, and manage account settings.
+- **Game Settings**: Toggle sound, notifications, and other game preferences.
+- **Help and Support**: Access to FAQs, contact support, and game tutorials.
 
-```
-cd my-turborepo
-npx turbo login
-```
+## Development Roadmap
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+1. **Phase 1: MVP Development**
+   - Basic game functionality: daily puzzle, guessing system, and feedback mechanism.
+   - Initial UI/UX design and implementation.
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+2. **Phase 2: Enhanced Features**
+   - Implement hint system and hint credits.
+   - Develop achievements and rewards system.
+   - Integrate social features: sharing, challenges, and leaderboards.
 
-```
-npx turbo link
-```
+3. **Phase 3: Polishing and Testing**
+   - Refine UI/UX based on user feedback.
+   - Extensive testing for bugs and performance issues.
+   - Prepare for launch.
 
-## Useful Links
+4. **Phase 4: Post-Launch**
+   - Regular updates with new puzzles and features.
+   - Continuous improvement based on user feedback.
+   - Marketing and community engagement to grow the user base.
 
-Learn more about the power of Turborepo:
+## Contributing
 
-- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
+We welcome contributions from the community! If you'd like to help improve Rebus Quest, please fork the repository and submit a pull request. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+For any inquiries or feedback, please contact us at [support@rebusquest.com](mailto:support@rebusquest.com).
+
+---
+
+Thank you for playing Rebus Quest! We hope you enjoy the challenge and fun of solving daily rebus puzzles. Happy puzzling!
