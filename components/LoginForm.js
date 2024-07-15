@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/lib/supabaseClient";
-import { useUser } from "@/context/UserContext"; // Ensure this path is correct
-import { useRouter } from "next/navigation"; // Import useRouter from Next.js
+import { useUser } from "@/context/UserContext";
+import { useRouter } from "next/navigation";
 import { ChevronLeft } from "react-feather";
 
 const zodResolver = (schema) => {
@@ -31,7 +31,7 @@ const zodResolver = (schema) => {
 };
 
 const loginSchema = z.object({
-	email: z.string().email({ message: "Invalid email address" }),
+	emailOrUsername: z.string().nonempty({ message: "Email or Username is required" }),
 	password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
@@ -39,20 +39,36 @@ export function LoginForm() {
 	const form = useForm({
 		resolver: zodResolver(loginSchema),
 		defaultValues: {
-			email: "",
+			emailOrUsername: "",
 			password: "",
 		},
 	});
 
 	const { setUser } = useUser();
-	const router = useRouter(); // Initialize useRouter
+	const router = useRouter();
 
 	const handleLogin = async (values) => {
 		try {
-			const { data, error } = await supabase.auth.signInWithPassword({
-				email: values.email,
-				password: values.password,
-			});
+			const isEmail = values.emailOrUsername.includes("@");
+			const loginMethod = isEmail ? { email: values.emailOrUsername, password: values.password } : { username: values.emailOrUsername, password: values.password };
+
+			const { data, error } = await (isEmail
+				? supabase.auth.signInWithPassword(loginMethod)
+				: supabase
+						.from("profiles")
+						.select("id, password")
+						.eq("username", values.emailOrUsername)
+						.single()
+						.then(async ({ data: user, error }) => {
+							if (error) throw error;
+							const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+								email: user.id,
+								password: values.password,
+							});
+							if (signInError) throw signInError;
+							return { data: signInData };
+						}));
+
 			if (error) {
 				form.setError("server", { type: "server", message: error.message });
 			} else {
@@ -74,19 +90,19 @@ export function LoginForm() {
 			<Card className="mx-auto max-w-sm">
 				<CardHeader>
 					<CardTitle className="text-2xl">Login</CardTitle>
-					<CardDescription>Enter your email below to login to your account</CardDescription>
+					<CardDescription>Enter your email or username below to login to your account</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<Form {...form}>
 						<form onSubmit={form.handleSubmit(handleLogin)} className="space-y-8">
 							<FormField
 								control={form.control}
-								name="email"
+								name="emailOrUsername"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Email</FormLabel>
+										<FormLabel>Email or Username</FormLabel>
 										<FormControl>
-											<Input placeholder="m@example.com" {...field} inputMode="none" />
+											<Input placeholder="m@example.com or username" {...field} inputMode="none" />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
