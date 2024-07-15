@@ -79,7 +79,7 @@ export function SignupForm() {
 								<FormItem>
 									<FormLabel>Email</FormLabel>
 									<FormControl>
-										<Input placeholder="m@example.com" {...field} />
+										<Input placeholder="m@example.com" {...field} inputMode="none" />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -92,7 +92,7 @@ export function SignupForm() {
 								<FormItem>
 									<FormLabel>Password</FormLabel>
 									<FormControl>
-										<Input type="password" {...field} />
+										<Input type="password" {...field} inputMode="none" />
 									</FormControl>
 									<FormMessage />
 								</FormItem>

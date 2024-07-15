@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Info, BarChart2 } from "react-feather";
+import { Info, BarChart2, Settings } from "react-feather";
 import Link from "next/link";
 import { useUser } from "@/context/UserContext";
 import CustomDialog from "@/components/CustomDialog";
@@ -118,40 +118,57 @@ export default function Header() {
 						</Tooltip>
 					</TooltipProvider>
 					{user && (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<button onClick={handleStatisticsDialogOpen} aria-label="Player Statistics">
-										<BarChart2 className="w-7 h-7" />
-									</button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Player Statistics</p>
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
+						<>
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button onClick={handleStatisticsDialogOpen} aria-label="Player Statistics">
+											<BarChart2 className="w-7 h-7" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Player Statistics</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button onClick={handleSettingsDialogOpen} aria-label="Settings">
+											<Settings className="w-7 h-7" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Settings</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						</>
 					)}
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Avatar>{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Guest" />}</Avatar>
+							<Avatar className="cursor-pointer">{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Guest" />}</Avatar>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent>
 							{user ? (
 								<>
 									<DropdownMenuItem>
-										<button onClick={handleSettingsDialogOpen}>Settings</button>
-									</DropdownMenuItem>
-									<DropdownMenuItem>
-										<button onClick={signOut}>Logout</button>
+										<button className="w-full text-left" onClick={signOut}>
+											Logout
+										</button>
 									</DropdownMenuItem>
 								</>
 							) : (
 								<>
 									<DropdownMenuItem>
-										<Link href="/login">Login</Link>
+										<Link className="w-full text-left" href="/login">
+											Login
+										</Link>
 									</DropdownMenuItem>
 									<DropdownMenuItem>
-										<Link href="/signup">Sign Up</Link>
+										<Link className="w-full text-left" href="/signup">
+											Sign Up
+										</Link>
 									</DropdownMenuItem>
 								</>
 							)}
