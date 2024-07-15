@@ -38,15 +38,15 @@ function Home() {
 					<p className="text-lg mb-8">Unravel the Picture, Reveal the Phrase!</p>
 					<div className="space-x-4">
 						<Link href="/rebus?guest=true">
-							<Button variant="secondary">Play as Guest</Button>
+							<Button variant="brand">Play as Guest</Button>
 						</Link>
 						<Link href="/login">
-							<Button variant="success">Play Logged In</Button>
+							<Button>Play Logged In</Button>
 						</Link>
 					</div>
 					<div className="space-x-4 mt-4">
 						<Link href="/signup">
-							<Button>Signup</Button>
+							<Button variant="secondary">Signup</Button>
 						</Link>
 					</div>
 					<p className="text-gray-500 mt-4">{gameVersion}</p>

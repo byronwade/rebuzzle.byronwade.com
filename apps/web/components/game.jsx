@@ -9,7 +9,7 @@ import Image from "next/image";
 const Game = () => {
 	const { gameData, feedback, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver, hint } = useContext(GameContext);
 	const [countdown, setCountdown] = useState("00:00:00");
-	const [dialogOpen, setDialogOpen] = useState(false); // Add state for dialog open
+	const [dialogOpen, setDialogOpen] = useState(false);
 
 	useEffect(() => {
 		const interval = setInterval(() => {
@@ -28,13 +28,13 @@ const Game = () => {
 
 	useEffect(() => {
 		if (gameOver) {
-			setDialogOpen(true); // Open dialog when game is over
+			setDialogOpen(true);
 		}
 	}, [gameOver]);
 
 	const stopGame = () => {
 		setGameOver(true);
-		setDialogOpen(true); // Open dialog when game is over
+		setDialogOpen(true);
 	};
 
 	const checkGuess = (guess) => {
@@ -48,14 +48,14 @@ const Game = () => {
 			.toLowerCase();
 
 		if (normalizedGuess === normalizedPhrase) {
-			setFeedback("Correct!"); // Set feedback as a string
+			setFeedback("Correct!");
 			stopGame();
 		} else {
-			setFeedback("Incorrect guess."); // Set feedback as a string
+			setFeedback("Incorrect guess.");
 			setAttemptsLeft((prevAttempts) => prevAttempts - 1);
 
 			if (attemptsLeft <= 1) {
-				setFeedback(`Game over! The correct phrase was: "${gameData.solution}"`); // Set feedback as a string
+				setFeedback(`Game over! The correct phrase was: "${gameData.solution}"`);
 				stopGame();
 			}
 		}
@@ -68,14 +68,14 @@ const Game = () => {
 	};
 
 	const handleEmptyBoxes = () => {
-		setFeedback("Incomplete Guess. Please fill in all boxes."); // Set feedback as a string
+		setFeedback("Incomplete Guess. Please fill in all boxes.");
 	};
 
 	const handleCloseDialog = () => {
-		setDialogOpen(false); // Close the dialog
-		setGameOver(false); // Reset the game over state
-		setFeedback(""); // Reset feedback to an empty string
-		setAttemptsLeft(3); // Reset attempts
+		setDialogOpen(false);
+		setGameOver(false);
+		setFeedback("");
+		setAttemptsLeft(3);
 	};
 
 	if (!gameData) {

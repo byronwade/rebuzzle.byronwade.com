@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GameProvider } from "@/context/GameContext";
 import { UserProvider } from "@/context/UserContext";
+import { KeyboardProvider } from "@/context/KeyboardContext";
 import { cn } from "@/lib/utils";
 
 const fontSans = FontSans({
@@ -22,11 +23,13 @@ export default function RootLayout({ children }) {
 			<body className={cn("min-h-screen bg-white dark:bg-black font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
 				<UserProvider>
 					<GameProvider>
-						<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-							{children}
-						</ThemeProvider>
-						<Analytics />
-						<SpeedInsights />
+						<KeyboardProvider>
+							<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+								{children}
+							</ThemeProvider>
+							<Analytics />
+							<SpeedInsights />
+						</KeyboardProvider>
 					</GameProvider>
 				</UserProvider>
 			</body>
