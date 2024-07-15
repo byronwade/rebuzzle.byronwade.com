@@ -15,8 +15,6 @@ const Statistics = ({ userId }) => {
 		fetchStatistics();
 	}, [userId]);
 
-	if (!stats) return <p>Loading...</p>;
-
 	const chartData = Object.entries(stats.guess_distribution).map(([guess, count]) => ({
 		guess,
 		count,

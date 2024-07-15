@@ -16,7 +16,6 @@ const fontSans = FontSans({
 });
 
 const GTM_ID = "GTM-XYZ"; // Replace with your GTM ID
-const GA_ID = "G-FX184YC75H"; // Replace with your GA ID
 
 export default function RootLayout({ children }) {
 	return (

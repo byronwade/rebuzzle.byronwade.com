@@ -52,7 +52,7 @@ const Game = () => {
 			trackEvent(eventDetails);
 
 			// Save game start to the database
-			saveGameEvent(user?.id, eventDetails);
+			// saveGameEvent(user?.id, eventDetails);
 		}
 	}, [gameData, user]);
 
@@ -100,7 +100,7 @@ const Game = () => {
 			trackEvent(eventDetails);
 
 			// Save the guess attempt to the database
-			saveGameEvent(user?.id, eventDetails);
+			// saveGameEvent(user?.id, eventDetails);
 		}
 	};
 

@@ -95,9 +95,6 @@ export default function Header() {
 		setStatisticsDialogOpen(true);
 	};
 
-	if (loading) return <div>Loading...</div>;
-	if (error) return <div>Error: {error}</div>;
-
 	return (
 		<>
 			<div className="relative flex justify-between container mx-auto p-4">
