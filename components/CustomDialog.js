@@ -24,7 +24,7 @@ const CustomDialog = ({ open, onOpenChange, title, description, children }) => {
 
 	return (
 		<Drawer open={open} onOpenChange={onOpenChange}>
-			<DrawerContent className="pb-8">
+			<DrawerContent className="p-6 pb-8">
 				<DrawerHeader>
 					<DrawerTitle>{title}</DrawerTitle>
 					<DrawerDescription>{description}</DrawerDescription>
