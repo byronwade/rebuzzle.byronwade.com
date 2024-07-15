@@ -11,6 +11,12 @@ const nextConfig = {
 		remotePatterns: [
 			{
 				protocol: "https",
+				hostname: "rebuzzle.vercel.app",
+				port: "",
+				pathname: "**",
+			},
+			{
+				protocol: "https",
 				hostname: "wdiuscbddaxckemvrvva.supabase.co",
 				port: "",
 				pathname: "**",
