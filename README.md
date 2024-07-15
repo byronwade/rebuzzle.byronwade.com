@@ -4,14 +4,13 @@ Rebus Quest is an engaging and addictive puzzle game where players solve daily r
 
 ## How to Play
 
-1. **Guess the Phrase in 6 tries.**
+1. **Guess the Phrase in 3 tries.**
    - Each guess must be a valid rebus puzzle phrase.
    - The color of the tiles will change to show how close your guess was to the phrase.
 
 ### Examples:
 - **Green Tile**: A part of your guess is in the phrase and in the correct spot.
 - **Yellow Tile**: A part of your guess is in the phrase but in the wrong spot.
-- **Gray Tile**: A part of your guess is not in the phrase in any spot.
 
 ## Detailed Gameplay Instructions
 
