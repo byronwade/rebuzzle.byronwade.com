@@ -24,7 +24,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 	useEffect(() => {
 		const firstInput = document.querySelector("input[id^='input-']");
 		if (firstInput) {
-			firstInput.focus();
+			firstInput.focus({ preventScroll: true });
 			setFocusedInput({ wordIndex: 0, charIndex: 0 });
 		}
 	}, []);
@@ -62,7 +62,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 					if (!isPunctuation(words[nextWordIndex][nextCharIndex])) {
 						const nextInput = document.getElementById(`input-${nextWordIndex}-${nextCharIndex}`);
 						if (nextInput) {
-							nextInput.focus();
+							nextInput.focus({ preventScroll: true });
 							setFocusedInput({ wordIndex: nextWordIndex, charIndex: nextCharIndex });
 						}
 						return;
@@ -94,7 +94,7 @@ const WanderBox = ({ phrase, onGuess, onEmptyBoxes, attemptsLeft, gameOver }) =>
 						if (!isPunctuation(words[prevWordIndex][prevCharIndex])) {
 							const prevInput = document.getElementById(`input-${prevWordIndex}-${prevCharIndex}`);
 							if (prevInput) {
-								prevInput.focus();
+								prevInput.focus({ preventScroll: true });
 								setFocusedInput({ wordIndex: prevWordIndex, charIndex: prevCharIndex });
 							}
 							newGuess[prevWordIndex][prevCharIndex] = "";
