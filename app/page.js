@@ -67,11 +67,11 @@ function Home() {
 							</Button>
 						</Link>
 					</div>
-					<div className="space-x-4 mt-4">
+					{/* <div className="space-x-4 mt-4">
 						<Button variant="secondary" onClick={sendTestEmail}>
 							Send Test Email
 						</Button>
-					</div>
+					</div> */}
 					<p className="text-gray-500 mt-4">{gameVersion}</p>
 					<p className="text-gray-500 mt-4">Made By Byron Wade</p>
 				</div>
