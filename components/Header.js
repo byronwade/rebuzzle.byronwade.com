@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Info, BarChart2, Settings } from "react-feather";
+import { Info, Settings, BarChart2, User } from "react-feather";
 import Link from "next/link";
 import { useUser } from "@/context/UserContext";
 import CustomDialog from "@/components/ui/CustomDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import Statistics from "@/components/game/Statistics";
 import { SettingsForm } from "@/components/SettingsForm";
@@ -55,13 +55,18 @@ const HowToPlayContent = () => {
 };
 
 const SettingsContent = () => {
-	return <SettingsForm />;
+	return (
+		<>
+			<SettingsForm />
+			{/* Add dark mode toggle here */}
+		</>
+	);
 };
 
 export default function Header() {
 	const [howToPlayDialogOpen, setHowToPlayDialogOpen] = useState(false);
 	const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
-	const [statisticsDialogOpen, setStatisticsDialogOpen] = useState(false); // Add state for statistics dialog
+	const [statisticsDialogOpen, setStatisticsDialogOpen] = useState(false);
 	const { user, loading, error, signOut } = useUser();
 
 	useEffect(() => {
@@ -93,13 +98,13 @@ export default function Header() {
 	return (
 		<>
 			<div className="relative flex justify-between container mx-auto p-2 px-4">
-				<div>
+				<div className="flex items-center space-x-4">
 					<Link href="/" className="flex items-center space-x-4 font-bold text-2xl">
 						Rebuzzle
 					</Link>
 					<p className="text-xs text-gray-500">Daily rebus puzzle games</p>
 				</div>
-				<div className="flex space-x-4 items-center font-bold justify-center align-middle">
+				<div className="flex space-x-4 items-center font-bold">
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -112,37 +117,38 @@ export default function Header() {
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
+					{/* Conditionally show Statistics icon */}
 					{user && (
-						<>
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button onClick={handleStatisticsDialogOpen} aria-label="Player Statistics">
-											<BarChart2 className="w-6 h-6" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p>Player Statistics</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button onClick={handleSettingsDialogOpen} aria-label="Settings">
-											<Settings className="w-6 h-6" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p>Settings</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						</>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button onClick={handleStatisticsDialogOpen} aria-label="Statistics">
+										<BarChart2 className="w-6 h-6" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Statistics</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					)}
+
+					{/* Always show Settings icon */}
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button onClick={handleSettingsDialogOpen} aria-label="Settings">
+									<Settings className="w-6 h-6" />
+								</button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Settings</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Avatar className="cursor-pointer w-7 h-7">{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Guest" />}</Avatar>
+							<Avatar className="cursor-pointer w-7 h-7 bg-brand text-white">{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Avatar" />}</Avatar>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent>
 							{user ? (
@@ -178,7 +184,8 @@ export default function Header() {
 				<SettingsContent />
 			</CustomDialog>
 			<CustomDialog open={statisticsDialogOpen} onOpenChange={setStatisticsDialogOpen}>
-				<Statistics userId={user ? user.id : null} /> {/* Pass userId to the Statistics component */}
+				{/* Render Statistics component here */}
+				{statisticsDialogOpen && <Statistics userId={user ? user.id : null} />}
 			</CustomDialog>
 		</>
 	);

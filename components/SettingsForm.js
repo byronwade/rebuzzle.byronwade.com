@@ -37,8 +37,6 @@ const settingsSchema = z.object({
 	notifications: z.boolean(),
 	darkMode: z.boolean(),
 	emailUpdates: z.boolean(),
-	soundEffects: z.boolean(),
-	music: z.boolean(),
 });
 
 export function SettingsForm() {
@@ -50,13 +48,21 @@ export function SettingsForm() {
 			notifications: true,
 			darkMode: false,
 			emailUpdates: true,
-			soundEffects: true,
-			music: true,
 		},
 	});
 
 	const { user, setUser } = useUser();
 	const { theme, setTheme, systemTheme } = useTheme();
+
+	useEffect(() => {
+		if (user) {
+			form.setValue("username", user.username || "");
+			form.setValue("email", user.email || "");
+			form.setValue("notifications", user.notifications || true);
+			form.setValue("darkMode", user.darkMode || false);
+			form.setValue("emailUpdates", user.emailUpdates || true);
+		}
+	}, [user]);
 
 	useEffect(() => {
 		const storedTheme = localStorage.getItem("darkMode");
@@ -93,7 +99,7 @@ export function SettingsForm() {
 
 			// Update theme
 			setTheme(values.darkMode ? "dark" : "light");
-			localStorage.setItem("darkMode", values.darkMode); // Store the preference in local storage
+			localStorage.setItem("darkMode", values.darkMode.toString()); // Store the preference in local storage
 
 			// Track form submission
 			trackEvent({
@@ -120,152 +126,150 @@ export function SettingsForm() {
 			<h2 className="text-2xl font-bold">Settings</h2>
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(handleSettingsUpdate)} className="space-y-6">
-					<FormField
-						control={form.control}
-						name="username"
-						render={({ field }) => (
+					{user ? (
+						<>
+							<FormField
+								control={form.control}
+								name="username"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Username</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="Your username"
+												{...field}
+												onChange={(e) => {
+													field.onChange(e);
+													handleFieldChange("username", e.target.value);
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="email"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Email</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="m@example.com"
+												{...field}
+												onChange={(e) => {
+													field.onChange(e);
+													handleFieldChange("email", e.target.value);
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 							<FormItem>
-								<FormLabel>Username</FormLabel>
-								<FormControl>
-									<Input
-										placeholder="Your username"
-										{...field}
-										onChange={(e) => {
-											field.onChange(e);
-											handleFieldChange("username", e.target.value);
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
+								<FormLabel>Password</FormLabel>
+								<div className="text-left">
+									<Link href="/reset-password" className="text-blue-500 underline text-sm">
+										Reset Password
+									</Link>
+								</div>
 							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="email"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Email</FormLabel>
-								<FormControl>
-									<Input
-										placeholder="m@example.com"
-										{...field}
-										onChange={(e) => {
-											field.onChange(e);
-											handleFieldChange("email", e.target.value);
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormItem>
-						<FormLabel>Password</FormLabel>
-						<div className="text-left">
-							<Link href="/reset-password" className="text-blue-500 underline text-sm">
-								Reset Password
-							</Link>
-						</div>
-					</FormItem>
-					<hr className="my-4" />
-					<FormField
-						control={form.control}
-						name="notifications"
-						render={({ field }) => (
-							<FormItem className="flex items-center justify-between">
-								<FormLabel>Enable Notifications</FormLabel>
-								<FormControl>
-									<Switch
-										checked={field.value}
-										onCheckedChange={(value) => {
-											field.onChange(value);
-											handleFieldChange("notifications", value);
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="darkMode"
-						render={({ field }) => (
-							<FormItem className="flex items-center justify-between">
-								<FormLabel>Dark Mode</FormLabel>
-								<FormControl>
-									<Switch
-										checked={field.value}
-										onCheckedChange={(value) => {
-											field.onChange(value);
-											setTheme(value ? "dark" : "light");
-											localStorage.setItem("darkMode", value); // Store the preference in local storage
-											handleFieldChange("darkMode", value);
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="emailUpdates"
-						render={({ field }) => (
-							<FormItem className="flex items-center justify-between">
-								<FormLabel>Email Updates</FormLabel>
-								<FormControl>
-									<Switch
-										checked={field.value}
-										onCheckedChange={(value) => {
-											field.onChange(value);
-											handleFieldChange("emailUpdates", value);
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="soundEffects"
-						render={({ field }) => (
-							<FormItem className="flex items-center justify-between">
-								<FormLabel>Sound Effects</FormLabel>
-								<FormControl>
-									<Switch
-										checked={field.value}
-										onCheckedChange={(value) => {
-											field.onChange(value);
-											handleFieldChange("soundEffects", value);
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="music"
-						render={({ field }) => (
-							<FormItem className="flex items-center justify-between">
-								<FormLabel>Background Music</FormLabel>
-								<FormControl>
-									<Switch
-										checked={field.value}
-										onCheckedChange={(value) => {
-											field.onChange(value);
-											handleFieldChange("music", value);
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+							<hr className="my-4" />
+							<FormField
+								control={form.control}
+								name="notifications"
+								render={({ field }) => (
+									<FormItem className="flex items-center justify-between">
+										<FormLabel>Enable Notifications</FormLabel>
+										<FormControl>
+											<Switch
+												checked={field.value}
+												onCheckedChange={(value) => {
+													field.onChange(value);
+													handleFieldChange("notifications", value);
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="darkMode"
+								render={({ field }) => (
+									<FormItem className="flex items-center justify-between">
+										<FormLabel>Dark Mode</FormLabel>
+										<FormControl>
+											<Switch
+												checked={field.value}
+												onCheckedChange={(value) => {
+													field.onChange(value);
+													setTheme(value ? "dark" : "light");
+													localStorage.setItem("darkMode", value.toString()); // Store the preference in local storage
+													handleFieldChange("darkMode", value);
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="emailUpdates"
+								render={({ field }) => (
+									<FormItem className="flex items-center justify-between">
+										<FormLabel>Email Updates</FormLabel>
+										<FormControl>
+											<Switch
+												checked={field.value}
+												onCheckedChange={(value) => {
+													field.onChange(value);
+													handleFieldChange("emailUpdates", value);
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</>
+					) : (
+						<>
+							<p className="text-sm text-gray-600">
+								Please{" "}
+								<Link href="/login" className="text-blue-600 underline">
+									log in
+								</Link>{" "}
+								to update your settings.
+							</p>
+							<hr className="my-4" />
+							<FormField
+								control={form.control}
+								name="darkMode"
+								render={({ field }) => (
+									<FormItem className="flex items-center justify-between">
+										<FormLabel>Dark Mode</FormLabel>
+										<FormControl>
+											<Switch
+												checked={field.value}
+												onCheckedChange={(value) => {
+													field.onChange(value);
+													setTheme(value ? "dark" : "light");
+													localStorage.setItem("darkMode", value.toString()); // Store the preference in local storage
+													handleFieldChange("darkMode", value);
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</>
+					)}
 					{form.formState.errors.server && <p className="text-red-500">{form.formState.errors.server.message}</p>}
 					<Button type="submit" className="w-full">
 						Update Settings
