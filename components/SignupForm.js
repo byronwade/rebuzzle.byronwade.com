@@ -34,7 +34,10 @@ const zodResolver = (schema) => {
 const signupSchema = z.object({
 	firstName: z.string().min(1, { message: "First name is required" }),
 	lastName: z.string().min(1, { message: "Last name is required" }),
-	username: z.string().min(3, { message: "Username must be at least 3 characters" }),
+	username: z
+		.string()
+		.min(3, { message: "Username must be at least 3 characters" })
+		.regex(/^[a-zA-Z0-9]+$/, { message: "Username can only contain letters and numbers" }),
 	email: z.string().email({ message: "Invalid email address" }),
 	password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
@@ -68,7 +71,11 @@ export function SignupForm() {
 				},
 			});
 			if (error) {
-				form.setError("server", { type: "server", message: error.message });
+				let errorMessage = error.message;
+				if (error.message.includes("rate limit exceeded")) {
+					errorMessage = "Email rate limit exceeded. Please try again later.";
+				}
+				form.setError("server", { type: "server", message: errorMessage });
 			} else {
 				form.clearErrors("server");
 				setUser(data.user); // Update the user context
