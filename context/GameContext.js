@@ -18,7 +18,10 @@ export const GameProvider = ({ children, initialData }) => {
 
 	const fetchGameData = async () => {
 		try {
-			const response = await fetch("/api/puzzle", {
+			const now = new Date();
+			const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split("T")[0];
+
+			const response = await fetch(`/api/puzzle?date=${localToday}`, {
 				headers: {
 					"Cache-Control": "no-store",
 				},

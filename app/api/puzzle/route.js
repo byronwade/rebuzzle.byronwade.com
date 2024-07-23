@@ -3,12 +3,16 @@ import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
 
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-global.cache = global.cache || null;
-global.cacheTimestamp = global.cacheTimestamp || null;
+global.cache = global.cache || {};
+global.cacheTimestamp = global.cacheTimestamp || {};
 
-export async function GET() {
-	const now = new Date();
-	const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split("T")[0];
+export async function GET(request) {
+	const url = new URL(request.url);
+	const localToday = url.searchParams.get("date");
+
+	if (!localToday) {
+		return NextResponse.json({ error: "Date is required" }, { status: 400 });
+	}
 
 	const headers = {
 		"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
@@ -17,8 +21,8 @@ export async function GET() {
 		"Surrogate-Control": "no-store",
 	};
 
-	if (global.cache && now - global.cacheTimestamp < CACHE_DURATION) {
-		return NextResponse.json(global.cache, { status: 200, headers });
+	if (global.cache[localToday] && Date.now() - global.cacheTimestamp[localToday] < CACHE_DURATION) {
+		return NextResponse.json(global.cache[localToday], { status: 200, headers });
 	}
 
 	try {
@@ -33,14 +37,14 @@ export async function GET() {
 
 			if (recentError) throw recentError;
 
-			global.cache = recentData[0];
-			global.cacheTimestamp = now;
+			global.cache[localToday] = recentData[0];
+			global.cacheTimestamp[localToday] = Date.now();
 
 			return NextResponse.json(recentData[0], { status: 200, headers });
 		}
 
-		global.cache = todayData[0];
-		global.cacheTimestamp = now;
+		global.cache[localToday] = todayData[0];
+		global.cacheTimestamp[localToday] = Date.now();
 
 		return NextResponse.json(todayData[0], { status: 200, headers });
 	} catch (error) {

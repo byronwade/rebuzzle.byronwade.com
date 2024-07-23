@@ -115,7 +115,7 @@ export function SignupForm() {
 										<FormItem>
 											<FormLabel>First Name</FormLabel>
 											<FormControl>
-												<Input placeholder="Max" {...field} inputMode="none" />
+												<Input placeholder="Max" {...field} />
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -128,7 +128,7 @@ export function SignupForm() {
 										<FormItem>
 											<FormLabel>Last Name</FormLabel>
 											<FormControl>
-												<Input placeholder="Robinson" {...field} inputMode="none" />
+												<Input placeholder="Robinson" {...field} />
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -142,7 +142,7 @@ export function SignupForm() {
 									<FormItem>
 										<FormLabel>Username</FormLabel>
 										<FormControl>
-											<Input placeholder="johndoe" {...field} inputMode="none" />
+											<Input placeholder="johndoe" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -155,7 +155,7 @@ export function SignupForm() {
 									<FormItem>
 										<FormLabel>Email</FormLabel>
 										<FormControl>
-											<Input placeholder="m@example.com" {...field} inputMode="none" />
+											<Input placeholder="m@example.com" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -168,7 +168,7 @@ export function SignupForm() {
 									<FormItem>
 										<FormLabel>Password</FormLabel>
 										<FormControl>
-											<Input type="password" {...field} inputMode="none" />
+											<Input type="password" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
