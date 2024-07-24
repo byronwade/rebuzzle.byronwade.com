@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
 	reactStrictMode: true,
 	experimental: {
-		ppr: "incremental",
+		//ppr: "incremental",
 		turbo: {
 			resolveAlias: {
 				"@components": path.resolve(__dirname, "src/components"),
