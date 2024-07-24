@@ -16,6 +16,7 @@ const Game = () => {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [dialogMessage, setDialogMessage] = useState("");
 	const [showGameCard, setShowGameCard] = useState(false);
+	const [imageLoading, setImageLoading] = useState(true); // Add loading state
 
 	useEffect(() => {
 		const handleGlobalKeyDown = (event) => {
@@ -149,7 +150,16 @@ const Game = () => {
 				<div className="text-center">
 					<Countdown />
 					<div className="space-x-4">
-						<Image src={image} alt="Rebus" width={1980} height={1020} className="w-full md:w-1/2 h-auto m-auto rounded-md" priority />
+						{imageLoading && <Loading />} {/* Show loading indicator while image is loading */}
+						<Image
+							src={image}
+							alt="Rebus"
+							width={1980}
+							height={1020}
+							className="w-full md:w-1/2 h-auto m-auto rounded-md"
+							priority
+							onLoadingComplete={() => setImageLoading(false)} // Set loading state to false when image is loaded
+						/>
 					</div>
 				</div>
 			</div>

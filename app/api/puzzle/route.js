@@ -9,6 +9,7 @@ global.cacheTimestamp = global.cacheTimestamp || {};
 export async function GET(request) {
 	const url = new URL(request.url);
 	const localToday = url.searchParams.get("date");
+	console.log("Local today:", localToday);
 
 	if (!localToday) {
 		return NextResponse.json({ error: "Date is required" }, { status: 400 });

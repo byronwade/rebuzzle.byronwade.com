@@ -77,20 +77,20 @@
 	},
 	"exports": {
 		"./*": [
-			"./src/*",
-			"./src/*.ts",
-			"./src/*.tsx",
-			"./src/*/index.ts",
-			"./src/*/index.tsx"
+			"./app/*",
+			"./app/*.ts",
+			"./app/*.tsx",
+			"./app/*/index.ts",
+			"./app/*/index.tsx"
 		]
 	},
 	"imports": {
-		"@*": [
-			"./src/*",
-			"./src/*.ts",
-			"./src/*.tsx",
-			"./src/*/index.ts",
-			"./src/*/index.tsx"
+		"@": [
+			"./app/*",
+			"./app/*.ts",
+			"./app/*.tsx",
+			"./app/*/index.ts",
+			"./app/*/index.tsx"
 		]
 	}
 }
