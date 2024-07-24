@@ -40,7 +40,6 @@ export default function RootLayout({ children }) {
 	return (
 		<html lang="en">
 			<head>
-				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 				<script type="application/ld+json" dangerouslySetInnerHTML={addGameJsonLd()} key="game-jsonld" />
 			</head>
 			<body className={cn("min-h-screen bg-white dark:bg-black font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
@@ -61,6 +60,13 @@ export default function RootLayout({ children }) {
 		</html>
 	);
 }
+
+export const viewport = {
+	initialScale: 1,
+	width: "device-width",
+	maximumScale: 1,
+	viewportFit: "cover",
+};
 
 // Export metadata for SEO
 export const metadata = {
