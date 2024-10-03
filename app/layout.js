@@ -7,7 +7,7 @@ import { GameProvider } from "@/context/GameContext";
 import { UserProvider } from "@/context/UserContext";
 import { KeyboardProvider } from "@/context/KeyboardContext";
 import { cn } from "@/lib/utils";
-import { GoogleTagManager, GoogleAnalytics } from "@next/third-parties/google"; // Import GoogleTagManager
+import { GoogleAnalytics } from "@next/third-parties/google"; // Import GoogleTagManager
 
 const fontSans = FontSans({
 	subsets: ["latin"],
@@ -21,7 +21,7 @@ function addGameJsonLd() {
 			"@type": "Game",
 			"name": "Rebuzzle",
 			"description": "Play Rebuzzle, the daily rebus puzzle game. Unravel the picture, reveal the phrase, and challenge your mind with a new puzzle every day!",
-			"url": "https://rebuzzle.vercel.app",
+			"url": "https://rebuzzle.byronwade.com",
 			"applicationCategory": "Game",
 			"operatingSystem": "WEB",
 			"image": "https://rebuzzle.vercel.app/logo.png",
@@ -33,8 +33,6 @@ function addGameJsonLd() {
 		}`,
 	};
 }
-const GTM_ID = "GTM-XYZ"; // Replace with your GTM ID
-const GA_ID = "G-FX184YC75H"; // Replace with your GA ID
 
 export default function RootLayout({ children }) {
 	return (
@@ -43,8 +41,7 @@ export default function RootLayout({ children }) {
 				<script type="application/ld+json" dangerouslySetInnerHTML={addGameJsonLd()} key="game-jsonld" />
 			</head>
 			<body className={cn("min-h-screen bg-white dark:bg-black font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
-				<GoogleTagManager gtmId={GTM_ID} />
-				<GoogleAnalytics gaId={GA_ID} />
+				<GoogleAnalytics gaId="G-RFNMH6TVGW" />
 				<UserProvider>
 					<GameProvider>
 						<KeyboardProvider>
