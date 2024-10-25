@@ -2,13 +2,14 @@
 import { useState, useEffect } from "react";
 import { Info, Settings, BarChart2, User } from "react-feather";
 import Link from "next/link";
-import { useUser } from "@/context/UserContext";
 import CustomDialog from "@/components/ui/CustomDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import Statistics from "@/components/game/Statistics";
 import { SettingsForm } from "@/components/SettingsForm";
+
+import { logout, getUser } from "@/actions/auth";
 
 const HowToPlayContent = () => {
 	return (
@@ -67,7 +68,17 @@ export default function Header() {
 	const [howToPlayDialogOpen, setHowToPlayDialogOpen] = useState(false);
 	const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 	const [statisticsDialogOpen, setStatisticsDialogOpen] = useState(false);
-	const { user, loading, error, signOut } = useUser();
+	const [user, setUser] = useState(null);
+	console.log(user?.email.charAt(0).toUpperCase());
+
+	useEffect(() => {
+		const fetchUser = async () => {
+			const result = await getUser();
+			console.log(result);
+			setUser(result);
+		};
+		fetchUser();
+	}, []);
 
 	useEffect(() => {
 		const hasSeenHowToPlay = localStorage.getItem("hasSeenHowToPlay");
@@ -76,12 +87,6 @@ export default function Header() {
 			localStorage.setItem("hasSeenHowToPlay", "true");
 		}
 	}, []);
-
-	useEffect(() => {
-		if (user) {
-			console.log("User data:", user);
-		}
-	}, [user]);
 
 	const handleHowToPlayDialogOpen = () => {
 		setHowToPlayDialogOpen(true);
@@ -93,6 +98,10 @@ export default function Header() {
 
 	const handleStatisticsDialogOpen = () => {
 		setStatisticsDialogOpen(true);
+	};
+
+	const handleLogout = async () => {
+		await logout();
 	};
 
 	return (
@@ -148,17 +157,15 @@ export default function Header() {
 					</TooltipProvider>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Avatar className="cursor-pointer w-7 h-7 bg-brand text-white">{user ? <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Avatar" />}</Avatar>
+							<Avatar className="cursor-pointer w-7 h-7 bg-brand text-white">{user ? <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback> : <AvatarImage src="/avatar.png" alt="Avatar" />}</Avatar>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent>
 							{user ? (
-								<>
-									<DropdownMenuItem>
-										<button className="w-full text-left" onClick={signOut}>
-											Logout
-										</button>
-									</DropdownMenuItem>
-								</>
+								<DropdownMenuItem>
+									<button className="w-full text-left" onClick={handleLogout}>
+										Logout
+									</button>
+								</DropdownMenuItem>
 							) : (
 								<>
 									<DropdownMenuItem>
@@ -185,7 +192,7 @@ export default function Header() {
 			</CustomDialog>
 			<CustomDialog open={statisticsDialogOpen} onOpenChange={setStatisticsDialogOpen}>
 				{/* Render Statistics component here */}
-				{statisticsDialogOpen && <Statistics userId={user ? user.id : null} />}
+				{statisticsDialogOpen && <Statistics userId={user ? user?.id : null} />}
 			</CustomDialog>
 		</>
 	);

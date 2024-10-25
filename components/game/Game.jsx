@@ -1,5 +1,5 @@
 "use client";
-import React, { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect } from "react";
 import GameContext from "@/context/GameContext";
 import WanderBox from "@/components/game/WanderBox";
 import GameCard from "@/components/game/GameCard";
@@ -8,10 +8,8 @@ import Image from "next/image";
 import Loading from "@/components/Loading";
 import Countdown from "@/components/utility/Countdown";
 import { trackEvent } from "@/lib/gtag";
-import { useUser } from "@/context/UserContext";
 
 const Game = () => {
-	const { user } = useUser();
 	const { gameData, setFeedback, attemptsLeft, setAttemptsLeft, gameOver, setGameOver } = useContext(GameContext);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [dialogMessage, setDialogMessage] = useState("");
@@ -50,7 +48,7 @@ const Game = () => {
 			// Save the event to the database
 			// saveGameEvent(user?.id, eventDetails);
 		}
-	}, [gameOver, dialogMessage, user]);
+	}, [gameOver, dialogMessage]);
 
 	const stopGame = (message) => {
 		setGameOver(true);
@@ -74,7 +72,7 @@ const Game = () => {
 			// Save game start to the database
 			// saveGameEvent(user?.id, eventDetails);
 		}
-	}, [gameData, user]);
+	}, [gameData]);
 
 	const checkGuess = (guess) => {
 		const normalizedGuess = guess
@@ -151,6 +149,7 @@ const Game = () => {
 					<Countdown />
 					<div className="space-x-4">
 						{imageLoading && <Loading />} {/* Show loading indicator while image is loading */}
+						HEAD HEALS
 						<Image
 							src={image}
 							alt="Rebus"

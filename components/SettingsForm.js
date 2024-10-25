@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { supabase } from "@/lib/supabaseClient";
-import { useUser } from "@/context/UserContext";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { trackEvent } from "@/lib/gtag";
+import { updateSettings, getUserSettings } from "@/actions/auth"; // Server actions
 
 const zodResolver = (schema) => {
 	return async (data) => {
@@ -51,18 +50,23 @@ export function SettingsForm() {
 		},
 	});
 
-	const { user, setUser } = useUser();
 	const { theme, setTheme, systemTheme } = useTheme();
 
+	// Fetch user settings from server action
 	useEffect(() => {
-		if (user) {
-			form.setValue("username", user.username || "");
-			form.setValue("email", user.email || "");
-			form.setValue("notifications", user.notifications || true);
-			form.setValue("darkMode", user.darkMode || false);
-			form.setValue("emailUpdates", user.emailUpdates || true);
+		async function fetchSettings() {
+			const settings = await getUserSettings();
+			if (settings) {
+				form.setValue("username", settings.username || "");
+				form.setValue("email", settings.email || "");
+				form.setValue("notifications", settings.notifications || true);
+				form.setValue("darkMode", settings.darkMode || false);
+				form.setValue("emailUpdates", settings.emailUpdates || true);
+			}
 		}
-	}, [user]);
+
+		fetchSettings();
+	}, []);
 
 	useEffect(() => {
 		const storedTheme = localStorage.getItem("darkMode");
@@ -75,31 +79,13 @@ export function SettingsForm() {
 
 	const handleSettingsUpdate = async (values) => {
 		try {
-			// Update username
-			const { error: userError } = await supabase.from("profiles").update({ username: values.username }).eq("id", user.id);
+			await updateSettings(values); // Call the server action to update settings
 
-			if (userError) {
-				form.setError("server", { type: "server", message: userError.message });
-			} else {
-				form.clearErrors("server");
-				setUser((prevUser) => ({ ...prevUser, username: values.username })); // Update the user context
-
-				// Send email update link if the email has changed
-				if (values.email !== user.email) {
-					const { error: emailError } = await supabase.auth.updateUser({ email: values.email });
-					if (emailError) {
-						form.setError("server", { type: "server", message: emailError.message });
-					} else {
-						alert("Email update link sent successfully");
-					}
-				}
-
-				alert("Settings updated successfully");
-			}
-
-			// Update theme
+			// Update theme and local storage for dark mode
 			setTheme(values.darkMode ? "dark" : "light");
-			localStorage.setItem("darkMode", values.darkMode.toString()); // Store the preference in local storage
+			localStorage.setItem("darkMode", values.darkMode.toString());
+
+			alert("Settings updated successfully");
 
 			// Track form submission
 			trackEvent({
@@ -126,150 +112,114 @@ export function SettingsForm() {
 			<h2 className="text-2xl font-bold">Settings</h2>
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(handleSettingsUpdate)} className="space-y-6">
-					{user ? (
-						<>
-							<FormField
-								control={form.control}
-								name="username"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Username</FormLabel>
-										<FormControl>
-											<Input
-												placeholder="Your username"
-												{...field}
-												onChange={(e) => {
-													field.onChange(e);
-													handleFieldChange("username", e.target.value);
-												}}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="email"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Email</FormLabel>
-										<FormControl>
-											<Input
-												placeholder="m@example.com"
-												{...field}
-												onChange={(e) => {
-													field.onChange(e);
-													handleFieldChange("email", e.target.value);
-												}}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+					<FormField
+						control={form.control}
+						name="username"
+						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Password</FormLabel>
-								<div className="text-left">
-									<Link href="/reset-password" className="text-blue-500 underline text-sm">
-										Reset Password
-									</Link>
-								</div>
+								<FormLabel>Username</FormLabel>
+								<FormControl>
+									<Input
+										placeholder="Your username"
+										{...field}
+										onChange={(e) => {
+											field.onChange(e);
+											handleFieldChange("username", e.target.value);
+										}}
+									/>
+								</FormControl>
+								<FormMessage />
 							</FormItem>
-							<hr className="my-4" />
-							<FormField
-								control={form.control}
-								name="notifications"
-								render={({ field }) => (
-									<FormItem className="flex items-center justify-between">
-										<FormLabel>Enable Notifications</FormLabel>
-										<FormControl>
-											<Switch
-												checked={field.value}
-												onCheckedChange={(value) => {
-													field.onChange(value);
-													handleFieldChange("notifications", value);
-												}}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="darkMode"
-								render={({ field }) => (
-									<FormItem className="flex items-center justify-between">
-										<FormLabel>Dark Mode</FormLabel>
-										<FormControl>
-											<Switch
-												checked={field.value}
-												onCheckedChange={(value) => {
-													field.onChange(value);
-													setTheme(value ? "dark" : "light");
-													localStorage.setItem("darkMode", value.toString()); // Store the preference in local storage
-													handleFieldChange("darkMode", value);
-												}}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="emailUpdates"
-								render={({ field }) => (
-									<FormItem className="flex items-center justify-between">
-										<FormLabel>Email Updates</FormLabel>
-										<FormControl>
-											<Switch
-												checked={field.value}
-												onCheckedChange={(value) => {
-													field.onChange(value);
-													handleFieldChange("emailUpdates", value);
-												}}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</>
-					) : (
-						<>
-							<p className="text-sm text-gray-600">
-								Please{" "}
-								<Link href="/login" className="text-blue-600 underline">
-									log in
-								</Link>{" "}
-								to update your settings.
-							</p>
-							<hr className="my-4" />
-							<FormField
-								control={form.control}
-								name="darkMode"
-								render={({ field }) => (
-									<FormItem className="flex items-center justify-between">
-										<FormLabel>Dark Mode</FormLabel>
-										<FormControl>
-											<Switch
-												checked={field.value}
-												onCheckedChange={(value) => {
-													field.onChange(value);
-													setTheme(value ? "dark" : "light");
-													localStorage.setItem("darkMode", value.toString()); // Store the preference in local storage
-													handleFieldChange("darkMode", value);
-												}}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</>
-					)}
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="email"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Email</FormLabel>
+								<FormControl>
+									<Input
+										placeholder="m@example.com"
+										{...field}
+										onChange={(e) => {
+											field.onChange(e);
+											handleFieldChange("email", e.target.value);
+										}}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormItem>
+						<FormLabel>Password</FormLabel>
+						<div className="text-left">
+							<Link href="/reset-password" className="text-blue-500 underline text-sm">
+								Reset Password
+							</Link>
+						</div>
+					</FormItem>
+					<hr className="my-4" />
+					<FormField
+						control={form.control}
+						name="notifications"
+						render={({ field }) => (
+							<FormItem className="flex items-center justify-between">
+								<FormLabel>Enable Notifications</FormLabel>
+								<FormControl>
+									<Switch
+										checked={field.value}
+										onCheckedChange={(value) => {
+											field.onChange(value);
+											handleFieldChange("notifications", value);
+										}}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="darkMode"
+						render={({ field }) => (
+							<FormItem className="flex items-center justify-between">
+								<FormLabel>Dark Mode</FormLabel>
+								<FormControl>
+									<Switch
+										checked={field.value}
+										onCheckedChange={(value) => {
+											field.onChange(value);
+											setTheme(value ? "dark" : "light");
+											localStorage.setItem("darkMode", value.toString());
+											handleFieldChange("darkMode", value);
+										}}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="emailUpdates"
+						render={({ field }) => (
+							<FormItem className="flex items-center justify-between">
+								<FormLabel>Email Updates</FormLabel>
+								<FormControl>
+									<Switch
+										checked={field.value}
+										onCheckedChange={(value) => {
+											field.onChange(value);
+											handleFieldChange("emailUpdates", value);
+										}}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 					{form.formState.errors.server && <p className="text-red-500">{form.formState.errors.server.message}</p>}
 					<Button type="submit" className="w-full">
 						Update Settings
