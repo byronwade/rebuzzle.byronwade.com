@@ -1,94 +1,96 @@
-import "@/styles/globals.css";
-import { Inter as FontSans } from "next/font/google";
-import { ThemeProvider } from "@/components/utility/ThemeProvider";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import { GameProvider } from "@/context/GameContext";
-import { UserProvider } from "@/context/UserContext";
-import { KeyboardProvider } from "@/context/KeyboardContext";
-import { cn } from "@/lib/utils";
-import { GoogleAnalytics } from "@next/third-parties/google"; // Import GoogleTagManager
+import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/toaster'
+import { QueryProvider } from '@/components/providers'
+import '@/styles/globals.css'
 
-const fontSans = FontSans({
-	subsets: ["latin"],
-	variable: "--font-sans",
-});
+const inter = Inter({ 
+	subsets: ['latin'],
+	display: 'swap',
+	preload: true,
+	adjustFontFallback: true 
+})
 
-function addGameJsonLd() {
-	return {
-		__html: `{
-			"@context": "https://schema.org/",
-			"@type": "Game",
-			"name": "Rebuzzle",
-			"description": "Play Rebuzzle, the daily rebus puzzle game. Unravel the picture, reveal the phrase, and challenge your mind with a new puzzle every day!",
-			"url": "https://rebuzzle.byronwade.com",
-			"applicationCategory": "Game",
-			"operatingSystem": "WEB",
-			"image": "https://rebuzzle.vercel.app/logo.png",
-			"version": "0.0.5",
-			"author": {
-				"@type": "Organization",
-				"name": "Wade's Inc"
-			}
-		}`,
-	};
-}
-
-export default function RootLayout({ children }) {
-	return (
-		<html lang="en">
-			<head>
-				<script type="application/ld+json" dangerouslySetInnerHTML={addGameJsonLd()} key="game-jsonld" />
-			</head>
-			<body className={cn("min-h-screen bg-white dark:bg-black font-sans antialiased", fontSans.variable)} suppressHydrationWarning={true}>
-				<GoogleAnalytics gaId="G-RFNMH6TVGW" />
-				<UserProvider>
-					<GameProvider>
-						<KeyboardProvider>
-							<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-								{children}
-							</ThemeProvider>
-							<Analytics />
-							<SpeedInsights />
-						</KeyboardProvider>
-					</GameProvider>
-				</UserProvider>
-			</body>
-		</html>
-	);
-}
-
-export const viewport = {
-	initialScale: 1,
-	width: "device-width",
-	maximumScale: 1,
-	viewportFit: "cover",
-};
-
-// Export metadata for SEO
-export const metadata = {
-	title: "Rebuzzle - Daily Rebus Puzzle Game",
-	description: "Play Rebuzzle, the daily rebus puzzle game. Unravel the picture, reveal the phrase, and challenge your mind with a new puzzle every day!",
-	keywords: "Rebuzzle, rebus puzzles, daily puzzles, brain games, puzzle game, mind games",
+export const metadata: Metadata = {
+	metadataBase: new URL('https://rebuzzle.byronwade.com'),
+	title: {
+		default: 'Rebuzzle - Daily Rebus Puzzles',
+		template: '%s | Rebuzzle'
+	},
+	description: 'Challenge yourself with daily rebus puzzles. Solve visual word puzzles and maintain your daily streak!',
+	keywords: ['rebus', 'puzzle', 'word game', 'daily puzzle', 'brain teaser'],
+	authors: [{ name: 'Byron Wade' }],
+	creator: 'Byron Wade',
+	publisher: 'Byron Wade',
 	openGraph: {
-		type: "website",
-		url: "https://rebuzzle.vercel.app/",
-		title: "Rebuzzle - Daily Rebus Puzzle Game",
-		description: "Play Rebuzzle, the daily rebus puzzle game. Unravel the picture, reveal the phrase, and challenge your mind with a new puzzle every day!",
-		image: "https://rebuzzle.vercel.app/logo.png",
+		title: 'Rebuzzle - Daily Rebus Puzzles',
+		description: 'Challenge yourself with daily rebus puzzles. Solve visual word puzzles and maintain your daily streak!',
+		url: 'https://rebuzzle.byronwade.com',
+		siteName: 'Rebuzzle',
+		locale: 'en_US',
+		type: 'website',
 	},
 	twitter: {
-		card: "summary_large_image",
-		url: "https://rebuzzle.vercel.app/",
-		title: "Rebuzzle - Daily Rebus Puzzle Game",
-		description: "Play Rebuzzle, the daily rebus puzzle game. Unravel the picture, reveal the phrase, and challenge your mind with a new puzzle every day!",
-		image: "https://rebuzzle.vercel.app/logo.png",
+		card: 'summary_large_image',
+		title: 'Rebuzzle - Daily Rebus Puzzles',
+		description: 'Challenge yourself with daily rebus puzzles. Solve visual word puzzles and maintain your daily streak!',
+		creator: '@byronwade',
 	},
-	icons: {
-		icon: "/favicon.ico",
-		appleTouchIcon: "/apple-touch-icon.png",
-		favicon32x32: "/favicon-32x32.png",
-		favicon16x16: "/favicon-16x16.png",
-		manifest: "/site.webmanifest",
+	manifest: '/manifest.json',
+	robots: {
+		index: true,
+		follow: true,
+		googleBot: {
+			index: true,
+			follow: true,
+			'max-video-preview': -1,
+			'max-image-preview': 'large',
+			'max-snippet': -1,
+		},
 	},
-};
+	verification: {
+		google: 'your-google-site-verification',
+	},
+}
+
+export const viewport: Viewport = {
+	themeColor: [
+		{ media: '(prefers-color-scheme: light)', color: 'white' },
+		{ media: '(prefers-color-scheme: dark)', color: 'black' },
+	],
+	width: 'device-width',
+	initialScale: 1,
+	maximumScale: 1,
+}
+
+interface RootLayoutProps {
+	children: React.ReactNode
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<head>
+				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+			</head>
+			<body className={inter.className}>
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="system"
+					enableSystem
+					disableTransitionOnChange
+				>
+					<QueryProvider>
+						{children}
+						<Toaster />
+					</QueryProvider>
+				</ThemeProvider>
+				<Analytics />
+				<SpeedInsights />
+			</body>
+		</html>
+	)
+}
