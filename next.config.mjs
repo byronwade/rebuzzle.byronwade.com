@@ -21,7 +21,7 @@ const nextConfig = {
 		optimizePackageImports: ["@radix-ui/react-icons", "lucide-react", "recharts", "@emotion/react", "framer-motion"],
 		ppr: true,
 		taint: true,
-		webVitalsAttribution: ['CLS', 'LCP', 'FCP', 'FID', 'TTFB', 'INP'],
+		webVitalsAttribution: ["CLS", "LCP", "FCP", "FID", "TTFB", "INP"],
 	},
 	logging: {
 		fetches: {
@@ -32,14 +32,14 @@ const nextConfig = {
 		ignoreBuildErrors: false,
 	},
 	webpack: (config) => {
-		config.optimization.moduleIds = 'deterministic'
-		config.optimization.runtimeChunk = 'single'
+		config.optimization.moduleIds = "deterministic";
+		config.optimization.runtimeChunk = "single";
 		config.optimization.splitChunks = {
-			chunks: 'all',
+			chunks: "all",
 			maxInitialRequests: 25,
-			minSize: 20000
-		}
-		return config
+			minSize: 20000,
+		};
+		return config;
 	},
 	httpAgentOptions: {
 		keepAlive: true,
