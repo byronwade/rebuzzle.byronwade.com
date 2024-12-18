@@ -1,96 +1,83 @@
-import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/react'
-import { SpeedInsights } from '@vercel/speed-insights/next'
-import { ThemeProvider } from '@/components/theme-provider'
-import { Toaster } from '@/components/ui/toaster'
-import { QueryProvider } from '@/components/providers'
-import '@/styles/globals.css'
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/react";
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  preload: true,
-  adjustFontFallback: true 
-})
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://rebuzzle.byronwade.com'),
-  title: {
-    default: 'Rebuzzle - Daily Rebus Puzzles',
-    template: '%s | Rebuzzle'
-  },
-  description: 'Challenge yourself with daily rebus puzzles. Solve visual word puzzles and maintain your daily streak!',
-  keywords: ['rebus', 'puzzle', 'word game', 'daily puzzle', 'brain teaser'],
-  authors: [{ name: 'Byron Wade' }],
-  creator: 'Byron Wade',
-  publisher: 'Byron Wade',
-  openGraph: {
-    title: 'Rebuzzle - Daily Rebus Puzzles',
-    description: 'Challenge yourself with daily rebus puzzles. Solve visual word puzzles and maintain your daily streak!',
-    url: 'https://rebuzzle.byronwade.com',
-    siteName: 'Rebuzzle',
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Rebuzzle - Daily Rebus Puzzles',
-    description: 'Challenge yourself with daily rebus puzzles. Solve visual word puzzles and maintain your daily streak!',
-    creator: '@byronwade',
-  },
-  manifest: '/manifest.json',
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-  verification: {
-    google: 'your-google-site-verification',
-  },
-}
+	title: {
+		default: "Rebuzzle - Daily Rebus Puzzle Game",
+		template: "%s | Rebuzzle",
+	},
+	description: "Challenge your mind with Rebuzzle, a daily rebus puzzle game. Solve visual word puzzles and compete with friends!",
+	keywords: ["rebus", "puzzle", "word game", "daily challenge", "brain teaser"],
+	authors: [{ name: "Rebuzzle Team" }],
+	creator: "Rebuzzle Team",
+	publisher: "Rebuzzle",
+	formatDetection: {
+		email: false,
+		address: false,
+		telephone: false,
+	},
+	openGraph: {
+		type: "website",
+		locale: "en_US",
+		url: "https://rebuzzle.com",
+		siteName: "Rebuzzle",
+		title: "Rebuzzle - Daily Rebus Puzzle Game",
+		description: "Challenge your mind with Rebuzzle, a daily rebus puzzle game. Solve visual word puzzles and compete with friends!",
+		images: [
+			{
+				url: "https://rebuzzle.com/og-image.jpg",
+				width: 1200,
+				height: 630,
+				alt: "Rebuzzle - Daily Rebus Puzzle Game",
+			},
+		],
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "Rebuzzle - Daily Rebus Puzzle Game",
+		description: "Challenge your mind with Rebuzzle, a daily rebus puzzle game. Solve visual word puzzles and compete with friends!",
+		images: ["https://rebuzzle.com/twitter-image.jpg"],
+		creator: "@rebuzzle",
+	},
+	robots: {
+		index: true,
+		follow: true,
+		googleBot: {
+			index: true,
+			follow: true,
+			"max-video-preview": -1,
+			"max-image-preview": "large",
+			"max-snippet": -1,
+		},
+	},
+	icons: {
+		icon: "/favicon.ico",
+		shortcut: "/favicon-16x16.png",
+		apple: "/apple-touch-icon.png",
+	},
+	manifest: "/site.webmanifest",
+	alternates: {
+		canonical: "https://rebuzzle.com",
+		languages: {
+			"en-US": "https://rebuzzle.com",
+		},
+	},
+};
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+	return (
+		<ClerkProvider>
+			<html lang="en" suppressHydrationWarning>
+				<body className={`${inter.className} min-h-screen bg-background font-sans antialiased`}>
+					{children}
+					<Analytics />
+				</body>
+			</html>
+		</ClerkProvider>
+	);
 }
-
-interface RootLayoutProps {
-  children: React.ReactNode
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-      </head>
-      <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <QueryProvider>
-            {children}
-            <Toaster />
-          </QueryProvider>
-        </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
-      </body>
-    </html>
-  )
-} 
