@@ -8,17 +8,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { SettingsIcon } from 'lucide-react'
 import { gameSettings } from '@/lib/gameSettings'
 
+// Create a mutable settings state
+const settings = {
+  puzzlesPerDay: gameSettings.puzzlesPerDay as number,
+  resetTime: gameSettings.resetTime as string,
+}
+
 export function Settings() {
-  const [puzzlesPerDay, setPuzzlesPerDay] = useState(gameSettings.puzzlesPerDay)
-  const [resetTime, setResetTime] = useState(gameSettings.resetTime)
+  const [puzzlesPerDay, setPuzzlesPerDay] = useState<number>(settings.puzzlesPerDay)
+  const [resetTime, setResetTime] = useState<string>(settings.resetTime)
 
   const handleSave = () => {
-    // In a real app, you'd save these to a backend or local storage
-    console.log('Saving settings:', { puzzlesPerDay, resetTime })
-    // Update gameSettings
-    gameSettings.puzzlesPerDay = puzzlesPerDay
-    gameSettings.resetTime = resetTime
-    // Close the dialog (you'd need to implement this)
+    // Update the mutable settings object
+    settings.puzzlesPerDay = puzzlesPerDay
+    settings.resetTime = resetTime
+    console.log('Settings saved:', settings)
   }
 
   return (

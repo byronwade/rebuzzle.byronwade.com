@@ -3,10 +3,21 @@ import "./globals.css";
 import { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/react";
+import { AuthCheck } from "@/components/AuthCheck";
+import { AuthProvider } from "@/components/AuthProvider";
+import { Suspense } from "react";
 
-const inter = Inter({ subsets: ["latin"] });
+// Optimize font loading
+const inter = Inter({
+	subsets: ["latin"],
+	display: "swap",
+	preload: true,
+	fallback: ["system-ui", "arial"],
+});
 
+// Pre-compute metadata
 export const metadata: Metadata = {
+	metadataBase: new URL("https://rebuzzle.com"),
 	title: {
 		default: "Rebuzzle - Daily Rebus Puzzle Game",
 		template: "%s | Rebuzzle",
@@ -30,7 +41,7 @@ export const metadata: Metadata = {
 		description: "Challenge your mind with Rebuzzle, a daily rebus puzzle game. Solve visual word puzzles and compete with friends!",
 		images: [
 			{
-				url: "https://rebuzzle.com/og-image.jpg",
+				url: "/og-image.jpg",
 				width: 1200,
 				height: 630,
 				alt: "Rebuzzle - Daily Rebus Puzzle Game",
@@ -41,7 +52,7 @@ export const metadata: Metadata = {
 		card: "summary_large_image",
 		title: "Rebuzzle - Daily Rebus Puzzle Game",
 		description: "Challenge your mind with Rebuzzle, a daily rebus puzzle game. Solve visual word puzzles and compete with friends!",
-		images: ["https://rebuzzle.com/twitter-image.jpg"],
+		images: ["/twitter-image.jpg"],
 		creator: "@rebuzzle",
 	},
 	robots: {
@@ -56,9 +67,11 @@ export const metadata: Metadata = {
 		},
 	},
 	icons: {
-		icon: "/favicon.ico",
-		shortcut: "/favicon-16x16.png",
-		apple: "/apple-touch-icon.png",
+		icon: [
+			{ url: "/favicon.ico", sizes: "any" },
+			{ url: "/icon.svg", type: "image/svg+xml" },
+		],
+		apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
 	},
 	manifest: "/site.webmanifest",
 	alternates: {
@@ -71,11 +84,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<ClerkProvider>
+		<ClerkProvider appearance={{ layout: { logoPlacement: "none" } }} publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
 			<html lang="en" suppressHydrationWarning>
+				<head>
+					<link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+					<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+					<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+					<link rel="apple-touch-icon" href="/icon-192.png" />
+					<Suspense fallback={null}>
+						<AuthCheck />
+					</Suspense>
+				</head>
 				<body className={`${inter.className} min-h-screen bg-background font-sans antialiased`}>
-					{children}
-					<Analytics />
+					<AuthProvider>
+						<Suspense fallback={null}>{children}</Suspense>
+					</AuthProvider>
+					<Analytics debug={process.env.NODE_ENV === "development"} />
 				</body>
 			</html>
 		</ClerkProvider>

@@ -53,11 +53,11 @@
     "embla-carousel-react": "^8.5.1",
     "input-otp": "^1.4.1",
     "lucide-react": "^0.468.0",
-    "next": "14.2.16",
+    "next": "^15.1.1-canary.12",
     "next-themes": "^0.4.4",
-    "react": "^18",
+    "react": "^19.1.0-canary-d4287258-20241217",
     "react-day-picker": "^8.10.1",
-    "react-dom": "^18",
+    "react-dom": "^19.1.0-canary-d4287258-20241217",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "^2.15.0",
@@ -68,14 +68,16 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
-    "postcss": "^8",
+    "postcss": "^8.4.49",
     "prisma": "^6.1.0",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5"
   }
 }

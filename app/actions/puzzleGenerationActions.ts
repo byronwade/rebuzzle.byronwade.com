@@ -3,7 +3,7 @@
 import { xai } from "@ai-sdk/xai";
 import { generateObject } from "ai";
 import { z } from "zod";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 // Define schemas for our structured data
 const TrendingTopicSchema = z.object({

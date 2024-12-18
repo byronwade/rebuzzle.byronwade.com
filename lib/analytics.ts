@@ -6,6 +6,8 @@ export const analyticsEvents = {
 	GUESS_SUBMITTED: "guess_submitted",
 	USER_LOGIN: "user_login",
 	BLOG_POST_VIEW: "blog_post_view",
+	HINTS_REVEALED: "hints_revealed",
+	BLOG_ANSWER_REVEALED: "blog_answer_revealed",
 } as const;
 
 export function trackEvent(eventName: string, eventData?: Record<string, any>) {

@@ -2,11 +2,8 @@
 
 import React from "react";
 import { SignIn } from "@clerk/nextjs";
-import { useTheme } from "next-themes";
 
 export default function SignInPage() {
-	const { theme } = useTheme();
-
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
 			<SignIn
@@ -16,9 +13,9 @@ export default function SignInPage() {
 						card: "bg-transparent shadow-none",
 					},
 				}}
-				afterSignInUrl="/"
 				signUpUrl="/sign-up"
 				routing="path"
+				path="/sign-in"
 			/>
 		</div>
 	);

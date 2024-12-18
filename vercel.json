@@ -1,15 +1,8 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/generate-puzzles",
-      "schedule": "0 0 * * *"
-    }
-  ],
-  "functions": {
-    "/api/cron/generate-puzzles": {
-      "memory": 1024,
-      "maxDuration": 300
-    }
-  }
+	"crons": [
+		{
+			"path": "/api/cron/generate-puzzles",
+			"schedule": "0 0 * * *"
+		}
+	]
 }
-

@@ -9,30 +9,42 @@ import { GuessBoxes } from "./GuessBoxes";
 import { Keyboard } from "./Keyboard";
 import { checkGuess } from "@/lib/gameLogic";
 import { calculatePoints, checkAchievements, getLevel, updateDailyChallenge, UserStats } from "@/lib/gamification";
-import { KeyboardIcon, X, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { gameSettings } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
 import Script from "next/script";
 import { fetchGameData } from "@/app/actions/gameActions";
-import { GameData } from "@/lib/gameData";
+import { GameData } from "@/lib/gameSettings";
 import { trackEvent, analyticsEvents } from "@/lib/analytics";
 import { getFeatureFlag, featureFlags } from "@/lib/featureFlags";
+import { HintBadge } from "./HintBadge";
+import { useAuth } from "./AuthProvider";
+import { InfoDialog } from "./InfoDialog";
 
 interface GameBoardProps {
-	initialPuzzle: GameData;
+	gameData: GameData;
 }
 
-export default function GameBoard({ initialPuzzle }: GameBoardProps) {
+export default function GameBoard({ gameData }: GameBoardProps) {
+	const { isAuthenticated } = useAuth();
 	const [currentGuess, setCurrentGuess] = useState("");
 	const [gameOver, setGameOver] = useState(false);
-	const [nextPlayTime, setNextPlayTime] = useState<Date | null>(null);
-	const [rebus, setRebus] = useState<string>(initialPuzzle.rebusPuzzle);
-	const [currentEventPuzzle, setCurrentEventPuzzle] = useState<GameData>(initialPuzzle);
-	const [showKeyboard, setShowKeyboard] = useState(false);
-	const [attemptsLeft, setAttemptsLeft] = useState(gameSettings.maxAttempts);
+	const [nextPlayTime, setNextPlayTime] = useState<Date | null>(() => {
+		if (typeof window !== "undefined") {
+			const storedTime = localStorage.getItem("nextPlayTime");
+			return storedTime ? new Date(storedTime) : null;
+		}
+		return null;
+	});
+	const [rebus, setRebus] = useState<string>(gameData.rebusPuzzle);
+	const [currentEventPuzzle, setCurrentEventPuzzle] = useState<GameData>(gameData);
+	const [attemptsLeft, setAttemptsLeft] = useState<number>(gameSettings.maxAttempts);
 	const [shake, setShake] = useState(false);
 	const [feedbackMessage, setFeedbackMessage] = useState("");
 	const [lastSubmittedGuess, setLastSubmittedGuess] = useState<string | null>(null);
+	const [finalGuess, setFinalGuess] = useState<string | null>(null);
+	const [wasSuccessful, setWasSuccessful] = useState<boolean>(false);
+	const [finalAttempts, setFinalAttempts] = useState<number>(0);
 	const [userStats, setUserStats] = useState<UserStats>(() => {
 		if (typeof window !== "undefined") {
 			const savedStats = localStorage.getItem("userStats");
@@ -61,121 +73,217 @@ export default function GameBoard({ initialPuzzle }: GameBoardProps) {
 		};
 	});
 	const [error, setError] = useState<{ message: string; details?: string } | null>(null);
-	const [puzzlesPlayedToday, setPuzzlesPlayedToday] = useState(0);
-	const [submittedGuesses, setSubmittedGuesses] = useState<string[]>([]);
 	const [isGuessFilled, setIsGuessFilled] = useState(false);
 	const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
-	const [gameStartTime, setGameStartTime] = useState(Date.now()); // Added gameStartTime state
+	const [usedHints, setUsedHints] = useState<number[]>([]);
 	const router = useRouter();
 
+	// Check if the game is completed from localStorage or gameData
 	useEffect(() => {
-		const storedNextPlayTime = localStorage.getItem("nextPlayTime");
-		if (storedNextPlayTime) {
-			const nextPlay = new Date(storedNextPlayTime);
-			if (nextPlay > new Date()) {
-				setNextPlayTime(nextPlay);
-				setGameOver(true);
-				router.push("/game-over");
-			} else {
-				localStorage.removeItem("nextPlayTime");
+		const checkCompletionState = async () => {
+			try {
+				const completionHash = localStorage.getItem("gameCompletion");
+				if (completionHash) {
+					// Decode and verify the completion data
+					const decodedData = JSON.parse(atob(completionHash));
+
+					// Verify the data is for the current puzzle
+					if (decodedData.puzzleId === currentEventPuzzle?.id) {
+						const now = new Date();
+						const nextPlayTime = new Date(decodedData.nextPlayTime);
+
+						if (nextPlayTime > now) {
+							setGameOver(true);
+							setNextPlayTime(nextPlayTime);
+							setFinalGuess(decodedData.finalGuess);
+							setWasSuccessful(decodedData.wasSuccessful);
+							setFinalAttempts(decodedData.finalAttempts);
+							setAttemptsLeft(decodedData.attemptsLeft);
+							setUsedHints(decodedData.hintsUsed);
+						} else {
+							// Clear expired completion data
+							localStorage.removeItem("gameCompletion");
+						}
+					} else {
+						// Clear completion data for different puzzle
+						localStorage.removeItem("gameCompletion");
+					}
+				}
+
+				if (gameData.isCompleted) {
+					setGameOver(true);
+				}
+			} catch (error) {
+				console.error("Error checking completion state:", error);
+				// If there's any error in parsing/verifying, clear the completion data
+				localStorage.removeItem("gameCompletion");
 			}
-		}
-	}, [router]);
+		};
+
+		checkCompletionState();
+	}, [gameData.isCompleted, currentEventPuzzle?.id]);
 
 	useEffect(() => {
-		// Track game start when component mounts
 		trackEvent(analyticsEvents.GAME_START);
 	}, []);
 
 	useEffect(() => {
 		async function checkFeatureFlag() {
-			const isEnabled = await getFeatureFlag(featureFlags.ADVANCED_ANALYTICS);
+			const isEnabled = await getFeatureFlag("ADVANCED_ANALYTICS");
 			setAdvancedAnalyticsEnabled(isEnabled);
 		}
 		checkFeatureFlag();
 	}, []);
 
+	const handleHintReveal = (hintIndex: number) => {
+		if (gameOver) return;
+		setUsedHints((prev) => [...prev, hintIndex]);
+	};
+
+	const calculateHintPenalty = () => {
+		return usedHints.length * 0.25;
+	};
+
+	const setCompletionState = useCallback(
+		(success: boolean, finalGuess: string, attempts: number) => {
+			// Set local state
+			setGameOver(true);
+			setFinalGuess(finalGuess);
+			setWasSuccessful(success);
+			setFinalAttempts(attempts);
+
+			// Store completion state in localStorage with timestamp
+			const now = new Date();
+			const tomorrow = new Date(now);
+			tomorrow.setDate(tomorrow.getDate() + 1);
+			tomorrow.setHours(0, 0, 0, 0);
+
+			const completionData = {
+				nextPlayTime: tomorrow.toISOString(),
+				finalGuess,
+				wasSuccessful: success,
+				finalAttempts: attempts,
+				timestamp: now.toISOString(),
+				puzzleId: currentEventPuzzle.id,
+				attemptsLeft,
+				hintsUsed: usedHints,
+			};
+
+			// Store encrypted or hashed version of the completion data
+			const dataString = JSON.stringify(completionData);
+			const hash = btoa(dataString); // Basic encoding, should use more secure method in production
+
+			localStorage.setItem("gameCompletion", hash);
+		},
+		[currentEventPuzzle?.id, attemptsLeft, usedHints]
+	);
+
 	const handleGuess = useCallback(async () => {
-		if (currentEventPuzzle && currentGuess.length === currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length) {
+		if (gameOver || !currentEventPuzzle || currentGuess.length !== currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length) {
+			return;
+		}
+
+		try {
 			const result = await checkGuess(currentGuess, currentEventPuzzle.answer);
 
-			if (advancedAnalyticsEnabled) {
-				trackEvent(analyticsEvents.GUESS_SUBMITTED, {
-					correct: result.correct,
-					attempts: gameSettings.maxAttempts - attemptsLeft + 1,
-					guessLength: currentGuess.length,
-					timeTaken: Date.now() - gameStartTime,
-				});
-			} else {
-				trackEvent(analyticsEvents.GUESS_SUBMITTED, {
-					correct: result.correct,
-					attempts: gameSettings.maxAttempts - attemptsLeft + 1,
-				});
-			}
-
-			setSubmittedGuesses((prev) => [...prev, currentGuess]);
-			setLastSubmittedGuess(currentGuess);
-
 			if (result.correct) {
-				setGameOver(true);
-				setFeedbackMessage("Correct! Well done!");
-				const tomorrow = new Date();
-				tomorrow.setHours(tomorrow.getHours() + gameSettings.nextGameCountdownHours);
-				setNextPlayTime(tomorrow);
-				localStorage.setItem("nextPlayTime", tomorrow.toISOString());
+				const attempts = gameSettings.maxAttempts - attemptsLeft + 1;
+				setCompletionState(true, currentGuess, attempts);
 
-				let newStats = { ...userStats };
-				newStats = updateDailyChallenge(newStats);
-				newStats.totalGames += 1;
+				try {
+					await fetch("/api/completion", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+					});
+				} catch (error) {
+					console.error("Error setting completion state:", error);
+				}
+
+				await updateStatsAndRedirect(true);
+			} else {
+				const newAttemptsLeft = attemptsLeft - 1;
+				setAttemptsLeft(newAttemptsLeft);
+
+				if (newAttemptsLeft === 0) {
+					setCompletionState(false, currentGuess, gameSettings.maxAttempts);
+					await updateStatsAndRedirect(false);
+				} else {
+					handleIncorrectGuess(newAttemptsLeft);
+				}
+			}
+		} catch (error) {
+			console.error("Error processing guess:", error);
+			setError({
+				message: "Error processing guess",
+				details: error instanceof Error ? error.message : "Unknown error",
+			});
+		}
+	}, [currentGuess, currentEventPuzzle, attemptsLeft, gameOver, setCompletionState]);
+
+	const updateStatsAndRedirect = async (success: boolean) => {
+		try {
+			const newStats = { ...userStats };
+			newStats.totalGames += 1;
+
+			if (success) {
 				newStats.wins += 1;
 				newStats.streak += 1;
-				newStats.points += calculatePoints(true, newStats.streak, true);
+				newStats.dailyChallengeStreak = updateDailyChallenge(newStats).dailyChallengeStreak;
+
+				const hintPenalty = calculateHintPenalty();
+				const basePoints = calculatePoints(true, newStats.streak, true);
+				const finalPoints = Math.max(Math.floor(basePoints * (1 - hintPenalty)), 1);
+				newStats.points += finalPoints;
+
 				const newAchievements = checkAchievements(newStats);
 				newStats.achievements = [...newStats.achievements, ...newAchievements];
 				const { level } = getLevel(newStats.points);
 				newStats.level = level;
-				setUserStats(newStats);
-				localStorage.setItem("userStats", JSON.stringify(newStats));
 
 				trackEvent(analyticsEvents.GAME_COMPLETE, {
 					success: true,
 					attempts: gameSettings.maxAttempts - attemptsLeft + 1,
+					hintsUsed: usedHints.length,
+					pointsEarned: finalPoints,
+					hintPenalty: hintPenalty,
+					puzzleId: currentEventPuzzle?.id,
 				});
-
-				const encodedGuess = encodeURIComponent(currentGuess);
-				const encodedSuccess = encodeURIComponent(result.correct.toString());
-				router.push(`/game-over?guess=${encodedGuess}&success=${encodedSuccess}&attempts=${gameSettings.maxAttempts - attemptsLeft + 1}`);
-				setPuzzlesPlayedToday(puzzlesPlayedToday + 1);
 			} else {
-				setAttemptsLeft((prev) => prev - 1);
-				setShake(true);
-				setTimeout(() => setShake(false), 500);
-				if (attemptsLeft === 1) {
-					setGameOver(true);
-					setFeedbackMessage(`Game over! The correct answer was: ${currentEventPuzzle.answer}`);
-					let newStats = { ...userStats };
-					newStats.totalGames += 1;
-					newStats.streak = 0;
-					setUserStats(newStats);
-					localStorage.setItem("userStats", JSON.stringify(newStats));
-
-					trackEvent(analyticsEvents.GAME_COMPLETE, {
-						success: false,
-						attempts: gameSettings.maxAttempts,
-					});
-
-					const encodedGuess = encodeURIComponent(currentGuess);
-					const encodedSuccess = "false";
-					router.push(`/game-over?guess=${encodedGuess}&success=${encodedSuccess}&attempts=${gameSettings.maxAttempts}`);
-					setPuzzlesPlayedToday(puzzlesPlayedToday + 1);
-				} else {
-					setFeedbackMessage(`Incorrect. ${attemptsLeft - 1} ${attemptsLeft - 1 === 1 ? "attempt" : "attempts"} left.`);
-					setCurrentGuess("");
-				}
+				newStats.streak = 0;
+				trackEvent(analyticsEvents.GAME_COMPLETE, {
+					success: false,
+					attempts: gameSettings.maxAttempts,
+					puzzleId: currentEventPuzzle?.id,
+				});
 			}
-			setIsGuessFilled(false);
+
+			// Only store stats if user is authenticated
+			if (isAuthenticated) {
+				localStorage.setItem("userStats", JSON.stringify(newStats));
+				setUserStats(newStats);
+			}
+
+			// Redirect to game over page
+			const attempts = success ? gameSettings.maxAttempts - attemptsLeft + 1 : gameSettings.maxAttempts;
+			router.push(`/game-over?guess=${encodeURIComponent(currentGuess)}&success=${success}&attempts=${attempts}`);
+		} catch (error) {
+			console.error("Error updating stats:", error);
+			setError({
+				message: "Error updating stats",
+				details: error instanceof Error ? error.message : "Unknown error",
+			});
 		}
-	}, [currentGuess, currentEventPuzzle, router, userStats, puzzlesPlayedToday, attemptsLeft, advancedAnalyticsEnabled, gameStartTime]);
+	};
+
+	const handleIncorrectGuess = (attemptsLeft: number) => {
+		setShake(true);
+		setTimeout(() => setShake(false), 500);
+		setFeedbackMessage(`Incorrect. ${attemptsLeft} ${attemptsLeft === 1 ? "attempt" : "attempts"} left.`);
+		setCurrentGuess("");
+		setIsGuessFilled(false);
+	};
 
 	const handleKeyPress = useCallback(
 		(key: string) => {
@@ -227,12 +335,9 @@ export default function GameBoard({ initialPuzzle }: GameBoardProps) {
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [gameOver, nextPlayTime, handleGuess, handleKeyPress, isGuessFilled]);
 
-	const toggleKeyboard = () => {
-		setShowKeyboard((prev) => !prev);
-	};
-
 	return (
 		<>
+			<InfoDialog />
 			<Script id="structured-data" type="application/ld+json">
 				{JSON.stringify({
 					"@context": "https://schema.org",
@@ -255,7 +360,7 @@ export default function GameBoard({ initialPuzzle }: GameBoardProps) {
 					},
 				})}
 			</Script>
-			<div className={cn("w-full flex flex-col items-center", shake && "shake")}>
+			<div className={cn("w-full flex flex-col items-center pb-32 sm:pb-0", shake && "shake")}>
 				<Card className="w-full aspect-[16/8] bg-blue-100 flex items-center justify-center mb-4 sm:mb-6 p-4 sm:p-6 md:p-8">
 					{error ? (
 						<div className="text-red-500 text-center">
@@ -267,18 +372,31 @@ export default function GameBoard({ initialPuzzle }: GameBoardProps) {
 					)}
 				</Card>
 
-				<div className="w-full flex justify-center mb-2">
+				<div className="w-full flex justify-between items-center mb-2">
 					<Badge variant="outline" className="text-[10px] sm:text-xs text-gray-600 border-gray-300 px-2 py-0.5">
-						{nextPlayTime ? "Game Over" : `${attemptsLeft} ${attemptsLeft === 1 ? "Attempt" : "Attempts"} Left`}
+						{gameOver ? "Game Over" : `${attemptsLeft} ${attemptsLeft === 1 ? "Attempt" : "Attempts"} Left`}
 					</Badge>
+					{!gameOver && currentEventPuzzle.hints && currentEventPuzzle.hints.length > 0 && <HintBadge hints={currentEventPuzzle.hints} onHintReveal={handleHintReveal} gameId={currentEventPuzzle.id} />}
 				</div>
 
 				{currentEventPuzzle && (
 					<div className="w-full flex flex-col items-center">
-						<GuessBoxes currentGuess={currentGuess} answer={currentEventPuzzle.answer} gameOver={gameOver} lastSubmittedGuess={lastSubmittedGuess} submittedGuesses={submittedGuesses} onSubmit={handleGuess} isGuessFilled={isGuessFilled} handleGuess={handleGuess} />
+						<GuessBoxes currentGuess={currentGuess} answer={currentEventPuzzle.answer} gameOver={gameOver} lastSubmittedGuess={lastSubmittedGuess} submittedGuesses={[]} onSubmit={handleGuess} isGuessFilled={isGuessFilled} handleGuess={handleGuess} />
+
 						{isGuessFilled && !gameOver && (
 							<Button onClick={handleGuess} className="mt-4 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md flex items-center">
 								<span className="mr-2">Enter</span>
+								<ArrowRight className="h-4 w-4" />
+							</Button>
+						)}
+						{gameOver && (
+							<Button
+								onClick={() => {
+									router.push(`/game-over?guess=${encodeURIComponent(finalGuess || "")}&success=${wasSuccessful}&attempts=${finalAttempts}`);
+								}}
+								className="mt-4 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md flex items-center"
+							>
+								<span className="mr-2">View Results</span>
 								<ArrowRight className="h-4 w-4" />
 							</Button>
 						)}
@@ -286,18 +404,12 @@ export default function GameBoard({ initialPuzzle }: GameBoardProps) {
 				)}
 
 				<div className="w-full text-center text-sm text-gray-600 mt-2" aria-live="polite">
-					{feedbackMessage}
+					{gameOver ? <p>Game over! Come back at midnight for a new puzzle.</p> : feedbackMessage}
 				</div>
 
-				<div className="w-full flex justify-center mt-4">
-					<Button onClick={toggleKeyboard} variant="outline" size="sm" className="flex items-center gap-2" aria-label={showKeyboard ? "Hide keyboard" : "Show keyboard"}>
-						{showKeyboard ? <X className="h-4 w-4" /> : <KeyboardIcon className="h-4 w-4" />}
-						<span>{showKeyboard ? "Hide Keyboard" : "Show Keyboard"}</span>
-					</Button>
-				</div>
-
-				{showKeyboard && (
-					<div className="w-full flex justify-center mt-4">
+				{!gameOver && (
+					<div className="w-full">
+						<p className="hidden sm:block text-center text-sm text-gray-500 mb-4">You can use your keyboard to type - just start typing!</p>
 						<Keyboard onKeyPress={handleKeyPress} disabled={gameOver || nextPlayTime !== null || !currentEventPuzzle} />
 					</div>
 				)}

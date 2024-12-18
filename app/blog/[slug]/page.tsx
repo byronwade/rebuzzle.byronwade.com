@@ -1,54 +1,77 @@
 import { Metadata } from 'next'
 import Layout from '@/components/Layout'
 import { fetchBlogPost } from '../../actions/blogActions'
-import { notFound } from 'next/navigation'
-import BlogPostContent from '@/components/BlogPostContent'
+import { notFound } from "next/navigation";
+import BlogPostContent from "@/components/BlogPostContent";
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const post = await fetchBlogPost(params.slug)
-  if (!post) return {}
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+	try {
+		const { slug } = await params;
+		const post = await fetchBlogPost(slug);
+		if (!post) return {};
 
-  return {
-    title: `${post.title} - Rebuzzle Blog`,
-    description: post.excerpt,
-    openGraph: {
-      title: `${post.title} - Rebuzzle Blog`,
-      description: post.excerpt,
-      url: `https://rebuzzle.com/blog/${post.slug}`,
-      siteName: 'Rebuzzle',
-      images: [
-        {
-          url: `https://rebuzzle.com/blog-posts/${post.slug}-og-image.jpg`,
-          width: 1200,
-          height: 630,
-        },
-      ],
-      locale: 'en_US',
-      type: 'article',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `${post.title} - Rebuzzle Blog`,
-      description: post.excerpt,
-      images: [`https://rebuzzle.com/blog-posts/${post.slug}-twitter-image.jpg`],
-    },
-    alternates: {
-      canonical: `https://rebuzzle.com/blog/${post.slug}`,
-    },
-  }
+		return {
+			title: `${post.title} - Rebuzzle Blog`,
+			description: post.excerpt,
+			openGraph: {
+				title: `${post.title} - Rebuzzle Blog`,
+				description: post.excerpt,
+				url: `https://rebuzzle.com/blog/${post.slug}`,
+				siteName: "Rebuzzle",
+				images: [
+					{
+						url: "/og-image.jpg",
+						width: 1200,
+						height: 630,
+					},
+				],
+				locale: "en_US",
+				type: "article",
+			},
+			twitter: {
+				card: "summary_large_image",
+				title: `${post.title} - Rebuzzle Blog`,
+				description: post.excerpt,
+				images: ["/twitter-image.jpg"],
+			},
+			alternates: {
+				canonical: `https://rebuzzle.com/blog/${post.slug}`,
+			},
+		};
+	} catch (error) {
+		console.error("Error generating metadata:", error);
+		return {};
+	}
 }
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = await fetchBlogPost(params.slug)
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+	const { slug } = await params;
 
-  if (!post) {
-    notFound()
-  }
+	try {
+		const post = await fetchBlogPost(slug);
 
-  return (
-    <Layout>
-      <BlogPostContent post={post} />
-    </Layout>
-  )
+		if (!post) {
+			notFound();
+		}
+
+		return (
+			<Layout>
+				<BlogPostContent post={post} />
+			</Layout>
+		);
+	} catch (error) {
+		console.error("Error in BlogPostPage:", error);
+		return (
+			<Layout>
+				<div className="max-w-4xl mx-auto px-4 py-8">
+					<div className="text-center text-red-600 dark:text-red-400">
+						<h1 className="text-3xl font-bold mb-4">Error Loading Blog Post</h1>
+						<p>Sorry, we encountered an error loading this blog post.</p>
+						{process.env.NODE_ENV === "development" && <pre className="mt-4 text-left bg-gray-100 dark:bg-gray-800 p-4 rounded mx-auto max-w-2xl overflow-auto text-sm">{JSON.stringify(error, null, 2)}</pre>}
+					</div>
+				</div>
+			</Layout>
+		);
+	}
 }
 

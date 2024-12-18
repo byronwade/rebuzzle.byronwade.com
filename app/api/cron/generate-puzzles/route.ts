@@ -6,6 +6,10 @@ export const config = {
 };
 
 export async function GET(request: Request) {
+	if (request.headers.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+		return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+	}
+
 	try {
 		await generateNextPuzzle();
 		return NextResponse.json({ success: true });

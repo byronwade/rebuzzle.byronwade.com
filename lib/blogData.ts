@@ -2,7 +2,22 @@ export interface BlogPost {
 	slug: string;
 	date: string;
 	title: string;
-	puzzle: string;
+	puzzle:
+		| string
+		| {
+				rebusPuzzle: string;
+				answer: string;
+				explanation: string;
+				metadata?: {
+					hints?: string[];
+					topic?: string;
+					keyword?: string;
+					category?: string;
+					relevanceScore?: number;
+					generatedAt?: string;
+					version?: string;
+				};
+		  };
 	answer: string;
 	explanation: string;
 	content: string;
@@ -20,7 +35,7 @@ export interface BlogPost {
 	};
 }
 
-export interface BlogPostWithPuzzle extends BlogPost {
+export interface BlogPostWithPuzzle extends Omit<BlogPost, "puzzle"> {
 	puzzle: {
 		rebusPuzzle: string;
 		answer: string;

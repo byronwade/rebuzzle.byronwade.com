@@ -7,13 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bell, BellOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Link from "next/link";
 import { Timer } from "./Timer";
-import { DonateButton } from "./DonateButton";
+import { useAuth } from "./AuthProvider";
 
 interface HeaderProps {
 	nextPlayTime: Date | null;
@@ -26,6 +25,7 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 	const [notificationType, setNotificationType] = useState<"email" | "phone">("email");
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const { toast } = useToast();
+	const { isAuthenticated, isLoading } = useAuth();
 
 	useEffect(() => {
 		if ("Notification" in window) {
@@ -152,9 +152,14 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 							</DialogFooter>
 						</DialogContent>
 					</Dialog>
-					<DonateButton />
+					<Button variant="outline" size="sm" asChild>
+						<Link href="https://www.buymeacoffee.com/VFYLE26" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+							<img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="Buy me a coffee" className="h-4 w-4" />
+							<span className="hidden sm:inline">Donate</span>
+						</Link>
+					</Button>
 					<InfoButton />
-					<UserMenu />
+					<UserMenu isAuthenticated={isAuthenticated} />
 				</div>
 			</div>
 			<Timer nextPlayTime={nextPlayTime} className="text-xs text-gray-600 w-full" />

@@ -36,4 +36,11 @@ export interface GameData {
 	leaderboard: LeaderboardEntry[];
 	hints?: string[];
 	metadata?: PuzzleMetadata;
+	isCompleted?: boolean;
+	shouldRedirect?: boolean;
+	blogPost?: {
+		title?: string;
+		slug?: string;
+		publishedAt?: Date;
+	} | null;
 }

@@ -49,7 +49,7 @@ export default function GameOverContent({ answer, explanation, leaderboard, succ
 
 	useEffect(() => {
 		async function checkFeatureFlag() {
-			const isEnabled = await getFeatureFlag(featureFlags.NEW_LEADERBOARD);
+			const isEnabled = await getFeatureFlag("NEW_LEADERBOARD");
 			setNewLeaderboardEnabled(isEnabled);
 		}
 		checkFeatureFlag();
