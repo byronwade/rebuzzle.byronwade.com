@@ -17,11 +17,11 @@ export function NewLeaderboard() {
 	useEffect(() => {
 		// In a real application, fetch this data from your API
 		setLeaderboard([
-			{ name: "Alice", score: 1000, avatar: "/avatars/alice.jpg" },
-			{ name: "Bob", score: 950, avatar: "/avatars/bob.jpg" },
-			{ name: "Charlie", score: 900, avatar: "/avatars/charlie.jpg" },
-			{ name: "David", score: 850, avatar: "/avatars/david.jpg" },
-			{ name: "Eve", score: 800, avatar: "/avatars/eve.jpg" },
+			{ name: "Alice", score: 1000, avatar: "/avatars/alice.svg" },
+			{ name: "Bob", score: 950, avatar: "/avatars/bob.svg" },
+			{ name: "Charlie", score: 900, avatar: "/avatars/charlie.svg" },
+			{ name: "David", score: 850, avatar: "/avatars/david.svg" },
+			{ name: "Eve", score: 800, avatar: "/avatars/eve.svg" },
 		]);
 	}, []);
 

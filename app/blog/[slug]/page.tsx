@@ -8,14 +8,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 	try {
 		const { slug } = await params;
 		const post = await fetchBlogPost(slug);
-		if (!post) return {};
+		if (!post) {
+			return {
+				title: "Not Found - Rebuzzle Blog",
+				description: "The requested blog post could not be found.",
+			};
+		}
 
-		return {
+		const metadata = {
 			title: `${post.title} - Rebuzzle Blog`,
-			description: post.excerpt,
+			description: post.excerpt || post.explanation,
 			openGraph: {
 				title: `${post.title} - Rebuzzle Blog`,
-				description: post.excerpt,
+				description: post.excerpt || post.explanation,
 				url: `https://rebuzzle.com/blog/${post.slug}`,
 				siteName: "Rebuzzle",
 				images: [
@@ -31,16 +36,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 			twitter: {
 				card: "summary_large_image",
 				title: `${post.title} - Rebuzzle Blog`,
-				description: post.excerpt,
+				description: post.excerpt || post.explanation,
 				images: ["/twitter-image.jpg"],
 			},
 			alternates: {
 				canonical: `https://rebuzzle.com/blog/${post.slug}`,
 			},
-		};
+		} satisfies Metadata;
+
+		return metadata;
 	} catch (error) {
 		console.error("Error generating metadata:", error);
-		return {};
+		return {
+			title: "Error - Rebuzzle Blog",
+			description: "An error occurred while loading the blog post.",
+		};
 	}
 }
 

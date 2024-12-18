@@ -62,6 +62,11 @@ function formatBlogPost(post: BlogPostWithPuzzle): BlogPostResponse {
 		throw new Error("Blog post has no associated puzzle");
 	}
 
+	const metadata = {
+		...((post.metadata as Record<string, unknown>) || {}),
+		...((post.puzzle.metadata as Record<string, unknown>) || {}),
+	};
+
 	return {
 		slug: post.slug,
 		date: post.publishedAt.toISOString().split("T")[0],
@@ -71,10 +76,7 @@ function formatBlogPost(post: BlogPostWithPuzzle): BlogPostResponse {
 		explanation: post.puzzle.explanation,
 		content: post.content,
 		excerpt: post.excerpt,
-		metadata: {
-			...(post.metadata as Record<string, unknown>),
-			...(post.puzzle.metadata as Record<string, unknown>),
-		},
+		metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
 	};
 }
 
@@ -143,28 +145,56 @@ export const fetchBlogPost = unstable_cache(
 
 		console.log(`Fetching blog post with slug: ${slug}`);
 		try {
-			const post = await prisma.blogPost.findUnique({
-				where: {
-					slug,
-				},
-				include: {
-					puzzle: true,
-				},
-			});
+			// Use a single transaction for the entire operation
+			const result = await prisma.$transaction(
+				async (tx) => {
+					const blogPost = await tx.blogPost.findUnique({
+						where: { slug },
+						include: {
+							puzzle: {
+								select: {
+									rebusPuzzle: true,
+									answer: true,
+									explanation: true,
+									metadata: true,
+								},
+							},
+						},
+					});
 
-			if (!post) {
-				console.log(`No blog post found with slug: ${slug}`);
-				return null;
-			}
+					if (!blogPost || !blogPost.puzzle) {
+						console.log(`No blog post or puzzle found with slug: ${slug}`);
+						return null;
+					}
 
-			try {
-				return formatBlogPost(post as BlogPostWithPuzzle);
-			} catch (error) {
-				console.error(`Error formatting blog post ${post.id}:`, error);
-				return null;
-			}
+					// Format the blog post data within the transaction
+					const formattedPost: BlogPostResponse = {
+						slug: blogPost.slug,
+						date: blogPost.publishedAt.toISOString().split("T")[0],
+						title: blogPost.title,
+						puzzle: blogPost.puzzle.rebusPuzzle,
+						answer: blogPost.puzzle.answer,
+						explanation: blogPost.puzzle.explanation,
+						content: blogPost.content,
+						excerpt: blogPost.excerpt,
+						metadata: {
+							...(blogPost.metadata as Record<string, unknown>),
+							...(blogPost.puzzle.metadata as Record<string, unknown>),
+						},
+					};
+
+					return formattedPost;
+				},
+				{
+					maxWait: 5000, // Maximum time to wait for a transaction
+					timeout: 10000, // Maximum time for the transaction to complete
+				}
+			);
+
+			return result;
 		} catch (error) {
-			handleDatabaseError(error, `fetchBlogPost(${slug})`);
+			console.error(`Error fetching blog post ${slug}:`, error);
+			return null;
 		}
 	},
 	["blog-post"],

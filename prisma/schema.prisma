@@ -19,6 +19,7 @@ model User {
   gameSessions     GameSession[]
   blogPosts        BlogPost[]
   puzzleAttempts   PuzzleAttempt[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -125,5 +126,19 @@ model PuzzleAttempt {
   puzzle    Puzzle   @relation(fields: [puzzleId], references: [id])
 
   @@map("puzzle_attempts")
+}
+
+model PushSubscription {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  endpoint  String   @db.Text
+  auth      String   @db.Text
+  p256dh    String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, endpoint])
+  @@map("push_subscriptions")
 }
 

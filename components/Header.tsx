@@ -6,13 +6,13 @@ import { UserMenu } from "./UserMenu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bell, BellOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Link from "next/link";
 import { Timer } from "./Timer";
 import { useAuth } from "./AuthProvider";
+import { TestNotificationButton } from "./TestNotificationButton";
 
 interface HeaderProps {
 	nextPlayTime: Date | null;
@@ -24,7 +24,6 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 	const [phoneNumber, setPhoneNumber] = useState("");
 	const [notificationType, setNotificationType] = useState<"email" | "phone">("email");
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const { toast } = useToast();
 	const { isAuthenticated, isLoading } = useAuth();
 
 	useEffect(() => {
@@ -43,18 +42,18 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 			setEmail("");
 			setPhoneNumber("");
 			setNotificationType("email");
-			toast({
-				title: "Unsubscribed",
-				description: "You've been unsubscribed from daily reminders.",
+			new Notification("Unsubscribed", {
+				body: "You've been unsubscribed from daily reminders.",
+				icon: "/icon-192x192.png",
 			});
 		} else {
 			if ("Notification" in window) {
 				const permission = await Notification.requestPermission();
 				if (permission === "granted") {
 					setIsSubscribed(true);
-					toast({
-						title: "Subscribed",
-						description: "You've been subscribed to browser notifications for daily reminders!",
+					new Notification("Subscribed", {
+						body: "You've been subscribed to browser notifications for daily reminders!",
+						icon: "/icon-192x192.png",
 					});
 				} else {
 					setIsDialogOpen(true);
@@ -67,9 +66,9 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 
 	const handleSubmit = async () => {
 		setIsSubscribed(true);
-		toast({
-			title: "Subscribed",
-			description: `You've been subscribed to daily reminders via ${notificationType}!`,
+		new Notification("Subscribed", {
+			body: `You've been subscribed to daily reminders via ${notificationType}!`,
+			icon: "/icon-192x192.png",
 		});
 		setIsDialogOpen(false);
 	};
@@ -159,6 +158,7 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 						</Link>
 					</Button>
 					<InfoButton />
+					<TestNotificationButton />
 					<UserMenu isAuthenticated={isAuthenticated} />
 				</div>
 			</div>

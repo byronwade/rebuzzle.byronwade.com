@@ -62,7 +62,16 @@ async function retryOperation<T>(operation: () => Promise<T>, context: string, m
 	let lastError: Error | null = null;
 	for (let attempt = 1; attempt <= maxRetries; attempt++) {
 		try {
-			return await operation();
+			// Create a new transaction for each attempt
+			return await prisma.$transaction(
+				async (tx) => {
+					return await operation();
+				},
+				{
+					maxWait: 5000, // Maximum time to wait for a transaction
+					timeout: 10000, // Maximum time for the transaction to complete
+				}
+			);
 		} catch (error) {
 			lastError = error instanceof Error ? error : new Error("Unknown error");
 			console.error(`[${new Date().toISOString()}] Error in ${context} (attempt ${attempt}/${maxRetries}):`, error);
@@ -147,26 +156,28 @@ export const fetchGameData = unstable_cache(
 			// Try to get any puzzle (not just today's)
 			const puzzle = await retryOperation(
 				async () =>
-					prisma.puzzle.findFirst({
-						select: {
-							id: true,
-							rebusPuzzle: true,
-							answer: true,
-							explanation: true,
-							difficulty: true,
-							metadata: true,
-							scheduledFor: true,
-							blogPost: {
-								select: {
-									title: true,
-									slug: true,
-									publishedAt: true,
+					prisma.$transaction(async (tx) => {
+						return tx.puzzle.findFirst({
+							select: {
+								id: true,
+								rebusPuzzle: true,
+								answer: true,
+								explanation: true,
+								difficulty: true,
+								metadata: true,
+								scheduledFor: true,
+								blogPost: {
+									select: {
+										title: true,
+										slug: true,
+										publishedAt: true,
+									},
 								},
 							},
-						},
-						orderBy: {
-							scheduledFor: "desc",
-						},
+							orderBy: {
+								scheduledFor: "desc",
+							},
+						});
 					}),
 				"fetchGameData.findPuzzle"
 			);

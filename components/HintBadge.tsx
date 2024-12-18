@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { LightbulbIcon, LockIcon, UnlockIcon } from "lucide-react";
 import { trackEvent, analyticsEvents } from "@/lib/analytics";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface HintBadgeProps {
@@ -20,7 +19,6 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
 	const [revealedHints, setRevealedHints] = useState<number>(0);
 	const [isRevealing, setIsRevealing] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
-	const { toast } = useToast();
 
 	// Load revealed hints from localStorage
 	useEffect(() => {
@@ -34,10 +32,10 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
 
 	const handleRevealNextHint = () => {
 		if (!hints || hints.length === 0) {
-			toast({
-				title: "No hints available",
-				description: "There are no hints available for this puzzle.",
-				duration: 3000,
+			// Show native notification for no hints
+			new Notification("No hints available", {
+				body: "There are no hints available for this puzzle.",
+				icon: "/icon-192x192.png",
 			});
 			return;
 		}
@@ -62,11 +60,10 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
 			// Notify parent component
 			onHintReveal?.(newRevealedCount - 1);
 
-			// Show toast notification
-			toast({
-				title: `Hint ${newRevealedCount} Revealed`,
-				description: "Using hints will reduce your points for this puzzle.",
-				duration: 3000,
+			// Show native notification for hint reveal
+			new Notification(`Hint ${newRevealedCount} Revealed`, {
+				body: "Using hints will reduce your points for this puzzle.",
+				icon: "/icon-192x192.png",
 			});
 
 			// Reset revealing state after animation
