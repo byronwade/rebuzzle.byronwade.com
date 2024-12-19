@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import webpush from "web-push";
-import type { NextRequest } from "next/server";
 
 interface NotificationPayload {
 	title: string;
 	body: string;
-	icon: string;
-	badge: string;
-	data: {
-		url: string;
+	icon?: string;
+	badge?: string;
+	data?: {
+		url?: string;
+		[key: string]: unknown;
 	};
 }
 
-// Configure web-push with your VAPID keys
-webpush.setVapidDetails("mailto:notifications@rebuzzle.com", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
+// Configure web-push with VAPID keys
+webpush.setVapidDetails("mailto:notifications@rebuzzle.com", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "", process.env.VAPID_PRIVATE_KEY || "");
 
 export async function POST(request: NextRequest) {
 	try {
@@ -27,7 +28,6 @@ export async function POST(request: NextRequest) {
 		// Get all active subscriptions
 		const subscriptions = await prisma.pushSubscription.findMany({
 			select: {
-				userId: true,
 				endpoint: true,
 				auth: true,
 				p256dh: true,
@@ -71,23 +71,20 @@ export async function POST(request: NextRequest) {
 						JSON.stringify(payload)
 					);
 
-					return { success: true, userId: subscription.userId };
+					return { success: true, endpoint: subscription.endpoint };
 				} catch (error) {
 					// If the subscription is invalid, delete it
 					if (error instanceof webpush.WebPushError && error.statusCode === 410) {
 						await prisma.pushSubscription.delete({
 							where: {
-								userId_endpoint: {
-									userId: subscription.userId,
-									endpoint: subscription.endpoint,
-								},
+								endpoint: subscription.endpoint,
 							},
 						});
 					}
 
 					return {
 						success: false,
-						userId: subscription.userId,
+						endpoint: subscription.endpoint,
 						error: error instanceof Error ? error.message : "Unknown error",
 					};
 				}
@@ -95,17 +92,16 @@ export async function POST(request: NextRequest) {
 		);
 
 		const successful = results.filter((result) => result.status === "fulfilled" && result.value.success).length;
-
-		const failed = results.filter((result) => result.status === "rejected" || !result.value.success).length;
+		const failed = results.length - successful;
 
 		return NextResponse.json({
 			success: true,
 			sent: successful,
 			failed,
-			total: subscriptions.length,
+			message: `Successfully sent ${successful} notifications, ${failed} failed`,
 		});
 	} catch (error) {
-		console.error("Error sending notifications:", error);
+		console.error("[SendNotifications] Error:", error);
 		return NextResponse.json(
 			{
 				success: false,

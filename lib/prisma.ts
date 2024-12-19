@@ -1,25 +1,36 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
-	prisma: PrismaClient | undefined;
-};
-
-export const prisma =
-	globalForPrisma.prisma ??
-	new PrismaClient({
-		log: ["error", "warn"],
-		datasourceUrl: process.env.POSTGRES_PRISMA_URL,
-		// Remove connection pooling as it's handled by the database provider
+const prismaClientSingleton = () => {
+	return new PrismaClient({
+		log: [], // Disable Prisma logging
+		errorFormat: "minimal",
 	}).$extends({
 		query: {
-			$allOperations({ operation, args, query }) {
-				// Add query logging in development
-				if (process.env.NODE_ENV === "development") {
-					console.log(`[Prisma Query] ${operation}`, args);
+			async $allOperations({ operation, model, args, query }) {
+				const MAX_RETRIES = 3;
+				let retries = 0;
+
+				while (retries < MAX_RETRIES) {
+					try {
+						return await query(args);
+					} catch (error: unknown) {
+						if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string" && error.message.includes('prepared statement "s0" already exists')) {
+							retries++;
+							await new Promise((resolve) => setTimeout(resolve, 100 * retries));
+							continue;
+						}
+						throw error;
+					}
 				}
-				return query(args);
 			},
 		},
 	});
+};
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+declare global {
+	var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
+}
+
+export const prisma = globalThis.prisma ?? prismaClientSingleton();
+
+if (process.env.NODE_ENV !== "production") globalThis.prisma = prisma;

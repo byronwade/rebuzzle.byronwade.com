@@ -19,7 +19,6 @@ import { trackEvent, analyticsEvents } from "@/lib/analytics";
 import { getFeatureFlag, featureFlags } from "@/lib/featureFlags";
 import { HintBadge } from "./HintBadge";
 import { useAuth } from "./AuthProvider";
-import { InfoDialog } from "./InfoDialog";
 
 interface GameBoardProps {
 	gameData: GameData;
@@ -337,7 +336,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
 	return (
 		<>
-			<InfoDialog />
 			<Script id="structured-data" type="application/ld+json">
 				{JSON.stringify({
 					"@context": "https://schema.org",

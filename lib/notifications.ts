@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import webpush from "web-push";
 
 interface PushSubscriptionKeys {
 	auth?: string;
@@ -8,6 +9,53 @@ interface PushSubscriptionKeys {
 interface WebPushSubscription {
 	endpoint: string;
 	keys?: PushSubscriptionKeys;
+}
+
+// Configure web-push with VAPID keys
+webpush.setVapidDetails("mailto:notifications@rebuzzle.com", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "", process.env.VAPID_PRIVATE_KEY || "");
+
+interface PushNotificationPayload {
+	subscription: {
+		endpoint: string;
+		keys: {
+			auth: string;
+			p256dh: string;
+		};
+	};
+	title: string;
+	message: string;
+	icon?: string;
+	badge?: string;
+	data?: Record<string, unknown>;
+}
+
+export async function sendPushNotification({ subscription, title, message, icon = "/icon-192x192.png", badge = "/icon-192x192.png", data = {} }: PushNotificationPayload): Promise<void> {
+	try {
+		const payload = JSON.stringify({
+			title,
+			body: message,
+			icon,
+			badge,
+			data: {
+				url: "/",
+				...data,
+			},
+		});
+
+		await webpush.sendNotification(
+			{
+				endpoint: subscription.endpoint,
+				keys: {
+					auth: subscription.keys.auth,
+					p256dh: subscription.keys.p256dh,
+				},
+			},
+			payload
+		);
+	} catch (error) {
+		console.error("[Notifications] Error sending push notification:", error);
+		throw error;
+	}
 }
 
 async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
@@ -109,16 +157,19 @@ async function registerPushSubscription(registration: ServiceWorkerRegistration)
 		}
 
 		console.log("[Notifications] No existing subscription found, creating new one...");
-		const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-		console.log("[Notifications] Using VAPID key:", vapidKey);
+		// Get VAPID key from API instead of environment variable
+		const response = await fetch("/api/notifications/vapid-public-key");
+		const { vapidPublicKey } = await response.json();
 
-		if (!vapidKey) {
+		if (!vapidPublicKey) {
 			throw new Error("VAPID public key not found");
 		}
 
+		console.log("[Notifications] Using VAPID key:", vapidPublicKey);
+
 		const subscription = await registration.pushManager.subscribe({
 			userVisibleOnly: true,
-			applicationServerKey: vapidKey,
+			applicationServerKey: vapidPublicKey,
 		});
 
 		console.log("[Notifications] New subscription created:", subscription);

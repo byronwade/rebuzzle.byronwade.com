@@ -2,106 +2,71 @@
 
 console.log("[ServiceWorker] Service Worker loaded");
 
+// Service Worker version for cache busting
+const SW_VERSION = '1.0.0';
+
 self.addEventListener("install", (event) => {
-	console.log("[ServiceWorker] Install event");
-	event.waitUntil(Promise.all([self.skipWaiting(), console.log("[ServiceWorker] Skip waiting completed")]));
+	console.log("[ServiceWorker] Installing new version:", SW_VERSION);
+	event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
-	console.log("[ServiceWorker] Activate event");
-	event.waitUntil(Promise.all([self.clients.claim(), console.log("[ServiceWorker] Clients claimed")]));
+	console.log("[ServiceWorker] Activated version:", SW_VERSION);
+	event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("push", (event) => {
-	console.log("[ServiceWorker] Push event received");
+	console.log("[ServiceWorker] Push received");
 
 	if (!event.data) {
-		console.log("[ServiceWorker] Push event had no data");
+		console.log("[ServiceWorker] Push received but no data");
 		return;
 	}
 
 	try {
-		let data;
-		try {
-			const text = event.data.text();
-			console.log("[ServiceWorker] Push data text:", text);
-			data = JSON.parse(text);
-		} catch (e) {
-			console.log("[ServiceWorker] Failed to parse JSON, using text as body");
-			data = {
-				title: "Rebuzzle",
-				body: event.data.text(),
-			};
-		}
-		console.log("[ServiceWorker] Processed push data:", data);
+		const data = event.data.json();
+		console.log("[ServiceWorker] Push data:", data);
 
 		const options = {
-			body: data.body || "New notification",
-			icon: data.icon || "/icon.svg",
-			badge: data.badge || "/icon.svg",
-			tag: data.tag || "rebuzzle-notification",
-			data: {
-				url: data.url || "/",
-				...data.data,
-			},
+			body: data.body,
+			icon: data.icon,
+			badge: data.badge,
+			data: data.data,
+			requireInteraction: true,
 			actions: [
 				{
 					action: "open",
 					title: "Open",
 				},
-				{
-					action: "close",
-					title: "Close",
-				},
 			],
-			requireInteraction: true,
-			renotify: true,
-			timestamp: Date.now(),
 		};
 
-		console.log("[ServiceWorker] Showing notification with options:", options);
-		event.waitUntil(self.registration.showNotification(data.title || "Rebuzzle", options));
+		event.waitUntil(self.registration.showNotification(data.title, options));
 	} catch (error) {
-		console.error("[ServiceWorker] Error in push event:", error);
-		event.waitUntil(
-			self.registration.showNotification("Rebuzzle", {
-				body: "New notification",
-				icon: "/icon.svg",
-				badge: "/icon.svg",
-			})
-		);
+		console.error("[ServiceWorker] Error processing push event:", error);
 	}
 });
 
 self.addEventListener("notificationclick", (event) => {
-	console.log("[ServiceWorker] Notification clicked:", event.notification);
+	console.log("[ServiceWorker] Notification clicked:", event.notification.tag);
+
 	event.notification.close();
 
-	// Handle action clicks
-	if (event.action === "close") {
-		console.log("[ServiceWorker] Notification closed by user action");
-		return;
-	}
-
 	const urlToOpen = event.notification.data?.url || "/";
-	console.log("[ServiceWorker] Opening URL:", urlToOpen);
 
 	event.waitUntil(
-		clients
-			.matchAll({ type: "window", includeUncontrolled: true })
-			.then((clientList) => {
-				// Try to focus an existing window
-				for (const client of clientList) {
-					if (client.url === urlToOpen && "focus" in client) {
-						return client.focus();
-					}
+		self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+			// If a window client is available, focus it
+			for (const client of clientList) {
+				if (client.url === urlToOpen && "focus" in client) {
+					return client.focus();
 				}
-				// If no existing window, open a new one
-				return clients.openWindow(urlToOpen);
-			})
-			.catch((error) => {
-				console.error("[ServiceWorker] Error opening window:", error);
-			})
+			}
+			// If no window client is available, open a new one
+			if (self.clients.openWindow) {
+				return self.clients.openWindow(urlToOpen);
+			}
+		})
 	);
 });
 

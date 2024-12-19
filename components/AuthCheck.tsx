@@ -1,38 +1,14 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 
 export async function AuthCheck() {
 	try {
-		const user = await currentUser();
+		// Disable debug logging for this call
+		process.env.CLERK_DEBUG = "false";
+		process.env.CLERK_LOGGING_ENABLED = "false";
 
-		const authData = {
-			isAuthenticated: !!user,
-			userId: user?.id || null,
-		};
-
-		// Add auth data to HTML as a script tag
-		return (
-			<script
-				id="auth-data"
-				type="application/json"
-				dangerouslySetInnerHTML={{
-					__html: JSON.stringify(authData),
-				}}
-			/>
-		);
+		await auth();
 	} catch (error) {
-		console.error("Error in AuthCheck:", error);
-		// Return empty auth data on error
-		return (
-			<script
-				id="auth-data"
-				type="application/json"
-				dangerouslySetInnerHTML={{
-					__html: JSON.stringify({
-						isAuthenticated: false,
-						userId: null,
-					}),
-				}}
-			/>
-		);
+		// Silently handle any errors
 	}
+	return null;
 }

@@ -1,86 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { InfoButton } from "./InfoButton";
 import { UserMenu } from "./UserMenu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bell, BellOff } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Timer } from "./Timer";
 import { useAuth } from "./AuthProvider";
-import { TestNotificationButton } from "./TestNotificationButton";
+import { useNotifications } from "@/lib/hooks/useNotifications";
 
 interface HeaderProps {
 	nextPlayTime: Date | null;
 }
 
 export default function Header({ nextPlayTime }: HeaderProps) {
-	const [isSubscribed, setIsSubscribed] = useState(false);
-	const [email, setEmail] = useState("");
-	const [phoneNumber, setPhoneNumber] = useState("");
-	const [notificationType, setNotificationType] = useState<"email" | "phone">("email");
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const { isAuthenticated, isLoading } = useAuth();
-
-	useEffect(() => {
-		if ("Notification" in window) {
-			Notification.requestPermission().then((permission) => {
-				if (permission === "granted") {
-					setIsSubscribed(true);
-				}
-			});
-		}
-	}, []);
-
-	const handleSubscription = async () => {
-		if (isSubscribed) {
-			setIsSubscribed(false);
-			setEmail("");
-			setPhoneNumber("");
-			setNotificationType("email");
-			new Notification("Unsubscribed", {
-				body: "You've been unsubscribed from daily reminders.",
-				icon: "/icon-192x192.png",
-			});
-		} else {
-			if ("Notification" in window) {
-				const permission = await Notification.requestPermission();
-				if (permission === "granted") {
-					setIsSubscribed(true);
-					new Notification("Subscribed", {
-						body: "You've been subscribed to browser notifications for daily reminders!",
-						icon: "/icon-192x192.png",
-					});
-				} else {
-					setIsDialogOpen(true);
-				}
-			} else {
-				setIsDialogOpen(true);
-			}
-		}
-	};
-
-	const handleSubmit = async () => {
-		setIsSubscribed(true);
-		new Notification("Subscribed", {
-			body: `You've been subscribed to daily reminders via ${notificationType}!`,
-			icon: "/icon-192x192.png",
-		});
-		setIsDialogOpen(false);
-	};
-
-	const validateInput = () => {
-		if (notificationType === "email") {
-			return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-		} else if (notificationType === "phone") {
-			return /^\+?[1-9]\d{1,14}$/.test(phoneNumber);
-		}
-		return false;
-	};
+	const { isAuthenticated } = useAuth();
+	const { notificationsEnabled, isLoading, error, showInstructions, showEmailDialog, email, handleToggleNotifications, setShowInstructions, setShowEmailDialog, setEmail, setError } = useNotifications();
 
 	return (
 		<header className="w-full max-w-2xl flex flex-col items-start pt-4">
@@ -89,7 +27,7 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 					<h1 className="text-xl sm:text-2xl font-bold mr-4">Rebuzzle</h1>
 					<nav className="flex space-x-4">
 						<Link href="/" className="text-sm font-medium hover:text-purple-400">
-							Game
+							Home
 						</Link>
 						<Link href="/blog" className="text-sm font-medium hover:text-purple-400">
 							Blog
@@ -97,72 +35,81 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 					</nav>
 				</div>
 				<div className="flex items-center space-x-2">
-					<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-						<DialogTrigger asChild>
-							<Button variant="outline" size="sm" onClick={handleSubscription} className="flex items-center gap-2">
-								{isSubscribed ? (
-									<>
-										<BellOff className="h-4 w-4" />
-										<span className="hidden sm:inline">Unsubscribe</span>
-									</>
-								) : (
-									<>
-										<Bell className="h-4 w-4" />
-										<span className="hidden sm:inline">Subscribe</span>
-									</>
-								)}
-							</Button>
-						</DialogTrigger>
-						<DialogContent className="sm:max-w-[425px]">
-							<DialogHeader>
-								<DialogTitle>Subscribe to Daily Reminders</DialogTitle>
-								<DialogDescription>Choose how you'd like to receive daily reminders.</DialogDescription>
-							</DialogHeader>
-							<div className="grid gap-4 py-4">
-								<RadioGroup value={notificationType} onValueChange={(value) => setNotificationType(value as "email" | "phone")} className="grid grid-cols-2 gap-4">
-									<div>
-										<RadioGroupItem value="email" id="email" className="peer sr-only" />
-										<Label htmlFor="email" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-											Email
-										</Label>
-									</div>
-									<div>
-										<RadioGroupItem value="phone" id="phone" className="peer sr-only" />
-										<Label htmlFor="phone" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-											Phone (SMS)
-										</Label>
-									</div>
-								</RadioGroup>
-								{notificationType === "email" && (
-									<div className="grid gap-4">
-										<Input type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full" />
-									</div>
-								)}
-								{notificationType === "phone" && (
-									<div className="grid gap-4">
-										<Input type="tel" placeholder="Enter your phone number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full" />
-									</div>
-								)}
-							</div>
-							<DialogFooter>
-								<Button onClick={handleSubmit} disabled={!validateInput()}>
-									Subscribe
-								</Button>
-							</DialogFooter>
-						</DialogContent>
-					</Dialog>
 					<Button variant="outline" size="sm" asChild>
 						<Link href="https://www.buymeacoffee.com/VFYLE26" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
 							<img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="Buy me a coffee" className="h-4 w-4" />
 							<span className="hidden sm:inline">Donate</span>
 						</Link>
 					</Button>
+					<Button variant="ghost" size="icon" onClick={handleToggleNotifications} disabled={isLoading} title={notificationsEnabled ? "Disable daily reminders" : "Enable daily reminders"}>
+						{notificationsEnabled ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+					</Button>
 					<InfoButton />
-					<TestNotificationButton />
 					<UserMenu isAuthenticated={isAuthenticated} />
 				</div>
 			</div>
 			<Timer nextPlayTime={nextPlayTime} className="text-xs text-gray-600 w-full" />
+
+			{error && (
+				<Dialog open={!!error} onOpenChange={() => setError(null)}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Notification Error</DialogTitle>
+							<DialogDescription>{error}</DialogDescription>
+						</DialogHeader>
+					</DialogContent>
+				</Dialog>
+			)}
+
+			<Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Enter Email for Notifications</DialogTitle>
+						<DialogDescription>
+							<p className="mb-4">Please enter your email address to receive notifications when you're not logged in.</p>
+							<Input type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2" />
+							<Button
+								onClick={() => {
+									if (email) {
+										setShowEmailDialog(false);
+										void handleToggleNotifications();
+									}
+								}}
+								className="mt-4 w-full"
+								disabled={!email}
+							>
+								Enable Notifications
+							</Button>
+						</DialogDescription>
+					</DialogHeader>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog open={showInstructions} onOpenChange={setShowInstructions}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Enable Notifications</DialogTitle>
+						<DialogDescription>
+							<p className="mb-4">Notifications are currently blocked. To enable notifications, follow these steps:</p>
+							<ol className="space-y-2 list-decimal list-inside">
+								<li>Click the lock/info icon in the address bar (left of the URL)</li>
+								<li>Click "Site settings"</li>
+								<li>Find "Notifications"</li>
+								<li>Change it from "Block" to "Ask" or "Allow"</li>
+								<li>Refresh this page</li>
+							</ol>
+							<p className="mt-4">If you don&apos;t see the option there:</p>
+							<ol className="space-y-2 list-decimal list-inside">
+								<li>Open your browser settings</li>
+								<li>Go to "Privacy and security"</li>
+								<li>Click "Site Settings"</li>
+								<li>Click "Notifications"</li>
+								<li>Find this site and change to "Ask" or "Allow"</li>
+							</ol>
+						</DialogDescription>
+					</DialogHeader>
+				</DialogContent>
+			</Dialog>
 		</header>
 	);
 }
