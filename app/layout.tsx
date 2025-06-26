@@ -1,9 +1,6 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { Analytics } from "@vercel/analytics/react";
-import { AuthCheck } from "@/components/AuthCheck";
+import type { Metadata } from "next";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Suspense } from "react";
 
@@ -84,24 +81,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<ClerkProvider appearance={{ layout: { logoPlacement: "none" } }} publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
-			<html lang="en" suppressHydrationWarning>
-				<head>
-					<link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
-					<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-					<link rel="icon" href="/icon.svg" type="image/svg+xml" />
-					<link rel="apple-touch-icon" href="/icon-192.png" />
-					<Suspense fallback={null}>
-						<AuthCheck />
-					</Suspense>
-				</head>
-				<body className={`${inter.className} min-h-screen bg-background font-sans antialiased`}>
-					<AuthProvider>
-						<Suspense fallback={null}>{children}</Suspense>
-					</AuthProvider>
-					<Analytics debug={process.env.NODE_ENV === "development"} />
-				</body>
-			</html>
-		</ClerkProvider>
+		<html lang="en" suppressHydrationWarning>
+			<head>
+				<link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+				<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+				<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+				<link rel="apple-touch-icon" href="/icon-192.png" />
+			</head>
+			<body className={`${inter.className} min-h-screen bg-background font-sans antialiased`}>
+				<AuthProvider>
+					<Suspense fallback={null}>{children}</Suspense>
+				</AuthProvider>
+			</body>
+		</html>
 	);
 }

@@ -1,9 +1,9 @@
-import { Metadata, Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
 import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions";
 import { redirect } from "next/navigation";
-import { GameData } from "@/lib/gameSettings";
+import type { GameData } from "@/lib/gameSettings";
 
 export const metadata: Metadata = {
 	title: "Rebuzzle - Daily Rebus Puzzle Game",

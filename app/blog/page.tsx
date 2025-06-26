@@ -1,7 +1,7 @@
-import { Metadata } from 'next'
-import Layout from '@/components/Layout'
-import BlogPost from '@/components/BlogPost'
-import { fetchBlogPosts } from '../actions/blogActions'
+import type { Metadata } from "next";
+import Layout from "@/components/Layout";
+import BlogPost from "@/components/BlogPost";
+import { fetchBlogPosts } from "../actions/blogActions";
 
 export const metadata: Metadata = {
 	title: "Rebuzzle Blog - Daily Puzzle Insights",
@@ -110,7 +110,7 @@ export default async function BlogPage() {
 											},
 											null,
 											2
-									  )
+										)
 									: "Unknown error"}
 							</pre>
 						</div>
@@ -120,4 +120,3 @@ export default async function BlogPage() {
 		);
 	}
 }
-

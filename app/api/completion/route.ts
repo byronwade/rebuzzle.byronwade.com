@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getAuth, clerkClient } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
 	try {
-		const { userId } = getAuth(request);
 		const cookieStore = await cookies();
 		const today = new Date();
 		const tomorrow = new Date(today);
 		tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 		tomorrow.setUTCHours(0, 0, 0, 0);
 
-		// Set completion cookies
+		// Set completion cookies for demo mode
 		cookieStore.set("puzzle_completed", "true", {
 			expires: tomorrow,
 			path: "/",
@@ -27,17 +25,9 @@ export async function POST(request: NextRequest) {
 			sameSite: "strict",
 		});
 
-		// Update user's last activity in Clerk if logged in
-		if (userId) {
-			const clerk = await clerkClient();
-			await clerk.users.updateUser(userId, {
-				publicMetadata: {
-					lastActivity: today.toISOString(),
-				},
-			});
-		}
+		console.log("Demo: Puzzle completion recorded");
 
-		return NextResponse.json({ success: true });
+		return NextResponse.json({ success: true, mode: "demo" });
 	} catch (error) {
 		console.error("Error in completion API:", error);
 		return NextResponse.json(

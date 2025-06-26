@@ -2,7 +2,14 @@
 
 import { Separator } from "@/components/ui/separator";
 import { LoginPrompt } from "./LoginPrompt";
-import { UserStats } from "@/lib/gamification";
+// UserStats interface moved to local definition
+interface UserStats {
+	level: number;
+	points: number;
+	streak: number;
+	dailyChallengeStreak: number;
+	achievements: string[];
+}
 import { Progress } from "@/components/ui/progress";
 import { ShareButton } from "./ShareButton";
 import { Trophy, Star, Zap } from "lucide-react";

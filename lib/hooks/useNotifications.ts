@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { useClerk } from "@clerk/nextjs";
 
 // Helper function to convert base64 URL-safe to Uint8Array
 function urlBase64ToUint8Array(base64String: string) {
@@ -26,7 +25,6 @@ const STORAGE_KEYS = {
 
 export function useNotifications() {
 	const { isAuthenticated, userId } = useAuth();
-	const { user } = useClerk();
 	const [hasPermission, setHasPermission] = useState(false);
 	const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
 	const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null);
@@ -282,7 +280,7 @@ export function useNotifications() {
 				await unsubscribeFromPushNotifications();
 			} else {
 				// Get the email first
-				let currentEmail = isAuthenticated && user ? user.primaryEmailAddress?.emailAddress : email;
+				let currentEmail = email;
 
 				if (!currentEmail) {
 					setShowEmailDialog(true);
@@ -360,6 +358,7 @@ export function useNotifications() {
 		showEmailDialog,
 		email,
 		setEmail,
+		setError,
 		setShowEmailDialog,
 		setShowInstructions,
 		handleToggleNotifications,

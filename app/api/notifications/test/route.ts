@@ -1,54 +1,23 @@
 import { NextResponse } from "next/server";
-import { sendPushNotification } from "@/lib/notifications";
-import { prisma } from "@/lib/prisma";
 
-export async function POST() {
+export async function POST(req: Request) {
 	try {
-		// Get all active subscriptions
-		const subscriptions = await prisma.pushSubscription.findMany();
+		const { email } = await req.json();
 
-		if (!subscriptions.length) {
-			return NextResponse.json(
-				{
-					success: false,
-					error: "No active subscriptions found",
-				},
-				{ status: 404 }
-			);
-		}
+		console.log("[Demo Test] Would send test notification to:", email);
 
-		// Send test notification to all subscriptions
-		const results = await Promise.allSettled(
-			subscriptions.map((sub) =>
-				sendPushNotification({
-					subscription: {
-						endpoint: sub.endpoint,
-						keys: {
-							auth: sub.auth,
-							p256dh: sub.p256dh,
-						},
-					},
-					title: "Test Notification",
-					message: "This is a test notification from Rebuzzle!",
-					icon: "/icon-192x192.png",
-					badge: "/icon-192x192.png",
-				})
-			)
-		);
-
-		const successful = results.filter((r) => r.status === "fulfilled").length;
-		const failed = results.filter((r) => r.status === "rejected").length;
-
+		// Demo mode - simulate successful test
 		return NextResponse.json({
 			success: true,
-			message: `Sent test notifications to ${successful} devices (${failed} failed)`,
+			message: "Demo mode - test notification would be sent",
+			mode: "demo",
 		});
 	} catch (error) {
-		console.error("[TestNotification] Error:", error);
+		console.error("[Demo Test] Error:", error);
 		return NextResponse.json(
 			{
 				success: false,
-				error: "Failed to send test notifications",
+				error: "Failed to send test notification",
 				details: error instanceof Error ? error.message : "Unknown error",
 			},
 			{ status: 500 }
@@ -61,7 +30,7 @@ export async function OPTIONS() {
 		status: 204,
 		headers: {
 			"Access-Control-Allow-Methods": "POST, OPTIONS",
-			"Access-Control-Allow-Headers": "Content-Type, Authorization",
+			"Access-Control-Allow-Headers": "Content-Type",
 		},
 	});
 }

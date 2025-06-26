@@ -8,24 +8,41 @@ import { Button } from "@/components/ui/button";
 import { GuessBoxes } from "./GuessBoxes";
 import { Keyboard } from "./Keyboard";
 import { checkGuess } from "@/lib/gameLogic";
-import { calculatePoints, checkAchievements, getLevel, updateDailyChallenge, UserStats } from "@/lib/gamification";
 import { ArrowRight } from "lucide-react";
 import { gameSettings } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
 import Script from "next/script";
-import { fetchGameData } from "@/app/actions/gameActions";
-import { GameData } from "@/lib/gameSettings";
-import { trackEvent, analyticsEvents } from "@/lib/analytics";
-import { getFeatureFlag, featureFlags } from "@/lib/featureFlags";
+import type { GameData } from "@/lib/gameSettings";
 import { HintBadge } from "./HintBadge";
-import { useAuth } from "./AuthProvider";
+
+// Simple local implementations to replace deleted dependencies
+interface UserStats {
+	points: number;
+	streak: number;
+	totalGames: number;
+	wins: number;
+	achievements: string[];
+	level: number;
+	lastPlayDate: string | null;
+	dailyChallengeStreak: number;
+}
+
+const calculatePoints = (attempts: number, hintsUsed: number): number => {
+	const basePoints = 100;
+	const attemptPenalty = (gameSettings.maxAttempts - attempts) * 10;
+	const hintPenalty = hintsUsed * 25;
+	return Math.max(10, basePoints - attemptPenalty - hintPenalty);
+};
+
+const trackEvent = (event: string) => {
+	console.log(`Analytics event: ${event}`);
+};
 
 interface GameBoardProps {
 	gameData: GameData;
 }
 
 export default function GameBoard({ gameData }: GameBoardProps) {
-	const { isAuthenticated } = useAuth();
 	const [currentGuess, setCurrentGuess] = useState("");
 	const [gameOver, setGameOver] = useState(false);
 	const [nextPlayTime, setNextPlayTime] = useState<Date | null>(() => {
@@ -58,7 +75,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 						level: 1,
 						lastPlayDate: null,
 						dailyChallengeStreak: 0,
-				  };
+					};
 		}
 		return {
 			points: 0,
@@ -73,7 +90,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 	});
 	const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 	const [isGuessFilled, setIsGuessFilled] = useState(false);
-	const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
 	const [usedHints, setUsedHints] = useState<number[]>([]);
 	const router = useRouter();
 
@@ -123,15 +139,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 	}, [gameData.isCompleted, currentEventPuzzle?.id]);
 
 	useEffect(() => {
-		trackEvent(analyticsEvents.GAME_START);
-	}, []);
-
-	useEffect(() => {
-		async function checkFeatureFlag() {
-			const isEnabled = await getFeatureFlag("ADVANCED_ANALYTICS");
-			setAdvancedAnalyticsEnabled(isEnabled);
-		}
-		checkFeatureFlag();
+		trackEvent("GAME_START");
 	}, []);
 
 	const handleHintReveal = (hintIndex: number) => {
@@ -190,98 +198,91 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 				setCompletionState(true, currentGuess, attempts);
 
 				try {
-					await fetch("/api/completion", {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-					});
+					// Remove the API call since we're offline
+					console.log("Puzzle completed successfully!");
 				} catch (error) {
 					console.error("Error setting completion state:", error);
 				}
 
-				await updateStatsAndRedirect(true);
+				// Update stats
+				const newStats = { ...userStats };
+				newStats.totalGames += 1;
+				newStats.wins += 1;
+				newStats.streak += 1;
+
+				const hintPenalty = calculateHintPenalty();
+				const basePoints = calculatePoints(gameSettings.maxAttempts - attemptsLeft + 1, usedHints.length);
+				const finalPoints = Math.max(Math.floor(basePoints * (1 - hintPenalty)), 1);
+				newStats.points += finalPoints;
+
+				// Simple level calculation
+				newStats.level = Math.floor(newStats.points / 1000) + 1;
+
+				// Simple achievements check
+				const newAchievements: string[] = [];
+				if (newStats.streak === 5) newAchievements.push("5-day streak");
+				if (newStats.wins === 10) newAchievements.push("10 wins");
+				newStats.achievements = [...newStats.achievements, ...newAchievements];
+
+				newStats.lastPlayDate = new Date().toISOString();
+
+				setUserStats(newStats);
+				localStorage.setItem("userStats", JSON.stringify(newStats));
+
+				trackEvent("PUZZLE_SOLVED");
+
+				setTimeout(() => {
+					router.push("/game-over");
+				}, 2000);
 			} else {
 				const newAttemptsLeft = attemptsLeft - 1;
 				setAttemptsLeft(newAttemptsLeft);
+				setLastSubmittedGuess(currentGuess);
 
-				if (newAttemptsLeft === 0) {
+				if (newAttemptsLeft <= 0) {
 					setCompletionState(false, currentGuess, gameSettings.maxAttempts);
-					await updateStatsAndRedirect(false);
+
+					// Update stats for failure
+					const newStats = { ...userStats };
+					newStats.totalGames += 1;
+					newStats.streak = 0; // Reset streak on failure
+					newStats.lastPlayDate = new Date().toISOString();
+
+					setUserStats(newStats);
+					localStorage.setItem("userStats", JSON.stringify(newStats));
+
+					trackEvent("PUZZLE_FAILED");
+
+					setTimeout(() => {
+						router.push("/game-over");
+					}, 2000);
 				} else {
 					handleIncorrectGuess(newAttemptsLeft);
 				}
 			}
+
+			setCurrentGuess("");
 		} catch (error) {
 			console.error("Error processing guess:", error);
 			setError({
-				message: "Error processing guess",
+				message: "Failed to process your guess. Please try again.",
 				details: error instanceof Error ? error.message : "Unknown error",
 			});
 		}
-	}, [currentGuess, currentEventPuzzle, attemptsLeft, gameOver, setCompletionState]);
+	}, [gameOver, currentEventPuzzle, currentGuess, attemptsLeft, setCompletionState, userStats, usedHints, router]);
 
 	const updateStatsAndRedirect = async (success: boolean) => {
-		try {
-			const newStats = { ...userStats };
-			newStats.totalGames += 1;
-
-			if (success) {
-				newStats.wins += 1;
-				newStats.streak += 1;
-				newStats.dailyChallengeStreak = updateDailyChallenge(newStats).dailyChallengeStreak;
-
-				const hintPenalty = calculateHintPenalty();
-				const basePoints = calculatePoints(true, newStats.streak, true);
-				const finalPoints = Math.max(Math.floor(basePoints * (1 - hintPenalty)), 1);
-				newStats.points += finalPoints;
-
-				const newAchievements = checkAchievements(newStats);
-				newStats.achievements = [...newStats.achievements, ...newAchievements];
-				const { level } = getLevel(newStats.points);
-				newStats.level = level;
-
-				trackEvent(analyticsEvents.GAME_COMPLETE, {
-					success: true,
-					attempts: gameSettings.maxAttempts - attemptsLeft + 1,
-					hintsUsed: usedHints.length,
-					pointsEarned: finalPoints,
-					hintPenalty: hintPenalty,
-					puzzleId: currentEventPuzzle?.id,
-				});
-			} else {
-				newStats.streak = 0;
-				trackEvent(analyticsEvents.GAME_COMPLETE, {
-					success: false,
-					attempts: gameSettings.maxAttempts,
-					puzzleId: currentEventPuzzle?.id,
-				});
-			}
-
-			// Only store stats if user is authenticated
-			if (isAuthenticated) {
-				localStorage.setItem("userStats", JSON.stringify(newStats));
-				setUserStats(newStats);
-			}
-
-			// Redirect to game over page
-			const attempts = success ? gameSettings.maxAttempts - attemptsLeft + 1 : gameSettings.maxAttempts;
-			router.push(`/game-over?guess=${encodeURIComponent(currentGuess)}&success=${success}&attempts=${attempts}`);
-		} catch (error) {
-			console.error("Error updating stats:", error);
-			setError({
-				message: "Error updating stats",
-				details: error instanceof Error ? error.message : "Unknown error",
-			});
-		}
+		// This function is simplified for offline use
+		console.log(`Game ended with success: ${success}`);
 	};
 
 	const handleIncorrectGuess = (attemptsLeft: number) => {
 		setShake(true);
-		setTimeout(() => setShake(false), 500);
-		setFeedbackMessage(`Incorrect. ${attemptsLeft} ${attemptsLeft === 1 ? "attempt" : "attempts"} left.`);
-		setCurrentGuess("");
-		setIsGuessFilled(false);
+		setFeedbackMessage(`Incorrect! ${attemptsLeft} attempts left.`);
+		setTimeout(() => {
+			setShake(false);
+			setFeedbackMessage("");
+		}, 1000);
 	};
 
 	const handleKeyPress = useCallback(

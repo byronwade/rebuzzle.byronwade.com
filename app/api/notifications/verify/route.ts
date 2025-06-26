@@ -1,22 +1,14 @@
 import { NextResponse } from "next/server";
-import { getAuth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
 	try {
-		// Get authenticated user using getAuth() with request
-		const { userId } = getAuth(req);
-		if (!userId) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
-
 		// Get subscription data from request body
 		const subscription = await req.json();
-		console.log("[Notifications Verify] Received subscription:", subscription);
+		console.log("[Demo Verify] Received subscription:", subscription);
 
 		if (!subscription?.endpoint || !subscription?.keys?.auth || !subscription?.keys?.p256dh) {
-			console.log("[Notifications Verify] Invalid subscription data:", { subscription });
+			console.log("[Demo Verify] Invalid subscription data:", { subscription });
 			return NextResponse.json(
 				{
 					error: "Invalid subscription data",
@@ -30,41 +22,21 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		// Find existing subscription first
-		const existingSubscription = await prisma.pushSubscription.findFirst({
-			where: {
-				AND: [{ userId: userId }, { endpoint: subscription.endpoint }],
+		// Demo mode - simulate successful verification
+		console.log("[Demo Verify] Would verify subscription for endpoint:", subscription.endpoint);
+
+		return NextResponse.json({
+			success: true,
+			subscription: {
+				id: "demo-subscription-id",
+				endpoint: subscription.endpoint,
+				verified: true,
 			},
+			mode: "demo",
 		});
-
-		let result;
-		if (existingSubscription) {
-			// Update existing subscription
-			result = await prisma.pushSubscription.update({
-				where: {
-					id: existingSubscription.id,
-				},
-				data: {
-					auth: subscription.keys.auth,
-					p256dh: subscription.keys.p256dh,
-				},
-			});
-		} else {
-			// Create new subscription
-			result = await prisma.pushSubscription.create({
-				data: {
-					userId: userId,
-					endpoint: subscription.endpoint,
-					auth: subscription.keys.auth,
-					p256dh: subscription.keys.p256dh,
-				},
-			});
-		}
-
-		return NextResponse.json({ success: true, subscription: result });
 	} catch (err: unknown) {
 		const error = err as Error;
-		console.error("[Notifications Verify] Error details:", {
+		console.error("[Demo Verify] Error details:", {
 			name: error.name,
 			message: error.message,
 			stack: error.stack,

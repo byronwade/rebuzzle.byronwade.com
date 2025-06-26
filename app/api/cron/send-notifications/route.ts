@@ -1,90 +1,43 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
-import { prisma } from "@/lib/prisma";
-import { dailyPuzzleEmail } from "@/emails/dailyPuzzle";
+import type { NextRequest } from "next/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export async function GET(req: Request) {
+export async function POST(request: NextRequest) {
 	try {
-		// Verify that this is a legitimate Vercel cron request
-		const authHeader = req.headers.get("authorization");
-		if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-			return new Response("Unauthorized", { status: 401 });
-		}
+		// Demo notification sending
+		console.log("Demo: Daily puzzle notification would be sent here");
 
-		console.log("[Daily Notifications] Starting daily notification process");
+		// In a real implementation, this would:
+		// 1. Fetch users with notification preferences
+		// 2. Send push notifications
+		// 3. Send email notifications
+		// 4. Log the results
 
-		// Get all subscribed users
-		const subscribers = await prisma.pushSubscription.findMany({
-			where: {
-				email: {
-					not: null,
-				},
-			},
-			distinct: ["email"],
-		});
-
-		console.log("[Daily Notifications] Found subscribers:", subscribers.length);
-
-		const template = dailyPuzzleEmail();
-		let successCount = 0;
-		let errorCount = 0;
-
-		// Send emails in batches of 10 to avoid rate limits
-		for (let i = 0; i < subscribers.length; i += 10) {
-			const batch = subscribers.slice(i, i + 10);
-			const promises = batch.map(async (subscriber) => {
-				if (!subscriber.email) return; // TypeScript check
-
-				try {
-					const result = await resend.emails.send({
-						from: "Rebuzzle <onboarding@resend.dev>",
-						to: subscriber.email,
-						subject: "🎯 Your Daily Rebuzzle is Ready!",
-						html: template.html,
-						text: template.text,
-					});
-
-					console.log("[Daily Notifications] Sent email to:", subscriber.email);
-					successCount++;
-					return result;
-				} catch (error) {
-					console.error("[Daily Notifications] Error sending to:", subscriber.email, error);
-					errorCount++;
-					return null;
-				}
-			});
-
-			await Promise.all(promises);
-			// Small delay between batches
-			if (i + 10 < subscribers.length) {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-			}
-		}
-
-		console.log("[Daily Notifications] Completed:", {
-			total: subscribers.length,
-			success: successCount,
-			error: errorCount,
-		});
+		const mockResults = {
+			emailsSent: 0,
+			pushNotificationsSent: 0,
+			errors: 0,
+			message: "Demo mode - no actual notifications sent",
+		};
 
 		return NextResponse.json({
 			success: true,
-			stats: {
-				total: subscribers.length,
-				success: successCount,
-				error: errorCount,
-			},
+			results: mockResults,
+			mode: "demo",
 		});
 	} catch (error) {
-		console.error("[Daily Notifications] Error in cron job:", error);
+		console.error("Error in notification cron:", error);
 		return NextResponse.json(
 			{
 				success: false,
-				error: error instanceof Error ? error.message : "Unknown error",
+				error: "Failed to send notifications",
+				details: error instanceof Error ? error.message : "Unknown error",
 			},
 			{ status: 500 }
 		);
 	}
+}
+
+export async function GET(request: NextRequest) {
+	// Allow GET for testing
+	return POST(request);
 }

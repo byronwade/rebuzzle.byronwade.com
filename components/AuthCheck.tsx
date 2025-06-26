@@ -1,14 +1,19 @@
-import { auth } from "@clerk/nextjs/server";
-
 export async function AuthCheck() {
 	try {
-		// Disable debug logging for this call
-		process.env.CLERK_DEBUG = "false";
-		process.env.CLERK_LOGGING_ENABLED = "false";
-
-		await auth();
+		// Demo mode - always return unauthenticated state
+		return {
+			userId: null,
+			user: null,
+			isAuthenticated: false,
+			mode: "demo",
+		};
 	} catch (error) {
-		// Silently handle any errors
+		console.error("Demo AuthCheck error:", error);
+		return {
+			userId: null,
+			user: null,
+			isAuthenticated: false,
+			mode: "demo",
+		};
 	}
-	return null;
 }
