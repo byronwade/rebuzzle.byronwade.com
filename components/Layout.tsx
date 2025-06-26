@@ -7,15 +7,36 @@ interface LayoutProps {
   puzzlesPlayedToday?: number
 }
 
-export default function Layout({ children, nextPlayTime = null, puzzlesPlayedToday }: LayoutProps) {
+interface LayoutProps {
+	children: React.ReactNode;
+	nextPlayTime?: Date | null;
+}
+
+export default function Layout({ children, nextPlayTime = null }: LayoutProps) {
 	return (
-		<div className="min-h-screen bg-white text-gray-800 flex flex-col">
-			<div className="flex-grow flex flex-col items-center px-4 sm:px-6 md:px-8 lg:px-12">
-				<Header nextPlayTime={nextPlayTime} />
-				<main className="w-full max-w-2xl mx-auto mt-8">{children}</main>
+		<div className="min-h-screen bg-slate-50 relative overflow-hidden">
+			{/* Subtle background pattern */}
+			<div className="absolute inset-0 opacity-20">
+				<div
+					className="absolute inset-0"
+					style={{
+						backgroundImage: `radial-gradient(circle at 2px 2px, rgba(147, 51, 234, 0.15) 1px, transparent 0)`,
+						backgroundSize: "20px 20px",
+					}}
+				/>
 			</div>
-			<footer className="mt-8 text-center text-sm text-gray-600 py-4">
-				<p>&copy; {new Date().getFullYear()} Rebuzzle. All rights reserved.</p>
+
+			{/* Header */}
+			<Header nextPlayTime={nextPlayTime} />
+
+			{/* Main content */}
+			<main className="relative z-10 pb-2 sm:pb-4">{children}</main>
+
+			{/* Compact footer */}
+			<footer className="relative z-10 text-center py-3 sm:py-4 text-xs sm:text-sm text-gray-500 bg-white backdrop-blur-sm border-t border-white/30">
+				<div className="animate-in fade-in-up duration-1000" style={{ animationDelay: "1.5s" }}>
+					Made with ♥ by Byron
+				</div>
 			</footer>
 		</div>
 	);

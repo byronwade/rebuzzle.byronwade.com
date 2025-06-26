@@ -32,7 +32,7 @@ export interface GameData {
 	rebusPuzzle: string;
 	answer: string;
 	explanation: string;
-	difficulty: Difficulty;
+	difficulty: number;
 	leaderboard: LeaderboardEntry[];
 	hints?: string[];
 	metadata?: PuzzleMetadata;

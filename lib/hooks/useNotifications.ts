@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
 
 // Helper function to convert base64 URL-safe to Uint8Array
 function urlBase64ToUint8Array(base64String: string) {
@@ -25,6 +26,7 @@ const STORAGE_KEYS = {
 
 export function useNotifications() {
 	const { isAuthenticated, userId } = useAuth();
+	const { toast } = useToast();
 	const [hasPermission, setHasPermission] = useState(false);
 	const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
 	const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null);
@@ -263,9 +265,25 @@ export function useNotifications() {
 			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_STATE);
 			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT);
 			localStorage.removeItem(STORAGE_KEYS.EMAIL);
+
+			// Show success toast
+			toast({
+				title: "🔕 Notifications Disabled",
+				description: "You won't receive daily puzzle reminders anymore. You can re-enable them anytime!",
+				duration: 5000,
+			});
 		} catch (error) {
 			console.error("[Notifications] Error unsubscribing:", error);
-			setError(error instanceof Error ? error.message : "Failed to unsubscribe from notifications");
+			const errorMessage = error instanceof Error ? error.message : "Failed to unsubscribe from notifications";
+			setError(errorMessage);
+
+			// Show error toast
+			toast({
+				title: "❌ Error",
+				description: errorMessage,
+				variant: "destructive",
+				duration: 5000,
+			});
 		} finally {
 			setIsLoading(false);
 		}
@@ -279,11 +297,12 @@ export function useNotifications() {
 			if (notificationsEnabled) {
 				await unsubscribeFromPushNotifications();
 			} else {
-				// Get the email first
+				// Get the email first if not authenticated
 				let currentEmail = email;
 
-				if (!currentEmail) {
+				if (!isAuthenticated && !currentEmail) {
 					setShowEmailDialog(true);
+					setIsLoading(false);
 					return;
 				}
 
@@ -291,6 +310,14 @@ export function useNotifications() {
 				if (Notification.permission !== "granted") {
 					const permission = await Notification.requestPermission();
 					if (permission !== "granted") {
+						if (permission === "denied") {
+							setShowInstructions(true);
+							toast({
+								title: "🔔 Permission Needed",
+								description: "Please allow notifications in your browser settings to receive daily puzzle reminders.",
+								duration: 7000,
+							});
+						}
 						throw new Error("Notification permission denied");
 					}
 					setHasPermission(true);
@@ -300,21 +327,42 @@ export function useNotifications() {
 				const newSubscriptionId = await subscriptionManager({ currentEmail, mode: "subscribe" });
 				setNotificationsEnabled(true);
 
+				// Show success toast
+				toast({
+					title: "🔔 Notifications Enabled!",
+					description: "You'll receive daily reminders at 8 AM to play new puzzles. We're sending you a test notification now!",
+					duration: 6000,
+				});
+
 				// Wait a moment for state to update
-				await new Promise((resolve) => setTimeout(resolve, 100));
+				await new Promise((resolve) => setTimeout(resolve, 500));
 
 				// Send a test notification using the new subscription ID
 				if (newSubscriptionId) {
-					await handleTest(newSubscriptionId);
+					try {
+						await handleTest(newSubscriptionId);
+					} catch (testError) {
+						console.warn("[Notifications] Test notification failed:", testError);
+						// Don't throw here - subscription is still successful
+					}
 				}
 			}
 		} catch (error) {
 			console.error("[Notifications] Error toggling notifications:", error);
-			setError(error instanceof Error ? error.message : "Failed to toggle notifications");
+			const errorMessage = error instanceof Error ? error.message : "Failed to toggle notifications";
+			setError(errorMessage);
 			setNotificationsEnabled(false);
 			setPushSubscription(null);
 			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_STATE);
 			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT);
+
+			// Show error toast
+			toast({
+				title: "❌ Error",
+				description: errorMessage,
+				variant: "destructive",
+				duration: 5000,
+			});
 		} finally {
 			setIsLoading(false);
 		}

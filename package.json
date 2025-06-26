@@ -9,7 +9,9 @@
 		"lint": "next lint",
 		"generate:puzzles": "node scripts/generateDailyPuzzles.js",
 		"generate:today": "node scripts/generateDailyPuzzles.js --today",
-		"generate:year": "node scripts/generateDailyPuzzles.js --year"
+		"generate:year": "node scripts/generateDailyPuzzles.js --year",
+		"generate:vapid": "node scripts/generateVapidKeys.js",
+		"generate:icons": "node scripts/generateIcons.js"
 	},
 	"dependencies": {
 		"@ai-sdk/groq": "^1.0.8",
@@ -67,6 +69,7 @@
 		"tailwind-merge": "^2.5.5",
 		"tailwindcss-animate": "^1.0.7",
 		"vaul": "^1.1.2",
+		"web-push": "^3.6.7",
 		"zod": "^3.24.1"
 	},
 	"devDependencies": {

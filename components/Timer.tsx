@@ -46,9 +46,11 @@ export function Timer({ nextPlayTime, className }: TimerProps) {
   }, [nextPlayTime])
 
   return (
-    <div className={cn("text-xs text-gray-400", className)}>
-      <span>Next puzzle in: {timeLeft}</span>
-    </div>
-  )
+		<div className={cn("text-xs xs:text-sm text-gray-400 font-mono", className)}>
+			<span className="hidden xs:inline">Next puzzle in: </span>
+			<span className="xs:hidden">Next: </span>
+			<span className="font-semibold text-gray-600">{timeLeft}</span>
+		</div>
+  );
 }
 

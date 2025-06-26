@@ -359,59 +359,59 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 					},
 				})}
 			</Script>
-			<div className={cn("w-full flex flex-col items-center pb-32 sm:pb-0", shake && "shake")}>
-				<Card className="w-full aspect-[16/8] bg-blue-100 flex items-center justify-center mb-4 sm:mb-6 p-4 sm:p-6 md:p-8">
-					{error ? (
-						<div className="text-red-500 text-center">
-							<h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{error.message}</h2>
-							{error.details && <pre className="text-xs overflow-auto max-h-40 bg-gray-100 p-2 rounded">{error.details}</pre>}
+			<div className="flex flex-col min-h-screen bg-slate-50">
+				{/* Game content area with modern design */}
+				<div className="flex-1 px-4 sm:px-6 py-4 sm:py-6">
+					<div className="max-w-2xl mx-auto space-y-6">
+						{/* Modern status bar */}
+						<div className="flex items-center justify-between p-4 bg-white backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm">
+							<div className="flex items-center gap-3">
+								<div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 rounded-full">
+									<div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+									<span className="text-sm font-medium text-gray-700">Level {currentEventPuzzle?.difficulty || 1}</span>
+								</div>
+								{currentEventPuzzle?.hints && <HintBadge hints={currentEventPuzzle.hints} onHintReveal={handleHintReveal} gameId={currentEventPuzzle.id} className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" />}
+							</div>
+							<div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full">
+								<div className="w-2 h-2 bg-green-500 rounded-full"></div>
+								<span className="text-sm font-medium text-gray-600">{attemptsLeft} left</span>
+							</div>
 						</div>
-					) : (
-						<h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-blue-600 text-center">{rebus || "Loading puzzle..."}</h2>
-					)}
-				</Card>
 
-				<div className="w-full flex justify-between items-center mb-2">
-					<Badge variant="outline" className="text-[10px] sm:text-xs text-gray-600 border-gray-300 px-2 py-0.5">
-						{gameOver ? "Game Over" : `${attemptsLeft} ${attemptsLeft === 1 ? "Attempt" : "Attempts"} Left`}
-					</Badge>
-					{!gameOver && currentEventPuzzle.hints && currentEventPuzzle.hints.length > 0 && <HintBadge hints={currentEventPuzzle.hints} onHintReveal={handleHintReveal} gameId={currentEventPuzzle.id} />}
-				</div>
+						{/* Enhanced puzzle display */}
+						<div className="text-center space-y-4">
+							<div className="p-8 sm:p-12 bg-white rounded-3xl border-2 border-dashed border-gray-200 shadow-inner">
+								<div className="text-5xl sm:text-6xl md:text-7xl font-bold text-gray-800 leading-tight">{rebus}</div>
+							</div>
+							<p className="text-gray-600 font-medium">What does this rebus puzzle represent?</p>
+						</div>
 
-				{currentEventPuzzle && (
-					<div className="w-full flex flex-col items-center">
-						<GuessBoxes currentGuess={currentGuess} answer={currentEventPuzzle.answer} gameOver={gameOver} lastSubmittedGuess={lastSubmittedGuess} submittedGuesses={[]} onSubmit={handleGuess} isGuessFilled={isGuessFilled} handleGuess={handleGuess} />
+						{/* Enhanced guess input area */}
+						<div className="space-y-4">
+							<GuessBoxes currentGuess={currentGuess} answer={currentEventPuzzle?.answer || ""} gameOver={gameOver} lastSubmittedGuess={lastSubmittedGuess} submittedGuesses={[]} onSubmit={handleGuess} isGuessFilled={isGuessFilled} handleGuess={handleGuess} />
+						</div>
 
-						{isGuessFilled && !gameOver && (
-							<Button onClick={handleGuess} className="mt-4 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md flex items-center">
-								<span className="mr-2">Enter</span>
-								<ArrowRight className="h-4 w-4" />
+						{/* Modern submit button */}
+						<div className="flex gap-3">
+							<Button onClick={handleGuess} disabled={!isGuessFilled || gameOver} size="lg" className={cn("flex-1 h-14 text-lg font-semibold rounded-2xl", "bg-purple-600 hover:bg-purple-700 text-white", "shadow-lg hover:shadow-xl transition-all duration-300", "disabled:opacity-50 disabled:cursor-not-allowed", shake && "animate-bounce")}>
+								<ArrowRight className="mr-2 h-5 w-5" />
+								Submit Answer
 							</Button>
-						)}
-						{gameOver && (
-							<Button
-								onClick={() => {
-									router.push(`/game-over?guess=${encodeURIComponent(finalGuess || "")}&success=${wasSuccessful}&attempts=${finalAttempts}`);
-								}}
-								className="mt-4 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md flex items-center"
-							>
-								<span className="mr-2">View Results</span>
-								<ArrowRight className="h-4 w-4" />
-							</Button>
+						</div>
+
+						{/* Enhanced feedback */}
+						{feedbackMessage && (
+							<div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-center">
+								<p className="text-lg font-medium text-gray-700">{feedbackMessage}</p>
+							</div>
 						)}
 					</div>
-				)}
-
-				<div className="w-full text-center text-sm text-gray-600 mt-2" aria-live="polite">
-					{gameOver ? <p>Game over! Come back at midnight for a new puzzle.</p> : feedbackMessage}
 				</div>
 
-				{!gameOver && (
-					<div className="w-full">
-						<p className="hidden sm:block text-center text-sm text-gray-500 mb-4">You can use your keyboard to type - just start typing!</p>
-						<Keyboard onKeyPress={handleKeyPress} disabled={gameOver || nextPlayTime !== null || !currentEventPuzzle} />
-					</div>
-				)}
+				{/* Modern keyboard */}
+				<div className="bg-white backdrop-blur-sm border-t border-gray-100">
+					<Keyboard onKeyPress={handleKeyPress} disabled={gameOver} />
+				</div>
 			</div>
 		</>
 	);

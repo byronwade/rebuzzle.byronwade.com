@@ -124,7 +124,7 @@ export const fetchGameData = unstable_cache(
 					rebusPuzzle: "",
 					answer: "",
 					explanation: "",
-					difficulty: "medium" as Difficulty,
+					difficulty: 5, // Use numeric difficulty
 					leaderboard: [],
 					hints: [],
 					metadata: {},
@@ -143,7 +143,7 @@ export const fetchGameData = unstable_cache(
 					rebusPuzzle: "📱 🏠",
 					answer: "smartphone",
 					explanation: "Smart + Phone = Smartphone",
-					difficulty: "medium" as Difficulty,
+					difficulty: 3, // Use numeric difficulty
 					leaderboard: [],
 					hints: ["Think about technology", "This is a beginner level puzzle", "The answer is a single word"],
 					metadata: {
@@ -173,14 +173,13 @@ export const fetchGameData = unstable_cache(
 				relevanceScore: puzzle.relevanceScore,
 				hints: puzzle.hints,
 			} as PuzzleMetadata;
-			const difficultyValue = typeof puzzle.difficulty === "number" ? (puzzle.difficulty <= 2 ? "easy" : puzzle.difficulty <= 3 ? "medium" : "hard") : "medium";
 
 			return {
 				id: puzzle.id || puzzle.keyword,
 				rebusPuzzle: puzzle.rebusPuzzle,
 				answer: puzzle.answer,
 				explanation: puzzle.explanation,
-				difficulty: difficultyValue as Difficulty,
+				difficulty: puzzle.difficulty,
 				hints: puzzle.hints || [],
 				leaderboard: [],
 				isCompleted,
@@ -195,7 +194,7 @@ export const fetchGameData = unstable_cache(
 				rebusPuzzle: "",
 				answer: "",
 				explanation: "",
-				difficulty: "medium" as Difficulty,
+				difficulty: 3, // Use numeric difficulty
 				leaderboard: [],
 				hints: [],
 				metadata: {},

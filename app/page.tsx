@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions";
 import { redirect } from "next/navigation";
 import type { GameData } from "@/lib/gameSettings";
@@ -15,6 +16,8 @@ export const viewport: Viewport = {
 	width: "device-width",
 	initialScale: 1,
 	maximumScale: 1,
+	userScalable: false,
+	viewportFit: "cover",
 };
 
 interface SearchParams {
@@ -47,9 +50,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
 			console.log("No puzzle available");
 			return (
 				<Layout>
-					<div className="py-8 text-center">
-						<h1 className="mb-4 text-3xl font-bold">No Puzzle Available</h1>
-						<p>Check back later for today's puzzle!</p>
+					<div className="py-12 text-center fade-in-up">
+						<div className="mb-6">
+							<div className="text-6xl mb-4">🧩</div>
+							<h1 className="mb-4 text-3xl font-bold text-gray-700">No Puzzle Available</h1>
+							<p className="text-gray-600 mb-6">Check back later for today's puzzle!</p>
+							<LoadingSpinner text="Loading new puzzle..." />
+						</div>
 					</div>
 				</Layout>
 			);
@@ -71,9 +78,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
 		console.error("Error in Home page:", error);
 		return (
 			<Layout>
-				<div className="py-8 text-center">
-					<h1 className="mb-4 text-3xl font-bold">Something went wrong</h1>
-					<p>Please try again later.</p>
+				<div className="py-12 text-center fade-in-up">
+					<div className="mb-6">
+						<div className="text-6xl mb-4">😅</div>
+						<h1 className="mb-4 text-3xl font-bold text-red-600">Oops! Something went wrong</h1>
+						<p className="text-gray-600 mb-6">We're having trouble loading today's puzzle. Please try refreshing the page.</p>
+						<button onClick={() => window.location.reload()} className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors duration-200 interactive-element">
+							Try Again
+						</button>
+					</div>
 				</div>
 			</Layout>
 		);

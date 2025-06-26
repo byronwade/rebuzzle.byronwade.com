@@ -29,46 +29,56 @@ export function GuessBoxes({ currentGuess, answer, gameOver, lastSubmittedGuess,
 		}));
 	}, [answer]);
 
-	let guessIndex = 0;
-
 	return (
-		<div className="flex flex-col items-center gap-4 mb-6">
-			{wordStructures.map(({ word, structure }, wordIndex) => (
-				<div key={`word-${wordIndex}`} className="flex justify-center gap-1.5">
-					{structure.map((item, charIndex) => {
-						if (item.type === "punctuation") {
+		<div className="space-y-6">
+			{/* Modern word input display */}
+			<div className="space-y-4">
+				{wordStructures.map(({ word, structure }, wordIndex) => (
+					<div key={wordIndex} className="flex flex-wrap justify-center gap-2 p-4 bg-white backdrop-blur-sm rounded-2xl border border-gray-100" style={{ animationDelay: `${wordIndex * 100}ms` }}>
+						{structure.map((item, charIndex) => {
+							const globalIndex = wordStructures.slice(0, wordIndex).reduce((acc, { structure }) => acc + structure.length, 0) + charIndex;
+							const currentLetter = currentGuess[globalIndex] || "";
+							const isCorrect = gameOver && item.char.toLowerCase() === currentLetter.toLowerCase();
+							const isIncorrect = gameOver && currentLetter && item.char.toLowerCase() !== currentLetter.toLowerCase();
+							const isEmpty = !currentLetter;
+							const isActive = globalIndex === currentGuess.length && !gameOver;
+
 							return (
-								<div key={`${wordIndex}-${charIndex}`} className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-base sm:text-lg font-bold text-gray-500">
-									{item.char}
+								<div
+									key={`${wordIndex}-${charIndex}`}
+									className={cn("relative flex items-center justify-center font-bold text-center transition-all duration-300", "w-12 h-12 sm:w-14 sm:h-14 text-lg sm:text-xl", "rounded-xl border-2 shadow-sm", {
+										// Correct state
+										"bg-green-100 border-green-400 text-green-800 shadow-green-200/50": isCorrect,
+										// Incorrect state
+										"bg-red-100 border-red-400 text-red-800 shadow-red-200/50": isIncorrect,
+										// Empty state
+										"bg-white border-gray-200 text-gray-400 hover:border-purple-300": isEmpty && !gameOver,
+										// Filled state
+										"bg-purple-50 border-purple-300 text-purple-800": !isEmpty && !gameOver,
+										// Active state
+										"ring-2 ring-purple-400 ring-opacity-50": isActive,
+										// Hover effects
+										"hover:scale-105 hover:shadow-md": !gameOver,
+									})}
+								>
+									<span className="select-none">{currentLetter.toUpperCase() || ""}</span>
+
+									{/* Active indicator */}
+									{isActive && <div className="absolute inset-0 bg-purple-100/50 rounded-xl animate-pulse" />}
+
+									{/* Success animation */}
+									{isCorrect && <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-bounce" />}
 								</div>
 							);
-						}
+						})}
+					</div>
+				))}
+			</div>
 
-						const letter = gameOver ? item.char : currentGuess[guessIndex];
-						const isCorrect = lastSubmittedGuess && lastSubmittedGuess[guessIndex]?.toLowerCase() === item.char.toLowerCase();
-						const isIncorrect = lastSubmittedGuess && lastSubmittedGuess[guessIndex] && lastSubmittedGuess[guessIndex]?.toLowerCase() !== item.char.toLowerCase();
-
-						const box = (
-							<div
-								key={`${wordIndex}-${charIndex}`}
-								className={cn(
-									"w-12 h-12 sm:w-14 sm:h-14 rounded flex items-center justify-center text-xl sm:text-2xl font-bold border-2",
-									"transform transition-all duration-150 ease-in-out",
-									letter && "scale-105",
-									gameOver ? "bg-gray-200 text-gray-600 border-gray-300" : letter ? (lastSubmittedGuess ? (isCorrect ? "bg-green-500 text-white border-green-600 animate-bounce-once" : isIncorrect ? "bg-red-500 text-white border-red-600 animate-shake-once" : "bg-purple-100 text-gray-800 border-purple-200") : "bg-purple-100 text-gray-800 border-purple-200") : "bg-white text-gray-800 border-gray-300 hover:border-gray-400",
-									"transition-colors duration-200"
-								)}
-								aria-label={`Letter box ${guessIndex + 1}`}
-							>
-								{gameOver ? item.char : letter || ""}
-							</div>
-						);
-
-						guessIndex++;
-						return box;
-					})}
-				</div>
-			))}
+			{/* Helpful instruction */}
+			<div className="text-center">
+				<p className="text-sm text-gray-500 bg-white px-4 py-2 rounded-full inline-block">💡 Type your answer or use the keyboard below</p>
+			</div>
 		</div>
 	);
 }

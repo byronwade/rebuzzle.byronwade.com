@@ -73,11 +73,33 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 		console.error("Error in BlogPostPage:", error);
 		return (
 			<Layout>
-				<div className="max-w-4xl mx-auto px-4 py-8">
-					<div className="text-center text-red-600 dark:text-red-400">
-						<h1 className="text-3xl font-bold mb-4">Error Loading Blog Post</h1>
-						<p>Sorry, we encountered an error loading this blog post.</p>
-						{process.env.NODE_ENV === "development" && <pre className="mt-4 text-left bg-gray-100 dark:bg-gray-800 p-4 rounded mx-auto max-w-2xl overflow-auto text-sm">{JSON.stringify(error, null, 2)}</pre>}
+				<div className="min-h-screen bg-slate-50 px-4 py-8">
+					<div className="max-w-4xl mx-auto">
+						{/* Error state */}
+						<div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-12 text-center">
+							<div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
+								<svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+								</svg>
+							</div>
+							<h1 className="text-3xl font-bold text-red-600 mb-4">Error Loading Blog Post</h1>
+							<p className="text-gray-600 mb-6">Sorry, we encountered an error loading this blog post.</p>
+							<div className="flex flex-col sm:flex-row gap-4 justify-center">
+								<a href="/blog" className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors duration-200">
+									Back to Blog
+								</a>
+								<a href="/" className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-xl font-semibold transition-colors duration-200">
+									Play Today's Puzzle
+								</a>
+							</div>
+
+							{process.env.NODE_ENV === "development" && (
+								<div className="mt-8 text-left bg-red-50 p-4 rounded-xl border border-red-200">
+									<p className="text-sm font-medium text-red-700 mb-2">Error Details:</p>
+									<pre className="text-xs text-red-600 overflow-auto">{JSON.stringify(error, null, 2)}</pre>
+								</div>
+							)}
+						</div>
 					</div>
 				</div>
 			</Layout>

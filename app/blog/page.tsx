@@ -59,16 +59,33 @@ export default async function BlogPage() {
 			console.log("No blog posts available for rendering");
 			return (
 				<Layout>
-					<h1 className="text-3xl font-bold mb-8 text-center">Rebuzzle Blog</h1>
-					<div className="text-center text-gray-600">
-						<p>No blog posts available at the moment.</p>
-						<p>Please check back later!</p>
-						{process.env.NODE_ENV === "development" && (
-							<div className="mt-4 text-sm text-left bg-gray-100 p-4 rounded">
-								<p>Debug Info:</p>
-								<pre>{JSON.stringify({ blogPosts }, null, 2)}</pre>
+					<div className="min-h-screen bg-slate-50 px-4 py-8">
+						<div className="max-w-4xl mx-auto">
+							{/* Header */}
+							<div className="text-center mb-12">
+								<h1 className="text-4xl font-bold text-gray-800 mb-4">Rebuzzle Blog</h1>
+								<p className="text-lg text-gray-600">Daily puzzle insights and game tips</p>
 							</div>
-						)}
+
+							{/* Empty state */}
+							<div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-12 text-center">
+								<div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
+									<svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+									</svg>
+								</div>
+								<h2 className="text-2xl font-bold text-gray-800 mb-2">No Blog Posts Yet</h2>
+								<p className="text-gray-600 mb-6">We're working on some great content for you!</p>
+								<p className="text-sm text-gray-500">Check back soon for puzzle insights and tips.</p>
+
+								{process.env.NODE_ENV === "development" && (
+									<div className="mt-8 text-left bg-gray-50 p-4 rounded-xl border border-gray-200">
+										<p className="text-sm font-medium text-gray-700 mb-2">Debug Info:</p>
+										<pre className="text-xs text-gray-600 overflow-auto">{JSON.stringify({ blogPosts }, null, 2)}</pre>
+									</div>
+								)}
+							</div>
+						</div>
 					</div>
 				</Layout>
 			);
@@ -76,45 +93,75 @@ export default async function BlogPage() {
 
 		return (
 			<Layout>
-				<h1 className="text-3xl font-bold mb-8 text-center">Rebuzzle Blog</h1>
-				<div className="space-y-8">
-					{blogPosts.map((post) => (
-						<BlogPost key={post.slug} post={post} />
-					))}
-				</div>
-				{process.env.NODE_ENV === "development" && (
-					<div className="mt-8 text-sm text-gray-600">
-						<p>Debug Info:</p>
-						<pre className="bg-gray-100 p-4 rounded">{JSON.stringify({ postCount: blogPosts.length }, null, 2)}</pre>
+				<div className="min-h-screen bg-slate-50 px-4 py-8">
+					<div className="max-w-4xl mx-auto">
+						{/* Header */}
+						<div className="text-center mb-12">
+							<h1 className="text-4xl font-bold text-gray-800 mb-4">Rebuzzle Blog</h1>
+							<p className="text-lg text-gray-600">Daily puzzle insights and game tips</p>
+						</div>
+
+						{/* Blog posts grid */}
+						<div className="space-y-8">
+							{blogPosts.map((post) => (
+								<BlogPost key={post.slug} post={post} />
+							))}
+						</div>
+
+						{process.env.NODE_ENV === "development" && (
+							<div className="mt-12 bg-white rounded-2xl p-6 border border-gray-200">
+								<p className="text-sm font-medium text-gray-700 mb-2">Debug Info:</p>
+								<pre className="text-xs text-gray-600 bg-gray-50 p-4 rounded-lg overflow-auto">{JSON.stringify({ postCount: blogPosts.length }, null, 2)}</pre>
+							</div>
+						)}
 					</div>
-				)}
+				</div>
 			</Layout>
 		);
 	} catch (error) {
 		console.error("Error in BlogPage:", error);
 		return (
 			<Layout>
-				<h1 className="text-3xl font-bold mb-8 text-center">Rebuzzle Blog</h1>
-				<div className="text-center text-red-600">
-					<p>Sorry, we encountered an error loading the blog posts.</p>
-					<p>Please try again later.</p>
-					{process.env.NODE_ENV === "development" && (
-						<div className="mt-4 text-sm">
-							<p>Error Details:</p>
-							<pre className="bg-gray-100 p-4 rounded text-left">
-								{error instanceof Error
-									? JSON.stringify(
-											{
-												message: error.message,
-												stack: error.stack,
-											},
-											null,
-											2
-										)
-									: "Unknown error"}
-							</pre>
+				<div className="min-h-screen bg-slate-50 px-4 py-8">
+					<div className="max-w-4xl mx-auto">
+						{/* Header */}
+						<div className="text-center mb-12">
+							<h1 className="text-4xl font-bold text-gray-800 mb-4">Rebuzzle Blog</h1>
+							<p className="text-lg text-gray-600">Daily puzzle insights and game tips</p>
 						</div>
-					)}
+
+						{/* Error state */}
+						<div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-12 text-center">
+							<div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
+								<svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+								</svg>
+							</div>
+							<h2 className="text-2xl font-bold text-red-600 mb-2">Oops! Something went wrong</h2>
+							<p className="text-gray-600 mb-6">We encountered an error loading the blog posts.</p>
+							<a href="/blog" className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors duration-200">
+								Try Again
+							</a>
+
+							{process.env.NODE_ENV === "development" && (
+								<div className="mt-8 text-left bg-red-50 p-4 rounded-xl border border-red-200">
+									<p className="text-sm font-medium text-red-700 mb-2">Error Details:</p>
+									<pre className="text-xs text-red-600 overflow-auto">
+										{error instanceof Error
+											? JSON.stringify(
+													{
+														message: error.message,
+														stack: error.stack,
+													},
+													null,
+													2
+												)
+											: "Unknown error"}
+									</pre>
+								</div>
+							)}
+						</div>
+					</div>
 				</div>
 			</Layout>
 		);

@@ -5,47 +5,58 @@ import { Button } from "@/components/ui/button";
 
 interface KeyboardProps {
 	onKeyPress: (key: string) => void;
-	disabled?: boolean;
+	disabled: boolean;
 }
 
-const keyboardLayout = [
-	["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-	["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-	["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"],
-];
+interface KeyButtonProps {
+	letter: string;
+	onPress: (key: string) => void;
+	disabled: boolean;
+}
+
+function KeyButton({ letter, onPress, disabled }: KeyButtonProps) {
+	return (
+		<Button variant="outline" size="sm" onClick={() => onPress(letter)} disabled={disabled} className="w-10 h-12 bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 active:scale-95">
+			{letter}
+		</Button>
+	);
+}
 
 export function Keyboard({ onKeyPress, disabled }: KeyboardProps) {
 	return (
-		<div className="fixed bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-200 px-1 pb-6 pt-2 sm:static sm:bg-transparent sm:border-0">
-			<div className="max-w-3xl mx-auto">
-				{keyboardLayout.map((row, rowIndex) => (
-					<div key={rowIndex} className="flex justify-center gap-[0.25rem] mb-[0.25rem]">
-						{rowIndex === 1 && <div className="flex-[0.5]" />}
-						{row.map((key) => {
-							const isBackspace = key === "BACKSPACE";
-							const isEnter = key === "ENTER";
-							return (
-								<Button
-									key={key}
-									onClick={() => !disabled && onKeyPress(key)}
-									variant="outline"
-									className={cn("h-[3.5rem] sm:h-14 p-0 font-bold transition-colors uppercase", isBackspace ? "px-3 flex-[2.5] sm:flex-[1.5] text-base" : isEnter ? "px-2 flex-[1.5] sm:flex-[1.2] text-xs" : "w-[2.75rem] sm:w-[2.75rem] text-sm", disabled && "opacity-50 cursor-not-allowed", (isBackspace || isEnter) && "bg-gray-100 hover:bg-gray-200/90 active:bg-gray-300/90 text-gray-700", "touch-manipulation select-none")}
-									disabled={disabled}
-								>
-									{isBackspace ? (
-										<span className="flex items-center justify-center gap-2">
-											<span className="text-lg">←</span>
-											<span className="hidden sm:inline text-sm">DEL</span>
-										</span>
-									) : (
-										key
-									)}
-								</Button>
-							);
-						})}
-						{rowIndex === 1 && <div className="flex-[0.5]" />}
-					</div>
+		<div className="w-full max-w-2xl mx-auto p-4 space-y-3">
+			{/* First row */}
+			<div className="flex justify-center gap-1.5">
+				{["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"].map((letter) => (
+					<KeyButton key={letter} letter={letter} onPress={onKeyPress} disabled={disabled} />
 				))}
+			</div>
+
+			{/* Second row */}
+			<div className="flex justify-center gap-1.5">
+				{["A", "S", "D", "F", "G", "H", "J", "K", "L"].map((letter) => (
+					<KeyButton key={letter} letter={letter} onPress={onKeyPress} disabled={disabled} />
+				))}
+			</div>
+
+			{/* Third row */}
+			<div className="flex justify-center gap-1.5">
+				<Button variant="outline" size="sm" onClick={() => onKeyPress("Backspace")} disabled={disabled} className="h-12 px-4 bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+					⌫
+				</Button>
+				{["Z", "X", "C", "V", "B", "N", "M"].map((letter) => (
+					<KeyButton key={letter} letter={letter} onPress={onKeyPress} disabled={disabled} />
+				))}
+				<Button variant="outline" size="sm" onClick={() => onKeyPress("Enter")} disabled={disabled} className="h-12 px-4 bg-purple-100 hover:bg-purple-200 border-purple-200 text-purple-700 font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+					↵
+				</Button>
+			</div>
+
+			{/* Space bar */}
+			<div className="flex justify-center">
+				<Button variant="outline" onClick={() => onKeyPress(" ")} disabled={disabled} className="h-12 px-16 bg-white hover:bg-gray-50 border-gray-200 text-gray-600 font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+					Space
+				</Button>
 			</div>
 		</div>
 	);

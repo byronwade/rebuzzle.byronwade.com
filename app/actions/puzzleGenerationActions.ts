@@ -30,7 +30,10 @@ const ANSWER_CATEGORIES = {
 		{ answer: "bookworm", hints: ["📚", "🐛"], difficulty: 3, explanation: "Book (📚) + Worm (🐛) = Bookworm" },
 		{ answer: "butterfly", hints: ["🧈", "🦋"], difficulty: 4, explanation: "Butter (🧈) + Fly (🦋) = Butterfly" },
 		{ answer: "lighthouse", hints: ["💡", "🏠"], difficulty: 3, explanation: "Light (💡) + House (🏠) = Lighthouse" },
-		{ answer: "spaceship", hints: ["🌌", "🚢"], difficulty: 3, explanation: "Space (🌌) + Ship (🚢) = Spaceship" },
+		{ answer: "spaceship", hints: ["🌌", "🚢"], difficulty: 3, explanation: "Space (🌌) + Ship (��) = Spaceship" },
+		{ answer: "thunderstorm", hints: ["⚡", "🌪️"], difficulty: 4, explanation: "Thunder (⚡) + Storm (🌪️) = Thunderstorm" },
+		{ answer: "watermelon", hints: ["💧", "🍈"], difficulty: 3, explanation: "Water (💧) + Melon (🍈) = Watermelon" },
+		{ answer: "earthquake", hints: ["🌍", "📳"], difficulty: 4, explanation: "Earth (🌍) + Quake (📳) = Earthquake" },
 	],
 
 	phonetic_puzzles: [
@@ -44,56 +47,208 @@ const ANSWER_CATEGORIES = {
 		{ answer: "peacock", hints: ["🟢", "🐓"], difficulty: 4, explanation: "Pea (🟢) + Cock (🐓) = Peacock" },
 		{ answer: "seashell", hints: ["🌊", "🐚"], difficulty: 2, explanation: "Sea (🌊) + Shell (🐚) = Seashell" },
 		{ answer: "beehive", hints: ["🐝", "🏠"], difficulty: 3, explanation: "Bee (🐝) + Hive (🏠) = Beehive" },
+		{ answer: "anyone", hints: ["NE", "1️⃣"], difficulty: 4, explanation: "Any (NE) + One (1️⃣) = Anyone" },
+		{ answer: "tennessee", hints: ["10", "I", "👁️"], difficulty: 5, explanation: "Ten (10) + I + See (👁️) = Tennessee" },
+		{ answer: "understand", hints: ["👇", "🤚"], difficulty: 4, explanation: "Under (👇) + Stand (🤚) = Understand" },
 	],
 
-	phrase_puzzles: [
-		{ answer: "piece of cake", hints: ["🧩", "of", "🍰"], difficulty: 4, explanation: "Piece (🧩) + of + Cake (🍰) = Piece of Cake (easy task)" },
-		{ answer: "break the ice", hints: ["💔", "the", "🧊"], difficulty: 4, explanation: "Break (💔) + the + Ice (🧊) = Break the Ice" },
-		{ answer: "time flies", hints: ["⏰", "🪰"], difficulty: 3, explanation: "Time (⏰) + Flies (🪰) = Time Flies" },
-		{ answer: "heart attack", hints: ["❤️", "attack"], difficulty: 4, explanation: "Heart (❤️) + Attack = Heart Attack" },
-		{ answer: "brain storm", hints: ["🧠", "⛈️"], difficulty: 3, explanation: "Brain (🧠) + Storm (⛈️) = Brainstorm" },
-		{ answer: "eye candy", hints: ["👁️", "🍭"], difficulty: 3, explanation: "Eye (👁️) + Candy (🍭) = Eye Candy" },
-		{ answer: "green thumb", hints: ["🟢", "👍"], difficulty: 4, explanation: "Green (🟢) + Thumb (👍) = Green Thumb" },
-		{ answer: "cold shoulder", hints: ["🥶", "🤷"], difficulty: 4, explanation: "Cold (🥶) + Shoulder (🤷) = Cold Shoulder" },
-		{ answer: "hot potato", hints: ["🔥", "🥔"], difficulty: 3, explanation: "Hot (🔥) + Potato (��) = Hot Potato" },
-		{ answer: "spill the beans", hints: ["💧", "the", "🫘"], difficulty: 4, explanation: "Spill (💧) + the + Beans (🫘) = Spill the Beans" },
+	positional_puzzles: [
+		{ answer: "crossroads", hints: ["ROADS", "ROADS"], difficulty: 5, explanation: "Roads crossing each other = Crossroads" },
+		{ answer: "upside down", hints: ["uʍop", "ǝpᴉsdn"], difficulty: 4, explanation: "Text appears upside down = Upside Down" },
+		{ answer: "inside out", hints: ["tuo", "edisni"], difficulty: 4, explanation: "Text appears inside out = Inside Out" },
+		{ answer: "backwards", hints: ["sdrawkcab"], difficulty: 3, explanation: "Word written backwards = Backwards" },
+		{ answer: "middle age", hints: ["AGE"], difficulty: 4, explanation: "AGE in the middle = Middle Age" },
+		{ answer: "downtown", hints: ["TOWN", "👇"], difficulty: 4, explanation: "TOWN with down arrow = Downtown" },
+		{ answer: "uptown", hints: ["TOWN", "☝️"], difficulty: 4, explanation: "TOWN with up arrow = Uptown" },
+		{ answer: "overcome", hints: ["COME", "OVER"], difficulty: 4, explanation: "OVER positioned above COME = Overcome" },
+		{ answer: "background", hints: ["GROUND", "BACK"], difficulty: 4, explanation: "BACK behind GROUND = Background" },
+		{ answer: "forehead", hints: ["HEAD", "4️⃣"], difficulty: 4, explanation: "FOUR (4️⃣) in front of HEAD = Forehead" },
+		{ answer: "sandwich", hints: ["SAND", "WICH"], difficulty: 3, explanation: "SAND between bread = Sandwich" },
+		{ answer: "undercover", hints: ["👇", "COVER"], difficulty: 4, explanation: "Under (👇) + COVER = Undercover" },
+		{ answer: "corner", hints: ["R", "🏠"], difficulty: 5, explanation: "R in the corner = Corner" },
+		{ answer: "mixed up", hints: ["MIXEDUP"], difficulty: 4, explanation: "Letters all mixed up = Mixed Up" },
+		{ answer: "square dance", hints: ["⬜", "💃"], difficulty: 3, explanation: "Square (⬜) + Dance (💃) = Square Dance" },
 	],
 
-	creative_visual: [
-		{ answer: "upside down", hints: ["⬆️", "side", "⬇️"], difficulty: 3, explanation: "Up (⬆️) + Side + Down (⬇️) = Upside Down" },
-		{ answer: "inside out", hints: ["📦", "side", "📤"], difficulty: 3, explanation: "In (📦) + Side + Out (📤) = Inside Out" },
-		{ answer: "crossroads", hints: ["❌", "🛣️"], difficulty: 4, explanation: "Cross (❌) + Roads (🛣️) = Crossroads" },
-		{ answer: "waterfall", hints: ["💧", "fall"], difficulty: 3, explanation: "Water (💧) + Fall = Waterfall" },
-		{ answer: "earthquake", hints: ["🌍", "quake"], difficulty: 3, explanation: "Earth (🌍) + Quake = Earthquake" },
-		{ answer: "thunderbolt", hints: ["⚡", "🔩"], difficulty: 4, explanation: "Thunder (⚡) + Bolt (🔩) = Thunderbolt" },
-		{ answer: "midnight", hints: ["🌙", "night"], difficulty: 2, explanation: "Mid (🌙) + Night = Midnight" },
-		{ answer: "daybreak", hints: ["☀️", "break"], difficulty: 3, explanation: "Day (☀️) + Break = Daybreak" },
+	mathematical_rebuses: [
+		{ answer: "tennis", hints: ["10", "S"], difficulty: 4, explanation: "Ten (10) + S = Tennis" },
+		{ answer: "coordinate", hints: ["CO", "4️⃣", "8️⃣"], difficulty: 5, explanation: "CO + Four (4) + Dinate (8) = Coordinate" },
+		{ answer: "paradise", hints: ["PAIR", "🎲", "🎲"], difficulty: 5, explanation: "PAIR + A + DICE = Paradise" },
+		{ answer: "fortunate", hints: ["4️⃣", "🔟", "8️⃣"], difficulty: 5, explanation: "FOUR (4) + TEN (10) + ATE (8) = Fortunate" },
+		{ answer: "wonderful", hints: ["1️⃣", "🌕"], difficulty: 5, explanation: "ONE (1) + DERFUL = Wonderful" },
+		{ answer: "nightmare", hints: ["🌙", "🐴"], difficulty: 4, explanation: "NIGHT (🌙) + MARE (🐴) = Nightmare" },
+		{ answer: "infinity", hints: ["∞", "TEA"], difficulty: 5, explanation: "IN + FIN (∞) + I + TEA = Infinity" },
+		{ answer: "calculate", hints: ["🐄", "📊"], difficulty: 5, explanation: "CAL (🐄) + CU + LATE = Calculate" },
+		{ answer: "geometry", hints: ["GEO", "📐"], difficulty: 4, explanation: "GEO + METRY (📐) = Geometry" },
+		{ answer: "polynomial", hints: ["🦜", "📊"], difficulty: 6, explanation: "POLY (🦜) + NO + MIAL = Polynomial" },
+		{ answer: "fibonacci", hints: ["🐟", "BO", "NACCI"], difficulty: 6, explanation: "FI (🐟) + BO + NACCI = Fibonacci" },
+		{ answer: "algorithm", hints: ["AL", "GO", "RHYTHM"], difficulty: 5, explanation: "AL + GO + RHYTHM = Algorithm" },
+		{ answer: "triangle", hints: ["3️⃣", "ANGLE"], difficulty: 4, explanation: "TRI (3️⃣) + ANGLE = Triangle" },
+		{ answer: "pentagon", hints: ["5️⃣", "GON"], difficulty: 5, explanation: "PENT (5️⃣) + AGON = Pentagon" },
+		{ answer: "hexagon", hints: ["6️⃣", "AGON"], difficulty: 5, explanation: "HEX (6️⃣) + AGON = Hexagon" },
+		{ answer: "octagon", hints: ["8️⃣", "AGON"], difficulty: 5, explanation: "OCT (8️⃣) + AGON = Octagon" },
+		{ answer: "quadratic", hints: ["4️⃣", "RATIC"], difficulty: 6, explanation: "QUAD (4️⃣) + RATIC = Quadratic" },
+		{ answer: "logarithm", hints: ["LOG", "RHYTHM"], difficulty: 6, explanation: "LOG + A + RHYTHM = Logarithm" },
 	],
 
-	modern_tech: [
-		{ answer: "smartphone", hints: ["🧠", "📱"], difficulty: 3, explanation: "Smart (🧠) + Phone (📱) = Smartphone" },
-		{ answer: "bluetooth", hints: ["🟦", "🦷"], difficulty: 4, explanation: "Blue (🟦) + Tooth (🦷) = Bluetooth" },
-		{ answer: "facebook", hints: ["😀", "📖"], difficulty: 3, explanation: "Face (😀) + Book (📖) = Facebook" },
-		{ answer: "instagram", hints: ["📸", "gram"], difficulty: 4, explanation: "Instant (📸) + Gram = Instagram" },
-		{ answer: "youtube", hints: ["👤", "📺"], difficulty: 3, explanation: "You (👤) + Tube (📺) = YouTube" },
-		{ answer: "podcast", hints: ["🎧", "cast"], difficulty: 3, explanation: "Pod (🎧) + Cast = Podcast" },
-		{ answer: "website", hints: ["🕸️", "site"], difficulty: 3, explanation: "Web (🕸️) + Site = Website" },
-		{ answer: "download", hints: ["⬇️", "load"], difficulty: 2, explanation: "Down (⬇️) + Load = Download" },
-		{ answer: "upload", hints: ["⬆️", "load"], difficulty: 2, explanation: "Up (⬆️) + Load = Upload" },
-		{ answer: "screenshot", hints: ["📷", "screen"], difficulty: 2, explanation: "Screen (📷) + Shot = Screenshot" },
+	visual_wordplay: [
+		{ answer: "green with envy", hints: ["🟢", "👁️"], difficulty: 5, explanation: "Green (🟢) with I (👁️) NV = Green with Envy" },
+		{ answer: "see through", hints: ["👁️", "🔍"], difficulty: 4, explanation: "See (👁️) Through (🔍) = See Through" },
+		{ answer: "broken heart", hints: ["💔"], difficulty: 3, explanation: "Broken heart emoji = Broken Heart" },
+		{ answer: "growing up", hints: ["G", "R", "O", "W", "I", "N", "G", "⬆️"], difficulty: 4, explanation: "GROWING with up arrow = Growing Up" },
+		{ answer: "falling down", hints: ["F", "A", "L", "L", "I", "N", "G", "⬇️"], difficulty: 4, explanation: "FALLING with down arrow = Falling Down" },
+		{ answer: "time after time", hints: ["⏰", "⏰", "⏰"], difficulty: 4, explanation: "Time repeated = Time After Time" },
+		{ answer: "once upon a time", hints: ["1️⃣", "🆙", "⏰"], difficulty: 5, explanation: "Once (1) Upon (🆙) A Time (⏰) = Once Upon A Time" },
+		{ answer: "split second", hints: ["✂️", "⏱️"], difficulty: 4, explanation: "Split (✂️) Second (⏱️) = Split Second" },
+		{ answer: "turn around", hints: ["🔄", "🔴"], difficulty: 4, explanation: "Turn (🔄) Around (🔴) = Turn Around" },
+		{ answer: "look both ways", hints: ["👁️", "↔️"], difficulty: 4, explanation: "Look (👁️) Both Ways (↔️) = Look Both Ways" },
+		{ answer: "think outside the box", hints: ["💭", "📦", "➡️"], difficulty: 6, explanation: "Think (💭) Outside (➡️) The Box (📦) = Think Outside The Box" },
+		{ answer: "reading between the lines", hints: ["📖", "📏", "📏"], difficulty: 6, explanation: "Reading (📖) Between The Lines (📏📏) = Reading Between The Lines" },
+		{ answer: "two faced", hints: ["2️⃣", "😀", "😠"], difficulty: 4, explanation: "Two (2) Faced (😀😠) = Two Faced" },
+		{ answer: "head over heels", hints: ["🤸", "HEELS"], difficulty: 5, explanation: "Head Over (🤸) Heels = Completely in love" },
+		{ answer: "all eyes on me", hints: ["👁️", "👁️", "👁️", "ME"], difficulty: 5, explanation: "All Eyes (👁️👁️👁️) On Me = Center of attention" },
+		{ answer: "long time no see", hints: ["LONG", "⏰", "NO", "👁️"], difficulty: 5, explanation: "Long Time (⏰) No See (👁️) = Haven't seen in a while" },
+		{ answer: "man overboard", hints: ["👨", "OVER", "BOARD"], difficulty: 5, explanation: "Man (👨) Over Board = Emergency at sea" },
+		{ answer: "high and low", hints: ["⬆️", "AND", "⬇️"], difficulty: 4, explanation: "High (⬆️) And Low (⬇️) = Everywhere" },
+		{ answer: "six feet under", hints: ["6️⃣", "🦶", "👇"], difficulty: 5, explanation: "Six (6️⃣) Feet (🦶) Under (👇) = Dead and buried" },
+		{ answer: "top secret", hints: ["⬆️", "🤫"], difficulty: 4, explanation: "Top (⬆️) Secret (🤫) = Highly classified" },
 	],
 
-	pop_culture: [
-		{ answer: "superman", hints: ["💪", "👨"], difficulty: 2, explanation: "Super (💪) + Man (👨) = Superman" },
-		{ answer: "spiderman", hints: ["🕷️", "👨"], difficulty: 2, explanation: "Spider (🕷️) + Man (👨) = Spiderman" },
-		{ answer: "batman", hints: ["🦇", "👨"], difficulty: 2, explanation: "Bat (🦇) + Man (👨) = Batman" },
-		{ answer: "wonderwoman", hints: ["❓", "👩"], difficulty: 3, explanation: "Wonder (❓) + Woman (👩) = Wonder Woman" },
-		{ answer: "ironman", hints: ["⚙️", "👨"], difficulty: 2, explanation: "Iron (⚙️) + Man (👨) = Iron Man" },
-		{ answer: "starwars", hints: ["⭐", "⚔️"], difficulty: 3, explanation: "Star (⭐) + Wars (⚔️) = Star Wars" },
-		{ answer: "minecraft", hints: ["⛏️", "craft"], difficulty: 3, explanation: "Mine (⛏️) + Craft = Minecraft" },
-		{ answer: "netflix", hints: ["🌐", "flix"], difficulty: 4, explanation: "Net (🌐) + Flix = Netflix" },
-		{ answer: "pokemon", hints: ["🎒", "mon"], difficulty: 3, explanation: "Pocket (🎒) + Monster (mon) = Pokemon" },
-		{ answer: "facebook", hints: ["👤", "📚"], difficulty: 2, explanation: "Face (👤) + Book (��) = Facebook" },
+	advanced_idioms: [
+		{ answer: "piece of cake", hints: ["🧩", "🍰"], difficulty: 4, explanation: "Piece (🧩) of Cake (🍰) = Easy task" },
+		{ answer: "break the ice", hints: ["💔", "🧊"], difficulty: 4, explanation: "Break (💔) the Ice (🧊) = Start conversation" },
+		{ answer: "spill the beans", hints: ["💧", "🫘"], difficulty: 4, explanation: "Spill (💧) the Beans (🫘) = Reveal secret" },
+		{ answer: "cat got your tongue", hints: ["🐱", "👅"], difficulty: 5, explanation: "Cat (🐱) Got Your Tongue (👅) = Can't speak" },
+		{ answer: "elephant in the room", hints: ["🐘", "🏠"], difficulty: 5, explanation: "Elephant (🐘) In The Room (🏠) = Obvious problem ignored" },
+		{ answer: "skeleton in the closet", hints: ["💀", "🚪"], difficulty: 5, explanation: "Skeleton (💀) In The Closet (🚪) = Hidden secret" },
+		{ answer: "wolf in sheeps clothing", hints: ["🐺", "🐑", "👕"], difficulty: 6, explanation: "Wolf (🐺) In Sheep's (🐑) Clothing (👕) = Deceptive person" },
+		{ answer: "needle in a haystack", hints: ["📍", "🌾"], difficulty: 5, explanation: "Needle (📍) In A Haystack (🌾) = Very hard to find" },
+		{ answer: "ace up your sleeve", hints: ["🂡", "👔"], difficulty: 5, explanation: "Ace (🂡) Up Your Sleeve (👔) = Hidden advantage" },
+		{ answer: "bull in a china shop", hints: ["🐂", "🇨🇳", "🏪"], difficulty: 6, explanation: "Bull (🐂) In A China (🇨🇳) Shop (🏪) = Clumsy in delicate situation" },
+		{ answer: "fish out of water", hints: ["🐠", "💧", "🚫"], difficulty: 5, explanation: "Fish (🐠) Out Of Water (💧🚫) = Uncomfortable situation" },
+		{ answer: "burn the midnight oil", hints: ["🔥", "🌙", "🛢️"], difficulty: 6, explanation: "Burn (🔥) The Midnight (🌙) Oil (🛢️) = Work late into night" },
+		{ answer: "bite the bullet", hints: ["🦷", "🔫"], difficulty: 5, explanation: "Bite (🦷) The Bullet (🔫) = Face difficulty bravely" },
+		{ answer: "barking up the wrong tree", hints: ["🐕", "⬆️", "❌", "🌳"], difficulty: 7, explanation: "Barking (🐕) Up (⬆️) The Wrong (❌) Tree (🌳) = Pursuing wrong course" },
+		{ answer: "the cats out of the bag", hints: ["🐱", "OUT", "🎒"], difficulty: 5, explanation: "The Cat's (🐱) Out Of The Bag (🎒) = Secret is revealed" },
+		{ answer: "let the cat out of the bag", hints: ["LET", "🐱", "OUT", "🎒"], difficulty: 6, explanation: "Let The Cat (🐱) Out Of The Bag (🎒) = Reveal a secret" },
+		{ answer: "curiosity killed the cat", hints: ["❓", "💀", "🐱"], difficulty: 6, explanation: "Curiosity (❓) Killed (💀) The Cat (🐱) = Being too curious is dangerous" },
+		{ answer: "when the cats away the mice will play", hints: ["WHEN", "🐱", "AWAY", "🐭", "PLAY"], difficulty: 8, explanation: "When The Cat's (🐱) Away The Mice (🐭) Will Play = People misbehave when authority is absent" },
+		{ answer: "dont let the grass grow under your feet", hints: ["🚫", "🌱", "GROW", "👇", "🦶"], difficulty: 8, explanation: "Don't Let The Grass (🌱) Grow Under (👇) Your Feet (🦶) = Don't delay action" },
+		{ answer: "the apple doesnt fall far from the tree", hints: ["🍎", "🚫", "FALL", "FAR", "🌳"], difficulty: 8, explanation: "The Apple (🍎) Doesn't Fall Far From The Tree (🌳) = Children resemble their parents" },
+	],
+
+	complex_phrases: [
+		{ answer: "blessing in disguise", hints: ["🙏", "🥸"], difficulty: 5, explanation: "Blessing (🙏) In Disguise (🥸) = Hidden good fortune" },
+		{ answer: "curiosity killed the cat", hints: ["❓", "💀", "🐱"], difficulty: 6, explanation: "Curiosity (❓) Killed (💀) The Cat (🐱) = Being too curious is dangerous" },
+		{ answer: "every cloud has a silver lining", hints: ["☁️", "🥈"], difficulty: 6, explanation: "Every Cloud (☁️) Has A Silver (🥈) Lining = Something good in bad situations" },
+		{ answer: "the early bird catches the worm", hints: ["🌅", "🐦", "🪱"], difficulty: 6, explanation: "The Early (🌅) Bird (🐦) Catches The Worm (🪱) = Being early has advantages" },
+		{ answer: "dont count your chickens before they hatch", hints: ["🚫", "🔢", "🐣"], difficulty: 7, explanation: "Don't Count (🚫🔢) Your Chickens Before They Hatch (🐣) = Don't assume success" },
+		{ answer: "a picture is worth a thousand words", hints: ["🖼️", "💰", "1000", "📝"], difficulty: 7, explanation: "A Picture (🖼️) Is Worth (💰) A Thousand (1000) Words (📝) = Images convey more than text" },
+		{ answer: "actions speak louder than words", hints: ["🎬", "📢", "📝"], difficulty: 6, explanation: "Actions (🎬) Speak Louder (📢) Than Words (📝) = What you do matters more than what you say" },
+		{ answer: "better safe than sorry", hints: ["🛡️", "😢"], difficulty: 5, explanation: "Better Safe (🛡️) Than Sorry (😢) = It's better to be cautious" },
+		{ answer: "dont judge a book by its cover", hints: ["🚫", "⚖️", "📖", "📔"], difficulty: 6, explanation: "Don't Judge (🚫⚖️) A Book (📖) By Its Cover (📔) = Don't judge by appearance" },
+		{ answer: "the pen is mightier than the sword", hints: ["🖊️", "💪", "⚔️"], difficulty: 6, explanation: "The Pen (🖊️) Is Mightier (💪) Than The Sword (⚔️) = Words are more powerful than violence" },
+		{ answer: "when pigs fly", hints: ["WHEN", "🐷", "✈️"], difficulty: 5, explanation: "When Pigs (🐷) Fly (✈️) = Something that will never happen" },
+		{ answer: "kill two birds with one stone", hints: ["💀", "2️⃣", "🐦", "1️⃣", "🪨"], difficulty: 7, explanation: "Kill Two (2) Birds (🐦) With One (1) Stone (🪨) = Accomplish two things at once" },
+		{ answer: "the whole nine yards", hints: ["THE", "WHOLE", "9️⃣", "YARDS"], difficulty: 6, explanation: "The Whole Nine (9) Yards = Everything completely" },
+		{ answer: "once in a blue moon", hints: ["1️⃣", "IN", "🟦", "🌙"], difficulty: 6, explanation: "Once (1) In A Blue (🟦) Moon (🌙) = Very rarely" },
+		{ answer: "raining cats and dogs", hints: ["🌧️", "🐱", "AND", "🐶"], difficulty: 5, explanation: "Raining (🌧️) Cats (🐱) And Dogs (🐶) = Heavy rain" },
+		{ answer: "rome wasnt built in a day", hints: ["ROME", "🚫", "BUILT", "1️⃣", "📅"], difficulty: 7, explanation: "Rome Wasn't Built In A Day (🚫1📅) = Great things take time" },
+		{ answer: "the grass is always greener on the other side", hints: ["🌱", "ALWAYS", "🟢", "OTHER", "SIDE"], difficulty: 8, explanation: "The Grass (🌱) Is Always Greener (🟢) On The Other Side = Others seem to have it better" },
+		{ answer: "dont bite the hand that feeds you", hints: ["🚫", "🦷", "✋", "FEEDS"], difficulty: 7, explanation: "Don't Bite (🚫🦷) The Hand (✋) That Feeds You = Don't harm those who help you" },
+	],
+
+	scientific_concepts: [
+		{ answer: "photosynthesis", hints: ["📸", "🧪"], difficulty: 6, explanation: "Photo (📸) + Synthesis (🧪) = Plant's energy conversion process" },
+		{ answer: "metamorphosis", hints: ["🐛", "➡️", "🦋"], difficulty: 5, explanation: "Meta + Morph + Osis = Caterpillar (🐛) to Butterfly (🦋) transformation" },
+		{ answer: "thermodynamics", hints: ["🌡️", "⚡"], difficulty: 6, explanation: "Thermo (🌡️) + Dynamics (⚡) = Study of heat and energy" },
+		{ answer: "electromagnetic", hints: ["⚡", "🧲"], difficulty: 5, explanation: "Electric (⚡) + Magnetic (🧲) = Electromagnetic force" },
+		{ answer: "deoxyribonucleic acid", hints: ["🧬", "DNA"], difficulty: 8, explanation: "DNA (🧬) = Deoxyribonucleic Acid" },
+		{ answer: "gravitational", hints: ["🍎", "⬇️"], difficulty: 5, explanation: "Gravity (🍎⬇️) + ational = Gravitational force" },
+		{ answer: "periodic table", hints: ["⏰", "📊"], difficulty: 5, explanation: "Periodic (⏰) Table (📊) = Chemical element chart" },
+		{ answer: "ecosystem", hints: ["🌍", "♻️"], difficulty: 4, explanation: "Eco (🌍) + System (♻️) = Environmental system" },
+		{ answer: "biodiversity", hints: ["🧬", "🌿"], difficulty: 5, explanation: "Bio (🧬) + Diversity (🌿) = Variety of life" },
+		{ answer: "photon", hints: ["📸", "⚛️"], difficulty: 5, explanation: "Photo (📸) + n (⚛️) = Light particle" },
+	],
+
+	abstract_concepts: [
+		{ answer: "consciousness", hints: ["🧠", "💭"], difficulty: 6, explanation: "Con + Science (🧠) + Ness = Awareness (💭)" },
+		{ answer: "philosophy", hints: ["💭", "📚"], difficulty: 5, explanation: "Philo + Sophy = Love (💭) of Wisdom (📚)" },
+		{ answer: "psychology", hints: ["🧠", "📖"], difficulty: 5, explanation: "Psycho (🧠) + Logy (📖) = Study of mind" },
+		{ answer: "metaphysical", hints: ["🌌", "❓"], difficulty: 6, explanation: "Meta + Physical = Beyond (🌌) physical reality (❓)" },
+		{ answer: "existentialism", hints: ["🤔", "🌍"], difficulty: 7, explanation: "Existence (🤔) + ism = Philosophy about being (🌍)" },
+		{ answer: "transcendental", hints: ["⬆️", "🌟"], difficulty: 6, explanation: "Trans + Scend (⬆️) + al = Beyond normal limits (🌟)" },
+		{ answer: "enlightenment", hints: ["💡", "🧘"], difficulty: 5, explanation: "En + Light (💡) + ment = Spiritual awakening (🧘)" },
+		{ answer: "intuition", hints: ["💭", "⚡"], difficulty: 5, explanation: "In + Tuition = Inner knowing (💭⚡)" },
+		{ answer: "synchronicity", hints: ["⏰", "🔗"], difficulty: 6, explanation: "Syn + Chrono (⏰) + icity = Meaningful coincidence (🔗)" },
+		{ answer: "serendipity", hints: ["🍀", "💫"], difficulty: 5, explanation: "Serene + Dip + ity = Happy accident (🍀💫)" },
+		{ answer: "paradox", hints: ["PARA", "DOX"], difficulty: 5, explanation: "Para + Dox = Contradictory truth" },
+		{ answer: "dichotomy", hints: ["DI", "CHOT", "OMY"], difficulty: 6, explanation: "Di + Chot + omy = Division into two parts" },
+	],
+
+	cryptic_wordplay: [
+		{ answer: "definitely", hints: ["DEFI", "NITE", "LY"], difficulty: 6, explanation: "Defi + Nite + Ly = Certainly" },
+		{ answer: "altogether", hints: ["ALL", "TO", "GETHER"], difficulty: 5, explanation: "All + To + Gether = Completely" },
+		{ answer: "nevertheless", hints: ["NEVER", "THE", "LESS"], difficulty: 6, explanation: "Never + The + Less = However" },
+		{ answer: "overwhelm", hints: ["OVER", "WHELM"], difficulty: 5, explanation: "Over + Whelm = Overpower" },
+		{ answer: "understand", hints: ["UNDER", "STAND"], difficulty: 4, explanation: "Under + Stand = Comprehend" },
+		{ answer: "outstanding", hints: ["OUT", "STANDING"], difficulty: 5, explanation: "Out + Standing = Excellent" },
+		{ answer: "everybody", hints: ["EVERY", "BODY"], difficulty: 4, explanation: "Every + Body = Everyone" },
+		{ answer: "somewhere", hints: ["SOME", "WHERE"], difficulty: 4, explanation: "Some + Where = A place" },
+		{ answer: "meanwhile", hints: ["MEAN", "WHILE"], difficulty: 5, explanation: "Mean + While = During that time" },
+		{ answer: "throughout", hints: ["THROUGH", "OUT"], difficulty: 5, explanation: "Through + Out = From start to finish" },
+	],
+
+	double_meanings: [
+		{ answer: "bear", hints: ["🐻", "BARE"], difficulty: 5, explanation: "Bear (🐻) sounds like Bare = To carry or tolerate" },
+		{ answer: "right", hints: ["➡️", "WRITE"], difficulty: 4, explanation: "Right (➡️) sounds like Write = Correct direction" },
+		{ answer: "knight", hints: ["🛡️", "NIGHT"], difficulty: 4, explanation: "Knight (🛡️) sounds like Night = Medieval warrior" },
+		{ answer: "flour", hints: ["🌾", "FLOWER"], difficulty: 4, explanation: "Flour (🌾) sounds like Flower = Baking ingredient" },
+		{ answer: "break", hints: ["💔", "BRAKE"], difficulty: 4, explanation: "Break (💔) sounds like Brake = To fracture" },
+		{ answer: "piece", hints: ["🧩", "PEACE"], difficulty: 4, explanation: "Piece (🧩) sounds like Peace = A part of" },
+		{ answer: "sea", hints: ["🌊", "SEE"], difficulty: 3, explanation: "Sea (🌊) sounds like See = Ocean" },
+		{ answer: "sun", hints: ["☀️", "SON"], difficulty: 3, explanation: "Sun (☀️) sounds like Son = Solar star" },
+		{ answer: "hair", hints: ["💇", "HARE"], difficulty: 4, explanation: "Hair (💇) sounds like Hare = What grows on head" },
+		{ answer: "pair", hints: ["👫", "PEAR"], difficulty: 4, explanation: "Pair (👫) sounds like Pear = Two of something" },
+	],
+
+	lateral_thinking: [
+		{ answer: "footsteps", hints: ["FOOT", "STEPS"], difficulty: 5, explanation: "Foot + Steps = Tracks left behind" },
+		{ answer: "typewriter", hints: ["TYPE", "WRITER"], difficulty: 5, explanation: "Type + Writer = Writing machine" },
+		{ answer: "horseback", hints: ["HORSE", "BACK"], difficulty: 4, explanation: "Horse + Back = Riding position" },
+		{ answer: "handwriting", hints: ["HAND", "WRITING"], difficulty: 5, explanation: "Hand + Writing = Personal script" },
+		{ answer: "timekeeper", hints: ["TIME", "KEEPER"], difficulty: 5, explanation: "Time + Keeper = One who tracks time" },
+		{ answer: "doorway", hints: ["DOOR", "WAY"], difficulty: 4, explanation: "Door + Way = Entrance passage" },
+		{ answer: "stairway", hints: ["STAIR", "WAY"], difficulty: 4, explanation: "Stair + Way = Path between floors" },
+		{ answer: "pathway", hints: ["PATH", "WAY"], difficulty: 4, explanation: "Path + Way = Route to follow" },
+		{ answer: "walkway", hints: ["WALK", "WAY"], difficulty: 4, explanation: "Walk + Way = Pedestrian path" },
+		{ answer: "runway", hints: ["RUN", "WAY"], difficulty: 4, explanation: "Run + Way = Airport strip" },
+	],
+
+	mega_complex: [
+		{ answer: "antidisestablishmentarianism", hints: ["ANTI", "DIS", "ESTABLISH", "MENT", "ARIAN", "ISM"], difficulty: 10, explanation: "Anti + Dis + Establish + Ment + Arian + Ism = Opposition to disestablishment" },
+		{ answer: "pneumonoultramicroscopicsilicovolcanoconiosis", hints: ["🫁", "ULTRA", "🔬", "🌋"], difficulty: 10, explanation: "Lung disease from silica dust" },
+		{ answer: "supercalifragilisticexpialidocious", hints: ["SUPER", "CALI", "FRAGIL", "ISTIC", "EXPI", "ALI", "DOCIOUS"], difficulty: 9, explanation: "Mary Poppins magical word" },
+		{ answer: "honorificabilitudinitatibus", hints: ["HONOR", "ABILITY", "HONOR"], difficulty: 9, explanation: "Shakespearean long word meaning honorableness" },
+		{ answer: "floccinaucinihilipilification", hints: ["FLUCCI", "NAUCI", "NIHILI", "PILI", "FICATION"], difficulty: 9, explanation: "Act of deeming worthless" },
+		{ answer: "hippopotomonstrosesquippedaliophobia", hints: ["🦛", "MONSTER", "SESQUI", "PHOBIA"], difficulty: 9, explanation: "Fear of long words" },
+		{ answer: "pseudopseudohypoparathyroidism", hints: ["PSEUDO", "PSEUDO", "HYPO", "PARA", "THYROID"], difficulty: 9, explanation: "Medical condition name" },
+		{ answer: "electroencephalography", hints: ["⚡", "🧠", "GRAPHY"], difficulty: 8, explanation: "Brain wave recording" },
+		{ answer: "immunoelectrophoresis", hints: ["💉", "⚡", "PHOR", "ESIS"], difficulty: 8, explanation: "Laboratory technique" },
+		{ answer: "spectrophotometry", hints: ["SPECTRO", "📸", "METRY"], difficulty: 7, explanation: "Light measurement technique" },
+	],
+
+	extreme_idioms: [
+		{ answer: "when hell freezes over", hints: ["WHEN", "🔥", "❄️", "OVER"], difficulty: 8, explanation: "When Hell (🔥) Freezes (❄️) Over = Never going to happen" },
+		{ answer: "a snowballs chance in hell", hints: ["❄️", "⚽", "CHANCE", "🔥"], difficulty: 7, explanation: "A Snowball's (❄️⚽) Chance In Hell (🔥) = No possibility" },
+		{ answer: "beating around the bush", hints: ["🥁", "AROUND", "🌳"], difficulty: 6, explanation: "Beating (🥁) Around The Bush (🌳) = Avoiding the point" },
+		{ answer: "dont cry over spilled milk", hints: ["🚫", "😢", "OVER", "🥛"], difficulty: 7, explanation: "Don't Cry (🚫😢) Over Spilled Milk (🥛) = Don't worry about past mistakes" },
+		{ answer: "you cant have your cake and eat it too", hints: ["🚫", "🍰", "AND", "🍴"], difficulty: 8, explanation: "You Can't Have Your Cake (🍰) And Eat (🍴) It Too = Can't have both options" },
+		{ answer: "the pot calling the kettle black", hints: ["🫖", "CALLING", "🫖", "⚫"], difficulty: 7, explanation: "The Pot (🫖) Calling The Kettle (🫖) Black (⚫) = Hypocritical criticism" },
+		{ answer: "a bird in the hand is worth two in the bush", hints: ["🐦", "✋", "WORTH", "2️⃣", "🌳"], difficulty: 8, explanation: "A Bird (🐦) In The Hand (✋) Is Worth Two (2️⃣) In The Bush (🌳) = What you have is better than what you might get" },
+		{ answer: "dont look a gift horse in the mouth", hints: ["🚫", "👀", "🎁", "🐴", "👄"], difficulty: 8, explanation: "Don't Look (🚫👀) A Gift (🎁) Horse (🐴) In The Mouth (👄) = Don't be ungrateful" },
+		{ answer: "people who live in glass houses shouldnt throw stones", hints: ["👥", "🏠", "GLASS", "🚫", "🪨"], difficulty: 9, explanation: "People Who Live In Glass (🏠) Houses Shouldn't Throw Stones (🚫🪨) = Don't criticize if you have flaws" },
+		{ answer: "the squeaky wheel gets the grease", hints: ["🛞", "SQUEAKY", "GETS", "🛢️"], difficulty: 7, explanation: "The Squeaky Wheel (🛞) Gets The Grease (🛢️) = The loudest complaint gets attention" },
 	],
 };
 
@@ -123,14 +278,22 @@ class SeededRandom {
 	}
 
 	choice<T>(array: T[]): T {
-		return array[Math.floor(this.next() * array.length)];
+		if (array.length === 0) {
+			throw new Error("Cannot choose from empty array");
+		}
+		return array[Math.floor(this.next() * array.length)] as T;
 	}
 
 	shuffle<T>(array: T[]): T[] {
 		const shuffled = [...array];
 		for (let i = shuffled.length - 1; i > 0; i--) {
 			const j = Math.floor(this.next() * (i + 1));
-			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+			const temp = shuffled[i];
+			const other = shuffled[j];
+			if (temp !== undefined && other !== undefined) {
+				shuffled[i] = other;
+				shuffled[j] = temp;
+			}
 		}
 		return shuffled;
 	}
@@ -199,17 +362,23 @@ function generatePuzzleForDate(date = new Date()) {
 	// Select category based on day of week for variety
 	const categoryNames = Object.keys(ANSWER_CATEGORIES);
 	const dayOfWeek = date.getDay();
-	const selectedCategory = categoryNames[dayOfWeek % categoryNames.length];
+	const selectedCategoryKey = categoryNames[dayOfWeek % categoryNames.length];
+
+	if (!selectedCategoryKey) {
+		throw new Error("No category found");
+	}
+
+	const selectedCategory = selectedCategoryKey as keyof typeof ANSWER_CATEGORIES;
 
 	// Choose puzzle from selected category
-	const categoryPuzzles = ANSWER_CATEGORIES[selectedCategory as keyof typeof ANSWER_CATEGORIES];
+	const categoryPuzzles = ANSWER_CATEGORIES[selectedCategory];
 	const puzzle = rng.choice(categoryPuzzles);
 
 	// Enhance hints with additional visual elements
-	const enhancedHints = enhanceHints(puzzle.hints, selectedCategory, rng);
+	const enhancedHints = enhanceHints(puzzle.hints, selectedCategoryKey, rng);
 
 	// Generate comprehensive metadata
-	const metadata = generateMetadata(puzzle.answer, selectedCategory, puzzle.difficulty);
+	const metadata = generateMetadata(puzzle.answer, selectedCategoryKey, puzzle.difficulty);
 
 	// Create the final puzzle object
 	return {
@@ -218,7 +387,7 @@ function generatePuzzleForDate(date = new Date()) {
 		difficulty: puzzle.difficulty,
 		answer: puzzle.answer,
 		explanation: puzzle.explanation,
-		hints: [`Think about ${metadata.topic.toLowerCase()}`, `This is a ${puzzle.difficulty <= 2 ? "beginner" : puzzle.difficulty <= 3 ? "intermediate" : "advanced"} level puzzle`, `The answer is ${puzzle.answer.split(/\s+/).length > 1 ? "a phrase" : "a single word"}`],
+		hints: [`Think about ${(metadata.topic || "puzzles").toLowerCase()}`, `This is a ${puzzle.difficulty <= 2 ? "beginner" : puzzle.difficulty <= 3 ? "intermediate" : "advanced"} level puzzle`, `The answer is ${puzzle.answer.split(/\s+/).length > 1 ? "a phrase" : "a single word"}`],
 		date: date.toISOString().split("T")[0],
 		...metadata,
 	};
@@ -228,7 +397,7 @@ function generatePuzzleForDate(date = new Date()) {
  * Get today's date string in YYYY-MM-DD format
  */
 function getTodayDateString(): string {
-	return new Date().toISOString().split("T")[0];
+	return new Date().toISOString().split("T")[0] || new Date().toDateString();
 }
 
 /**
@@ -344,7 +513,7 @@ export async function previewPuzzleGeneration() {
 				rebus: puzzle.rebusPuzzle,
 				answer: puzzle.answer,
 				difficulty: puzzle.difficulty,
-				category: puzzle.category,
+				category: puzzle.category || "unknown",
 			});
 		}
 
@@ -400,4 +569,39 @@ export async function getPuzzleStats() {
 			generatedAt: new Date().toISOString(),
 		};
 	}
+}
+
+/**
+ * Generate next puzzle (used by cron job)
+ */
+export async function generateNextPuzzle() {
+	return getTodaysPuzzle();
+}
+
+/**
+ * Generate a single puzzle for offline use (used by scripts)
+ */
+export async function generateSinglePuzzleForOfflineUse(existingKeywords: string[] = []) {
+	// Generate a random date-based puzzle
+	const randomDate = new Date();
+	randomDate.setTime(randomDate.getTime() + Math.random() * 365 * 24 * 60 * 60 * 1000); // Random date within next year
+
+	const puzzle = generatePuzzleForDate(randomDate);
+
+	// Check if this keyword already exists
+	if (existingKeywords.includes(puzzle.keyword.toLowerCase())) {
+		return null; // Skip duplicate
+	}
+
+	return {
+		rebusPuzzle: puzzle.rebusPuzzle,
+		difficulty: puzzle.difficulty,
+		answer: puzzle.answer,
+		explanation: puzzle.explanation,
+		hints: puzzle.hints,
+		topic: puzzle.topic,
+		keyword: puzzle.keyword,
+		category: puzzle.category,
+		relevanceScore: puzzle.relevanceScore,
+	};
 } 
