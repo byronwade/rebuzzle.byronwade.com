@@ -233,9 +233,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
 				trackEvent("PUZZLE_SOLVED");
 
-				// Delay redirect with cleanup
+				// Delay redirect with success params
 				const timeoutId = setTimeout(() => {
-					router.push("/game-over");
+					router.push(`/game-over?success=true&guess=${encodeURIComponent(currentGuess)}&attempts=${attempts}`);
 				}, 2000);
 
 				// Store timeout ID for potential cleanup
@@ -268,9 +268,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
 					trackEvent("PUZZLE_FAILED");
 
-					// Redirect to failure page with countdown
+					// Redirect to failure page with params
 					const timeoutId = setTimeout(() => {
-						router.push("/puzzle-failed");
+						router.push(`/puzzle-failed?guess=${encodeURIComponent(currentGuess)}&attempts=${gameSettings.maxAttempts}`);
 					}, 2000);
 
 					// Store timeout ID for potential cleanup
