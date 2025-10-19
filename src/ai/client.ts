@@ -1,18 +1,20 @@
 /**
  * AI Client
  *
- * Provider-agnostic AI client with automatic failover,
- * caching, rate limiting, and monitoring
+ * Provider-agnostic AI client with quota management,
+ * error handling, and automatic fallback
  */
 
 import { createGroq } from "@ai-sdk/groq"
 import { createXai } from "@ai-sdk/xai"
-import { ollama as createOllama } from "ollama-ai-provider"
+import { google } from "@ai-sdk/google"
 import { generateText, streamText, generateObject } from "ai"
 import { AI_CONFIG, validateApiKeys } from "./config"
+import { enforceQuota } from "./quota-manager"
+import { parseAIError, AIError } from "./errors"
 import { z } from "zod"
 
-type ProviderInstance = ReturnType<typeof createGroq> | ReturnType<typeof createXai> | ReturnType<typeof createOllama>
+type ProviderInstance = ReturnType<typeof createGroq> | ReturnType<typeof createXai> | typeof google
 
 /**
  * AI Provider abstraction
@@ -24,7 +26,7 @@ class AIProvider {
   constructor() {
     const validation = validateApiKeys()
 
-    if (!validation.valid && AI_CONFIG.defaultProvider !== "ollama") {
+    if (!validation.valid) {
       throw new Error(
         `Missing API keys: ${validation.missing.join(", ")}. Please set them in your .env file.`
       )
@@ -34,9 +36,9 @@ class AIProvider {
 
     // Initialize provider based on config
     switch (AI_CONFIG.defaultProvider) {
-      case "ollama":
-        this.provider = createOllama(AI_CONFIG.ollama.baseUrl)
-        console.log(`[AI] Using Ollama at ${AI_CONFIG.ollama.baseUrl}`)
+      case "google":
+        this.provider = google
+        console.log(`[AI] Using Google AI (Gemini) - Free tier with quota limits`)
         break
       case "groq":
         this.provider = createGroq({
@@ -53,41 +55,20 @@ class AIProvider {
     }
   }
 
-  /**
-   * Get model ID based on task type
-   */
   getModel(type: "fast" | "smart" | "creative" = "smart"): string {
     const models = AI_CONFIG.models[this.providerName as keyof typeof AI_CONFIG.models]
     return models[type]
   }
 
-  /**
-   * Get provider instance
-   */
   getProvider() {
     return this.provider
   }
 
-  /**
-   * Get model instance for Vercel AI SDK
-   */
   getModelInstance(modelType: "fast" | "smart" | "creative" = "smart") {
     const modelName = this.getModel(modelType)
-
-    if (this.providerName === "ollama") {
-      // Ollama: provider(modelName)
-      return (this.provider as any)(modelName)
-    } else if (this.providerName === "groq" || this.providerName === "xai") {
-      // Groq/xAI: provider(modelName)
-      return (this.provider as any)(modelName)
-    } else {
-      throw new Error(`Unsupported provider for model instance: ${this.providerName}`)
-    }
+    return (this.provider as any)(modelName)
   }
 
-  /**
-   * Get provider name
-   */
   getName(): string {
     return this.providerName
   }
@@ -104,7 +85,7 @@ export function getAIProvider(): AIProvider {
 }
 
 /**
- * Generate text with retry and error handling
+ * Generate text with quota enforcement and error handling
  */
 export async function generateAIText(params: {
   prompt: string
@@ -121,6 +102,9 @@ export async function generateAIText(params: {
   }
   finishReason: string
 }> {
+  // Enforce quota limits
+  await enforceQuota()
+
   const provider = getAIProvider()
   const startTime = Date.now()
 
@@ -136,7 +120,6 @@ export async function generateAIText(params: {
 
     const duration = Date.now() - startTime
 
-    // Log for monitoring
     if (process.env.NODE_ENV === "development") {
       console.log(`[AI] Generated text in ${duration}ms`, {
         provider: provider.getName(),
@@ -148,12 +131,12 @@ export async function generateAIText(params: {
     return result
   } catch (error) {
     console.error("[AI] Generation error:", error)
-    throw new AIError("Failed to generate text", { cause: error })
+    throw parseAIError(error)
   }
 }
 
 /**
- * Generate structured object with schema validation
+ * Generate structured object with quota enforcement
  */
 export async function generateAIObject<T>(params: {
   prompt: string
@@ -162,6 +145,9 @@ export async function generateAIObject<T>(params: {
   temperature?: number
   modelType?: "fast" | "smart" | "creative"
 }): Promise<T> {
+  // Enforce quota limits
+  await enforceQuota()
+
   const provider = getAIProvider()
   const startTime = Date.now()
 
@@ -188,12 +174,12 @@ export async function generateAIObject<T>(params: {
     return result.object
   } catch (error) {
     console.error("[AI] Object generation error:", error)
-    throw new AIError("Failed to generate structured object", { cause: error })
+    throw parseAIError(error)
   }
 }
 
 /**
- * Stream text generation
+ * Stream text generation with quota enforcement
  */
 export async function streamAIText(params: {
   prompt: string
@@ -202,6 +188,9 @@ export async function streamAIText(params: {
   maxTokens?: number
   modelType?: "fast" | "smart" | "creative"
 }) {
+  // Enforce quota limits
+  await enforceQuota()
+
   const provider = getAIProvider()
 
   try {
@@ -217,19 +206,12 @@ export async function streamAIText(params: {
     return result
   } catch (error) {
     console.error("[AI] Streaming error:", error)
-    throw new AIError("Failed to stream text", { cause: error })
+    throw parseAIError(error)
   }
 }
 
-/**
- * Custom AI Error class
- */
-export class AIError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options)
-    this.name = "AIError"
-  }
-}
+// Re-export AIError for convenience
+export { AIError } from "./errors"
 
 /**
  * Retry logic with exponential backoff
@@ -245,6 +227,11 @@ export async function withRetry<T>(
       return await operation()
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
+
+      // Don't retry quota errors - they won't succeed
+      if (error instanceof AIError && error.code === "QUOTA_EXCEEDED") {
+        throw error
+      }
 
       if (attempt < maxAttempts) {
         const delay = Math.min(

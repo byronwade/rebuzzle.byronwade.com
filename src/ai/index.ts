@@ -27,7 +27,6 @@ export {
   generateAIObject,
   streamAIText,
   withRetry,
-  AIError,
 } from "./client"
 
 // Services
@@ -78,3 +77,19 @@ export {
 
 // Advanced Features (Ultra-sophisticated puzzle generation)
 export * from "./advanced"
+
+// Error Handling & Quota Management
+export {
+  AIError,
+  QuotaExceededError,
+  RateLimitError,
+  AIProviderError,
+  parseAIError,
+  createErrorResponse,
+} from "./errors"
+
+export {
+  getQuotaManager,
+  enforceQuota,
+  getQuotaStats,
+} from "./quota-manager"

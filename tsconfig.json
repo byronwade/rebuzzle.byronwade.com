@@ -24,31 +24,28 @@
     ],
     "paths": {
       "@/*": [
-        "./app/*"
+        "./src/*"
       ],
       "@/components/*": [
-        "./components/*"
+        "./src/components/*"
       ],
       "@/lib/*": [
-        "./lib/*"
+        "./src/lib/*"
       ],
       "@/hooks/*": [
-        "./hooks/*"
-      ],
-      "@/types/*": [
-        "./types/*"
-      ],
-      "@/db": [
-        "./db"
-      ],
-      "@/db/*": [
-        "./db/*"
+        "./src/hooks/*"
       ],
       "@/ai": [
-        "./ai"
+        "./src/ai"
       ],
       "@/ai/*": [
-        "./ai/*"
+        "./src/ai/*"
+      ],
+      "@/db": [
+        "./src/db"
+      ],
+      "@/db/*": [
+        "./src/db/*"
       ]
     },
     "verbatimModuleSyntax": true,
@@ -56,11 +53,10 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    ".next/dev/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

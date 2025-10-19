@@ -1,19 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-
-  // Enable Partial Prerendering (PPR) - Next.js 16 uses cacheComponents
   cacheComponents: true,
 
   experimental: {
     staleTimes: {
-      dynamic: 30,  // 30 seconds for dynamic data
-      static: 180,  // 3 minutes for static data
+      dynamic: 30,
+      static: 180,
     },
   },
-
-  // Turbopack is default in Next.js 16
-  turbopack: {},
 
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? {
