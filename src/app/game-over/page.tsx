@@ -196,21 +196,21 @@ Play at rebuzzle.com`
           {/* Footer Actions */}
           <div className="bg-gray-50 p-6 border-t border-gray-200">
             <div className="space-y-3">
-              <Link href="/" className="block">
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-6 text-lg rounded-xl shadow-lg">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Play Tomorrow's Puzzle
-                </Button>
-              </Link>
+              {/* No "Play Again" button - they must wait! */}
+              <div className="text-center py-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+                <p className="text-purple-900 font-semibold mb-1">🎉 You've completed today's puzzle!</p>
+                <p className="text-sm text-purple-700">Come back tomorrow for a new challenge</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
+                <Link href="/leaderboard" className="block">
+                  <Button variant="default" className="w-full bg-purple-600 hover:bg-purple-700 border-2 py-4">
+                    🏆 Leaderboard
+                  </Button>
+                </Link>
                 <Link href="/blog" className="block">
                   <Button variant="outline" className="w-full border-2 py-4">
                     📚 Read Tips
-                  </Button>
-                </Link>
-                <Link href="/leaderboard" className="block">
-                  <Button variant="outline" className="w-full border-2 py-4">
-                    🏆 Leaderboard
                   </Button>
                 </Link>
               </div>
