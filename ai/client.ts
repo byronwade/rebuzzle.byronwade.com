@@ -7,6 +7,7 @@
 
 import { createGroq } from "@ai-sdk/groq"
 import { createXai } from "@ai-sdk/xai"
+import { ollama } from "ollama-ai-provider"
 import { generateText, streamText, generateObject } from "ai"
 import { AI_CONFIG, validateApiKeys } from "./config"
 import { z } from "zod"
@@ -15,13 +16,13 @@ import { z } from "zod"
  * AI Provider abstraction
  */
 class AIProvider {
-  private provider: ReturnType<typeof createGroq> | ReturnType<typeof createXai>
+  private provider: ReturnType<typeof createGroq> | ReturnType<typeof createXai> | ReturnType<typeof ollama>
   private providerName: string
 
   constructor() {
     const validation = validateApiKeys()
 
-    if (!validation.valid) {
+    if (!validation.valid && AI_CONFIG.defaultProvider !== "ollama") {
       throw new Error(
         `Missing API keys: ${validation.missing.join(", ")}. Please set them in your .env file.`
       )
@@ -31,6 +32,10 @@ class AIProvider {
 
     // Initialize provider based on config
     switch (AI_CONFIG.defaultProvider) {
+      case "ollama":
+        this.provider = ollama
+        console.log(`[AI] Using Ollama at ${AI_CONFIG.ollama.baseUrl}`)
+        break
       case "groq":
         this.provider = createGroq({
           apiKey: process.env.GROQ_API_KEY,

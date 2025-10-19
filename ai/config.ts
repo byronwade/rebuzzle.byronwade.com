@@ -6,14 +6,29 @@
 
 export const AI_CONFIG = {
   // Provider selection (can be changed via env)
-  defaultProvider: (process.env.AI_PROVIDER || "groq") as "groq" | "xai" | "openai",
+  defaultProvider: (process.env.AI_PROVIDER || "ollama") as "groq" | "xai" | "openai" | "ollama",
+
+  // Ollama configuration
+  ollama: {
+    baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
+  },
 
   // Model configurations
   models: {
+    ollama: {
+      fast: "llama3.2:latest", // Fast local model
+      smart: "qwen2.5:14b", // Better reasoning
+      creative: "llama3.1:latest", // More creative
+      // Alternative powerful models:
+      // "mistral:latest" - Good balance
+      // "phi3:latest" - Very fast
+      // "gemma2:latest" - Google's model
+      // "deepseek-r1:latest" - Excellent reasoning
+    },
     groq: {
-      fast: "llama-3.3-70b-versatile", // Fast, good for simple tasks
-      smart: "llama-3.3-70b-specdec", // Smarter, for complex reasoning
-      creative: "llama-3.1-70b-versatile", // More creative outputs
+      fast: "llama-3.3-70b-versatile",
+      smart: "llama-3.3-70b-specdec",
+      creative: "llama-3.1-70b-versatile",
     },
     xai: {
       fast: "grok-beta",
@@ -83,6 +98,10 @@ export function validateApiKeys(): {
   const missing: string[] = []
 
   switch (provider) {
+    case "ollama":
+      // No API key needed for Ollama (local)
+      // Just check if base URL is accessible
+      break
     case "groq":
       if (!process.env.GROQ_API_KEY) missing.push("GROQ_API_KEY")
       break
