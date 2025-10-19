@@ -231,9 +231,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
 				trackEvent("PUZZLE_SOLVED");
 
-				setTimeout(() => {
+				// Delay redirect with cleanup
+				const timeoutId = setTimeout(() => {
 					router.push("/game-over");
 				}, 2000);
+
+				// Store timeout ID for potential cleanup
+				return () => clearTimeout(timeoutId);
 			} else {
 				const newAttemptsLeft = attemptsLeft - 1;
 				setAttemptsLeft(newAttemptsLeft);
@@ -253,9 +257,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
 					trackEvent("PUZZLE_FAILED");
 
-					setTimeout(() => {
+					// Delay redirect with cleanup
+					const timeoutId = setTimeout(() => {
 						router.push("/game-over");
 					}, 2000);
+
+					// Store timeout ID for potential cleanup
+					return () => clearTimeout(timeoutId);
 				} else {
 					handleIncorrectGuess(newAttemptsLeft);
 				}
@@ -271,10 +279,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 		}
 	}, [gameOver, currentEventPuzzle, currentGuess, attemptsLeft, setCompletionState, userStats, usedHints, router]);
 
-	const updateStatsAndRedirect = async (success: boolean) => {
-		// This function is simplified for offline use
-		console.log(`Game ended with success: ${success}`);
-	};
+	// Removed dead code - function was never called
 
 	const handleIncorrectGuess = (attemptsLeft: number) => {
 		setShake(true);

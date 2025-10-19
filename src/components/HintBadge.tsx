@@ -32,11 +32,13 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
 
 	const handleRevealNextHint = () => {
 		if (!hints || hints.length === 0) {
-			// Show native notification for no hints
-			new Notification("No hints available", {
-				body: "There are no hints available for this puzzle.",
-				icon: "/icon-192x192.png",
-			});
+			// Show native notification for no hints (with permission check)
+			if ("Notification" in window && Notification.permission === "granted") {
+				new Notification("No hints available", {
+					body: "There are no hints available for this puzzle.",
+					icon: "/icon-192x192.png",
+				});
+			}
 			return;
 		}
 
@@ -60,11 +62,13 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
 			// Notify parent component
 			onHintReveal?.(newRevealedCount - 1);
 
-			// Show native notification for hint reveal
-			new Notification(`Hint ${newRevealedCount} Revealed`, {
-				body: "Using hints will reduce your points for this puzzle.",
-				icon: "/icon-192x192.png",
-			});
+			// Show native notification for hint reveal (with permission check)
+			if ("Notification" in window && Notification.permission === "granted") {
+				new Notification(`Hint ${newRevealedCount} Revealed`, {
+					body: "Using hints will reduce your points for this puzzle.",
+					icon: "/icon-192x192.png",
+				});
+			}
 
 			// Reset revealing state after animation
 			setTimeout(() => setIsRevealing(false), 500);
