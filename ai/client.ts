@@ -7,16 +7,18 @@
 
 import { createGroq } from "@ai-sdk/groq"
 import { createXai } from "@ai-sdk/xai"
-import { ollama } from "ollama-ai-provider"
+import { ollama as createOllama } from "ollama-ai-provider"
 import { generateText, streamText, generateObject } from "ai"
 import { AI_CONFIG, validateApiKeys } from "./config"
 import { z } from "zod"
+
+type ProviderInstance = ReturnType<typeof createGroq> | ReturnType<typeof createXai> | ReturnType<typeof createOllama>
 
 /**
  * AI Provider abstraction
  */
 class AIProvider {
-  private provider: ReturnType<typeof createGroq> | ReturnType<typeof createXai> | ReturnType<typeof ollama>
+  private provider: ProviderInstance
   private providerName: string
 
   constructor() {
@@ -33,7 +35,7 @@ class AIProvider {
     // Initialize provider based on config
     switch (AI_CONFIG.defaultProvider) {
       case "ollama":
-        this.provider = ollama
+        this.provider = createOllama(AI_CONFIG.ollama.baseUrl)
         console.log(`[AI] Using Ollama at ${AI_CONFIG.ollama.baseUrl}`)
         break
       case "groq":
@@ -64,6 +66,23 @@ class AIProvider {
    */
   getProvider() {
     return this.provider
+  }
+
+  /**
+   * Get model instance for Vercel AI SDK
+   */
+  getModelInstance(modelType: "fast" | "smart" | "creative" = "smart") {
+    const modelName = this.getModel(modelType)
+
+    if (this.providerName === "ollama") {
+      // Ollama: provider(modelName)
+      return (this.provider as any)(modelName)
+    } else if (this.providerName === "groq" || this.providerName === "xai") {
+      // Groq/xAI: provider(modelName)
+      return (this.provider as any)(modelName)
+    } else {
+      throw new Error(`Unsupported provider for model instance: ${this.providerName}`)
+    }
   }
 
   /**
@@ -103,13 +122,11 @@ export async function generateAIText(params: {
   finishReason: string
 }> {
   const provider = getAIProvider()
-  const model = provider.getModel(params.modelType || "smart")
-
   const startTime = Date.now()
 
   try {
     const result = await generateText({
-      model: provider.getProvider()(model),
+      model: provider.getModelInstance(params.modelType || "smart"),
       prompt: params.prompt,
       system: params.system,
       temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
@@ -123,7 +140,7 @@ export async function generateAIText(params: {
     if (process.env.NODE_ENV === "development") {
       console.log(`[AI] Generated text in ${duration}ms`, {
         provider: provider.getName(),
-        model,
+        modelType: params.modelType || "smart",
         tokens: result.usage,
       })
     }
@@ -146,13 +163,11 @@ export async function generateAIObject<T>(params: {
   modelType?: "fast" | "smart" | "creative"
 }): Promise<T> {
   const provider = getAIProvider()
-  const model = provider.getModel(params.modelType || "smart")
-
   const startTime = Date.now()
 
   try {
     const result = await generateObject({
-      model: provider.getProvider()(model),
+      model: provider.getModelInstance(params.modelType || "smart"),
       prompt: params.prompt,
       system: params.system,
       schema: params.schema,
@@ -165,7 +180,7 @@ export async function generateAIObject<T>(params: {
     if (process.env.NODE_ENV === "development") {
       console.log(`[AI] Generated object in ${duration}ms`, {
         provider: provider.getName(),
-        model,
+        modelType: params.modelType || "smart",
         usage: result.usage,
       })
     }
@@ -188,11 +203,10 @@ export async function streamAIText(params: {
   modelType?: "fast" | "smart" | "creative"
 }) {
   const provider = getAIProvider()
-  const model = provider.getModel(params.modelType || "smart")
 
   try {
     const result = streamText({
-      model: provider.getProvider()(model),
+      model: provider.getModelInstance(params.modelType || "smart"),
       prompt: params.prompt,
       system: params.system,
       temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,

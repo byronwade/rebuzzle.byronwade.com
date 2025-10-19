@@ -238,7 +238,7 @@ Make it better while keeping the same answer (or change answer if needed for qua
       category: z.string(),
       hints: z.array(z.string()),
       qualityScore: z.number().min(0).max(100),
-      strengthsz.array(z.string()),
+      strengths: z.array(z.string()),
       improvements: z.array(z.string()),
     })
 
