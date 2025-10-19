@@ -1,9 +1,7 @@
-import { NextResponse } from "next/server";
-import { generateNextPuzzle } from "../../../actions/puzzleGenerationActions";
+import { NextResponse } from "next/server"
+import { generateNextPuzzle } from "../../../actions/puzzleGenerationActions"
 
-export const config = {
-	runtime: "edge",
-};
+export const runtime = "edge"
 
 export async function GET(request: Request) {
 	if (request.headers.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {

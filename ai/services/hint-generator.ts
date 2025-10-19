@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod"
-import { generateAIObject, withRetry } from "../client"
+import { generateAIObject, generateAIText, withRetry } from "../client"
 import { AI_CONFIG } from "../config"
 
 const HintsSchema = z.object({

@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     const generationTime = Date.now() - startTime
 
     // Optionally validate quality
-    let validationResults = []
+    let validationResults: Awaited<ReturnType<typeof validatePuzzleQuality>>[] = []
     if (validate && puzzles.length <= 5) {
       // Only validate small batches
       validationResults = await Promise.all(

@@ -138,11 +138,11 @@ export const checkDatabaseHealth = async (): Promise<{
  * Transaction helper with automatic rollback on error
  */
 export const transaction = async <T>(
-  callback: (tx: typeof db) => Promise<T>
+  callback: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>
 ): Promise<T> => {
   return await db.transaction(async (tx) => {
     try {
-      return await callback(tx)
+      return await callback(tx as Parameters<Parameters<typeof db.transaction>[0]>[0])
     } catch (error) {
       console.error("[DB Transaction] Error:", error)
       throw error

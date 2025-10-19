@@ -5,7 +5,7 @@
  * with proper error handling and type safety
  */
 
-import { eq, and, gte } from "drizzle-orm"
+import { eq, and, gte, lte } from "drizzle-orm"
 import { db } from "../client"
 import { pushSubscriptions, type NewPushSubscription, type PushSubscription } from "../schema"
 import { NotFoundError, wrapDbOperation, type DbResult } from "../errors"
@@ -195,7 +195,7 @@ export async function cleanupOldPushSubscriptions(
 
     const deleted = await db
       .delete(pushSubscriptions)
-      .where(gte(cutoffDate, pushSubscriptions.updatedAt))
+      .where(lte(pushSubscriptions.updatedAt, cutoffDate))
       .returning()
 
     return { deletedCount: deleted.length }
