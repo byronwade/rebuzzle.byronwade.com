@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Suspense } from "react"
 import GameBoard from "@/components/GameBoard"
 import Layout from "@/components/Layout"
-import { LoadingSpinner } from "@/components/LoadingSpinner"
+import { PuzzleSkeleton } from "@/components/PuzzleSkeleton"
 import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions"
 import { redirect } from "next/navigation"
 import type { GameData } from "@/lib/gameSettings"
@@ -10,9 +10,14 @@ import type { GameData } from "@/lib/gameSettings"
 // PPR enabled globally via cacheComponents in next.config.mjs
 
 export const metadata: Metadata = {
-  title: "Rebuzzle - Daily Rebus Puzzle Game",
-  description: "Challenge yourself with our daily rebus puzzle. A new puzzle every day!",
-  keywords: ["rebus", "puzzle", "daily puzzle", "word game", "brain teaser"],
+  title: "Rebuzzle - Daily Rebus Puzzle Game | AI-Powered Brain Teasers",
+  description: "Challenge yourself with our daily AI-generated rebus puzzle. New unique puzzles every day with adaptive difficulty!",
+  keywords: ["rebus", "puzzle", "daily puzzle", "word game", "brain teaser", "AI puzzles"],
+  openGraph: {
+    title: "Rebuzzle - Daily Rebus Puzzle Game",
+    description: "Challenge yourself with AI-generated rebus puzzles. New unique puzzles daily!",
+    type: "website",
+  },
 }
 
 export const viewport: Viewport = {
@@ -21,6 +26,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  themeColor: "#8b5cf6",
 }
 
 interface SearchParams {
@@ -29,37 +35,36 @@ interface SearchParams {
 }
 
 /**
- * Static shell component - prerendered instantly
+ * Static shell component - prerendered instantly with skeleton
  */
 function PuzzleShell() {
   return (
     <Layout>
-      <div className="py-12 text-center fade-in-up">
-        <div className="mb-6">
-          <div className="text-6xl mb-4">🧩</div>
-          <LoadingSpinner text="Loading today's puzzle..." />
-        </div>
-      </div>
+      <PuzzleSkeleton />
     </Layout>
   )
 }
 
 /**
- * Error component - client component for interactivity
+ * Error component - with better styling
  */
 function ErrorDisplay({ error }: { error: Error }) {
   return (
     <Layout>
-      <div className="py-12 text-center fade-in-up">
-        <div className="mb-6">
-          <div className="text-6xl mb-4">😅</div>
-          <h1 className="mb-4 text-3xl font-bold text-red-600">Oops! Something went wrong</h1>
-          <p className="text-gray-600 mb-6">
-            We're having trouble loading today's puzzle. Please try refreshing the page.
-          </p>
+      <div className="max-w-2xl mx-auto p-4">
+        <div className="bg-white rounded-3xl shadow-xl border border-red-100 p-12 text-center space-y-6">
+          <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center animate-bounce">
+            <span className="text-5xl">😅</span>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-red-600 mb-3">Oops! Something went wrong</h1>
+            <p className="text-gray-600 mb-6">
+              We're having trouble loading today's puzzle. Please try refreshing the page.
+            </p>
+          </div>
           <a
             href="/"
-            className="inline-block px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors duration-200 interactive-element"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             Try Again
           </a>
@@ -70,17 +75,25 @@ function ErrorDisplay({ error }: { error: Error }) {
 }
 
 /**
- * No puzzle component
+ * No puzzle component - enhanced design
  */
 function NoPuzzleDisplay() {
   return (
     <Layout>
-      <div className="py-12 text-center fade-in-up">
-        <div className="mb-6">
-          <div className="text-6xl mb-4">🧩</div>
-          <h1 className="mb-4 text-3xl font-bold text-gray-700">No Puzzle Available</h1>
-          <p className="text-gray-600 mb-6">Check back later for today's puzzle!</p>
-          <LoadingSpinner text="Loading new puzzle..." />
+      <div className="max-w-2xl mx-auto p-4">
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-12 text-center space-y-6">
+          <div className="w-20 h-20 mx-auto bg-purple-100 rounded-full flex items-center justify-center">
+            <span className="text-5xl animate-pulse">🧩</span>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-3">No Puzzle Available</h1>
+            <p className="text-gray-600">Check back later for today's puzzle!</p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <div className="h-2 w-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="h-2 w-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="h-2 w-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
         </div>
       </div>
     </Layout>

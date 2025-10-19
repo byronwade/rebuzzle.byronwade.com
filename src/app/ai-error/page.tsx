@@ -54,12 +54,14 @@ export default function AIErrorPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button size="lg" className="w-full sm:w-auto" onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
             <Link href="/">
+              <Button size="lg" className="w-full sm:w-auto">
+                Try Again
+              </Button>
+            </Link>
+            <Link href="/blog">
               <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Back to Puzzles
+                Read Puzzle Tips
               </Button>
             </Link>
           </div>
