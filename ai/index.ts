@@ -7,6 +7,14 @@
  * - Progressive hint generation
  * - Caching and optimization
  * - Monitoring and analytics
+ *
+ * ADVANCED FEATURES:
+ * - Chain-of-thought generation
+ * - Uniqueness tracking & fingerprinting
+ * - Multi-dimensional difficulty calibration
+ * - Quality assurance pipeline
+ * - Adversarial testing
+ * - Master orchestrator
  */
 
 // Configuration
@@ -67,3 +75,6 @@ export {
   getAIMetrics,
   getAIReport,
 } from "./monitor"
+
+// Advanced Features (Ultra-sophisticated puzzle generation)
+export * from "./advanced"
