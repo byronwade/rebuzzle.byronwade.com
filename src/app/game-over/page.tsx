@@ -9,6 +9,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Share2, Trophy, TrendingUp, Clock, Target, Flame } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { CountdownTimer } from "@/components/CountdownTimer"
 
 interface GameData {
   answer: string
@@ -202,12 +203,12 @@ Play at rebuzzle.com`
                 </Button>
               </Link>
               <div className="grid grid-cols-2 gap-3">
-                <Link href="/blog">
+                <Link href="/blog" className="block">
                   <Button variant="outline" className="w-full border-2 py-4">
                     📚 Read Tips
                   </Button>
                 </Link>
-                <Link href="#leaderboard">
+                <Link href="/leaderboard" className="block">
                   <Button variant="outline" className="w-full border-2 py-4">
                     🏆 Leaderboard
                   </Button>
@@ -217,14 +218,10 @@ Play at rebuzzle.com`
           </div>
         </Card>
 
-        {/* Next Puzzle Countdown */}
+        {/* Next Puzzle Countdown - Real-time */}
         <div className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-white px-6 py-3 rounded-full shadow-md border border-gray-200">
-            <Clock className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-medium text-gray-700">
-              New puzzle at midnight 🌙
-            </span>
-          </div>
+          <CountdownTimer />
+          <p className="text-xs text-gray-500 mt-3">Come back when the timer hits zero!</p>
         </div>
 
         {/* Powered by AI badge */}
