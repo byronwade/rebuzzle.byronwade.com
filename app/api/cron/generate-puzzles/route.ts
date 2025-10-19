@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { generateNextPuzzle } from "../../../actions/puzzleGenerationActions"
 
-export const runtime = "edge"
+// Edge runtime removed - incompatible with PPR (cacheComponents)
 
 export async function GET(request: Request) {
 	if (request.headers.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {

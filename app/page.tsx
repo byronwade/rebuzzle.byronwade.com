@@ -7,8 +7,7 @@ import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions"
 import { redirect } from "next/navigation"
 import type { GameData } from "@/lib/gameSettings"
 
-// Enable PPR for this page
-export const experimental_ppr = true
+// PPR enabled globally via cacheComponents in next.config.mjs
 
 export const metadata: Metadata = {
   title: "Rebuzzle - Daily Rebus Puzzle Game",
