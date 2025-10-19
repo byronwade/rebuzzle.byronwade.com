@@ -1,6 +1,6 @@
 "use server";
 
-import { unstable_cache } from "next/cache";
+import { cache } from "react";
 
 // Comprehensive puzzle templates and components
 const PUZZLE_COMPONENTS = {
@@ -403,20 +403,13 @@ function getTodayDateString(): string {
 /**
  * Cached puzzle generation function - only runs once per day
  */
-const getCachedDailyPuzzle = unstable_cache(
-	async (dateString: string) => {
-		console.log(`🎯 Generating new puzzle for ${dateString}`);
-		const date = new Date(dateString + "T00:00:00.000Z");
-		const puzzle = generatePuzzleForDate(date);
-		console.log(`✅ Generated puzzle: ${puzzle.answer} (${puzzle.rebusPuzzle})`);
-		return puzzle;
-	},
-	["daily-puzzle"],
-	{
-		tags: ["puzzle"],
-		revalidate: 24 * 60 * 60, // Cache for 24 hours
-	}
-);
+const getCachedDailyPuzzle = cache(async (dateString: string) => {
+	console.log(`🎯 Generating new puzzle for ${dateString}`);
+	const date = new Date(dateString + "T00:00:00.000Z");
+	const puzzle = generatePuzzleForDate(date);
+	console.log(`✅ Generated puzzle: ${puzzle.answer} (${puzzle.rebusPuzzle})`);
+	return puzzle;
+});
 
 /**
  * Server action to get today's puzzle

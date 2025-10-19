@@ -7,6 +7,10 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
+		"postinstall": "prisma generate",
+		"db:generate": "prisma generate",
+		"db:push": "prisma db push",
+		"db:migrate": "prisma migrate dev",
 		"generate:puzzles": "node scripts/generateDailyPuzzles.js",
 		"generate:today": "node scripts/generateDailyPuzzles.js --today",
 		"generate:year": "node scripts/generateDailyPuzzles.js --year",
@@ -22,6 +26,7 @@
 		"@ai-sdk/groq": "^1.0.8",
 		"@ai-sdk/xai": "^1.0.8",
 		"@hookform/resolvers": "^3.9.1",
+		"@prisma/client": "^6.10.1",
 		"@radix-ui/react-accordion": "^1.2.2",
 		"@radix-ui/react-alert-dialog": "^1.1.4",
 		"@radix-ui/react-aspect-ratio": "^1.1.1",
@@ -89,6 +94,7 @@
 		"eslint": "^8",
 		"eslint-config-next": "14.2.16",
 		"postcss": "^8.4.49",
+		"prisma": "^6.10.1",
 		"tailwindcss": "^3.4.17",
 		"typescript": "^5"
 	}
