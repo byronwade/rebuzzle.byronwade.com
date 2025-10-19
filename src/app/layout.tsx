@@ -11,6 +11,7 @@ const inter = Inter({
 	display: "swap",
 	preload: true,
 	fallback: ["system-ui", "arial"],
+	adjustFontFallback: false, // Prevent unused preload warning
 });
 
 // Enhanced viewport configuration for mobile

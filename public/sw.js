@@ -15,7 +15,16 @@ self.addEventListener("install", (event) => {
 		caches
 			.open(CACHE_NAME)
 			.then((cache) => {
-				return cache.addAll(["/", "/icon.svg", "/icon-192x192.png", "/icon-512x512.png", "/manifest.json"]);
+				// Only cache files that actually exist
+				return cache.addAll([
+					"/",
+					"/icon.svg",
+					"/manifest.json",
+				].filter(Boolean)).catch((error) => {
+					console.warn("[ServiceWorker] Cache addAll failed, continuing anyway:", error);
+					// Don't fail the install if caching fails
+					return Promise.resolve();
+				});
 			})
 			.then(() => {
 				return self.skipWaiting();
