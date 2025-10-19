@@ -11,7 +11,12 @@
 		"generate:today": "node scripts/generateDailyPuzzles.js --today",
 		"generate:year": "node scripts/generateDailyPuzzles.js --year",
 		"generate:vapid": "node scripts/generateVapidKeys.js",
-		"generate:icons": "node scripts/generateIcons.js"
+		"generate:icons": "node scripts/generateIcons.js",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio",
+		"db:check": "drizzle-kit check"
 	},
 	"dependencies": {
 		"@ai-sdk/groq": "^1.0.8",
@@ -54,11 +59,14 @@
 		"clsx": "^2.1.1",
 		"cmdk": "^1.0.0",
 		"date-fns": "^3.6.0",
+		"drizzle-kit": "^0.31.5",
+		"drizzle-orm": "^0.44.6",
 		"embla-carousel-react": "^8.5.1",
 		"input-otp": "^1.4.1",
 		"lucide-react": "^0.468.0",
 		"next": "^15.1.1-canary.12",
 		"next-themes": "^0.4.4",
+		"postgres": "^3.4.7",
 		"react": "^19.1.0-canary-d4287258-20241217",
 		"react-day-picker": "^8.10.1",
 		"react-dom": "^19.1.0-canary-d4287258-20241217",
