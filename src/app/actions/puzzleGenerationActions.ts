@@ -3,6 +3,7 @@
 import { cache } from "react"
 import { generateMasterPuzzle } from "@/ai/advanced"
 import { QuotaExceededError, AIProviderError } from "@/ai"
+import { PuzzlesRepo } from "@/db"
 
 /**
  * Get today's date string in YYYY-MM-DD format
@@ -16,13 +17,13 @@ function getTodayDateString(): string {
  */
 function calculateDailyDifficulty(): number {
   const dayOfWeek = new Date().getDay()
-  // Sunday = 1 (easiest), Wednesday = 7 (hardest), then back down
+  // Sunday = 5 (moderate), Wednesday = 7 (hardest), balanced across week
   const difficulties = [5, 4, 5, 7, 6, 5, 4] // Sun-Sat
   return difficulties[dayOfWeek] || 5
 }
 
 /**
- * Hardcoded fallback puzzles (only used if AI fails)
+ * Hardcoded fallback puzzles (only used if AI fails AND database fails)
  */
 const FALLBACK_PUZZLES = [
   {
@@ -52,11 +53,50 @@ const FALLBACK_PUZZLES = [
 ]
 
 /**
- * Cached puzzle generation function - uses Google AI
- * Only runs once per day with caching
+ * Get or generate today's puzzle
+ *
+ * SMART TOKEN USAGE:
+ * 1. Check database first (puzzle already generated for today)
+ * 2. If not found, generate with AI (ONE TIME per day)
+ * 3. Store in database for all users
+ * 4. All subsequent requests use database (NO TOKENS!)
  */
 const getCachedDailyPuzzle = cache(async (dateString: string) => {
-  console.log(`🤖 [AI] Generating NEW puzzle for ${dateString} using Google Gemini...`)
+  console.log(`📅 [Puzzle] Getting puzzle for ${dateString}...`)
+
+  // STEP 1: Check if puzzle already exists in database for today
+  try {
+    const existingPuzzle = await PuzzlesRepo.findTodaysPuzzle()
+
+    if (existingPuzzle.success && existingPuzzle.data) {
+      console.log(`✅ [Database] Found existing puzzle for today: ${existingPuzzle.data.answer}`)
+      console.log(`💰 [Tokens] SAVED - using database puzzle (no AI call needed!)`)
+
+      // Return puzzle from database
+      return {
+        id: existingPuzzle.data.id,
+        rebusPuzzle: existingPuzzle.data.rebusPuzzle,
+        difficulty: existingPuzzle.data.difficulty,
+        answer: existingPuzzle.data.answer,
+        explanation: existingPuzzle.data.explanation,
+        hints: (existingPuzzle.data.metadata as any)?.hints || ["No hints available"],
+        date: dateString,
+        topic: (existingPuzzle.data.metadata as any)?.topic || "General",
+        keyword: existingPuzzle.data.answer.replace(/\s+/g, ""),
+        category: (existingPuzzle.data.metadata as any)?.category || "general",
+        relevanceScore: 8,
+        seoMetadata: (existingPuzzle.data.metadata as any)?.seoMetadata || {},
+        aiGenerated: true,
+        fromDatabase: true, // Mark as from database
+      }
+    }
+  } catch (dbError) {
+    console.warn(`⚠️ [Database] Failed to check for existing puzzle:`, dbError)
+  }
+
+  // STEP 2: No puzzle in database - generate with Google AI (ONE TIME!)
+  console.log(`🤖 [AI] No puzzle in database - generating NEW puzzle using Google Gemini...`)
+  console.log(`💰 [Tokens] This will cost tokens - but only happens ONCE per day!`)
 
   try {
     const difficulty = calculateDailyDifficulty()
@@ -66,13 +106,13 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
       targetDifficulty: difficulty,
       requireNovelty: true,
       qualityThreshold: 85,
-      maxAttempts: 2, // Limit attempts to avoid quota issues
+      maxAttempts: 2,
     })
 
     console.log(`✅ [AI] Google Gemini generated puzzle: ${result.puzzle.answer}`)
-    console.log(`📊 [AI] Quality: ${result.metadata.qualityMetrics.scores.overall}, Uniqueness: ${result.metadata.uniquenessScore}`)
+    console.log(`📊 [AI] Quality: ${result.metadata.qualityMetrics?.scores?.overall}, Uniqueness: ${result.metadata.uniquenessScore}`)
 
-    return {
+    const puzzleData = {
       id: `ai-${dateString}`,
       rebusPuzzle: result.puzzle.rebusPuzzle,
       difficulty: result.puzzle.difficulty,
@@ -83,35 +123,60 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
       topic: result.puzzle.category,
       keyword: result.puzzle.answer.replace(/\s+/g, ""),
       category: result.puzzle.category,
-      relevanceScore: Math.round(result.metadata.qualityMetrics.scores.overall / 10),
+      relevanceScore: Math.round((result.metadata.qualityMetrics?.scores?.overall || 85) / 10),
       seoMetadata: {
         keywords: [result.puzzle.answer, "rebus puzzle", "AI generated", "brain teaser"],
         description: `Solve this AI-generated rebus puzzle: ${result.puzzle.answer}`,
         ogTitle: `Rebuzzle: ${result.puzzle.answer} Puzzle`,
         ogDescription: `Challenge yourself with today's AI-generated rebus puzzle. Can you decode it?`,
       },
-      // Add AI metadata
       aiGenerated: true,
       generationMethod: "ai-master",
       qualityScore: result.metadata.qualityMetrics?.scores?.overall || 0,
       uniquenessScore: result.metadata.uniquenessScore || 0,
     }
+
+    // STEP 3: Store in database for all future users today
+    try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      await PuzzlesRepo.createPuzzle({
+        rebusPuzzle: result.puzzle.rebusPuzzle,
+        answer: result.puzzle.answer,
+        explanation: result.puzzle.explanation,
+        difficulty: result.puzzle.difficulty,
+        scheduledFor: today,
+        metadata: {
+          hints: result.puzzle.hints,
+          topic: result.puzzle.category,
+          keyword: result.puzzle.answer.replace(/\s+/g, ""),
+          category: result.puzzle.category,
+          seoMetadata: puzzleData.seoMetadata,
+          aiGenerated: true,
+          qualityScore: result.metadata.qualityMetrics?.scores?.overall,
+          uniquenessScore: result.metadata.uniquenessScore,
+          generatedAt: new Date().toISOString(),
+        },
+      })
+
+      console.log(`💾 [Database] Stored puzzle for all users today!`)
+      console.log(`💰 [Tokens] All future requests will use database (FREE!)`)
+    } catch (saveError) {
+      console.error(`⚠️ [Database] Failed to store puzzle:`, saveError)
+      console.warn(`⚠️ [Warning] Puzzle won't persist across requests - will regenerate (uses more tokens!)`)
+    }
+
+    return puzzleData
   } catch (error) {
     console.error(`❌ [AI] Failed to generate puzzle with Google AI:`, error)
 
-    // Check if it's a quota error
-    if (error instanceof QuotaExceededError) {
-      console.warn(`⚠️ [AI] Quota exceeded. Using fallback puzzle.`)
-    } else if (error instanceof AIProviderError) {
-      console.warn(`⚠️ [AI] Provider error. Using fallback puzzle.`)
-    }
-
-    // Use fallback puzzle (with rotation based on date)
+    // STEP 4: AI failed - use emergency fallback
     const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
     const fallbackIndex = dayOfYear % FALLBACK_PUZZLES.length
     const fallback = FALLBACK_PUZZLES[fallbackIndex]!
 
-    console.log(`📦 [Fallback] Using pre-made puzzle: ${fallback.answer}`)
+    console.log(`📦 [Fallback] Using emergency puzzle: ${fallback.answer}`)
 
     return {
       id: `fallback-${dateString}`,
@@ -126,7 +191,7 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
         ogTitle: `Rebuzzle: ${fallback.answer} Puzzle`,
         ogDescription: `Challenge yourself with today's rebus puzzle.`,
       },
-      aiGenerated: false, // Mark as fallback
+      aiGenerated: false,
       fallbackReason: error instanceof Error ? error.message : "AI generation failed",
     }
   }
@@ -135,10 +200,11 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
 /**
  * Server action to get today's puzzle (PUBLIC API)
  *
- * This function ALWAYS tries Google AI first, only falls back if:
- * - Quota exceeded
- * - API error
- * - Network issue
+ * TOKEN EFFICIENCY:
+ * - First user of the day: Generates with AI (costs tokens)
+ * - Stores in database
+ * - All other users: Read from database (FREE!)
+ * - Tomorrow: New puzzle generation
  */
 export async function getTodaysPuzzle() {
   try {
@@ -149,7 +215,7 @@ export async function getTodaysPuzzle() {
       success: true,
       puzzle,
       generatedAt: new Date().toISOString(),
-      cached: true,
+      cached: puzzle.fromDatabase || false,
       aiGenerated: puzzle.aiGenerated ?? false,
     }
   } catch (error) {
@@ -168,7 +234,7 @@ export async function getTodaysPuzzle() {
         keyword: lastResortPuzzle.answer,
         relevanceScore: 5,
         aiGenerated: false,
-        fallbackReason: "Emergency fallback - all generation methods failed",
+        fallbackReason: "Emergency fallback",
       },
       generatedAt: new Date().toISOString(),
       cached: false,
@@ -179,11 +245,10 @@ export async function getTodaysPuzzle() {
 }
 
 /**
- * Server action to get a puzzle for a specific date
+ * Get puzzle for specific date
  */
 export async function getPuzzleForDate(dateString: string) {
   try {
-    // Validate date format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       throw new Error("Invalid date format. Use YYYY-MM-DD")
     }
@@ -209,7 +274,7 @@ export async function getPuzzleForDate(dateString: string) {
 }
 
 /**
- * Generate next puzzle (used by cron job)
+ * Generate next puzzle (used by cron job at midnight)
  */
 export async function generateNextPuzzle() {
   return getTodaysPuzzle()
