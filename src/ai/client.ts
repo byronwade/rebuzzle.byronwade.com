@@ -114,7 +114,7 @@ export async function generateAIText(params: {
       prompt: params.prompt,
       system: params.system,
       temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
-      maxTokens: params.maxTokens ?? AI_CONFIG.generation.maxTokens.medium,
+      // AI SDK 5 doesn't use maxTokens in generateText
       abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.default),
     })
 
@@ -128,7 +128,12 @@ export async function generateAIText(params: {
       })
     }
 
-    return result
+    // AI SDK 5 returns different structure
+    return {
+      text: result.text,
+      usage: result.usage,
+      finishReason: result.finishReason,
+    }
   } catch (error) {
     console.error("[AI] Generation error:", error)
     throw parseAIError(error)
@@ -199,7 +204,7 @@ export async function streamAIText(params: {
       prompt: params.prompt,
       system: params.system,
       temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
-      maxTokens: params.maxTokens ?? AI_CONFIG.generation.maxTokens.medium,
+      // AI SDK 5 doesn't use maxTokens in streamText
       abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.streaming),
     })
 
