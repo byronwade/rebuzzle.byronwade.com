@@ -1,33 +1,34 @@
-import { NextResponse } from "next/server";
-import { getPuzzleStats } from "../../../actions/puzzleGenerationActions";
+import { NextResponse } from "next/server"
+import { getQuotaStats } from "@/ai"
 
 export async function GET() {
-	try {
-		const result = await getPuzzleStats();
+  try {
+    // Get AI quota usage stats
+    const quotaStats = getQuotaStats()
 
-		if (result.success) {
-			return NextResponse.json({
-				success: true,
-				stats: result.stats,
-				generatedAt: result.generatedAt,
-			});
-		} else {
-			return NextResponse.json(
-				{
-					success: false,
-					error: result.error || "Failed to get puzzle stats",
-				},
-				{ status: 500 }
-			);
-		}
-	} catch (error) {
-		console.error("Error in puzzle stats API:", error);
-		return NextResponse.json(
-			{
-				success: false,
-				error: "Internal server error",
-			},
-			{ status: 500 }
-		);
-	}
+    return NextResponse.json({
+      success: true,
+      stats: {
+        aiProvider: "Google Gemini",
+        quotaUsage: quotaStats,
+        generationMethod: "AI Master Orchestrator",
+        features: {
+          uniquenessGuarantee: true,
+          difficultyCalibration: true,
+          qualityAssurance: true,
+          intelligentAgent: true,
+        },
+      },
+    })
+  } catch (error) {
+    console.error("Error getting puzzle stats:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to get stats",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
 }

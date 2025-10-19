@@ -8,15 +8,17 @@ export async function GET() {
 		if (result.success) {
 			return NextResponse.json({
 				success: true,
-				puzzles: result.puzzles,
+				puzzle: result.puzzle, // Changed from puzzles to puzzle
+				metadata: result.metadata,
 				message: result.message,
-				generatedAt: result.generatedAt,
+				provider: result.provider,
 			});
 		} else {
 			return NextResponse.json(
 				{
 					success: false,
-					error: result.error || "Failed to preview puzzles",
+					error: result.error || "Failed to preview puzzle",
+					fallback: result.fallback,
 				},
 				{ status: 500 }
 			);

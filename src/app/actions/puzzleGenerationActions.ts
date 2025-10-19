@@ -92,9 +92,9 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
       },
       // Add AI metadata
       aiGenerated: true,
-      generationMethod: result.metadata.generationMethod || "ai-master",
-      qualityScore: result.metadata.qualityMetrics.scores.overall,
-      uniquenessScore: result.metadata.uniquenessScore,
+      generationMethod: "ai-master",
+      qualityScore: result.metadata.qualityMetrics?.scores?.overall || 0,
+      uniquenessScore: result.metadata.uniquenessScore || 0,
     }
   } catch (error) {
     console.error(`❌ [AI] Failed to generate puzzle with Google AI:`, error)

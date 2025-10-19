@@ -197,11 +197,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 				const attempts = gameSettings.maxAttempts - attemptsLeft + 1;
 				setCompletionState(true, currentGuess, attempts);
 
+				// Set success in cookies (server-side)
 				try {
-					// Remove the API call since we're offline
-					console.log("Puzzle completed successfully!");
+					const { setPuzzleCompleted } = await import("../app/actions/cookieActions");
+					await setPuzzleCompleted(currentEventPuzzle.answer, true, attempts);
+					console.log("✅ Puzzle completed successfully!");
 				} catch (error) {
-					console.error("Error setting completion state:", error);
+					console.error("Error setting completion cookie:", error);
 				}
 
 				// Update stats
@@ -246,6 +248,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 				if (newAttemptsLeft <= 0) {
 					setCompletionState(false, currentGuess, gameSettings.maxAttempts);
 
+					// Set failure in cookies (server-side)
+					try {
+						const { setPuzzleCompleted } = await import("../app/actions/cookieActions");
+						await setPuzzleCompleted(currentEventPuzzle.answer, false, gameSettings.maxAttempts);
+						console.log("❌ Puzzle failed - stored in cookies");
+					} catch (error) {
+						console.error("Error setting failure cookie:", error);
+					}
+
 					// Update stats for failure
 					const newStats = { ...userStats };
 					newStats.totalGames += 1;
@@ -257,9 +268,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
 					trackEvent("PUZZLE_FAILED");
 
-					// Delay redirect with cleanup
+					// Redirect to failure page with countdown
 					const timeoutId = setTimeout(() => {
-						router.push("/game-over");
+						router.push("/puzzle-failed");
 					}, 2000);
 
 					// Store timeout ID for potential cleanup
