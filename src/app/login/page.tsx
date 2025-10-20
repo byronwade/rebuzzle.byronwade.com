@@ -125,9 +125,7 @@ export default function LoginPage() {
                   minLength={6}
                 />
               </div>
-              {!isLogin && (
-                <p className="text-xs text-gray-500">Must be at least 6 characters</p>
-              )}
+              <p className="text-xs text-gray-500">Must be at least 6 characters</p>
             </div>
 
             <Button
