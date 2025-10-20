@@ -52,11 +52,16 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
 
   if (!isAuthenticated || !user) {
     return (
-      <Button variant="outline" size="sm" className="flex items-center gap-2" disabled>
+      <Button
+        variant="outline"
+        size="sm"
+        className="flex items-center gap-2 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-colors"
+        onClick={() => router.push("/login")}
+      >
         <Avatar className="h-6 w-6">
-          <AvatarFallback>G</AvatarFallback>
+          <AvatarFallback className="bg-gray-100">G</AvatarFallback>
         </Avatar>
-        <span className="hidden sm:inline">Guest</span>
+        <span className="hidden sm:inline">Sign In</span>
       </Button>
     )
   }
