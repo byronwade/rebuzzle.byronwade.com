@@ -76,10 +76,13 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 
 				{/* Action buttons */}
 				<div className="flex items-center gap-3">
-					{/* Enhanced Notification Bell - Moved to left of donate */}
+					{/* Notification Bell - Left of donate */}
 					<Button variant="ghost" size="icon" onClick={handleToggleNotifications} disabled={isLoading} title={getBellTooltip()} className={cn("relative transition-all duration-200 rounded-full", getBellStyle(), isLoading && "cursor-not-allowed opacity-50")}>
 						{getBellIcon()}
 					</Button>
+
+					{/* Info Button - Also left of donate */}
+					<InfoButton />
 
 					<Button variant="outline" size="sm" asChild className="hidden sm:flex items-center gap-2 hover:border-pink-300 hover:text-pink-600 transition-colors">
 						<Link href="https://www.buymeacoffee.com/VFYLE26" target="_blank" rel="noopener noreferrer">
@@ -88,7 +91,6 @@ export default function Header({ nextPlayTime }: HeaderProps) {
 						</Link>
 					</Button>
 
-					<InfoButton />
 					<UserMenu isAuthenticated={isAuthenticated} />
 				</div>
 			</div>
