@@ -114,8 +114,8 @@ export function playSound(type: "success" | "error" | "click" | "hint") {
   if (typeof window === "undefined") return
   if (!("Audio" in window)) return
 
-  // Check if sound is enabled
-  const soundEnabled = localStorage.getItem("soundEnabled") !== "false"
+  // Sound is enabled by default (no localStorage needed)
+  const soundEnabled = true
   if (!soundEnabled) return
 
   // Play appropriate sound

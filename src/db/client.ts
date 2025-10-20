@@ -2,70 +2,26 @@
  * Database Client Configuration
  *
  * This module provides:
- * - Singleton database connection
- * - Connection pooling for performance
- * - Proper cleanup and error handling
- * - Development vs production configuration
+ * - MongoDB database connection
+ * - Optimized for serverless environments
+ * - Proper error handling and health checks
  */
 
-import { drizzle } from "drizzle-orm/postgres-js"
-import postgres from "postgres"
-import * as schema from "./schema"
+import { MongoClient, Db, Collection } from "mongodb"
+import { config } from "dotenv"
 
-/**
- * Global connection cache for hot-reloading in development
- * Prevents connection leaks during Next.js fast refresh
- */
-const globalForDb = globalThis as unknown as {
-  connection: postgres.Sql | undefined
-}
-
-/**
- * Database configuration based on environment
- */
-const getConnectionConfig = (): postgres.Options<Record<string, postgres.PostgresType>> => {
-  const baseConfig: postgres.Options<Record<string, postgres.PostgresType>> = {
-    // Connection pooling configuration
-    max: process.env.NODE_ENV === "production" ? 10 : 3,
-    idle_timeout: 20,
-    connect_timeout: 10,
-
-    // Automatic type parsing
-    types: {
-      date: {
-        to: 1184,
-        from: [1082, 1083, 1114, 1184],
-        serialize: (x: unknown) => (x as Date).toISOString(),
-        parse: (x: string) => new Date(x),
-      },
-    },
-
-    // Error handling
-    onnotice: process.env.NODE_ENV === "development"
-      ? (notice) => console.log("[DB Notice]", notice)
-      : undefined,
-
-    // Debug mode in development
-    debug: process.env.NODE_ENV === "development"
-      ? (connection, query, params) => {
-          console.log("[DB Query]", { query, params })
-        }
-      : undefined,
-  }
-
-  return baseConfig
-}
+// Load environment variables
+config({ path: ".env.local" })
 
 /**
  * Get database URL from environment
- * Supports both regular and non-pooling connections
  */
 const getDatabaseUrl = (): string => {
-  const url = process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL
+  const url = process.env.MONGODB_URI || process.env.DATABASE_URL
 
   if (!url) {
     throw new Error(
-      "Database URL not found. Please set POSTGRES_URL_NON_POOLING or DATABASE_URL environment variable."
+      "Database URL not found. Please set MONGODB_URI or DATABASE_URL environment variable."
     )
   }
 
@@ -73,41 +29,59 @@ const getDatabaseUrl = (): string => {
 }
 
 /**
- * Create postgres connection with proper configuration
+ * Create MongoDB connection
  */
-const createConnection = (): postgres.Sql => {
+const createMongoConnection = () => {
   const connectionString = getDatabaseUrl()
-  const config = getConnectionConfig()
-
-  return postgres(connectionString, config)
+  const client = new MongoClient(connectionString)
+  return client
 }
 
 /**
- * Get or create database connection (singleton pattern)
+ * Global connection cache for hot-reloading in development
  */
-export const getConnection = (): postgres.Sql => {
+const globalForDb = globalThis as unknown as {
+  connection: MongoClient | undefined
+  db: Db | undefined
+}
+
+/**
+ * Get or create MongoDB connection (singleton pattern)
+ */
+export const getConnection = (): MongoClient => {
   if (!globalForDb.connection) {
-    globalForDb.connection = createConnection()
+    globalForDb.connection = createMongoConnection()
   }
   return globalForDb.connection
 }
 
 /**
- * Drizzle ORM instance with schema
+ * Get database instance
  */
-export const db = drizzle(getConnection(), {
-  schema,
-  logger: process.env.NODE_ENV === "development",
-})
+export const getDatabase = (): Db => {
+  if (!globalForDb.db) {
+    const client = getConnection()
+    globalForDb.db = client.db()
+  }
+  return globalForDb.db
+}
+
+/**
+ * Get collection helper
+ */
+export const getCollection = <T extends Record<string, any> = any>(name: string): Collection<T> => {
+  const db = getDatabase()
+  return db.collection<T>(name)
+}
 
 /**
  * Close database connection
- * Useful for cleanup in tests and serverless functions
  */
 export const closeConnection = async (): Promise<void> => {
   if (globalForDb.connection) {
-    await globalForDb.connection.end()
+    await globalForDb.connection.close()
     globalForDb.connection = undefined
+    globalForDb.db = undefined
   }
 }
 
@@ -121,7 +95,8 @@ export const checkDatabaseHealth = async (): Promise<{
 }> => {
   try {
     const start = Date.now()
-    await getConnection()`SELECT 1`
+    const client = getConnection()
+    await client.db().admin().ping()
     const latency = Date.now() - start
 
     return { healthy: true, latency }
@@ -134,22 +109,5 @@ export const checkDatabaseHealth = async (): Promise<{
   }
 }
 
-/**
- * Transaction helper with automatic rollback on error
- */
-export const transaction = async <T>(
-  callback: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>
-): Promise<T> => {
-  return await db.transaction(async (tx) => {
-    try {
-      return await callback(tx as Parameters<Parameters<typeof db.transaction>[0]>[0])
-    } catch (error) {
-      console.error("[DB Transaction] Error:", error)
-      throw error
-    }
-  })
-}
-
 // Export type for use in other files
-export type Database = typeof db
-export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+export type Database = Db

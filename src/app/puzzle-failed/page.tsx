@@ -6,7 +6,7 @@ import Layout from "@/components/Layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { XCircle, Clock, TrendingDown } from "lucide-react"
-import Cookies from "js-cookie"
+// No cookies needed - data comes from URL params
 
 export default function PuzzleFailedPage() {
   const router = useRouter()
@@ -16,22 +16,26 @@ export default function PuzzleFailedPage() {
   const [answer, setAnswer] = useState<string>("")
 
   useEffect(() => {
-    // Get failure data from cookies
-    const failureData = Cookies.get("puzzle_failure")
-    const nextPlayCookie = Cookies.get("next_play_time")
+    // Get failure data from URL params
+    const urlParams = new URLSearchParams(window.location.search)
+    const attemptsParam = urlParams.get("attempts")
+    const answerParam = urlParams.get("answer")
 
-    if (!failureData || !nextPlayCookie) {
+    if (!attemptsParam || !answerParam) {
       // No failure data, redirect to home
       router.push("/")
       return
     }
 
     try {
-      const data = JSON.parse(failureData)
-      setAttempts(data.attempts || 0)
-      setAnswer(data.answer || "")
+      setAttempts(parseInt(attemptsParam) || 0)
+      setAnswer(answerParam || "")
 
-      const nextPlayTime = new Date(nextPlayCookie)
+      // Calculate next play time (tomorrow at midnight)
+      const now = new Date()
+      const nextPlayTime = new Date(now)
+      nextPlayTime.setDate(nextPlayTime.getDate() + 1)
+      nextPlayTime.setHours(0, 0, 0, 0)
 
       // Update countdown every second
       const interval = setInterval(() => {
@@ -60,11 +64,7 @@ export default function PuzzleFailedPage() {
 
   const handleRetry = () => {
     if (canRetry) {
-      // Clear failure cookies
-      Cookies.remove("puzzle_failure")
-      Cookies.remove("next_play_time")
-      Cookies.remove("puzzle_completed")
-
+      // No cookies to clear - just redirect
       router.push("/")
     }
   }

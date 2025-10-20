@@ -20,15 +20,8 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
 	const [isRevealing, setIsRevealing] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
 
-	// Load revealed hints from localStorage
-	useEffect(() => {
-		if (typeof window !== "undefined" && gameId) {
-			const savedHints = localStorage.getItem(`hints-${gameId}`);
-			if (savedHints) {
-				setRevealedHints(parseInt(savedHints));
-			}
-		}
-	}, [gameId]);
+	// Hint state is now managed in memory only
+	// No need to persist hints across sessions
 
 	const handleRevealNextHint = () => {
 		if (!hints || hints.length === 0) {
@@ -47,10 +40,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
 			setRevealedHints(newRevealedCount);
 			setIsRevealing(true);
 
-			// Save to localStorage
-			if (gameId) {
-				localStorage.setItem(`hints-${gameId}`, newRevealedCount.toString());
-			}
+			// Hint state is managed in memory only
 
 			// Track hint usage
 			trackEvent(analyticsEvents.HINTS_REVEALED, {

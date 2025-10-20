@@ -37,6 +37,10 @@ class AIProvider {
     // Initialize provider based on config
     switch (AI_CONFIG.defaultProvider) {
       case "google":
+        // Set the API key as an environment variable for the Google provider
+        if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+          process.env.GOOGLE_GENERATIVE_AI_API_KEY = process.env.GOOGLE_AI_API_KEY || AI_CONFIG.google.apiKey
+        }
         this.provider = google
         console.log(`[AI] Using Google AI (Gemini) - Free tier with quota limits`)
         break
@@ -131,7 +135,11 @@ export async function generateAIText(params: {
     // AI SDK 5 returns different structure
     return {
       text: result.text,
-      usage: result.usage,
+      usage: {
+        promptTokens: (result.usage as any).promptTokenCount || 0,
+        completionTokens: (result.usage as any).candidatesTokenCount || 0,
+        totalTokens: ((result.usage as any).promptTokenCount || 0) + ((result.usage as any).candidatesTokenCount || 0),
+      },
       finishReason: result.finishReason,
     }
   } catch (error) {

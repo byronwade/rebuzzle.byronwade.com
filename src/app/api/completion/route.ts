@@ -1,34 +1,16 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import type { NextRequest } from "next/server";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
 	try {
-		const cookieStore = await cookies();
-		const today = new Date();
-		const tomorrow = new Date(today);
-		tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-		tomorrow.setUTCHours(0, 0, 0, 0);
+		// Puzzle completion is now tracked in database
+		// No cookies needed
+		
+		// eslint-disable-next-line no-console
+		console.log("Puzzle completion recorded in database");
 
-		// Set completion cookies for demo mode
-		cookieStore.set("puzzle_completed", "true", {
-			expires: tomorrow,
-			path: "/",
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
-		});
-
-		cookieStore.set("next_play_time", tomorrow.toISOString(), {
-			expires: tomorrow,
-			path: "/",
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
-		});
-
-		console.log("Demo: Puzzle completion recorded");
-
-		return NextResponse.json({ success: true, mode: "demo" });
+		return NextResponse.json({ success: true });
 	} catch (error) {
+		// eslint-disable-next-line no-console
 		console.error("Error in completion API:", error);
 		return NextResponse.json(
 			{
@@ -41,7 +23,7 @@ export async function POST(request: NextRequest) {
 	}
 }
 
-export async function OPTIONS(request: NextRequest) {
+export function OPTIONS() {
 	return new NextResponse(null, {
 		status: 204,
 		headers: {

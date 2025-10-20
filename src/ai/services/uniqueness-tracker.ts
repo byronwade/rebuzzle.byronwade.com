@@ -9,9 +9,7 @@
  */
 
 import { createHash } from "crypto"
-import { db } from "@/db"
-import { puzzles } from "@/db/schema"
-import { eq, sql } from "drizzle-orm"
+import { getCollection } from "@/db/mongodb-client"
 
 // ============================================================================
 // FINGERPRINTING
@@ -160,10 +158,10 @@ export async function isComponentCombinationUnique(
   cutoffDate.setDate(cutoffDate.getDate() - lookbackDays)
 
   // Get recent puzzles
-  const recentPuzzles = await db
-    .select()
-    .from(puzzles)
-    .where(sql`${puzzles.createdAt} >= ${cutoffDate}`)
+  const puzzlesCollection = getCollection('puzzles')
+  const recentPuzzles = await puzzlesCollection
+    .find({ createdAt: { $gte: cutoffDate } })
+    .toArray()
 
   for (const existing of recentPuzzles) {
     const existingComponents = extractComponents(existing.rebusPuzzle)
@@ -241,10 +239,10 @@ export async function checkPatternDiversity(
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - lookbackDays)
 
-  const recentPuzzles = await db
-    .select()
-    .from(puzzles)
-    .where(sql`${puzzles.createdAt} >= ${cutoffDate}`)
+  const puzzlesCollection = getCollection('puzzles')
+  const recentPuzzles = await puzzlesCollection
+    .find({ createdAt: { $gte: cutoffDate } })
+    .toArray()
 
   // Count how many times this pattern was used
   let usageCount = 0
@@ -292,28 +290,29 @@ export async function validateUniqueness(puzzle: {
 }> {
   // Check fingerprint
   const fingerprint = createPuzzleFingerprint(puzzle)
+  const puzzlesCollection = getCollection('puzzles')
 
-  const existingWithFingerprint = await db
-    .select()
-    .from(puzzles)
-    .where(sql`metadata->>'fingerprint' = ${fingerprint}`)
-    .limit(1)
+  const existingWithFingerprint = await puzzlesCollection
+    .findOne({ "metadata.fingerprint": fingerprint })
 
-  if (existingWithFingerprint.length > 0) {
+  if (existingWithFingerprint) {
     return {
       isUnique: false,
       similarityScore: 1.0,
-      conflictingPuzzles: [{ id: existingWithFingerprint[0]!.id, similarity: 1.0 }],
+      conflictingPuzzles: [{ id: existingWithFingerprint.id, similarity: 1.0 }],
       recommendations: ["This exact puzzle already exists. Generate a completely new one."],
     }
   }
 
   // Check semantic similarity
-  const recentPuzzles = await db
-    .select()
-    .from(puzzles)
-    .orderBy(sql`${puzzles.createdAt} DESC`)
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - 30) // Look back 30 days
+  
+  const recentPuzzles = await puzzlesCollection
+    .find({ createdAt: { $gte: cutoffDate } })
+    .sort({ createdAt: -1 })
     .limit(100)
+    .toArray()
 
   const conflicts: Array<{ id: string; similarity: number }> = []
   let maxSimilarity = 0

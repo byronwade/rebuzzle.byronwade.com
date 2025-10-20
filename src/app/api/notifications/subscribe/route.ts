@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { PushSubscriptionsRepo } from "@/db"
+import { getCollection } from "@/db/mongodb-client"
 
 export async function POST(req: Request) {
   try {
@@ -36,33 +36,38 @@ export async function POST(req: Request) {
     }
 
     // Upsert the subscription using repository
-    const result = await PushSubscriptionsRepo.upsertPushSubscription({
-      userId: userIdentifier,
-      endpoint: subscription.endpoint,
-      auth: subscription.keys.auth,
-      p256dh: subscription.keys.p256dh,
-    })
+    const pushSubscriptionsCollection = getCollection('pushSubscriptions')
+    const result = await pushSubscriptionsCollection.replaceOne(
+      { endpoint: subscription.endpoint },
+      {
+        userId: userId || null,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent: req.headers.get('user-agent') || null,
+        email: email || null,
+        sendWelcomeEmail,
+        createdAt: new Date(),
+      },
+      { upsert: true }
+    )
 
-    if (!result.success) {
-      console.error("[Notifications] Database error:", result.error)
+    if (!result.acknowledged) {
+      console.error("[Notifications] Database error: Failed to save subscription")
       return NextResponse.json(
         {
           success: false,
           error: "Failed to save subscription to database",
-          details: result.error.message,
         },
         { status: 500 }
       )
     }
 
-    const savedSubscription = result.data
-
-    console.log("[Notifications] Subscription saved:", savedSubscription.id)
+    console.log("[Notifications] Subscription saved successfully")
 
     return NextResponse.json({
       success: true,
       message: "Subscription saved successfully",
-      subscriptionId: savedSubscription.id,
       isUpdate: false, // Repository handles upsert internally
     })
   } catch (error) {

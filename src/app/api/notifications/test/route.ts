@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server"
 import webpush from "web-push"
-import { PushSubscriptionsRepo } from "@/db"
+import { getCollection } from "@/db/mongodb"
 
 // Configure web-push with VAPID keys
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_EMAIL) {
-  webpush.setVapidDetails(
-    process.env.VAPID_EMAIL,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  )
+  const vapidEmail = process.env.VAPID_EMAIL
+  // Only configure VAPID if email is in correct format
+  if (vapidEmail && (vapidEmail.startsWith('mailto:') || vapidEmail.startsWith('https://'))) {
+    webpush.setVapidDetails(
+      vapidEmail,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    )
+  } else {
+    console.warn('VAPID_EMAIL should be a valid URL (mailto: or https://). Push notifications will be disabled.')
+  }
 }
 
 export async function POST(req: Request) {
@@ -43,24 +49,22 @@ export async function POST(req: Request) {
       )
     }
 
-    // Get the subscription from database using repository
-    const result = await PushSubscriptionsRepo.findPushSubscriptionById(subscriptionId)
+    // Get the subscription from database using MongoDB
+    const pushSubscriptionsCollection = getCollection('pushSubscriptions')
+    const subscription = await pushSubscriptionsCollection.findOne({
+      _id: subscriptionId
+    })
 
-    if (!result.success) {
-      console.error("[Notifications] Database error:", result.error)
+    if (!subscription) {
+      console.error("[Notifications] Subscription not found")
       return NextResponse.json(
         {
           success: false,
-          error: result.error.code === "NOT_FOUND"
-            ? "Subscription not found"
-            : "Failed to retrieve subscription",
-          details: result.error.message,
+          error: "Subscription not found",
         },
-        { status: result.error.code === "NOT_FOUND" ? 404 : 500 }
+        { status: 404 }
       )
     }
-
-    const subscription = result.data
 
     // Prepare the test notification payload
     const notificationPayload = {

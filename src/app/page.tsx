@@ -111,17 +111,13 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
     // Fetch game data
     const gameData = await fetchGameData(params.preview, isCompleted)
 
-    // Handle redirection for completed puzzles (with success param from cookies)
+    // Handle redirection for completed puzzles
     if (gameData.shouldRedirect) {
-      // Check cookies to see if it was success or failure
-      const { isPuzzleFailed } = await import("./actions/cookieActions")
-      const failed = await isPuzzleFailed()
-
-      if (failed) {
-        redirect("/puzzle-failed")
-      } else {
-        // They succeeded - redirect with success param
+      // Check if puzzle was completed successfully
+      if (gameData.isCompleted) {
         redirect("/game-over?success=true")
+      } else {
+        redirect("/puzzle-failed")
       }
     }
 

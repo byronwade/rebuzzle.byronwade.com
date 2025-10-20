@@ -33,11 +33,15 @@ export default function GameOverPage({ searchParams }: { searchParams: Promise<{
         const data = await fetchGameData()
         setGameData(data as GameData)
 
-        // Load streak from localStorage
-        const stats = localStorage.getItem("userStats")
-        if (stats) {
-          const parsed = JSON.parse(stats)
-          setStreak(parsed.streak || 0)
+        // Load streak from database
+        try {
+          const response = await fetch('/api/user/stats?userId=current-user')
+          if (response.ok) {
+            const userStats = await response.json()
+            setStreak(userStats.streak || 0)
+          }
+        } catch (error) {
+          console.error('Error loading user stats:', error)
         }
       } catch (error) {
         console.error("Error loading game data:", error)

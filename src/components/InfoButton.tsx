@@ -18,11 +18,8 @@ export function InfoButton() {
 
 	useEffect(() => {
 		setIsMounted(true);
-		const hasSeenDialog = localStorage.getItem("hasSeenInfoDialog");
-		if (!hasSeenDialog) {
-			setShowInfoDialog(true);
-			localStorage.setItem("hasSeenInfoDialog", "true");
-		}
+		// Show info dialog on first visit (no localStorage needed)
+		setShowInfoDialog(true);
 
 		// Check if we're on a mobile device
 		const checkMobile = () => {

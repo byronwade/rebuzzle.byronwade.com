@@ -6,16 +6,21 @@ import { useToast } from "@/hooks/use-toast";
 
 // Helper function to convert base64 URL-safe to Uint8Array
 function urlBase64ToUint8Array(base64String: string) {
-	const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-	const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+	try {
+		const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+		const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
 
-	const rawData = window.atob(base64);
-	const outputArray = new Uint8Array(rawData.length);
+		const rawData = window.atob(base64);
+		const outputArray = new Uint8Array(rawData.length);
 
-	for (let i = 0; i < rawData.length; ++i) {
-		outputArray[i] = rawData.charCodeAt(i);
+		for (let i = 0; i < rawData.length; ++i) {
+			outputArray[i] = rawData.charCodeAt(i);
+		}
+		return outputArray;
+	} catch (error) {
+		console.error("Failed to decode base64 string:", error);
+		throw new Error("Invalid VAPID public key format");
 	}
-	return outputArray;
 }
 
 const STORAGE_KEYS = {
@@ -34,19 +39,9 @@ export function useNotifications() {
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-	const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-		if (typeof window !== "undefined") {
-			return localStorage.getItem(STORAGE_KEYS.SUBSCRIPTION_STATE) === "true";
-		}
-		return false;
-	});
+	const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 	const [showEmailDialog, setShowEmailDialog] = useState(false);
-	const [email, setEmail] = useState(() => {
-		if (typeof window !== "undefined") {
-			return localStorage.getItem(STORAGE_KEYS.EMAIL) || "";
-		}
-		return "";
-	});
+	const [email, setEmail] = useState("");
 
 	// Combined subscription management logic
 	const subscriptionManager = useCallback(
@@ -156,8 +151,7 @@ export function useNotifications() {
 				console.error("[Notifications] Subscription error:", error);
 				setPushSubscription(null);
 				setNotificationsEnabled(false);
-				localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_STATE);
-				localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT);
+				// Subscription state is now managed in database
 				throw error;
 			} finally {
 				setIsLoading(false);
@@ -201,8 +195,7 @@ export function useNotifications() {
 					setError("Failed to register service worker. Please try refreshing the page.");
 					setNotificationsEnabled(false);
 					setPushSubscription(null);
-					localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_STATE);
-					localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT);
+					// Subscription state is now managed in database
 				}
 			}
 		};
@@ -210,27 +203,8 @@ export function useNotifications() {
 		void initializeNotifications();
 	}, [subscriptionManager]);
 
-	// Save notification state to localStorage
-	useEffect(() => {
-		if (notificationsEnabled) {
-			localStorage.setItem(STORAGE_KEYS.SUBSCRIPTION_STATE, "true");
-			if (pushSubscription?.endpoint) {
-				localStorage.setItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT, pushSubscription.endpoint);
-			}
-		} else {
-			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_STATE);
-			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT);
-		}
-	}, [notificationsEnabled, pushSubscription]);
-
-	// Save email to localStorage when it changes
-	useEffect(() => {
-		if (email) {
-			localStorage.setItem(STORAGE_KEYS.EMAIL, email);
-		} else {
-			localStorage.removeItem(STORAGE_KEYS.EMAIL);
-		}
-	}, [email]);
+	// Notification state is now managed in database
+	// No localStorage needed
 
 	const unsubscribeFromPushNotifications = async () => {
 		try {
@@ -262,9 +236,7 @@ export function useNotifications() {
 			setSubscriptionId(null);
 			setNotificationsEnabled(false);
 			setEmail("");
-			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_STATE);
-			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT);
-			localStorage.removeItem(STORAGE_KEYS.EMAIL);
+			// Subscription state is now managed in database
 
 			// Show success toast
 			toast({
@@ -353,8 +325,7 @@ export function useNotifications() {
 			setError(errorMessage);
 			setNotificationsEnabled(false);
 			setPushSubscription(null);
-			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_STATE);
-			localStorage.removeItem(STORAGE_KEYS.SUBSCRIPTION_ENDPOINT);
+			// Subscription state is now managed in database
 
 			// Show error toast
 			toast({

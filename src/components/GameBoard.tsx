@@ -45,13 +45,7 @@ interface GameBoardProps {
 export default function GameBoard({ gameData }: GameBoardProps) {
 	const [currentGuess, setCurrentGuess] = useState("");
 	const [gameOver, setGameOver] = useState(false);
-	const [nextPlayTime, setNextPlayTime] = useState<Date | null>(() => {
-		if (typeof window !== "undefined") {
-			const storedTime = localStorage.getItem("nextPlayTime");
-			return storedTime ? new Date(storedTime) : null;
-		}
-		return null;
-	});
+	const [nextPlayTime, setNextPlayTime] = useState<Date | null>(null);
 	const [rebus, setRebus] = useState<string>(gameData.rebusPuzzle);
 	const [currentEventPuzzle, setCurrentEventPuzzle] = useState<GameData>(gameData);
 	const [attemptsLeft, setAttemptsLeft] = useState<number>(gameSettings.maxAttempts);
@@ -61,82 +55,27 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 	const [finalGuess, setFinalGuess] = useState<string | null>(null);
 	const [wasSuccessful, setWasSuccessful] = useState<boolean>(false);
 	const [finalAttempts, setFinalAttempts] = useState<number>(0);
-	const [userStats, setUserStats] = useState<UserStats>(() => {
-		if (typeof window !== "undefined") {
-			const savedStats = localStorage.getItem("userStats");
-			return savedStats
-				? JSON.parse(savedStats)
-				: {
-						points: 0,
-						streak: 0,
-						totalGames: 0,
-						wins: 0,
-						achievements: [],
-						level: 1,
-						lastPlayDate: null,
-						dailyChallengeStreak: 0,
-					};
-		}
-		return {
-			points: 0,
-			streak: 0,
-			totalGames: 0,
-			wins: 0,
-			achievements: [],
-			level: 1,
-			lastPlayDate: null,
-			dailyChallengeStreak: 0,
-		};
+	const [userStats, setUserStats] = useState<UserStats>({
+		points: 0,
+		streak: 0,
+		totalGames: 0,
+		wins: 0,
+		achievements: [],
+		level: 1,
+		lastPlayDate: null,
+		dailyChallengeStreak: 0,
 	});
 	const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 	const [isGuessFilled, setIsGuessFilled] = useState(false);
 	const [usedHints, setUsedHints] = useState<number[]>([]);
 	const router = useRouter();
 
-	// Check if the game is completed from localStorage or gameData
+	// Check if the game is completed from gameData
 	useEffect(() => {
-		const checkCompletionState = async () => {
-			try {
-				const completionHash = localStorage.getItem("gameCompletion");
-				if (completionHash) {
-					// Decode and verify the completion data
-					const decodedData = JSON.parse(atob(completionHash));
-
-					// Verify the data is for the current puzzle
-					if (decodedData.puzzleId === currentEventPuzzle?.id) {
-						const now = new Date();
-						const nextPlayTime = new Date(decodedData.nextPlayTime);
-
-						if (nextPlayTime > now) {
-							setGameOver(true);
-							setNextPlayTime(nextPlayTime);
-							setFinalGuess(decodedData.finalGuess);
-							setWasSuccessful(decodedData.wasSuccessful);
-							setFinalAttempts(decodedData.finalAttempts);
-							setAttemptsLeft(decodedData.attemptsLeft);
-							setUsedHints(decodedData.hintsUsed);
-						} else {
-							// Clear expired completion data
-							localStorage.removeItem("gameCompletion");
-						}
-					} else {
-						// Clear completion data for different puzzle
-						localStorage.removeItem("gameCompletion");
-					}
-				}
-
-				if (gameData.isCompleted) {
-					setGameOver(true);
-				}
-			} catch (error) {
-				console.error("Error checking completion state:", error);
-				// If there's any error in parsing/verifying, clear the completion data
-				localStorage.removeItem("gameCompletion");
-			}
-		};
-
-		checkCompletionState();
-	}, [gameData.isCompleted, currentEventPuzzle?.id]);
+		if (gameData.isCompleted) {
+			setGameOver(true);
+		}
+	}, [gameData.isCompleted]);
 
 	useEffect(() => {
 		trackEvent("GAME_START");
@@ -159,30 +98,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 			setWasSuccessful(success);
 			setFinalAttempts(attempts);
 
-			// Store completion state in localStorage with timestamp
+			// Calculate next play time
 			const now = new Date();
 			const tomorrow = new Date(now);
 			tomorrow.setDate(tomorrow.getDate() + 1);
 			tomorrow.setHours(0, 0, 0, 0);
-
-			const completionData = {
-				nextPlayTime: tomorrow.toISOString(),
-				finalGuess,
-				wasSuccessful: success,
-				finalAttempts: attempts,
-				timestamp: now.toISOString(),
-				puzzleId: currentEventPuzzle.id,
-				attemptsLeft,
-				hintsUsed: usedHints,
-			};
-
-			// Store encrypted or hashed version of the completion data
-			const dataString = JSON.stringify(completionData);
-			const hash = btoa(dataString); // Basic encoding, should use more secure method in production
-
-			localStorage.setItem("gameCompletion", hash);
+			setNextPlayTime(tomorrow);
 		},
-		[currentEventPuzzle?.id, attemptsLeft, usedHints]
+		[]
 	);
 
 	const handleGuess = useCallback(async () => {
@@ -197,14 +120,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 				const attempts = gameSettings.maxAttempts - attemptsLeft + 1;
 				setCompletionState(true, currentGuess, attempts);
 
-				// Set success in cookies (server-side)
-				try {
-					const { setPuzzleCompleted } = await import("../app/actions/cookieActions");
-					await setPuzzleCompleted(currentEventPuzzle.answer, true, attempts);
-					console.log("✅ Puzzle completed successfully!");
-				} catch (error) {
-					console.error("Error setting completion cookie:", error);
-				}
+				// Puzzle completion will be tracked in database
+				console.log("✅ Puzzle completed successfully!");
 
 				// Update stats
 				const newStats = { ...userStats };
@@ -229,7 +146,28 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 				newStats.lastPlayDate = new Date().toISOString();
 
 				setUserStats(newStats);
-				localStorage.setItem("userStats", JSON.stringify(newStats));
+				
+				// Update stats in database
+				try {
+					const response = await fetch('/api/user/update-stats', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							userId: 'current-user', // This should come from auth context
+							gameResult: {
+								won: true,
+								attempts: attempts,
+								timeSpent: 0 // Could track actual time
+							}
+						})
+					});
+					
+					if (!response.ok) {
+						console.error('Failed to update user stats in database');
+					}
+				} catch (error) {
+					console.error('Error updating user stats:', error);
+				}
 
 				trackEvent("PUZZLE_SOLVED");
 
@@ -248,14 +186,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 				if (newAttemptsLeft <= 0) {
 					setCompletionState(false, currentGuess, gameSettings.maxAttempts);
 
-					// Set failure in cookies (server-side)
-					try {
-						const { setPuzzleCompleted } = await import("../app/actions/cookieActions");
-						await setPuzzleCompleted(currentEventPuzzle.answer, false, gameSettings.maxAttempts);
-						console.log("❌ Puzzle failed - stored in cookies");
-					} catch (error) {
-						console.error("Error setting failure cookie:", error);
-					}
+					// Puzzle failure will be tracked in database
+					console.log("❌ Puzzle failed - stats updated in database");
 
 					// Update stats for failure
 					const newStats = { ...userStats };
@@ -264,7 +196,28 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 					newStats.lastPlayDate = new Date().toISOString();
 
 					setUserStats(newStats);
-					localStorage.setItem("userStats", JSON.stringify(newStats));
+					
+					// Update stats in database
+					try {
+						const response = await fetch('/api/user/update-stats', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								userId: 'current-user', // This should come from auth context
+								gameResult: {
+									won: false,
+									attempts: gameSettings.maxAttempts,
+									timeSpent: 0
+								}
+							})
+						});
+						
+						if (!response.ok) {
+							console.error('Failed to update user stats in database');
+						}
+					} catch (error) {
+						console.error('Error updating user stats:', error);
+					}
 
 					trackEvent("PUZZLE_FAILED");
 

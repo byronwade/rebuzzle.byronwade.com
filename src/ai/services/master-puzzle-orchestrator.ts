@@ -9,7 +9,7 @@ import { generateWithChainOfThought, generateWithEnsemble, generateWithIterative
 import { validateUniqueness, calculateUniquenessScore, createPuzzleFingerprint, extractComponents } from "./uniqueness-tracker"
 import { calibrateDifficulty, calculateDifficultyProfile } from "./difficulty-calibrator"
 import { runQualityPipeline, analyzeQuality } from "./quality-assurance"
-import { PuzzlesRepo } from "@/db"
+import { getCollection } from "@/db/mongodb-client"
 
 // ============================================================================
 // MASTER GENERATION PIPELINE

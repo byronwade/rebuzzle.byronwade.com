@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { NextRequest } from "next/server"
-import { PushSubscriptionsRepo } from "@/db"
+import { getCollection } from "@/db/mongodb-client"
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,24 +33,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User ID or email required" }, { status: 400 })
     }
 
-    // Look up existing subscription using repository
-    const result = await PushSubscriptionsRepo.findPushSubscriptionByUserAndEndpoint(
-      userIdentifier,
-      subscription.endpoint
-    )
+    // Look up existing subscription using MongoDB
+    const pushSubscriptionsCollection = getCollection('pushSubscriptions')
+    const existingSubscription = await pushSubscriptionsCollection.findOne({
+      $or: [
+        { userId: userIdentifier },
+        { email: userIdentifier }
+      ],
+      endpoint: subscription.endpoint
+    })
 
-    if (!result.success) {
-      console.error("[Notifications] Database error:", result.error)
-      return NextResponse.json(
-        {
-          error: "Failed to verify subscription",
-          details: result.error.message,
-        },
-        { status: 500 }
-      )
+    if (!existingSubscription) {
+      console.log("[Notifications] No existing subscription found")
+      return NextResponse.json({
+        success: false,
+        error: "No subscription found for this user and endpoint",
+      })
     }
-
-    const existingSubscription = result.data
 
     if (existingSubscription) {
       // Verify the subscription keys match
@@ -67,28 +66,30 @@ export async function POST(req: NextRequest) {
         })
       } else {
         // Keys don't match, update them using upsert
-        const updateResult = await PushSubscriptionsRepo.upsertPushSubscription({
-          userId: userIdentifier,
-          endpoint: subscription.endpoint,
-          auth: subscription.keys.auth,
-          p256dh: subscription.keys.p256dh,
-        })
+        const updateResult = await pushSubscriptionsCollection.replaceOne(
+          { endpoint: subscription.endpoint },
+          {
+            userId: userIdentifier,
+            endpoint: subscription.endpoint,
+            auth: subscription.keys.auth,
+            p256dh: subscription.keys.p256dh,
+            createdAt: new Date(),
+          },
+          { upsert: true }
+        )
 
-        if (!updateResult.success) {
+        if (!updateResult.acknowledged) {
           return NextResponse.json(
             {
               error: "Failed to update subscription",
-              details: updateResult.error.message,
             },
             { status: 500 }
           )
         }
 
-        const updatedSubscription = updateResult.data
-        console.log("[Notifications] Subscription updated:", updatedSubscription.id)
+        console.log("[Notifications] Subscription updated successfully")
         return NextResponse.json({
           success: true,
-          subscriptionId: updatedSubscription.id,
           verified: true,
           updated: true,
         })

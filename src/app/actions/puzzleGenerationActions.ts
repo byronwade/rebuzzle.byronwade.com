@@ -3,7 +3,7 @@
 import { cache } from "react"
 import { generateMasterPuzzle } from "@/ai/advanced"
 import { QuotaExceededError, AIProviderError } from "@/ai"
-import { PuzzlesRepo } from "@/db"
+import { db } from "@/db"
 
 /**
  * Get today's date string in YYYY-MM-DD format
@@ -66,26 +66,26 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
 
   // STEP 1: Check if puzzle already exists in database for today
   try {
-    const existingPuzzle = await PuzzlesRepo.findTodaysPuzzle()
+    const existingPuzzle = await db.puzzleOps.findTodaysPuzzle()
 
-    if (existingPuzzle.success && existingPuzzle.data) {
-      console.log(`✅ [Database] Found existing puzzle for today: ${existingPuzzle.data.answer}`)
+    if (existingPuzzle) {
+      console.log(`✅ [Database] Found existing puzzle for today: ${existingPuzzle.answer}`)
       console.log(`💰 [Tokens] SAVED - using database puzzle (no AI call needed!)`)
 
       // Return puzzle from database
       return {
-        id: existingPuzzle.data.id,
-        rebusPuzzle: existingPuzzle.data.rebusPuzzle,
-        difficulty: existingPuzzle.data.difficulty,
-        answer: existingPuzzle.data.answer,
-        explanation: existingPuzzle.data.explanation,
-        hints: (existingPuzzle.data.metadata as any)?.hints || ["No hints available"],
+        id: existingPuzzle.id,
+        rebusPuzzle: existingPuzzle.rebusPuzzle,
+        difficulty: existingPuzzle.difficulty,
+        answer: existingPuzzle.answer,
+        explanation: existingPuzzle.explanation,
+        hints: (existingPuzzle.metadata as any)?.hints || ["No hints available"],
         date: dateString,
-        topic: (existingPuzzle.data.metadata as any)?.topic || "General",
-        keyword: existingPuzzle.data.answer.replace(/\s+/g, ""),
-        category: (existingPuzzle.data.metadata as any)?.category || "general",
+        topic: (existingPuzzle.metadata as any)?.topic || "General",
+        keyword: existingPuzzle.answer.replace(/\s+/g, ""),
+        category: (existingPuzzle.metadata as any)?.category || "general",
         relevanceScore: 8,
-        seoMetadata: (existingPuzzle.data.metadata as any)?.seoMetadata || {},
+        seoMetadata: (existingPuzzle.metadata as any)?.seoMetadata || {},
         aiGenerated: true,
         fromDatabase: true, // Mark as from database
       }
@@ -141,14 +141,18 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
 
-      await PuzzlesRepo.createPuzzle({
+      const puzzle = {
+        id: crypto.randomUUID(),
         rebusPuzzle: result.puzzle.rebusPuzzle,
         answer: result.puzzle.answer,
+        difficulty: (result.puzzle.difficulty <= 3 ? 'easy' : result.puzzle.difficulty <= 7 ? 'medium' : 'hard') as 'easy' | 'medium' | 'hard',
+        category: result.puzzle.category || 'general',
         explanation: result.puzzle.explanation,
-        difficulty: result.puzzle.difficulty,
-        scheduledFor: today,
+        hints: result.puzzle.hints || [],
+        publishedAt: today,
+        createdAt: new Date(),
+        active: true,
         metadata: {
-          hints: result.puzzle.hints,
           topic: result.puzzle.category,
           keyword: result.puzzle.answer.replace(/\s+/g, ""),
           category: result.puzzle.category,
@@ -158,7 +162,9 @@ const getCachedDailyPuzzle = cache(async (dateString: string) => {
           uniquenessScore: result.metadata.uniquenessScore,
           generatedAt: new Date().toISOString(),
         },
-      })
+      }
+
+      await db.puzzleOps.create(puzzle)
 
       console.log(`💾 [Database] Stored puzzle for all users today!`)
       console.log(`💰 [Tokens] All future requests will use database (FREE!)`)
@@ -215,7 +221,7 @@ export async function getTodaysPuzzle() {
       success: true,
       puzzle,
       generatedAt: new Date().toISOString(),
-      cached: puzzle.fromDatabase || false,
+      cached: (puzzle as any).fromDatabase || false,
       aiGenerated: puzzle.aiGenerated ?? false,
     }
   } catch (error) {

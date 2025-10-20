@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { PushSubscriptionsRepo } from "@/db"
+import { getCollection } from "@/db/mongodb-client"
 
 export async function POST(req: Request) {
   try {
@@ -23,14 +23,23 @@ export async function POST(req: Request) {
 
     let result
 
+    const pushSubscriptionsCollection = getCollection('pushSubscriptions')
+    
     if (subscriptionId) {
       // Delete by subscription ID (most specific)
-      result = await PushSubscriptionsRepo.deletePushSubscriptionById(subscriptionId)
+      result = await pushSubscriptionsCollection.deleteOne({
+        _id: subscriptionId
+      })
     } else {
       // Delete by user identifier
       const userIdentifier = userId || email
       if (userIdentifier) {
-        result = await PushSubscriptionsRepo.deletePushSubscriptionsByUser(userIdentifier)
+        result = await pushSubscriptionsCollection.deleteOne({
+          $or: [
+            { userId: userIdentifier },
+            { email: userIdentifier }
+          ]
+        })
       } else {
         return NextResponse.json(
           {
@@ -42,19 +51,18 @@ export async function POST(req: Request) {
       }
     }
 
-    if (!result.success) {
-      console.error("[Notifications] Database error:", result.error)
+    if (!result.acknowledged) {
+      console.error("[Notifications] Database error: Failed to delete subscription")
       return NextResponse.json(
         {
           success: false,
           error: "Failed to unsubscribe",
-          details: result.error.message,
         },
         { status: 500 }
       )
     }
 
-    const deletedCount = result.data.deletedCount
+    const deletedCount = result.deletedCount
 
     if (deletedCount > 0) {
       console.log("[Notifications] Successfully unsubscribed:", deletedCount, "subscriptions")

@@ -6,49 +6,69 @@ import { Card } from "@/components/ui/card"
 import { Trophy, Medal, Award, TrendingUp, Flame, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useAuth } from "@/components/AuthProvider"
 
 interface LeaderboardEntry {
   rank: number
-  name: string
-  score: number
-  streak: number
-  gamesPlayed: number
-  winRate: number
-  avatar?: string
+  user: {
+    id: string
+    username: string
+    email: string
+  }
+  stats: {
+    points: number
+    streak: number
+    totalGames: number
+    wins: number
+    level: number
+    dailyChallengeStreak: number
+  }
 }
 
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [timeframe, setTimeframe] = useState<"today" | "week" | "allTime">("today")
   const [userRank, setUserRank] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const { isAuthenticated, userId } = useAuth()
 
   useEffect(() => {
-    // Load leaderboard data from localStorage or API
-    const mockLeaderboard: LeaderboardEntry[] = [
-      { rank: 1, name: "PuzzleMaster", score: 5280, streak: 15, gamesPlayed: 20, winRate: 95 },
-      { rank: 2, name: "RebusPro", score: 4950, streak: 12, gamesPlayed: 18, winRate: 92 },
-      { rank: 3, name: "BrainTeaser", score: 4720, streak: 10, gamesPlayed: 17, winRate: 88 },
-      { rank: 4, name: "QuickThinker", score: 4500, streak: 8, gamesPlayed: 16, winRate: 85 },
-      { rank: 5, name: "SmartSolver", score: 4280, streak: 7, gamesPlayed: 15, winRate: 82 },
-      { rank: 6, name: "CleverMind", score: 4100, streak: 6, gamesPlayed: 14, winRate: 80 },
-      { rank: 7, name: "SharpEye", score: 3950, streak: 5, gamesPlayed: 13, winRate: 78 },
-      { rank: 8, name: "PatternSeeker", score: 3800, streak: 5, gamesPlayed: 12, winRate: 75 },
-      { rank: 9, name: "RiddleKing", score: 3650, streak: 4, gamesPlayed: 11, winRate: 72 },
-      { rank: 10, name: "MindBender", score: 3500, streak: 3, gamesPlayed: 10, winRate: 70 },
-    ]
+    const fetchLeaderboard = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/leaderboard?limit=10')
+        const data = await response.json()
+        
+        if (data.success) {
+          setLeaderboard(data.leaderboard)
+        } else {
+          console.error('Failed to fetch leaderboard:', data.error)
+          // Fallback to mock data
+          const mockLeaderboard: LeaderboardEntry[] = [
+            { rank: 1, user: { id: "1", username: "PuzzleMaster", email: "puzzle@example.com" }, stats: { points: 5280, streak: 15, totalGames: 20, wins: 19, level: 6, dailyChallengeStreak: 15 } },
+            { rank: 2, user: { id: "2", username: "RebusPro", email: "rebus@example.com" }, stats: { points: 4950, streak: 12, totalGames: 18, wins: 17, level: 5, dailyChallengeStreak: 12 } },
+            { rank: 3, user: { id: "3", username: "BrainTeaser", email: "brain@example.com" }, stats: { points: 4720, streak: 10, totalGames: 17, wins: 15, level: 5, dailyChallengeStreak: 10 } },
+          ]
+          setLeaderboard(mockLeaderboard)
+        }
 
-    setLeaderboard(mockLeaderboard)
-
-    // Get user's rank from stats
-    const stats = localStorage.getItem("userStats")
-    if (stats) {
-      const parsed = JSON.parse(stats)
-      // Calculate user's hypothetical rank
-      const userScore = parsed.points || 0
-      const rank = mockLeaderboard.filter(e => e.score > userScore).length + 1
-      setUserRank(rank <= 10 ? rank : null)
+        // Get user's rank if authenticated
+        if (isAuthenticated && userId) {
+          const userResponse = await fetch(`/api/user/stats?userId=${userId}`)
+          const userData = await userResponse.json()
+          if (userData.success && userData.rank) {
+            setUserRank(userData.rank)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [timeframe])
+
+    fetchLeaderboard()
+  }, [timeframe, isAuthenticated, userId])
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -109,52 +129,57 @@ export default function LeaderboardPage() {
         {/* Leaderboard */}
         <Card className="overflow-hidden">
           <div className="divide-y divide-gray-100">
-            {leaderboard.map((entry) => (
-              <div
-                key={entry.rank}
-                className={`p-4 hover:bg-gray-50 transition-colors ${
-                  entry.rank <= 3 ? "bg-gradient-to-r from-yellow-50/50 to-transparent" : ""
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Rank Icon */}
-                  <div className="w-12 flex-shrink-0">
-                    {getRankIcon(entry.rank)}
-                  </div>
-
-                  {/* Player Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-900 text-lg truncate">
-                      {entry.name}
+            {leaderboard.map((entry) => {
+              const winRate = entry.stats.totalGames > 0 ? 
+                Math.round((entry.stats.wins / entry.stats.totalGames) * 100) : 0
+              
+              return (
+                <div
+                  key={entry.rank}
+                  className={`p-4 hover:bg-gray-50 transition-colors ${
+                    entry.rank <= 3 ? "bg-gradient-to-r from-yellow-50/50 to-transparent" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Rank Icon */}
+                    <div className="w-12 flex-shrink-0">
+                      {getRankIcon(entry.rank)}
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Target className="w-3 h-3" />
-                        {entry.gamesPlayed} games
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        {entry.winRate}% win rate
-                      </span>
-                      {entry.streak > 0 && (
-                        <span className="flex items-center gap-1 text-orange-600 font-semibold">
-                          <Flame className="w-3 h-3" />
-                          {entry.streak} day streak
+
+                    {/* Player Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 text-lg truncate">
+                        {entry.user.username}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          {entry.stats.totalGames} games
                         </span>
-                      )}
+                        <span className="flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" />
+                          {winRate}% win rate
+                        </span>
+                        {entry.stats.streak > 0 && (
+                          <span className="flex items-center gap-1 text-orange-600 font-semibold">
+                            <Flame className="w-3 h-3" />
+                            {entry.stats.streak} day streak
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Score */}
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {entry.score.toLocaleString()}
+                    {/* Score */}
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {entry.stats.points.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500">points</div>
                     </div>
-                    <div className="text-xs text-gray-500">points</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Card>
 

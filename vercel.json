@@ -8,5 +8,13 @@
 			"path": "/api/cron/send-notifications",
 			"schedule": "0 8 * * *"
 		}
-	]
+	],
+	"functions": {
+		"src/app/api/cron/generate-puzzles/route.ts": {
+			"maxDuration": 300
+		},
+		"src/app/api/cron/send-notifications/route.ts": {
+			"maxDuration": 300
+		}
+	}
 }

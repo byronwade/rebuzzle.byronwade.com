@@ -1,22 +1,23 @@
 /**
  * Database Module Exports
  *
- * Central export point for all database functionality
+ * Clean MongoDB database interface for Rebuzzle
  */
 
-// Client and connection
-export { db, getConnection, closeConnection, checkDatabaseHealth, transaction } from "./client"
-export type { Database, Transaction } from "./client"
+// MongoDB client
+export { 
+  getConnection, 
+  getDatabase, 
+  getCollection, 
+  closeConnection, 
+  checkDatabaseHealth 
+} from "./mongodb";
 
-// Schema
-export * from "./schema"
+// Database models
+export * from "./models";
 
-// Errors
-export * from "./errors"
+// Database operations
+export * as db from "./operations";
 
-// Utilities
-export * from "./utils"
-
-// Repositories
-export * as PushSubscriptionsRepo from "./repositories/push-subscriptions"
-export * as PuzzlesRepo from "./repositories/puzzles"
+// Error handling
+export * from "./errors";

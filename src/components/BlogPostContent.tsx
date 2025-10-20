@@ -36,19 +36,10 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
 		setIsToday(isCurrentPuzzle);
 
 		// Check if today's puzzle is completed
+		// This will be handled by the parent component or API
 		if (isCurrentPuzzle) {
-			const completionHash = localStorage.getItem("gameCompletion");
-			if (completionHash) {
-				try {
-					const decodedData = JSON.parse(atob(completionHash));
-					const nextPlayTime = new Date(decodedData.nextPlayTime);
-					if (nextPlayTime > new Date()) {
-						setIsCompleted(true);
-					}
-				} catch (error) {
-					console.error("Error checking completion state:", error);
-				}
-			}
+			// For now, assume not completed unless we have other data
+			setIsCompleted(false);
 		}
 
 		trackEvent(analyticsEvents.BLOG_POST_VIEW, { slug: post.slug, title: post.title });

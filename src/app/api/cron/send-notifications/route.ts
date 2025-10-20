@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import webpush from "web-push"
-import { PushSubscriptionsRepo, PuzzlesRepo } from "@/db"
+import { getCollection } from "@/db/mongodb"
 
 // Configure web-push with VAPID keys
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_EMAIL) {
-  webpush.setVapidDetails(
-    process.env.VAPID_EMAIL,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  )
+  const vapidEmail = process.env.VAPID_EMAIL
+  // Only configure VAPID if email is in correct format
+  if (vapidEmail && (vapidEmail.startsWith('mailto:') || vapidEmail.startsWith('https://'))) {
+    webpush.setVapidDetails(
+      vapidEmail,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    )
+  } else {
+    console.warn('VAPID_EMAIL should be a valid URL (mailto: or https://). Push notifications will be disabled.')
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -34,47 +40,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get today's puzzle using repository
-    const puzzleResult = await PuzzlesRepo.findTodaysPuzzle()
-
-    if (!puzzleResult.success) {
-      console.error("[Notifications] Error fetching puzzle:", puzzleResult.error)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to fetch today's puzzle",
-          details: puzzleResult.error.message,
-        },
-        { status: 500 }
-      )
-    }
-
-    const todaysPuzzle = puzzleResult.data
+    // Get today's puzzle using MongoDB
+    const puzzlesCollection = getCollection('puzzles')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const todaysPuzzle = await puzzlesCollection.findOne({
+      publishedAt: { $gte: today }
+    })
 
     if (!todaysPuzzle) {
-      console.log("[Notifications] No puzzle found for today")
-      return NextResponse.json({
-        success: false,
-        error: "No puzzle available for today",
-      })
+      console.error("[Notifications] No puzzle found for today")
+      return NextResponse.json(
+        { success: false, error: "No puzzle found for today" },
+        { status: 500 }
+      )
     }
 
     // Get all active push subscriptions (updated in last 30 days)
-    const subscriptionsResult = await PushSubscriptionsRepo.findActivePushSubscriptions(30)
+    const pushSubscriptionsCollection = getCollection('pushSubscriptions')
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    
+    const subscriptions = await pushSubscriptionsCollection
+      .find({ createdAt: { $gte: thirtyDaysAgo } })
+      .toArray()
 
-    if (!subscriptionsResult.success) {
-      console.error("[Notifications] Error fetching subscriptions:", subscriptionsResult.error)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to fetch subscriptions",
-          details: subscriptionsResult.error.message,
-        },
-        { status: 500 }
-      )
+    if (subscriptions.length === 0) {
+      console.log("[Notifications] No active subscriptions found")
+      return NextResponse.json({
+        success: true,
+        message: "No active subscriptions to notify",
+        sent: 0,
+      })
     }
-
-    const subscriptions = subscriptionsResult.data
 
     console.log(`[Notifications] Found ${subscriptions.length} active subscriptions`)
 
@@ -166,16 +165,15 @@ export async function POST(request: NextRequest) {
           // Handle expired subscriptions
           if (pushError.statusCode === 410 || pushError.statusCode === 404) {
             console.log(`[Notifications] Removing expired subscription ${subscription.id}`)
-            const deleteResult = await PushSubscriptionsRepo.deletePushSubscriptionById(
-              subscription.id
-            )
+            const deleteResult = await pushSubscriptionsCollection.deleteOne({
+              _id: subscription._id
+            })
 
-            if (deleteResult.success) {
+            if (deleteResult.acknowledged) {
               results.expiredSubscriptions++
             } else {
               console.error(
-                `[Notifications] Failed to delete expired subscription:`,
-                deleteResult.error
+                `[Notifications] Failed to delete expired subscription`
               )
             }
           } else {

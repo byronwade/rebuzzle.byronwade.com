@@ -1,19 +1,20 @@
-export async function AuthCheck() {
+export function AuthCheck() {
 	try {
-		// Demo mode - always return unauthenticated state
+		// Authentication disabled - always return unauthenticated state
 		return {
 			userId: null,
 			user: null,
 			isAuthenticated: false,
-			mode: "demo",
+			mode: "disabled",
 		};
 	} catch (error) {
-		console.error("Demo AuthCheck error:", error);
+		// eslint-disable-next-line no-console
+		console.error("AuthCheck error:", error);
 		return {
 			userId: null,
 			user: null,
 			isAuthenticated: false,
-			mode: "demo",
+			mode: "disabled",
 		};
 	}
 }
