@@ -30,9 +30,22 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       })
 
       if (response.ok) {
-        // Redirect to home after logout
-        router.push('/')
-        router.refresh()
+        // Clear client-side auth state
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user')
+        localStorage.removeItem('session')
+
+        // Clear any cookies
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c
+            .replace(/^ +/, "")
+            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
+        })
+
+        // Redirect to home and force reload to clear React state
+        window.location.href = '/'
+      } else {
+        console.error('Logout failed:', await response.text())
       }
     } catch (error) {
       console.error('Logout failed:', error)
