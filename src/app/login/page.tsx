@@ -15,10 +15,8 @@ import { useToast } from "@/hooks/use-toast"
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
-    username: "",
     email: "",
     password: "",
   })
@@ -28,8 +26,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const endpoint = isLogin ? "/api/auth/login" : "/api/auth/signup"
-      const response = await fetch(endpoint, {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -38,11 +35,15 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
+        // Store user data
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user))
+          localStorage.setItem('username', data.user.username)
+        }
+
         toast({
-          title: isLogin ? "Welcome back!" : "Account created!",
-          description: isLogin
-            ? "You've successfully logged in."
-            : "Your account has been created successfully.",
+          title: "Welcome back!",
+          description: "You've successfully logged in.",
         })
 
         // Redirect to home
@@ -52,13 +53,13 @@ export default function LoginPage() {
         }, 1000)
       } else {
         toast({
-          title: "Error",
-          description: data.error || "Something went wrong. Please try again.",
+          title: "Login failed",
+          description: data.error || "Invalid credentials. Please try again.",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Auth error:", error)
+      console.error("Login error:", error)
       toast({
         title: "Error",
         description: "Failed to connect to server. Please try again.",
@@ -84,35 +85,14 @@ export default function LoginPage() {
             <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-4xl">🧩</span>
             </div>
-            <h1 className="text-3xl font-bold mb-2">
-              {isLogin ? "Welcome Back!" : "Join Rebuzzle"}
-            </h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome Back!</h1>
             <p className="text-gray-600">
-              {isLogin
-                ? "Log in to track your progress and compete"
-                : "Create an account to save your stats"}
+              Log in to track your progress and compete
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Choose a username"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="pl-10"
-                    required={!isLogin}
-                  />
-                </div>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -161,7 +141,7 @@ export default function LoginPage() {
               ) : (
                 <>
                   <LogIn className="w-4 h-4 mr-2" />
-                  {isLogin ? "Log In" : "Sign Up"}
+                  Log In
                 </>
               )}
             </Button>
@@ -185,34 +165,16 @@ export default function LoginPage() {
             Continue as Guest
           </Button>
 
-          {/* Toggle Login/Signup */}
+          {/* Signup Link */}
           <div className="mt-6 text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-purple-600 hover:text-purple-700 font-medium"
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Log in"}
-            </button>
+            <p className="text-gray-600">
+              Don't have an account?{" "}
+              <Link href="/signup" className="text-purple-600 hover:text-purple-700 font-semibold">
+                Sign up
+              </Link>
+            </p>
           </div>
 
-          {/* Benefits */}
-          {!isLogin && (
-            <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <h3 className="font-semibold text-purple-900 mb-2">
-                Benefits of Creating an Account:
-              </h3>
-              <ul className="space-y-1 text-sm text-purple-800">
-                <li>✓ Track your streak and statistics</li>
-                <li>✓ Compete on the leaderboard</li>
-                <li>✓ Earn achievements</li>
-                <li>✓ Sync across devices</li>
-                <li>✓ Get daily puzzle notifications</li>
-              </ul>
-            </div>
-          )}
 
           {/* Back Link */}
           <div className="mt-6 text-center">
