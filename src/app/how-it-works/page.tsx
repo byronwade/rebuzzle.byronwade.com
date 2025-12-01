@@ -1,32 +1,6 @@
-import {
-  BarChart3,
-  Brain,
-  Cloud,
-  Code,
-  Database,
-  ExternalLink,
-  Github,
-  Lightbulb,
-  Puzzle,
-  Search,
-  Shield,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Twitter,
-  Users,
-  Zap,
-} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Layout from "@/components/Layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
 import {
   generateCourseSchema,
@@ -36,7 +10,7 @@ import {
 export const metadata: Metadata = generateStaticPageMetadata({
   title: "How It Works | Rebuzzle - AI-Powered Puzzle Generation",
   description:
-    "Discover how Rebuzzle's intelligent AI system creates unique, challenging puzzles using chain-of-thought reasoning, multi-agent orchestration, quality assurance, and machine learning. Learn about our advanced puzzle generation technology.",
+    "A comprehensive technical overview of Rebuzzle's intelligent AI system for creating unique, challenging puzzles using chain-of-thought reasoning, multi-agent orchestration, quality assurance, and machine learning.",
   url: "/how-it-works",
   keywords: [
     "AI puzzle generation",
@@ -76,61 +50,8 @@ export default function HowItWorksPage() {
 
   // Generate Speakable schema for voice search
   const speakableSchema = generateSpeakableSchema({
-    cssSelector: ["h1", "h2", "h3", ".card-title", ".card-description"],
+    cssSelector: ["h1", "h2", "h3"],
   });
-
-  const puzzleTypes = [
-    {
-      id: "rebus",
-      name: "Rebus Puzzles",
-      desc: "Visual word puzzles with emojis and symbols",
-    },
-    {
-      id: "word-puzzle",
-      name: "Word Puzzles",
-      desc: "Anagrams, word searches, and more",
-    },
-    {
-      id: "riddle",
-      name: "Riddles",
-      desc: "Lateral thinking and wordplay puzzles",
-    },
-    {
-      id: "logic-grid",
-      name: "Logic Grids",
-      desc: "Einstein-style deductive reasoning",
-    },
-    {
-      id: "number-sequence",
-      name: "Number Sequences",
-      desc: "Mathematical pattern recognition",
-    },
-    {
-      id: "pattern-recognition",
-      name: "Pattern Recognition",
-      desc: "Visual pattern identification",
-    },
-    {
-      id: "caesar-cipher",
-      name: "Caesar Ciphers",
-      desc: "Cryptographic code-breaking",
-    },
-    {
-      id: "cryptic-crossword",
-      name: "Cryptic Crosswords",
-      desc: "Advanced crossword puzzles",
-    },
-    {
-      id: "trivia",
-      name: "Trivia",
-      desc: "Knowledge-based challenge questions",
-    },
-    {
-      id: "word-ladder",
-      name: "Word Ladders",
-      desc: "Transform words step by step",
-    },
-  ];
 
   return (
     <Layout>
@@ -146,947 +67,877 @@ export default function HowItWorksPage() {
         }}
         type="application/ld+json"
       />
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
-        {/* Hero Section */}
-        <div className="mb-12 text-center">
-          <div className="mb-4 flex justify-center">
-            <Brain className="h-12 w-12 text-purple-600" />
-          </div>
-          <h1 className="mb-4 font-semibold text-2xl md:text-3xl">
-            How Our AI Creates Intelligent Puzzles
+      <div className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-12">
+        {/* Header */}
+        <header className="mb-12">
+          <h1 className="mb-4 font-semibold text-3xl leading-tight text-foreground md:text-4xl">
+            How Rebuzzle Works
           </h1>
-          <p className="mx-auto max-w-3xl text-muted-foreground text-sm leading-relaxed md:text-base">
-            Rebuzzle uses a sophisticated multi-layered AI system that goes far
-            beyond simple text generation. Our intelligent puzzle generation
-            combines advanced reasoning, quality assurance, machine learning,
-            and personalization to deliver unique, challenging puzzles tailored
-            to each player.
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            A technical overview of our AI-powered puzzle generation system
+          </p>
+        </header>
+
+        {/* Introduction */}
+        <div className="mb-12">
+          <p className="text-foreground text-lg leading-relaxed md:text-xl">
+            Rebuzzle employs a sophisticated multi-layered artificial intelligence system
+            that generates unique, high-quality puzzles across ten distinct puzzle types.
+            Our system combines chain-of-thought reasoning, multi-agent orchestration,
+            semantic understanding, and continuous learning to create puzzles that are
+            both challenging and solvable.
           </p>
         </div>
 
-        {/* Core Intelligence Features */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <Sparkles className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">
-              Core Intelligence Features
-            </h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-purple-600" />
-                  Chain-of-Thought Reasoning
-                </CardTitle>
-                <CardDescription>
-                  The AI doesn't just generate puzzles randomly - it thinks
-                  through each puzzle concept first
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Before creating a puzzle, our AI plans the visual strategy,
-                  considers multiple layers of meaning, identifies challenge
-                  elements, and creates the puzzle with full understanding. This
-                  results in more thoughtful, creative, and well-structured
-                  puzzles.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-purple-600" />
-                  Multi-Agent Orchestration
-                </CardTitle>
-                <CardDescription>
-                  Four specialized AI agents work together to create and refine
-                  each puzzle
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="ml-6 list-disc space-y-1 text-muted-foreground text-sm">
-                  <li>
-                    <strong>Puzzle Generator Agent:</strong> Creates the initial
-                    puzzle
-                  </li>
-                  <li>
-                    <strong>Quality Evaluator Agent:</strong> Reviews and scores
-                    quality across 7 dimensions
-                  </li>
-                  <li>
-                    <strong>Difficulty Calibrator Agent:</strong> Adjusts
-                    difficulty accurately
-                  </li>
-                  <li>
-                    <strong>Personalized Generator Agent:</strong> Customizes
-                    puzzles for individual users
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-purple-600" />
-                  Quality Assurance Pipeline
-                </CardTitle>
-                <CardDescription>
-                  Every puzzle goes through rigorous multi-dimensional quality
-                  checks
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-3 text-muted-foreground text-sm leading-relaxed">
-                  Puzzles are evaluated across 7 dimensions: clarity,
-                  creativity, solvability, appropriateness, visual appeal,
-                  educational value, and fun factor. Only puzzles scoring above
-                  our quality threshold are published, with automatic retry and
-                  improvement up to 3 times.
-                </p>
-                <p className="font-medium text-muted-foreground text-sm">
-                  Result: 85%+ publish rate with consistently high-quality
-                  puzzles
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-purple-600" />
-                  Uniqueness Guarantee
-                </CardTitle>
-                <CardDescription>
-                  Advanced fingerprinting ensures no duplicate puzzles, even
-                  semantically similar ones
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Using semantic fingerprinting, component tracking, and
-                  similarity scoring, we ensure every puzzle is truly unique.
-                  Puzzles with more than 80% similarity to existing ones are
-                  automatically rejected and the system generates a new
-                  variation.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Learning & Adaptation */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <TrendingUp className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">
-              Learning & Adaptation
-            </h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-purple-600" />
-                  Puzzle Learning System
-                </CardTitle>
-                <CardDescription>
-                  The system learns from user behavior to improve puzzle quality
-                  over time
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="ml-6 list-disc space-y-2 text-muted-foreground text-sm">
-                  <li>Analyzes solve rates, time to solve, and hints used</li>
-                  <li>Calculates actual difficulty based on real user data</li>
-                  <li>
-                    Identifies problematic puzzles (too easy/hard/confusing)
-                  </li>
-                  <li>Auto-calibrates difficulty ratings for accuracy</li>
-                  <li>Generates improvement suggestions for future puzzles</li>
-                </ul>
-                <p className="mt-3 font-medium text-muted-foreground text-sm">
-                  Result: Difficulty ratings become more accurate, and puzzle
-                  quality continuously improves
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-purple-600" />
-                  User Profiling
-                </CardTitle>
-                <CardDescription>
-                  Builds intelligent profiles for each player to personalize
-                  their experience
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="ml-6 list-disc space-y-2 text-muted-foreground text-sm">
-                  <li>
-                    Estimates skill level (beginner/intermediate/advanced)
-                  </li>
-                  <li>
-                    Calculates difficulty preferences based on performance
-                  </li>
-                  <li>Identifies favorite categories and puzzle types</li>
-                  <li>Tracks solve rates, average time, and hint usage</li>
-                  <li>Monitors engagement levels and improvement trends</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Personalization */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <Lightbulb className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">
-              Personalization
-            </h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  Personalized Recommendations
-                </CardTitle>
-                <CardDescription>
-                  Multi-factor recommendation engine suggests puzzles tailored
-                  to each player
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-3 text-muted-foreground text-sm leading-relaxed">
-                  Our recommendation system combines multiple signals:
-                </p>
-                <ul className="ml-6 list-disc space-y-1 text-muted-foreground text-sm">
-                  <li>
-                    <strong>Semantic search:</strong> Finds puzzles similar to
-                    ones you enjoyed
-                  </li>
-                  <li>
-                    <strong>Category-based:</strong> Suggests puzzles in your
-                    favorite categories
-                  </li>
-                  <li>
-                    <strong>Difficulty-matched:</strong> Matches your current
-                    skill level
-                  </li>
-                  <li>
-                    <strong>Performance-based:</strong> Adjusts from your recent
-                    performance
-                  </li>
-                </ul>
-                <p className="mt-3 text-muted-foreground text-sm">
-                  Recommendations improve as the system learns your preferences
-                  and play patterns.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-purple-600" />
-                  Adaptive Difficulty
-                </CardTitle>
-                <CardDescription>
-                  Automatically adjusts puzzle difficulty to keep you in your
-                  "sweet spot"
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-3 text-muted-foreground text-sm leading-relaxed">
-                  The system adapts based on:
-                </p>
-                <ul className="ml-6 list-disc space-y-1 text-muted-foreground text-sm">
-                  <li>Recent performance (solve rates)</li>
-                  <li>Your preferred difficulty range</li>
-                  <li>Skill level trends over time</li>
-                  <li>Hint usage patterns</li>
-                </ul>
-                <p className="mt-3 font-medium text-muted-foreground text-sm">
-                  Smart responses like: "You're solving puzzles quickly - try
-                  something more challenging!" or "Let's try something a bit
-                  easier to build confidence"
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Semantic Understanding */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <Search className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">
-              Semantic Understanding
-            </h2>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-purple-600" />
-                Vector Embeddings & Semantic Search
-              </CardTitle>
-              <CardDescription>
-                The AI understands puzzle meaning, not just keywords
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-3 text-muted-foreground text-sm leading-relaxed">
-                Every puzzle is converted into a mathematical vector (embedding)
-                that represents its meaning. This allows the system to:
-              </p>
-              <ul className="ml-6 list-disc space-y-2 text-muted-foreground text-sm">
-                <li>
-                  Find semantically similar puzzles (by meaning, not just
-                  keywords)
-                </li>
-                <li>
-                  Search by concept (e.g., "find puzzles about cats" finds
-                  cat-related puzzles even without the word "cat")
-                </li>
-                <li>Discover hidden relationships between puzzles</li>
-                <li>
-                  Provide more intelligent recommendations based on conceptual
-                  similarity
-                </li>
-              </ul>
-              <p className="mt-3 text-muted-foreground text-sm">
-                This is much more powerful than simple keyword matching - the
-                system truly understands what puzzles are about.
-              </p>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Multi-Puzzle Types */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <Puzzle className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">
-              10 Different Puzzle Types
-            </h2>
-          </div>
-          <p className="mb-6 text-muted-foreground text-sm leading-relaxed">
-            Our AI system generates 10 different puzzle types, each with
-            specialized generation logic:
+        {/* Section 1: System Architecture */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            System Architecture
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Rebuzzle's architecture is built on a serverless, event-driven model that
+            scales automatically to handle millions of puzzle requests. The system is
+            designed with modularity, extensibility, and performance as core principles.
           </p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {puzzleTypes.map((type) => (
-              <Card key={type.id}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{type.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm">{type.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
 
-        {/* Advanced Features */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <Zap className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">
-              Advanced Features
-            </h2>
-          </div>
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Multi-Stage Generation Pipeline
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-3 text-muted-foreground text-sm leading-relaxed">
-                  Every puzzle goes through 6 stages: (1) Chain-of-thought
-                  generation, (2) Uniqueness validation, (3) Difficulty
-                  calibration, (4) Quality assurance, (5) Adversarial testing,
-                  and (6) Final validation. Quality is checked at each stage
-                  with automatic improvements and retries.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Semantic Caching</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Caches AI responses based on semantic similarity, reducing
-                  redundant API calls, speeding up responses, and saving costs.
-                  The system serves similar queries from cache using
-                  meaning-based matching.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Free-Tier First Strategy
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Prioritizes free-tier AI models with cost-ordered fallbacks.
-                  This ensures efficient operation while maintaining
-                  high-quality puzzle generation. The system automatically uses
-                  the most cost-effective available model.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* What to Expect */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <Target className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">
-              What You Can Expect
-            </h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Immediate Capabilities
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="ml-6 list-disc space-y-2 text-muted-foreground text-sm">
-                  <li>
-                    High-quality, unique puzzles that are well-structured and
-                    appropriately challenging
-                  </li>
-                  <li>
-                    Intelligent recommendations tailored to your preferences and
-                    skill level
-                  </li>
-                  <li>
-                    Learning system that adapts based on your behavior and
-                    performance
-                  </li>
-                  <li>
-                    Semantic understanding that finds puzzles by meaning, not
-                    just keywords
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Over Time (As System Learns)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="ml-6 list-disc space-y-2 text-muted-foreground text-sm">
-                  <li>
-                    More accurate difficulty ratings as the system learns from
-                    player performance
-                  </li>
-                  <li>
-                    Improved puzzle quality through identification and fixing of
-                    common issues
-                  </li>
-                  <li>
-                    Smarter recommendations that learn your individual
-                    preferences deeply
-                  </li>
-                  <li>
-                    Adaptive challenges that automatically adjust to keep you
-                    engaged
-                  </li>
-                  <li>Data-driven insights into what works and what doesn't</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Bottom Line */}
-        <section className="mb-8 rounded-lg border bg-muted/50 p-6">
-          <h3 className="mb-3 font-semibold text-lg">The Bottom Line</h3>
-          <p className="mb-4 text-muted-foreground text-sm leading-relaxed">
-            Rebuzzle's AI system is production-ready and enterprise-grade. It
-            doesn't just generate text - it <strong>thinks</strong> through
-            puzzle creation, <strong>learns</strong> from user behavior,
-            <strong>adapts</strong> to individual preferences,{" "}
-            <strong>validates</strong> quality at multiple levels,
-            <strong>understands</strong> semantic relationships, and{" "}
-            <strong>improves</strong> over time.
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Core Components
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The system consists of several interconnected components:
           </p>
-          <p className="font-medium text-muted-foreground text-sm">
-            Expect high-quality, unique, personalized puzzles that get better
-            over time!
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Puzzle Generation Engine:</strong> The core AI system that creates
+              puzzles using large language models and specialized prompts
+            </li>
+            <li>
+              <strong>Multi-Agent Orchestrator:</strong> Coordinates four specialized AI
+              agents to generate, evaluate, calibrate, and personalize puzzles
+            </li>
+            <li>
+              <strong>Quality Assurance Pipeline:</strong> Multi-dimensional evaluation
+              system that scores puzzles across seven quality dimensions
+            </li>
+            <li>
+              <strong>Semantic Search Engine:</strong> Vector-based similarity search using
+              embeddings to find related puzzles and enable intelligent recommendations
+            </li>
+            <li>
+              <strong>Learning System:</strong> Analyzes user behavior to improve puzzle
+              quality and difficulty calibration over time
+            </li>
+            <li>
+              <strong>Personalization Engine:</strong> Customizes puzzle generation based
+              on individual user profiles, preferences, and performance history
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Technology Stack
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Built on modern, production-ready technologies:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Vercel AI SDK:</strong> Unified interface for multiple AI providers
+              (OpenAI, Anthropic, Google) with automatic routing and cost optimization
+            </li>
+            <li>
+              <strong>AI SDK Tools:</strong> Advanced orchestration, semantic caching, and
+              state management for multi-agent systems
+            </li>
+            <li>
+              <strong>Next.js 15:</strong> React framework with server components, API
+              routes, and edge runtime support
+            </li>
+            <li>
+              <strong>MongoDB:</strong> Document database for storing puzzles, user data,
+              embeddings, and analytics
+            </li>
+            <li>
+              <strong>Vector Operations:</strong> Cosine similarity calculations for
+              semantic search and recommendation systems
+            </li>
+          </ul>
+        </section>
+
+        {/* Section 2: Puzzle Generation Pipeline */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Puzzle Generation Pipeline
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Every puzzle undergoes a rigorous six-stage generation pipeline designed to
+            ensure quality, uniqueness, and appropriate difficulty.
+          </p>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Stage 1: Chain-of-Thought Generation
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Before generating a puzzle, the AI is instructed to think through the puzzle
+            concept using chain-of-thought reasoning. This process involves:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Conceptual Planning:</strong> The AI identifies the target answer and
+              considers multiple approaches to represent it visually or textually
+            </li>
+            <li>
+              <strong>Visual Strategy:</strong> For rebus puzzles, the AI plans which emojis,
+              symbols, or words will best represent the concept
+            </li>
+            <li>
+              <strong>Difficulty Assessment:</strong> The AI evaluates the inherent challenge
+              level of the concept before generation
+            </li>
+            <li>
+              <strong>Multi-Layer Thinking:</strong> The AI considers literal meanings,
+              phonetic relationships, cultural references, and abstract connections
+            </li>
+          </ul>
+          <p className="mb-6 text-foreground text-base leading-relaxed">
+            This thinking process is captured in a structured format, allowing the system to
+            understand the AI's reasoning and ensure puzzles are created with full
+            comprehension rather than random generation.
+          </p>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Stage 2: Uniqueness Validation
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            To prevent duplicate or near-duplicate puzzles, each generated puzzle undergoes
+            semantic fingerprinting:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Component Tracking:</strong> The system extracts key components (emojis,
+              words, structure) and creates a fingerprint
+            </li>
+            <li>
+              <strong>Semantic Similarity:</strong> Vector embeddings are generated and
+              compared against existing puzzles using cosine similarity
+            </li>
+            <li>
+              <strong>Similarity Threshold:</strong> Puzzles with more than 80% similarity to
+              existing ones are automatically rejected
+            </li>
+            <li>
+              <strong>Automatic Retry:</strong> If a puzzle fails uniqueness validation, the
+              system generates a new variation with different components or approach
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Stage 3: Difficulty Calibration
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The Difficulty Calibrator Agent analyzes the puzzle and adjusts its difficulty
+            rating based on multiple weighted factors:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Visual Ambiguity (20% weight):</strong> How clear are the visual
+              elements? Crystal clear (1) to highly ambiguous (10)
+            </li>
+            <li>
+              <strong>Cognitive Steps (30% weight):</strong> How many mental leaps are needed?
+              Single step (1) to many complex steps (10)
+            </li>
+            <li>
+              <strong>Cultural Knowledge (20% weight):</strong> How much cultural context is
+              required? Universal (1) to deep cultural knowledge (10)
+            </li>
+            <li>
+              <strong>Vocabulary Level (15% weight):</strong> How advanced is the vocabulary?
+              Basic words (1) to advanced vocabulary (10)
+            </li>
+            <li>
+              <strong>Pattern Novelty (15% weight):</strong> How unexpected is the pattern?
+              Common pattern (1) to highly novel (10)
+            </li>
+          </ul>
+          <p className="mb-6 text-foreground text-base leading-relaxed">
+            The system maintains a minimum difficulty of 4 (hard) and targets the 4-8 range,
+            ensuring all puzzles are challenging mid-level difficulties that push creative
+            boundaries while remaining solvable.
+          </p>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Stage 4: Quality Assurance
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The Quality Evaluator Agent scores each puzzle across seven dimensions:
+          </p>
+          <ol className="mb-6 ml-6 list-decimal space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Clarity:</strong> Is the puzzle clear and understandable? Are the
+              instructions unambiguous?
+            </li>
+            <li>
+              <strong>Creativity:</strong> Does the puzzle demonstrate creative thinking? Is
+              it novel and interesting?
+            </li>
+            <li>
+              <strong>Solvability:</strong> Can the puzzle be solved with reasonable effort?
+              Is it fair and logical?
+            </li>
+            <li>
+              <strong>Appropriateness:</strong> Is the content family-friendly? Does it avoid
+              sensitive topics?
+            </li>
+            <li>
+              <strong>Visual Appeal:</strong> For visual puzzles, are the elements well-chosen
+              and aesthetically pleasing?
+            </li>
+            <li>
+              <strong>Educational Value:</strong> Does the puzzle teach something or exercise
+              cognitive skills?
+            </li>
+            <li>
+              <strong>Fun Factor:</strong> Is the puzzle enjoyable to solve? Does it provide a
+              satisfying "aha!" moment?
+            </li>
+          </ol>
+          <p className="mb-6 text-foreground text-base leading-relaxed">
+            Each dimension is scored on a 0-100 scale, and the scores are weighted and
+            combined to produce an overall quality score. Puzzles must score above 70 to
+            publish directly, 60-69 for revision, and below 60 are rejected with automatic
+            retry up to 3 times.
+          </p>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Stage 5: Adversarial Testing
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Before final acceptance, puzzles undergo adversarial testing where the AI attempts
+            to identify potential issues:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Ambiguity Detection:</strong> Could the puzzle have multiple valid
+              answers?
+            </li>
+            <li>
+              <strong>Cultural Sensitivity:</strong> Are there any cultural assumptions that
+              might exclude certain audiences?
+            </li>
+            <li>
+              <strong>Accessibility Concerns:</strong> Is the puzzle accessible to players
+              with different abilities or backgrounds?
+            </li>
+            <li>
+              <strong>Edge Case Analysis:</strong> What happens if players interpret elements
+              differently than intended?
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Stage 6: Final Validation
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The final stage ensures all requirements are met:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>All required fields are present and valid</li>
+            <li>Progressive hints are generated (3-5 hints per puzzle)</li>
+            <li>Explanation is clear and educational</li>
+            <li>Metadata is complete (category, difficulty, puzzle type)</li>
+            <li>Puzzle is stored in database with proper indexing</li>
+            <li>Vector embedding is generated for semantic search</li>
+          </ul>
+        </section>
+
+        {/* Section 3: Multi-Agent Orchestration */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Multi-Agent Orchestration
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Rather than using a single AI model, Rebuzzle employs four specialized agents
+            that work together to create optimal puzzles. Each agent has a specific role and
+            expertise.
+          </p>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Puzzle Generator Agent
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The Generator Agent is responsible for creating the initial puzzle. It uses
+            chain-of-thought reasoning to:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>Plan the puzzle concept and visual strategy</li>
+            <li>Generate the puzzle content (emojis, words, structure)</li>
+            <li>Create the answer and explanation</li>
+            <li>Generate progressive hints</li>
+            <li>Consider difficulty and category requirements</li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Quality Evaluator Agent
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The Quality Evaluator Agent reviews each puzzle and scores it across the seven
+            quality dimensions. It provides:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>Detailed scoring for each dimension</li>
+            <li>Identification of strengths and weaknesses</li>
+            <li>Specific suggestions for improvement</li>
+            <li>Overall quality score with reasoning</li>
+            <li>Recommendations for revision or acceptance</li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Difficulty Calibrator Agent
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The Difficulty Calibrator Agent analyzes puzzles and adjusts difficulty ratings
+            for accuracy. It:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>Evaluates complexity factors (visual ambiguity, cognitive steps, etc.)</li>
+            <li>Calculates weighted difficulty scores</li>
+            <li>Calibrates difficulty to match actual challenge level</li>
+            <li>Ensures puzzles fall within the 4-8 difficulty range</li>
+            <li>Provides difficulty reasoning and breakdown</li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Personalized Generator Agent
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            When generating puzzles for specific users, the Personalized Generator Agent
+            customizes the generation process based on:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>User's skill level and performance history</li>
+            <li>Preferred difficulty range and puzzle types</li>
+            <li>Favorite categories and themes</li>
+            <li>Recent performance trends</li>
+            <li>Hint usage patterns and engagement levels</li>
+          </ul>
+          <p className="mb-6 text-foreground text-base leading-relaxed">
+            This agent ensures puzzles are appropriately challenging for each individual
+            user, maintaining engagement without frustration.
           </p>
         </section>
 
-        {/* Built With Section */}
-        <section className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <Code className="h-6 w-6 text-purple-600" />
-            <h2 className="font-semibold text-xl md:text-2xl">Built With</h2>
-          </div>
-          <p className="mb-6 text-muted-foreground text-sm leading-relaxed">
-            Rebuzzle is powered by cutting-edge technologies and tools. Here are
-            the key platforms, frameworks, and SDKs that make our intelligent
-            puzzle system possible.
+        {/* Section 4: Quality Assurance */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Quality Assurance System
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Quality is not an afterthought—it's built into every stage of the generation
+            process. Our quality assurance system ensures that only high-quality puzzles
+            reach players.
           </p>
 
-          {/* AI & Machine Learning */}
-          <div className="mb-8">
-            <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg">
-              <Brain className="h-5 w-5 text-purple-600" />
-              AI & Machine Learning
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Vercel AI SDK</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Core AI SDK for building AI-powered applications with
-                    TypeScript and React
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://sdk.vercel.ai/docs"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Docs
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://github.com/vercel/ai"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Github className="h-3.5 w-3.5" />
-                      GitHub
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/vercel"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Quality Scoring System
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Each puzzle receives a quality score from 0-100, calculated from weighted scores
+            across seven dimensions. The scoring thresholds are:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Exceptional (80-100):</strong> Rare, truly outstanding puzzles that are
+              memorable and exceptional
+            </li>
+            <li>
+              <strong>High Quality (70-79):</strong> High quality puzzles that are good and
+              publishable
+            </li>
+            <li>
+              <strong>Acceptable (60-69):</strong> Acceptable puzzles that are decent but may
+              need minor improvements
+            </li>
+            <li>
+              <strong>Needs Work (50-59):</strong> Puzzles with significant issues that need
+              work
+            </li>
+            <li>
+              <strong>Poor (0-49):</strong> Poor quality puzzles with major problems
+            </li>
+          </ul>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Vercel AI Gateway</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Unified gateway for AI model providers with automatic
-                    routing and cost optimization
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://vercel.com/blog/ai-gateway"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/vercel"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Automatic Retry Mechanism
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            When a puzzle fails quality checks, the system doesn't simply reject it. Instead:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>The Quality Evaluator provides specific improvement suggestions</li>
+            <li>The Generator Agent creates a new version incorporating the feedback</li>
+            <li>
+              The process repeats up to 3 times, with each iteration improving based on
+              previous feedback
+            </li>
+            <li>
+              Only after 3 failed attempts is a puzzle rejected, ensuring maximum quality
+              while maintaining efficiency
+            </li>
+          </ul>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">AI SDK Tools</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Advanced tools for multi-agent orchestration, semantic
-                    caching, state management, and development
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://ai-sdk-tools.dev/"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://github.com/vercel/ai/tree/main/packages/ai-sdk-tools"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Github className="h-3.5 w-3.5" />
-                      GitHub
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/ponusformidabilis"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Quality Metrics in Production
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Our system achieves a publish rate of 85%+, meaning the vast majority of
+            generated puzzles meet our quality standards. This high success rate is achieved
+            through:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>Sophisticated prompt engineering that guides AI toward quality</li>
+            <li>Multi-stage validation that catches issues early</li>
+            <li>Automatic improvement loops that refine puzzles iteratively</li>
+            <li>Learning from user feedback to improve generation over time</li>
+          </ul>
+        </section>
 
-          {/* Infrastructure & Platform */}
-          <div className="mb-8">
-            <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg">
-              <Cloud className="h-5 w-5 text-purple-600" />
-              Infrastructure & Platform
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Vercel</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Deployment platform and hosting for modern web applications
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://vercel.com"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/vercel"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Section 5: Semantic Understanding */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Semantic Understanding & Vector Embeddings
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Rebuzzle doesn't just store puzzles as text—it understands their meaning through
+            vector embeddings, enabling powerful semantic search and recommendation
+            capabilities.
+          </p>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Vercel Workflows</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Automate development workflows directly within Vercel
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://vercel.com/docs/workflows"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Docs
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/vercel"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Vector Embeddings
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Every puzzle is converted into a high-dimensional vector (embedding) that
+            represents its semantic meaning. The embedding is generated from:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>The puzzle content itself (emojis, words, structure)</li>
+            <li>The answer and explanation</li>
+            <li>The category and puzzle type</li>
+            <li>Any thematic or contextual information</li>
+          </ul>
+          <p className="mb-6 text-foreground text-base leading-relaxed">
+            These embeddings are stored in MongoDB alongside puzzle data, enabling fast
+            similarity searches using cosine similarity calculations.
+          </p>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Next.js</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    React framework for production with server components and
-                    optimizations
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://nextjs.org"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/nextjs"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Semantic Search
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Unlike keyword-based search, semantic search understands meaning. For example:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              Searching for "puzzles about cats" finds cat-related puzzles even if the word
+              "cat" doesn't appear (e.g., puzzles with 🐱 emoji)
+            </li>
+            <li>Finding similar puzzles by concept, not just by matching words</li>
+            <li>Discovering puzzles with related themes or difficulty levels</li>
+            <li>Identifying puzzles that require similar solving strategies</li>
+          </ul>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">React</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    JavaScript library for building user interfaces
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://react.dev"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/reactjs"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Semantic Caching
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            To optimize performance and reduce costs, Rebuzzle uses semantic caching:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              When generating a puzzle, the system checks if a semantically similar puzzle
+              was recently generated
+            </li>
+            <li>
+              If similarity is above 85%, the cached result is returned instead of making a
+              new AI API call
+            </li>
+            <li>
+              This reduces redundant API calls, speeds up responses, and significantly
+              reduces costs
+            </li>
+            <li>
+              The cache uses meaning-based matching, so even if the exact prompt differs,
+              similar requests are served from cache
+            </li>
+          </ul>
+        </section>
 
-          {/* Database & Storage */}
-          <div className="mb-8">
-            <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg">
-              <Database className="h-5 w-5 text-purple-600" />
-              Database & Storage
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">MongoDB</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    NoSQL database for storing puzzle data, user profiles, and
-                    analytics
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://www.mongodb.com"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/MongoDB"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+        {/* Section 6: Puzzle Types */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Puzzle Type System
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Rebuzzle supports ten distinct puzzle types, each with specialized generation
+            logic, validation rules, and difficulty calibration. This modular system allows
+            each puzzle type to have its own configuration while sharing common infrastructure.
+          </p>
 
-          {/* Development Tools & Services */}
-          <div className="mb-8">
-            <h3 className="mb-4 flex items-center gap-2 font-semibold text-lg">
-              <Code className="h-5 w-5 text-purple-600" />
-              Development Tools & Services
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">TypeScript</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Typed superset of JavaScript for better developer experience
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://www.typescriptlang.org"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/typescript"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Supported Puzzle Types
+          </h3>
+          <ol className="mb-6 ml-6 list-decimal space-y-4 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Rebus Puzzles:</strong> Visual word puzzles using emojis and symbols
+              to represent words and phrases. Uses chain-of-thought reasoning to plan visual
+              strategies.
+            </li>
+            <li>
+              <strong>Word Puzzles:</strong> Anagrams, word searches, and cryptograms that
+              test vocabulary and pattern recognition.
+            </li>
+            <li>
+              <strong>Riddles:</strong> Lateral thinking puzzles that require wordplay,
+              double meanings, and creative interpretation.
+            </li>
+            <li>
+              <strong>Logic Grids:</strong> Einstein-style deductive reasoning puzzles with
+              multiple categories and constraint satisfaction.
+            </li>
+            <li>
+              <strong>Number Sequences:</strong> Mathematical pattern recognition puzzles
+              requiring identification of arithmetic, geometric, or recursive patterns.
+            </li>
+            <li>
+              <strong>Pattern Recognition:</strong> Visual or text-based sequences where
+              players identify patterns and predict next elements.
+            </li>
+            <li>
+              <strong>Caesar Ciphers:</strong> Cryptographic code-breaking puzzles using
+              letter substitution.
+            </li>
+            <li>
+              <strong>Cryptic Crosswords:</strong> Advanced crossword puzzles with wordplay
+              and cryptic clues.
+            </li>
+            <li>
+              <strong>Trivia:</strong> Knowledge-based challenge questions across various
+              topics.
+            </li>
+            <li>
+              <strong>Word Ladders:</strong> Transform one word into another by changing one
+              letter at a time.
+            </li>
+          </ol>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Tailwind CSS</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Utility-first CSS framework for rapid UI development
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://tailwindcss.com"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/tailwindcss"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Configuration-Driven Architecture
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Each puzzle type has its own configuration file that defines:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Schema:</strong> The data structure for puzzles of this type (fields,
+              validation rules, required elements)
+            </li>
+            <li>
+              <strong>Generation:</strong> System prompts, user prompts, temperature settings,
+              and model preferences
+            </li>
+            <li>
+              <strong>Validation:</strong> Custom validation rules specific to the puzzle type
+            </li>
+            <li>
+              <strong>Difficulty:</strong> How difficulty is calculated for this type
+              (complexity factors, weights, ranges)
+            </li>
+            <li>
+              <strong>Hints:</strong> How progressive hints are generated (count, progression
+              style, content guidelines)
+            </li>
+            <li>
+              <strong>Quality Metrics:</strong> Type-specific quality scoring criteria
+            </li>
+          </ul>
+          <p className="mb-6 text-foreground text-base leading-relaxed">
+            This configuration-driven approach allows new puzzle types to be added easily
+            while maintaining consistency and quality across all types.
+          </p>
+        </section>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Zod</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    TypeScript-first schema validation library
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://zod.dev"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://github.com/colinhacks/zod"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Github className="h-3.5 w-3.5" />
-                      GitHub
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Section 7: Learning & Adaptation */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Learning & Adaptation
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Rebuzzle continuously learns from user behavior to improve puzzle quality and
+            difficulty calibration. This learning system ensures the platform gets better
+            over time.
+          </p>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Resend</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-3 text-muted-foreground text-sm">
-                    Email service for transactional and notification emails
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://resend.com"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                      href="https://x.com/resend"
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <Twitter className="h-3.5 w-3.5" />
-                      Twitter
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Performance Analysis
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The system tracks and analyzes:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Solve Rates:</strong> What percentage of players successfully solve each
+              puzzle?
+            </li>
+            <li>
+              <strong>Time to Solve:</strong> How long do players take on average? Are puzzles
+              too easy (solved quickly) or too hard (taking excessive time)?
+            </li>
+            <li>
+              <strong>Hint Usage:</strong> How many hints do players need? High hint usage may
+              indicate puzzles are too difficult.
+            </li>
+            <li>
+              <strong>Abandonment Rates:</strong> Do players give up on certain puzzles? This
+              may indicate quality or difficulty issues.
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Difficulty Calibration
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Based on actual user performance, the system:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              Calculates actual difficulty from real user data (not just AI estimates)
+            </li>
+            <li>
+              Identifies puzzles where predicted difficulty doesn't match actual difficulty
+            </li>
+            <li>Auto-calibrates difficulty ratings for accuracy</li>
+            <li>
+              Provides feedback to the generation system to improve future difficulty
+              predictions
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Quality Improvement
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The learning system identifies patterns in problematic puzzles:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              Puzzles with consistently low solve rates may have clarity or solvability issues
+            </li>
+            <li>Puzzles with high abandonment may be too difficult or confusing</li>
+            <li>Puzzles with very high solve rates may be too easy</li>
+            <li>The system generates improvement suggestions for future puzzle generation</li>
+          </ul>
+        </section>
+
+        {/* Section 8: Personalization */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Personalization Engine
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            For authenticated users, Rebuzzle builds detailed profiles and personalizes the
+            puzzle experience to match individual preferences and skill levels.
+          </p>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            User Profiling
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The system builds comprehensive user profiles including:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Skill Level:</strong> Estimated skill level (beginner/intermediate/advanced)
+              based on performance
+            </li>
+            <li>
+              <strong>Difficulty Preferences:</strong> Preferred difficulty range calculated
+              from performance data
+            </li>
+            <li>
+              <strong>Favorite Categories:</strong> Puzzle categories the user enjoys most
+            </li>
+            <li>
+              <strong>Preferred Puzzle Types:</strong> Which puzzle types the user prefers
+            </li>
+            <li>
+              <strong>Performance Metrics:</strong> Solve rates, average time, hint usage
+              patterns
+            </li>
+            <li>
+              <strong>Engagement Level:</strong> How actively the user engages with puzzles
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Adaptive Difficulty
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The personalization engine automatically adjusts puzzle difficulty:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              If a user is solving puzzles quickly, the system suggests more challenging
+              puzzles
+            </li>
+            <li>
+              If a user is struggling, the system offers slightly easier puzzles to build
+              confidence
+            </li>
+            <li>
+              Difficulty adapts based on recent performance trends, not just overall history
+            </li>
+            <li>
+              The system maintains users in their "sweet spot" of challenge—difficult enough
+              to be engaging, but not so hard as to be frustrating
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Recommendation System
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The recommendation engine combines multiple signals:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Semantic Search:</strong> Finds puzzles similar to ones the user enjoyed
+            </li>
+            <li>
+              <strong>Category-Based:</strong> Suggests puzzles in favorite categories
+            </li>
+            <li>
+              <strong>Difficulty-Matched:</strong> Matches current skill level
+            </li>
+            <li>
+              <strong>Performance-Based:</strong> Adjusts from recent performance data
+            </li>
+          </ul>
+          <p className="mb-6 text-foreground text-base leading-relaxed">
+            Recommendations improve as the system learns individual preferences and play
+            patterns over time.
+          </p>
+        </section>
+
+        {/* Section 9: Performance */}
+        <section className="mb-16">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Performance & Optimization
+          </h2>
+          <p className="mb-6 text-foreground text-base leading-relaxed md:text-lg">
+            Rebuzzle is designed for scale and efficiency, with multiple optimization
+            strategies to ensure fast responses and cost-effective operation.
+          </p>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Caching Strategy
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            Multiple layers of caching reduce latency and costs:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Daily Puzzle Cache:</strong> Each day's puzzle is generated once and
+              cached for 24 hours, serving all users from the same cached result
+            </li>
+            <li>
+              <strong>Semantic Cache:</strong> Similar puzzle generation requests are served
+              from cache using semantic similarity matching
+            </li>
+            <li>
+              <strong>Embedding Cache:</strong> Vector embeddings are cached to avoid
+              redundant embedding generation
+            </li>
+            <li>
+              <strong>Vercel Edge Caching:</strong> Static and dynamic content is cached at
+              the edge for global performance
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Cost Optimization
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The system prioritizes cost-effective operation:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Free-Tier First:</strong> Prioritizes free-tier AI models with
+              cost-ordered fallbacks
+            </li>
+            <li>
+              <strong>Model Selection:</strong> Uses the most cost-effective model that meets
+              quality requirements
+            </li>
+            <li>
+              <strong>Batch Processing:</strong> Generates multiple puzzles in batches when
+              possible
+            </li>
+            <li>
+              <strong>Semantic Caching:</strong> Reduces redundant API calls through
+              meaning-based cache matching
+            </li>
+          </ul>
+
+          <h3 className="mb-4 mt-8 font-semibold text-xl text-foreground">
+            Scalability
+          </h3>
+          <p className="mb-4 text-foreground text-base leading-relaxed">
+            The serverless architecture ensures:
+          </p>
+          <ul className="mb-6 ml-6 list-disc space-y-3 text-foreground text-base leading-relaxed">
+            <li>
+              <strong>Automatic Scaling:</strong> Handles traffic spikes without manual
+              intervention
+            </li>
+            <li>
+              <strong>Edge Distribution:</strong> Content served from global edge locations
+              for low latency
+            </li>
+            <li>
+              <strong>Database Optimization:</strong> Indexed queries and efficient data
+              structures for fast lookups
+            </li>
+            <li>
+              <strong>Async Processing:</strong> Non-critical operations (like embedding
+              generation) run asynchronously to avoid blocking requests
+            </li>
+          </ul>
+        </section>
+
+        {/* Conclusion */}
+        <section className="mb-12">
+          <h2 className="mb-6 font-semibold text-2xl text-foreground md:text-3xl">
+            Conclusion
+          </h2>
+          <p className="mb-4 text-foreground text-base leading-relaxed md:text-lg">
+            Rebuzzle represents a production-ready, enterprise-grade AI system for puzzle
+            generation. It doesn't simply generate text—it thinks through puzzle creation,
+            learns from user behavior, adapts to individual preferences, validates quality at
+            multiple levels, understands semantic relationships, and improves over time.
+          </p>
+          <p className="mb-4 text-foreground text-base leading-relaxed md:text-lg">
+            The combination of multi-agent orchestration, semantic understanding, continuous
+            learning, and personalization creates a system that produces high-quality, unique,
+            and engaging puzzles that get better with each interaction. This technical
+            foundation enables Rebuzzle to scale to millions of users while maintaining
+            quality and providing personalized experiences.
+          </p>
         </section>
 
         {/* Back Link */}
-        <div className="mt-8 text-center">
+        <div className="border-t border-border pt-8">
           <Link
-            className="text-purple-600 text-sm hover:text-purple-700"
+            className="text-primary text-base hover:underline"
             href="/"
           >
             ← Back to Home

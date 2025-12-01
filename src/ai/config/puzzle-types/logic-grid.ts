@@ -146,7 +146,7 @@
  */
 
 import { z } from "zod";
-import { GLOBAL_CONTEXT } from "../global";
+import { GLOBAL_CONTEXT, DIFFICULTY_MIN, DIFFICULTY_MAX } from "../global";
 import type { PuzzleTypeConfig } from "../types";
 
 // Constants
@@ -157,8 +157,6 @@ const CATEGORIES_MAX = 6;
 const CLUES_MIN = 5;
 const CLUES_MAX = 15;
 const DEFAULT_TARGET_DIFFICULTY = 5;
-const DIFFICULTY_MIN = 5;
-const DIFFICULTY_MAX = 10;
 const WEIGHT_NUMBER_OF_CATEGORIES = 0.15;
 const WEIGHT_NUMBER_OF_ITEMS = 0.15;
 const WEIGHT_CLUE_COMPLEXITY = 0.25;
@@ -194,7 +192,7 @@ export const LogicGridPuzzleSchema = z.object({
     .number()
     .min(DIFFICULTY_MIN)
     .max(DIFFICULTY_MAX)
-    .describe("Difficulty rating from 5-10 (challenging only)"),
+    .describe("Difficulty rating from 4-8 (mid-level challenging)"),
   explanation: z
     .string()
     .describe(
@@ -429,10 +427,10 @@ Show your thinking process, then create the puzzle with CORRECT INTEGER complexi
       );
     },
     ranges: {
-      hard: { min: 5, max: 6 },
-      difficult: { min: 7, max: 8 },
-      evil: { min: 8, max: 9 },
-      impossible: { min: 9, max: 10 },
+      hard: { min: 4, max: 5 },
+      difficult: { min: 5, max: 6 },
+      evil: { min: 6, max: 7 },
+      impossible: { min: 7, max: 8 },
     },
     factors: [
       {

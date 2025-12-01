@@ -253,9 +253,9 @@ export function PuzzleQuestion({
   return (
     <p
       className={cn(
-        "font-medium text-gray-600",
-        "text-sm sm:text-base",
-        "mt-4 sm:mt-6",
+        "font-medium text-muted-foreground",
+        "text-sm",
+        "mt-4",
         className
       )}
     >

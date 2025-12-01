@@ -144,7 +144,7 @@
  */
 
 import { z } from "zod";
-import { GLOBAL_CONTEXT } from "../global";
+import { GLOBAL_CONTEXT, DIFFICULTY_MIN, DIFFICULTY_MAX } from "../global";
 import type { PuzzleTypeConfig } from "../types";
 
 // Constants
@@ -153,8 +153,6 @@ const HINTS_MAX = 5;
 const SHIFT_MIN = 1;
 const SHIFT_MAX = 25;
 const DEFAULT_TARGET_DIFFICULTY = 5;
-const DIFFICULTY_MIN = 5; // Minimum difficulty - all puzzles must be challenging
-const DIFFICULTY_MAX = 10;
 const PUZZLE_MIN_LENGTH = 3;
 const PUZZLE_MAX_LENGTH = 200;
 const ANSWER_MIN_LENGTH = 1;

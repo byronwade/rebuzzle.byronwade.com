@@ -1,10 +1,11 @@
 "use client";
 
-import { Flame, Share2, Target, Trophy } from "lucide-react";
+import { Flame, Target, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Confetti } from "@/components/Confetti";
 import { CountdownTimer } from "@/components/CountdownTimer";
+import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +16,10 @@ interface GameData {
   answer: string;
   explanation: string;
   difficulty: number;
+  puzzleType?: string;
+  metadata?: {
+    puzzleType?: string;
+  };
 }
 
 export default function GameOverPage({
@@ -27,7 +32,6 @@ export default function GameOverPage({
   }>({});
   const [gameData, setGameData] = useState<GameData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [streak, setStreak] = useState(0);
 
   useEffect(() => {
@@ -65,41 +69,6 @@ export default function GameOverPage({
       ? Number.parseInt(params.attempts, 10)
       : gameSettings.maxAttempts;
   const guess = typeof params.guess === "string" ? params.guess : "";
-
-  const generateShareText = () => {
-    const today = new Date().toLocaleDateString();
-    const attemptSquares = success
-      ? "🟩".repeat(attempts) + "⬜".repeat(gameSettings.maxAttempts - attempts)
-      : "🟥".repeat(attempts);
-
-    return `Rebuzzle ${today}
-${success ? "✅ Solved!" : "❌ Failed"}
-${attemptSquares}
-${attempts}/${gameSettings.maxAttempts} attempts
-${streak > 0 ? `🔥 ${streak} day streak` : ""}
-
-Play at rebuzzle.com`;
-  };
-
-  const handleShare = async () => {
-    const text = generateShareText();
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Rebuzzle Results",
-          text,
-        });
-      } catch (err) {
-        console.log("Share cancelled");
-      }
-    } else {
-      // Fallback: copy to clipboard
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   if (loading || !gameData) {
     return (
@@ -202,24 +171,17 @@ Play at rebuzzle.com`;
               </div>
             </div>
 
-            {/* Share Button - Wordle Style */}
-            <Button
-              className="w-full rounded-xl bg-green-600 py-6 font-semibold text-lg text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl"
-              onClick={handleShare}
-            >
-              <Share2 className="mr-2 h-5 w-5" />
-              {copied ? "Copied to Clipboard!" : "Share Results"}
-            </Button>
-
-            {/* Preview of what gets shared */}
-            {success && (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="mb-2 text-gray-500 text-xs">Share Preview:</div>
-                <pre className="whitespace-pre-wrap font-mono text-gray-700 text-xs">
-                  {generateShareText()}
-                </pre>
-              </div>
-            )}
+            {/* Enhanced Share Button */}
+            <EnhancedShareButton
+              attempts={attempts}
+              answer={gameData.answer}
+              className="w-full"
+              difficulty={gameData.difficulty}
+              maxAttempts={gameSettings.maxAttempts}
+              puzzleType={gameData.puzzleType || gameData.metadata?.puzzleType}
+              streak={streak}
+              success={success}
+            />
           </div>
 
           {/* Footer Actions */}

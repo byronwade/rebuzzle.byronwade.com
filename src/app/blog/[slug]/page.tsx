@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BlogPostContent from "@/components/BlogPostContent";
 import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
 import { generateBlogPostMetadata } from "@/lib/seo/metadata";
 import {
   generateArticleSchema,
@@ -167,34 +168,33 @@ export default async function BlogPostPage({
           <BlogPostContent post={post} />
 
           {/* Related Posts & Category Link */}
-          <div className="mt-12 space-y-6 border-t pt-8">
+          <div className="mt-6 space-y-6 border-t pt-6">
             {/* Puzzle Type Category Link */}
             {post.puzzleType && (
-              <div className="mb-6">
-                <Link
-                  className="inline-flex items-center gap-2 rounded-lg border bg-card px-4 py-2 text-sm transition-colors hover:bg-accent"
-                  href={`/puzzles/${post.puzzleType}`}
-                >
-                  <span>🧩</span>
-                  <span>More {puzzleTypeName} Puzzles</span>
-                </Link>
+              <div>
+                <Button asChild size="default" variant="outline">
+                  <Link href={`/puzzles/${post.puzzleType}`}>
+                    <span>🧩</span>
+                    <span>More {puzzleTypeName} Puzzles</span>
+                  </Link>
+                </Button>
               </div>
             )}
 
             {/* Related Posts */}
             {relatedPosts.length > 0 && (
               <div>
-                <h2 className="mb-4 font-semibold text-base">
+                <h2 className="mb-4 font-semibold text-base text-foreground">
                   Related {puzzleTypeName} Puzzles
                 </h2>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-3">
                   {relatedPosts.map((relatedPost) => (
                     <Link
-                      className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+                      className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent"
                       href={`/blog/${relatedPost.slug}`}
                       key={relatedPost.slug}
                     >
-                      <h3 className="mb-2 font-medium text-sm">
+                      <h3 className="mb-2 font-medium text-sm text-foreground group-hover:text-primary">
                         {relatedPost.title}
                       </h3>
                       {relatedPost.excerpt && (

@@ -146,7 +146,7 @@
  */
 
 import { z } from "zod";
-import { GLOBAL_CONTEXT } from "../global";
+import { GLOBAL_CONTEXT, DIFFICULTY_MIN, DIFFICULTY_MAX } from "../global";
 import type { PuzzleTypeConfig } from "../types";
 import { formatVisualLibraryForPrompt } from "./utils/rebus-visual-library";
 
@@ -154,8 +154,6 @@ import { formatVisualLibraryForPrompt } from "./utils/rebus-visual-library";
 const HINTS_MIN = 3;
 const HINTS_MAX = 5;
 const DEFAULT_TARGET_DIFFICULTY = 7; // Default to "difficult" level for rebus - more complex puzzles
-const DIFFICULTY_MIN = 5;
-const DIFFICULTY_MAX = 10;
 const ANSWER_MAX_LENGTH = 50;
 const EXPLANATION_MIN_LENGTH = 20;
 const EXPLANATION_MAX_LENGTH = 200;
@@ -181,9 +179,9 @@ export const RebusPuzzleSchema = z.object({
     .describe("The answer to the puzzle (single word or phrase)"),
   difficulty: z
     .number()
-    .min(5)
-    .max(10)
-    .describe("Difficulty rating from 5-10 (challenging only)"),
+    .min(4)
+    .max(8)
+    .describe("Difficulty rating from 4-8 (mid-level challenging)"),
   explanation: z
     .string()
     .describe("Clear explanation of how the rebus represents the answer"),
@@ -431,16 +429,16 @@ Show your thinking process, then create the puzzle with CORRECT INTEGER complexi
         typedPuzzle.complexityScore.patternNovelty *
           (weights.patternNovelty ?? 0.15);
 
-      // Enforce minimum difficulty of 5 (hard or above)
+      // Enforce minimum difficulty of 4 (mid-level challenging)
       return Math.round(
         Math.max(DIFFICULTY_MIN, Math.min(DIFFICULTY_MAX, score))
       );
     },
     ranges: {
-      hard: { min: 5, max: 6 },
-      difficult: { min: 7, max: 8 },
-      evil: { min: 8, max: 9 },
-      impossible: { min: 9, max: 10 },
+      hard: { min: 4, max: 5 },
+      difficult: { min: 5, max: 6 },
+      evil: { min: 6, max: 7 },
+      impossible: { min: 7, max: 8 },
     },
     factors: [
       {

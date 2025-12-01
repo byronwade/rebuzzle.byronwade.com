@@ -27,29 +27,37 @@ export default function Header({ nextPlayTime, puzzleType }: HeaderProps) {
   return (
     <header className="w-full border-border border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 md:px-6">
-        {/* Logo */}
-        <Link
-          className="font-semibold text-foreground text-lg transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
-          href="/"
-        >
-          Rebuzzle
-        </Link>
-
-        {/* Navigation - Desktop */}
-        <nav className="hidden items-center gap-6 md:flex">
+        {/* Logo and Navigation - Left aligned */}
+        <div className="flex items-center gap-6">
           <Link
-            className="font-medium text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+            className="font-semibold text-foreground text-lg transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
             href="/"
           >
-            Home
+            Rebuzzle
           </Link>
-          <Link
-            className="font-medium text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
-            href="/blog"
-          >
-            Blog
-          </Link>
-        </nav>
+
+          {/* Navigation - Desktop */}
+          <nav className="hidden items-center gap-6 md:flex">
+            <Link
+              className="font-medium text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              href="/"
+            >
+              Home
+            </Link>
+            <Link
+              className="font-medium text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              href="/blog"
+            >
+              Blog
+            </Link>
+            <Link
+              className="font-medium text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              href="/how-it-works"
+            >
+              How It Works
+            </Link>
+          </nav>
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-1.5">

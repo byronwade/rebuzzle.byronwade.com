@@ -80,56 +80,56 @@ export const PSYCHOLOGICAL_GAMES_CONFIG: Record<
       "false-feedback": {
         enabled: true,
         baseIntensity: "subtle",
-        triggerProbability: 0.15,
-        minProgress: 0.3,
+        triggerProbability: 0.2, // Increased from 0.15
+        minProgress: 0.2, // Lowered from 0.3 to trigger earlier
         maxProgress: 0.9,
-        minTimeSeconds: 30,
-        cooldownSeconds: 20,
+        minTimeSeconds: 20, // Reduced from 30
+        cooldownSeconds: 15, // Reduced from 20
       },
       "misleading-hints": {
         enabled: true,
         baseIntensity: "subtle",
+        triggerProbability: 0.15, // Increased from 0.1
+        minProgress: 0.15, // Lowered from 0.2
+        maxProgress: 0.85, // Increased from 0.8
+        minTimeSeconds: 30, // Reduced from 45
+        cooldownSeconds: 20, // Reduced from 30
+      },
+      "time-pressure": {
+        enabled: true, // Enabled for hard difficulty
+        baseIntensity: "subtle",
         triggerProbability: 0.1,
-        minProgress: 0.2,
-        maxProgress: 0.8,
+        minProgress: 0.3,
+        maxProgress: 0.9,
         minTimeSeconds: 45,
         cooldownSeconds: 30,
       },
-      "time-pressure": {
-        enabled: false,
-        baseIntensity: "subtle",
-        triggerProbability: 0,
-        minProgress: 0,
-        maxProgress: 1,
-        minTimeSeconds: 0,
-        cooldownSeconds: 0,
-      },
       "social-pressure": {
-        enabled: false,
+        enabled: true, // Enabled for hard difficulty
         baseIntensity: "subtle",
-        triggerProbability: 0,
-        minProgress: 0,
-        maxProgress: 1,
-        minTimeSeconds: 0,
-        cooldownSeconds: 0,
+        triggerProbability: 0.08,
+        minProgress: 0.25,
+        maxProgress: 0.85,
+        minTimeSeconds: 40,
+        cooldownSeconds: 25,
       },
       "confidence-manipulation": {
         enabled: true,
         baseIntensity: "subtle",
-        triggerProbability: 0.12,
-        minProgress: 0.4,
+        triggerProbability: 0.18, // Increased from 0.12
+        minProgress: 0.3, // Lowered from 0.4
         maxProgress: 0.85,
-        minTimeSeconds: 60,
-        cooldownSeconds: 25,
+        minTimeSeconds: 45, // Reduced from 60
+        cooldownSeconds: 20, // Reduced from 25
       },
       "red-herrings": {
         enabled: true,
         baseIntensity: "subtle",
-        triggerProbability: 0.08,
-        minProgress: 0.3,
-        maxProgress: 0.8,
-        minTimeSeconds: 40,
-        cooldownSeconds: 35,
+        triggerProbability: 0.12, // Increased from 0.08
+        minProgress: 0.2, // Lowered from 0.3
+        maxProgress: 0.85, // Increased from 0.8
+        minTimeSeconds: 30, // Reduced from 40
+        cooldownSeconds: 25, // Reduced from 35
       },
     },
     aiGeneration: {

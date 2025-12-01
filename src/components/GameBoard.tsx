@@ -240,22 +240,29 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     []
   );
 
-  const handleGuess = useCallback(async () => {
+  const handleGuess = useCallback(async (guessValue?: string) => {
+    // Use provided guess value or fall back to state
+    const guess = guessValue?.trim() || gameState.currentGuess.trim();
+    
     if (
       gameState.gameOver ||
       !currentEventPuzzle ||
-      gameState.currentGuess.length !==
-        currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length ||
+      !guess ||
       gameState.isSubmitting
     ) {
       return;
+    }
+
+    // Update state with the guess if provided
+    if (guessValue !== undefined && guessValue !== gameState.currentGuess) {
+      dispatch({ type: "SET_CURRENT_GUESS", payload: guessValue });
     }
 
     // Optimistic UI update - disable input immediately
     dispatch({ type: "SET_IS_SUBMITTING", payload: true });
     const previousAttemptsLeft = gameState.attemptsLeft;
     const previousLastSubmittedGuess = gameState.lastSubmittedGuess;
-    const guessToCheck = gameState.currentGuess;
+    const guessToCheck = guess;
 
     try {
       const result = await checkGuess(guessToCheck, currentEventPuzzle.answer);
@@ -263,7 +270,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       if (result.correct) {
         // Optimistically update UI for correct guess
         const attempts = gameSettings.maxAttempts - previousAttemptsLeft + 1;
-        setCompletionState(true, gameState.currentGuess, attempts);
+        setCompletionState(true, guessToCheck, attempts);
 
         // Puzzle completion will be tracked in database
         console.log("✅ Puzzle completed successfully!");
@@ -344,7 +351,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         // Delay redirect with success params
         const timeoutId = setTimeout(() => {
           router.push(
-            `/game-over?success=true&guess=${encodeURIComponent(gameState.currentGuess)}&attempts=${attempts}`
+            `/game-over?success=true&guess=${encodeURIComponent(guessToCheck)}&attempts=${attempts}`
           );
         }, 2000);
 
@@ -357,7 +364,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: guessToCheck });
 
       if (newAttemptsLeft <= 0) {
-        setCompletionState(false, gameState.currentGuess, gameSettings.maxAttempts);
+        setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
 
         // Puzzle failure will be tracked in database
         console.log("❌ Puzzle failed - stats updated in database");
@@ -411,7 +418,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         // Redirect to failure page with params
         const timeoutId = setTimeout(() => {
           router.push(
-            `/puzzle-failed?guess=${encodeURIComponent(gameState.currentGuess)}&attempts=${gameSettings.maxAttempts}`
+            `/puzzle-failed?guess=${encodeURIComponent(guessToCheck)}&attempts=${gameSettings.maxAttempts}`
           );
         }, 2000);
 
@@ -507,16 +514,25 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (gameState.gameOver || gameState.nextPlayTime || gameState.isSubmitting) return;
 
+      // Don't interfere with textarea/input keydown handlers
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement instanceof HTMLTextAreaElement || 
+                            activeElement instanceof HTMLInputElement;
+      
       if (event.key === "Enter") {
-        event.preventDefault();
-        if (gameState.isGuessFilled) {
+        // Only handle Enter for the old GuessBoxes component, not for SmartAnswerInput
+        if (!isInputFocused && gameState.isGuessFilled) {
+          event.preventDefault();
           handleGuess();
         }
+        // If input is focused, let SmartAnswerInput handle it
       } else if (event.key === "Backspace") {
-        handleKeyPress("BACKSPACE");
+        if (!isInputFocused) {
+          handleKeyPress("BACKSPACE");
+        }
       } else {
         const key = event.key.toUpperCase();
-        if (/^[A-Z]$/.test(key)) {
+        if (/^[A-Z]$/.test(key) && !isInputFocused) {
           handleKeyPress(key);
         }
       }
@@ -559,7 +575,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         })}
       </Script>
       <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
-        <main className="space-y-6">
+        <main className="space-y-4">
           {/* Modern status bar */}
           <section
             aria-label="Game status"
@@ -568,21 +584,21 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             <div className="flex items-center gap-3">
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1.5 transition-all duration-200 hover:bg-purple-200 hover:shadow-sm dark:bg-purple-900/30 dark:hover:bg-purple-900/50">
-                    <div className="h-2 w-2 animate-pulse rounded-full bg-purple-500 shadow-sm" />
+                  <button className="flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1.5 transition-all duration-200 hover:bg-purple-200 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:bg-purple-900/30 dark:hover:bg-purple-900/50">
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-purple-500 shadow-sm motion-reduce:animate-none" />
                     <span className="font-medium text-foreground text-sm">
                       {getDifficultyName(currentEventPuzzle?.difficulty)}
                     </span>
-                    <Info className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                    <Info className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-80">
                   <div className="space-y-3">
                     <div>
-                      <h4 className="mb-2 font-semibold text-sm">
+                      <h4 className="mb-2 font-semibold text-base md:text-lg">
                         Daily Difficulties
                       </h4>
-                      <p className="mb-3 text-muted-foreground text-xs">
+                      <p className="mb-3 text-muted-foreground text-sm">
                         These are the difficulty levels you might encounter day
                         to day:
                       </p>
@@ -604,7 +620,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                             className={cn(
                               "rounded-lg border p-3",
                               isCurrentDifficulty
-                                ? "border-purple-300 bg-purple-50"
+                                ? "border-purple-300 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/20"
                                 : "border-border bg-card"
                             )}
                             key={difficulty.name}
@@ -629,7 +645,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               </Popover>
               {currentEventPuzzle?.hints && (
                 <HintBadge
-                  className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
                   gameId={currentEventPuzzle.id}
                   hints={currentEventPuzzle.hints}
                   onHintReveal={handleHintReveal}
@@ -645,7 +661,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           </section>
 
           {/* Enhanced puzzle display */}
-          <section aria-label="Puzzle" className="space-y-4 text-center">
+          <section aria-label="Puzzle" className="space-y-3 text-center">
             <PuzzleContainer>
               <PuzzleDisplay
                 puzzle={puzzle}
@@ -677,6 +693,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               correctAnswer={currentEventPuzzle?.answer || ""}
               difficulty={currentEventPuzzle?.difficulty || 5}
               disabled={gameState.gameOver || gameState.isSubmitting}
+              isSubmitting={gameState.isSubmitting}
               onSubmit={handleGuess}
               puzzle={currentEventPuzzle?.puzzle || ""}
               puzzleType={currentEventPuzzle?.puzzleType || "rebus"}
@@ -687,10 +704,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           {gameState.feedbackMessage && (
             <div
               aria-live="polite"
-              className="slide-in-from-top-2 fade-in-up animate-in rounded-2xl border border-blue-200 bg-blue-50 p-4 text-center shadow-sm duration-300 dark:border-blue-800 dark:bg-blue-900/20"
+              className="slide-in-from-top-2 fade-in-up animate-in rounded-2xl border border-blue-200 bg-blue-50 p-4 text-center shadow-sm duration-300 motion-reduce:animate-none dark:border-blue-800 dark:bg-blue-900/20"
               role="status"
             >
-              <p className="font-medium text-foreground text-lg">
+              <p className="font-medium text-foreground text-sm">
                 {gameState.feedbackMessage}
               </p>
             </div>
@@ -699,14 +716,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           {/* Error display */}
           {error && (
             <div
-              className="slide-in-from-top-2 fade-in-up animate-in rounded-2xl border border-red-200 bg-red-50 p-4 text-center shadow-md duration-300 dark:border-red-800 dark:bg-red-900/20"
+              className="slide-in-from-top-2 fade-in-up animate-in rounded-2xl border border-red-200 bg-red-50 p-4 text-center shadow-md duration-300 motion-reduce:animate-none dark:border-red-800 dark:bg-red-900/20"
               role="alert"
             >
               <p className="font-semibold text-red-700 text-sm dark:text-red-400">
                 {error.message}
               </p>
               {error.details && (
-                <p className="mt-1 text-red-600 text-xs dark:text-red-500">
+                <p className="mt-2 text-red-600 text-xs dark:text-red-500">
                   {error.details}
                 </p>
               )}

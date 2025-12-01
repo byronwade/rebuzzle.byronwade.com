@@ -3,6 +3,7 @@
 import { cache } from "react";
 import { generateMasterPuzzle } from "@/ai/advanced";
 import { db } from "@/db";
+import type { Puzzle } from "@/db/models";
 import { logger } from "@/lib/logger";
 
 /**
@@ -81,81 +82,121 @@ const getCachedDailyPuzzle = cache(
   async (dateString: string, puzzleType?: string) => {
     logger.info("Getting puzzle for date", { dateString });
 
-    // STEP 1: Check if puzzle already exists in database for today
-    try {
-      const existingPuzzle = await db.puzzleOps.findTodaysPuzzle();
+    // Helper function to format puzzle from database
+    const formatPuzzleFromDb = (puzzle: Puzzle) => {
+      let puzzleDisplay = puzzle.puzzle || puzzle.rebusPuzzle || "";
 
-      if (existingPuzzle) {
-        logger.info("Found existing puzzle in database", {
-          answer: existingPuzzle.answer,
-          tokensSaved: true,
+      // Safety check: If puzzle text matches answer, it's likely corrupted data
+      if (
+        puzzleDisplay === puzzle.answer ||
+        puzzleDisplay.trim() === puzzle.answer.trim()
+      ) {
+        logger.warn("Puzzle data may be corrupted - text matches answer", {
+          puzzleDisplay,
+          answer: puzzle.answer,
         });
-
-        // Extract puzzle display field - support both new and legacy
-        let puzzleDisplay =
-          existingPuzzle.puzzle || existingPuzzle.rebusPuzzle || "";
-
-        // Safety check: If puzzle text matches answer, it's likely corrupted data
+        // Try to reconstruct from metadata or use fallback
         if (
-          puzzleDisplay === existingPuzzle.answer ||
-          puzzleDisplay.trim() === existingPuzzle.answer.trim()
+          (puzzle.metadata as any)?.clues &&
+          Array.isArray((puzzle.metadata as any).clues)
         ) {
-          logger.warn("Puzzle data may be corrupted - text matches answer", {
-            puzzleDisplay,
-            answer: existingPuzzle.answer,
-          });
-          // Try to reconstruct from metadata or use fallback
-          if (
-            (existingPuzzle.metadata as any)?.clues &&
-            Array.isArray((existingPuzzle.metadata as any).clues)
-          ) {
-            puzzleDisplay = (existingPuzzle.metadata as any).clues.join("\n\n");
-          } else {
-            puzzleDisplay =
-              "A logic grid puzzle. Use deductive reasoning to solve the relationships.";
-          }
+          puzzleDisplay = (puzzle.metadata as any).clues.join("\n\n");
+        } else {
+          puzzleDisplay =
+            "A logic grid puzzle. Use deductive reasoning to solve the relationships.";
         }
-
-        const puzzleType =
-          existingPuzzle.puzzleType ||
-          existingPuzzle.metadata?.puzzleType ||
-          "rebus";
-
-        // Return puzzle from database
-        return {
-          id: existingPuzzle.id,
-          puzzle: puzzleDisplay, // Use generic puzzle field
-          puzzleType, // Include puzzle type
-          rebusPuzzle: puzzleType === "rebus" ? puzzleDisplay : undefined, // Legacy field for backward compatibility
-          difficulty:
-            typeof existingPuzzle.difficulty === "number"
-              ? existingPuzzle.difficulty
-              : existingPuzzle.difficulty === "easy"
-                ? 3
-                : existingPuzzle.difficulty === "medium"
-                  ? 5
-                  : 7,
-          answer: existingPuzzle.answer,
-          explanation: existingPuzzle.explanation || "",
-          hints: existingPuzzle.metadata?.hints ||
-            existingPuzzle.hints || ["No hints available"],
-          date: dateString,
-          topic: existingPuzzle.metadata?.topic || "General",
-          keyword: existingPuzzle.answer.replace(/\s+/g, ""),
-          category:
-            existingPuzzle.metadata?.category ||
-            existingPuzzle.category ||
-            "general",
-          relevanceScore: 8,
-          seoMetadata: existingPuzzle.metadata?.seoMetadata || {},
-          aiGenerated: true,
-          fromDatabase: true, // Mark as from database
-        };
       }
-    } catch (dbError) {
-      logger.warn("Failed to check for existing puzzle", {
-        error: dbError instanceof Error ? dbError.message : String(dbError),
+
+      const puzzleType =
+        puzzle.puzzleType || puzzle.metadata?.puzzleType || "rebus";
+
+      return {
+        id: puzzle.id,
+        puzzle: puzzleDisplay,
+        puzzleType,
+        rebusPuzzle: puzzleType === "rebus" ? puzzleDisplay : undefined,
+        difficulty:
+          typeof puzzle.difficulty === "number"
+            ? puzzle.difficulty
+            : puzzle.difficulty === "easy"
+              ? 3
+              : puzzle.difficulty === "medium"
+                ? 5
+                : 7,
+        answer: puzzle.answer,
+        explanation: puzzle.explanation || "",
+        hints: puzzle.metadata?.hints || puzzle.hints || ["No hints available"],
+        date: dateString,
+        topic: puzzle.metadata?.topic || "General",
+        keyword: puzzle.answer.replace(/\s+/g, ""),
+        category:
+          puzzle.metadata?.category || puzzle.category || "general",
+        relevanceScore: 8,
+        seoMetadata: puzzle.metadata?.seoMetadata || {},
+        aiGenerated: true,
+        fromDatabase: true,
+      };
+    };
+
+    // STEP 1: Check if puzzle already exists in database for today
+    // Try multiple times to handle transient database errors
+    let existingPuzzle: Puzzle | null = null;
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        existingPuzzle = await db.puzzleOps.findTodaysPuzzle();
+        
+        if (existingPuzzle) {
+          logger.info("Found existing puzzle in database", {
+            answer: existingPuzzle.answer,
+            tokensSaved: true,
+            attempt,
+          });
+          return formatPuzzleFromDb(existingPuzzle);
+        }
+        
+        // No puzzle found, but database query succeeded
+        // Break out of retry loop to proceed with generation
+        break;
+      } catch (dbError) {
+        const isLastAttempt = attempt === maxRetries;
+        logger.warn(`Database query failed (attempt ${attempt}/${maxRetries})`, {
+          error: dbError instanceof Error ? dbError.message : String(dbError),
+        });
+        
+        if (isLastAttempt) {
+          // On final failure, refuse to generate to prevent duplicates
+          logger.error(
+            "All database query attempts failed. Refusing to generate puzzle to prevent duplicates.",
+            dbError instanceof Error ? dbError : new Error(String(dbError))
+          );
+          throw new Error(
+            "Cannot verify puzzle existence in database. Refusing to generate new puzzle to prevent duplicates. Please check database connection."
+          );
+        }
+        
+        // Wait a bit before retrying (exponential backoff)
+        await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+      }
+    }
+
+    // Double-check one more time right before generating
+    // This prevents race conditions where another request created the puzzle
+    try {
+      existingPuzzle = await db.puzzleOps.findTodaysPuzzle();
+      if (existingPuzzle) {
+        logger.info("Found puzzle on final pre-generation check - another request created it", {
+          answer: existingPuzzle.answer,
+        });
+        return formatPuzzleFromDb(existingPuzzle);
+      }
+    } catch (finalCheckError) {
+      logger.error("Final pre-generation check failed", {
+        error: finalCheckError instanceof Error ? finalCheckError.message : String(finalCheckError),
       });
+      // Still proceed with generation since we've already verified no puzzle exists
+      // This is a last-ditch check, so failure here is less critical
     }
 
       // STEP 2: No puzzle in database - generate with Google AI (ONE TIME!)

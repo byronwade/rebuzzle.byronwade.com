@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Redo2, Sparkles, Undo2 } from "lucide-react";
+import { Check, Loader2, Redo2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
 import {
   calculateAdaptiveIntensity,
@@ -12,21 +12,21 @@ import {
   getCharacterFeedbackConfig,
   getTextAreaConfig,
 } from "@/ai/config/text-area";
+import type { PsychologicalTactic } from "@/ai/services/psychological-games";
 import {
-  generateConfidenceMessage,
-  generateMisleadingHint,
+  generateConfidenceMessageAction,
+  generateContextualHintAction,
+  generateMisleadingHintAction,
   generatePsychologicalTactics,
-  generateRedHerring,
-  generateSocialPressureMessage,
-  generateTimePressureMessage,
-  type PsychologicalTactic,
-} from "@/ai/services/psychological-games";
+  generateRedHerringAction,
+  generateSocialPressureMessageAction,
+  generateSuggestionsAction,
+  generateTimePressureMessageAction,
+} from "@/app/actions/aiActions";
 import {
   type CharacterSuggestion,
   type ContextualHint,
-  generateContextualHint,
   generateFeedbackMessage,
-  generateSuggestions,
   getSimpleCharacterSuggestion,
   getSimpleWordSuggestion,
   type WordSuggestion,
@@ -55,6 +55,7 @@ interface SmartAnswerInputProps {
   correctAnswer: string;
   onSubmit: (answer: string) => void;
   disabled?: boolean;
+  isSubmitting?: boolean;
   className?: string;
   difficulty?: number; // 1-10 difficulty rating
   puzzleType?: string; // Type of puzzle (e.g., "rebus", "logic-grid")
@@ -65,6 +66,7 @@ export function SmartAnswerInput({
   correctAnswer,
   onSubmit,
   disabled = false,
+  isSubmitting = false,
   className,
   difficulty = 5, // Default to medium difficulty
   puzzleType,
@@ -106,6 +108,11 @@ export function SmartAnswerInput({
   const overlayRef = useRef<HTMLDivElement>(null);
   const cursorPositionRef = useRef<CursorPosition | null>(null);
   const lastValueRef = useRef<string>("");
+  
+  // Refs for psychological games throttling
+  const lastCheckTimeRef = useRef<number>(0);
+  const lastProgressRef = useRef<number>(0);
+  const psychologicalGamesTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Undo/Redo manager
   const undoRedoManager = useRef(new UndoRedoManager());
@@ -127,10 +134,18 @@ export function SmartAnswerInput({
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate progress and time spent
-  const progress = useMemo(
-    () => calcProgress(value, correctAnswer),
-    [value, correctAnswer]
-  );
+  // Improved progress calculation that works better for word-based answers
+  const progress = useMemo(() => {
+    const calculated = calcProgress(value, correctAnswer);
+    // Boost progress slightly if user has typed something meaningful
+    // This helps psychological games trigger more reliably
+    if (value.trim().length > 0 && calculated < 0.1) {
+      // If they've typed something but progress is very low, give a small boost
+      // to help games trigger (but don't over-inflate it)
+      return Math.min(0.15, calculated + 0.05);
+    }
+    return calculated;
+  }, [value, correctAnswer]);
   const timeSpent = useMemo(
     () => Math.floor((Date.now() - startTime) / 1000),
     [startTime]
@@ -230,7 +245,7 @@ export function SmartAnswerInput({
       }
 
       try {
-        const result = await generateSuggestions({
+        const result = await generateSuggestionsAction({
           currentInput: value,
           correctAnswer,
           difficulty,
@@ -305,7 +320,7 @@ export function SmartAnswerInput({
 
     const generateHint = async () => {
       try {
-        const hint = await generateContextualHint({
+        const hint = await generateContextualHintAction({
           currentInput: value,
           correctAnswer,
           difficulty,
@@ -347,9 +362,34 @@ export function SmartAnswerInput({
 
   // Trigger psychological games based on conditions
   useEffect(() => {
+    // Clear any existing timeout first
+    if (psychologicalGamesTimeoutRef.current) {
+      clearTimeout(psychologicalGamesTimeoutRef.current);
+      psychologicalGamesTimeoutRef.current = null;
+    }
+
     if (!(value.trim() && puzzle)) return;
 
+    // Throttle checks: only check if enough time has passed (2 seconds minimum)
+    // or if progress has changed significantly (5% threshold)
+    const now = Date.now();
+    const timeSinceLastCheck = now - lastCheckTimeRef.current;
+    const progressDelta = Math.abs(progress - lastProgressRef.current);
+    const minCheckInterval = 2000; // 2 seconds minimum between checks
+    const progressThreshold = 0.05; // 5% progress change
+
+    // Skip if not enough time has passed and progress hasn't changed significantly
+    if (
+      timeSinceLastCheck < minCheckInterval &&
+      progressDelta < progressThreshold
+    ) {
+      return;
+    }
+
     const triggerGames = async () => {
+      lastCheckTimeRef.current = Date.now();
+      lastProgressRef.current = progress;
+
       const newActiveGames: GameType[] = [];
 
       // Check each game type
@@ -371,88 +411,168 @@ export function SmartAnswerInput({
             [gameType]: Date.now() / 1000,
           }));
 
-          // Generate game-specific content
+          // Debug logging (only in development) - only log when something actually triggers
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[PsychologicalGames] Triggered: ${gameType}`, {
+              progress: Math.round(progress * 100) + "%",
+              timeSpent: timeSpent + "s",
+            });
+          }
+
+          // Generate game-specific content with fallbacks
           switch (gameType) {
             case "misleading-hints":
               try {
-                const hint = await generateMisleadingHint({
+                const hint = await generateMisleadingHintAction({
                   puzzle,
                   answer: correctAnswer,
                   difficulty,
                   currentInput: value,
                 });
-                setMisleadingHint(hint);
+                if (hint && hint.trim()) {
+                  setMisleadingHint(hint);
+                } else {
+                  // Fallback misleading hints
+                  const fallbacks = [
+                    "Have you considered looking at this from a different perspective?",
+                    "Maybe try thinking about it in reverse...",
+                    "Some users find it helpful to focus on the details...",
+                    "What if you approached this differently?",
+                  ];
+                  setMisleadingHint(
+                    fallbacks[Math.floor(Math.random() * fallbacks.length)]!
+                  );
+                }
               } catch (error) {
                 console.warn(
                   "[SmartAnswerInput] Failed to generate misleading hint:",
                   error
+                );
+                // Fallback on error
+                const fallbacks = [
+                  "Try a different approach...",
+                  "Consider alternative interpretations...",
+                ];
+                setMisleadingHint(
+                  fallbacks[Math.floor(Math.random() * fallbacks.length)]!
                 );
               }
               break;
 
             case "red-herrings":
               try {
-                const herring = await generateRedHerring({
+                const herring = await generateRedHerringAction({
                   puzzle,
                   answer: correctAnswer,
                   difficulty,
                   currentInput: value,
                 });
-                setRedHerrings((prev) => [...prev, herring].slice(-3)); // Keep last 3
+                if (herring && herring.trim()) {
+                  setRedHerrings((prev) => [...prev, herring].slice(-3)); // Keep last 3
+                }
               } catch (error) {
                 console.warn(
                   "[SmartAnswerInput] Failed to generate red herring:",
                   error
                 );
+                // Fallback red herrings based on puzzle type
+                const fallbackHerrings = [
+                  "Consider synonyms...",
+                  "Think about homophones...",
+                  "Maybe it's an anagram?",
+                ];
+                const fallback =
+                  fallbackHerrings[
+                    Math.floor(Math.random() * fallbackHerrings.length)
+                  ]!;
+                setRedHerrings((prev) => [...prev, fallback].slice(-3));
               }
               break;
 
             case "time-pressure":
               try {
-                const message = await generateTimePressureMessage({
+                const message = await generateTimePressureMessageAction({
                   difficulty,
                   timeSpent,
                 });
-                setTimePressureMessage(message);
+                if (message && message.trim()) {
+                  setTimePressureMessage(message);
+                } else {
+                  // Fallback time pressure messages
+                  const fallbacks = [
+                    `Most users solve this in ${Math.round(60 + Math.random() * 60)}s...`,
+                    "Time's ticking...",
+                    "You're taking longer than average...",
+                  ];
+                  setTimePressureMessage(
+                    fallbacks[Math.floor(Math.random() * fallbacks.length)]!
+                  );
+                }
               } catch (error) {
                 console.warn(
                   "[SmartAnswerInput] Failed to generate time pressure:",
                   error
                 );
+                // Fallback on error
+                setTimePressureMessage("Time's ticking...");
               }
               break;
 
             case "social-pressure":
               try {
-                const message = await generateSocialPressureMessage({
+                const message = await generateSocialPressureMessageAction({
                   difficulty,
                   progress,
                   timeSpent,
                 });
-                setSocialPressureMessage(message);
+                if (message && message.trim()) {
+                  setSocialPressureMessage(message);
+                } else {
+                  // Fallback social pressure messages
+                  const solveRate = 85 + Math.random() * 10;
+                  setSocialPressureMessage(
+                    `${Math.round(solveRate)}% of users solve this puzzle`
+                  );
+                }
               } catch (error) {
                 console.warn(
                   "[SmartAnswerInput] Failed to generate social pressure:",
                   error
                 );
+                // Fallback on error
+                setSocialPressureMessage("Most users find this straightforward...");
               }
               break;
 
             case "confidence-manipulation":
               try {
-                const message = await generateConfidenceMessage({
+                const message = await generateConfidenceMessageAction({
                   puzzle,
                   answer: correctAnswer,
                   difficulty,
                   currentInput: value,
                   progress,
                 });
-                setConfidenceMessage(message);
+                if (message && message.trim()) {
+                  setConfidenceMessage(message);
+                } else {
+                  // Fallback confidence messages
+                  const fallbacks = [
+                    "Are you sure about that approach?",
+                    "You might want to reconsider...",
+                    "Have you considered all possibilities?",
+                  ];
+                  setConfidenceMessage(
+                    fallbacks[Math.floor(Math.random() * fallbacks.length)]!
+                  );
+                }
               } catch (error) {
                 console.warn(
                   "[SmartAnswerInput] Failed to generate confidence message:",
                   error
                 );
+                // Fallback on error
+                setConfidenceMessage("Are you sure about that?");
               }
               break;
           }
@@ -462,9 +582,16 @@ export function SmartAnswerInput({
       setActiveGames(newActiveGames);
     };
 
-    // Debounce game triggering
-    const timeout = setTimeout(triggerGames, 1000);
-    return () => clearTimeout(timeout);
+    // Debounce game triggering with longer delay to reduce AI requests
+    // Only check if enough time has passed since last check
+    psychologicalGamesTimeoutRef.current = setTimeout(triggerGames, 2000);
+    
+    return () => {
+      if (psychologicalGamesTimeoutRef.current) {
+        clearTimeout(psychologicalGamesTimeoutRef.current);
+        psychologicalGamesTimeoutRef.current = null;
+      }
+    };
   }, [
     value,
     progress,
@@ -533,7 +660,7 @@ export function SmartAnswerInput({
       // Handle Enter to submit
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (value.trim()) {
+        if (!disabled && value.trim()) {
           onSubmit(value);
         }
         return;
@@ -598,7 +725,7 @@ export function SmartAnswerInput({
         return;
       }
     },
-    [value, suggestions, onSubmit]
+    [value, suggestions, onSubmit, disabled]
   );
 
   const handleFocus = useCallback(() => {
@@ -747,22 +874,31 @@ export function SmartAnswerInput({
           className={cn(
             "min-h-[100px] resize-none text-base",
             "relative z-10",
-            isCorrect && "border-green-500 focus-visible:ring-green-500",
+            "transition-all duration-200",
+            isCorrect && !isSubmitting && "border-green-500 focus-visible:ring-green-500",
+            isSubmitting && "opacity-75 cursor-wait",
             // Make text transparent so overlay shows through
             value && "text-transparent caret-foreground",
-            // Mobile optimization
-            "touch-manipulation"
+            // Mobile optimization - ensure font size is at least 16px
+            "text-base sm:text-base",
+            "touch-manipulation",
+            // Better focus styles
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            // Better disabled state
+            (disabled || isSubmitting) && "opacity-60 cursor-not-allowed"
           )}
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           onBlur={handleBlur}
           onChange={handleChange}
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
-          placeholder="Type your answer here..."
+          placeholder="Type your answer here…"
           ref={textareaRef}
           rows={4}
           spellCheck={false}
           value={value}
+          // Better mobile support
+          inputMode="text"
         />
       </div>
 
@@ -771,15 +907,11 @@ export function SmartAnswerInput({
         (suggestions.words.length > 0 || suggestions.characters.length > 0) &&
         config.showAutocomplete && (
           <div className="space-y-1 rounded-lg border bg-muted/50 p-2">
-            <div className="mb-1 flex items-center gap-1.5 text-muted-foreground text-xs">
-              <Sparkles className="h-3 w-3" />
-              <span>Suggestions</span>
-            </div>
             {suggestions.words.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {suggestions.words.slice(0, 3).map((suggestion, index) => (
                   <button
-                    className="rounded-md border bg-background px-2 py-1 text-xs transition-colors hover:bg-accent"
+                    className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-0 sm:px-2 sm:py-1"
                     key={index}
                     onClick={() => {
                       const words = value.trim().split(/\s+/);
@@ -826,7 +958,7 @@ export function SmartAnswerInput({
       )}
 
       {/* Feedback with icon */}
-      {isCorrect && (
+      {isCorrect && !isSubmitting && (
         <div
           aria-live="polite"
           className="flex items-center gap-2 font-medium text-green-600 text-sm"
@@ -835,6 +967,19 @@ export function SmartAnswerInput({
         >
           <Check className="h-4 w-4" />
           <span>Perfect! Press Enter to submit.</span>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {isSubmitting && (
+        <div
+          aria-live="polite"
+          className="flex items-center gap-2 font-medium text-muted-foreground text-sm"
+          id="answer-feedback"
+          role="status"
+        >
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+          <span>Submitting…</span>
         </div>
       )}
 
@@ -864,7 +1009,7 @@ export function SmartAnswerInput({
       )}
 
       {/* Default message when empty */}
-      {value.length === 0 && (
+      {value.length === 0 && !isSubmitting && (
         <p className="text-muted-foreground text-sm">
           Words will turn{" "}
           <span className="font-semibold text-green-600">green</span> as you
@@ -874,11 +1019,11 @@ export function SmartAnswerInput({
 
       {/* Undo/Redo buttons (optional, can be hidden via CSS) */}
       {value.length > 0 && (
-        <div className="flex items-center gap-2 opacity-60 transition-opacity hover:opacity-100">
+        <div className="flex items-center gap-1.5 opacity-60 transition-opacity hover:opacity-100">
           <Button
             aria-label="Undo"
-            className="h-7 px-2 text-xs"
-            disabled={!undoRedoManager.current.canUndo()}
+            className="min-h-[44px] min-w-[44px] px-2 text-xs sm:h-7 sm:min-h-0 sm:min-w-0"
+            disabled={!undoRedoManager.current.canUndo() || isSubmitting}
             onClick={() => {
               const entry = undoRedoManager.current.undo(
                 value,
@@ -899,12 +1044,12 @@ export function SmartAnswerInput({
             type="button"
             variant="ghost"
           >
-            <Undo2 className="h-3 w-3" />
+            <Undo2 className="h-4 w-4" />
           </Button>
           <Button
             aria-label="Redo"
-            className="h-7 px-2 text-xs"
-            disabled={!undoRedoManager.current.canRedo()}
+            className="min-h-[44px] min-w-[44px] px-2 text-xs sm:h-7 sm:min-h-0 sm:min-w-0"
+            disabled={!undoRedoManager.current.canRedo() || isSubmitting}
             onClick={() => {
               const entry = undoRedoManager.current.redo(
                 value,
@@ -925,7 +1070,7 @@ export function SmartAnswerInput({
             type="button"
             variant="ghost"
           >
-            <Redo2 className="h-3 w-3" />
+            <Redo2 className="h-4 w-4" />
           </Button>
         </div>
       )}

@@ -69,21 +69,22 @@ export const GLOBAL_CONTEXT: GlobalContext = {
     calibrationMethod: "weighted",
     /**
      * DIFFICULTY PHILOSOPHY:
-     * This website is designed to challenge our AI to develop out-of-the-box but achievable puzzles.
-     * We NEVER use "easy" or "medium" difficulty levels.
-     * All puzzles must be challenging and push creative boundaries while remaining solvable.
+     * This website is designed to challenge our AI to develop mid-level puzzles that take
+     * users 1-5 hours to figure out. We NEVER use "easy" or low difficulty levels.
+     * All puzzles must be challenging mid-level difficulties that push creative boundaries
+     * while remaining solvable within a reasonable timeframe.
      *
-     * Difficulty Levels:
-     * - hard: 5-6 - Baseline challenging puzzles that require genuine thinking
-     * - difficult: 7-8 - More challenging puzzles that push creative boundaries
-     * - evil: 8-9 - Very challenging puzzles that require out-of-the-box thinking
-     * - impossible: 9-10 - Extremely challenging but still achievable puzzles
+     * Difficulty Levels (Scale: 1-10, Target Range: 4-8):
+     * - hard: 4-5 - Baseline challenging puzzles that require genuine thinking
+     * - difficult: 5-6 - More challenging puzzles that push creative boundaries
+     * - evil: 6-7 - Very challenging puzzles that require out-of-the-box thinking
+     * - impossible: 7-8 - Extremely challenging but still achievable puzzles
      */
     ranges: {
-      hard: { min: 5, max: 6 },
-      difficult: { min: 7, max: 8 },
-      evil: { min: 8, max: 9 },
-      impossible: { min: 9, max: 10 },
+      hard: { min: 4, max: 5 },
+      difficult: { min: 5, max: 6 },
+      evil: { min: 6, max: 7 },
+      impossible: { min: 7, max: 8 },
     },
     factors: [
       {
@@ -118,9 +119,10 @@ export const GLOBAL_CONTEXT: GlobalContext = {
       },
     ],
     /**
-     * Minimum difficulty for all puzzles - ensures we never generate easy puzzles
+     * Minimum difficulty for all puzzles - ensures we never generate easy puzzles.
+     * All puzzles must be in the 4-8 range (mid-level difficulties).
      */
-    minimumDifficulty: 5,
+    minimumDifficulty: 4,
   },
 
   aiModelPreferences: {
@@ -157,3 +159,7 @@ export const GLOBAL_CONTEXT: GlobalContext = {
     ],
   },
 };
+
+// Export difficulty constants for use across all puzzle types
+export const DIFFICULTY_MIN = GLOBAL_CONTEXT.difficultyCalibration.minimumDifficulty;
+export const DIFFICULTY_MAX = GLOBAL_CONTEXT.difficultyCalibration.ranges.impossible.max;

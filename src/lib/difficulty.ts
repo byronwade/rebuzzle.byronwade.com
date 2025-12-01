@@ -3,6 +3,8 @@
  * Maps numeric difficulty levels to text names and provides daily difficulty information
  */
 
+import { GLOBAL_CONTEXT } from "@/ai/config/global";
+
 export type DifficultyName = "Hard" | "Difficult" | "Evil" | "Impossible";
 
 export interface DifficultyInfo {
@@ -19,15 +21,17 @@ export interface GroupedDifficultyInfo {
 
 /**
  * Maps a numeric difficulty level to its text name
- * Based on the difficulty calibration ranges:
- * - Hard: 4-6 (treating 4 as lower end of Hard range)
- * - Difficult: 7-8
- * - Evil: 8-9
- * - Impossible: 9-10
+ * Based on the difficulty calibration ranges from global config:
+ * - Hard: 4-5
+ * - Difficult: 5-6
+ * - Evil: 6-7
+ * - Impossible: 7-8
  */
 export function getDifficultyName(
   difficulty: number | string | undefined
 ): DifficultyName {
+  const ranges = GLOBAL_CONTEXT.difficultyCalibration.ranges;
+
   // Handle string or undefined values
   if (typeof difficulty === "string") {
     // Legacy string values - map to numeric equivalents
@@ -46,22 +50,22 @@ export function getDifficultyName(
     return "Hard"; // Default fallback
   }
 
-  // Map numeric difficulty to name
-  if (difficulty >= 4 && difficulty <= 6) {
-    return "Hard";
+  // Map numeric difficulty to name using global config ranges
+  if (difficulty >= ranges.impossible.min && difficulty <= ranges.impossible.max) {
+    return "Impossible";
   }
-  if (difficulty >= 7 && difficulty <= 8) {
-    return "Difficult";
-  }
-  if (difficulty >= 8 && difficulty <= 9) {
+  if (difficulty >= ranges.evil.min && difficulty <= ranges.evil.max) {
     return "Evil";
   }
-  if (difficulty >= 9 && difficulty <= 10) {
-    return "Impossible";
+  if (difficulty >= ranges.difficult.min && difficulty <= ranges.difficult.max) {
+    return "Difficult";
+  }
+  if (difficulty >= ranges.hard.min && difficulty <= ranges.hard.max) {
+    return "Hard";
   }
 
   // Fallback for values outside expected range
-  if (difficulty < 4) return "Hard";
+  if (difficulty < ranges.hard.min) return "Hard";
   return "Impossible";
 }
 

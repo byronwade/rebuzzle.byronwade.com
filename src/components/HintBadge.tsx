@@ -84,33 +84,34 @@ export function HintBadge({
       <DialogTrigger asChild>
         <Badge
           className={cn(
-            "cursor-pointer text-xs xs:text-sm transition-all hover:bg-purple-50",
-            isRevealing && "scale-110",
+            "min-h-[44px] cursor-pointer px-3 py-1.5 text-xs transition-all hover:bg-purple-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 motion-reduce:transition-none",
+            isRevealing && "scale-110 motion-reduce:scale-100",
+            "sm:min-h-0 sm:px-2 sm:py-1",
             className
           )}
           variant="outline"
         >
-          <LightbulbIcon className="mr-1 h-3 xs:h-4 w-3 xs:w-4" />
-          <span className="xs:inline hidden">
+          <LightbulbIcon className="mr-1.5 h-4 w-4" />
+          <span className="hidden sm:inline">
             {revealedHints}/{hints.length} Hints
           </span>
-          <span className="xs:hidden">
+          <span className="sm:hidden">
             {revealedHints}/{hints.length}
           </span>
         </Badge>
       </DialogTrigger>
       <DialogContent className="mx-auto max-h-[90vh] max-w-[95vw] overflow-y-auto sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base xs:text-lg">
-            <LightbulbIcon className="h-4 xs:h-5 w-4 xs:w-5" />
+          <DialogTitle className="flex items-center gap-2 font-semibold text-base md:text-lg">
+            <LightbulbIcon className="h-4 w-4" />
             Need a Hint?
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             Reveal progressive hints to help solve the puzzle. Using hints will
             reduce your points.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 xs:space-y-4 py-2 xs:py-4">
+        <div className="space-y-3 py-4">
           {hints.map((hint, index) => {
             const isRevealed = index < revealedHints;
             const isNext = index === revealedHints;
@@ -118,48 +119,48 @@ export function HintBadge({
             return (
               <div
                 className={cn(
-                  "rounded-lg border p-3 xs:p-4 transition-all duration-300",
+                  "rounded-lg border p-3 transition-all duration-300 motion-reduce:transition-none",
                   isRevealed
-                    ? "border-gray-200 bg-white"
-                    : "border-gray-100 bg-gray-50/50",
-                  isNext && "border-purple-200 shadow-sm",
+                    ? "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+                    : "border-gray-100 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/50",
+                  isNext && "border-purple-200 shadow-sm dark:border-purple-700",
                   isRevealing &&
                     isRevealed &&
                     index === revealedHints - 1 &&
-                    "animate-bounce"
+                    "animate-bounce motion-reduce:animate-none"
                 )}
                 key={index}
               >
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-1 xs:gap-2">
-                    <span className="font-medium text-xs xs:text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">
                       Hint {index + 1}
                     </span>
                     {isRevealed ? (
                       <Badge
-                        className="px-1 xs:px-2 py-0.5 text-[10px] xs:text-xs"
+                        className="px-2 py-0.5 font-medium text-xs"
                         variant="secondary"
                       >
-                        <UnlockIcon className="mr-0.5 xs:mr-1 h-2 xs:h-3 w-2 xs:w-3" />
-                        <span className="xs:inline hidden">Revealed</span>
-                        <span className="xs:hidden">✓</span>
+                        <UnlockIcon className="mr-1 h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Revealed</span>
+                        <span className="sm:hidden">✓</span>
                       </Badge>
                     ) : (
                       <Badge
-                        className="px-1 xs:px-2 py-0.5 text-[10px] text-gray-500 xs:text-xs"
+                        className="px-2 py-0.5 font-medium text-muted-foreground text-xs"
                         variant="outline"
                       >
-                        <LockIcon className="mr-0.5 xs:mr-1 h-2 xs:h-3 w-2 xs:w-3" />
-                        <span className="xs:inline hidden">Locked</span>
-                        <span className="xs:hidden">🔒</span>
+                        <LockIcon className="mr-1 h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Locked</span>
+                        <span className="sm:hidden">🔒</span>
                       </Badge>
                     )}
                   </div>
                 </div>
                 <div
                   className={cn(
-                    "text-xs xs:text-sm leading-relaxed transition-all duration-300",
-                    isRevealed ? "text-gray-700" : "text-gray-400"
+                    "text-sm leading-relaxed transition-all duration-300 motion-reduce:transition-none",
+                    isRevealed ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
                   {isRevealed ? hint : "This hint is still locked"}
@@ -171,14 +172,14 @@ export function HintBadge({
           {revealedHints < hints.length && (
             <div className="pt-2">
               <Button
-                className="h-10 xs:h-11 w-full border-purple-200 bg-purple-50 text-purple-700 text-sm xs:text-base hover:bg-purple-100"
+                className="min-h-[44px] w-full border-purple-200 bg-purple-50 text-purple-700 text-sm hover:bg-purple-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30 sm:min-h-0 sm:h-10"
                 onClick={handleRevealNextHint}
                 variant="outline"
               >
-                <LightbulbIcon className="mr-1 xs:mr-2 h-3 xs:h-4 w-3 xs:w-4" />
+                <LightbulbIcon className="mr-2 h-4 w-4" />
                 Reveal Hint {revealedHints + 1}
               </Button>
-              <p className="mt-2 xs:mt-3 px-2 text-center text-[10px] text-gray-500 xs:text-xs leading-relaxed">
+              <p className="mt-3 px-2 text-center text-muted-foreground text-xs leading-relaxed">
                 Using hints will reduce your points for this puzzle
               </p>
             </div>

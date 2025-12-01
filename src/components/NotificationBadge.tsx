@@ -1,10 +1,8 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
-import { Bell, BellRing, Loader2, Mail } from "lucide-react";
+import { Bell, BellRing, Check, Loader2, Mail, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,26 +19,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 
-interface InAppNotification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  link?: string;
-  createdAt: string;
-}
-
 export function NotificationBadge() {
-  const { userId, isAuthenticated, user } = useAuth();
-  const [notifications, setNotifications] = useState<InAppNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
@@ -51,40 +35,13 @@ export function NotificationBadge() {
   const {
     enabled: notificationsEnabled,
     isLoading: emailLoading,
-    toggle,
     subscribe,
     unsubscribe,
   } = useEmailNotifications();
 
-  const fetchNotifications = async () => {
-    if (!userId) return;
-
-    try {
-      const response = await fetch(
-        `/api/notifications/in-app?userId=${userId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      }
-    } catch (error) {
-      console.error("[Notifications] Fetch failed:", error);
-    }
-  };
-
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (isAuthenticated && userId) {
-      fetchNotifications();
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30_000);
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated, userId]);
 
   // Validate email format
   const validateEmail = useCallback((emailValue: string): boolean => {
@@ -92,56 +49,23 @@ export function NotificationBadge() {
     return emailRegex.test(emailValue);
   }, []);
 
-  const markAsRead = async (notificationId: string) => {
-    if (!userId) return;
-
-    try {
-      await fetch("/api/notifications/in-app", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notificationId, userId }),
-      });
-
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("[Notifications] Mark read failed:", error);
-    }
-  };
-
-  const handleEmailToggle = useCallback(async () => {
-    if (notificationsEnabled) {
-      // Unsubscribe
-      try {
-        await unsubscribe();
-      } catch (err) {
-        // Error handled in hook
-      }
-      return;
-    }
-
-    // Subscribe
+  const handleEnableClick = useCallback(() => {
     if (isAuthenticated && user?.email) {
-      // Authenticated user - use their email on file
-      try {
-        await subscribe(user.email);
-      } catch (err) {
-        // Error handled in hook
-      }
+      // Authenticated user - subscribe directly
+      void subscribe(user.email);
     } else {
       // Guest - need to collect email
       setShowEmailDialog(true);
     }
-  }, [
-    notificationsEnabled,
-    isAuthenticated,
-    user?.email,
-    subscribe,
-    unsubscribe,
-  ]);
+  }, [isAuthenticated, user?.email, subscribe]);
+
+  const handleDisableClick = useCallback(async () => {
+    try {
+      await unsubscribe();
+    } catch (err) {
+      // Error handled in hook
+    }
+  }, [unsubscribe]);
 
   const handleEmailSubmit = useCallback(async () => {
     // Clear previous errors
@@ -190,18 +114,18 @@ export function NotificationBadge() {
 
   const getBellTooltip = () => {
     if (!mounted) {
-      return "Notifications";
+      return "Email Reminders";
     }
     if (notificationsEnabled) {
       return "Daily reminders enabled - Click to manage";
     }
-    return "Get daily puzzle reminders - Click to enable";
+    return "Get daily puzzle reminders - Click to sign up";
   };
 
   if (!mounted) {
     return (
       <Button
-        aria-label="Notifications"
+        aria-label="Email Reminders"
         className="relative"
         size="icon"
         variant="ghost"
@@ -230,113 +154,156 @@ export function NotificationBadge() {
             variant="ghost"
           >
             {getBellIcon()}
-            {unreadCount > 0 && (
-              <Badge
-                className="-top-1 -right-1 absolute flex h-5 w-5 items-center justify-center p-0 text-xs"
-                variant="destructive"
-              >
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </Badge>
-            )}
-            {notificationsEnabled && unreadCount === 0 && (
+            {notificationsEnabled && (
               <div className="-top-1 -right-1 absolute h-2 w-2 animate-pulse rounded-full bg-primary" />
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-80 p-0">
-          <div className="border-b p-4">
-            <h3 className="font-semibold text-sm">Notifications</h3>
-          </div>
-
-          {/* In-app notifications section (only for authenticated users) */}
-          {isAuthenticated && (
+        <PopoverContent align="end" className="w-96 p-0">
+          {notificationsEnabled ? (
+            // Enabled state - show confirmation and manage option
             <>
-              <ScrollArea className="h-[300px]">
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground text-sm">
-                    No new notifications
+              <div className="p-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Check className="h-5 w-5 text-primary" />
                   </div>
-                ) : (
-                  <div className="divide-y">
-                    {notifications.map((notification) => (
-                      <div
-                        className="p-4 transition-colors hover:bg-muted/50"
-                        key={notification.id}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm">
-                              {notification.title}
-                            </p>
-                            <p className="mt-1 text-muted-foreground text-xs">
-                              {notification.message}
-                            </p>
-                            <p className="mt-1 text-muted-foreground text-xs">
-                              {formatDistanceToNow(
-                                new Date(notification.createdAt),
-                                {
-                                  addSuffix: true,
-                                }
-                              )}
-                            </p>
-                          </div>
-                          {notification.link && (
-                            <Link
-                              className="text-primary text-xs hover:underline"
-                              href={notification.link}
-                              onClick={() => {
-                                markAsRead(notification.id);
-                                setIsOpen(false);
-                              }}
-                            >
-                              View
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">Reminders Enabled</h3>
+                    <p className="text-muted-foreground text-xs">
+                      You'll receive daily puzzle reminders at 8 AM
+                    </p>
                   </div>
-                )}
-              </ScrollArea>
-              <Separator />
-            </>
-          )}
-
-          {/* Email notification toggle section */}
-          <div className="border-t p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm">Email Reminders</p>
-                <p className="mt-0.5 text-muted-foreground text-xs">
-                  Daily puzzle notifications at 8 AM
-                </p>
+                </div>
                 {isAuthenticated && user?.email && (
-                  <p className="mt-1 text-muted-foreground text-xs">
-                    Using: {user.email}
+                  <p className="mb-4 rounded-md bg-muted p-2 text-muted-foreground text-xs">
+                    Sending to: {user.email}
                   </p>
                 )}
+                <Button
+                  className="w-full"
+                  disabled={emailLoading}
+                  onClick={handleDisableClick}
+                  size="sm"
+                  variant="outline"
+                >
+                  {emailLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Disabling...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Disable Reminders
+                    </>
+                  )}
+                </Button>
               </div>
-              <Button
-                className={cn(
-                  "text-xs",
-                  notificationsEnabled &&
-                    "bg-primary text-primary-foreground hover:bg-primary/90"
-                )}
-                disabled={emailLoading || isSubmitting}
-                onClick={handleEmailToggle}
-                size="sm"
-                variant={notificationsEnabled ? "default" : "outline"}
-              >
-                {emailLoading || isSubmitting ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : notificationsEnabled ? (
-                  "Enabled"
+            </>
+          ) : (
+            // Not enabled - show signup/engagement content
+            <>
+              <div className="p-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">
+                      Never Miss a Puzzle
+                    </h3>
+                    <p className="text-muted-foreground text-xs">
+                      Get daily reminders to play
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mb-4 space-y-2 rounded-lg bg-muted/50 p-3">
+                  <div className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <p className="text-muted-foreground text-xs">
+                      Daily puzzle reminders at 8 AM
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <p className="text-muted-foreground text-xs">
+                      Build your streak and compete on leaderboards
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <p className="text-muted-foreground text-xs">
+                      Track your progress and achievements
+                    </p>
+                  </div>
+                </div>
+
+                {isAuthenticated ? (
+                  // Authenticated user - simple enable button
+                  <>
+                    {user?.email && (
+                      <p className="mb-4 text-muted-foreground text-xs">
+                        We'll send reminders to: {user.email}
+                      </p>
+                    )}
+                    <Button
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      disabled={emailLoading}
+                      onClick={handleEnableClick}
+                      size="sm"
+                    >
+                      {emailLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Enabling...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Enable Daily Reminders
+                        </>
+                      )}
+                    </Button>
+                  </>
                 ) : (
-                  "Enable"
+                  // Guest - show signup CTA
+                  <>
+                    <Button
+                      className="mb-3 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      disabled={emailLoading}
+                      onClick={handleEnableClick}
+                      size="sm"
+                    >
+                      {emailLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Enabling...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Get Daily Reminders
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-center text-muted-foreground text-xs">
+                      Or{" "}
+                      <Link
+                        className="font-medium text-primary hover:underline"
+                        href="/signup"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        create an account
+                      </Link>{" "}
+                      to track your progress
+                    </p>
+                  </>
                 )}
-              </Button>
-            </div>
-          </div>
+              </div>
+            </>
+          )}
         </PopoverContent>
       </Popover>
 

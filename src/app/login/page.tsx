@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useState } from "react";
 import Layout from "@/components/Layout";
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { safeJsonParse } from "@/lib/utils";
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshAuth } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -108,16 +110,17 @@ export default function LoginPage() {
       const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
 
       if (response.ok && data?.success) {
-        // Cookie is set by server, no need to store in localStorage
+        // Cookie is set by server, refresh auth state immediately
+        await refreshAuth();
+
         toast({
           title: "Welcome back!",
           description: "You've successfully logged in.",
         });
 
-        // Redirect to home and refresh to trigger AuthProvider update
+        // Redirect to home
         setTimeout(() => {
           router.push("/");
-          router.refresh();
         }, 1000);
       } else {
         const errorMessage =
