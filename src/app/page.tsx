@@ -23,25 +23,9 @@ import { getTodaysPuzzle } from "./actions/puzzleGenerationActions";
  * Generate dynamic metadata based on today's puzzle
  */
 export async function generateMetadata(): Promise<Metadata> {
-  try {
-    // generateMetadata is always dynamic, but in Cache Components mode we should avoid new Date()
-    // Pass undefined and let getTodaysPuzzle handle the date internally
-    const puzzleResult = await getTodaysPuzzle(undefined, undefined);
-
-    if (puzzleResult.success && puzzleResult.puzzle) {
-      const puzzle = puzzleResult.puzzle;
-      return generatePuzzleMetadata({
-        answer: puzzle.answer,
-        puzzleType: puzzle.puzzleType,
-        difficulty: puzzle.difficulty,
-        explanation: puzzle.explanation,
-      });
-    }
-  } catch (error) {
-    console.error("Error generating metadata:", error);
-  }
-
-  // Fallback metadata with competitive keywords
+  // In Cache Components mode, generateMetadata is called during prerendering
+  // Return simple metadata without fetching to avoid new Date() issues
+  // The page component will handle dynamic metadata via client-side updates if needed
   return generatePuzzleMetadata({
     answer: "rebus puzzle",
     puzzleType: "rebus",
@@ -154,6 +138,15 @@ async function PuzzleContent({
   params: { preview: boolean; test: boolean };
 }) {
   try {
+    // Access headers to ensure this component is dynamic before any operations
+    // This is required in Next.js 16 Cache Components mode
+    const headersList = await headers();
+    headersList.get('x-forwarded-proto');
+    
+    // params makes this component dynamic, but we need to ensure it's accessed
+    // before any operations that might use new Date()
+    const { preview, test } = params;
+    
     // Check if the puzzle is completed for today
     const isCompleted = await isPuzzleCompletedForToday();
 

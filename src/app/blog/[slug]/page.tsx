@@ -11,12 +11,29 @@ import {
 } from "@/lib/seo/structured-data";
 import { fetchBlogPost, fetchBlogPosts } from "../../actions/blogActions";
 
-// Mark this route as dynamic (generated on-demand, not statically)
-// In Cache Components mode, this tells Next.js not to try to statically generate it
+// Generate static params for all blog posts
+// In Cache Components mode, we must return at least one result
 export async function generateStaticParams() {
-  // Return empty array to indicate this is a dynamic route
-  // All blog post pages will be generated on-demand
-  return [];
+  try {
+    const posts = await fetchBlogPosts();
+    // Filter out slugs that are too long for filesystem (max ~250 chars for safety)
+    // Long slugs will be generated on-demand instead
+    const validSlugs = posts
+      .filter((post) => post.slug.length <= 250)
+      .map((post) => ({
+        slug: post.slug,
+      }));
+    
+    // Return valid slugs, or placeholder if none available
+    if (validSlugs.length === 0) {
+      return [{ slug: 'placeholder' }];
+    }
+    return validSlugs;
+  } catch (error) {
+    // If fetch fails during build, return placeholder to satisfy requirement
+    console.error('Error fetching blog posts for generateStaticParams:', error);
+    return [{ slug: 'placeholder' }];
+  }
 }
 
 export async function generateMetadata({

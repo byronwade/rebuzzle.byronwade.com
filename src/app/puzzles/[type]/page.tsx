@@ -125,6 +125,16 @@ const PUZZLE_TYPE_INFO: Record<
   },
 };
 
+// Generate static params for all puzzle types
+// In Cache Components mode, we must return at least one result
+export async function generateStaticParams() {
+  // Return all puzzle type keys for static generation
+  const puzzleTypes = Object.keys(PUZZLE_TYPE_INFO);
+  return puzzleTypes.map((type) => ({
+    type,
+  }));
+}
+
 /**
  * Generate metadata for puzzle type category page
  */
