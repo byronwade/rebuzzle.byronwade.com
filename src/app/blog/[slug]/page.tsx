@@ -11,6 +11,14 @@ import {
 } from "@/lib/seo/structured-data";
 import { fetchBlogPost, fetchBlogPosts } from "../../actions/blogActions";
 
+// Mark this route as dynamic (generated on-demand, not statically)
+// In Cache Components mode, this tells Next.js not to try to statically generate it
+export async function generateStaticParams() {
+  // Return empty array to indicate this is a dynamic route
+  // All blog post pages will be generated on-demand
+  return [];
+}
+
 export async function generateMetadata({
   params,
 }: {
