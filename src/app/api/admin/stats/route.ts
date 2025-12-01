@@ -880,8 +880,6 @@ async function fetchAdminStats(dateStart: Date, dateEnd: Date) {
  * GET /api/admin/stats
  * Get admin statistics with optional date range
  */
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   try {
     // Verify admin access

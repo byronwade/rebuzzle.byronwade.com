@@ -7,8 +7,6 @@ import { verifyAdminAccess } from "@/lib/admin-auth";
  * GET /api/admin/analytics/events
  * Get recent analytics events for admin dashboard
  */
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   try {
     // Verify admin access

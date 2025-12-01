@@ -24,13 +24,9 @@ import { getTodaysPuzzle } from "./actions/puzzleGenerationActions";
  */
 export async function generateMetadata(): Promise<Metadata> {
   try {
-    // Access headers first to satisfy Next.js 16 cache components requirement
-    // before using new Date() in getTodaysPuzzle
-    headers();
-    // Get today's date string after accessing headers
-    const today = new Date();
-    const todayString = today.toISOString().split("T")[0] || today.toDateString();
-    const puzzleResult = await getTodaysPuzzle(undefined, todayString);
+    // generateMetadata is always dynamic, but in Cache Components mode we should avoid new Date()
+    // Pass undefined and let getTodaysPuzzle handle the date internally
+    const puzzleResult = await getTodaysPuzzle(undefined, undefined);
 
     if (puzzleResult.success && puzzleResult.puzzle) {
       const puzzle = puzzleResult.puzzle;
@@ -181,6 +177,12 @@ async function PuzzleContent({
     }
 
     // Generate Game schema for JSON-LD
+    // Get publishedAt from puzzle metadata or use a safe default
+    // Pass as string to avoid new Date() during prerendering
+    const publishedAtStr = (gameData.metadata as any)?.publishedAt 
+      || (gameData as any).publishedAt 
+      || '2024-01-01T00:00:00Z'; // Placeholder date if not available
+    
     const gameSchema = generateGameSchema({
       id: gameData.id,
       puzzle: gameData.puzzle || (gameData as any).rebusPuzzle || "",
@@ -189,7 +191,7 @@ async function PuzzleContent({
       puzzleType: gameData.puzzleType,
       explanation: gameData.explanation,
       hints: gameData.hints,
-      publishedAt: new Date(),
+      publishedAt: publishedAtStr, // Pass as string - generateGameSchema will convert it
     });
 
     // Generate FAQ schema for common puzzle questions
@@ -309,6 +311,7 @@ export default async function Home({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // searchParams makes this component dynamic, so we don't need to access headers()
   const params = await searchParams;
 
   return (

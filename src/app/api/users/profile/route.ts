@@ -8,8 +8,6 @@ import { NextResponse } from "next/server";
 import { getAdaptiveDifficulty } from "@/ai/services/recommendations";
 import { buildUserPuzzleProfile } from "@/ai/services/user-profiler";
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

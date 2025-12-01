@@ -13,8 +13,6 @@ import { regenerateTodaysPuzzle } from "@/app/actions/regeneratePuzzleActions";
  * - GET /api/puzzle/regenerate?type=word-puzzle - Generate word puzzle
  * - GET /api/puzzle/regenerate?list=true - List available puzzle types
  */
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

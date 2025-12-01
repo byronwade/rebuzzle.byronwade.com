@@ -11,8 +11,6 @@ import {
 } from "@/lib/seo/structured-data";
 import { fetchBlogPost, fetchBlogPosts } from "../../actions/blogActions";
 
-export const dynamic = 'force-dynamic';
-
 export async function generateMetadata({
   params,
 }: {
