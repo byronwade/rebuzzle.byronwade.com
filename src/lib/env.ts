@@ -72,6 +72,13 @@ export function getAppUrl(): string {
     }
     return "http://localhost:3000";
   }
+  
+  // Ensure URL has a protocol (default to https in production)
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    // In production, default to https; in development, default to http
+    return isProduction ? `https://${url}` : `http://${url}`;
+  }
+  
   return url;
 }
 
