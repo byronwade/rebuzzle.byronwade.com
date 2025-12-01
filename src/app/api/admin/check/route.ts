@@ -5,6 +5,8 @@ import { verifyAdminAccess } from "@/lib/admin-auth";
  * GET /api/admin/check
  * Check if current user has admin access
  */
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     const admin = await verifyAdminAccess(request);
