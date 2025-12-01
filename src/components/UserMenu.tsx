@@ -1,7 +1,9 @@
-'use client'
+"use client";
 
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { LogOut, Settings, Trophy, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,83 +11,82 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useAuth } from './AuthProvider'
-import { User, LogOut, Settings, Trophy } from "lucide-react"
-import { useRouter } from 'next/navigation'
+} from "@/components/ui/dropdown-menu";
+import { generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
+import { useAuth } from "./AuthProvider";
 
 type UserMenuProps = {
-  isAuthenticated: boolean
-}
+  isAuthenticated: boolean;
+};
 
 export function UserMenu({ isAuthenticated }: UserMenuProps) {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // Include cookies in request
+      });
 
       if (response.ok) {
-        // Clear client-side auth state
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('user')
-        localStorage.removeItem('session')
-
-        // Clear any cookies
-        document.cookie.split(";").forEach((c) => {
-          document.cookie = c
-            .replace(/^ +/, "")
-            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
-        })
+        // Clear guest mode if set (cookies are cleared by server)
+        localStorage.removeItem("guestMode");
 
         // Redirect to home and force reload to clear React state
-        window.location.href = '/'
+        window.location.href = "/";
       } else {
-        console.error('Logout failed:', await response.text())
+        console.error("Logout failed:", await response.text());
       }
     } catch (error) {
-      console.error('Logout failed:', error)
+      console.error("Logout failed:", error);
     }
-  }
+  };
 
   if (isLoading) {
     return (
-      <Button variant="outline" size="sm" className="flex items-center gap-2" disabled>
+      <Button
+        className="flex items-center gap-2"
+        disabled
+        size="sm"
+        variant="outline"
+      >
         <Avatar className="h-6 w-6">
           <AvatarFallback>...</AvatarFallback>
         </Avatar>
         <span className="hidden sm:inline">Loading...</span>
       </Button>
-    )
+    );
   }
 
-  if (!isAuthenticated || !user) {
+  if (!(isAuthenticated && user)) {
     return (
       <Button
-        variant="outline"
-        size="sm"
-        className="flex items-center gap-2 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-colors"
+        className="flex items-center gap-2 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
         onClick={() => router.push("/login")}
+        size="sm"
+        variant="outline"
       >
         <Avatar className="h-6 w-6">
           <AvatarFallback className="bg-gray-100">G</AvatarFallback>
         </Avatar>
         <span className="hidden sm:inline">Sign In</span>
       </Button>
-    )
+    );
   }
+
+  // Generate avatar props for consistent styling
+  const avatarProps = generateAvatarProps(user.username);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" size="sm" variant="outline">
           <Avatar className="h-6 w-6">
-            <AvatarFallback className="bg-purple-100 text-purple-700 font-semibold">
-              {user.username.charAt(0).toUpperCase()}
+            <AvatarFallback className={getAvatarClassName(avatarProps)}>
+              {avatarProps.initials}
             </AvatarFallback>
           </Avatar>
           <span className="hidden sm:inline">{user.username}</span>
@@ -94,24 +95,33 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.username}</p>
+            <p className="font-medium text-sm leading-none">{user.username}</p>
             {user.email && (
-              <p className="text-xs leading-none text-muted-foreground">
+              <p className="text-muted-foreground text-xs leading-none">
                 {user.email}
               </p>
             )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/profile')}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={() => router.push("/profile")}
+        >
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/leaderboard')}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={() => router.push("/leaderboard")}
+        >
           <Trophy className="mr-2 h-4 w-4" />
           <span>Leaderboard</span>
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/settings')}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={() => router.push("/settings")}
+        >
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>
@@ -125,5 +135,5 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

@@ -4,16 +4,16 @@
  * Generates progressive hints for puzzles
  */
 
-import { NextResponse } from "next/server"
+import { NextResponse } from "next/server";
 import {
-  generateHints,
-  generateContextualHint,
   generateAdaptiveHint,
-} from "@/ai"
+  generateContextualHint,
+  generateHints,
+} from "@/ai";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    const body = await req.json();
     const {
       mode = "progressive",
       puzzle,
@@ -27,23 +27,23 @@ export async function POST(req: Request) {
       // For adaptive hints
       timeSpentSeconds,
       attemptsUsed,
-    } = body
+    } = body;
 
-    if (!puzzle || !answer) {
+    if (!(puzzle && answer)) {
       return NextResponse.json(
         {
           success: false,
           error: "Missing required fields: puzzle and answer",
         },
         { status: 400 }
-      )
+      );
     }
 
-    console.log("[AI API] Generating hints:", { mode, puzzle, answer })
+    console.log("[AI API] Generating hints:", { mode, puzzle, answer });
 
-    const startTime = Date.now()
+    const startTime = Date.now();
 
-    let hints
+    let hints;
 
     switch (mode) {
       case "progressive":
@@ -53,32 +53,36 @@ export async function POST(req: Request) {
           explanation: explanation || "",
           difficulty: difficulty || 5,
           count,
-        })
-        break
+        });
+        break;
 
-      case "contextual":
+      case "contextual": {
         const contextualHint = await generateContextualHint({
           puzzle,
           answer,
           previousGuesses,
           hintsUsed,
-        })
-        hints = [{ text: contextualHint, level: hintsUsed + 1 }]
-        break
+        });
+        hints = [{ text: contextualHint, level: hintsUsed + 1 }];
+        break;
+      }
 
-      case "adaptive":
+      case "adaptive": {
         const adaptiveResult = await generateAdaptiveHint({
           puzzle,
           answer,
           difficulty: difficulty || 5,
           timeSpentSeconds: timeSpentSeconds || 0,
           attemptsUsed: attemptsUsed || 0,
-        })
-        hints = [{
-          text: adaptiveResult.hint,
-          urgency: adaptiveResult.urgency,
-        }]
-        break
+        });
+        hints = [
+          {
+            text: adaptiveResult.hint,
+            urgency: adaptiveResult.urgency,
+          },
+        ];
+        break;
+      }
 
       default:
         return NextResponse.json(
@@ -87,10 +91,10 @@ export async function POST(req: Request) {
             error: `Unknown mode: ${mode}. Use 'progressive', 'contextual', or 'adaptive'`,
           },
           { status: 400 }
-        )
+        );
     }
 
-    const generationTime = Date.now() - startTime
+    const generationTime = Date.now() - startTime;
 
     return NextResponse.json({
       success: true,
@@ -100,9 +104,9 @@ export async function POST(req: Request) {
         generationTimeMs: generationTime,
         count: Array.isArray(hints) ? hints.length : 1,
       },
-    })
+    });
   } catch (error) {
-    console.error("[AI API] Hint generation error:", error)
+    console.error("[AI API] Hint generation error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -110,7 +114,7 @@ export async function POST(req: Request) {
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -163,5 +167,5 @@ export async function GET() {
         attemptsUsed: 4,
       },
     },
-  })
+  });
 }

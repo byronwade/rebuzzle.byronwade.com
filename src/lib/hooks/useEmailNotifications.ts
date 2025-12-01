@@ -1,0 +1,160 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
+
+export function useEmailNotifications() {
+  const { isAuthenticated, userId, user } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const checkStatus = useCallback(async () => {
+    if (!(isAuthenticated || userId)) {
+      setEnabled(false);
+      return;
+    }
+
+    try {
+      // Check subscription status via API
+      const response = await fetch(
+        `/api/notifications/email/status?${new URLSearchParams({
+          ...(userId ? { userId } : {}),
+        })}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setEnabled(data.enabled);
+      }
+    } catch (err) {
+      console.error("[Notifications] Status check failed:", err);
+    }
+  }, [isAuthenticated, userId]);
+
+  const subscribe = useCallback(
+    async (email?: string) => {
+      try {
+        setError(null);
+        setIsLoading(true);
+
+        // For authenticated users, use their account email if no email provided
+        // For unauthenticated users, email is required
+        let userEmail = email;
+
+        if (!userEmail && isAuthenticated && user?.email) {
+          userEmail = user.email;
+        }
+
+        if (!(userEmail || userId)) {
+          throw new Error("Email address is required");
+        }
+
+        const response = await fetch("/api/notifications/email/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: userEmail,
+            userId,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to enable email notifications");
+        }
+
+        setEnabled(true);
+        toast({
+          title: "✅ Email Notifications Enabled!",
+          description:
+            "You'll receive daily puzzle reminders at 8 AM via email.",
+          duration: 5000,
+        });
+
+        return data.subscriptionId;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to enable notifications";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isAuthenticated, userId, user, toast]
+  );
+
+  const unsubscribe = useCallback(async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+
+      const response = await fetch("/api/notifications/email/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to disable email notifications");
+      }
+
+      setEnabled(false);
+      toast({
+        title: "Email Notifications Disabled",
+        description: "You won't receive daily puzzle reminders anymore.",
+        duration: 3000,
+      });
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to disable notifications";
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, toast]);
+
+  const toggle = useCallback(
+    async (email?: string) => {
+      if (enabled) {
+        await unsubscribe();
+      } else {
+        // For authenticated users, we can use their account email
+        // For unauthenticated users, email must be provided
+        if (!(isAuthenticated || userId || email)) {
+          throw new Error("Email address is required to enable notifications");
+        }
+        await subscribe(email);
+      }
+    },
+    [enabled, subscribe, unsubscribe, isAuthenticated, userId]
+  );
+
+  return {
+    enabled,
+    isLoading,
+    error,
+    subscribe,
+    unsubscribe,
+    toggle,
+    checkStatus,
+  };
+}

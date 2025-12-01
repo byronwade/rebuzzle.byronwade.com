@@ -4,44 +4,45 @@
  * Common helpers for database operations
  */
 
-import { type SQL, sql } from "drizzle-orm"
+// Note: drizzle-orm removed as project uses MongoDB, not SQL
+// If SQL support is needed in the future, reinstall drizzle-orm
 
 /**
  * Create a date range for queries
  */
 export function createDateRange(date: Date): { start: Date; end: Date } {
-  const start = new Date(date)
-  start.setHours(0, 0, 0, 0)
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
 
-  const end = new Date(start)
-  end.setDate(end.getDate() + 1)
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
 
-  return { start, end }
+  return { start, end };
 }
 
 /**
  * Get today's date range
  */
 export function getTodayRange(): { start: Date; end: Date } {
-  return createDateRange(new Date())
+  return createDateRange(new Date());
 }
 
 /**
  * Parse date string to Date
  */
 export function parseDate(dateString: string): Date {
-  const date = new Date(dateString)
+  const date = new Date(dateString);
   if (isNaN(date.getTime())) {
-    throw new Error(`Invalid date string: ${dateString}`)
+    throw new Error(`Invalid date string: ${dateString}`);
   }
-  return date
+  return date;
 }
 
 /**
  * Format date to ISO string without time
  */
 export function formatDateOnly(date: Date): string {
-  return date.toISOString().split("T")[0]!
+  return date.toISOString().split("T")[0]!;
 }
 
 /**
@@ -52,30 +53,23 @@ export function isSameDay(date1: Date, date2: Date): boolean {
     date1.getFullYear() === date2.getFullYear() &&
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate()
-  )
+  );
 }
 
 /**
  * Add days to a date
  */
 export function addDays(date: Date, days: number): Date {
-  const result = new Date(date)
-  result.setDate(result.getDate() + days)
-  return result
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
 }
 
 /**
  * Subtract days from a date
  */
 export function subtractDays(date: Date, days: number): Date {
-  return addDays(date, -days)
-}
-
-/**
- * Case-insensitive LIKE comparison
- */
-export function ilike(column: SQL, value: string): SQL {
-  return sql`${column} ILIKE ${`%${value}%`}`
+  return addDays(date, -days);
 }
 
 /**
@@ -87,15 +81,15 @@ export async function batchOperation<T, R>(
   batchSize: number,
   operation: (batch: T[]) => Promise<R>
 ): Promise<R[]> {
-  const results: R[] = []
+  const results: R[] = [];
 
   for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize)
-    const result = await operation(batch)
-    results.push(result)
+    const batch = items.slice(i, i + batchSize);
+    const result = await operation(batch);
+    results.push(result);
   }
 
-  return results
+  return results;
 }
 
 /**
@@ -106,56 +100,56 @@ export async function retry<T>(
   maxAttempts = 3,
   delayMs = 1000
 ): Promise<T> {
-  let lastError: Error | undefined
+  let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      return await operation()
+      return await operation();
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
+      lastError = error instanceof Error ? error : new Error(String(error));
 
       if (attempt < maxAttempts) {
         // Exponential backoff
-        const delay = delayMs * Math.pow(2, attempt - 1)
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        const delay = delayMs * 2 ** (attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
 
-  throw lastError
+  throw lastError;
 }
 
 /**
  * Pagination helper
  */
 export interface PaginationParams {
-  page: number
-  pageSize: number
+  page: number;
+  pageSize: number;
 }
 
 export interface PaginatedResult<T> {
-  data: T[]
+  data: T[];
   pagination: {
-    page: number
-    pageSize: number
-    totalPages: number
-    totalItems: number
-    hasNext: boolean
-    hasPrev: boolean
-  }
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    totalItems: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export function calculatePagination(
   page: number,
   pageSize: number
 ): { limit: number; offset: number } {
-  const normalizedPage = Math.max(1, page)
-  const normalizedPageSize = Math.min(Math.max(1, pageSize), 100) // Max 100 items
+  const normalizedPage = Math.max(1, page);
+  const normalizedPageSize = Math.min(Math.max(1, pageSize), 100); // Max 100 items
 
   return {
     limit: normalizedPageSize,
     offset: (normalizedPage - 1) * normalizedPageSize,
-  }
+  };
 }
 
 export function createPaginatedResult<T>(
@@ -163,7 +157,7 @@ export function createPaginatedResult<T>(
   totalItems: number,
   params: PaginationParams
 ): PaginatedResult<T> {
-  const totalPages = Math.ceil(totalItems / params.pageSize)
+  const totalPages = Math.ceil(totalItems / params.pageSize);
 
   return {
     data,
@@ -175,7 +169,7 @@ export function createPaginatedResult<T>(
       hasNext: params.page < totalPages,
       hasPrev: params.page > 1,
     },
-  }
+  };
 }
 
 /**
@@ -185,20 +179,23 @@ export async function measureQuery<T>(
   name: string,
   query: () => Promise<T>
 ): Promise<T> {
-  const start = performance.now()
+  const start = performance.now();
 
   try {
-    const result = await query()
-    const duration = performance.now() - start
+    const result = await query();
+    const duration = performance.now() - start;
 
     if (process.env.NODE_ENV === "development") {
-      console.log(`[Query: ${name}] Completed in ${duration.toFixed(2)}ms`)
+      console.log(`[Query: ${name}] Completed in ${duration.toFixed(2)}ms`);
     }
 
-    return result
+    return result;
   } catch (error) {
-    const duration = performance.now() - start
-    console.error(`[Query: ${name}] Failed after ${duration.toFixed(2)}ms`, error)
-    throw error
+    const duration = performance.now() - start;
+    console.error(
+      `[Query: ${name}] Failed after ${duration.toFixed(2)}ms`,
+      error
+    );
+    throw error;
   }
 }

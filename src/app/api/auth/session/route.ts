@@ -1,21 +1,37 @@
 import { NextResponse } from "next/server";
-import { getUserWithStats, createOrUpdateUser } from "@/lib/auth";
+import { db } from "@/db";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // For now, return a mock session for development
-    // In production, this would integrate with Neon Auth
-    const mockUser = {
-      id: "user_123",
-      username: "testuser",
-      email: "test@example.com",
-    };
+    // Get authenticated user from JWT token in cookie
+    const authUser = await getAuthenticatedUser(request);
 
-    // Create or update user in database
-    await createOrUpdateUser(mockUser);
+    if (!authUser) {
+      return NextResponse.json({
+        user: null,
+        authenticated: false,
+      });
+    }
+
+    // Verify user still exists in database and get full user data
+    const user = await db.userOps.findById(authUser.userId);
+
+    if (!user) {
+      return NextResponse.json({
+        user: null,
+        authenticated: false,
+      });
+    }
 
     return NextResponse.json({
-      user: mockUser,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+      },
       authenticated: true,
     });
   } catch (error) {

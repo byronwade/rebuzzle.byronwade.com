@@ -12,48 +12,42 @@
 // Advanced Generation
 export {
   generateWithChainOfThought,
-  generateWithEnsemble,
-  generateWithIterativeRefinement,
-  generateWithConstitution,
-  generateUltraChallengingPuzzle,
-} from "./services/advanced-puzzle-generator"
-
-// Uniqueness Tracking
-export {
-  createPuzzleFingerprint,
-  calculateSimilarity,
-  extractComponents,
-  isComponentCombinationUnique,
-  identifyPattern,
-  checkPatternDiversity,
-  validateUniqueness,
-  calculateUniquenessScore,
-} from "./services/uniqueness-tracker"
-
+  // Deprecated functions removed - use generateMasterPuzzle instead
+} from "./services/advanced-puzzle-generator";
 // Difficulty Calibration
 export {
-  calculateDifficultyProfile,
   aiSelfTest,
-  calibrateDifficulty,
   analyzePlayerPerformance,
   calculateAdaptiveDifficulty,
+  calculateDifficultyProfile,
+  calibrateDifficulty,
   type DifficultyProfile,
-} from "./services/difficulty-calibrator"
+} from "./services/difficulty-calibrator";
+// Master Orchestrator
+export {
+  type GeneratedPuzzleResult,
+  generateMasterBatch,
+  generateMasterPuzzle,
+  type MasterGenerationParams,
+  selectOptimalPuzzle,
+} from "./services/master-puzzle-orchestrator";
 
 // Quality Assurance
 export {
-  analyzeQuality,
   adversarialTest,
-  runQualityPipeline,
+  analyzeQuality,
   batchQualityCheck,
   type QualityMetrics,
-} from "./services/quality-assurance"
-
-// Master Orchestrator
+  runQualityPipeline,
+} from "./services/quality-assurance";
+// Uniqueness Tracking
 export {
-  generateMasterPuzzle,
-  generateMasterBatch,
-  selectOptimalPuzzle,
-  type MasterGenerationParams,
-  type GeneratedPuzzleResult,
-} from "./services/master-puzzle-orchestrator"
+  calculateSimilarity,
+  calculateUniquenessScore,
+  checkPatternDiversity,
+  createPuzzleFingerprint,
+  extractComponents,
+  identifyPattern,
+  isComponentCombinationUnique,
+  validateUniqueness,
+} from "./services/uniqueness-tracker";

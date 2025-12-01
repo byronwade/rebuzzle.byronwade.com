@@ -4,12 +4,20 @@
  * Generates dynamic puzzles using AI with quota management and error handling
  */
 
-import { NextResponse } from "next/server"
-import { generateRebusPuzzle, generatePuzzleBatch, validatePuzzleQuality, QuotaExceededError, RateLimitError, AIProviderError, createErrorResponse } from "@/ai"
+import { NextResponse } from "next/server";
+import {
+  AIProviderError,
+  createErrorResponse,
+  generatePuzzleBatch,
+  generateRebusPuzzle,
+  QuotaExceededError,
+  RateLimitError,
+  validatePuzzleQuality,
+} from "@/ai";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    const body = await req.json();
     const {
       mode = "single",
       difficulty,
@@ -17,14 +25,20 @@ export async function POST(req: Request) {
       theme,
       count = 1,
       validate = true,
-    } = body
+    } = body;
 
-    console.log("[AI API] Generating puzzle:", { mode, difficulty, category, theme, count })
+    console.log("[AI API] Generating puzzle:", {
+      mode,
+      difficulty,
+      category,
+      theme,
+      count,
+    });
 
     // Generate puzzle(s)
-    const startTime = Date.now()
+    const startTime = Date.now();
 
-    let puzzles
+    let puzzles;
 
     if (mode === "batch") {
       puzzles = await generatePuzzleBatch({
@@ -32,25 +46,26 @@ export async function POST(req: Request) {
         difficulty,
         category,
         theme,
-      })
+      });
     } else {
       const puzzle = await generateRebusPuzzle({
         difficulty,
         category,
         theme,
-      })
-      puzzles = [puzzle]
+      });
+      puzzles = [puzzle];
     }
 
-    const generationTime = Date.now() - startTime
+    const generationTime = Date.now() - startTime;
 
     // Optionally validate quality
-    let validationResults: Awaited<ReturnType<typeof validatePuzzleQuality>>[] = []
+    let validationResults: Awaited<ReturnType<typeof validatePuzzleQuality>>[] =
+      [];
     if (validate && puzzles.length <= 5) {
       // Only validate small batches
       validationResults = await Promise.all(
         puzzles.map((puzzle) => validatePuzzleQuality(puzzle))
-      )
+      );
     }
 
     return NextResponse.json({
@@ -60,16 +75,17 @@ export async function POST(req: Request) {
         generationTimeMs: generationTime,
         count: puzzles.length,
         validated: validate && puzzles.length <= 5,
-        validationResults: validationResults.length > 0 ? validationResults : undefined,
+        validationResults:
+          validationResults.length > 0 ? validationResults : undefined,
         provider: "google-gemini",
       },
-    })
+    });
   } catch (error) {
-    console.error("[AI API] Puzzle generation error:", error)
+    console.error("[AI API] Puzzle generation error:", error);
 
     // Handle quota exceeded
     if (error instanceof QuotaExceededError) {
-      const errorResponse = createErrorResponse(error)
+      const errorResponse = createErrorResponse(error);
       return NextResponse.json(
         {
           success: false,
@@ -80,12 +96,12 @@ export async function POST(req: Request) {
           },
         },
         { status: 429 }
-      )
+      );
     }
 
     // Handle rate limit
     if (error instanceof RateLimitError) {
-      const errorResponse = createErrorResponse(error)
+      const errorResponse = createErrorResponse(error);
       return NextResponse.json(
         {
           success: false,
@@ -93,23 +109,24 @@ export async function POST(req: Request) {
           retryAfter: error.retryAfter || 60,
         },
         { status: 429 }
-      )
+      );
     }
 
     // Handle provider errors
     if (error instanceof AIProviderError) {
-      const errorResponse = createErrorResponse(error)
+      const errorResponse = createErrorResponse(error);
       return NextResponse.json(
         {
           success: false,
           ...errorResponse,
           fallback: {
-            message: "AI service temporarily unavailable. Using cached puzzles.",
+            message:
+              "AI service temporarily unavailable. Using cached puzzles.",
             redirectTo: "/ai-error",
           },
         },
         { status: error.statusCode || 503 }
-      )
+      );
     }
 
     // Generic error
@@ -123,7 +140,7 @@ export async function POST(req: Request) {
         },
       },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -135,7 +152,8 @@ export async function GET() {
         body: {
           mode: "single | batch",
           difficulty: "1-10",
-          category: "compound_words | phonetic | positional | mathematical | visual_wordplay | idioms | phrases",
+          category:
+            "compound_words | phonetic | positional | mathematical | visual_wordplay | idioms | phrases",
           theme: "string (e.g., 'nature', 'technology', 'holidays')",
           count: "number (for batch mode)",
           validate: "boolean (default: true)",
@@ -165,5 +183,5 @@ export async function GET() {
         theme: "technology",
       },
     },
-  })
+  });
 }

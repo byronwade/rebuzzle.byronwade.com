@@ -1,8 +1,5 @@
-import * as React from "react";
-
-export const dailyPuzzleEmail = () => {
-	return {
-		html: `
+export const dailyPuzzleEmail = () => ({
+  html: `
 			<div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
 				<h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">🎯 Today's Rebuzzle is Ready!</h1>
 				
@@ -20,7 +17,7 @@ export const dailyPuzzleEmail = () => {
 				</div>
 				
 				<div style="margin: 30px 0; text-align: center;">
-					<a href="https://rebuzzle.com" 
+					<a href="https://byronwade.com" 
 						style="display: inline-block; background: #0070f3; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
 						🎮 Play Now
 					</a>
@@ -36,12 +33,12 @@ export const dailyPuzzleEmail = () => {
 				<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 14px;">
 					<p style="margin: 0;">
 						You're receiving this because you subscribed to Rebuzzle notifications.
-						<a href="https://rebuzzle.com/unsubscribe" style="color: #666; text-decoration: underline;">Unsubscribe</a>
+						<a href="https://byronwade.com/unsubscribe" style="color: #666; text-decoration: underline;">Unsubscribe</a>
 					</p>
 				</div>
 			</div>
 		`,
-		text: `
+  text: `
 🎯 Today's Rebuzzle is Ready!
 
 A fresh puzzle is waiting for you! Start your day with a brain-teasing challenge.
@@ -51,12 +48,11 @@ Today's Challenge Awaits:
 - Unlimited attempts
 - Compare your time with others
 
-Play Now: https://rebuzzle.com
+Play Now: https://byronwade.com
 
 Support Rebuzzle: https://www.buymeacoffee.com/VFYLE26
 
 You're receiving this because you subscribed to Rebuzzle notifications.
-Unsubscribe: https://rebuzzle.com/unsubscribe
+Unsubscribe: https://byronwade.com/unsubscribe
 		`,
-	};
-};
+});

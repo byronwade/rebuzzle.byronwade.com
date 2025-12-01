@@ -1,8 +1,5 @@
-import * as React from "react";
-
-export const welcomeEmail = () => {
-	return {
-		html: `
+export const welcomeEmail = () => ({
+  html: `
 			<div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
 				<h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Welcome to Rebuzzle! 🎮</h1>
 				
@@ -39,7 +36,7 @@ export const welcomeEmail = () => {
 				</div>
 				
 				<p style="color: #666; line-height: 1.6; margin-top: 25px;">
-					Ready to play? Head back to <a href="https://rebuzzle.com" style="color: #0070f3; text-decoration: none;">Rebuzzle</a> 
+					Ready to play? Head back to <a href="https://byronwade.com" style="color: #0070f3; text-decoration: none;">Rebuzzle</a> 
 					and start solving today's puzzle!
 				</p>
 				
@@ -50,7 +47,7 @@ export const welcomeEmail = () => {
 				</div>
 			</div>
 		`,
-		text: `
+  text: `
 Welcome to Rebuzzle! 🎮
 
 Thanks for subscribing to notifications! You're now set to receive updates about:
@@ -68,9 +65,8 @@ Quick Tips:
 
 Support Rebuzzle: https://www.buymeacoffee.com/VFYLE26
 
-Ready to play? Head back to Rebuzzle (https://rebuzzle.com) and start solving today's puzzle!
+Ready to play? Head back to Rebuzzle (https://byronwade.com) and start solving today's puzzle!
 
 You can manage your notification preferences at any time on the website.
 		`,
-	};
-};
+});

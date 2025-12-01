@@ -1,37 +1,70 @@
-import type { Metadata, Viewport } from "next"
-import { Suspense } from "react"
-import GameBoard from "@/components/GameBoard"
-import Layout from "@/components/Layout"
-import { PuzzleSkeleton } from "@/components/PuzzleSkeleton"
-import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions"
-import { redirect } from "next/navigation"
-import type { GameData } from "@/lib/gameSettings"
+import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import GameBoard from "@/components/GameBoard";
+import Layout from "@/components/Layout";
+import { PuzzleSkeleton } from "@/components/PuzzleSkeleton";
+import { generatePuzzleMetadata } from "@/lib/seo/metadata";
+import {
+  generateFAQPageSchema,
+  generateGameSchema,
+  generateHowToSchema,
+} from "@/lib/seo/structured-data";
+import {
+  fetchGameData,
+  isPuzzleCompletedForToday,
+} from "./actions/gameActions";
+import { getTodaysPuzzle } from "./actions/puzzleGenerationActions";
 
 // PPR enabled globally via cacheComponents in next.config.mjs
 
-export const metadata: Metadata = {
-  title: "Rebuzzle - Daily Rebus Puzzle Game | AI-Powered Brain Teasers",
-  description: "Challenge yourself with our daily AI-generated rebus puzzle. New unique puzzles every day with adaptive difficulty!",
-  keywords: ["rebus", "puzzle", "daily puzzle", "word game", "brain teaser", "AI puzzles"],
-  openGraph: {
-    title: "Rebuzzle - Daily Rebus Puzzle Game",
-    description: "Challenge yourself with AI-generated rebus puzzles. New unique puzzles daily!",
-    type: "website",
-  },
+/**
+ * Generate dynamic metadata based on today's puzzle
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    // Access headers first to satisfy Next.js 16 cache components requirement
+    // before using new Date() in getTodaysPuzzle
+    headers();
+    // Get today's date string after accessing headers
+    const today = new Date();
+    const todayString = today.toISOString().split("T")[0] || today.toDateString();
+    const puzzleResult = await getTodaysPuzzle(undefined, todayString);
+
+    if (puzzleResult.success && puzzleResult.puzzle) {
+      const puzzle = puzzleResult.puzzle;
+      return generatePuzzleMetadata({
+        answer: puzzle.answer,
+        puzzleType: puzzle.puzzleType,
+        difficulty: puzzle.difficulty,
+        explanation: puzzle.explanation,
+      });
+    }
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+  }
+
+  // Fallback metadata with competitive keywords
+  return generatePuzzleMetadata({
+    answer: "rebus puzzle",
+    puzzleType: "rebus",
+    difficulty: 5,
+    explanation:
+      "Daily rebus puzzle game - The ultimate Wordle alternative with multiple puzzle types!",
+  });
 }
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: "#8b5cf6",
-}
+};
 
 interface SearchParams {
-  preview?: string
-  test?: string
+  preview?: string;
+  test?: string;
 }
 
 /**
@@ -42,7 +75,7 @@ function PuzzleShell() {
     <Layout>
       <PuzzleSkeleton />
     </Layout>
-  )
+  );
 }
 
 /**
@@ -51,27 +84,30 @@ function PuzzleShell() {
 function ErrorDisplay({ error }: { error: Error }) {
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto p-4">
-        <div className="bg-white rounded-3xl shadow-xl border border-red-100 p-12 text-center space-y-6">
-          <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center animate-bounce">
-            <span className="text-5xl">😅</span>
+      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+        <div className="space-y-4 rounded-3xl border border-destructive/20 bg-card px-4 py-3 text-center shadow-xl md:px-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 motion-safe:animate-bounce motion-reduce:animate-none">
+            <span className="text-4xl">😅</span>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-red-600 mb-3">Oops! Something went wrong</h1>
-            <p className="text-gray-600 mb-6">
-              We're having trouble loading today's puzzle. Please try refreshing the page.
+            <h1 className="mb-2 font-semibold text-base text-destructive md:text-lg">
+              Oops! Something went wrong
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              We're having trouble loading today's puzzle. Please try refreshing
+              the page.
             </p>
           </div>
           <a
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
             href="/"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             Try Again
           </a>
         </div>
       </div>
     </Layout>
-  )
+  );
 }
 
 /**
@@ -80,60 +116,181 @@ function ErrorDisplay({ error }: { error: Error }) {
 function NoPuzzleDisplay() {
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto p-4">
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-12 text-center space-y-6">
-          <div className="w-20 h-20 mx-auto bg-purple-100 rounded-full flex items-center justify-center">
-            <span className="text-5xl animate-pulse">🧩</span>
+      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+        <div className="space-y-4 rounded-3xl border border-border bg-card px-4 py-3 text-center shadow-xl md:px-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 motion-safe:animate-pulse motion-reduce:animate-none">
+            <span className="text-4xl">🧩</span>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-3">No Puzzle Available</h1>
-            <p className="text-gray-600">Check back later for today's puzzle!</p>
+            <h1 className="mb-2 font-semibold text-base text-foreground md:text-lg">
+              No Puzzle Available
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Check back later for today's puzzle!
+            </p>
           </div>
-          <div className="flex gap-2 justify-center">
-            <div className="h-2 w-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="h-2 w-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="h-2 w-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          <div className="flex justify-center gap-2">
+            <div
+              className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce motion-reduce:animate-none"
+              style={{ animationDelay: "0ms" }}
+            />
+            <div
+              className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce motion-reduce:animate-none"
+              style={{ animationDelay: "150ms" }}
+            />
+            <div
+              className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce motion-reduce:animate-none"
+              style={{ animationDelay: "300ms" }}
+            />
           </div>
         </div>
       </div>
     </Layout>
-  )
+  );
 }
 
 /**
  * Dynamic puzzle content - will be streamed with PPR
  */
-async function PuzzleContent({ params }: { params: { preview: boolean; test: boolean } }) {
+async function PuzzleContent({
+  params,
+}: {
+  params: { preview: boolean; test: boolean };
+}) {
   try {
     // Check if the puzzle is completed for today
-    const isCompleted = await isPuzzleCompletedForToday()
+    const isCompleted = await isPuzzleCompletedForToday();
 
     // Fetch game data
-    const gameData = await fetchGameData(params.preview, isCompleted)
+    const gameData = await fetchGameData(params.preview, isCompleted);
 
     // Handle redirection for completed puzzles
     if (gameData.shouldRedirect) {
       // Check if puzzle was completed successfully
       if (gameData.isCompleted) {
-        redirect("/game-over?success=true")
+        redirect("/game-over?success=true");
       } else {
-        redirect("/puzzle-failed")
+        redirect("/puzzle-failed");
       }
     }
 
-    // Handle no puzzle available
-    if (!gameData.rebusPuzzle) {
-      return <NoPuzzleDisplay />
+    // Handle no puzzle available - check both new and legacy fields
+    const hasPuzzle = gameData.puzzle || (gameData as any).rebusPuzzle;
+    if (!hasPuzzle) {
+      return <NoPuzzleDisplay />;
     }
+
+    // Generate Game schema for JSON-LD
+    const gameSchema = generateGameSchema({
+      id: gameData.id,
+      puzzle: gameData.puzzle || (gameData as any).rebusPuzzle || "",
+      answer: gameData.answer,
+      difficulty: gameData.difficulty,
+      puzzleType: gameData.puzzleType,
+      explanation: gameData.explanation,
+      hints: gameData.hints,
+      publishedAt: new Date(),
+    });
+
+    // Generate FAQ schema for common puzzle questions
+    const faqSchema = generateFAQPageSchema([
+      {
+        question: "How do you play Rebuzzle?",
+        answer:
+          "Rebuzzle is a daily puzzle game where you solve visual rebus puzzles, logic grids, cryptic crosswords, and more. Each day you get one new puzzle. Analyze the clues, use hints if needed, and solve to build your streak!",
+      },
+      {
+        question: "Is Rebuzzle free to play?",
+        answer:
+          "Yes! Rebuzzle is completely free to play. No subscriptions, no ads, just daily puzzle fun.",
+      },
+      {
+        question: "What types of puzzles does Rebuzzle have?",
+        answer:
+          "Rebuzzle features 7 puzzle types: rebus puzzles (visual word puzzles), logic grids, cryptic crosswords, number sequences, pattern recognition, Caesar ciphers, and trivia questions. All puzzles are AI-generated and unique every day.",
+      },
+      {
+        question: "How is Rebuzzle different from Wordle?",
+        answer:
+          "While Wordle focuses on guessing 5-letter words, Rebuzzle offers multiple puzzle types including visual rebus puzzles, logic grids, cryptic crosswords, and more. Each puzzle type challenges different cognitive skills.",
+      },
+      {
+        question: "Can you play Rebuzzle on mobile?",
+        answer:
+          "Yes! Rebuzzle is a Progressive Web App (PWA) that works perfectly on mobile, tablet, and desktop. You can even install it on your phone for offline play.",
+      },
+      {
+        question: "How do hints work in Rebuzzle?",
+        answer:
+          "Rebuzzle features a progressive hint system. You can reveal hints that guide you toward the solution without spoiling the answer. Hints are designed to help you learn and improve your puzzle-solving skills.",
+      },
+      {
+        question: "What is a rebus puzzle?",
+        answer:
+          "A rebus puzzle is a visual word puzzle that uses pictures, symbols, and words to represent words or phrases. For example, a picture of a bee (🐝) plus the number 4 (4️⃣) represents 'before' (bee-four).",
+      },
+      {
+        question: "How do you solve rebus puzzles?",
+        answer:
+          "To solve rebus puzzles, look at the visual elements and think about what they represent. Combine sounds, words, and symbols to form the answer. Use hints if you're stuck, and remember that rebus puzzles often use wordplay and phonetic connections.",
+      },
+    ]);
+
+    // Generate HowTo schema for puzzle-solving
+    const howToSchema = generateHowToSchema({
+      name: "How to Solve Rebuzzle Puzzles",
+      description:
+        "Learn how to solve rebus puzzles, logic grids, and other puzzle types in Rebuzzle",
+      steps: [
+        {
+          name: "Analyze the Puzzle",
+          text: "Look carefully at all visual elements, symbols, and words in the puzzle. Identify what each element might represent.",
+        },
+        {
+          name: "Think About Wordplay",
+          text: "Rebus puzzles often use phonetic connections, compound words, or visual representations. Consider how elements might combine or sound.",
+        },
+        {
+          name: "Use Hints Strategically",
+          text: "If you're stuck, use the progressive hint system. Start with the first hint and only reveal more if needed.",
+        },
+        {
+          name: "Make Your Guess",
+          text: "Type your answer using the on-screen keyboard. You'll get instant feedback on whether you're correct.",
+        },
+        {
+          name: "Learn from Explanations",
+          text: "After solving (or viewing the answer), read the explanation to understand the puzzle's logic and improve your skills.",
+        },
+      ],
+    });
 
     return (
       <Layout>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(gameSchema),
+          }}
+          type="application/ld+json"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(faqSchema),
+          }}
+          type="application/ld+json"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(howToSchema),
+          }}
+          type="application/ld+json"
+        />
         <GameBoard gameData={gameData} />
       </Layout>
-    )
+    );
   } catch (error) {
-    console.error("Error in PuzzleContent:", error)
-    return <ErrorDisplay error={error as Error} />
+    console.error("Error in PuzzleContent:", error);
+    return <ErrorDisplay error={error as Error} />;
   }
 }
 
@@ -144,9 +301,15 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
  * 1. Static shell renders instantly
  * 2. Dynamic content streams in as ready
  * 3. User sees content faster
+ *
+ * Enhanced with Suspense for better streaming and loading states
  */
-export default async function Home({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const params = await searchParams
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
 
   return (
     <Suspense fallback={<PuzzleShell />}>
@@ -157,5 +320,5 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
         }}
       />
     </Suspense>
-  )
+  );
 }

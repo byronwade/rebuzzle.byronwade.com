@@ -17,79 +17,135 @@
  * - Master orchestrator
  */
 
-// Configuration
-export { AI_CONFIG, AI_FEATURES, validateApiKeys } from "./config"
-
-// Client
+// Vector Operations (for similarity calculations)
 export {
-  getAIProvider,
-  generateAIText,
-  generateAIObject,
-  streamAIText,
-  withRetry,
-} from "./client"
-
-// Services
+  cosineSimilarity,
+  dotProduct,
+  euclideanDistance,
+  findTopKSimilar,
+  normalizeVector,
+} from "@/db/utils/vector-operations";
+// Advanced Features (Ultra-sophisticated puzzle generation)
+export * from "./advanced";
+// Agent Orchestration
 export {
-  generateRebusPuzzle,
-  generatePuzzleBatch,
-  generatePuzzleForAnswer,
-  improvePuzzle,
-  generateThemedSet,
-  validatePuzzleQuality,
-  type GeneratedPuzzle,
-} from "./services/puzzle-generator"
-
-export {
-  quickValidateAnswer,
-  smartValidateAnswer,
-  validateAnswer,
-  generateFeedback,
-  batchValidate,
-} from "./services/answer-validation"
-
-export {
-  generateHints,
-  generateContextualHint,
-  generateCorrectionHint,
-  generateExplanation,
-  generateAdaptiveHint,
-} from "./services/hint-generator"
-
+  orchestratePersonalizedGeneration,
+  orchestratePuzzleGeneration,
+  orchestrateQualityReview,
+} from "./agents/orchestrator";
 // Caching
 export {
-  withCache,
+  cachedHints,
   cachedPuzzleGeneration,
   cachedValidation,
-  cachedHints,
   clearAICache,
-  getCacheStats,
   destroyCache,
-} from "./cache"
-
-// Monitoring
+  getCacheStats,
+  withCache,
+} from "./cache";
+// Client
 export {
-  getMonitor,
-  trackAIOperation,
-  getAIMetrics,
-  getAIReport,
-} from "./monitor"
-
-// Advanced Features (Ultra-sophisticated puzzle generation)
-export * from "./advanced"
-
+  generateAIObject,
+  generateAIText,
+  getAIProvider,
+  streamAIText,
+  withRetry,
+} from "./client";
+// Configuration
+export { AI_CONFIG, AI_FEATURES, validateApiKeys } from "./config";
+export {
+  type AIFeatureFlags,
+  getFeatureFlags,
+  isFeatureEnabled,
+  logFeatureFlags,
+} from "./config/feature-flags";
+// DevTools
+export {
+  getDevToolsConfig,
+  isDevToolsEnabled,
+  logAgentActivity,
+  logPerformance,
+  logToolUsage,
+} from "./devtools";
 // Error Handling & Quota Management
 export {
   AIError,
+  AIProviderError,
+  createErrorResponse,
+  parseAIError,
   QuotaExceededError,
   RateLimitError,
-  AIProviderError,
-  parseAIError,
-  createErrorResponse,
-} from "./errors"
-
+} from "./errors";
+// Monitoring
 export {
-  getQuotaManager,
+  getAIMetrics,
+  getAIReport,
+  getMonitor,
+  trackAIOperation,
+} from "./monitor";
+export {
   enforceQuota,
+  getQuotaManager,
   getQuotaStats,
-} from "./quota-manager"
+} from "./quota-manager";
+export {
+  batchValidate,
+  generateFeedback,
+  quickValidateAnswer,
+  smartValidateAnswer,
+  validateAnswer,
+} from "./services/answer-validation";
+// Embeddings & Semantic Search
+export {
+  generateEmbedding,
+  generateEmbeddingsBatch,
+  generatePuzzleEmbedding,
+  isEmbeddingAvailable,
+} from "./services/embeddings";
+export {
+  generateAdaptiveHint,
+  generateContextualHint,
+  generateCorrectionHint,
+  generateExplanation,
+  generateHints,
+} from "./services/hint-generator";
+// Services
+export {
+  type GeneratedPuzzle,
+  generatePuzzleBatch,
+  generatePuzzleForAnswer,
+  generateRebusPuzzle,
+  generateThemedSet,
+  improvePuzzle,
+  validatePuzzleQuality,
+} from "./services/puzzle-generator";
+// Learning & Analytics
+export {
+  analyzePuzzlePerformance,
+  calculateActualDifficulty,
+  generateImprovementSuggestions,
+  identifyProblematicPuzzles,
+} from "./services/puzzle-learning";
+// Recommendations
+export {
+  getAdaptiveDifficulty,
+  getPersonalizedPuzzles,
+  type PuzzleRecommendation,
+  recommendNextPuzzle,
+} from "./services/recommendations";
+export {
+  findSimilarPuzzles,
+  recommendPuzzlesByUserHistory,
+  searchPuzzlesByConcept,
+} from "./services/semantic-search";
+// User Profiling
+export {
+  buildUserPuzzleProfile,
+  calculateUserDifficultyPreference,
+  estimateUserSkillLevel,
+  identifyUserCategories,
+  identifyUserPuzzleTypes,
+  type UserPuzzleProfile,
+} from "./services/user-profiler";
+// Tools
+export * from "./tools";

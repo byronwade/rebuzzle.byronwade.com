@@ -1,387 +1,727 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Info } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Script from "next/script";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { GuessBoxes } from "./GuessBoxes";
-import { Keyboard } from "./Keyboard";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  analyticsEvents,
+  trackEvent,
+  trackPuzzleAbandon,
+  trackPuzzleCompletion,
+  trackPuzzleStart,
+} from "@/lib/analytics";
+import {
+  getDifficultyName,
+  getGroupedDailyDifficulties,
+} from "@/lib/difficulty";
 import { checkGuess } from "@/lib/gameLogic";
-import { ArrowRight } from "lucide-react";
+import type { GameData } from "@/lib/gameSettings";
 import { gameSettings } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
-import Script from "next/script";
-import type { GameData } from "@/lib/gameSettings";
+import { useAuth } from "./AuthProvider";
 import { HintBadge } from "./HintBadge";
+import {
+  PuzzleContainer,
+  PuzzleDisplay,
+  PuzzleQuestion,
+} from "./PuzzleDisplay";
+import { SmartAnswerInput } from "./SmartAnswerInput";
 
 // Simple local implementations to replace deleted dependencies
 interface UserStats {
-	points: number;
-	streak: number;
-	totalGames: number;
-	wins: number;
-	achievements: string[];
-	level: number;
-	lastPlayDate: string | null;
-	dailyChallengeStreak: number;
+  points: number;
+  streak: number;
+  totalGames: number;
+  wins: number;
+  achievements: string[];
+  level: number;
+  lastPlayDate: string | null;
+  dailyChallengeStreak: number;
 }
 
 const calculatePoints = (attempts: number, hintsUsed: number): number => {
-	const basePoints = 100;
-	const attemptPenalty = (gameSettings.maxAttempts - attempts) * 10;
-	const hintPenalty = hintsUsed * 25;
-	return Math.max(10, basePoints - attemptPenalty - hintPenalty);
-};
-
-const trackEvent = (event: string) => {
-	console.log(`Analytics event: ${event}`);
+  const basePoints = 100;
+  const attemptPenalty = (gameSettings.maxAttempts - attempts) * 10;
+  const hintPenalty = hintsUsed * 25;
+  return Math.max(10, basePoints - attemptPenalty - hintPenalty);
 };
 
 interface GameBoardProps {
-	gameData: GameData;
+  gameData: GameData;
 }
 
+// Game state reducer
+interface GameState {
+  currentGuess: string;
+  gameOver: boolean;
+  nextPlayTime: Date | null;
+  attemptsLeft: number;
+  shake: boolean;
+  feedbackMessage: string;
+  lastSubmittedGuess: string | null;
+  finalGuess: string | null;
+  wasSuccessful: boolean;
+  finalAttempts: number;
+  isGuessFilled: boolean;
+  usedHints: number[];
+  isSubmitting: boolean;
+}
+
+type GameAction =
+  | { type: "SET_CURRENT_GUESS"; payload: string }
+  | { type: "SET_GAME_OVER"; payload: boolean }
+  | { type: "SET_NEXT_PLAY_TIME"; payload: Date | null }
+  | { type: "SET_ATTEMPTS_LEFT"; payload: number }
+  | { type: "SET_SHAKE"; payload: boolean }
+  | { type: "SET_FEEDBACK_MESSAGE"; payload: string }
+  | { type: "SET_LAST_SUBMITTED_GUESS"; payload: string | null }
+  | { type: "SET_COMPLETION"; payload: { finalGuess: string; wasSuccessful: boolean; attempts: number; nextPlayTime: Date } }
+  | { type: "SET_IS_GUESS_FILLED"; payload: boolean }
+  | { type: "ADD_HINT"; payload: number }
+  | { type: "SET_IS_SUBMITTING"; payload: boolean }
+  | { type: "RESET_GUESS" };
+
+const gameReducer = (state: GameState, action: GameAction): GameState => {
+  switch (action.type) {
+    case "SET_CURRENT_GUESS":
+      return { ...state, currentGuess: action.payload };
+    case "SET_GAME_OVER":
+      return { ...state, gameOver: action.payload };
+    case "SET_NEXT_PLAY_TIME":
+      return { ...state, nextPlayTime: action.payload };
+    case "SET_ATTEMPTS_LEFT":
+      return { ...state, attemptsLeft: action.payload };
+    case "SET_SHAKE":
+      return { ...state, shake: action.payload };
+    case "SET_FEEDBACK_MESSAGE":
+      return { ...state, feedbackMessage: action.payload };
+    case "SET_LAST_SUBMITTED_GUESS":
+      return { ...state, lastSubmittedGuess: action.payload };
+    case "SET_COMPLETION":
+      return {
+        ...state,
+        gameOver: true,
+        finalGuess: action.payload.finalGuess,
+        wasSuccessful: action.payload.wasSuccessful,
+        finalAttempts: action.payload.attempts,
+        nextPlayTime: action.payload.nextPlayTime,
+      };
+    case "SET_IS_GUESS_FILLED":
+      return { ...state, isGuessFilled: action.payload };
+    case "ADD_HINT":
+      return {
+        ...state,
+        usedHints: [...state.usedHints, action.payload],
+      };
+    case "SET_IS_SUBMITTING":
+      return { ...state, isSubmitting: action.payload };
+    case "RESET_GUESS":
+      return { ...state, currentGuess: "", isGuessFilled: false };
+    default:
+      return state;
+  }
+};
+
+const initialState: GameState = {
+  currentGuess: "",
+  gameOver: false,
+  nextPlayTime: null,
+  attemptsLeft: gameSettings.maxAttempts,
+  shake: false,
+  feedbackMessage: "",
+  lastSubmittedGuess: null,
+  finalGuess: null,
+  wasSuccessful: false,
+  finalAttempts: 0,
+  isGuessFilled: false,
+  usedHints: [],
+  isSubmitting: false,
+};
+
 export default function GameBoard({ gameData }: GameBoardProps) {
-	const [currentGuess, setCurrentGuess] = useState("");
-	const [gameOver, setGameOver] = useState(false);
-	const [nextPlayTime, setNextPlayTime] = useState<Date | null>(null);
-	const [rebus, setRebus] = useState<string>(gameData.rebusPuzzle);
-	const [currentEventPuzzle, setCurrentEventPuzzle] = useState<GameData>(gameData);
-	const [attemptsLeft, setAttemptsLeft] = useState<number>(gameSettings.maxAttempts);
-	const [shake, setShake] = useState(false);
-	const [feedbackMessage, setFeedbackMessage] = useState("");
-	const [lastSubmittedGuess, setLastSubmittedGuess] = useState<string | null>(null);
-	const [finalGuess, setFinalGuess] = useState<string | null>(null);
-	const [wasSuccessful, setWasSuccessful] = useState<boolean>(false);
-	const [finalAttempts, setFinalAttempts] = useState<number>(0);
-	const [userStats, setUserStats] = useState<UserStats>({
-		points: 0,
-		streak: 0,
-		totalGames: 0,
-		wins: 0,
-		achievements: [],
-		level: 1,
-		lastPlayDate: null,
-		dailyChallengeStreak: 0,
-	});
-	const [error, setError] = useState<{ message: string; details?: string } | null>(null);
-	const [isGuessFilled, setIsGuessFilled] = useState(false);
-	const [usedHints, setUsedHints] = useState<number[]>([]);
-	const router = useRouter();
+  // Consolidated game state using reducer
+  const [gameState, dispatch] = useReducer(gameReducer, initialState);
 
-	// Check if the game is completed from gameData
-	useEffect(() => {
-		if (gameData.isCompleted) {
-			setGameOver(true);
-		}
-	}, [gameData.isCompleted]);
+  // Get puzzle display - support both new (puzzle) and legacy (rebusPuzzle) fields
+  const puzzleDisplay = useMemo(
+    () => gameData.puzzle || (gameData as { rebusPuzzle?: string }).rebusPuzzle || "",
+    [gameData]
+  );
+  const puzzleType = gameData.puzzleType || "rebus";
+  const [puzzle, setPuzzle] = useState<string>(puzzleDisplay);
+  const [currentEventPuzzle, setCurrentEventPuzzle] =
+    useState<GameData>(gameData);
+  const [userStats, setUserStats] = useState<UserStats>({
+    points: 0,
+    streak: 0,
+    totalGames: 0,
+    wins: 0,
+    achievements: [],
+    level: 1,
+    lastPlayDate: null,
+    dailyChallengeStreak: 0,
+  });
+  const [error, setError] = useState<{
+    message: string;
+    details?: string;
+  } | null>(null);
+  const router = useRouter();
+  const { userId } = useAuth();
 
-	useEffect(() => {
-		trackEvent("GAME_START");
-	}, []);
+  // Check if the game is completed from gameData
+  useEffect(() => {
+    if (gameData.isCompleted) {
+      dispatch({ type: "SET_GAME_OVER", payload: true });
+    }
+  }, [gameData.isCompleted]);
 
-	const handleHintReveal = (hintIndex: number) => {
-		if (gameOver) return;
-		setUsedHints((prev) => [...prev, hintIndex]);
-	};
+  // Track puzzle start on mount
+  useEffect(() => {
+    trackPuzzleStart({
+      puzzleId: gameData.id || "unknown",
+      puzzleType,
+      difficulty:
+        typeof gameData.difficulty === "number"
+          ? gameData.difficulty.toString()
+          : gameData.difficulty || "medium",
+    });
+    trackEvent(analyticsEvents.GAME_START, {
+      puzzleId: gameData.id,
+      puzzleType,
+    });
+  }, []);
 
-	const calculateHintPenalty = () => {
-		return usedHints.length * 0.25;
-	};
+  const handleHintReveal = useCallback(
+    (hintIndex: number) => {
+      if (gameState.gameOver) return;
+      dispatch({ type: "ADD_HINT", payload: hintIndex });
+      // Track hint usage
+      trackEvent(analyticsEvents.HINT_USED, {
+        puzzleId: gameData.id || "unknown",
+        puzzleType,
+        hintIndex,
+        totalHintsUsed: gameState.usedHints.length + 1,
+      });
+    },
+    [gameState.gameOver, gameState.usedHints.length, gameData.id, puzzleType]
+  );
 
-	const setCompletionState = useCallback(
-		(success: boolean, finalGuess: string, attempts: number) => {
-			// Set local state
-			setGameOver(true);
-			setFinalGuess(finalGuess);
-			setWasSuccessful(success);
-			setFinalAttempts(attempts);
+  const calculateHintPenalty = useCallback(
+    () => gameState.usedHints.length * 0.25,
+    [gameState.usedHints.length]
+  );
 
-			// Calculate next play time
-			const now = new Date();
-			const tomorrow = new Date(now);
-			tomorrow.setDate(tomorrow.getDate() + 1);
-			tomorrow.setHours(0, 0, 0, 0);
-			setNextPlayTime(tomorrow);
-		},
-		[]
-	);
+  const setCompletionState = useCallback(
+    (success: boolean, finalGuess: string, attempts: number) => {
+      // Calculate next play time
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
 
-	const handleGuess = useCallback(async () => {
-		if (gameOver || !currentEventPuzzle || currentGuess.length !== currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length) {
-			return;
-		}
+      // Dispatch completion action (batches all state updates)
+      dispatch({
+        type: "SET_COMPLETION",
+        payload: {
+          finalGuess,
+          wasSuccessful: success,
+          attempts,
+          nextPlayTime: tomorrow,
+        },
+      });
+    },
+    []
+  );
 
-		try {
-			const result = await checkGuess(currentGuess, currentEventPuzzle.answer);
+  const handleGuess = useCallback(async () => {
+    if (
+      gameState.gameOver ||
+      !currentEventPuzzle ||
+      gameState.currentGuess.length !==
+        currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length ||
+      gameState.isSubmitting
+    ) {
+      return;
+    }
 
-			if (result.correct) {
-				const attempts = gameSettings.maxAttempts - attemptsLeft + 1;
-				setCompletionState(true, currentGuess, attempts);
+    // Optimistic UI update - disable input immediately
+    dispatch({ type: "SET_IS_SUBMITTING", payload: true });
+    const previousAttemptsLeft = gameState.attemptsLeft;
+    const previousLastSubmittedGuess = gameState.lastSubmittedGuess;
+    const guessToCheck = gameState.currentGuess;
 
-				// Puzzle completion will be tracked in database
-				console.log("✅ Puzzle completed successfully!");
+    try {
+      const result = await checkGuess(guessToCheck, currentEventPuzzle.answer);
 
-				// Update stats
-				const newStats = { ...userStats };
-				newStats.totalGames += 1;
-				newStats.wins += 1;
-				newStats.streak += 1;
+      if (result.correct) {
+        // Optimistically update UI for correct guess
+        const attempts = gameSettings.maxAttempts - previousAttemptsLeft + 1;
+        setCompletionState(true, gameState.currentGuess, attempts);
 
-				const hintPenalty = calculateHintPenalty();
-				const basePoints = calculatePoints(gameSettings.maxAttempts - attemptsLeft + 1, usedHints.length);
-				const finalPoints = Math.max(Math.floor(basePoints * (1 - hintPenalty)), 1);
-				newStats.points += finalPoints;
+        // Puzzle completion will be tracked in database
+        console.log("✅ Puzzle completed successfully!");
 
-				// Simple level calculation
-				newStats.level = Math.floor(newStats.points / 1000) + 1;
+        // Update stats
+        const newStats = { ...userStats };
+        newStats.totalGames += 1;
+        newStats.wins += 1;
+        newStats.streak += 1;
 
-				// Simple achievements check
-				const newAchievements: string[] = [];
-				if (newStats.streak === 5) newAchievements.push("5-day streak");
-				if (newStats.wins === 10) newAchievements.push("10 wins");
-				newStats.achievements = [...newStats.achievements, ...newAchievements];
+        const hintPenalty = calculateHintPenalty();
+        const basePoints = calculatePoints(attempts, gameState.usedHints.length);
+        const finalPoints = Math.max(
+          Math.floor(basePoints * (1 - hintPenalty)),
+          1
+        );
+        newStats.points += finalPoints;
 
-				newStats.lastPlayDate = new Date().toISOString();
+        // Simple level calculation
+        newStats.level = Math.floor(newStats.points / 1000) + 1;
 
-				setUserStats(newStats);
-				
-				// Update stats in database
-				try {
-					const response = await fetch('/api/user/update-stats', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							userId: 'current-user', // This should come from auth context
-							gameResult: {
-								won: true,
-								attempts: attempts,
-								timeSpent: 0 // Could track actual time
-							}
-						})
-					});
-					
-					if (!response.ok) {
-						console.error('Failed to update user stats in database');
-					}
-				} catch (error) {
-					console.error('Error updating user stats:', error);
-				}
+        // Simple achievements check
+        const newAchievements: string[] = [];
+        if (newStats.streak === 5) newAchievements.push("5-day streak");
+        if (newStats.wins === 10) newAchievements.push("10 wins");
+        newStats.achievements = [...newStats.achievements, ...newAchievements];
 
-				trackEvent("PUZZLE_SOLVED");
+        newStats.lastPlayDate = new Date().toISOString();
 
-				// Delay redirect with success params
-				const timeoutId = setTimeout(() => {
-					router.push(`/game-over?success=true&guess=${encodeURIComponent(currentGuess)}&attempts=${attempts}`);
-				}, 2000);
+        setUserStats(newStats);
 
-				// Store timeout ID for potential cleanup
-				return () => clearTimeout(timeoutId);
-			} else {
-				const newAttemptsLeft = attemptsLeft - 1;
-				setAttemptsLeft(newAttemptsLeft);
-				setLastSubmittedGuess(currentGuess);
+        // Update stats in database
+        if (userId) {
+          try {
+            const response = await fetch("/api/user/update-stats", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId,
+                gameResult: {
+                  won: true,
+                  attempts,
+                  timeSpent: 0, // Could track actual time
+                },
+              }),
+            });
 
-				if (newAttemptsLeft <= 0) {
-					setCompletionState(false, currentGuess, gameSettings.maxAttempts);
+            if (!response.ok) {
+              console.error("Failed to update user stats in database");
+            }
+          } catch (error) {
+            console.error("Error updating user stats:", error);
+          }
+        }
 
-					// Puzzle failure will be tracked in database
-					console.log("❌ Puzzle failed - stats updated in database");
+        // Track puzzle completion
+        const completionTime = Date.now(); // Could track actual start time
+        trackPuzzleCompletion({
+          puzzleId: gameData.id || "unknown",
+          puzzleType,
+          difficulty:
+            typeof gameData.difficulty === "number"
+              ? gameData.difficulty.toString()
+              : gameData.difficulty || "medium",
+          attempts,
+          hintsUsed: gameState.usedHints.length,
+          completionTime,
+          score: finalPoints,
+        });
+        trackEvent(analyticsEvents.GAME_COMPLETE, {
+          puzzleId: gameData.id,
+          puzzleType,
+          attempts,
+          hintsUsed: gameState.usedHints.length,
+          score: finalPoints,
+        });
 
-					// Update stats for failure
-					const newStats = { ...userStats };
-					newStats.totalGames += 1;
-					newStats.streak = 0; // Reset streak on failure
-					newStats.lastPlayDate = new Date().toISOString();
+        // Delay redirect with success params
+        const timeoutId = setTimeout(() => {
+          router.push(
+            `/game-over?success=true&guess=${encodeURIComponent(gameState.currentGuess)}&attempts=${attempts}`
+          );
+        }, 2000);
 
-					setUserStats(newStats);
-					
-					// Update stats in database
-					try {
-						const response = await fetch('/api/user/update-stats', {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								userId: 'current-user', // This should come from auth context
-								gameResult: {
-									won: false,
-									attempts: gameSettings.maxAttempts,
-									timeSpent: 0
-								}
-							})
-						});
-						
-						if (!response.ok) {
-							console.error('Failed to update user stats in database');
-						}
-					} catch (error) {
-						console.error('Error updating user stats:', error);
-					}
+        // Store timeout ID for potential cleanup
+        return () => clearTimeout(timeoutId);
+      }
+      // Optimistically update UI for incorrect guess
+      const newAttemptsLeft = previousAttemptsLeft - 1;
+      dispatch({ type: "SET_ATTEMPTS_LEFT", payload: newAttemptsLeft });
+      dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: guessToCheck });
 
-					trackEvent("PUZZLE_FAILED");
+      if (newAttemptsLeft <= 0) {
+        setCompletionState(false, gameState.currentGuess, gameSettings.maxAttempts);
 
-					// Redirect to failure page with params
-					const timeoutId = setTimeout(() => {
-						router.push(`/puzzle-failed?guess=${encodeURIComponent(currentGuess)}&attempts=${gameSettings.maxAttempts}`);
-					}, 2000);
+        // Puzzle failure will be tracked in database
+        console.log("❌ Puzzle failed - stats updated in database");
 
-					// Store timeout ID for potential cleanup
-					return () => clearTimeout(timeoutId);
-				} else {
-					handleIncorrectGuess(newAttemptsLeft);
-				}
-			}
+        // Update stats for failure
+        const newStats = { ...userStats };
+        newStats.totalGames += 1;
+        newStats.streak = 0; // Reset streak on failure
+        newStats.lastPlayDate = new Date().toISOString();
 
-			setCurrentGuess("");
-		} catch (error) {
-			console.error("Error processing guess:", error);
-			setError({
-				message: "Failed to process your guess. Please try again.",
-				details: error instanceof Error ? error.message : "Unknown error",
-			});
-		}
-	}, [gameOver, currentEventPuzzle, currentGuess, attemptsLeft, setCompletionState, userStats, usedHints, router]);
+        setUserStats(newStats);
 
-	// Removed dead code - function was never called
+        // Update stats in database
+        if (userId) {
+          try {
+            const response = await fetch("/api/user/update-stats", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId,
+                gameResult: {
+                  won: false,
+                  attempts: gameSettings.maxAttempts,
+                  timeSpent: 0,
+                },
+              }),
+            });
 
-	const handleIncorrectGuess = (attemptsLeft: number) => {
-		setShake(true);
-		setFeedbackMessage(`Incorrect! ${attemptsLeft} attempts left.`);
-		setTimeout(() => {
-			setShake(false);
-			setFeedbackMessage("");
-		}, 1000);
-	};
+            if (!response.ok) {
+              console.error("Failed to update user stats in database");
+            }
+          } catch (error) {
+            console.error("Error updating user stats:", error);
+          }
+        }
 
-	const handleKeyPress = useCallback(
-		(key: string) => {
-			if (gameOver || nextPlayTime || !currentEventPuzzle) return;
+        // Track puzzle abandonment (failed to complete)
+        trackPuzzleAbandon({
+          puzzleId: gameData.id || "unknown",
+          puzzleType,
+          attempts: gameSettings.maxAttempts,
+          hintsUsed: gameState.usedHints.length,
+        });
+        trackEvent(analyticsEvents.PUZZLE_ABANDON, {
+          puzzleId: gameData.id,
+          puzzleType,
+          attempts: gameSettings.maxAttempts,
+          hintsUsed: gameState.usedHints.length,
+        });
 
-			if (key === "ENTER") {
-				if (isGuessFilled) {
-					handleGuess();
-				}
-			} else if (key === "BACKSPACE") {
-				setCurrentGuess((prev) => {
-					const newGuess = prev.slice(0, -1);
-					setIsGuessFilled(newGuess.length === currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length);
-					return newGuess;
-				});
-				setLastSubmittedGuess(null);
-			} else if (/^[A-Z]$/.test(key)) {
-				setCurrentGuess((prev) => {
-					const newGuess = prev.length < currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length ? prev + key : prev;
-					setIsGuessFilled(newGuess.length === currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length);
-					return newGuess;
-				});
-				setLastSubmittedGuess(null);
-			}
-		},
-		[gameOver, nextPlayTime, currentEventPuzzle, handleGuess, isGuessFilled]
-	);
+        // Redirect to failure page with params
+        const timeoutId = setTimeout(() => {
+          router.push(
+            `/puzzle-failed?guess=${encodeURIComponent(gameState.currentGuess)}&attempts=${gameSettings.maxAttempts}`
+          );
+        }, 2000);
 
-	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (gameOver || nextPlayTime) return;
+        // Store timeout ID for potential cleanup
+        return () => clearTimeout(timeoutId);
+      }
 
-			if (event.key === "Enter") {
-				event.preventDefault();
-				if (isGuessFilled) {
-					handleGuess();
-				}
-			} else if (event.key === "Backspace") {
-				handleKeyPress("BACKSPACE");
-			} else {
-				const key = event.key.toUpperCase();
-				if (/^[A-Z]$/.test(key)) {
-					handleKeyPress(key);
-				}
-			}
-		};
+      // Track guess submission
+      trackEvent(analyticsEvents.GUESS_SUBMITTED, {
+        puzzleId: gameData.id || "unknown",
+        puzzleType,
+        attemptNumber: gameSettings.maxAttempts - newAttemptsLeft,
+        isCorrect: false,
+      });
 
-		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [gameOver, nextPlayTime, handleGuess, handleKeyPress, isGuessFilled]);
+      handleIncorrectGuess(newAttemptsLeft);
 
-	return (
-		<>
-			<Script id="structured-data" type="application/ld+json">
-				{JSON.stringify({
-					"@context": "https://schema.org",
-					"@type": "Game",
-					name: "Rebuzzle",
-					description: "A daily rebus puzzle game challenging players to solve visual word puzzles.",
-					url: "https://rebuzzle.com",
-					genre: "Puzzle",
-					gamePlatform: "Web Browser",
-					applicationCategory: "Game",
-					operatingSystem: "Any",
-					author: {
-						"@type": "Organization",
-						name: "Rebuzzle Team",
-					},
-					offers: {
-						"@type": "Offer",
-						price: "0",
-						priceCurrency: "USD",
-					},
-				})}
-			</Script>
-			<div className="flex flex-col min-h-screen bg-slate-50">
-				{/* Game content area with modern design */}
-				<div className="flex-1 px-4 sm:px-6 py-4 sm:py-6">
-					<div className="max-w-2xl mx-auto space-y-6">
-						{/* Modern status bar */}
-						<div className="flex items-center justify-between p-4 bg-white backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm">
-							<div className="flex items-center gap-3">
-								<div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 rounded-full">
-									<div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-									<span className="text-sm font-medium text-gray-700">Level {currentEventPuzzle?.difficulty || 1}</span>
-								</div>
-								{currentEventPuzzle?.hints && <HintBadge hints={currentEventPuzzle.hints} onHintReveal={handleHintReveal} gameId={currentEventPuzzle.id} className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" />}
-							</div>
-							<div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full">
-								<div className="w-2 h-2 bg-green-500 rounded-full"></div>
-								<span className="text-sm font-medium text-gray-600">{attemptsLeft} left</span>
-							</div>
-						</div>
+      dispatch({ type: "RESET_GUESS" });
+    } catch (error) {
+      console.error("Error processing guess:", error);
+      // Rollback optimistic update on error
+      dispatch({ type: "SET_ATTEMPTS_LEFT", payload: previousAttemptsLeft });
+      dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: previousLastSubmittedGuess });
+      setError({
+        message: "Failed to process your guess. Please try again.",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      dispatch({ type: "SET_IS_SUBMITTING", payload: false });
+    }
+  }, [
+    gameState.gameOver,
+    gameState.currentGuess,
+    gameState.attemptsLeft,
+    gameState.isSubmitting,
+    gameState.usedHints,
+    currentEventPuzzle,
+    setCompletionState,
+    userStats,
+    router,
+  ]);
 
-						{/* Enhanced puzzle display */}
-						<div className="text-center space-y-4">
-							<div className="p-8 sm:p-12 bg-white rounded-3xl border-2 border-dashed border-gray-200 shadow-inner">
-								<div className="text-5xl sm:text-6xl md:text-7xl font-bold text-gray-800 leading-tight">{rebus}</div>
-							</div>
-							<p className="text-gray-600 font-medium">What does this rebus puzzle represent?</p>
-						</div>
+  const handleIncorrectGuess = useCallback((attemptsLeft: number) => {
+    dispatch({ type: "SET_SHAKE", payload: true });
+    dispatch({ type: "SET_FEEDBACK_MESSAGE", payload: `Incorrect! ${attemptsLeft} attempts left.` });
+    setTimeout(() => {
+      dispatch({ type: "SET_SHAKE", payload: false });
+      dispatch({ type: "SET_FEEDBACK_MESSAGE", payload: "" });
+    }, 1000);
+  }, []);
 
-						{/* Enhanced guess input area */}
-						<div className="space-y-4">
-							<GuessBoxes currentGuess={currentGuess} answer={currentEventPuzzle?.answer || ""} gameOver={gameOver} lastSubmittedGuess={lastSubmittedGuess} submittedGuesses={[]} onSubmit={handleGuess} isGuessFilled={isGuessFilled} handleGuess={handleGuess} />
-						</div>
+  const handleKeyPress = useCallback(
+    (key: string) => {
+      if (gameState.gameOver || gameState.nextPlayTime || !currentEventPuzzle || gameState.isSubmitting)
+        return;
 
-						{/* Modern submit button */}
-						<div className="flex gap-3">
-							<Button onClick={handleGuess} disabled={!isGuessFilled || gameOver} size="lg" className={cn("flex-1 h-14 text-lg font-semibold rounded-2xl", "bg-purple-600 hover:bg-purple-700 text-white", "shadow-lg hover:shadow-xl transition-all duration-300", "disabled:opacity-50 disabled:cursor-not-allowed", shake && "animate-bounce")}>
-								<ArrowRight className="mr-2 h-5 w-5" />
-								Submit Answer
-							</Button>
-						</div>
+      if (key === "ENTER") {
+        if (gameState.isGuessFilled) {
+          handleGuess();
+        }
+      } else if (key === "BACKSPACE") {
+        const newGuess = gameState.currentGuess.slice(0, -1);
+        const isFilled = newGuess.length ===
+          currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length;
+        dispatch({ type: "SET_CURRENT_GUESS", payload: newGuess });
+        dispatch({ type: "SET_IS_GUESS_FILLED", payload: isFilled });
+        dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: null });
+      } else if (/^[A-Z]$/.test(key)) {
+        const newGuess =
+          gameState.currentGuess.length <
+          currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length
+            ? gameState.currentGuess + key
+            : gameState.currentGuess;
+        const isFilled = newGuess.length ===
+          currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length;
+        dispatch({ type: "SET_CURRENT_GUESS", payload: newGuess });
+        dispatch({ type: "SET_IS_GUESS_FILLED", payload: isFilled });
+        dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: null });
+      }
+    },
+    [
+      gameState.gameOver,
+      gameState.nextPlayTime,
+      gameState.currentGuess,
+      gameState.isGuessFilled,
+      gameState.isSubmitting,
+      currentEventPuzzle,
+      handleGuess,
+    ]
+  );
 
-						{/* Enhanced feedback */}
-						{feedbackMessage && (
-							<div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-center">
-								<p className="text-lg font-medium text-gray-700">{feedbackMessage}</p>
-							</div>
-						)}
-					</div>
-				</div>
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (gameState.gameOver || gameState.nextPlayTime || gameState.isSubmitting) return;
 
-				{/* Modern keyboard */}
-				<div className="bg-white backdrop-blur-sm border-t border-gray-100">
-					<Keyboard onKeyPress={handleKeyPress} disabled={gameOver} />
-				</div>
-			</div>
-		</>
-	);
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (gameState.isGuessFilled) {
+          handleGuess();
+        }
+      } else if (event.key === "Backspace") {
+        handleKeyPress("BACKSPACE");
+      } else {
+        const key = event.key.toUpperCase();
+        if (/^[A-Z]$/.test(key)) {
+          handleKeyPress(key);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    gameState.gameOver,
+    gameState.nextPlayTime,
+    gameState.isGuessFilled,
+    gameState.isSubmitting,
+    handleGuess,
+    handleKeyPress,
+  ]);
+
+  return (
+    <>
+      <Script id="structured-data" type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Game",
+          name: "Rebuzzle",
+          description:
+            "A daily rebus puzzle game challenging players to solve visual word puzzles.",
+          url: "https://rebuzzle.com",
+          genre: "Puzzle",
+          gamePlatform: "Web Browser",
+          applicationCategory: "Game",
+          operatingSystem: "Any",
+          author: {
+            "@type": "Organization",
+            name: "Rebuzzle Team",
+          },
+          offers: {
+            "@type": "Offer",
+            price: "0",
+            priceCurrency: "USD",
+          },
+        })}
+      </Script>
+      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+        <main className="space-y-6">
+          {/* Modern status bar */}
+          <section
+            aria-label="Game status"
+            className="flex items-center justify-between rounded-2xl border border-border/50 bg-card/80 p-4 shadow-md backdrop-blur-md transition-shadow duration-200 hover:shadow-lg"
+          >
+            <div className="flex items-center gap-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1.5 transition-all duration-200 hover:bg-purple-200 hover:shadow-sm dark:bg-purple-900/30 dark:hover:bg-purple-900/50">
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-purple-500 shadow-sm" />
+                    <span className="font-medium text-foreground text-sm">
+                      {getDifficultyName(currentEventPuzzle?.difficulty)}
+                    </span>
+                    <Info className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-80">
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="mb-2 font-semibold text-sm">
+                        Daily Difficulties
+                      </h4>
+                      <p className="mb-3 text-muted-foreground text-xs">
+                        These are the difficulty levels you might encounter day
+                        to day:
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {getGroupedDailyDifficulties().map((difficulty) => {
+                        const levelRange =
+                          difficulty.levels.length === 1
+                            ? `Level ${difficulty.levels[0]}`
+                            : `Levels ${difficulty.levels[0]}-${difficulty.levels[difficulty.levels.length - 1]}`;
+                        const isCurrentDifficulty = difficulty.levels.includes(
+                          typeof currentEventPuzzle?.difficulty === "number"
+                            ? currentEventPuzzle.difficulty
+                            : 0
+                        );
+
+                        return (
+                          <div
+                            className={cn(
+                              "rounded-lg border p-3",
+                              isCurrentDifficulty
+                                ? "border-purple-300 bg-purple-50"
+                                : "border-border bg-card"
+                            )}
+                            key={difficulty.name}
+                          >
+                            <div className="mb-1 flex items-center justify-between">
+                              <span className="font-medium text-sm">
+                                {difficulty.name}
+                              </span>
+                              <span className="text-muted-foreground text-xs">
+                                {levelRange}
+                              </span>
+                            </div>
+                            <p className="text-muted-foreground text-xs">
+                              {difficulty.description}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {currentEventPuzzle?.hints && (
+                <HintBadge
+                  className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  gameId={currentEventPuzzle.id}
+                  hints={currentEventPuzzle.hints}
+                  onHintReveal={handleHintReveal}
+                />
+              )}
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 shadow-sm">
+              <div className="h-2 w-2 rounded-full bg-green-500 shadow-sm" />
+              <span className="font-medium text-muted-foreground text-sm">
+                {gameState.attemptsLeft} left
+              </span>
+            </div>
+          </section>
+
+          {/* Enhanced puzzle display */}
+          <section aria-label="Puzzle" className="space-y-4 text-center">
+            <PuzzleContainer>
+              <PuzzleDisplay
+                puzzle={puzzle}
+                puzzleType={puzzleType}
+                size={
+                  // Text-based puzzles use smaller size for better readability
+                  puzzleType === "riddle" ||
+                  puzzleType === "trivia" ||
+                  puzzleType === "logic-grid" ||
+                  puzzleType === "cryptic-crossword"
+                    ? "small"
+                    : // Visual and code puzzles use large for better visibility
+                      puzzleType === "rebus" ||
+                        puzzleType === "pattern-recognition" ||
+                        puzzleType === "number-sequence" ||
+                        puzzleType === "caesar-cipher"
+                      ? "large"
+                      : // Default to large for other types
+                        "large"
+                }
+              />
+            </PuzzleContainer>
+            <PuzzleQuestion puzzleType={puzzleType} />
+          </section>
+
+          {/* Smart answer input with real-time validation */}
+          <section aria-label="Answer input" className="space-y-4">
+            <SmartAnswerInput
+              correctAnswer={currentEventPuzzle?.answer || ""}
+              difficulty={currentEventPuzzle?.difficulty || 5}
+              disabled={gameState.gameOver || gameState.isSubmitting}
+              onSubmit={handleGuess}
+              puzzle={currentEventPuzzle?.puzzle || ""}
+              puzzleType={currentEventPuzzle?.puzzleType || "rebus"}
+            />
+          </section>
+
+          {/* Enhanced feedback */}
+          {gameState.feedbackMessage && (
+            <div
+              aria-live="polite"
+              className="slide-in-from-top-2 fade-in-up animate-in rounded-2xl border border-blue-200 bg-blue-50 p-4 text-center shadow-sm duration-300 dark:border-blue-800 dark:bg-blue-900/20"
+              role="status"
+            >
+              <p className="font-medium text-foreground text-lg">
+                {gameState.feedbackMessage}
+              </p>
+            </div>
+          )}
+
+          {/* Error display */}
+          {error && (
+            <div
+              className="slide-in-from-top-2 fade-in-up animate-in rounded-2xl border border-red-200 bg-red-50 p-4 text-center shadow-md duration-300 dark:border-red-800 dark:bg-red-900/20"
+              role="alert"
+            >
+              <p className="font-semibold text-red-700 text-sm dark:text-red-400">
+                {error.message}
+              </p>
+              {error.details && (
+                <p className="mt-1 text-red-600 text-xs dark:text-red-500">
+                  {error.details}
+                </p>
+              )}
+              <Button
+                className="mt-3"
+                onClick={() => setError(null)}
+                size="sm"
+                variant="outline"
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
+        </main>
+      </div>
+    </>
+  );
 }

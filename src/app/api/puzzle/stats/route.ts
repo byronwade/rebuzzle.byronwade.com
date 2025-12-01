@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server"
-import { getQuotaStats } from "@/ai"
+import { NextResponse } from "next/server";
+import { getQuotaStats } from "@/ai";
 
 export async function GET() {
   try {
     // Get AI quota usage stats
-    const quotaStats = getQuotaStats()
+    const quotaStats = getQuotaStats();
 
     return NextResponse.json({
       success: true,
@@ -19,9 +19,9 @@ export async function GET() {
           intelligentAgent: true,
         },
       },
-    })
+    });
   } catch (error) {
-    console.error("Error getting puzzle stats:", error)
+    console.error("Error getting puzzle stats:", error);
     return NextResponse.json(
       {
         success: false,
@@ -29,6 +29,6 @@ export async function GET() {
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
-    )
+    );
   }
 }

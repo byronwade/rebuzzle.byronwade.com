@@ -4,12 +4,12 @@
  * Intelligent answer checking with fuzzy matching and AI assistance
  */
 
-import { NextResponse } from "next/server"
-import { validateAnswer, generateFeedback } from "@/ai"
+import { NextResponse } from "next/server";
+import { generateFeedback, validateAnswer } from "@/ai";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    const body = await req.json();
     const {
       guess,
       correctAnswer,
@@ -17,21 +17,21 @@ export async function POST(req: Request) {
       explanation,
       useAI = true,
       attemptsLeft = 0,
-    } = body
+    } = body;
 
-    if (!guess || !correctAnswer) {
+    if (!(guess && correctAnswer)) {
       return NextResponse.json(
         {
           success: false,
           error: "Missing required fields: guess and correctAnswer",
         },
         { status: 400 }
-      )
+      );
     }
 
-    console.log("[AI API] Validating answer:", { guess, correctAnswer, useAI })
+    console.log("[AI API] Validating answer:", { guess, correctAnswer, useAI });
 
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     // Validate answer
     const result = await validateAnswer({
@@ -40,19 +40,19 @@ export async function POST(req: Request) {
       puzzleContext,
       explanation,
       useAI,
-    })
+    });
 
-    const validationTime = Date.now() - startTime
+    const validationTime = Date.now() - startTime;
 
     // Generate helpful feedback if wrong
-    let feedback
+    let feedback;
     if (!result.isCorrect && attemptsLeft > 0) {
       feedback = await generateFeedback({
         guess,
         correctAnswer,
         similarity: result.confidence,
         attemptsLeft,
-      })
+      });
     }
 
     return NextResponse.json({
@@ -64,9 +64,9 @@ export async function POST(req: Request) {
       metadata: {
         validationTimeMs: validationTime,
       },
-    })
+    });
   } catch (error) {
-    console.error("[AI API] Validation error:", error)
+    console.error("[AI API] Validation error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -100,5 +100,5 @@ export async function GET() {
       useAI: true,
       attemptsLeft: 2,
     },
-  })
+  });
 }

@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const { userId, gameResult } = await request.json();
 
-    if (!userId || !gameResult) {
+    if (!(userId && gameResult)) {
       return NextResponse.json(
         { error: "User ID and game result are required" },
         { status: 400 }

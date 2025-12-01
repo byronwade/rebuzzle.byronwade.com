@@ -1,208 +1,219 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import webpush from "web-push"
-import { getCollection } from "@/db/mongodb"
-
-// Configure web-push with VAPID keys
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_EMAIL) {
-  const vapidEmail = process.env.VAPID_EMAIL
-  // Only configure VAPID if email is in correct format
-  if (vapidEmail && (vapidEmail.startsWith('mailto:') || vapidEmail.startsWith('https://'))) {
-    webpush.setVapidDetails(
-      vapidEmail,
-      process.env.VAPID_PUBLIC_KEY,
-      process.env.VAPID_PRIVATE_KEY
-    )
-  } else {
-    console.warn('VAPID_EMAIL should be a valid URL (mailto: or https://). Push notifications will be disabled.')
-  }
-}
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import type { NewInAppNotification, User } from "@/db/models";
+import { getCollection } from "@/db/mongodb";
+import { sendDailyPuzzleEmail } from "@/lib/notifications/email-service";
 
 export async function POST(request: NextRequest) {
   try {
     // Verify this is a legitimate cron request
-    const authHeader = request.headers.get("authorization")
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Vercel automatically adds this header for cron jobs
+    const authHeader = request.headers.get("authorization");
+    const vercelCronSecret = request.headers.get("x-vercel-cron-secret");
+
+    // In production, require authentication
+    const isProduction = process.env.NODE_ENV === "production";
+    const cronSecret = process.env.CRON_SECRET;
+    const vercelCronSecretEnv = process.env.VERCEL_CRON_SECRET;
+
+    // Check Vercel cron secret first (automatically set by Vercel)
+    if (vercelCronSecretEnv && vercelCronSecret !== vercelCronSecretEnv) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[Notifications] Starting daily notification send...")
-
-    // Check if VAPID is configured
-    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-      console.error("[Notifications] VAPID keys not configured")
-      return NextResponse.json(
-        {
-          success: false,
-          error: "VAPID keys not configured",
-        },
-        { status: 500 }
-      )
-    }
-
-    // Get today's puzzle using MongoDB
-    const puzzlesCollection = getCollection('puzzles')
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const todaysPuzzle = await puzzlesCollection.findOne({
-      publishedAt: { $gte: today }
-    })
-
-    if (!todaysPuzzle) {
-      console.error("[Notifications] No puzzle found for today")
-      return NextResponse.json(
-        { success: false, error: "No puzzle found for today" },
-        { status: 500 }
-      )
-    }
-
-    // Get all active push subscriptions (updated in last 30 days)
-    const pushSubscriptionsCollection = getCollection('pushSubscriptions')
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    
-    const subscriptions = await pushSubscriptionsCollection
-      .find({ createdAt: { $gte: thirtyDaysAgo } })
-      .toArray()
-
-    if (subscriptions.length === 0) {
-      console.log("[Notifications] No active subscriptions found")
-      return NextResponse.json({
-        success: true,
-        message: "No active subscriptions to notify",
-        sent: 0,
-      })
-    }
-
-    console.log(`[Notifications] Found ${subscriptions.length} active subscriptions`)
-
-    if (subscriptions.length === 0) {
-      return NextResponse.json({
-        success: true,
-        results: {
-          pushNotificationsSent: 0,
-          errors: 0,
-          message: "No active subscriptions found",
-        },
-      })
-    }
-
-    // Prepare the notification payload optimized for mobile
-    const notificationPayload = {
-      title: "🧩 New Rebuzzle Puzzle Available!",
-      body: "A fresh rebus puzzle is waiting for you. Can you solve today's challenge?",
-      icon: "/icon-192x192.png",
-      badge: "/icon-192x192.png",
-      image: "/puzzle-preview.png",
-      data: {
-        url: "/",
-        puzzleId: todaysPuzzle.id,
-        timestamp: Date.now(),
-        difficulty: todaysPuzzle.difficulty,
-        type: "daily-puzzle",
-      },
-      actions: [
-        {
-          action: "play",
-          title: "🎮 Play Now",
-          icon: "/icon-192x192.png",
-        },
-        {
-          action: "later",
-          title: "⏰ Later",
-          icon: "/icon-192x192.png",
-        },
-      ],
-      requireInteraction: false,
-      silent: false,
-      tag: "daily-puzzle",
-      renotify: true,
-      vibrate: [100, 50, 100],
-      timestamp: Date.now(),
-      color: "#8b5cf6",
-      sticky: false,
-      sound: "default",
-      dir: "auto",
-      lang: "en-US",
-    }
-
-    const results = {
-      pushNotificationsSent: 0,
-      errors: 0,
-      expiredSubscriptions: 0,
-    }
-
-    // Send notifications in batches to avoid overwhelming the system
-    const batchSize = 100
-    const batches = []
-    for (let i = 0; i < subscriptions.length; i += batchSize) {
-      batches.push(subscriptions.slice(i, i + batchSize))
-    }
-
-    for (const batch of batches) {
-      const promises = batch.map(async (subscription) => {
-        try {
-          const pushSubscription = {
-            endpoint: subscription.endpoint,
-            keys: {
-              auth: subscription.auth,
-              p256dh: subscription.p256dh,
-            },
-          }
-
-          await webpush.sendNotification(pushSubscription, JSON.stringify(notificationPayload), {
-            TTL: 24 * 60 * 60, // 24 hours
-            urgency: "normal",
-          })
-
-          results.pushNotificationsSent++
-          console.log(`[Notifications] Sent to subscription ${subscription.id}`)
-        } catch (error: unknown) {
-          const pushError = error as { statusCode?: number; message?: string }
-          console.error(`[Notifications] Failed to send to ${subscription.id}:`, pushError.message)
-
-          // Handle expired subscriptions
-          if (pushError.statusCode === 410 || pushError.statusCode === 404) {
-            console.log(`[Notifications] Removing expired subscription ${subscription.id}`)
-            const deleteResult = await pushSubscriptionsCollection.deleteOne({
-              _id: subscription._id
-            })
-
-            if (deleteResult.acknowledged) {
-              results.expiredSubscriptions++
-            } else {
-              console.error(
-                `[Notifications] Failed to delete expired subscription`
-              )
-            }
-          } else {
-            results.errors++
-          }
-        }
-      })
-
-      // Wait for batch to complete before processing next batch
-      await Promise.allSettled(promises)
-
-      // Small delay between batches to be respectful to push services
-      if (batches.indexOf(batch) < batches.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Fallback to custom CRON_SECRET if Vercel secret not available
+    if (cronSecret) {
+      if (authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else if (isProduction) {
+      // In production, require at least one authentication method
+      if (!vercelCronSecretEnv) {
+        return NextResponse.json(
+          { error: "Cron authentication not configured" },
+          { status: 500 }
+        );
       }
     }
 
-    console.log("[Notifications] Daily notification send completed:", results)
+    console.log("[Notifications] Starting daily notification send...");
+
+    // Get today's puzzle
+    const puzzlesCollection = getCollection("puzzles");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todaysPuzzle = await puzzlesCollection.findOne({
+      publishedAt: { $gte: today },
+    });
+
+    if (!todaysPuzzle) {
+      console.error("[Notifications] No puzzle found for today");
+      return NextResponse.json(
+        { success: false, error: "No puzzle found for today" },
+        { status: 500 }
+      );
+    }
+
+    const puzzleUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com"}/?puzzle=${todaysPuzzle.id}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+
+    // Get puzzle metadata for email
+    const puzzleType = todaysPuzzle.puzzleType || "puzzle";
+    const difficulty =
+      typeof todaysPuzzle.difficulty === "string"
+        ? todaysPuzzle.difficulty
+        : `Level ${todaysPuzzle.difficulty}`;
+
+    // Get all registered users (for sending to all users)
+    const usersCollection = getCollection<User>("users");
+    const allUsers = await usersCollection.find({}).toArray();
+
+    // Get all active email subscriptions
+    const emailSubscriptionsCollection = getCollection("emailSubscriptions");
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const emailSubscriptions = await emailSubscriptionsCollection
+      .find({
+        enabled: true,
+        updatedAt: { $gte: thirtyDaysAgo },
+      })
+      .toArray();
+
+    console.log(
+      `[Notifications] Found ${emailSubscriptions.length} active email subscriptions and ${allUsers.length} registered users`
+    );
+
+    // Create a map of email to user for personalization
+    const emailToUser = new Map<string, User>();
+    for (const user of allUsers) {
+      emailToUser.set(user.email.toLowerCase(), user);
+    }
+
+    // Send email notifications to all registered users (or just subscribers based on preference)
+    // For now, send to all users who have email subscriptions enabled
+    const emailResults = {
+      sent: 0,
+      failed: 0,
+      errors: [] as string[],
+    };
+
+    // Batch processing with delay to avoid rate limits
+    const BATCH_SIZE = 10;
+    const BATCH_DELAY_MS = 1000; // 1 second between batches
+
+    for (let i = 0; i < emailSubscriptions.length; i += BATCH_SIZE) {
+      const batch = emailSubscriptions.slice(i, i + BATCH_SIZE);
+
+      // Process batch in parallel
+      const batchPromises = batch.map(async (subscription) => {
+        try {
+          const user = emailToUser.get(subscription.email.toLowerCase());
+          const unsubscribeUrl = `${baseUrl}/unsubscribe?email=${encodeURIComponent(subscription.email)}`;
+
+          const result = await sendDailyPuzzleEmail(
+            subscription.email,
+            puzzleUrl,
+            {
+              username: user?.username,
+              puzzleType,
+              difficulty,
+              unsubscribeUrl,
+            }
+          );
+
+          if (result.success) {
+            emailResults.sent++;
+            // Update last sent timestamp
+            await emailSubscriptionsCollection.updateOne(
+              { id: subscription.id },
+              { $set: { lastSentAt: new Date() } }
+            );
+            return { success: true, email: subscription.email };
+          }
+          emailResults.failed++;
+          emailResults.errors.push(`${subscription.email}: ${result.error}`);
+          return {
+            success: false,
+            email: subscription.email,
+            error: result.error,
+          };
+        } catch (error) {
+          emailResults.failed++;
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          emailResults.errors.push(`${subscription.email}: ${errorMessage}`);
+          return {
+            success: false,
+            email: subscription.email,
+            error: errorMessage,
+          };
+        }
+      });
+
+      await Promise.all(batchPromises);
+
+      // Delay between batches to avoid rate limiting
+      if (i + BATCH_SIZE < emailSubscriptions.length) {
+        await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+      }
+    }
+
+    // Create in-app notifications for authenticated users
+    const notificationsCollection =
+      getCollection<NewInAppNotification>("inAppNotifications");
+    const inAppResults = {
+      created: 0,
+      failed: 0,
+    };
+
+    // Get unique user IDs from email subscriptions
+    const userIds = new Set(
+      emailSubscriptions
+        .map((s) => s.userId)
+        .filter((id): id is string => Boolean(id))
+    );
+
+    for (const userId of userIds) {
+      try {
+        const notification: NewInAppNotification = {
+          id: crypto.randomUUID(),
+          userId,
+          type: "puzzle_ready",
+          title: "🧩 New Puzzle Available!",
+          message: "Today's Rebuzzle is ready to solve. Can you crack it?",
+          link: puzzleUrl,
+          read: false,
+          createdAt: new Date(),
+        };
+
+        await notificationsCollection.insertOne(notification);
+        inAppResults.created++;
+      } catch (error) {
+        inAppResults.failed++;
+        console.error(
+          `[Notifications] Failed to create in-app notification for user ${userId}:`,
+          error
+        );
+      }
+    }
+
+    console.log("[Notifications] Daily notification send completed:", {
+      emails: emailResults,
+      inApp: inAppResults,
+    });
 
     return NextResponse.json({
       success: true,
+      message: "Notifications sent",
       results: {
-        ...results,
-        puzzleTitle: `Puzzle for ${new Date().toDateString()}`,
-        totalSubscriptions: subscriptions.length,
+        emails: emailResults,
+        inApp: inAppResults,
       },
-    })
+    });
   } catch (error) {
-    console.error("[Notifications] Error in notification cron:", error)
+    console.error("[Notifications] Error in notification cron:", error);
     return NextResponse.json(
       {
         success: false,
@@ -210,11 +221,6 @@ export async function POST(request: NextRequest) {
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
-    )
+    );
   }
-}
-
-export async function GET(request: NextRequest) {
-  // Allow GET for testing
-  return POST(request)
 }

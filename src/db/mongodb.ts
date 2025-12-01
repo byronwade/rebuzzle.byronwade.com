@@ -1,14 +1,14 @@
 /**
  * MongoDB Database Client
- * 
+ *
  * Clean, efficient MongoDB setup for Rebuzzle
  */
 
-import { MongoClient, Db, Collection } from 'mongodb';
-import { config } from 'dotenv';
+import { config } from "dotenv";
+import { type Collection, type Db, MongoClient } from "mongodb";
 
 // Load environment variables
-config({ path: '.env.local' });
+config({ path: ".env.local" });
 
 /**
  * Get database URL from environment
@@ -35,11 +35,50 @@ const globalForDb = globalThis as unknown as {
 
 /**
  * Get or create MongoDB connection (singleton pattern)
+ * Configured with connection pooling, retry logic, and timeouts
  */
 export const getConnection = (): MongoClient => {
   if (!globalForDb.client) {
     const connectionString = getDatabaseUrl();
-    globalForDb.client = new MongoClient(connectionString);
+
+    // Configure connection options for production
+    const options = {
+      // Connection pool settings
+      maxPoolSize: 10, // Maximum number of connections in the pool
+      minPoolSize: 2, // Minimum number of connections in the pool
+
+      // Connection timeout settings
+      connectTimeoutMS: 10_000, // 10 seconds to establish connection
+      socketTimeoutMS: 45_000, // 45 seconds for socket operations
+
+      // Retry settings
+      retryWrites: true,
+      retryReads: true,
+
+      // Server selection timeout
+      serverSelectionTimeoutMS: 10_000, // 10 seconds to select a server
+
+      // Heartbeat settings (keep connections alive)
+      heartbeatFrequencyMS: 10_000, // Send heartbeat every 10 seconds
+
+      // Compression (if supported by server)
+      compressors: ["zlib"] as ("none" | "zlib" | "snappy" | "zstd")[],
+    };
+
+    globalForDb.client = new MongoClient(connectionString, options);
+
+    // Handle connection errors
+    globalForDb.client.on("error", (error) => {
+      console.error("[MongoDB] Connection error:", error);
+    });
+
+    globalForDb.client.on("close", () => {
+      console.warn("[MongoDB] Connection closed");
+    });
+
+    globalForDb.client.on("reconnect", () => {
+      console.log("[MongoDB] Reconnected");
+    });
   }
   return globalForDb.client;
 };
@@ -77,27 +116,55 @@ export const closeConnection = async (): Promise<void> => {
 };
 
 /**
- * Health check for database connection
+ * Health check for database connection with retry logic
  */
 export const checkDatabaseHealth = async (): Promise<{
   healthy: boolean;
   latency?: number;
   error?: string;
 }> => {
-  try {
-    const start = Date.now();
-    const client = getConnection();
-    await client.db().admin().ping();
-    const latency = Date.now() - start;
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second
 
-    return { healthy: true, latency };
-  } catch (error) {
-    console.error('[DB Health Check] Failed:', error);
-    return {
-      healthy: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const start = Date.now();
+      const client = getConnection();
+
+      // Ensure connection is established
+      if (!(client as any).topology?.isConnected()) {
+        await client.connect();
+      }
+
+      await client.db().admin().ping();
+      const latency = Date.now() - start;
+
+      return { healthy: true, latency };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      if (attempt < maxRetries) {
+        // Wait before retrying
+        await new Promise((resolve) =>
+          setTimeout(resolve, retryDelay * attempt)
+        );
+        continue;
+      }
+
+      // All retries failed
+      console.error("[DB Health Check] Failed after retries:", errorMessage);
+      return {
+        healthy: false,
+        error: errorMessage,
+      };
+    }
   }
+
+  return {
+    healthy: false,
+    error: "Health check failed after all retries",
+  };
 };
 
 // Export type for use in other files

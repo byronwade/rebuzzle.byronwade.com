@@ -204,8 +204,7 @@ rebuzzle/
 │   └── GuessBoxes.tsx    # Answer input display
 ├── lib/                   # Utility libraries
 │   ├── gameLogic.ts      # Core game mechanics
-│   ├── gameSettings.ts   # Configuration
-│   └── fakeBlogData.ts   # Demo content
+│   └── gameSettings.ts   # Configuration
 ├── public/               # Static assets
 │   ├── puzzles.json      # Puzzle database
 │   ├── manifest.json     # PWA configuration

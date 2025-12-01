@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
+import { clearAuthCookie } from "@/lib/cookies";
 
 export async function POST() {
   try {
-    // Clear any server-side session data
-    // In production, this would clear Neon Auth session
-    
-    return NextResponse.json({
+    // Create response
+    const response = NextResponse.json({
       success: true,
       message: "Logged out successfully",
     });
+
+    // Clear authentication cookie
+    return clearAuthCookie(response);
   } catch (error) {
     console.error("Logout failed:", error);
-    return NextResponse.json(
-      { error: "Logout failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Logout failed" }, { status: 500 });
   }
 }

@@ -5,35 +5,35 @@
  */
 
 interface AIMetrics {
-  totalRequests: number
-  successfulRequests: number
-  failedRequests: number
-  totalTokens: number
-  promptTokens: number
-  completionTokens: number
-  totalCost: number
-  averageLatency: number
-  cacheHits: number
-  cacheMisses: number
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  totalTokens: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalCost: number;
+  averageLatency: number;
+  cacheHits: number;
+  cacheMisses: number;
 }
 
 interface AIEvent {
-  timestamp: Date
-  operation: string
-  model: string
-  provider: string
-  success: boolean
-  latencyMs: number
+  timestamp: Date;
+  operation: string;
+  model: string;
+  provider: string;
+  success: boolean;
+  latencyMs: number;
   tokens?: {
-    prompt: number
-    completion: number
-    total: number
-  }
-  error?: string
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  error?: string;
 }
 
 class AIMonitor {
-  private events: AIEvent[] = []
+  private events: AIEvent[] = [];
   private metrics: AIMetrics = {
     totalRequests: 0,
     successfulRequests: 0,
@@ -45,13 +45,13 @@ class AIMonitor {
     averageLatency: 0,
     cacheHits: 0,
     cacheMisses: 0,
-  }
+  };
 
   // Approximate token costs (USD per 1M tokens)
   private readonly TOKEN_COSTS = {
     groq: {
       input: 0.05, // Example pricing
-      output: 0.10,
+      output: 0.1,
     },
     xai: {
       input: 5.0,
@@ -59,15 +59,15 @@ class AIMonitor {
     },
     openai: {
       "gpt-4o": {
-        input: 2.50,
+        input: 2.5,
         output: 10.0,
       },
       "gpt-4o-mini": {
         input: 0.15,
-        output: 0.60,
+        output: 0.6,
       },
     },
-  }
+  };
 
   /**
    * Track an AI operation
@@ -76,40 +76,41 @@ class AIMonitor {
     const fullEvent: AIEvent = {
       ...event,
       timestamp: new Date(),
-    }
+    };
 
-    this.events.push(fullEvent)
+    this.events.push(fullEvent);
 
     // Update metrics
-    this.metrics.totalRequests++
+    this.metrics.totalRequests++;
 
     if (event.success) {
-      this.metrics.successfulRequests++
+      this.metrics.successfulRequests++;
     } else {
-      this.metrics.failedRequests++
+      this.metrics.failedRequests++;
     }
 
     if (event.tokens) {
-      this.metrics.promptTokens += event.tokens.prompt
-      this.metrics.completionTokens += event.tokens.completion
-      this.metrics.totalTokens += event.tokens.total
+      this.metrics.promptTokens += event.tokens.prompt;
+      this.metrics.completionTokens += event.tokens.completion;
+      this.metrics.totalTokens += event.tokens.total;
 
       // Calculate cost
       this.metrics.totalCost += this.calculateCost(
         event.provider,
         event.model,
         event.tokens
-      )
+      );
     }
 
     // Update average latency
     const totalLatency =
-      this.metrics.averageLatency * (this.metrics.totalRequests - 1) + event.latencyMs
-    this.metrics.averageLatency = totalLatency / this.metrics.totalRequests
+      this.metrics.averageLatency * (this.metrics.totalRequests - 1) +
+      event.latencyMs;
+    this.metrics.averageLatency = totalLatency / this.metrics.totalRequests;
 
     // Keep only last 1000 events in memory
     if (this.events.length > 1000) {
-      this.events.shift()
+      this.events.shift();
     }
 
     // Log in development
@@ -118,7 +119,7 @@ class AIMonitor {
         success: event.success,
         latency: `${event.latencyMs}ms`,
         tokens: event.tokens?.total,
-      })
+      });
     }
   }
 
@@ -127,9 +128,9 @@ class AIMonitor {
    */
   trackCache(hit: boolean): void {
     if (hit) {
-      this.metrics.cacheHits++
+      this.metrics.cacheHits++;
     } else {
-      this.metrics.cacheMisses++
+      this.metrics.cacheMisses++;
     }
   }
 
@@ -146,78 +147,78 @@ class AIMonitor {
       return (
         (tokens.prompt / 1_000_000) * this.TOKEN_COSTS.groq.input +
         (tokens.completion / 1_000_000) * this.TOKEN_COSTS.groq.output
-      )
+      );
     }
 
     if (provider === "xai") {
       return (
         (tokens.prompt / 1_000_000) * this.TOKEN_COSTS.xai.input +
         (tokens.completion / 1_000_000) * this.TOKEN_COSTS.xai.output
-      )
+      );
     }
 
     if (provider === "openai") {
       const costs = model.includes("mini")
         ? this.TOKEN_COSTS.openai["gpt-4o-mini"]
-        : this.TOKEN_COSTS.openai["gpt-4o"]
+        : this.TOKEN_COSTS.openai["gpt-4o"];
 
       return (
         (tokens.prompt / 1_000_000) * costs.input +
         (tokens.completion / 1_000_000) * costs.output
-      )
+      );
     }
 
-    return 0
+    return 0;
   }
 
   /**
    * Get current metrics
    */
   getMetrics(): AIMetrics {
-    return { ...this.metrics }
+    return { ...this.metrics };
   }
 
   /**
    * Get recent events
    */
   getRecentEvents(count = 10): AIEvent[] {
-    return this.events.slice(-count)
+    return this.events.slice(-count);
   }
 
   /**
    * Get events by operation type
    */
   getEventsByOperation(operation: string): AIEvent[] {
-    return this.events.filter((e) => e.operation === operation)
+    return this.events.filter((e) => e.operation === operation);
   }
 
   /**
    * Get success rate
    */
   getSuccessRate(): number {
-    if (this.metrics.totalRequests === 0) return 1.0
-    return this.metrics.successfulRequests / this.metrics.totalRequests
+    if (this.metrics.totalRequests === 0) return 1.0;
+    return this.metrics.successfulRequests / this.metrics.totalRequests;
   }
 
   /**
    * Get cache hit rate
    */
   getCacheHitRate(): number {
-    const total = this.metrics.cacheHits + this.metrics.cacheMisses
-    if (total === 0) return 0
-    return this.metrics.cacheHits / total
+    const total = this.metrics.cacheHits + this.metrics.cacheMisses;
+    if (total === 0) return 0;
+    return this.metrics.cacheHits / total;
   }
 
   /**
    * Get cost summary
    */
   getCostSummary(): {
-    total: number
-    perRequest: number
-    perToken: number
-    savings: number
+    total: number;
+    perRequest: number;
+    perToken: number;
+    savings: number;
   } {
-    const savings = this.metrics.cacheHits * 0.001 // Estimate $0.001 per cached request
+    const savings = this.metrics.cacheHits * 0.001; // Estimate $0.001 per cached request
 
     return {
       total: this.metrics.totalCost,
@@ -230,15 +231,15 @@ class AIMonitor {
           ? this.metrics.totalCost / this.metrics.totalTokens
           : 0,
       savings,
-    }
+    };
   }
 
   /**
    * Generate performance report
    */
   generateReport(): string {
-    const metrics = this.getMetrics()
-    const costs = this.getCostSummary()
+    const metrics = this.getMetrics();
+    const costs = this.getCostSummary();
 
     return `
 AI Performance Report
@@ -262,14 +263,14 @@ Costs:
   Total: $${costs.total.toFixed(4)}
   Per Request: $${costs.perRequest.toFixed(4)}
   Cache Savings: $${costs.savings.toFixed(4)}
-    `.trim()
+    `.trim();
   }
 
   /**
    * Reset all metrics
    */
   reset(): void {
-    this.events = []
+    this.events = [];
     this.metrics = {
       totalRequests: 0,
       successfulRequests: 0,
@@ -281,18 +282,18 @@ Costs:
       averageLatency: 0,
       cacheHits: 0,
       cacheMisses: 0,
-    }
+    };
   }
 }
 
 // Singleton instance
-let monitorInstance: AIMonitor | null = null
+let monitorInstance: AIMonitor | null = null;
 
 export function getMonitor(): AIMonitor {
   if (!monitorInstance) {
-    monitorInstance = new AIMonitor()
+    monitorInstance = new AIMonitor();
   }
-  return monitorInstance
+  return monitorInstance;
 }
 
 /**
@@ -307,7 +308,7 @@ export function trackAIOperation(
   tokens?: { prompt: number; completion: number; total: number },
   error?: string
 ): void {
-  const monitor = getMonitor()
+  const monitor = getMonitor();
   monitor.trackOperation({
     operation,
     provider,
@@ -316,19 +317,19 @@ export function trackAIOperation(
     latencyMs,
     tokens,
     error,
-  })
+  });
 }
 
 /**
  * Get AI metrics (convenience function)
  */
 export function getAIMetrics(): AIMetrics {
-  return getMonitor().getMetrics()
+  return getMonitor().getMetrics();
 }
 
 /**
  * Get AI report (convenience function)
  */
 export function getAIReport(): string {
-  return getMonitor().generateReport()
+  return getMonitor().generateReport();
 }

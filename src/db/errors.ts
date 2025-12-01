@@ -14,9 +14,9 @@ export class DatabaseError extends Error {
     public code: string,
     public details?: unknown
   ) {
-    super(message)
-    this.name = "DatabaseError"
-    Object.setPrototypeOf(this, DatabaseError.prototype)
+    super(message);
+    this.name = "DatabaseError";
+    Object.setPrototypeOf(this, DatabaseError.prototype);
   }
 
   toJSON() {
@@ -25,7 +25,7 @@ export class DatabaseError extends Error {
       message: this.message,
       code: this.code,
       details: this.details,
-    }
+    };
   }
 }
 
@@ -38,9 +38,9 @@ export class NotFoundError extends DatabaseError {
       `${resource} not found${identifier ? `: ${identifier}` : ""}`,
       "NOT_FOUND",
       { resource, identifier }
-    )
-    this.name = "NotFoundError"
-    Object.setPrototypeOf(this, NotFoundError.prototype)
+    );
+    this.name = "NotFoundError";
+    Object.setPrototypeOf(this, NotFoundError.prototype);
   }
 }
 
@@ -49,9 +49,9 @@ export class NotFoundError extends DatabaseError {
  */
 export class ValidationError extends DatabaseError {
   constructor(message: string, field?: string) {
-    super(message, "VALIDATION_ERROR", { field })
-    this.name = "ValidationError"
-    Object.setPrototypeOf(this, ValidationError.prototype)
+    super(message, "VALIDATION_ERROR", { field });
+    this.name = "ValidationError";
+    Object.setPrototypeOf(this, ValidationError.prototype);
   }
 }
 
@@ -64,9 +64,9 @@ export class UniqueConstraintError extends DatabaseError {
       `${field} already exists${value ? `: ${value}` : ""}`,
       "UNIQUE_VIOLATION",
       { field, value }
-    )
-    this.name = "UniqueConstraintError"
-    Object.setPrototypeOf(this, UniqueConstraintError.prototype)
+    );
+    this.name = "UniqueConstraintError";
+    Object.setPrototypeOf(this, UniqueConstraintError.prototype);
   }
 }
 
@@ -79,9 +79,9 @@ export class ForeignKeyError extends DatabaseError {
       `Referenced ${field} does not exist in ${table}`,
       "FOREIGN_KEY_VIOLATION",
       { table, field }
-    )
-    this.name = "ForeignKeyError"
-    Object.setPrototypeOf(this, ForeignKeyError.prototype)
+    );
+    this.name = "ForeignKeyError";
+    Object.setPrototypeOf(this, ForeignKeyError.prototype);
   }
 }
 
@@ -90,13 +90,9 @@ export class ForeignKeyError extends DatabaseError {
  */
 export class ConnectionError extends DatabaseError {
   constructor(details?: unknown) {
-    super(
-      "Failed to connect to database",
-      "CONNECTION_ERROR",
-      details
-    )
-    this.name = "ConnectionError"
-    Object.setPrototypeOf(this, ConnectionError.prototype)
+    super("Failed to connect to database", "CONNECTION_ERROR", details);
+    this.name = "ConnectionError";
+    Object.setPrototypeOf(this, ConnectionError.prototype);
   }
 }
 
@@ -105,9 +101,9 @@ export class ConnectionError extends DatabaseError {
  */
 export class TransactionError extends DatabaseError {
   constructor(message: string, details?: unknown) {
-    super(message, "TRANSACTION_ERROR", details)
-    this.name = "TransactionError"
-    Object.setPrototypeOf(this, TransactionError.prototype)
+    super(message, "TRANSACTION_ERROR", details);
+    this.name = "TransactionError";
+    Object.setPrototypeOf(this, TransactionError.prototype);
   }
 }
 
@@ -116,22 +112,22 @@ export class TransactionError extends DatabaseError {
  */
 export function parsePostgresError(error: unknown): DatabaseError {
   if (error instanceof DatabaseError) {
-    return error
+    return error;
   }
 
   if (typeof error === "object" && error !== null) {
     const pgError = error as {
-      code?: string
-      constraint?: string
-      detail?: string
-      table?: string
-      column?: string
-    }
+      code?: string;
+      constraint?: string;
+      detail?: string;
+      table?: string;
+      column?: string;
+    };
 
     // Unique constraint violation
     if (pgError.code === "23505") {
-      const field = pgError.constraint?.replace(/_.*/, "") || "field"
-      return new UniqueConstraintError(field)
+      const field = pgError.constraint?.replace(/_.*/, "") || "field";
+      return new UniqueConstraintError(field);
     }
 
     // Foreign key violation
@@ -139,12 +135,12 @@ export function parsePostgresError(error: unknown): DatabaseError {
       return new ForeignKeyError(
         pgError.table || "table",
         pgError.column || "field"
-      )
+      );
     }
 
     // Connection errors
     if (pgError.code?.startsWith("08")) {
-      return new ConnectionError(pgError)
+      return new ConnectionError(pgError);
     }
 
     // Transaction errors
@@ -152,7 +148,7 @@ export function parsePostgresError(error: unknown): DatabaseError {
       return new TransactionError(
         pgError.detail || "Transaction failed",
         pgError
-      )
+      );
     }
   }
 
@@ -161,7 +157,7 @@ export function parsePostgresError(error: unknown): DatabaseError {
     error instanceof Error ? error.message : "Unknown database error",
     "UNKNOWN_ERROR",
     error
-  )
+  );
 }
 
 /**
@@ -170,20 +166,20 @@ export function parsePostgresError(error: unknown): DatabaseError {
  */
 export type DbResult<T, E = DatabaseError> =
   | { success: true; data: T }
-  | { success: false; error: E }
+  | { success: false; error: E };
 
 /**
  * Create success result
  */
 export function success<T>(data: T): DbResult<T> {
-  return { success: true, data }
+  return { success: true, data };
 }
 
 /**
  * Create error result
  */
 export function failure<E extends DatabaseError>(error: E): DbResult<never, E> {
-  return { success: false, error }
+  return { success: false, error };
 }
 
 /**
@@ -193,11 +189,11 @@ export async function wrapDbOperation<T>(
   operation: () => Promise<T>
 ): Promise<DbResult<T>> {
   try {
-    const result = await operation()
-    return success(result)
+    const result = await operation();
+    return success(result);
   } catch (error) {
-    const dbError = parsePostgresError(error)
-    console.error("[DB Operation Error]", dbError)
-    return failure(dbError)
+    const dbError = parsePostgresError(error);
+    console.error("[DB Operation Error]", dbError);
+    return failure(dbError);
   }
 }

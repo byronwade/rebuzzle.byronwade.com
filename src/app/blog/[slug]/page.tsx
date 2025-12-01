@@ -1,108 +1,235 @@
 import type { Metadata } from "next";
-import Layout from "@/components/Layout";
-import { fetchBlogPost } from "../../actions/blogActions";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import BlogPostContent from "@/components/BlogPostContent";
+import Layout from "@/components/Layout";
+import { generateBlogPostMetadata } from "@/lib/seo/metadata";
+import {
+  generateArticleSchema,
+  generateBreadcrumbSchema,
+  generateHowToSchema,
+} from "@/lib/seo/structured-data";
+import { fetchBlogPost, fetchBlogPosts } from "../../actions/blogActions";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-	try {
-		const { slug } = await params;
-		const post = await fetchBlogPost(slug);
-		if (!post) {
-			return {
-				title: "Not Found - Rebuzzle Blog",
-				description: "The requested blog post could not be found.",
-			};
-		}
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  try {
+    const { slug } = await params;
+    const post = await fetchBlogPost(slug);
+    if (!post) {
+      return {
+        title: "Not Found - Rebuzzle Blog",
+        description: "The requested blog post could not be found.",
+      };
+    }
 
-		const metadata = {
-			title: `${post.title} - Rebuzzle Blog`,
-			description: post.excerpt || post.explanation,
-			openGraph: {
-				title: `${post.title} - Rebuzzle Blog`,
-				description: post.excerpt || post.explanation,
-				url: `https://rebuzzle.com/blog/${post.slug}`,
-				siteName: "Rebuzzle",
-				images: [
-					{
-						url: "/og-image.jpg",
-						width: 1200,
-						height: 630,
-					},
-				],
-				locale: "en_US",
-				type: "article",
-			},
-			twitter: {
-				card: "summary_large_image",
-				title: `${post.title} - Rebuzzle Blog`,
-				description: post.excerpt || post.explanation,
-				images: ["/twitter-image.jpg"],
-			},
-			alternates: {
-				canonical: `https://rebuzzle.com/blog/${post.slug}`,
-			},
-		} satisfies Metadata;
-
-		return metadata;
-	} catch (error) {
-		console.error("Error generating metadata:", error);
-		return {
-			title: "Error - Rebuzzle Blog",
-			description: "An error occurred while loading the blog post.",
-		};
-	}
+    return generateBlogPostMetadata({
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      content: post.content,
+      publishedAt: new Date(post.date),
+      answer: post.answer,
+      puzzleType: post.puzzleType,
+    });
+  } catch (error) {
+    return {
+      title: "Error - Rebuzzle Blog",
+      description: "An error occurred while loading the blog post.",
+    };
+  }
 }
 
-export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
-	const { slug } = await params;
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
 
-	try {
-		const post = await fetchBlogPost(slug);
+  try {
+    const post = await fetchBlogPost(slug);
 
-		if (!post) {
-			notFound();
-		}
+    if (!post) {
+      notFound();
+    }
 
-		return (
-			<Layout>
-				<BlogPostContent post={post} />
-			</Layout>
-		);
-	} catch (error) {
-		console.error("Error in BlogPostPage:", error);
-		return (
-			<Layout>
-				<div className="min-h-screen bg-slate-50 px-4 py-8">
-					<div className="max-w-4xl mx-auto">
-						{/* Error state */}
-						<div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-12 text-center">
-							<div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
-								<svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-								</svg>
-							</div>
-							<h1 className="text-3xl font-bold text-red-600 mb-4">Error Loading Blog Post</h1>
-							<p className="text-gray-600 mb-6">Sorry, we encountered an error loading this blog post.</p>
-							<div className="flex flex-col sm:flex-row gap-4 justify-center">
-								<a href="/blog" className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors duration-200">
-									Back to Blog
-								</a>
-								<a href="/" className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-xl font-semibold transition-colors duration-200">
-									Play Today's Puzzle
-								</a>
-							</div>
+    // Generate Article schema for JSON-LD
+    const articleSchema = generateArticleSchema({
+      title: post.title,
+      slug: post.slug,
+      content: post.content,
+      excerpt: post.excerpt,
+      publishedAt: new Date(post.date),
+      updatedAt: new Date(post.date), // Use date as updatedAt if not available
+      authorId: "rebuzzle-team",
+      puzzleId: post.answer, // Using answer as identifier
+      answer: post.answer,
+      puzzleType: post.puzzleType,
+    });
 
-							{process.env.NODE_ENV === "development" && (
-								<div className="mt-8 text-left bg-red-50 p-4 rounded-xl border border-red-200">
-									<p className="text-sm font-medium text-red-700 mb-2">Error Details:</p>
-									<pre className="text-xs text-red-600 overflow-auto">{JSON.stringify(error, null, 2)}</pre>
-								</div>
-							)}
-						</div>
-					</div>
-				</div>
-			</Layout>
-		);
-	}
+    // Generate Breadcrumb schema
+    const breadcrumbSchema = generateBreadcrumbSchema([
+      { name: "Home", url: "/" },
+      { name: "Blog", url: "/blog" },
+      { name: post.title, url: `/blog/${post.slug}` },
+    ]);
+
+    // Generate HowTo schema if post is instructional
+    const puzzleTypeName = post.puzzleType
+      ? post.puzzleType
+          .replace(/-/g, " ")
+          .replace(/\b\w/g, (l) => l.toUpperCase())
+      : "Rebus";
+
+    const howToSchema = generateHowToSchema({
+      name: `How to Solve ${puzzleTypeName} Puzzles`,
+      description: `Learn how to solve ${puzzleTypeName.toLowerCase()} puzzles like this one: ${post.answer}`,
+      steps: [
+        {
+          name: "Understand the Puzzle Type",
+          text: `This is a ${puzzleTypeName.toLowerCase()} puzzle. ${post.puzzleType === "rebus" ? "Look for visual elements, symbols, and words that represent sounds or meanings." : post.puzzleType === "logic-grid" ? "Use logical deduction to fill in the grid based on given clues." : "Analyze the clues carefully to find the pattern or solution."}`,
+        },
+        {
+          name: "Analyze the Clues",
+          text: "Examine all elements of the puzzle carefully. Look for patterns, relationships, or wordplay that might lead to the solution.",
+        },
+        {
+          name: "Use Hints if Needed",
+          text: "If you're stuck, use the progressive hint system. Start with the first hint and work your way through them systematically.",
+        },
+        {
+          name: "Make Your Guess",
+          text: "Based on your analysis, make your best guess. You'll get immediate feedback on whether you're correct.",
+        },
+        {
+          name: "Learn from the Solution",
+          text: `The answer is: ${post.answer}. ${post.explanation || "Review the explanation to understand the puzzle's logic and improve your solving skills."}`,
+        },
+      ],
+    });
+
+    // Get related posts (same puzzle type, exclude current)
+    const allPosts = await fetchBlogPosts();
+    const relatedPosts = allPosts
+      .filter((p) => p.puzzleType === post.puzzleType && p.slug !== post.slug)
+      .slice(0, 3);
+
+    return (
+      <Layout>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(articleSchema),
+          }}
+          type="application/ld+json"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(breadcrumbSchema),
+          }}
+          type="application/ld+json"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(howToSchema),
+          }}
+          type="application/ld+json"
+        />
+        <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+          <BlogPostContent post={post} />
+
+          {/* Related Posts & Category Link */}
+          <div className="mt-12 space-y-6 border-t pt-8">
+            {/* Puzzle Type Category Link */}
+            {post.puzzleType && (
+              <div className="mb-6">
+                <Link
+                  className="inline-flex items-center gap-2 rounded-lg border bg-card px-4 py-2 text-sm transition-colors hover:bg-accent"
+                  href={`/puzzles/${post.puzzleType}`}
+                >
+                  <span>🧩</span>
+                  <span>More {puzzleTypeName} Puzzles</span>
+                </Link>
+              </div>
+            )}
+
+            {/* Related Posts */}
+            {relatedPosts.length > 0 && (
+              <div>
+                <h2 className="mb-4 font-semibold text-base">
+                  Related {puzzleTypeName} Puzzles
+                </h2>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {relatedPosts.map((relatedPost) => (
+                    <Link
+                      className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+                      href={`/blog/${relatedPost.slug}`}
+                      key={relatedPost.slug}
+                    >
+                      <h3 className="mb-2 font-medium text-sm">
+                        {relatedPost.title}
+                      </h3>
+                      {relatedPost.excerpt && (
+                        <p className="line-clamp-2 text-muted-foreground text-xs">
+                          {relatedPost.excerpt}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </Layout>
+    );
+  } catch (error) {
+    return (
+      <Layout>
+        <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+          {/* Error state */}
+          <div className="rounded-3xl border border-gray-100 bg-white p-12 text-center shadow-lg">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
+              <svg
+                className="h-10 w-10 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+            </div>
+            <h1 className="mb-4 font-bold text-3xl text-red-600">
+              Error Loading Blog Post
+            </h1>
+            <p className="mb-6 text-gray-600">
+              Sorry, we encountered an error loading this blog post.
+            </p>
+            <div className="flex flex-col justify-center gap-4 sm:flex-row">
+              <a
+                className="rounded-xl bg-purple-600 px-6 py-3 font-semibold text-white transition-colors duration-200 hover:bg-purple-700"
+                href="/blog"
+              >
+                Back to Blog
+              </a>
+              <a
+                className="rounded-xl border border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 transition-colors duration-200 hover:bg-gray-50"
+                href="/"
+              >
+                Play Today's Puzzle
+              </a>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 }

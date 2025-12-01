@@ -1,84 +1,111 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { trackUserSession } from "@/lib/analytics";
+import { setupSessionTracking } from "@/lib/session-tracker";
 
 interface AuthState {
-	isAuthenticated: boolean;
-	userId: string | null;
-	user: {
-		id: string;
-		username: string;
-		email: string;
-	} | null;
-	isLoading: boolean;
-	error?: string;
+  isAuthenticated: boolean;
+  userId: string | null;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+  } | null;
+  isLoading: boolean;
+  error?: string;
 }
 
 const AuthContext = createContext<AuthState>({
-	isAuthenticated: false,
-	userId: null,
-	user: null,
-	isLoading: false,
+  isAuthenticated: false,
+  userId: null,
+  user: null,
+  isLoading: false,
 });
 
 export function useAuth() {
-	return useContext(AuthContext);
+  return useContext(AuthContext);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	const [authState, setAuthState] = useState<AuthState>({
-		isAuthenticated: false,
-		userId: null,
-		user: null,
-		isLoading: true,
-	});
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    userId: null,
+    user: null,
+    isLoading: true,
+  });
 
-	useEffect(() => {
-		// Check for authentication state
-		const checkAuth = async () => {
-			try {
-				// Check for database session
-				const response = await fetch('/api/auth/session');
-				if (response.ok) {
-					const session = await response.json();
-					if (session.user) {
-						const userData = {
-							id: session.user.id,
-							username: session.user.username || session.user.email,
-							email: session.user.email,
-						};
+  useEffect(() => {
+    // Initialize session tracking
+    const session = setupSessionTracking();
+    trackUserSession();
 
-						setAuthState({
-							isAuthenticated: true,
-							userId: userData.id,
-							user: userData,
-							isLoading: false,
-						});
-						return;
-					}
-				}
+    // Check for authentication state from server
+    const checkAuth = async () => {
+      try {
+        // Fetch authentication state from server (reads JWT from cookie)
+        const response = await fetch("/api/auth/session", {
+          method: "GET",
+          credentials: "include", // Include cookies in request
+        });
 
-				// No authentication found
-				setAuthState({
-					isAuthenticated: false,
-					userId: null,
-					user: null,
-					isLoading: false,
-				});
-			} catch (error) {
-				console.error('Auth check failed:', error);
-				setAuthState({
-					isAuthenticated: false,
-					userId: null,
-					user: null,
-					isLoading: false,
-					error: 'Authentication check failed',
-				});
-			}
-		};
+        if (response.ok) {
+          const data = await response.json();
 
-		checkAuth();
-	}, []);
+          if (data.authenticated && data.user) {
+            // Update session with user ID
+            setupSessionTracking(data.user.id);
 
-	return <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>;
+            setAuthState({
+              isAuthenticated: true,
+              userId: data.user.id,
+              user: {
+                id: data.user.id,
+                username:
+                  data.user.username ||
+                  data.user.email?.split("@")[0] ||
+                  "User",
+                email: data.user.email || "",
+              },
+              isLoading: false,
+            });
+            return;
+          }
+        } else {
+          // Log error for debugging
+          const errorData = await response.json().catch(() => ({}));
+          console.warn(
+            "[Auth] Session check failed:",
+            response.status,
+            errorData
+          );
+        }
+
+        // No authentication found - check if guest mode
+        const isGuest = localStorage.getItem("guestMode") === "true";
+
+        setAuthState({
+          isAuthenticated: false,
+          userId: null,
+          user: null,
+          isLoading: false,
+        });
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        setAuthState({
+          isAuthenticated: false,
+          userId: null,
+          user: null,
+          isLoading: false,
+          error: "Authentication check failed",
+        });
+      }
+    };
+
+    void checkAuth();
+  }, []);
+
+  return (
+    <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>
+  );
 }
