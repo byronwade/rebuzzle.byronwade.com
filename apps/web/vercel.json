@@ -1,0 +1,34 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/generate-puzzles",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/generate-blog",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/send-notifications",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/streak-reminder",
+      "schedule": "0 20 * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/cron/generate-puzzles/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/generate-blog/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/send-notifications/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/streak-reminder/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

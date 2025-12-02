@@ -26,6 +26,12 @@ coverage
 out/
 build
 dist
+dist-electron/
+release/
+*.dmg
+*.zip
+*.blockmap
+*.exe
 
 
 # Debug
