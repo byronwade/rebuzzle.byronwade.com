@@ -16,6 +16,8 @@ interface LayoutProps {
   puzzleType?: string;
   /** Custom className for main content area */
   className?: string;
+  /** Whether this is the game page (no-scroll, fixed height layout) */
+  isGamePage?: boolean;
 }
 
 /**
@@ -32,21 +34,26 @@ export default function Layout({
   nextPlayTime = null,
   puzzleType,
   className,
+  isGamePage = false,
 }: LayoutProps) {
   return (
     <GameProvider>
-      <LayoutContent nextPlayTime={nextPlayTime} puzzleType={puzzleType} className={className}>
+      <LayoutContent nextPlayTime={nextPlayTime} puzzleType={puzzleType} className={className} isGamePage={isGamePage}>
         {children}
       </LayoutContent>
     </GameProvider>
   );
 }
 
-function LayoutContent({ children, nextPlayTime, puzzleType, className }: LayoutProps) {
+function LayoutContent({ children, nextPlayTime, puzzleType, className, isGamePage = false }: LayoutProps) {
   const { gameState } = useGameContext();
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
+    <div className={cn(
+      "relative flex flex-col bg-background",
+      // Game page: fixed height, no scroll
+      isGamePage ? "h-dvh overflow-hidden" : "min-h-screen"
+    )}>
       {/* Skip to main content link for accessibility */}
       <a
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -61,9 +68,14 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className }: Layout
       {/* Header - shrink-0 to keep fixed size */}
       <Header nextPlayTime={nextPlayTime ?? null} puzzleType={puzzleType} gameState={gameState} />
 
-      {/* Main content - flex-1 to fill remaining space, overflow-hidden for no-scroll */}
+      {/* Main content - flex-1 to fill remaining space */}
       <main
-        className={cn("fade-in-up relative z-10 flex-1 overflow-hidden animate-in duration-700", className)}
+        className={cn(
+          "fade-in-up relative z-10 flex-1 animate-in duration-700",
+          // Game page: no overflow/scroll
+          isGamePage && "overflow-hidden",
+          className
+        )}
         id="main-content"
       >
         {children}

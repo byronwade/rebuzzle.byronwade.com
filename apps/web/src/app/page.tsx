@@ -326,7 +326,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
     });
 
     return (
-      <Layout>
+      <Layout isGamePage>
         <script
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(gameSchema),
