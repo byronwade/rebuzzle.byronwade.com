@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { signToken } from "@/lib/jwt";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 const GUEST_TOKEN_COOKIE = "rebuzzle_guest_token";
 const AUTH_COOKIE = "rebuzzle_auth";
@@ -12,7 +14,21 @@ const AUTH_COOKIE = "rebuzzle_auth";
  * - If guest token exists in cookie, return existing guest user
  * - If no guest token, create new guest account and set cookie
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Rate limit guest creation to prevent abuse
+  const rateLimitResult = await rateLimiters.api(request);
+  if (rateLimitResult && !rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimitResult.retryAfter || 60),
+        },
+      }
+    );
+  }
+
   try {
     const cookieStore = await cookies();
     const existingGuestToken = cookieStore.get(GUEST_TOKEN_COOKIE)?.value;

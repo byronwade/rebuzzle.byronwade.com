@@ -5,7 +5,8 @@
 
 import { appStore, type Puzzle, type PuzzleAttempt, type User, type UserStats } from './store';
 
-const API_BASE = 'https://rebuzzle.byronwade.com';
+// Always use production API to ensure consistent puzzles across all platforms
+const API_BASE = import.meta.env.VITE_API_URL || 'https://rebuzzle.byronwade.com';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -398,11 +399,28 @@ class ApiClient {
   }
 
   // ============================================
+  // PROFILE METHODS
+  // ============================================
+
+  /**
+   * Update user profile
+   */
+  async updateProfile(data: { username?: string }): Promise<boolean> {
+    try {
+      const response = await this.patch<{ success: boolean }>('/api/user/profile', data);
+      return response.success;
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
   // ACHIEVEMENTS METHODS
   // ============================================
 
   /**
-   * Get user achievements
+   * Get all achievements (works for both authenticated and unauthenticated users)
    */
   async getAchievements(): Promise<{
     achievements: Array<{
@@ -439,7 +457,7 @@ class ApiClient {
           unlockedAt?: string;
         }>;
         progress: { unlocked: number; total: number; percentage: number };
-      }>('/api/user/achievements');
+      }>('/api/achievements');
 
       if (response.success) {
         return {

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { User, UserStats } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { getAppUrl } from "@/lib/env";
 import { sendStreakAtRiskEmail } from "@/lib/notifications/email-service";
 
 /**
@@ -47,14 +48,14 @@ export async function POST(request: NextRequest) {
 
     console.log("[Streak Reminder] Starting streak at risk notification check...");
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+    const baseUrl = getAppUrl();
     const puzzleUrl = baseUrl;
 
-    // Get today's date bounds
+    // Get today's date bounds (use UTC for consistency across server locations)
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
 
     // Get users with active streaks who haven't played today
     const userStatsCollection = getCollection<UserStats>("userStats");

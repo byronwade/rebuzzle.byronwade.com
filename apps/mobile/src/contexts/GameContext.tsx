@@ -66,6 +66,10 @@ interface GameContextInterface {
   puzzleStats: PuzzleStats | null;
   /** Whether playing offline */
   isOffline: boolean;
+  /** Server time offset in milliseconds (serverTime - clientTime) */
+  serverTimeOffset: number;
+  /** Next puzzle availability time (ISO string) */
+  nextPuzzleTime: string | null;
   /** Load today's puzzle */
   loadTodayPuzzle: () => Promise<void>;
   /** Submit a guess */
@@ -122,6 +126,10 @@ export function GameProvider({ children }: GameProviderProps) {
   const [puzzleStats, setPuzzleStats] = useState<PuzzleStats | null>(null);
   const [isOffline, setIsOffline] = useState(false);
 
+  // Server time sync state (for accurate countdown across platforms)
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
+  const [nextPuzzleTime, setNextPuzzleTime] = useState<string | null>(null);
+
   // Computed values
   const availableHints = puzzle?.hints || [];
   const canShowHint = currentHintIndex < availableHints.length - 1 && !isComplete;
@@ -175,7 +183,14 @@ export function GameProvider({ children }: GameProviderProps) {
 
     try {
       // Try to get from server first
-      const puzzleData = await api.getTodayPuzzle();
+      const { puzzle: puzzleData, serverTime, nextPuzzleTime: nextTime } = await api.getTodayPuzzle();
+
+      // Capture server time offset for accurate timing across platforms
+      if (serverTime && nextTime) {
+        const offset = new Date(serverTime).getTime() - Date.now();
+        setServerTimeOffset(offset);
+        setNextPuzzleTime(nextTime);
+      }
 
       if (puzzleData) {
         setPuzzle(puzzleData);
@@ -448,6 +463,8 @@ export function GameProvider({ children }: GameProviderProps) {
     aiFeedback,
     puzzleStats,
     isOffline,
+    serverTimeOffset,
+    nextPuzzleTime,
     loadTodayPuzzle,
     submitGuess,
     resetGame,

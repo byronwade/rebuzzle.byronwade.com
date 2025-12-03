@@ -39,7 +39,7 @@ type JsonMetadata = {
 // Constants
 const CACHE_TIMES = {
   SHORT: 60, // 1 minute
-  MEDIUM: 3600, // 1 hour
+  MEDIUM: 300, // 5 minutes (reduced from 1 hour to ensure faster puzzle updates)
   LONG: 86_400, // 24 hours
 } as const;
 

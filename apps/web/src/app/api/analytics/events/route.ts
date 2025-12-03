@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
 import { analyticsEventOps, userSessionOps } from "@/db/analytics-ops";
 import type { NewAnalyticsEvent, NewUserSession } from "@/db/models";
+import { sanitizeId } from "@/lib/api-validation";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 /**
  * POST /api/analytics/events
  * Track an analytics event
+ * Note: This endpoint is intentionally public for client-side tracking,
+ * but rate limited to prevent abuse.
  */
 export async function POST(request: Request) {
+  // Rate limit analytics events to prevent abuse
+  const rateLimitResult = await rateLimiters.api(request);
+  if (rateLimitResult && !rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 }
+    );
+  }
+
   try {
     // Check if request has a body before parsing
     const contentType = request.headers.get("content-type");
@@ -39,28 +52,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "eventType and sessionId are required" }, { status: 400 });
     }
 
+    // Sanitize IDs to prevent injection and limit length
+    const sanitizedSessionId = sanitizeId(sessionId);
+    const sanitizedUserId = userId ? sanitizeId(userId) : undefined;
+
+    if (!sanitizedSessionId) {
+      return NextResponse.json({ error: "Invalid sessionId format" }, { status: 400 });
+    }
+
     // Create event
     const eventId = `event_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const event: NewAnalyticsEvent = {
       id: eventId,
-      userId,
-      sessionId,
-      eventType,
+      userId: sanitizedUserId,
+      sessionId: sanitizedSessionId,
+      eventType: eventType.slice(0, 100), // Limit event type length
       timestamp: new Date(),
       metadata,
     };
 
     await analyticsEventOps.create(event);
 
-    // Handle session-related events
+    // Handle session-related events (use sanitized IDs)
     if (eventType === "USER_VISIT" || eventType === "SESSION_START") {
       // Check if session exists
-      const existingSession = await userSessionOps.findById(sessionId);
+      const existingSession = await userSessionOps.findById(sanitizedSessionId);
       if (!existingSession) {
         // Create new session
         const session: NewUserSession = {
-          id: sessionId,
-          userId,
+          id: sanitizedSessionId,
+          userId: sanitizedUserId,
           startTime: new Date(),
           isReturningUser: metadata.isReturningUser,
           events: [eventId],
@@ -72,28 +93,34 @@ export async function POST(request: Request) {
       }
     } else if (eventType === "SESSION_END") {
       // End session
-      const session = await userSessionOps.findById(sessionId);
+      const session = await userSessionOps.findById(sanitizedSessionId);
       if (session && !session.endTime) {
         const endTime = new Date();
         const duration = metadata.duration || endTime.getTime() - session.startTime.getTime();
-        await userSessionOps.endSession(sessionId, endTime, duration);
+        await userSessionOps.endSession(sanitizedSessionId, endTime, duration);
       }
     } else if (eventType === "PUZZLE_START") {
       // Add puzzle to session
-      const session = await userSessionOps.findById(sessionId);
+      const session = await userSessionOps.findById(sanitizedSessionId);
       if (session) {
-        await userSessionOps.addEvent(sessionId, eventId);
+        await userSessionOps.addEvent(sanitizedSessionId, eventId);
         if (metadata.puzzleId) {
-          await userSessionOps.addPuzzle(sessionId, metadata.puzzleId);
+          const sanitizedPuzzleId = sanitizeId(metadata.puzzleId);
+          if (sanitizedPuzzleId) {
+            await userSessionOps.addPuzzle(sanitizedSessionId, sanitizedPuzzleId);
+          }
         }
       }
     } else {
       // Add event to session if it exists
-      const session = await userSessionOps.findById(sessionId);
+      const session = await userSessionOps.findById(sanitizedSessionId);
       if (session) {
-        await userSessionOps.addEvent(sessionId, eventId);
+        await userSessionOps.addEvent(sanitizedSessionId, eventId);
         if (metadata.puzzleId) {
-          await userSessionOps.addPuzzle(sessionId, metadata.puzzleId);
+          const sanitizedPuzzleId = sanitizeId(metadata.puzzleId);
+          if (sanitizedPuzzleId) {
+            await userSessionOps.addPuzzle(sanitizedSessionId, sanitizedPuzzleId);
+          }
         }
       }
     }

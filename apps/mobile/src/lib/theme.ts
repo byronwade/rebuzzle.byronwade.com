@@ -65,23 +65,23 @@ export interface Theme {
   fontSize: ThemeFontSizes;
 }
 
-// Light theme colors (from web's globals.css)
+// Light theme colors (matching web's globals.css exactly)
 const lightColors: ThemeColors = {
-  background: '#FFFFFF',
-  foreground: '#171717',
+  background: '#FFFFFF',       // hsl(0 0% 100%)
+  foreground: '#171717',       // hsl(0 0% 9%)
   card: '#FFFFFF',
   cardForeground: '#171717',
-  primary: '#171717',
+  primary: '#171717',          // Dark primary (like web)
   primaryForeground: '#FAFAFA',
-  secondary: '#F5F5F5',
+  secondary: '#F5F5F5',        // hsl(0 0% 96%)
   secondaryForeground: '#171717',
   muted: '#F5F5F5',
-  mutedForeground: '#737373',
-  accent: '#FACC15', // Brand yellow
-  accentForeground: '#1A1A2E',
-  border: '#E5E5E5',
+  mutedForeground: '#737373',  // hsl(0 0% 45%)
+  accent: '#F5F5F5',           // Match web grayscale (NOT yellow)
+  accentForeground: '#171717',
+  border: '#E5E5E5',           // hsl(0 0% 90%)
   input: '#E5E5E5',
-  destructive: '#EF4444',
+  destructive: '#DC2626',      // hsl(0 84.2% 60.2%)
   destructiveForeground: '#FAFAFA',
   success: '#22C55E',
   successForeground: '#FFFFFF',
@@ -89,23 +89,23 @@ const lightColors: ThemeColors = {
   warningForeground: '#FFFFFF',
 };
 
-// Dark theme colors (from web's globals.css)
+// Dark theme colors (matching web's globals.css exactly)
 const darkColors: ThemeColors = {
-  background: '#121212',
-  foreground: '#EDEDED',
+  background: '#121212',       // hsl(0 0% 7%)
+  foreground: '#EDEDED',       // hsl(0 0% 93%)
   card: '#1A1A1A',
   cardForeground: '#EDEDED',
-  primary: '#FAFAFA',
+  primary: '#FAFAFA',          // Light primary (like web)
   primaryForeground: '#171717',
-  secondary: '#262626',
+  secondary: '#262626',        // hsl(0 0% 15%)
   secondaryForeground: '#FAFAFA',
   muted: '#262626',
   mutedForeground: '#999999',
-  accent: '#FACC15', // Brand yellow
-  accentForeground: '#1A1A2E',
-  border: '#333333',
+  accent: '#2E2E2E',           // hsl(0 0% 18%) - grayscale like web
+  accentForeground: '#FAFAFA',
+  border: '#333333',           // hsl(0 0% 20%)
   input: '#333333',
-  destructive: '#7F1D1D',
+  destructive: '#7F1D1D',      // hsl(0 63% 31%)
   destructiveForeground: '#FAFAFA',
   success: '#22C55E',
   successForeground: '#FFFFFF',

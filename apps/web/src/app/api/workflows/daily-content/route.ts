@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { generateBlogPost } from "@/ai/services/blog-generator";
 import { generateNextPuzzle } from "@/app/actions/puzzleGenerationActions";
 import type { NewBlogPost, Puzzle } from "@/db/models";
@@ -31,6 +32,11 @@ export async function POST(request: Request) {
         new Error((puzzleResult as any).error || "Unknown error")
       );
     }
+
+    // Step 1.5: Revalidate puzzle cache to ensure all users see the new puzzle
+    logger.info("Revalidating puzzle cache");
+    revalidateTag("daily-puzzle", "max");
+    logger.info("Puzzle cache revalidated successfully");
 
     // Step 2: Generate blog post for yesterday's puzzle
     logger.info("Generating blog post for previous puzzle");

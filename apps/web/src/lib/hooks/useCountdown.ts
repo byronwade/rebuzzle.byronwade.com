@@ -26,11 +26,12 @@ interface CountdownResult {
  *
  * @param targetDate - Target date to count down to
  * @param onComplete - Optional callback when countdown reaches zero
+ * @param serverTimeOffset - Optional offset to adjust for server time (milliseconds)
  * @returns Countdown state and controls
  *
  * @example
  * ```tsx
- * const { hours, minutes, seconds, isFinished, formatted } = useCountdown(nextPuzzleTime);
+ * const { hours, minutes, seconds, isFinished, formatted } = useCountdown(nextPuzzleTime, undefined, serverTimeOffset);
  *
  * return isFinished ? (
  *   <span>New puzzle available!</span>
@@ -39,14 +40,20 @@ interface CountdownResult {
  * );
  * ```
  */
-export function useCountdown(targetDate: Date | null, onComplete?: () => void): CountdownResult {
+export function useCountdown(
+  targetDate: Date | null,
+  onComplete?: () => void,
+  serverTimeOffset = 0
+): CountdownResult {
   const [target, setTarget] = useState<Date | null>(targetDate);
 
   const calculateTimeLeft = useCallback(() => {
     if (!target) return 0;
-    const difference = target.getTime() - Date.now();
+    // Use server-adjusted time for accurate countdown across platforms
+    const serverNow = Date.now() + serverTimeOffset;
+    const difference = target.getTime() - serverNow;
     return Math.max(0, Math.floor(difference / 1000));
-  }, [target]);
+  }, [target, serverTimeOffset]);
 
   const [totalSeconds, setTotalSeconds] = useState<number>(calculateTimeLeft);
 

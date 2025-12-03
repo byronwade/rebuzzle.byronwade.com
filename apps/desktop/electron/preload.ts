@@ -35,6 +35,8 @@ const validSendChannels = [
   "notification:schedule",
   "notification:cancel",
   "notification:request-permission",
+  "notification:level-up",
+  "notification:achievement",
   "badge:set",
   "badge:clear",
   "badge:increment",
@@ -102,6 +104,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
     requestPermission: (): Promise<boolean> =>
       ipcRenderer.invoke("notification:request-permission"),
+
+    levelUp: (level: number, points: number) =>
+      ipcRenderer.invoke("notification:level-up", { level, points }),
+
+    achievement: (name: string, description: string) =>
+      ipcRenderer.invoke("notification:achievement", { name, description }),
   },
 
   // Legacy notification method (for backward compatibility)

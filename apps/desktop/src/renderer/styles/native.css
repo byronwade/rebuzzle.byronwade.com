@@ -471,7 +471,7 @@ body {
   flex: 1;
   padding: 24px 16px;
   width: 100%;
-  max-width: 500px;
+  max-width: 700px;
   margin: 0 auto;
   gap: 16px;
 }
@@ -495,7 +495,7 @@ body {
 }
 
 .input-area-content {
-  max-width: 500px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
@@ -551,7 +551,7 @@ body {
   text-align: center;
   min-height: 100px;
   width: 100%;
-  max-width: 400px;
+  max-width: 600px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -797,6 +797,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .input-wrapper {

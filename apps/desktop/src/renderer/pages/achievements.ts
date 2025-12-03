@@ -1,9 +1,11 @@
 /**
  * Achievements Page
  * Displays unlockable achievements with progress tracking
+ * Includes tabs for Achievements and Levels, rarity filters, and category grouping
  */
 
 import { api } from '../lib/api';
+import { gameSettings } from '@rebuzzle/config';
 
 interface Achievement {
   id: string;
@@ -26,6 +28,10 @@ interface AchievementProgress {
   percentage: number;
 }
 
+// ============================================
+// CONFIGURATION
+// ============================================
+
 const rarityConfig: Record<string, { label: string; color: string }> = {
   common: { label: 'Common', color: 'slate' },
   uncommon: { label: 'Uncommon', color: 'green' },
@@ -42,6 +48,36 @@ const rarityColors: Record<string, string> = {
   amber: 'hsl(45 93% 47%)',
 };
 
+// Level tiers (same as web)
+const levelTiers = [
+  { name: 'Rookie', levels: [1, 10], icon: 'star', color: 'hsl(215 20% 65%)' },
+  { name: 'Bronze', levels: [11, 20], icon: 'medal', color: 'hsl(25 75% 47%)' },
+  { name: 'Silver', levels: [21, 35], icon: 'shield', color: 'hsl(215 20% 65%)' },
+  { name: 'Gold', levels: [36, 50], icon: 'trophy', color: 'hsl(45 93% 47%)' },
+  { name: 'Platinum', levels: [51, 65], icon: 'gem', color: 'hsl(185 70% 50%)' },
+  { name: 'Diamond', levels: [66, 80], icon: 'sparkles', color: 'hsl(217 91% 60%)' },
+  { name: 'Master', levels: [81, 95], icon: 'crown', color: 'hsl(262 83% 58%)' },
+  { name: 'Grandmaster', levels: [96, 100], icon: 'flame', color: 'hsl(0 72% 51%)' },
+];
+
+// Category display names
+const categoryConfig: Record<string, { name: string; icon: string }> = {
+  beginner: { name: 'Getting Started', icon: 'star' },
+  solving: { name: 'Puzzle Solver', icon: 'puzzle' },
+  speed: { name: 'Speed Runner', icon: 'zap' },
+  streaks: { name: 'Streak Master', icon: 'flame' },
+  mastery: { name: 'Mastery', icon: 'crown' },
+  explorer: { name: 'Explorer', icon: 'target' },
+  social: { name: 'Social', icon: 'heart' },
+  collector: { name: 'Collector', icon: 'gem' },
+  elite: { name: 'Elite', icon: 'trophy' },
+  legendary: { name: 'Legendary', icon: 'sparkles' },
+};
+
+// ============================================
+// ICONS
+// ============================================
+
 function getLockIcon(): string {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="achievement-icon-svg">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -57,7 +93,6 @@ function getCheckIcon(): string {
 }
 
 function getAchievementIcon(icon: string): string {
-  // Map icon names to SVG icons
   const icons: Record<string, string> = {
     trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="achievement-icon-svg">
       <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7"></path>
@@ -161,10 +196,13 @@ function getAchievementIcon(icon: string): string {
   return icons[icon] || icons['award'];
 }
 
+// ============================================
+// RENDER HELPERS
+// ============================================
+
 function renderAchievementItem(achievement: Achievement): string {
   const rarity = rarityConfig[achievement.rarity] || rarityConfig.common;
   const color = rarityColors[rarity.color];
-  // Rarity background colors with proper opacity
   const rarityBgColors: Record<string, string> = {
     slate: 'hsl(215 20% 65% / 0.1)',
     green: 'hsl(142 71% 45% / 0.15)',
@@ -194,24 +232,28 @@ function renderAchievementItem(achievement: Achievement): string {
   `;
 }
 
-function renderAchievements(
-  container: HTMLElement,
-  data: { achievements: Achievement[]; progress: AchievementProgress }
-): void {
-  // Group by category
-  const grouped = data.achievements.reduce((acc, a) => {
-    const category = a.category || 'Other';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(a);
-    return acc;
-  }, {} as Record<string, Achievement[]>);
+function renderLevelTier(tier: typeof levelTiers[0], pointsPerLevel: number): string {
+  const startPoints = (tier.levels[0] - 1) * pointsPerLevel;
+  const endPoints = (tier.levels[1] - 1) * pointsPerLevel;
 
-  // Sort achievements within each category by order
-  Object.values(grouped).forEach(achievements => {
-    achievements.sort((a, b) => a.order - b.order);
-  });
+  return `
+    <div class="level-tier-row">
+      <div class="level-tier-icon" style="color: ${tier.color}">
+        ${getAchievementIcon(tier.icon)}
+      </div>
+      <div class="level-tier-info">
+        <span class="level-tier-name" style="color: ${tier.color}">${tier.name}</span>
+        <span class="level-tier-range">Levels ${tier.levels[0]} - ${tier.levels[1]}</span>
+      </div>
+      <div class="level-tier-points">
+        ${startPoints.toLocaleString()} - ${endPoints.toLocaleString()} pts
+      </div>
+    </div>
+  `;
+}
 
-  container.innerHTML = `
+function getStyles(): string {
+  return `
     <style>
       .achievements-page {
         padding: var(--spacing-lg);
@@ -234,8 +276,53 @@ function renderAchievements(
         font-size: var(--font-size-sm);
       }
 
+      /* Tabs */
+      .tabs-container {
+        margin-bottom: var(--spacing-lg);
+      }
+
+      .tabs-list {
+        display: flex;
+        gap: var(--spacing-xs);
+        background: hsl(var(--muted));
+        padding: 4px;
+        border-radius: var(--radius-lg);
+      }
+
+      .tab-button {
+        flex: 1;
+        padding: var(--spacing-sm) var(--spacing-md);
+        border: none;
+        background: transparent;
+        color: hsl(var(--muted-foreground));
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+
+      .tab-button:hover {
+        color: hsl(var(--foreground));
+      }
+
+      .tab-button.active {
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      /* Progress bar */
       .progress-container {
-        margin-bottom: var(--spacing-xl);
+        margin-bottom: var(--spacing-lg);
       }
 
       .progress-bar {
@@ -252,6 +339,41 @@ function renderAchievements(
         transition: width 0.5s ease;
       }
 
+      /* Rarity Filters */
+      .filter-container {
+        margin-bottom: var(--spacing-lg);
+      }
+
+      .filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+      }
+
+      .filter-button {
+        padding: 6px 12px;
+        border: 1px solid hsl(var(--border));
+        background: hsl(var(--background));
+        color: hsl(var(--muted-foreground));
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium);
+        border-radius: var(--radius-full);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+
+      .filter-button:hover {
+        background: hsl(var(--accent));
+        color: hsl(var(--foreground));
+      }
+
+      .filter-button.active {
+        background: hsl(var(--primary));
+        color: hsl(var(--primary-foreground));
+        border-color: hsl(var(--primary));
+      }
+
+      /* Achievement categories */
       .achievement-category {
         margin-bottom: var(--spacing-xl);
       }
@@ -265,10 +387,15 @@ function renderAchievements(
         border-bottom: 1px solid hsl(var(--border));
       }
 
+      .category-icon {
+        width: 20px;
+        height: 20px;
+        color: hsl(var(--muted-foreground));
+      }
+
       .category-title {
         font-size: var(--font-size-sm);
         font-weight: var(--font-weight-medium);
-        text-transform: capitalize;
       }
 
       .category-count {
@@ -384,45 +511,359 @@ function renderAchievements(
         border-radius: var(--radius-sm);
       }
 
+      /* Levels Tab */
+      .levels-info {
+        background: hsl(var(--card));
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+        text-align: center;
+      }
+
+      .levels-info-title {
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-bold);
+        margin-bottom: var(--spacing-xs);
+      }
+
+      .levels-info-subtitle {
+        color: hsl(var(--muted-foreground));
+        font-size: var(--font-size-sm);
+      }
+
+      .level-tiers-container {
+        background: hsl(var(--card));
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        margin-bottom: var(--spacing-lg);
+      }
+
+      .level-tier-row {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+        border-bottom: 1px solid hsl(var(--border));
+      }
+
+      .level-tier-row:last-child {
+        border-bottom: none;
+      }
+
+      .level-tier-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .level-tier-icon .achievement-icon-svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .level-tier-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .level-tier-name {
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+      }
+
+      .level-tier-range {
+        font-size: var(--font-size-xs);
+        color: hsl(var(--muted-foreground));
+      }
+
+      .level-tier-points {
+        font-size: var(--font-size-xs);
+        color: hsl(var(--muted-foreground));
+        text-align: right;
+      }
+
+      /* Scoring Info Card */
+      .scoring-card {
+        background: hsl(var(--card));
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+      }
+
+      .scoring-card-title {
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+        margin-bottom: var(--spacing-md);
+      }
+
+      .scoring-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-sm);
+      }
+
+      .scoring-item {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm);
+        background: hsl(var(--muted) / 0.5);
+        border-radius: var(--radius-md);
+      }
+
+      .scoring-item-icon {
+        width: 20px;
+        height: 20px;
+        color: hsl(var(--primary));
+      }
+
+      .scoring-item-text {
+        flex: 1;
+        font-size: var(--font-size-xs);
+        color: hsl(var(--muted-foreground));
+      }
+
+      .scoring-item-value {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        color: hsl(var(--foreground));
+      }
+
       .empty-state {
         text-align: center;
         padding: var(--spacing-2xl);
         color: hsl(var(--muted-foreground));
       }
     </style>
+  `;
+}
+
+// ============================================
+// MAIN RENDER FUNCTION
+// ============================================
+
+function renderAchievements(
+  container: HTMLElement,
+  data: { achievements: Achievement[]; progress: AchievementProgress }
+): void {
+  const pointsPerLevel = gameSettings.pointsPerLevel;
+
+  // Group by category with friendly names
+  const grouped = data.achievements.reduce((acc, a) => {
+    const category = a.category || 'other';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(a);
+    return acc;
+  }, {} as Record<string, Achievement[]>);
+
+  // Sort achievements within each category by order
+  Object.values(grouped).forEach(achievements => {
+    achievements.sort((a, b) => a.order - b.order);
+  });
+
+  // Define category order for display
+  const categoryOrder = ['beginner', 'solving', 'speed', 'streaks', 'mastery', 'explorer', 'social', 'collector', 'elite', 'legendary'];
+  const sortedCategories = Object.keys(grouped).sort((a, b) => {
+    const indexA = categoryOrder.indexOf(a);
+    const indexB = categoryOrder.indexOf(b);
+    if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
+  container.innerHTML = `
+    ${getStyles()}
 
     <div class="achievements-page">
       <div class="page-header">
-        <h1 class="page-title">Achievements</h1>
-        <p class="page-subtitle">${data.progress.unlocked}/${data.progress.total} unlocked</p>
+        <h1 class="page-title">Achievements & Levels</h1>
+        <p class="page-subtitle">${data.progress.unlocked}/${data.progress.total} achievements unlocked</p>
       </div>
 
-      <div class="progress-container">
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${data.progress.percentage}%"></div>
+      <!-- Tabs -->
+      <div class="tabs-container">
+        <div class="tabs-list">
+          <button class="tab-button active" data-tab="achievements">Achievements</button>
+          <button class="tab-button" data-tab="levels">Levels</button>
         </div>
       </div>
 
-      ${Object.keys(grouped).length > 0 ? Object.entries(grouped).map(([category, achievements]) => {
-        const unlockedCount = achievements.filter(a => a.unlocked).length;
-        return `
-        <div class="achievement-category">
-          <div class="category-header">
-            <h3 class="category-title">${category}</h3>
-            <span class="category-count">${unlockedCount}/${achievements.length}</span>
-          </div>
-          <div class="achievements-list">
-            ${achievements.map(a => renderAchievementItem(a)).join('')}
+      <!-- Achievements Tab -->
+      <div class="tab-content active" id="tab-achievements">
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${data.progress.percentage}%"></div>
           </div>
         </div>
-      `}).join('') : `
-        <div class="empty-state">
-          <p>No achievements available yet.</p>
-          <p>Complete puzzles to unlock achievements!</p>
+
+        <!-- Rarity Filters -->
+        <div class="filter-container">
+          <div class="filter-buttons">
+            <button class="filter-button active" data-filter="all">All</button>
+            <button class="filter-button" data-filter="common">Common</button>
+            <button class="filter-button" data-filter="uncommon">Uncommon</button>
+            <button class="filter-button" data-filter="rare">Rare</button>
+            <button class="filter-button" data-filter="epic">Epic</button>
+            <button class="filter-button" data-filter="legendary">Legendary</button>
+          </div>
         </div>
-      `}
+
+        <!-- Achievement Categories -->
+        <div id="achievements-list">
+          ${sortedCategories.length > 0 ? sortedCategories.map(category => {
+            const achievements = grouped[category];
+            const categoryInfo = categoryConfig[category] || { name: category, icon: 'award' };
+            const unlockedCount = achievements.filter(a => a.unlocked).length;
+            return `
+              <div class="achievement-category" data-category="${category}">
+                <div class="category-header">
+                  <span class="category-icon">${getAchievementIcon(categoryInfo.icon)}</span>
+                  <h3 class="category-title">${categoryInfo.name}</h3>
+                  <span class="category-count">${unlockedCount}/${achievements.length}</span>
+                </div>
+                <div class="achievements-list">
+                  ${achievements.map(a => renderAchievementItem(a)).join('')}
+                </div>
+              </div>
+            `;
+          }).join('') : `
+            <div class="empty-state">
+              <p>No achievements available yet.</p>
+              <p>Complete puzzles to unlock achievements!</p>
+            </div>
+          `}
+        </div>
+      </div>
+
+      <!-- Levels Tab -->
+      <div class="tab-content" id="tab-levels">
+        <div class="levels-info">
+          <p class="levels-info-title">${pointsPerLevel.toLocaleString()} Points Per Level</p>
+          <p class="levels-info-subtitle">Earn points by solving puzzles to level up</p>
+        </div>
+
+        <div class="level-tiers-container">
+          ${levelTiers.map(tier => renderLevelTier(tier, pointsPerLevel)).join('')}
+        </div>
+
+        <!-- Scoring Info Card -->
+        <div class="scoring-card">
+          <h3 class="scoring-card-title">How Points Work</h3>
+          <div class="scoring-grid">
+            <div class="scoring-item">
+              <span class="scoring-item-icon">${getAchievementIcon('target')}</span>
+              <span class="scoring-item-text">Base</span>
+              <span class="scoring-item-value">100</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-item-icon">${getAchievementIcon('zap')}</span>
+              <span class="scoring-item-text">Speed</span>
+              <span class="scoring-item-value">+50 max</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-item-icon">${getAchievementIcon('flame')}</span>
+              <span class="scoring-item-text">Streak</span>
+              <span class="scoring-item-value">+5/day</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-item-icon">${getAchievementIcon('star')}</span>
+              <span class="scoring-item-text">Hard</span>
+              <span class="scoring-item-value">+10/lvl</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `;
+
+  // Set up tab switching
+  setupTabs(container);
+
+  // Set up rarity filtering
+  setupFilters(container, data.achievements, grouped);
+}
+
+function setupTabs(container: HTMLElement): void {
+  const tabButtons = container.querySelectorAll('.tab-button');
+  const tabContents = container.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tabId = button.getAttribute('data-tab');
+
+      // Update button states
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+
+      // Update content visibility
+      tabContents.forEach(content => {
+        if (content.id === `tab-${tabId}`) {
+          content.classList.add('active');
+        } else {
+          content.classList.remove('active');
+        }
+      });
+    });
+  });
+}
+
+function setupFilters(
+  container: HTMLElement,
+  achievements: Achievement[],
+  grouped: Record<string, Achievement[]>
+): void {
+  const filterButtons = container.querySelectorAll('.filter-button');
+
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const filter = button.getAttribute('data-filter') || 'all';
+
+      // Update button states
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+
+      // Filter achievements
+      const achievementItems = container.querySelectorAll('.achievement-item');
+      const categoryDivs = container.querySelectorAll('.achievement-category');
+
+      if (filter === 'all') {
+        achievementItems.forEach(item => {
+          (item as HTMLElement).style.display = 'flex';
+        });
+        categoryDivs.forEach(cat => {
+          (cat as HTMLElement).style.display = 'block';
+        });
+      } else {
+        // Hide/show individual items
+        const filteredAchievements = achievements.filter(a => a.rarity === filter);
+        const filteredIds = new Set(filteredAchievements.map(a => a.id));
+
+        achievementItems.forEach(item => {
+          const name = item.querySelector('.achievement-name')?.textContent;
+          const achievement = achievements.find(a => a.name === name);
+          if (achievement && filteredIds.has(achievement.id)) {
+            (item as HTMLElement).style.display = 'flex';
+          } else {
+            (item as HTMLElement).style.display = 'none';
+          }
+        });
+
+        // Hide categories with no visible items
+        categoryDivs.forEach(cat => {
+          const category = cat.getAttribute('data-category');
+          if (category) {
+            const categoryAchievements = grouped[category] || [];
+            const hasVisible = categoryAchievements.some(a => a.rarity === filter);
+            (cat as HTMLElement).style.display = hasVisible ? 'block' : 'none';
+          }
+        });
+      }
+    });
+  });
 }
 
 function renderError(container: HTMLElement, message: string): void {
@@ -434,6 +875,10 @@ function renderError(container: HTMLElement, message: string): void {
     </div>
   `;
 }
+
+// ============================================
+// PAGE EXPORT
+// ============================================
 
 export async function createAchievementsPage(): Promise<HTMLElement> {
   const page = document.createElement('div');

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { NewInAppNotification, User } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { getAppUrl } from "@/lib/env";
 import { sendDailyPuzzleEmail } from "@/lib/notifications/email-service";
 
 export async function POST(request: NextRequest) {
@@ -52,8 +53,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const puzzleUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com"}/?puzzle=${todaysPuzzle.id}`;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+    const baseUrl = getAppUrl();
+    const puzzleUrl = `${baseUrl}/?puzzle=${todaysPuzzle.id}`;
 
     // Get puzzle metadata for email
     const puzzleType = todaysPuzzle.puzzleType || "puzzle";

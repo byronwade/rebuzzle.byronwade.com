@@ -12,14 +12,16 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../src/contexts/AuthContext';
-import { useTheme } from '../src/contexts/ThemeContext';
-import { LeaderboardItem } from '../src/components/LeaderboardItem';
-import { api } from '../src/lib/api';
-import { hexToRgba } from '../src/lib/theme';
-import type { LeaderboardEntry } from '../src/types';
+import * as Haptics from 'expo-haptics';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { LeaderboardItem } from '../../src/components/LeaderboardItem';
+import { api } from '../../src/lib/api';
+import { hexToRgba } from '../../src/lib/theme';
+import type { LeaderboardEntry } from '../../src/types';
 
 type Timeframe = 'today' | 'week' | 'month' | 'allTime';
 type SortBy = 'points' | 'streak';
@@ -33,7 +35,7 @@ const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
 
 export default function LeaderboardScreen() {
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const colors = theme.colors;
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -73,7 +75,18 @@ export default function LeaderboardScreen() {
   }, [fetchLeaderboard]);
 
   const handleRefresh = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     fetchLeaderboard(true);
+  };
+
+  const handleTimeframeChange = (value: Timeframe) => {
+    Haptics.selectionAsync();
+    setTimeframe(value);
+  };
+
+  const handleSortChange = (value: SortBy) => {
+    Haptics.selectionAsync();
+    setSortBy(value);
   };
 
   const renderItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => (
@@ -103,24 +116,65 @@ export default function LeaderboardScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       {/* Filters */}
-      <View style={[styles.filters, { borderBottomColor: colors.border }]}>
-        {/* Timeframe Pills */}
-        <View style={styles.timeframePills}>
+      <View
+        style={[
+          styles.filters,
+          {
+            borderBottomColor: colors.border,
+            backgroundColor: colors.card,
+          },
+        ]}
+      >
+        {/* Segmented Control for Timeframe */}
+        <View
+          style={[
+            styles.segmentedControl,
+            {
+              backgroundColor: colors.muted,
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.2 : 0.05,
+                  shadowRadius: 2,
+                },
+                android: {
+                  elevation: 1,
+                },
+              }),
+            },
+          ]}
+        >
           {TIMEFRAME_OPTIONS.map((option) => (
             <Pressable
               key={option.value}
               style={[
-                styles.pill,
-                { backgroundColor: colors.secondary },
-                timeframe === option.value && { backgroundColor: colors.accent },
+                styles.segmentButton,
+                timeframe === option.value && [
+                  styles.segmentButtonActive,
+                  {
+                    backgroundColor: colors.card,
+                    ...Platform.select({
+                      ios: {
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 4,
+                      },
+                      android: {
+                        elevation: 2,
+                      },
+                    }),
+                  },
+                ],
               ]}
-              onPress={() => setTimeframe(option.value)}
+              onPress={() => handleTimeframeChange(option.value)}
             >
               <Text
                 style={[
-                  styles.pillText,
+                  styles.segmentText,
                   { color: colors.mutedForeground },
-                  timeframe === option.value && { color: colors.accentForeground },
+                  timeframe === option.value && { color: colors.foreground, fontWeight: '600' },
                 ]}
               >
                 {option.label}
@@ -132,19 +186,22 @@ export default function LeaderboardScreen() {
         {/* Sort Toggle */}
         <View style={styles.sortToggle}>
           <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort by:</Text>
-          <View style={[styles.sortButtons, { backgroundColor: colors.secondary }]}>
+          <View style={[styles.sortButtons, { backgroundColor: colors.muted }]}>
             <Pressable
               style={[
                 styles.sortButton,
-                sortBy === 'points' && { backgroundColor: hexToRgba(colors.accent, 0.2) },
+                sortBy === 'points' && [
+                  styles.sortButtonActive,
+                  { backgroundColor: hexToRgba(colors.accent, 0.2) },
+                ],
               ]}
-              onPress={() => setSortBy('points')}
+              onPress={() => handleSortChange('points')}
             >
               <Text
                 style={[
                   styles.sortButtonText,
                   { color: colors.mutedForeground },
-                  sortBy === 'points' && { color: colors.accent },
+                  sortBy === 'points' && { color: colors.accent, fontWeight: '600' },
                 ]}
               >
                 Points
@@ -153,15 +210,18 @@ export default function LeaderboardScreen() {
             <Pressable
               style={[
                 styles.sortButton,
-                sortBy === 'streak' && { backgroundColor: hexToRgba(colors.accent, 0.2) },
+                sortBy === 'streak' && [
+                  styles.sortButtonActive,
+                  { backgroundColor: hexToRgba(colors.accent, 0.2) },
+                ],
               ]}
-              onPress={() => setSortBy('streak')}
+              onPress={() => handleSortChange('streak')}
             >
               <Text
                 style={[
                   styles.sortButtonText,
                   { color: colors.mutedForeground },
-                  sortBy === 'streak' && { color: colors.accent },
+                  sortBy === 'streak' && { color: colors.accent, fontWeight: '600' },
                 ]}
               >
                 Streak
@@ -246,21 +306,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  timeframePills: {
+  segmentedControl: {
     flexDirection: 'row',
-    gap: 8,
+    borderRadius: 10,
+    padding: 2,
     marginBottom: 12,
   },
-  pill: {
+  segmentButton: {
     flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 20,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  pillText: {
+  segmentButtonActive: {
+    borderRadius: 8,
+  },
+  segmentText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   sortToggle: {
     flexDirection: 'row',
@@ -278,7 +342,9 @@ const styles = StyleSheet.create({
   sortButton: {
     paddingVertical: 6,
     paddingHorizontal: 16,
+    borderRadius: 6,
   },
+  sortButtonActive: {},
   sortButtonText: {
     fontSize: 13,
     fontWeight: '500',

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { BlogPost, User } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { getAppUrl } from "@/lib/env";
 import { sendBlogPostEmail } from "@/lib/notifications/email-service";
 
 export async function POST(request: Request) {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Blog post not found" }, { status: 404 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+    const baseUrl = getAppUrl();
     const postUrl = `${baseUrl}/blog/${post.slug}`;
 
     // Get recipients
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
       // Send only to email subscribers
       const emailSubscriptionsCollection = getCollection("emailSubscriptions");
       const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30); // Use UTC for consistent behavior
 
       const subscriptions = await emailSubscriptionsCollection
         .find({

@@ -31,15 +31,19 @@ export async function GET(request: Request) {
     const model = sanitizeString(searchParams.get("model"), 200);
     const operationId = sanitizeId(searchParams.get("operationId"));
 
-    // If operationId is provided, get all decisions for that operation
+    // If operationId is provided, get decisions for that operation with limit
     if (operationId) {
-      const decisions = await aiDecisionOps.findByOperationId(operationId);
+      const allDecisions = await aiDecisionOps.findByOperationId(operationId);
+      // Apply pagination limit to prevent memory issues (max 1000 per operation)
+      const maxOperationLimit = Math.min(limit, 1000);
+      const decisions = allDecisions.slice(0, maxOperationLimit);
       return NextResponse.json({
         decisions,
-        total: decisions.length,
+        total: allDecisions.length,
         page: 1,
-        limit: decisions.length,
-        totalPages: 1,
+        limit: maxOperationLimit,
+        totalPages: Math.ceil(allDecisions.length / maxOperationLimit),
+        truncated: allDecisions.length > maxOperationLimit,
       });
     }
 

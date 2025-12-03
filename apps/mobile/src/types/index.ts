@@ -108,6 +108,8 @@ export interface PuzzleResponse {
   puzzle: Puzzle;
   cached?: boolean;
   generatedAt?: string;
+  serverTime?: string;
+  nextPuzzleTime?: string;
 }
 
 export interface StatsResponse {

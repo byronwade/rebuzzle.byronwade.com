@@ -3,6 +3,7 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import type { BlogPostPuzzleOrigin, BlogPostSEOMetadata, BlogPostSections } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { getAppUrl } from "@/lib/env";
 
 // Blog post response type (matches the structure returned from database)
 export interface BlogPostResponse {
@@ -377,7 +378,7 @@ export async function createBlogPost(postData: {
       if (postData.publishedAt <= new Date()) {
         // Trigger email send in background (don't await)
         fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/blog/send-notification`,
+          `${getAppUrl()}/api/blog/send-notification`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

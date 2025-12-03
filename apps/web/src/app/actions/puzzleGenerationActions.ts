@@ -1,6 +1,7 @@
 "use server";
 
 import { cache } from "react";
+import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
 import { db } from "@/db";
 import type { Puzzle } from "@/db/models";
@@ -342,6 +343,10 @@ const getCachedDailyPuzzle = cache(async (dateString: string, puzzleType?: strin
         puzzleId: puzzle.id,
         futureRequestsFree: true,
       });
+
+      // Revalidate the daily-puzzle cache so all users see the new puzzle immediately
+      revalidateTag("daily-puzzle", "max");
+      logger.info("Puzzle cache revalidated");
 
       // Generate embedding asynchronously (non-blocking)
       // This enables semantic search and recommendations

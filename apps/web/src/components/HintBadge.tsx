@@ -83,24 +83,26 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
             <DialogTrigger asChild>
               <Badge
                 className={cn(
-                  "min-h-[44px] cursor-pointer px-3 py-1.5 text-xs transition-all hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 motion-reduce:transition-none dark:hover:bg-neutral-800",
+                  "min-h-[44px] cursor-pointer px-3 py-1.5 text-xs transition-all hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 motion-reduce:transition-none dark:hover:bg-amber-900/30",
+                  "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 dark:from-amber-950/50 dark:to-yellow-950/50 dark:border-amber-800",
                   isRevealing && "scale-110 motion-reduce:scale-100",
+                  revealedHints === 0 && "animate-pulse",
                   "sm:min-h-0 sm:px-2 sm:py-1",
                   className
                 )}
                 variant="outline"
               >
-                <LightbulbIcon className="mr-1.5 h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {revealedHints}/{hints.length} Hints
+                <LightbulbIcon className="mr-1.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="hidden sm:inline text-amber-700 dark:text-amber-300">
+                  Need a Hint? ({hints.length - revealedHints} available)
                 </span>
-                <span className="sm:hidden">
-                  {revealedHints}/{hints.length}
+                <span className="sm:hidden text-amber-700 dark:text-amber-300">
+                  Hint? ({hints.length - revealedHints})
                 </span>
               </Badge>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>Click for hints (reduces points)</TooltipContent>
+          <TooltipContent>Stuck? Click to reveal hints (-10 pts each)</TooltipContent>
         </Tooltip>
         <DialogContent className="mx-auto max-h-[90vh] max-w-[95vw] overflow-y-auto sm:max-w-[425px]">
           <DialogHeader>

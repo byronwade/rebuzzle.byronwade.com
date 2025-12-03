@@ -14,6 +14,18 @@ import { createProfilePage } from './pages/profile';
 import { createSettingsPage } from './pages/settings';
 import { createLoginPage } from './pages/login';
 import { createAchievementsPage } from './pages/achievements';
+import { createSuccessPage } from './pages/success';
+import { createHistoryPage } from './pages/history';
+import { createHowItWorksPage } from './pages/how-it-works';
+
+// Import keyboard shortcuts dialog (auto-activates Cmd+? handler)
+import './lib/shortcuts-dialog';
+
+// Import sync indicator
+import { initSyncIndicator } from './lib/sync-indicator';
+
+// Import tooltip system
+import { initTooltips } from './lib/tooltip';
 
 // ============================================
 // INITIALIZATION
@@ -29,6 +41,9 @@ async function init(): Promise<void> {
 
   // Initialize theme
   await initTheme();
+
+  // Initialize tooltip system
+  initTooltips();
 
   // Register routes
   registerRoutes();
@@ -51,6 +66,9 @@ async function init(): Promise<void> {
   // Listen for online/offline status
   setupOnlineStatus();
 
+  // Initialize sync status indicator
+  initSyncIndicator();
+
   console.log('Rebuzzle Desktop initialized');
 }
 
@@ -61,11 +79,14 @@ async function init(): Promise<void> {
 function registerRoutes(): void {
   router.registerAll([
     { path: '/', handler: createGamePage, title: 'Play' },
+    { path: '/success', handler: createSuccessPage, title: 'Results' },
     { path: '/leaderboard', handler: createLeaderboardPage, title: 'Leaderboard' },
     { path: '/achievements', handler: createAchievementsPage, title: 'Achievements' },
     { path: '/profile', handler: createProfilePage, title: 'Profile' },
     { path: '/settings', handler: createSettingsPage, title: 'Settings' },
     { path: '/login', handler: createLoginPage, title: 'Login' },
+    { path: '/history', handler: createHistoryPage, title: 'History' },
+    { path: '/how-it-works', handler: createHowItWorksPage, title: 'How It Works' },
     { path: '*', handler: createGamePage, title: 'Play' }, // Fallback
   ]);
 
@@ -239,6 +260,14 @@ function setupKeyboardShortcuts(): void {
         case '5':
           e.preventDefault();
           router.navigate('/achievements');
+          break;
+        case '6':
+          e.preventDefault();
+          router.navigate('/history');
+          break;
+        case '7':
+          e.preventDefault();
+          router.navigate('/how-it-works');
           break;
       }
     }

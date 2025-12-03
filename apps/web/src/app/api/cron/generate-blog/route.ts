@@ -80,9 +80,9 @@ async function generateBlogForPreviousPuzzle() {
     const puzzlesCollection = getCollection<Puzzle>("puzzles");
     const blogPostsCollection = getCollection<NewBlogPost>("blogPosts");
 
-    // First try to find yesterday's puzzle
+    // First try to find yesterday's puzzle (use UTC for consistency)
     const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     yesterday.setUTCHours(0, 0, 0, 0);
 
     const today = new Date();

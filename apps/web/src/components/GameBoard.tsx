@@ -27,7 +27,7 @@ import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
 import { CelebrationOverlay, calculateScore, determineAchievements } from "./CelebrationOverlay";
 import { useGameContext } from "./GameContext";
-import { HintCard } from "./HintCard";
+import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
 import { PersonalizedGreeting } from "./PersonalizedGreeting";
 import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay";
@@ -452,34 +452,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       isNearMiss ? 1500 : 1000
     ); // Show near-miss message longer
   }, []);
-
-  // Handle revealing a hint
-  const handleShowHint = useCallback(() => {
-    const hints = gameData.hints || [];
-    if (gameState.currentHintIndex >= hints.length || gameState.gameOver) {
-      return;
-    }
-
-    // Reveal the next hint
-    dispatch({ type: "REVEAL_HINT" });
-
-    // Track hint usage
-    trackEvent(analyticsEvents.HINT_USED, {
-      puzzleId: gameData.id || "unknown",
-      hintIndex: gameState.currentHintIndex,
-    });
-
-    // Show hint in a toast for immediate feedback
-    const hint = hints[gameState.currentHintIndex];
-    if (hint) {
-      toast.info(`Hint ${gameState.currentHintIndex + 1}: ${hint}`, {
-        duration: 5000,
-      });
-    }
-
-    // Light haptic feedback
-    haptics.tap();
-  }, [gameData.hints, gameData.id, gameState.currentHintIndex, gameState.gameOver]);
 
   const handleGuess = useCallback(
     async (guessValue?: string) => {
@@ -975,13 +947,31 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               ) : (
                 /* EXPANDED VIEW - full puzzle display when keyboard is closed */
                 <div className="flex flex-col items-center justify-center min-h-full px-4 py-4 md:px-6">
-                  {/* Personalized greeting - psychology: personal recognition increases engagement */}
-                  <PersonalizedGreeting
-                    streak={userStats.streak}
-                    wins={userStats.wins}
-                    level={userStats.level}
-                    className="mb-4"
-                  />
+                  {/* Header row with greeting and hint badge */}
+                  <div className="flex items-center justify-between w-full max-w-2xl mb-4">
+                    {/* Personalized greeting - psychology: personal recognition increases engagement */}
+                    <PersonalizedGreeting
+                      streak={userStats.streak}
+                      wins={userStats.wins}
+                      level={userStats.level}
+                    />
+                    {/* Hint badge - opens dialog to reveal hints */}
+                    {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
+                      <HintBadge
+                        hints={gameData.hints}
+                        gameId={gameData.id}
+                        onHintReveal={(hintIndex) => {
+                          // Update game state when hint is revealed
+                          dispatch({ type: "REVEAL_HINT" });
+                          // Track hint usage
+                          trackEvent(analyticsEvents.HINT_USED, {
+                            puzzleId: gameData.id || "unknown",
+                            hintIndex,
+                          });
+                        }}
+                      />
+                    )}
+                  </div>
 
                   {/* Enhanced puzzle display - centered */}
                   <section aria-label="Puzzle" className="w-full max-w-2xl text-center">
@@ -1037,17 +1027,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     </div>
                   )}
 
-                  {/* Hint Card - shows available hints */}
-                  {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
-                    <HintCard
-                      hints={gameData.hints}
-                      currentIndex={gameState.currentHintIndex}
-                      onShowHint={handleShowHint}
-                      canShowMore={gameState.currentHintIndex < gameData.hints.length}
-                      isComplete={gameState.gameOver}
-                      className="w-full max-w-2xl mt-6"
-                    />
-                  )}
                 </div>
               )}
             </main>

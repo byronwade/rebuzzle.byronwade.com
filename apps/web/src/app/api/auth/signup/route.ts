@@ -7,6 +7,7 @@ import { getCollection } from "@/db/mongodb";
 import { createOrUpdateUser } from "@/lib/auth";
 import { SESSION_DURATION_DAYS } from "@/lib/cookies";
 import { signToken } from "@/lib/jwt";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { sendSignupWelcomeEmail } from "@/lib/notifications/email-service";
 import { hashPassword } from "@/lib/password";
 
@@ -14,6 +15,20 @@ const GUEST_TOKEN_COOKIE = "rebuzzle_guest_token";
 const AUTH_COOKIE = "rebuzzle_auth";
 
 export async function POST(request: Request) {
+  // Rate limit signup attempts to prevent spam
+  const rateLimitResult = await rateLimiters.auth(request);
+  if (rateLimitResult && !rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many signup attempts. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimitResult.retryAfter || 60),
+        },
+      }
+    );
+  }
+
   try {
     const { username, email, password } = await request.json();
 

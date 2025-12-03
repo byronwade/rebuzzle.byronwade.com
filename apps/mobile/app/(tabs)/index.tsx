@@ -13,18 +13,19 @@ import {
   ActivityIndicator,
   ScrollView,
   Share,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { useGame } from '../src/contexts/GameContext';
-import { useAchievements } from '../src/contexts/AchievementsContext';
-import { useOffline } from '../src/contexts/OfflineContext';
-import { useTheme } from '../src/contexts/ThemeContext';
-import { Timer } from '../src/components/Timer';
-import { HintCard } from '../src/components/HintCard';
-import { OfflineIndicator } from '../src/components/OfflineIndicator';
-import { AchievementUnlockedModal } from '../src/components/AchievementUnlockedModal';
-import { hexToRgba } from '../src/lib/theme';
+import { useGame } from '../../src/contexts/GameContext';
+import { useAchievements } from '../../src/contexts/AchievementsContext';
+import { useOffline } from '../../src/contexts/OfflineContext';
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { Timer } from '../../src/components/Timer';
+import { HintBadge } from '../../src/components/HintBadge';
+import { OfflineIndicator } from '../../src/components/OfflineIndicator';
+import { AchievementUnlockedModal } from '../../src/components/AchievementUnlockedModal';
+import { hexToRgba } from '../../src/lib/theme';
 
 export default function GameScreen() {
   const {
@@ -53,7 +54,7 @@ export default function GameScreen() {
     useAchievements();
 
   const { isOnline } = useOffline();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const colors = theme.colors;
 
   const [guess, setGuess] = useState('');
@@ -187,10 +188,40 @@ export default function GameScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Puzzle Card */}
-        <View style={[styles.puzzleCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.puzzleCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: hexToRgba(colors.border, 0.5),
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isDark ? 0.3 : 0.08,
+                  shadowRadius: 12,
+                },
+                android: {
+                  elevation: 4,
+                },
+              }),
+            },
+          ]}
+        >
           <View style={styles.puzzleHeader}>
             <Text style={[styles.puzzleLabel, { color: colors.accent }]}>Today's Puzzle</Text>
-            {!isComplete && <Timer seconds={elapsedTime} size="small" />}
+            <View style={styles.headerBadges}>
+              {!isComplete && availableHints.length > 0 && (
+                <HintBadge
+                  hints={availableHints}
+                  currentIndex={currentHintIndex}
+                  onRevealHint={showNextHint}
+                  canShowMore={canShowHint}
+                  isComplete={isComplete}
+                />
+              )}
+              {!isComplete && <Timer seconds={elapsedTime} size="small" />}
+            </View>
           </View>
           <Text style={[styles.puzzleClue, { color: colors.cardForeground }]}>{puzzle.puzzle}</Text>
           {puzzle.puzzleType && (
@@ -207,36 +238,44 @@ export default function GameScreen() {
           )}
         </View>
 
-        {/* Hints Section */}
-        {availableHints.length > 0 && (
-          <HintCard
-            hints={availableHints}
-            currentIndex={currentHintIndex}
-            onShowHint={showNextHint}
-            canShowMore={canShowHint}
-            isComplete={isComplete}
-            style={styles.hintCard}
-          />
-        )}
-
-        {/* Attempts Display */}
-        <View style={styles.attemptsSection}>
-          <Text style={[styles.attemptsTitle, { color: colors.mutedForeground }]}>
-            Attempts: {attempts}/{maxAttempts}
-          </Text>
-          {guesses.map((attemptGuess, index) => (
+        {/* Attempts Display - Visual */}
+        <View style={styles.attemptsVisual}>
+          {Array.from({ length: maxAttempts }).map((_, i) => (
             <View
-              key={index}
+              key={i}
               style={[
-                styles.attemptRow,
-                { backgroundColor: hexToRgba(colors.destructive, 0.1) },
+                styles.attemptDot,
+                {
+                  backgroundColor: i < attempts
+                    ? hexToRgba(colors.destructive, 0.8)
+                    : hexToRgba(colors.muted, 0.5),
+                },
               ]}
-            >
-              <Text style={[styles.attemptText, { color: colors.destructive }]}>{attemptGuess}</Text>
-              <Text style={[styles.attemptWrong, { color: colors.destructive }]}>✗</Text>
-            </View>
+            />
           ))}
         </View>
+
+
+        {/* Previous Attempts */}
+        {guesses.length > 0 && (
+          <View style={styles.attemptsSection}>
+            <Text style={[styles.attemptsTitle, { color: colors.mutedForeground }]}>
+              Previous Attempts
+            </Text>
+            {guesses.map((attemptGuess, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.attemptRow,
+                  { backgroundColor: hexToRgba(colors.destructive, 0.1) },
+                ]}
+              >
+                <Text style={[styles.attemptText, { color: colors.destructive }]}>{attemptGuess}</Text>
+                <Text style={[styles.attemptWrong, { color: colors.destructive }]}>✗</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* AI Feedback */}
         {feedbackMessage && !isComplete && (
@@ -278,7 +317,20 @@ export default function GameScreen() {
             <Pressable
               style={[
                 styles.submitButton,
-                { backgroundColor: colors.accent },
+                {
+                  backgroundColor: colors.accent,
+                  ...Platform.select({
+                    ios: {
+                      shadowColor: colors.accent,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                    },
+                    android: {
+                      elevation: 3,
+                    },
+                  }),
+                },
                 (!guess.trim() || submitting) && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
@@ -473,8 +525,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'capitalize',
   },
-  hintCard: {
+  attemptsVisual: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
     marginBottom: 16,
+  },
+  attemptDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  headerBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   attemptsSection: {
     marginBottom: 16,

@@ -12,6 +12,7 @@ interface CelebrationOptions {
   maxAttempts: number;
   timeTaken: number;
   onComplete?: () => void;
+  onNext?: () => void; // Called when user clicks Next button
 }
 
 function formatTime(seconds: number): string {
@@ -41,7 +42,7 @@ function animateCounter(elementId: string, target: number, duration: number): vo
 }
 
 export function showCelebration(options: CelebrationOptions): void {
-  const { score, streak, attempts, maxAttempts, timeTaken, onComplete } = options;
+  const { score, streak, attempts, maxAttempts, timeTaken, onComplete, onNext } = options;
 
   // Create overlay
   const overlay = document.createElement('div');
@@ -67,6 +68,12 @@ export function showCelebration(options: CelebrationOptions): void {
       <p class="celebration-info">
         Solved in ${attempts} of ${maxAttempts} attempts \u2022 ${formatTime(timeTaken)}
       </p>
+      <button class="celebration-next-btn" id="celebration-next-btn">
+        Continue
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </button>
     </div>
   `;
 
@@ -157,11 +164,53 @@ export function showCelebration(options: CelebrationOptions): void {
         opacity: 0.7;
       }
 
+      .celebration-next-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+        padding: 0.875rem 2rem;
+        background: hsl(142 76% 36%);
+        color: white;
+        border: none;
+        border-radius: 9999px;
+        font-size: 1.125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        opacity: 0;
+        transform: translateY(10px);
+        animation: fadeInUp 0.4s ease forwards;
+        animation-delay: 0.8s;
+      }
+
+      .celebration-next-btn:hover {
+        background: hsl(142 76% 30%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .celebration-next-btn:active {
+        transform: translateY(0);
+      }
+
+      .celebration-next-btn svg {
+        width: 20px;
+        height: 20px;
+      }
+
       @keyframes bounceIn {
         0% { transform: scale(0.3); opacity: 0; }
         50% { transform: scale(1.05); }
         70% { transform: scale(0.9); }
         100% { transform: scale(1); opacity: 1; }
+      }
+
+      @keyframes fadeInUp {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
     `;
     document.head.appendChild(styles);
@@ -180,12 +229,16 @@ export function showCelebration(options: CelebrationOptions): void {
     animateCounter('score-counter', score, 500);
   }, 300);
 
-  // Auto-dismiss after 3 seconds
-  setTimeout(() => {
-    overlay.classList.remove('show');
-    setTimeout(() => {
-      overlay.remove();
-      onComplete?.();
-    }, 300);
-  }, 3000);
+  // Handle Next button click
+  const nextBtn = overlay.querySelector('#celebration-next-btn') as HTMLButtonElement;
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        overlay.remove();
+        onNext?.();
+        onComplete?.();
+      }, 300);
+    });
+  }
 }

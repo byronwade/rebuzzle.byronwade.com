@@ -4,6 +4,27 @@
  */
 
 import { appStore } from '../lib/store';
+import { setSoundsEnabled, getSoundsEnabled } from '../lib/sounds';
+
+interface NotificationSettings {
+  enabled: boolean;
+  dailyReminder: boolean;
+  reminderTime: string;
+  achievements: boolean;
+  streakWarnings: boolean;
+  levelUp: boolean;
+  sounds: boolean;
+}
+
+const defaultNotificationSettings: NotificationSettings = {
+  enabled: true,
+  dailyReminder: true,
+  reminderTime: '08:00',
+  achievements: true,
+  streakWarnings: true,
+  levelUp: true,
+  sounds: true,
+};
 
 export async function createSettingsPage(): Promise<HTMLElement> {
   const page = document.createElement('div');
@@ -12,10 +33,17 @@ export async function createSettingsPage(): Promise<HTMLElement> {
   // Get current settings
   let autoLaunch = false;
   let theme: 'light' | 'dark' | 'system' = appStore.get('theme');
+  let notifications: NotificationSettings = { ...defaultNotificationSettings };
 
   if (window.electronAPI) {
     try {
       autoLaunch = await window.electronAPI.settings.getAutoLaunch();
+      const storedNotifications = await window.electronAPI.settings.get<NotificationSettings>('notifications');
+      if (storedNotifications) {
+        notifications = { ...defaultNotificationSettings, ...storedNotifications };
+      }
+      // Sync sounds enabled state
+      setSoundsEnabled(notifications.sounds);
     } catch {
       // Ignore
     }
@@ -68,9 +96,16 @@ export async function createSettingsPage(): Promise<HTMLElement> {
             <span class="setting-description">Get notified when a new puzzle is available</span>
           </div>
           <label class="switch">
-            <input type="checkbox" id="daily-reminder" checked>
+            <input type="checkbox" id="daily-reminder" ${notifications.dailyReminder ? 'checked' : ''}>
             <span class="switch-slider"></span>
           </label>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Reminder time</span>
+            <span class="setting-description">When to send the daily puzzle reminder</span>
+          </div>
+          <input type="time" id="reminder-time" class="time-input" value="${notifications.reminderTime}">
         </div>
         <div class="setting-item">
           <div class="setting-info">
@@ -78,7 +113,43 @@ export async function createSettingsPage(): Promise<HTMLElement> {
             <span class="setting-description">Alert before your streak resets</span>
           </div>
           <label class="switch">
-            <input type="checkbox" id="streak-warning" checked>
+            <input type="checkbox" id="streak-warning" ${notifications.streakWarnings ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Achievement notifications</span>
+            <span class="setting-description">Show notification when you unlock an achievement</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="achievement-notifications" ${notifications.achievements ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Level up notifications</span>
+            <span class="setting-description">Show notification when you level up</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="levelup-notifications" ${notifications.levelUp ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h2 class="section-title">Sound</h2>
+      <div class="settings-list">
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Sound effects</span>
+            <span class="setting-description">Play sounds for correct/wrong answers and achievements</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="sound-effects" ${notifications.sounds ? 'checked' : ''}>
             <span class="switch-slider"></span>
           </label>
         </div>
@@ -167,14 +238,60 @@ function setupSettingsListeners(container: HTMLElement): void {
     );
   });
 
+  // Reminder time input
+  const reminderTimeInput = container.querySelector('#reminder-time') as HTMLInputElement;
+  reminderTimeInput?.addEventListener('change', async () => {
+    if (window.electronAPI) {
+      await window.electronAPI.settings.set('notifications.reminderTime', reminderTimeInput.value);
+    }
+    window.showToast(`Reminder time set to ${reminderTimeInput.value}`, 'info');
+  });
+
   // Streak warning toggle
   const streakWarningToggle = container.querySelector('#streak-warning') as HTMLInputElement;
   streakWarningToggle?.addEventListener('change', async () => {
     if (window.electronAPI) {
-      await window.electronAPI.settings.set('notifications.streakWarning', streakWarningToggle.checked);
+      await window.electronAPI.settings.set('notifications.streakWarnings', streakWarningToggle.checked);
     }
     window.showToast(
       streakWarningToggle.checked ? 'Streak warnings enabled' : 'Streak warnings disabled',
+      'info'
+    );
+  });
+
+  // Achievement notifications toggle
+  const achievementNotificationsToggle = container.querySelector('#achievement-notifications') as HTMLInputElement;
+  achievementNotificationsToggle?.addEventListener('change', async () => {
+    if (window.electronAPI) {
+      await window.electronAPI.settings.set('notifications.achievements', achievementNotificationsToggle.checked);
+    }
+    window.showToast(
+      achievementNotificationsToggle.checked ? 'Achievement notifications enabled' : 'Achievement notifications disabled',
+      'info'
+    );
+  });
+
+  // Level up notifications toggle
+  const levelUpNotificationsToggle = container.querySelector('#levelup-notifications') as HTMLInputElement;
+  levelUpNotificationsToggle?.addEventListener('change', async () => {
+    if (window.electronAPI) {
+      await window.electronAPI.settings.set('notifications.levelUp', levelUpNotificationsToggle.checked);
+    }
+    window.showToast(
+      levelUpNotificationsToggle.checked ? 'Level up notifications enabled' : 'Level up notifications disabled',
+      'info'
+    );
+  });
+
+  // Sound effects toggle
+  const soundEffectsToggle = container.querySelector('#sound-effects') as HTMLInputElement;
+  soundEffectsToggle?.addEventListener('change', async () => {
+    setSoundsEnabled(soundEffectsToggle.checked);
+    if (window.electronAPI) {
+      await window.electronAPI.settings.set('notifications.sounds', soundEffectsToggle.checked);
+    }
+    window.showToast(
+      soundEffectsToggle.checked ? 'Sound effects enabled' : 'Sound effects disabled',
       'info'
     );
   });
@@ -217,7 +334,7 @@ async function loadAppVersion(container: HTMLElement): Promise<void> {
 const settingsStyles = document.createElement('style');
 settingsStyles.textContent = `
   .settings-page {
-    max-width: 600px;
+    max-width: 700px;
     margin: 0 auto;
   }
 
@@ -283,6 +400,27 @@ settingsStyles.textContent = `
   .theme-select:focus {
     outline: none;
     border-color: hsl(var(--ring));
+  }
+
+  .time-input {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-md);
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    font-family: var(--font-mono);
+  }
+
+  .time-input:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+  }
+
+  .time-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
   }
 
   .shortcuts-list {

@@ -127,6 +127,24 @@ export interface GameState {
   score: number | null;
 }
 
+export interface ScoreBreakdown {
+  baseScore: number;
+  speedBonus: number;
+  accuracyPenalty: number;
+  streakBonus: number;
+  difficultyBonus: number;
+  hintPenalty: number;
+  totalScore: number;
+}
+
+export interface LastGameResult {
+  scoreBreakdown: ScoreBreakdown;
+  puzzle: Puzzle;
+  elapsedTime: number;
+  attempts: number;
+  hintsUsed: number;
+}
+
 export interface AppState {
   // Auth
   isAuthenticated: boolean;
@@ -148,6 +166,12 @@ export interface AppState {
   // Server time sync
   serverTimeOffset: number; // Difference between server and client time (ms)
   nextPuzzleTime: string | null; // ISO string of next puzzle availability
+
+  // Achievement tracking (for native notifications)
+  unlockedAchievements: string[]; // IDs of achievements already notified
+
+  // Last game result (for success page)
+  lastGameResult: LastGameResult | null;
 
   // Offline
   offlineAttempts: Array<{
@@ -183,6 +207,8 @@ const initialState: AppState = {
   isLoading: true,
   serverTimeOffset: 0,
   nextPuzzleTime: null,
+  unlockedAchievements: [],
+  lastGameResult: null,
   offlineAttempts: [],
 };
 

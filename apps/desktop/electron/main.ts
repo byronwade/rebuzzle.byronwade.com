@@ -74,8 +74,11 @@ interface StoreSchema {
     reminderTime: string;
     achievements: boolean;
     streakWarnings: boolean;
+    levelUp: boolean;
+    sounds: boolean;
   };
   autoLaunch: boolean;
+  minimizeToTray: boolean;
   userStats: UserStats;
   scheduledNotifications: Record<string, ScheduledNotification>;
   badgeCount: number;
@@ -87,11 +90,14 @@ const store = new Store<StoreSchema>({
     notifications: {
       enabled: true,
       dailyReminder: true,
-      reminderTime: "09:00",
+      reminderTime: "08:00",
       achievements: true,
       streakWarnings: true,
+      levelUp: true,
+      sounds: true,
     },
     autoLaunch: false,
+    minimizeToTray: false,
     userStats: {
       streak: 0,
       level: 1,
@@ -277,6 +283,23 @@ function showAchievementNotification(achievement: { name: string; description: s
     body: `${achievement.name}: ${achievement.description}`,
     onClick: "achievements",
     urgency: "low",
+  });
+
+  // Update badge
+  incrementBadge();
+}
+
+// Level up notification
+function showLevelUpNotification(level: number, points: number): void {
+  const settings = store.get("notifications");
+  if (!settings.levelUp) return;
+
+  showNativeNotification({
+    id: `level-up-${level}`,
+    title: "⬆️ Level Up!",
+    body: `You've reached Level ${level}! Total points: ${points.toLocaleString()}`,
+    onClick: "stats",
+    urgency: "normal",
   });
 
   // Update badge
@@ -692,6 +715,7 @@ function updateTrayMenu(): void {
 
   const stats = store.get("userStats");
   const settings = store.get("notifications");
+  const minimizeToTray = store.get("minimizeToTray");
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -699,7 +723,7 @@ function updateTrayMenu(): void {
       enabled: false,
     },
     {
-      label: `⭐ Level ${stats.level} - ${stats.points} pts`,
+      label: `⭐ Level ${stats.level} - ${stats.points.toLocaleString()} pts`,
       enabled: false,
     },
     {
@@ -716,6 +740,7 @@ function updateTrayMenu(): void {
     },
     {
       label: "Today's Puzzle",
+      accelerator: "CmdOrCtrl+Shift+R",
       click: () => {
         mainWindow?.show();
         mainWindow?.webContents.send("navigate", "/");
@@ -723,39 +748,106 @@ function updateTrayMenu(): void {
     },
     { type: "separator" },
     {
-      label: "Leaderboard",
-      click: () => {
-        mainWindow?.show();
-        mainWindow?.webContents.send("navigate", "/leaderboard");
-      },
-    },
-    {
-      label: "Profile",
-      click: () => {
-        mainWindow?.show();
-        mainWindow?.webContents.send("navigate", "/profile");
-      },
+      label: "Navigation",
+      submenu: [
+        {
+          label: "Leaderboard",
+          click: () => {
+            mainWindow?.show();
+            mainWindow?.webContents.send("navigate", "/leaderboard");
+          },
+        },
+        {
+          label: "Achievements",
+          click: () => {
+            mainWindow?.show();
+            mainWindow?.webContents.send("navigate", "/achievements");
+          },
+        },
+        {
+          label: "Profile",
+          click: () => {
+            mainWindow?.show();
+            mainWindow?.webContents.send("navigate", "/profile");
+          },
+        },
+        {
+          label: "Game History",
+          click: () => {
+            mainWindow?.show();
+            mainWindow?.webContents.send("navigate", "/history");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "How It Works",
+          click: () => {
+            mainWindow?.show();
+            mainWindow?.webContents.send("navigate", "/how-it-works");
+          },
+        },
+        {
+          label: "Settings",
+          click: () => {
+            mainWindow?.show();
+            mainWindow?.webContents.send("navigate", "/settings");
+          },
+        },
+      ],
     },
     { type: "separator" },
     {
-      label: "Notifications",
-      type: "checkbox",
-      checked: settings.enabled,
-      click: (item) => {
-        store.set("notifications.enabled", item.checked);
-      },
-    },
-    {
-      label: "Start at Login",
-      type: "checkbox",
-      checked: getAutoLaunch(),
-      click: (item) => {
-        setAutoLaunch(item.checked);
-      },
+      label: "Preferences",
+      submenu: [
+        {
+          label: "Notifications",
+          type: "checkbox",
+          checked: settings.enabled,
+          click: (item) => {
+            store.set("notifications.enabled", item.checked);
+          },
+        },
+        {
+          label: "Daily Reminder",
+          type: "checkbox",
+          checked: settings.dailyReminder,
+          click: (item) => {
+            store.set("notifications.dailyReminder", item.checked);
+            setupDailyReminder();
+          },
+        },
+        {
+          label: "Streak Warnings",
+          type: "checkbox",
+          checked: settings.streakWarnings,
+          click: (item) => {
+            store.set("notifications.streakWarnings", item.checked);
+            setupStreakWarning();
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Minimize to Tray",
+          type: "checkbox",
+          checked: minimizeToTray,
+          click: (item) => {
+            store.set("minimizeToTray", item.checked);
+          },
+        },
+        {
+          label: "Start at Login",
+          type: "checkbox",
+          checked: getAutoLaunch(),
+          click: (item) => {
+            setAutoLaunch(item.checked);
+          },
+        },
+      ],
     },
     { type: "separator" },
     {
-      label: "Quit",
+      label: "Quit Rebuzzle",
+      accelerator: "CmdOrCtrl+Q",
       click: () => app.quit(),
     },
   ]);
@@ -864,6 +956,12 @@ async function createWindow(): Promise<void> {
       document.body.dataset.platform = '${process.platform}';
       document.documentElement.dataset.platform = '${process.platform}';
     `);
+
+    // Set badge on launch if puzzle not completed today
+    const stats = store.get("userStats");
+    if (!stats.completedToday) {
+      setBadgeCount(1);
+    }
   });
 
   // Load the renderer - dev server in development, local file in production
@@ -882,11 +980,17 @@ async function createWindow(): Promise<void> {
 
   // Handle window close
   mainWindow.on("close", (event) => {
+    const minimizeToTray = store.get("minimizeToTray");
+
     // On macOS, hide instead of quit (standard behavior)
     if (process.platform === "darwin") {
       event.preventDefault();
       mainWindow?.hide();
       app.dock?.hide();
+    } else if (minimizeToTray) {
+      // On Windows/Linux, hide to tray if setting is enabled
+      event.preventDefault();
+      mainWindow?.hide();
     }
   });
 
@@ -929,6 +1033,14 @@ function setupIPC(): void {
 
   ipcMain.handle("notification:request-permission", () => {
     return Notification.isSupported();
+  });
+
+  ipcMain.handle("notification:level-up", (_event, { level, points }: { level: number; points: number }) => {
+    showLevelUpNotification(level, points);
+  });
+
+  ipcMain.handle("notification:achievement", (_event, achievement: { name: string; description: string }) => {
+    showAchievementNotification(achievement);
   });
 
   // ============================================

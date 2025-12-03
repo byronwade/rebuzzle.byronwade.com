@@ -14,21 +14,23 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
-import { useAuth } from '../src/contexts/AuthContext';
-import { useAchievements } from '../src/contexts/AchievementsContext';
-import { useTheme } from '../src/contexts/ThemeContext';
-import { AvatarCircle, AVATAR_COLORS } from '../src/components/AvatarCircle';
-import { api } from '../src/lib/api';
-import { hexToRgba } from '../src/lib/theme';
+import * as Haptics from 'expo-haptics';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { useAchievements } from '../../src/contexts/AchievementsContext';
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { AvatarCircle, AVATAR_COLORS } from '../../src/components/AvatarCircle';
+import { api } from '../../src/lib/api';
+import { hexToRgba } from '../../src/lib/theme';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { isAuthenticated, user, stats, logout, refreshStats } = useAuth();
   const { progress } = useAchievements();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const colors = theme.colors;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -55,6 +57,7 @@ export default function ProfileScreen() {
   }, [isAuthenticated, router]);
 
   const handleLogout = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -89,6 +92,7 @@ export default function ProfileScreen() {
       });
 
       if (result?.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setIsEditing(false);
         await refreshStats();
       } else {
@@ -120,12 +124,29 @@ export default function ProfileScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.header}>
-          <AvatarCircle
-            username={user.username}
-            customInitials={user.avatarCustomInitials}
-            colorIndex={user.avatarColorIndex}
-            size={80}
-          />
+          <View
+            style={[
+              styles.avatarContainer,
+              Platform.select({
+                ios: {
+                  shadowColor: colors.accent,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                },
+                android: {
+                  elevation: 4,
+                },
+              }),
+            ]}
+          >
+            <AvatarCircle
+              username={user.username}
+              customInitials={user.avatarCustomInitials}
+              colorIndex={user.avatarColorIndex}
+              size={80}
+            />
+          </View>
           <Text style={[styles.username, { color: colors.foreground }]}>
             {user.isGuest ? 'Guest' : user.username}
           </Text>
@@ -138,7 +159,26 @@ export default function ProfileScreen() {
         </View>
 
         {/* Stats Card */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: hexToRgba(colors.border, 0.5),
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isDark ? 0.3 : 0.08,
+                  shadowRadius: 12,
+                },
+                android: {
+                  elevation: 4,
+                },
+              }),
+            },
+          ]}
+        >
           <Text style={[styles.cardTitle, { color: colors.accent }]}>Your Stats</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
@@ -158,7 +198,7 @@ export default function ProfileScreen() {
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Games</Text>
             </View>
           </View>
-          <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
+          <View style={[styles.statsRow, { borderTopColor: hexToRgba(colors.border, 0.5) }]}>
             <View style={styles.statRowItem}>
               <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>Win Rate</Text>
               <Text style={[styles.statRowValue, { color: colors.foreground }]}>
@@ -179,7 +219,26 @@ export default function ProfileScreen() {
         </View>
 
         {/* Achievements Card */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: hexToRgba(colors.border, 0.5),
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isDark ? 0.3 : 0.08,
+                  shadowRadius: 12,
+                },
+                android: {
+                  elevation: 4,
+                },
+              }),
+            },
+          ]}
+        >
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, { color: colors.accent }]}>Achievements</Text>
             <Link href="/achievements" asChild>
@@ -200,7 +259,7 @@ export default function ProfileScreen() {
                   {progress.unlocked}/{progress.total} unlocked
                 </Text>
               </View>
-              <View style={[styles.achievementStats, { borderTopColor: colors.border }]}>
+              <View style={[styles.achievementStats, { borderTopColor: hexToRgba(colors.border, 0.5) }]}>
                 <Text style={[styles.achievementPointsLabel, { color: colors.mutedForeground }]}>Points Earned</Text>
                 <Text style={[styles.achievementPoints, { color: colors.foreground }]}>
                   {progress.earnedPoints}/{progress.totalPoints}
@@ -223,7 +282,10 @@ export default function ProfileScreen() {
                   borderColor: hexToRgba(colors.accent, 0.3),
                 },
               ]}
-              onPress={() => setIsEditing(true)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsEditing(true);
+              }}
             >
               <Text style={[styles.editButtonText, { color: colors.accent }]}>Edit Profile</Text>
             </Pressable>
@@ -231,7 +293,25 @@ export default function ProfileScreen() {
 
           {user.isGuest && (
             <Link href="/signup" asChild>
-              <Pressable style={[styles.upgradeButton, { backgroundColor: colors.accent }]}>
+              <Pressable
+                style={[
+                  styles.upgradeButton,
+                  {
+                    backgroundColor: colors.accent,
+                    ...Platform.select({
+                      ios: {
+                        shadowColor: colors.accent,
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 8,
+                      },
+                      android: {
+                        elevation: 4,
+                      },
+                    }),
+                  },
+                ]}
+              >
                 <Text style={[styles.upgradeButtonText, { color: colors.accentForeground }]}>Create Account</Text>
               </Pressable>
             </Link>
@@ -336,7 +416,10 @@ export default function ProfileScreen() {
                       { backgroundColor: color },
                       editColorIndex === index && [styles.colorOptionSelected, { borderColor: colors.foreground }],
                     ]}
-                    onPress={() => setEditColorIndex(index)}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setEditColorIndex(index);
+                    }}
                   />
                 ))}
               </View>
@@ -370,6 +453,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 32,
     paddingHorizontal: 24,
+  },
+  avatarContainer: {
+    borderRadius: 40,
   },
   username: {
     fontSize: 24,

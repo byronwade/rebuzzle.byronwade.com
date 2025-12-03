@@ -146,7 +146,7 @@ function getInitials(username: string): string {
 const leaderboardStyles = document.createElement('style');
 leaderboardStyles.textContent = `
   .leaderboard-page {
-    max-width: 600px;
+    max-width: 700px;
     margin: 0 auto;
   }
 

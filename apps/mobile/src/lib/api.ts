@@ -292,19 +292,27 @@ class ApiClient {
   // ============================================
 
   /**
-   * Get today's puzzle
+   * Get today's puzzle with server timing data
    */
-  async getTodayPuzzle(): Promise<Puzzle | null> {
+  async getTodayPuzzle(): Promise<{
+    puzzle: Puzzle | null;
+    serverTime?: string;
+    nextPuzzleTime?: string;
+  }> {
     try {
       const response = await this.get<PuzzleResponse>('/api/puzzle/today', { skipAuth: true });
 
       if (response.success && response.puzzle) {
-        return response.puzzle;
+        return {
+          puzzle: response.puzzle,
+          serverTime: response.serverTime,
+          nextPuzzleTime: response.nextPuzzleTime,
+        };
       }
-      return null;
+      return { puzzle: null };
     } catch (error) {
       console.error('Failed to fetch puzzle:', error);
-      return null;
+      return { puzzle: null };
     }
   }
 

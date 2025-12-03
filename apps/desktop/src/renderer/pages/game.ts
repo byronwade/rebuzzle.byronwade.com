@@ -5,19 +5,35 @@
 
 import { api } from '../lib/api';
 import { appStore, type Puzzle, resetGameState } from '../lib/store';
+import { router } from '../lib/router';
 import {
   calculateScore,
   fuzzyMatch,
   calculateLevel,
-  pointsToNextLevel,
   type ScoreBreakdown,
 } from '@rebuzzle/game-logic';
 import { showCelebration } from '../lib/celebration';
-import { shareResults } from '../lib/share';
+import {
+  playCorrectSound,
+  playWrongSound,
+  playLevelUpSound,
+  playAchievementSound,
+} from '../lib/sounds';
+import { startCountdown, renderCountdown, type CountdownState } from '../lib/countdown';
+import {
+  initHintDialog,
+  renderHintBadge,
+  setupHintBadgeListener,
+  updateHintBadge,
+  updateHintDialog,
+} from '../lib/hint-dialog';
 
 // Game constants
 const MAX_ATTEMPTS = 3;
-const API_BASE = 'https://rebuzzle.byronwade.com';
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://rebuzzle.byronwade.com');
+
+// Cleanup function for countdown
+let countdownCleanup: (() => void) | null = null;
 
 // Convert difficulty number to text name (matching web)
 function getDifficultyName(difficulty: number): string {
@@ -93,52 +109,8 @@ async function fetchSolveCount(puzzleId: string): Promise<number> {
   return 0;
 }
 
-function renderHintCard(
-  hints: string[],
-  hintsUsed: number,
-  isComplete: boolean
-): string {
-  if (!hints || hints.length === 0) return '';
-
-  const revealedHints = hints.slice(0, hintsUsed);
-  const hintsRemaining = hints.length - hintsUsed;
-
-  return `
-    <div class="hint-card" id="hint-card">
-      <div class="hint-card-header">
-        <div class="hint-card-title">
-          <span class="hint-icon">💡</span>
-          <span>Hints</span>
-        </div>
-        <span class="hint-count">${hintsUsed}/${hints.length}</span>
-      </div>
-      <div class="hint-list" id="hint-list">
-        ${revealedHints.length > 0
-          ? revealedHints
-              .map(
-                (hint, i) => `
-            <div class="hint-item">
-              <span class="hint-number">${i + 1}.</span>
-              <span>${hint}</span>
-            </div>
-          `
-              )
-              .join('')
-          : '<p class="hint-empty">No hints revealed yet</p>'
-        }
-      </div>
-      ${!isComplete && hintsRemaining > 0
-        ? `<button class="btn btn-hint" id="hint-btn">
-            <span class="hint-icon">💡</span>
-            Get Hint (${hintsRemaining} remaining) · -10 pts
-          </button>`
-        : hintsRemaining === 0 && hintsUsed > 0
-          ? '<p class="hint-exhausted">No more hints available</p>'
-          : ''
-      }
-    </div>
-  `;
-}
+// Initialize hint dialog on module load
+initHintDialog();
 
 export async function createGamePage(): Promise<HTMLElement> {
   const page = document.createElement('div');
@@ -202,9 +174,16 @@ function renderGame(container: HTMLElement, puzzle: Puzzle): void {
           <!-- Game info badges and attempts -->
           <div class="game-header">
             <div class="game-info">
-              <span class="badge badge-difficulty">${getDifficultyName(typeof puzzle.difficulty === 'number' ? puzzle.difficulty : 5)}</span>
+              <span class="badge badge-difficulty" data-tooltip="Puzzle difficulty level - harder puzzles give more points!">
+                ${getDifficultyName(typeof puzzle.difficulty === 'number' ? puzzle.difficulty : 5)}
+              </span>
+              <span class="badge badge-countdown" id="header-countdown" data-tooltip="Time until next puzzle resets">
+                <span class="countdown-icon-small">⏱</span>
+                <span id="header-countdown-time">--:--:--</span>
+              </span>
+              ${renderHintBadge(state.hintsUsed, puzzle.hints?.length || 0)}
             </div>
-            <div class="attempts-indicator" id="attempts-indicator">
+            <div class="attempts-indicator" id="attempts-indicator" data-tooltip="Remaining attempts - you lose a heart for each wrong guess">
               ${renderAttempts(0, MAX_ATTEMPTS)}
             </div>
           </div>
@@ -229,11 +208,6 @@ function renderGame(container: HTMLElement, puzzle: Puzzle): void {
 
           <!-- Guess history -->
           <div class="guess-history" id="guess-history"></div>
-
-          <!-- Hint card -->
-          <div class="hint-container" id="hint-container">
-            ${renderHintCard(puzzle.hints || [], state.hintsUsed, state.isComplete)}
-          </div>
         </div>
       </main>
 
@@ -257,6 +231,8 @@ function renderGame(container: HTMLElement, puzzle: Puzzle): void {
             </div>
             <p class="input-hint">Words turn <span class="text-success">green</span> when correct</p>
           </form>
+          <!-- Countdown timer container (shown when puzzle is completed) -->
+          <div id="countdown-container" class="countdown-wrapper" style="display: none;"></div>
         </div>
       </section>
     </div>
@@ -264,6 +240,9 @@ function renderGame(container: HTMLElement, puzzle: Puzzle): void {
 
   // Set up event listeners
   setupGameListeners(container, puzzle);
+
+  // Start header countdown timer
+  startHeaderCountdown(container);
 
   // Fetch and display solve count
   if (puzzle.id) {
@@ -306,7 +285,6 @@ function renderAttempts(used: number, max: number): string {
 function setupGameListeners(container: HTMLElement, puzzle: Puzzle): void {
   const form = container.querySelector('#answer-form') as HTMLFormElement;
   const input = container.querySelector('#answer-input') as HTMLInputElement;
-  const hintBtn = container.querySelector('#hint-btn') as HTMLButtonElement | null;
 
   // Focus input
   input?.focus();
@@ -318,10 +296,13 @@ function setupGameListeners(container: HTMLElement, puzzle: Puzzle): void {
     input.value = '';
   });
 
-  // Handle hint button
-  hintBtn?.addEventListener('click', () => {
-    showHint(container, puzzle);
-  });
+  // Set up hint badge click handler to open dialog
+  const hints = puzzle.hints || [];
+  if (hints.length > 0) {
+    setupHintBadgeListener(container, hints, () => {
+      revealHint(container, puzzle);
+    });
+  }
 
   // Handle keyboard shortcuts
   const keyHandler = (e: KeyboardEvent) => {
@@ -366,6 +347,9 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
   }
 
   if (isCorrect) {
+    // Play correct sound
+    playCorrectSound();
+
     // Calculate score
     const elapsedTime = Math.floor((Date.now() - state.startTime) / 1000);
     const stats = appStore.get('stats');
@@ -377,6 +361,11 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
       difficultyLevel: typeof puzzle.difficulty === 'number' ? puzzle.difficulty : 5,
       hintsUsed: state.hintsUsed,
     });
+
+    // Check for level up
+    const oldLevel = stats?.level || calculateLevel(stats?.points || 0);
+    const newPoints = (stats?.points || 0) + scoreBreakdown.totalScore;
+    const newLevel = calculateLevel(newPoints);
 
     // Update state
     appStore.setState({
@@ -398,13 +387,25 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
     const gameState = appStore.get('game');
     recordPuzzleAttempt(puzzle, answer, true, newAttempts, elapsedTime, gameState.hintsUsed);
 
-    // Update local stats
+    // Update local stats and clear badge
     if (window.electronAPI) {
       window.electronAPI.stats.update({
         completedToday: true,
-        points: (stats?.points || 0) + scoreBreakdown.totalScore,
+        points: newPoints,
       });
+
+      // Clear badge on completion
+      window.electronAPI.badge.clear();
+
+      // Show level up notification if leveled up
+      if (newLevel > oldLevel) {
+        playLevelUpSound();
+        window.electronAPI.notification.levelUp(newLevel, newPoints);
+      }
     }
+
+    // Check for new achievements after a short delay
+    checkForNewAchievements();
   } else if (newAttempts >= MAX_ATTEMPTS) {
     // Game over - failed
     appStore.setState({
@@ -425,6 +426,8 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
     recordPuzzleAttempt(puzzle, answer, false, newAttempts, elapsedTime, state.hintsUsed);
   } else {
     // Wrong answer but still have attempts
+    playWrongSound();
+
     appStore.setState({
       game: {
         ...state,
@@ -437,11 +440,42 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
     const input = container.querySelector('#answer-input');
     input?.classList.add('shake');
     setTimeout(() => input?.classList.remove('shake'), 500);
+  }
+}
 
-    // Show hint after first wrong answer
-    if (newAttempts === 1 && puzzle.hints && puzzle.hints.length > 0) {
-      showHint(container, puzzle);
+/**
+ * Check for newly unlocked achievements and show notifications
+ */
+async function checkForNewAchievements(): Promise<void> {
+  if (!window.electronAPI) return;
+
+  try {
+    const result = await api.getAchievements();
+    const previouslyUnlocked = appStore.get('unlockedAchievements') || [];
+
+    // Find newly unlocked achievements
+    const newlyUnlocked = result.achievements.filter(
+      (a) => a.unlocked && !previouslyUnlocked.includes(a.id)
+    );
+
+    // Show notification for each new achievement
+    for (const achievement of newlyUnlocked) {
+      playAchievementSound();
+      window.electronAPI.notification.achievement(
+        achievement.name,
+        achievement.description
+      );
     }
+
+    // Update tracked achievements
+    if (newlyUnlocked.length > 0) {
+      const allUnlocked = result.achievements
+        .filter((a) => a.unlocked)
+        .map((a) => a.id);
+      appStore.setState({ unlockedAchievements: allUnlocked });
+    }
+  } catch (error) {
+    console.error('Failed to check achievements:', error);
   }
 }
 
@@ -459,39 +493,28 @@ function addGuessToHistory(container: HTMLElement, guess: string, isCorrect: boo
   history.appendChild(guessEl);
 }
 
-function showHint(container: HTMLElement, puzzle: Puzzle): void {
+/**
+ * Reveal the next hint and update state/UI
+ * Called from the hint dialog when user clicks "Reveal Hint"
+ */
+function revealHint(container: HTMLElement, puzzle: Puzzle): void {
   const state = appStore.get('game');
   const hints = puzzle.hints || [];
 
-  if (hints.length === 0 || state.hintsUsed >= hints.length) return;
+  if (hints.length === 0 || state.hintsUsed >= hints.length || state.isComplete) return;
 
-  const hintIndex = state.hintsUsed;
-  const hint = hints[hintIndex];
+  const newHintsUsed = state.hintsUsed + 1;
 
-  // Update state
+  // Update state (sound is played by the dialog)
   appStore.setState({
     game: {
       ...state,
-      hintsUsed: hintIndex + 1,
+      hintsUsed: newHintsUsed,
     },
   });
 
-  // Show hint toast
-  window.showToast(`Hint: ${hint}`, 'info', 5000);
-
-  // Re-render the hint card with updated state
-  const hintContainer = container.querySelector('#hint-container');
-  if (hintContainer) {
-    hintContainer.innerHTML = renderHintCard(hints, hintIndex + 1, state.isComplete);
-
-    // Re-attach hint button listener
-    const newHintBtn = hintContainer.querySelector('#hint-btn') as HTMLButtonElement | null;
-    if (newHintBtn) {
-      newHintBtn.addEventListener('click', () => {
-        showHint(container, puzzle);
-      });
-    }
-  }
+  // Update the hint badge in the header
+  updateHintBadge(container, newHintsUsed, hints.length);
 }
 
 function showSuccess(
@@ -503,6 +526,25 @@ function showSuccess(
   const stats = appStore.get('stats');
   const gameState = appStore.get('game');
 
+  // Store the game result for the success page
+  appStore.setState({
+    lastGameResult: {
+      scoreBreakdown: {
+        baseScore: score.baseScore,
+        speedBonus: score.speedBonus,
+        accuracyPenalty: score.accuracyPenalty,
+        streakBonus: score.streakBonus,
+        difficultyBonus: score.difficultyBonus,
+        hintPenalty: score.hintPenalty,
+        totalScore: score.totalScore,
+      },
+      puzzle,
+      elapsedTime,
+      attempts: gameState.attempts,
+      hintsUsed: gameState.hintsUsed,
+    },
+  });
+
   // Show celebration overlay with confetti
   showCelebration({
     score: score.totalScore,
@@ -510,95 +552,11 @@ function showSuccess(
     attempts: gameState.attempts,
     maxAttempts: MAX_ATTEMPTS,
     timeTaken: elapsedTime,
+    onNext: () => {
+      // Navigate to success page when user clicks Continue
+      router.navigate('/success');
+    },
   });
-
-  // Disable input and show success message
-  const form = container.querySelector('#answer-form');
-  if (form) {
-    form.innerHTML = `
-      <div class="success-message bounce-in">
-        <div class="success-icon">🎉</div>
-        <h2>Correct!</h2>
-        <p>The answer was: <strong>${puzzle.answer}</strong></p>
-      </div>
-    `;
-  }
-
-  // Show score breakdown with share button
-  const scoreHtml = `
-    <div class="score-breakdown card bounce-in" style="margin-top: var(--spacing-lg);">
-      <h3>Score Breakdown</h3>
-      <div class="score-items">
-        <div class="score-item">
-          <span>Base Score</span>
-          <span>+${score.baseScore}</span>
-        </div>
-        <div class="score-item">
-          <span>Speed Bonus</span>
-          <span>+${score.speedBonus}</span>
-        </div>
-        ${score.accuracyPenalty > 0 ? `
-          <div class="score-item penalty">
-            <span>Wrong Attempts</span>
-            <span>-${score.accuracyPenalty}</span>
-          </div>
-        ` : ''}
-        ${score.hintPenalty > 0 ? `
-          <div class="score-item penalty">
-            <span>Hints Used</span>
-            <span>-${score.hintPenalty}</span>
-          </div>
-        ` : ''}
-        ${score.streakBonus > 0 ? `
-          <div class="score-item">
-            <span>Streak Bonus</span>
-            <span>+${score.streakBonus}</span>
-          </div>
-        ` : ''}
-        ${score.difficultyBonus > 0 ? `
-          <div class="score-item">
-            <span>Difficulty Bonus</span>
-            <span>+${score.difficultyBonus}</span>
-          </div>
-        ` : ''}
-        <div class="divider"></div>
-        <div class="score-item total">
-          <span>Total</span>
-          <span>${score.totalScore}</span>
-        </div>
-      </div>
-      <p class="time-display">Time: ${formatTime(elapsedTime)}</p>
-
-      <div class="share-container" style="margin-top: var(--spacing-lg); text-align: center;">
-        <button class="btn btn-primary" id="share-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-            <polyline points="16 6 12 2 8 6"></polyline>
-            <line x1="12" y1="2" x2="12" y2="15"></line>
-          </svg>
-          Share Results
-        </button>
-      </div>
-    </div>
-
-    <div class="countdown-container" id="next-puzzle-countdown"></div>
-  `;
-
-  container.insertAdjacentHTML('beforeend', scoreHtml);
-
-  // Set up share button
-  const shareBtn = container.querySelector('#share-btn');
-  shareBtn?.addEventListener('click', () => {
-    shareResults({
-      success: true,
-      attempts: gameState.attempts,
-      maxAttempts: MAX_ATTEMPTS,
-      streak: stats?.streak || 0,
-    });
-  });
-
-  // Start countdown to next puzzle
-  startNextPuzzleCountdown(container);
 
   // Show notification
   if (window.electronAPI) {
@@ -623,6 +581,9 @@ function showFailure(container: HTMLElement, puzzle: Puzzle): void {
       </div>
     `;
   }
+
+  // Show countdown timer for next puzzle
+  showGameCountdown(container);
 }
 
 async function recordPuzzleAttempt(
@@ -699,50 +660,53 @@ function renderError(container: HTMLElement, message: string): void {
   `;
 }
 
-function startNextPuzzleCountdown(container: HTMLElement): void {
-  const countdownEl = container.querySelector('#next-puzzle-countdown');
-  if (!countdownEl) return;
+/**
+ * Start the header countdown timer (small badge in header)
+ */
+function startHeaderCountdown(container: HTMLElement): void {
+  const headerCountdownTime = container.querySelector('#header-countdown-time');
+  if (!headerCountdownTime) return;
 
-  const updateCountdown = () => {
-    const { nextPuzzleTime, serverTimeOffset } = appStore.getState();
-    const currentPage = appStore.get('currentPage');
+  // Clean up any existing countdown
+  if (countdownCleanup) {
+    countdownCleanup();
+    countdownCleanup = null;
+  }
 
-    // Stop if page changed
-    if (currentPage !== '/') return;
-
-    if (!nextPuzzleTime) {
-      countdownEl.innerHTML = '';
-      return;
+  // Start the countdown - just update the time text
+  countdownCleanup = startCountdown((state: CountdownState) => {
+    if (state.isReady) {
+      headerCountdownTime.textContent = 'New!';
+    } else {
+      headerCountdownTime.textContent = state.formatted;
     }
+  });
+}
 
-    // Use server-adjusted time to prevent clock manipulation
-    const serverNow = Date.now() + serverTimeOffset;
-    const targetTime = new Date(nextPuzzleTime).getTime();
-    const remaining = targetTime - serverNow;
+/**
+ * Show and start the countdown timer in the game page (full display for after completion)
+ */
+function showGameCountdown(container: HTMLElement): void {
+  const countdownContainer = container.querySelector('#countdown-container') as HTMLElement;
+  if (!countdownContainer) return;
 
-    if (remaining <= 0) {
-      countdownEl.innerHTML = `
-        <div class="countdown-ready">
-          <p>New puzzle available!</p>
-          <button class="btn btn-primary" onclick="location.reload()">Play Now</button>
-        </div>
-      `;
-      return;
+  // Show the container
+  countdownContainer.style.display = 'block';
+
+  // Start the countdown (will reuse the existing interval if already running)
+  countdownCleanup = startCountdown((state: CountdownState) => {
+    countdownContainer.innerHTML = renderCountdown(state);
+
+    // Also update header
+    const headerCountdownTime = container.querySelector('#header-countdown-time');
+    if (headerCountdownTime) {
+      if (state.isReady) {
+        headerCountdownTime.textContent = 'New!';
+      } else {
+        headerCountdownTime.textContent = state.formatted;
+      }
     }
-
-    const hours = Math.floor(remaining / (1000 * 60 * 60));
-    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-
-    countdownEl.innerHTML = `
-      <p class="countdown-label">Next puzzle in</p>
-      <p class="countdown-time">${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}</p>
-    `;
-
-    requestAnimationFrame(updateCountdown);
-  };
-
-  updateCountdown();
+  });
 }
 
 // Add game-specific styles
@@ -752,6 +716,28 @@ gameStyles.textContent = `
     height: 100%;
     padding: 0;
     overflow: hidden;
+  }
+
+  /* Header countdown badge */
+  .badge-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, #9333ea, #ec4899);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .countdown-icon-small {
+    font-size: 12px;
+  }
+
+  #header-countdown-time {
+    font-family: var(--font-mono);
+    font-weight: var(--font-weight-bold);
   }
 
   .success-message,
@@ -841,6 +827,16 @@ gameStyles.textContent = `
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
     color: hsl(var(--success));
+  }
+
+  .countdown-wrapper {
+    margin-top: var(--spacing-md);
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 `;
 document.head.appendChild(gameStyles);
