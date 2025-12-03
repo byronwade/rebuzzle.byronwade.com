@@ -149,6 +149,7 @@ function getWeekStart(date: Date): Date {
  * - Base: 100 points
  * - Speed Bonus: 0-50 points (faster = more)
  * - Accuracy: -15 points per wrong attempt
+ * - Hints: -10 points per hint used (max -30)
  * - Streak Bonus: 5 points per streak day (max 50)
  * - Difficulty Bonus: 10 points per level above 4 (max 60)
  *
@@ -156,17 +157,20 @@ function getWeekStart(date: Date): Date {
  * @param timeTaken - Time to solve in seconds (optional)
  * @param streakDays - Current winning streak in days (optional)
  * @param difficulty - Puzzle difficulty level 1-10 (optional, default 5)
+ * @param hintsUsed - Number of hints revealed (optional, default 0)
  */
 export function calculateGamePoints(
   attempts: number,
   timeTaken?: number,
   streakDays = 0,
-  difficulty = 5
+  difficulty = 5,
+  hintsUsed = 0
 ): number {
   const {
     baseScore,
     speedBonus,
     accuracy,
+    hints,
     streak,
     difficulty: diffConfig,
     minScore,
@@ -195,12 +199,18 @@ export function calculateGamePoints(
     score -= wrongAttempts * accuracy.penaltyPerAttempt;
   }
 
-  // 3. Streak Multiplier: Bonus for consecutive days
+  // 3. Hints: Penalize hint usage
+  if (hintsUsed > 0) {
+    const hintPenalty = Math.min(hintsUsed * hints.penaltyPerHint, hints.maxPenalty);
+    score -= hintPenalty;
+  }
+
+  // 4. Streak Multiplier: Bonus for consecutive days
   if (streakDays > 0) {
     score += Math.min(streakDays * streak.bonusPerDay, streak.maxBonus);
   }
 
-  // 4. Difficulty Bonus: Extra points for harder puzzles
+  // 5. Difficulty Bonus: Extra points for harder puzzles
   if (difficulty > diffConfig.baseline) {
     const levelsAboveBaseline = difficulty - diffConfig.baseline;
     score += Math.min(levelsAboveBaseline * diffConfig.bonusPerLevel, diffConfig.maxBonus);

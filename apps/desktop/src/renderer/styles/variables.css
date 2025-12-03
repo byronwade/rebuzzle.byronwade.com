@@ -91,7 +91,8 @@
 
   /* Desktop-specific */
   --title-bar-height: 38px;
-  --nav-height: 64px;
+  --nav-height: 0px;
+  --sidebar-width: 64px;
   --traffic-light-width: 78px;
 }
 

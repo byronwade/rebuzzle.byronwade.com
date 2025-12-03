@@ -23,11 +23,15 @@ import {
   rollLuckySolve,
 } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
+import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
 import { CelebrationOverlay, calculateScore, determineAchievements } from "./CelebrationOverlay";
 import { useGameContext } from "./GameContext";
+import { HintCard } from "./HintCard";
+import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
 import { PersonalizedGreeting } from "./PersonalizedGreeting";
 import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay";
+import { PuzzleMinimal } from "./PuzzleMinimal";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 import { SolveCounter } from "./SolveCounter";
 
@@ -115,6 +119,9 @@ interface GameState {
   // Bonus indicators for variable rewards
   isLuckySolve: boolean;
   dailyBonusMultiplier: number;
+  // Hint state
+  hintsUsed: number;
+  currentHintIndex: number;
 }
 
 type GameAction =
@@ -141,7 +148,8 @@ type GameAction =
   | { type: "SET_IS_SUBMITTING"; payload: boolean }
   | { type: "RESET_GUESS" }
   | { type: "ADD_GUESS_HISTORY"; payload: GuessAttempt }
-  | { type: "SET_SHOW_CELEBRATION"; payload: boolean };
+  | { type: "SET_SHOW_CELEBRATION"; payload: boolean }
+  | { type: "REVEAL_HINT" };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
@@ -185,6 +193,12 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
       };
     case "SET_SHOW_CELEBRATION":
       return { ...state, showCelebration: action.payload };
+    case "REVEAL_HINT":
+      return {
+        ...state,
+        hintsUsed: state.hintsUsed + 1,
+        currentHintIndex: state.currentHintIndex + 1,
+      };
     default:
       return state;
   }
@@ -209,6 +223,8 @@ const initialState: GameState = {
   startTime: Date.now(),
   isLuckySolve: false,
   dailyBonusMultiplier: 1,
+  hintsUsed: 0,
+  currentHintIndex: 0,
 };
 
 export default function GameBoard({ gameData }: GameBoardProps) {
@@ -237,8 +253,32 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     details?: string;
   } | null>(null);
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId, isLoading: authLoading } = useAuth();
+  const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
+  const [guestReady, setGuestReady] = useState(false);
   const { startGame, recordAttempt, endGame, setGameState: setContextGameState } = useGameContext();
+
+  // Ensure guest account exists when puzzle is viewed (lazy creation)
+  useEffect(() => {
+    const initGuest = async () => {
+      if (authLoading) return; // Wait for auth check to complete
+
+      if (!userId) {
+        const created = await ensureGuest();
+        if (created) {
+          setGuestReady(true);
+        } else {
+          console.error("Failed to create guest session");
+          // Still allow viewing puzzle even if guest creation fails
+          setGuestReady(true);
+        }
+      } else {
+        setGuestReady(true);
+      }
+    };
+
+    initGuest();
+  }, [userId, authLoading, ensureGuest]);
 
   // Load actual user stats from database on mount
   // This ensures the local state reflects real stats for correct scoring
@@ -296,8 +336,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     }
   }, [gameData.isCompleted, endGame]);
 
-  // Track puzzle start on mount
+  // Track puzzle start AFTER guest is created
   useEffect(() => {
+    if (!guestReady) return; // Wait for guest creation
+
     trackPuzzleStart({
       puzzleId: gameData.id || "unknown",
       puzzleType,
@@ -310,7 +352,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       puzzleId: gameData.id,
       puzzleType,
     });
-  }, [gameData.id, gameData.difficulty, puzzleType]);
+  }, [gameData.id, gameData.difficulty, puzzleType, guestReady]);
 
   const setCompletionState = useCallback(
     (success: boolean, finalGuess: string, attempts: number) => {
@@ -329,10 +371,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       // Calculate base score for celebration using unified scoring:
       // - Speed Bonus: faster = more points
       // - Accuracy: fewer attempts = higher score
+      // - Hints: fewer hints = higher score
       // - Streak Multiplier: consecutive days = bonus
       // - Difficulty Bonus: harder puzzles = bigger rewards
       let score = success
-        ? calculateScore(attempts, timeTaken, userStats.streak, difficultyLevel)
+        ? calculateScore(attempts, timeTaken, userStats.streak, difficultyLevel, gameState.hintsUsed)
         : 0;
 
       // Variable rewards - psychology: unpredictable rewards create stronger habits
@@ -409,6 +452,34 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       isNearMiss ? 1500 : 1000
     ); // Show near-miss message longer
   }, []);
+
+  // Handle revealing a hint
+  const handleShowHint = useCallback(() => {
+    const hints = gameData.hints || [];
+    if (gameState.currentHintIndex >= hints.length || gameState.gameOver) {
+      return;
+    }
+
+    // Reveal the next hint
+    dispatch({ type: "REVEAL_HINT" });
+
+    // Track hint usage
+    trackEvent(analyticsEvents.HINT_USED, {
+      puzzleId: gameData.id || "unknown",
+      hintIndex: gameState.currentHintIndex,
+    });
+
+    // Show hint in a toast for immediate feedback
+    const hint = hints[gameState.currentHintIndex];
+    if (hint) {
+      toast.info(`Hint ${gameState.currentHintIndex + 1}: ${hint}`, {
+        duration: 5000,
+      });
+    }
+
+    // Light haptic feedback
+    haptics.tap();
+  }, [gameData.hints, gameData.id, gameState.currentHintIndex, gameState.gameOver]);
 
   const handleGuess = useCallback(
     async (guessValue?: string) => {
@@ -520,7 +591,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 ? gameData.difficulty.toString()
                 : gameData.difficulty || "medium",
             attempts,
-            hintsUsed: 0,
+            hintsUsed: gameState.hintsUsed,
             completionTime: timeTaken * 1000,
             score: earnedPoints,
           });
@@ -528,7 +599,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             puzzleId: gameData.id,
             puzzleType,
             attempts,
-            hintsUsed: 0,
+            hintsUsed: gameState.hintsUsed,
             score: earnedPoints,
           });
 
@@ -543,7 +614,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   attempts,
                   maxAttempts: gameSettings.maxAttempts,
                   timeTaken,
-                  hintsUsed: 0,
+                  hintsUsed: gameState.hintsUsed,
                   difficulty: getAchievementDifficultyCategory(difficultyLevel),
                   isCorrect: true,
                   score: earnedPoints,
@@ -572,7 +643,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               maxAttempts: gameSettings.maxAttempts,
               timeSpentSeconds: timeTaken,
               difficulty: getAchievementDifficultyCategory(difficultyLevel),
-              hintsUsed: 0,
+              hintsUsed: gameState.hintsUsed,
             }),
           }).catch((err) => console.error("Error recording puzzle attempt:", err));
 
@@ -656,13 +727,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             puzzleId: gameData.id || "unknown",
             puzzleType,
             attempts: gameSettings.maxAttempts,
-            hintsUsed: 0,
+            hintsUsed: gameState.hintsUsed,
           });
           trackEvent(analyticsEvents.PUZZLE_ABANDON, {
             puzzleId: gameData.id,
             puzzleType,
             attempts: gameSettings.maxAttempts,
-            hintsUsed: 0,
+            hintsUsed: gameState.hintsUsed,
           });
 
           // Record failed puzzle attempt (for puzzle locking)
@@ -678,7 +749,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               maxAttempts: gameSettings.maxAttempts,
               timeSpentSeconds: failureTimeTaken,
               difficulty: getAchievementDifficultyCategory(failureDifficulty),
-              hintsUsed: 0,
+              hintsUsed: gameState.hintsUsed,
             }),
           }).catch((err) => console.error("Error recording puzzle attempt:", err));
 
@@ -695,7 +766,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               },
             ],
             timeTaken,
-            usedHints: 0,
+            usedHints: gameState.hintsUsed,
             streak: 0,
             score: 0,
           };
@@ -843,6 +914,18 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     handleKeyPress,
   ]);
 
+  // Show loading while creating guest session
+  if (isCreatingGuest || authLoading || (!userId && !guestReady)) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Setting up your session...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Script id="structured-data" type="application/ld+json">
@@ -868,136 +951,178 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           },
         })}
       </Script>
-      {/* Main content area - flex container to center puzzle */}
-      <div className="flex min-h-[calc(100vh-180px)] flex-col">
-        {/* Puzzle area - centered vertically */}
-        <main className="flex flex-1 flex-col items-center justify-center px-4 pb-24 md:px-6">
-          {/* Personalized greeting - psychology: personal recognition increases engagement */}
-          <PersonalizedGreeting
-            streak={userStats.streak}
-            wins={userStats.wins}
-            level={userStats.level}
-            className="mb-4"
-          />
-
-          {/* Enhanced puzzle display - centered */}
-          <section aria-label="Puzzle" className="w-full max-w-2xl text-center">
-            <PuzzleContainer>
-              <PuzzleDisplay
-                puzzle={puzzleDisplay}
-                puzzleType={puzzleType}
-                size={
-                  // Text-based puzzles use smaller size for better readability
-                  puzzleType === "riddle" ||
-                  puzzleType === "trivia" ||
-                  puzzleType === "logic-grid" ||
-                  puzzleType === "cryptic-crossword"
-                    ? "small"
-                    : // Visual and code puzzles use large for better visibility
-                      puzzleType === "rebus" ||
-                        puzzleType === "pattern-recognition" ||
-                        puzzleType === "number-sequence" ||
-                        puzzleType === "caesar-cipher"
-                      ? "large"
-                      : // Default to large for other types
-                        "large"
-                }
-              />
-            </PuzzleContainer>
-            <PuzzleQuestion puzzleType={puzzleType} />
-            {/* Live solve counter - social proof */}
-            <SolveCounter puzzleId={gameData.id} className="mt-3" />
-          </section>
-
-          {/* Chat-style guess history - displays below puzzle */}
-          {gameState.guessHistory.length > 0 && (
-            <div className="w-full max-w-2xl mt-6 space-y-2 text-center">
-              {gameState.guessHistory.map((attempt, index) => (
-                <div
-                  key={index}
-                  className="text-muted-foreground text-sm animate-in fade-in-50 slide-in-from-bottom-2 duration-300"
-                >
-                  <span className="opacity-40 mr-2 text-xs">#{attempt.attemptNumber}</span>
-                  <span
-                    className={
-                      attempt.wordResults.every((w) => w.correct)
-                        ? "text-green-600 dark:text-green-400 font-medium"
-                        : attempt.wordResults.some((w) => (w.similarity ?? 0) >= 70)
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-foreground/70"
-                    }
-                  >
-                    {attempt.text}
-                  </span>
+      {/* Main content area - keyboard-aware layout */}
+      <KeyboardAwareLayout>
+        {({ isKeyboardVisible }) => (
+          <div className="flex flex-col h-full">
+            {/* Puzzle area - collapses when keyboard is visible */}
+            <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area">
+              {isKeyboardVisible ? (
+                /* COLLAPSED VIEW - minimal puzzle hint when keyboard is open */
+                <div className="flex flex-col items-center pt-2">
+                  <PuzzleMinimal
+                    puzzle={puzzleDisplay}
+                    puzzleType={puzzleType}
+                    className="w-full max-w-2xl"
+                  />
+                  {/* Show last guess attempt in collapsed view */}
+                  {gameState.guessHistory.length > 0 && (
+                    <div className="text-muted-foreground text-xs mt-1 opacity-60">
+                      Last: {gameState.guessHistory[gameState.guessHistory.length - 1]?.text}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              ) : (
+                /* EXPANDED VIEW - full puzzle display when keyboard is closed */
+                <div className="flex flex-col items-center justify-center min-h-full px-4 py-4 md:px-6">
+                  {/* Personalized greeting - psychology: personal recognition increases engagement */}
+                  <PersonalizedGreeting
+                    streak={userStats.streak}
+                    wins={userStats.wins}
+                    level={userStats.level}
+                    className="mb-4"
+                  />
 
-          {/* Enhanced feedback - floating above input */}
-          {gameState.feedbackMessage && (
-            <div
-              aria-live="polite"
-              className={`fixed bottom-28 left-1/2 z-40 -translate-x-1/2 slide-in-from-bottom-2 fade-in-up animate-in rounded-full px-4 py-2 shadow-lg duration-300 motion-reduce:animate-none ${
-                gameState.feedbackMessage === "Checking..."
-                  ? "border border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/90"
-                  : gameState.feedbackMessage.startsWith("So close")
-                    ? "border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/90"
-                    : "border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/90"
-              }`}
-              role="status"
-            >
-              <p
-                className={`font-medium text-sm ${
-                  gameState.feedbackMessage === "Checking..."
-                    ? "text-blue-700 dark:text-blue-300"
-                    : gameState.feedbackMessage.startsWith("So close")
-                      ? "text-amber-700 dark:text-amber-300"
-                      : "text-red-700 dark:text-red-300"
-                }`}
-              >
-                {gameState.feedbackMessage}
-              </p>
-            </div>
-          )}
+                  {/* Enhanced puzzle display - centered */}
+                  <section aria-label="Puzzle" className="w-full max-w-2xl text-center">
+                    <PuzzleContainer>
+                      <PuzzleDisplay
+                        puzzle={puzzleDisplay}
+                        puzzleType={puzzleType}
+                        size={
+                          // Text-based puzzles use smaller size for better readability
+                          puzzleType === "riddle" ||
+                          puzzleType === "trivia" ||
+                          puzzleType === "logic-grid" ||
+                          puzzleType === "cryptic-crossword"
+                            ? "small"
+                            : // Visual and code puzzles use large for better visibility
+                              puzzleType === "rebus" ||
+                                puzzleType === "pattern-recognition" ||
+                                puzzleType === "number-sequence" ||
+                                puzzleType === "caesar-cipher"
+                              ? "large"
+                              : // Default to large for other types
+                                "large"
+                        }
+                      />
+                    </PuzzleContainer>
+                    <PuzzleQuestion puzzleType={puzzleType} />
+                    {/* Live solve counter - social proof */}
+                    <SolveCounter puzzleId={gameData.id} className="mt-3" />
+                  </section>
 
-          {/* Error display */}
-          {error && (
-            <div
-              className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 slide-in-from-bottom-2 fade-in-up animate-in rounded-2xl border border-red-400 bg-red-100 p-4 text-center shadow-lg duration-300 motion-reduce:animate-none dark:border-red-600 dark:bg-red-900/90"
-              role="alert"
-            >
-              <p className="font-semibold text-red-800 text-sm dark:text-red-200">
-                {error.message}
-              </p>
-              {error.details && (
-                <p className="mt-2 text-red-700 text-xs dark:text-red-300">{error.details}</p>
+                  {/* Chat-style guess history - displays below puzzle */}
+                  {gameState.guessHistory.length > 0 && (
+                    <div className="w-full max-w-2xl mt-6 space-y-2 text-center">
+                      {gameState.guessHistory.map((attempt, index) => (
+                        <div
+                          key={index}
+                          className="text-muted-foreground text-sm animate-in fade-in-50 slide-in-from-bottom-2 duration-300"
+                        >
+                          <span className="opacity-40 mr-2 text-xs">#{attempt.attemptNumber}</span>
+                          <span
+                            className={
+                              attempt.wordResults.every((w) => w.correct)
+                                ? "text-green-600 dark:text-green-400 font-medium"
+                                : attempt.wordResults.some((w) => (w.similarity ?? 0) >= 70)
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-foreground/70"
+                            }
+                          >
+                            {attempt.text}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Hint Card - shows available hints */}
+                  {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
+                    <HintCard
+                      hints={gameData.hints}
+                      currentIndex={gameState.currentHintIndex}
+                      onShowHint={handleShowHint}
+                      canShowMore={gameState.currentHintIndex < gameData.hints.length}
+                      isComplete={gameState.gameOver}
+                      className="w-full max-w-2xl mt-6"
+                    />
+                  )}
+                </div>
               )}
-              <Button className="mt-3" onClick={() => setError(null)} size="sm" variant="outline">
-                Dismiss
-              </Button>
-            </div>
-          )}
-        </main>
+            </main>
 
-        {/* Fixed bottom input - iOS chat style */}
-        <section
-          aria-label="Answer input"
-          className="fixed bottom-0 left-0 right-0 z-30 bg-background px-4 pb-[max(env(safe-area-inset-bottom),32px)] pt-3 md:px-6"
-        >
-          <div className="mx-auto max-w-2xl">
-            <SmartAnswerInput
-              correctAnswer={currentEventPuzzle?.answer || ""}
-              difficulty={currentEventPuzzle?.difficulty || 5}
-              disabled={gameState.gameOver || gameState.isSubmitting}
-              isSubmitting={gameState.isSubmitting}
-              onSubmit={handleGuess}
-              puzzle={currentEventPuzzle?.puzzle || ""}
-              puzzleType={currentEventPuzzle?.puzzleType || "rebus"}
-            />
+            {/* Enhanced feedback - positioned above input area */}
+            {gameState.feedbackMessage && (
+              <div
+                aria-live="polite"
+                className={`mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none`}
+                role="status"
+              >
+                <div
+                  className={`rounded-full px-4 py-2 shadow-lg ${
+                    gameState.feedbackMessage === "Checking..."
+                      ? "border border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/90"
+                      : gameState.feedbackMessage.startsWith("So close")
+                        ? "border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/90"
+                        : "border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/90"
+                  }`}
+                >
+                  <p
+                    className={`font-medium text-sm ${
+                      gameState.feedbackMessage === "Checking..."
+                        ? "text-blue-700 dark:text-blue-300"
+                        : gameState.feedbackMessage.startsWith("So close")
+                          ? "text-amber-700 dark:text-amber-300"
+                          : "text-red-700 dark:text-red-300"
+                    }`}
+                  >
+                    {gameState.feedbackMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Error display - positioned above input area */}
+            {error && (
+              <div
+                className="mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none"
+                role="alert"
+              >
+                <div className="rounded-2xl border border-red-400 bg-red-100 p-4 text-center shadow-lg dark:border-red-600 dark:bg-red-900/90">
+                  <p className="font-semibold text-red-800 text-sm dark:text-red-200">
+                    {error.message}
+                  </p>
+                  {error.details && (
+                    <p className="mt-2 text-red-700 text-xs dark:text-red-300">{error.details}</p>
+                  )}
+                  <Button className="mt-3" onClick={() => setError(null)} size="sm" variant="outline">
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Input area - always visible at bottom */}
+            <section
+              aria-label="Answer input"
+              className="shrink-0 z-30 bg-background px-4 pt-3 pb-safe-lg md:px-6 input-area input-area-keyboard-transition"
+            >
+              <div className="mx-auto max-w-2xl">
+                <SmartAnswerInput
+                  correctAnswer={currentEventPuzzle?.answer || ""}
+                  difficulty={currentEventPuzzle?.difficulty || 5}
+                  disabled={gameState.gameOver || gameState.isSubmitting}
+                  isSubmitting={gameState.isSubmitting}
+                  onSubmit={handleGuess}
+                  puzzle={currentEventPuzzle?.puzzle || ""}
+                  puzzleType={currentEventPuzzle?.puzzleType || "rebus"}
+                />
+              </div>
+            </section>
           </div>
-        </section>
-      </div>
+        )}
+      </KeyboardAwareLayout>
 
       {/* Celebration Overlay */}
       <CelebrationOverlay
@@ -1012,7 +1137,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           gameSettings.maxAttempts,
           Math.floor((Date.now() - gameState.startTime) / 1000),
           userStats.streak,
-          true // No hints system - always true for "Pure Skill" achievement
+          gameState.hintsUsed === 0 // "Pure Skill" achievement when no hints used
         )}
         isLuckySolve={gameState.isLuckySolve}
         dailyBonusMultiplier={gameState.dailyBonusMultiplier}
@@ -1023,7 +1148,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           const completionData = {
             guessHistory: gameState.guessHistory,
             timeTaken,
-            usedHints: 0,
+            usedHints: gameState.hintsUsed,
             streak: userStats.streak,
             score: gameState.celebrationScore,
           };

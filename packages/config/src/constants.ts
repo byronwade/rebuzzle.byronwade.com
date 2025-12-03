@@ -44,6 +44,12 @@ export const scoringConfig = {
     penaltyPerAttempt: 15, // Points lost per wrong attempt
   },
 
+  // Hints: Points deducted per hint used
+  hints: {
+    penaltyPerHint: 10, // Points lost per hint revealed
+    maxPenalty: 30, // Cap hint penalty at 3 hints
+  },
+
   // Streak Multiplier: Bonus multiplier based on consecutive days
   streak: {
     bonusPerDay: 5, // Points per streak day

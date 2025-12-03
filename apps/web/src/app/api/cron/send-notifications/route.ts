@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Get today's puzzle
     const puzzlesCollection = getCollection("puzzles");
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);  // Use UTC for consistent behavior
 
     const todaysPuzzle = await puzzlesCollection.findOne({
       publishedAt: { $gte: today },
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Get all active email subscriptions
     const emailSubscriptionsCollection = getCollection("emailSubscriptions");
     const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);  // Use UTC for consistent behavior
 
     const emailSubscriptions = await emailSubscriptionsCollection
       .find({
@@ -103,48 +103,52 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < emailSubscriptions.length; i += BATCH_SIZE) {
       const batch = emailSubscriptions.slice(i, i + BATCH_SIZE);
 
-      // Process batch in parallel
+      // Process batch in parallel using allSettled for better error handling
       const batchPromises = batch.map(async (subscription) => {
-        try {
-          const user = emailToUser.get(subscription.email.toLowerCase());
-          const unsubscribeUrl = `${baseUrl}/unsubscribe?email=${encodeURIComponent(subscription.email)}`;
+        const user = emailToUser.get(subscription.email.toLowerCase());
+        const unsubscribeUrl = `${baseUrl}/unsubscribe?email=${encodeURIComponent(subscription.email)}`;
 
-          const result = await sendDailyPuzzleEmail(subscription.email, puzzleUrl, {
-            username: user?.username,
-            puzzleType,
-            difficulty,
-            unsubscribeUrl,
-          });
+        const result = await sendDailyPuzzleEmail(subscription.email, puzzleUrl, {
+          username: user?.username,
+          puzzleType,
+          difficulty,
+          unsubscribeUrl,
+        });
 
-          if (result.success) {
-            emailResults.sent++;
-            // Update last sent timestamp
-            await emailSubscriptionsCollection.updateOne(
-              { id: subscription.id },
-              { $set: { lastSentAt: new Date() } }
-            );
-            return { success: true, email: subscription.email };
-          }
-          emailResults.failed++;
-          emailResults.errors.push(`${subscription.email}: ${result.error}`);
-          return {
-            success: false,
-            email: subscription.email,
-            error: result.error,
-          };
-        } catch (error) {
-          emailResults.failed++;
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
-          emailResults.errors.push(`${subscription.email}: ${errorMessage}`);
-          return {
-            success: false,
-            email: subscription.email,
-            error: errorMessage,
-          };
+        if (result.success) {
+          // Update last sent timestamp
+          await emailSubscriptionsCollection.updateOne(
+            { id: subscription.id },
+            { $set: { lastSentAt: new Date() } }
+          );
+          return { success: true, email: subscription.email };
         }
+        return {
+          success: false,
+          email: subscription.email,
+          error: result.error,
+        };
       });
 
-      await Promise.all(batchPromises);
+      // Use allSettled to handle all results, even if some reject
+      const batchResults = await Promise.allSettled(batchPromises);
+
+      // Process results from allSettled
+      for (const result of batchResults) {
+        if (result.status === "fulfilled") {
+          if (result.value.success) {
+            emailResults.sent++;
+          } else {
+            emailResults.failed++;
+            emailResults.errors.push(`${result.value.email}: ${result.value.error}`);
+          }
+        } else {
+          // Promise was rejected (unexpected error)
+          emailResults.failed++;
+          const errorMessage = result.reason instanceof Error ? result.reason.message : "Unknown error";
+          emailResults.errors.push(`Batch item failed: ${errorMessage}`);
+        }
+      }
 
       // Delay between batches to avoid rate limiting
       if (i + BATCH_SIZE < emailSubscriptions.length) {

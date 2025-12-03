@@ -73,6 +73,7 @@ const globalForDb = globalThis as unknown as {
   client: MongoClient | undefined;
   db: Db | undefined;
   connectionPromise: Promise<MongoClient> | undefined;
+  indexesInitialized: boolean;
 };
 
 /**
@@ -166,9 +167,34 @@ export const getDatabase = (): Db => {
       // Connection will happen on first operation anyway, so we can ignore errors here
       console.warn("[MongoDB] Background connection pre-warm failed:", error);
     });
+
+    // Initialize indexes in background (only once per process)
+    if (!globalForDb.indexesInitialized) {
+      globalForDb.indexesInitialized = true;
+      initializeIndexes().catch((error) => {
+        console.warn("[MongoDB] Background index initialization failed:", error);
+      });
+    }
   }
   return globalForDb.db;
 };
+
+/**
+ * Initialize database indexes in the background
+ * This is called once per process on first database access
+ */
+async function initializeIndexes(): Promise<void> {
+  try {
+    // Dynamic import to avoid circular dependency
+    const { setupDatabaseIndexes } = await import("./indexes");
+    const result = await setupDatabaseIndexes();
+    if (!result.success) {
+      console.warn("[MongoDB] Some indexes failed to create:", result.totalErrors, "errors");
+    }
+  } catch (error) {
+    console.error("[MongoDB] Failed to initialize indexes:", error);
+  }
+}
 
 /**
  * Get collection helper with proper typing

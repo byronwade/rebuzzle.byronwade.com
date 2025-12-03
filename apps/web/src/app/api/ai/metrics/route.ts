@@ -1,13 +1,51 @@
 /**
  * AI Metrics and Monitoring API
  *
- * Provides insights into AI usage, performance, and costs
+ * Provides insights into AI usage, performance, and costs.
+ * REQUIRES ADMIN AUTHENTICATION - contains sensitive cost/usage data.
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getAIMetrics, getAIReport, getCacheStats } from "@/ai";
+import { verifyToken } from "@/lib/jwt";
+import { userOps } from "@/db/operations";
 
-export async function GET() {
+/**
+ * Verify admin authentication
+ */
+async function verifyAdmin(request: NextRequest): Promise<{ isAdmin: boolean; error?: string }> {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return { isAdmin: false, error: "Missing authorization header" };
+    }
+
+    const token = authHeader.slice(7);
+    const payload = await verifyToken(token);
+
+    if (!payload) {
+      return { isAdmin: false, error: "Invalid token" };
+    }
+
+    const user = await userOps.findById(payload.userId);
+    if (!user?.isAdmin) {
+      return { isAdmin: false, error: "Admin access required" };
+    }
+
+    return { isAdmin: true };
+  } catch {
+    return { isAdmin: false, error: "Authentication failed" };
+  }
+}
+
+export async function GET(request: NextRequest) {
+  // Require admin authentication for metrics access
+  const auth = await verifyAdmin(request);
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const metrics = getAIMetrics();
     const cacheStats = getCacheStats();
@@ -66,7 +104,13 @@ export async function GET() {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  // Require admin authentication for cache/metrics reset
+  const auth = await verifyAdmin(request);
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const { getMonitor, clearAICache } = await import("@/ai");
 

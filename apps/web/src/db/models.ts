@@ -21,6 +21,11 @@ export interface User {
   // Avatar preferences
   avatarColorIndex?: number; // Index into avatar color palette (0-9)
   avatarCustomInitials?: string; // Custom initials (1-2 characters)
+  // IP-bound guest identification
+  ipHash?: string; // SHA-256 hash of IP for privacy
+  deviceId?: string; // For desktop/mobile app identification
+  lastSeenIp?: string; // Last IP hash seen
+  lastSeenAt?: Date; // When last seen
 }
 
 export interface UserStats {
@@ -298,6 +303,11 @@ export interface NewUser {
   isGuest?: boolean;
   guestToken?: string;
   convertedFromGuestId?: string;
+  // IP-bound guest identification
+  ipHash?: string;
+  deviceId?: string;
+  lastSeenIp?: string;
+  lastSeenAt?: Date;
 }
 
 export interface NewUserStats {
@@ -546,4 +556,505 @@ export interface NewUserSession {
   puzzleIds: string[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+// ============================================================================
+// AI LEARNING SYSTEM MODELS
+// ============================================================================
+
+/**
+ * Chain of Thought step in AI reasoning
+ */
+export interface AIChainOfThoughtStep {
+  stepNumber: number;
+  stepType: string; // 'concept', 'strategy', 'generation', 'validation', 'refinement'
+  description: string;
+  reasoning: string;
+  metadata?: Record<string, unknown>;
+  durationMs?: number;
+}
+
+/**
+ * Quality metrics for AI-generated content
+ */
+export interface AIQualityMetrics {
+  score: number; // 0-100
+  verdict: "publish" | "revise" | "reject";
+  strengths: string[];
+  weaknesses: string[];
+  improvements: string[];
+  adversarialResults?: {
+    attacks: Array<{
+      attackType: string;
+      issue: string;
+      severity: "critical" | "major" | "minor";
+    }>;
+    robustnessScore: number;
+    passed: boolean;
+  };
+}
+
+/**
+ * Difficulty calibration profile
+ */
+export interface AIDifficultyProfile {
+  visualAmbiguity: number; // 1-10
+  cognitiveSteps: number; // 1-10
+  culturalKnowledge: number; // 1-10
+  vocabularyLevel: number; // 1-10
+  patternNovelty: number; // 1-10
+}
+
+/**
+ * AI Decision - stores every AI decision with full context
+ */
+export interface AIDecision {
+  _id?: string;
+  id: string;
+
+  // Core identification
+  decisionType:
+    | "puzzle_generation"
+    | "hint_generation"
+    | "quality_evaluation"
+    | "difficulty_calibration"
+    | "user_recommendation"
+    | "answer_validation"
+    | "blog_generation";
+  operationId: string; // Groups related decisions (e.g., all steps in puzzle generation)
+  sessionId?: string; // Links to user session if applicable
+  userId?: string; // User who triggered this (admin or end user)
+
+  // Timing
+  timestamp: Date;
+  durationMs: number;
+
+  // Model details
+  provider: string; // 'gateway', 'google', 'groq', etc.
+  model: string; // 'google/gemini-2.0-flash', etc.
+  modelType: "fast" | "smart" | "creative";
+
+  // Input/Output
+  input: {
+    prompt: string;
+    systemPrompt?: string;
+    parameters: Record<string, unknown>; // temperature, schema, etc.
+    context?: Record<string, unknown>; // user profile, puzzle context, etc.
+  };
+  output: {
+    success: boolean;
+    result?: unknown; // The actual AI output
+    error?: string;
+    errorCode?: string;
+  };
+
+  // Chain of Thought
+  chainOfThought?: {
+    steps: AIChainOfThoughtStep[];
+    thinking?: unknown; // Raw thinking from generateWithChainOfThought
+    layers?: string[]; // Multi-layer reasoning
+    challengeElements?: string[];
+  };
+
+  // Token usage
+  tokens: {
+    prompt: number;
+    completion: number;
+    total: number;
+    cost: number; // Calculated cost in USD
+  };
+
+  // Quality metrics (if applicable)
+  qualityMetrics?: AIQualityMetrics;
+
+  // Difficulty calibration (if applicable)
+  difficultyCalibration?: {
+    proposed: number;
+    calculated: number;
+    calibrated: number;
+    profile: AIDifficultyProfile;
+  };
+
+  // Uniqueness metrics (if applicable)
+  uniquenessMetrics?: {
+    fingerprint: string;
+    score: number;
+    isUnique: boolean;
+    similarPuzzles?: Array<{
+      puzzleId: string;
+      similarity: number;
+    }>;
+  };
+
+  // Fallback tracking
+  fallbackChain?: Array<{
+    model: string;
+    attempted: boolean;
+    success: boolean;
+    error?: string;
+    durationMs?: number;
+  }>;
+
+  // Reference to created entity
+  entityType?: "puzzle" | "hint" | "blogPost";
+  entityId?: string;
+
+  // For learning feedback
+  feedbackReceived?: boolean;
+
+  createdAt: Date;
+}
+
+/**
+ * AI Error - dedicated error tracking for pattern analysis
+ */
+export interface AIError {
+  _id?: string;
+  id: string;
+
+  // Error identification
+  errorCode: string; // 'QUOTA_EXCEEDED', 'MODEL_NOT_FOUND', 'VALIDATION_FAILED', etc.
+  errorType: "provider" | "validation" | "quality" | "generation" | "timeout" | "unknown";
+  severity: "critical" | "major" | "minor" | "warning";
+
+  // Context
+  decisionId?: string; // Link to aiDecisions
+  operationId: string;
+  decisionType: string;
+  provider: string;
+  model: string;
+
+  // Error details
+  message: string;
+  stackTrace?: string;
+  rawError?: unknown;
+
+  // Input that caused the error
+  input?: {
+    prompt?: string;
+    parameters?: Record<string, unknown>;
+  };
+
+  // Resolution
+  resolved: boolean;
+  resolution?: {
+    action: "retry_succeeded" | "fallback_succeeded" | "manual_fix" | "ignored" | "config_changed";
+    resolvedAt?: Date;
+    notes?: string;
+  };
+
+  // Patterns
+  tags: string[]; // For categorization: ['quota', 'rebus', 'high_difficulty']
+
+  timestamp: Date;
+  createdAt: Date;
+}
+
+/**
+ * AI Feedback - user feedback on AI outputs
+ */
+export interface AIFeedback {
+  _id?: string;
+  id: string;
+
+  // Links
+  decisionId?: string; // Link to AI decision that created this
+  puzzleId?: string;
+  userId: string;
+
+  // Feedback type
+  feedbackType: "puzzle_quality" | "hint_helpfulness" | "difficulty_accuracy" | "answer_validation";
+
+  // Ratings
+  rating: number; // 1-5 stars
+  satisfaction: number; // 1-5
+
+  // Specific metrics
+  metrics?: {
+    tooEasy?: boolean;
+    tooHard?: boolean;
+    unclear?: boolean;
+    unfair?: boolean;
+    creative?: boolean;
+    boring?: boolean;
+    hintTooVague?: boolean;
+    hintTooObvious?: boolean;
+  };
+
+  // Free text
+  comment?: string;
+
+  // User performance context
+  context: {
+    timeSpentSeconds: number;
+    hintsUsed: number;
+    attemptNumber: number;
+    solved: boolean;
+    difficultyPerception?: number; // User-perceived difficulty 1-10
+  };
+
+  // For learning
+  processedForLearning: boolean;
+  learningImpact?: {
+    appliedAt?: Date;
+    adjustmentType?: string;
+    adjustmentValue?: number;
+  };
+
+  timestamp: Date;
+  createdAt: Date;
+}
+
+/**
+ * AI Configuration - versioned AI config with A/B testing
+ */
+export interface AIConfiguration {
+  _id?: string;
+  id: string;
+
+  // Version info
+  version: string; // Semantic versioning: '1.2.0'
+  name: string; // Human-readable name
+  description: string;
+
+  // Configuration
+  config: {
+    // Model selection
+    models: {
+      fast: string;
+      smart: string;
+      creative: string;
+    };
+    fallbackChain: {
+      fast: string[];
+      smart: string[];
+      creative: string[];
+    };
+
+    // Generation parameters
+    generation: {
+      temperature: {
+        factual: number;
+        balanced: number;
+        creative: number;
+      };
+      maxTokens: {
+        short: number;
+        medium: number;
+        long: number;
+      };
+    };
+
+    // Quality thresholds
+    quality: {
+      publishThreshold: number;
+      revisionThreshold: number;
+      rejectThreshold: number;
+      skipAdversarialBelow: number;
+    };
+
+    // Prompt templates
+    prompts: {
+      puzzleGeneration?: {
+        system: string;
+        user: string;
+      };
+      hintGeneration?: {
+        system: string;
+        user: string;
+      };
+      qualityEvaluation?: {
+        system: string;
+        user: string;
+      };
+    };
+
+    // Feature flags
+    features: {
+      chainOfThought: boolean;
+      agentOrchestration: boolean;
+      semanticSearch: boolean;
+      learningFeedback: boolean;
+    };
+  };
+
+  // A/B Testing
+  abTest?: {
+    testId: string;
+    testName: string;
+    variant: "A" | "B" | "C";
+    trafficPercentage: number;
+    startDate: Date;
+    endDate?: Date;
+  };
+
+  // Status
+  status: "draft" | "active" | "testing" | "archived";
+  isDefault: boolean;
+
+  // Audit
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  activatedAt?: Date;
+  deactivatedAt?: Date;
+
+  // Performance metrics (aggregated)
+  metrics?: {
+    totalDecisions: number;
+    successRate: number;
+    avgQualityScore: number;
+    avgTokensPerDecision: number;
+    avgCost: number;
+    avgLatencyMs: number;
+    userSatisfaction: number;
+  };
+}
+
+/**
+ * AI Learning Event - tracks how feedback influences AI
+ */
+export interface AILearningEvent {
+  _id?: string;
+  id: string;
+
+  // Learning type
+  eventType:
+    | "threshold_adjustment"
+    | "prompt_optimization"
+    | "model_selection"
+    | "difficulty_calibration"
+    | "pattern_learned";
+
+  // Source
+  feedbackIds: string[]; // Feedback that triggered this
+  aggregationType: "single" | "batch" | "trend";
+
+  // Change
+  change: {
+    parameter: string; // What was changed
+    oldValue: unknown;
+    newValue: unknown;
+    reason: string;
+    confidence: number; // 0-1 confidence in this change
+  };
+
+  // Impact
+  expectedImpact: {
+    qualityImprovement?: number;
+    satisfactionImprovement?: number;
+    costReduction?: number;
+  };
+
+  actualImpact?: {
+    measurementPeriod: { start: Date; end: Date };
+    qualityChange: number;
+    satisfactionChange: number;
+    costChange: number;
+  };
+
+  // Status
+  status: "proposed" | "approved" | "applied" | "reverted";
+  appliedToConfigId?: string;
+
+  timestamp: Date;
+  createdAt: Date;
+}
+
+// ============================================================================
+// AI LEARNING SYSTEM - NEW DOCUMENT TYPES
+// ============================================================================
+
+export interface NewAIDecision {
+  id: string;
+  decisionType: AIDecision["decisionType"];
+  operationId: string;
+  sessionId?: string;
+  userId?: string;
+  timestamp: Date;
+  durationMs: number;
+  provider: string;
+  model: string;
+  modelType: AIDecision["modelType"];
+  input: AIDecision["input"];
+  output: AIDecision["output"];
+  chainOfThought?: AIDecision["chainOfThought"];
+  tokens: AIDecision["tokens"];
+  qualityMetrics?: AIQualityMetrics;
+  difficultyCalibration?: AIDecision["difficultyCalibration"];
+  uniquenessMetrics?: AIDecision["uniquenessMetrics"];
+  fallbackChain?: AIDecision["fallbackChain"];
+  entityType?: AIDecision["entityType"];
+  entityId?: string;
+  feedbackReceived?: boolean;
+  createdAt: Date;
+}
+
+export interface NewAIError {
+  id: string;
+  errorCode: string;
+  errorType: AIError["errorType"];
+  severity: AIError["severity"];
+  decisionId?: string;
+  operationId: string;
+  decisionType: string;
+  provider: string;
+  model: string;
+  message: string;
+  stackTrace?: string;
+  rawError?: unknown;
+  input?: AIError["input"];
+  resolved: boolean;
+  resolution?: AIError["resolution"];
+  tags: string[];
+  timestamp: Date;
+  createdAt: Date;
+}
+
+export interface NewAIFeedback {
+  id: string;
+  decisionId?: string;
+  puzzleId?: string;
+  userId: string;
+  feedbackType: AIFeedback["feedbackType"];
+  rating: number;
+  satisfaction: number;
+  metrics?: AIFeedback["metrics"];
+  comment?: string;
+  context: AIFeedback["context"];
+  processedForLearning: boolean;
+  learningImpact?: AIFeedback["learningImpact"];
+  timestamp: Date;
+  createdAt: Date;
+}
+
+export interface NewAIConfiguration {
+  id: string;
+  version: string;
+  name: string;
+  description: string;
+  config: AIConfiguration["config"];
+  abTest?: AIConfiguration["abTest"];
+  status: AIConfiguration["status"];
+  isDefault: boolean;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  activatedAt?: Date;
+  deactivatedAt?: Date;
+  metrics?: AIConfiguration["metrics"];
+}
+
+export interface NewAILearningEvent {
+  id: string;
+  eventType: AILearningEvent["eventType"];
+  feedbackIds: string[];
+  aggregationType: AILearningEvent["aggregationType"];
+  change: AILearningEvent["change"];
+  expectedImpact: AILearningEvent["expectedImpact"];
+  actualImpact?: AILearningEvent["actualImpact"];
+  status: AILearningEvent["status"];
+  appliedToConfigId?: string;
+  timestamp: Date;
+  createdAt: Date;
 }

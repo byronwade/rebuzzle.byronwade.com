@@ -5,6 +5,8 @@
 
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
+import { hexToRgba } from '../lib/theme';
 
 interface HintCardProps {
   /** All available hints */
@@ -29,6 +31,9 @@ export function HintCard({
   isComplete = false,
   style,
 }: HintCardProps) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
+
   if (hints.length === 0) {
     return null;
   }
@@ -37,10 +42,10 @@ export function HintCard({
   const hintsRemaining = hints.length - revealedHints.length;
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, { backgroundColor: hexToRgba(colors.foreground, 0.05) }, style]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Hints</Text>
-        <Text style={styles.counter}>
+        <Text style={[styles.title, { color: colors.accent }]}>Hints</Text>
+        <Text style={[styles.counter, { color: colors.mutedForeground }]}>
           {revealedHints.length}/{hints.length}
         </Text>
       </View>
@@ -49,25 +54,34 @@ export function HintCard({
         <View style={styles.hintsList}>
           {revealedHints.map((hint, index) => (
             <View key={index} style={styles.hintItem}>
-              <Text style={styles.hintNumber}>{index + 1}.</Text>
-              <Text style={styles.hintText}>{hint}</Text>
+              <Text style={[styles.hintNumber, { color: colors.mutedForeground }]}>{index + 1}.</Text>
+              <Text style={[styles.hintText, { color: colors.foreground }]}>{hint}</Text>
             </View>
           ))}
         </View>
       ) : (
-        <Text style={styles.noHints}>No hints revealed yet</Text>
+        <Text style={[styles.noHints, { color: colors.mutedForeground }]}>No hints revealed yet</Text>
       )}
 
       {!isComplete && canShowMore && (
-        <Pressable style={styles.button} onPress={onShowHint}>
-          <Text style={styles.buttonText}>
+        <Pressable
+          style={[
+            styles.button,
+            {
+              backgroundColor: hexToRgba(colors.accent, 0.15),
+              borderColor: hexToRgba(colors.accent, 0.3),
+            },
+          ]}
+          onPress={onShowHint}
+        >
+          <Text style={[styles.buttonText, { color: colors.accent }]}>
             Get Hint ({hintsRemaining} remaining)
           </Text>
         </Pressable>
       )}
 
       {!isComplete && !canShowMore && revealedHints.length > 0 && (
-        <Text style={styles.noMoreHints}>No more hints available</Text>
+        <Text style={[styles.noMoreHints, { color: colors.mutedForeground }]}>No more hints available</Text>
       )}
     </View>
   );
@@ -75,7 +89,6 @@ export function HintCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     padding: 16,
   },
@@ -88,13 +101,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#facc15',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   counter: {
     fontSize: 12,
-    color: '#94a3b8',
   },
   hintsList: {
     gap: 8,
@@ -105,40 +116,33 @@ const styles = StyleSheet.create({
   },
   hintNumber: {
     fontSize: 14,
-    color: '#64748b',
     fontWeight: '600',
     width: 20,
   },
   hintText: {
     fontSize: 14,
-    color: '#e2e8f0',
     flex: 1,
     lineHeight: 20,
   },
   noHints: {
     fontSize: 14,
-    color: '#64748b',
     fontStyle: 'italic',
   },
   button: {
     marginTop: 12,
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
   },
   buttonText: {
     fontSize: 14,
-    color: '#facc15',
     fontWeight: '600',
   },
   noMoreHints: {
     marginTop: 8,
     fontSize: 12,
-    color: '#64748b',
     textAlign: 'center',
   },
 });

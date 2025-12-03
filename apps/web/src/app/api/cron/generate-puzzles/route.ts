@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkDatabaseHealth } from "@/db/mongodb";
+import { getAppUrl } from "@/lib/env";
 
 // Edge runtime removed - incompatible with PPR (cacheComponents)
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
     console.log("🚀 Triggering daily content generation workflow...");
 
     // Trigger the workflow by making a request to it
-    const workflowUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/workflows/daily-content`;
+    const workflowUrl = `${getAppUrl()}/api/workflows/daily-content`;
 
     const workflowResponse = await fetch(workflowUrl, {
       method: "POST",

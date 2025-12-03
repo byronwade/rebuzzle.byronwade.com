@@ -15,7 +15,7 @@ export async function deleteTodaysPuzzle(): Promise<{
   try {
     const collection = getCollection<Puzzle>("puzzles");
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);  // Use UTC for consistent behavior
 
     const result = await collection.deleteMany({
       publishedAt: { $gte: today },

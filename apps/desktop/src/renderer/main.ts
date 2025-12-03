@@ -13,6 +13,7 @@ import { createLeaderboardPage } from './pages/leaderboard';
 import { createProfilePage } from './pages/profile';
 import { createSettingsPage } from './pages/settings';
 import { createLoginPage } from './pages/login';
+import { createAchievementsPage } from './pages/achievements';
 
 // ============================================
 // INITIALIZATION
@@ -61,6 +62,7 @@ function registerRoutes(): void {
   router.registerAll([
     { path: '/', handler: createGamePage, title: 'Play' },
     { path: '/leaderboard', handler: createLeaderboardPage, title: 'Leaderboard' },
+    { path: '/achievements', handler: createAchievementsPage, title: 'Achievements' },
     { path: '/profile', handler: createProfilePage, title: 'Profile' },
     { path: '/settings', handler: createSettingsPage, title: 'Settings' },
     { path: '/login', handler: createLoginPage, title: 'Login' },
@@ -91,7 +93,7 @@ function registerRoutes(): void {
 // ============================================
 
 function setupNavigation(): void {
-  const navItems = document.querySelectorAll('.nav-item');
+  const navItems = document.querySelectorAll('.sidebar-item');
 
   navItems.forEach((item) => {
     item.addEventListener('click', (e) => {
@@ -109,7 +111,7 @@ function setupNavigation(): void {
 }
 
 function updateNavigation(path: string): void {
-  const navItems = document.querySelectorAll('.nav-item');
+  const navItems = document.querySelectorAll('.sidebar-item');
 
   navItems.forEach((item) => {
     const route = item.getAttribute('data-route');
@@ -233,6 +235,10 @@ function setupKeyboardShortcuts(): void {
         case '4':
           e.preventDefault();
           router.navigate('/settings');
+          break;
+        case '5':
+          e.preventDefault();
+          router.navigate('/achievements');
           break;
       }
     }

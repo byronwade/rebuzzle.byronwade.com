@@ -6,6 +6,8 @@
 
 // Analytics operations
 export * from "./analytics-ops";
+// AI Learning System operations
+export * from "./ai-operations";
 // Error handling
 export * from "./errors";
 // Database models

@@ -106,8 +106,10 @@ class AIProvider {
         // Only requires AI_GATEWAY_API_KEY - all provider keys managed in Vercel dashboard
         const gatewayApiKey = AI_CONFIG.gateway.apiKey;
         if (gatewayApiKey) {
-          const keyPreview = `${gatewayApiKey.substring(0, 10)}...`;
-          console.log(`[AI] Gateway API key: ${keyPreview} (${gatewayApiKey.length} chars)`);
+          // Only log key presence in development, never log the actual key
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[AI] Gateway API key present (${gatewayApiKey.length} chars)`);
+          }
           // Validate key format (should start with vck_)
           if (!gatewayApiKey.startsWith("vck_")) {
             console.warn(`[AI] ⚠️ Gateway API key doesn't start with 'vck_' - might be invalid`);

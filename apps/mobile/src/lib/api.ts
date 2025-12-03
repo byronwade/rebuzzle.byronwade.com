@@ -3,7 +3,8 @@
  * Handles authentication, requests, and error handling
  */
 
-import { getAuthToken, saveAuthToken, removeAuthToken, saveUserData, removeUserData } from './storage';
+import * as SecureStore from 'expo-secure-store';
+import { getAuthToken, saveAuthToken, removeAuthToken, saveUserData, removeUserData, getGuestToken } from './storage';
 import type {
   User,
   UserStats,
@@ -49,11 +50,37 @@ export class ApiError extends Error {
   }
 }
 
+const DEVICE_ID_KEY = 'rebuzzle_device_id';
+
 class ApiClient {
   private baseUrl: string;
+  private deviceId: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Get or create device ID for IP-bound guest identification
+   * Matches desktop implementation pattern
+   */
+  private async getDeviceId(): Promise<string> {
+    if (this.deviceId) return this.deviceId;
+
+    try {
+      let id = await SecureStore.getItemAsync(DEVICE_ID_KEY);
+      if (!id) {
+        id = `mobile_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        await SecureStore.setItemAsync(DEVICE_ID_KEY, id);
+      }
+      this.deviceId = id;
+      return id;
+    } catch {
+      // Fallback if secure store fails
+      const id = `mobile_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      this.deviceId = id;
+      return id;
+    }
   }
 
   /**
@@ -67,6 +94,10 @@ class ApiClient {
       'Content-Type': 'application/json',
       ...headers,
     };
+
+    // Add device ID for IP-bound guest identification
+    const deviceId = await this.getDeviceId();
+    requestHeaders['X-Device-Id'] = deviceId;
 
     // Add auth token if available and not skipped
     if (!skipAuth) {
@@ -183,15 +214,23 @@ class ApiClient {
   }
 
   /**
-   * Create or get guest session
+   * Create or get guest session using lazy endpoint
+   * Uses IP-bound identification with device ID for consistent cross-platform behavior
    */
   async createGuestSession(): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
-      const response = await this.get<{
+      // Get existing guest token as fallback identifier
+      const existingGuestToken = await getGuestToken();
+
+      const response = await this.post<{
         success: boolean;
         user: User;
         token?: string;
-      }>('/api/auth/guest', { skipAuth: true });
+        isNewGuest?: boolean;
+        identifiedBy?: string;
+      }>('/api/auth/guest/lazy', {
+        localStorageGuestId: existingGuestToken
+      }, { skipAuth: true });
 
       if (response.success && response.user) {
         if (response.token) {

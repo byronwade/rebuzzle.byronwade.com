@@ -3,7 +3,7 @@
  * Handles authentication, requests, and offline fallback
  */
 
-import { appStore, type Puzzle, type User, type UserStats } from './store';
+import { appStore, type Puzzle, type PuzzleAttempt, type User, type UserStats } from './store';
 
 const API_BASE = 'https://rebuzzle.byronwade.com';
 
@@ -22,9 +22,36 @@ interface RequestOptions {
 
 class ApiClient {
   private baseUrl: string;
+  private deviceId: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Get or create device ID for IP-bound guest identification
+   */
+  private async getDeviceId(): Promise<string> {
+    if (this.deviceId) return this.deviceId;
+
+    try {
+      if (window.electronAPI) {
+        let id = await window.electronAPI.settings.get<string>('deviceId');
+        if (!id) {
+          id = `desktop_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+          await window.electronAPI.settings.set('deviceId', id);
+        }
+        this.deviceId = id;
+        return id;
+      }
+    } catch {
+      // Fallback if electron API not available
+    }
+
+    // Fallback for non-electron environments
+    const id = `desktop_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    this.deviceId = id;
+    return id;
   }
 
   /**
@@ -66,6 +93,10 @@ class ApiClient {
       'Content-Type': 'application/json',
       ...headers,
     };
+
+    // Add device ID for IP-bound guest identification
+    const deviceId = await this.getDeviceId();
+    requestHeaders['X-Device-Id'] = deviceId;
 
     // Add auth token if available and not skipped
     if (!skipAuth) {
@@ -233,7 +264,21 @@ class ApiClient {
       const response = await this.get<{
         success: boolean;
         puzzle: Puzzle;
+        serverTime?: string;
+        nextPuzzleTime?: string;
       }>('/api/puzzle/today');
+
+      // Capture server time for accurate countdown
+      if (response.serverTime && response.nextPuzzleTime) {
+        const serverTime = new Date(response.serverTime).getTime();
+        const clientTime = Date.now();
+        const offset = serverTime - clientTime;
+
+        appStore.setState({
+          serverTimeOffset: offset,
+          nextPuzzleTime: response.nextPuzzleTime,
+        });
+      }
 
       if (response.success && response.puzzle) {
         return response.puzzle;
@@ -242,6 +287,28 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to fetch puzzle:', error);
       return null;
+    }
+  }
+
+  /**
+   * Record a puzzle attempt
+   * This is the main endpoint for tracking puzzle completion across all platforms
+   */
+  async recordAttempt(attempt: PuzzleAttempt): Promise<{ success: boolean; attemptId?: string }> {
+    try {
+      const response = await this.post<{
+        success: boolean;
+        attemptId: string;
+        message: string;
+      }>('/api/puzzles/attempt', attempt);
+
+      return {
+        success: response.success,
+        attemptId: response.attemptId,
+      };
+    } catch (error) {
+      console.error('Failed to record attempt:', error);
+      return { success: false };
     }
   }
 
@@ -327,6 +394,63 @@ class ApiClient {
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
       return [];
+    }
+  }
+
+  // ============================================
+  // ACHIEVEMENTS METHODS
+  // ============================================
+
+  /**
+   * Get user achievements
+   */
+  async getAchievements(): Promise<{
+    achievements: Array<{
+      id: string;
+      name: string;
+      description: string;
+      hint: string;
+      icon: string;
+      category: string;
+      rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+      points: number;
+      order: number;
+      secret?: boolean;
+      unlocked: boolean;
+      unlockedAt?: string;
+    }>;
+    progress: { unlocked: number; total: number; percentage: number };
+  }> {
+    try {
+      const response = await this.get<{
+        success: boolean;
+        achievements: Array<{
+          id: string;
+          name: string;
+          description: string;
+          hint: string;
+          icon: string;
+          category: string;
+          rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+          points: number;
+          order: number;
+          secret?: boolean;
+          unlocked: boolean;
+          unlockedAt?: string;
+        }>;
+        progress: { unlocked: number; total: number; percentage: number };
+      }>('/api/user/achievements');
+
+      if (response.success) {
+        return {
+          achievements: response.achievements || [],
+          progress: response.progress || { unlocked: 0, total: 0, percentage: 0 },
+        };
+      }
+      return { achievements: [], progress: { unlocked: 0, total: 0, percentage: 0 } };
+    } catch (error) {
+      console.error('Failed to fetch achievements:', error);
+      return { achievements: [], progress: { unlocked: 0, total: 0, percentage: 0 } };
     }
   }
 }

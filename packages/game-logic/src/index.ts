@@ -18,6 +18,7 @@ export {
 export {
   calculateAccuracyPenalty,
   calculateDifficultyBonus,
+  calculateHintPenalty,
   calculateLevel,
   calculateScore,
   calculateSpeedBonus,

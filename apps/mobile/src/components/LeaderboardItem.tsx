@@ -6,6 +6,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AvatarCircle } from './AvatarCircle';
+import { useTheme } from '../contexts/ThemeContext';
+import { hexToRgba } from '../lib/theme';
 import type { LeaderboardEntry } from '../types';
 
 interface LeaderboardItemProps {
@@ -21,7 +23,7 @@ interface LeaderboardItemProps {
   style?: StyleProp<ViewStyle>;
 }
 
-// Rank badge colors for top 3
+// Rank badge colors for top 3 (consistent across themes)
 const RANK_COLORS: Record<number, string> = {
   1: '#facc15', // Gold
   2: '#94a3b8', // Silver
@@ -35,6 +37,9 @@ export function LeaderboardItem({
   sortBy = 'points',
   style,
 }: LeaderboardItemProps) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
+
   const isTopThree = rank <= 3;
   const rankColor = RANK_COLORS[rank];
 
@@ -42,18 +47,28 @@ export function LeaderboardItem({
     <View
       style={[
         styles.container,
-        isCurrentUser && styles.currentUser,
+        { backgroundColor: hexToRgba(colors.foreground, 0.05) },
+        isCurrentUser && {
+          backgroundColor: hexToRgba(colors.accent, 0.1),
+          borderWidth: 1,
+          borderColor: hexToRgba(colors.accent, 0.3),
+        },
         style,
       ]}
     >
       {/* Rank */}
-      <View style={[styles.rankContainer, isTopThree && { backgroundColor: rankColor }]}>
+      <View
+        style={[
+          styles.rankContainer,
+          { backgroundColor: isTopThree ? rankColor : hexToRgba(colors.foreground, 0.1) },
+        ]}
+      >
         {isTopThree ? (
           <Text style={styles.rankEmoji}>
             {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
           </Text>
         ) : (
-          <Text style={styles.rankText}>{rank}</Text>
+          <Text style={[styles.rankText, { color: colors.mutedForeground }]}>{rank}</Text>
         )}
       </View>
 
@@ -67,24 +82,24 @@ export function LeaderboardItem({
 
       {/* User Info */}
       <View style={styles.userInfo}>
-        <Text style={[styles.username, isCurrentUser && styles.currentUserText]}>
+        <Text style={[styles.username, { color: isCurrentUser ? colors.accent : colors.foreground }]}>
           {entry.user.username}
           {isCurrentUser && ' (You)'}
         </Text>
-        <Text style={styles.level}>Level {entry.stats.level}</Text>
+        <Text style={[styles.level, { color: colors.mutedForeground }]}>Level {entry.stats.level}</Text>
       </View>
 
       {/* Stats */}
       <View style={styles.statsContainer}>
         {sortBy === 'points' ? (
           <>
-            <Text style={styles.mainStat}>{entry.stats.points.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>points</Text>
+            <Text style={[styles.mainStat, { color: colors.accent }]}>{entry.stats.points.toLocaleString()}</Text>
+            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>points</Text>
           </>
         ) : (
           <>
-            <Text style={styles.mainStat}>{entry.stats.streak || 0}</Text>
-            <Text style={styles.statLabel}>streak</Text>
+            <Text style={[styles.mainStat, { color: colors.accent }]}>{entry.stats.streak || 0}</Text>
+            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>streak</Text>
           </>
         )}
       </View>
@@ -96,21 +111,14 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     padding: 12,
     borderRadius: 12,
     gap: 12,
-  },
-  currentUser: {
-    backgroundColor: 'rgba(250, 204, 21, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
   },
   rankContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -120,7 +128,6 @@ const styles = StyleSheet.create({
   rankText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#94a3b8',
   },
   userInfo: {
     flex: 1,
@@ -128,14 +135,9 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
-  },
-  currentUserText: {
-    color: '#facc15',
   },
   level: {
     fontSize: 12,
-    color: '#94a3b8',
     marginTop: 2,
   },
   statsContainer: {
@@ -144,11 +146,9 @@ const styles = StyleSheet.create({
   mainStat: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#facc15',
   },
   statLabel: {
     fontSize: 11,
-    color: '#64748b',
     marginTop: 2,
   },
 });

@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Avatar color palette
 const AVATAR_COLORS = [
@@ -40,6 +41,9 @@ export function AvatarCircle({
   size = 48,
   style,
 }: AvatarCircleProps) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
+
   // Get initials (custom or from username)
   const initials = customInitials
     ? customInitials.toUpperCase().slice(0, 2)
@@ -69,7 +73,7 @@ export function AvatarCircle({
         style,
       ]}
     >
-      <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
+      <Text style={[styles.initials, { fontSize, color: colors.accentForeground }]}>{initials}</Text>
     </View>
   );
 }
@@ -80,7 +84,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   initials: {
-    color: '#1a1a2e',
     fontWeight: 'bold',
   },
 });

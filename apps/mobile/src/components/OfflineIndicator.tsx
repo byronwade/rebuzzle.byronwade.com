@@ -6,6 +6,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useOffline } from '../contexts/OfflineContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { hexToRgba } from '../lib/theme';
 
 interface OfflineIndicatorProps {
   /** Whether to show in compact mode */
@@ -14,6 +16,8 @@ interface OfflineIndicatorProps {
 
 export function OfflineIndicator({ compact = false }: OfflineIndicatorProps) {
   const { isOnline, isSyncing, pendingCount, syncPendingData } = useOffline();
+  const { theme } = useTheme();
+  const colors = theme.colors;
 
   // Don't show if online and no pending items
   if (isOnline && pendingCount === 0) {
@@ -24,14 +28,14 @@ export function OfflineIndicator({ compact = false }: OfflineIndicatorProps) {
     return (
       <View style={styles.compactContainer}>
         {!isOnline && (
-          <View style={styles.compactBadge}>
+          <View style={[styles.compactBadge, { backgroundColor: hexToRgba(colors.destructive, 0.15) }]}>
             <Text style={styles.compactIcon}>📴</Text>
-            <Text style={styles.compactText}>Offline</Text>
+            <Text style={[styles.compactText, { color: colors.mutedForeground }]}>Offline</Text>
           </View>
         )}
         {pendingCount > 0 && (
-          <View style={[styles.compactBadge, styles.pendingBadge]}>
-            <Text style={styles.compactText}>{pendingCount} pending</Text>
+          <View style={[styles.compactBadge, { backgroundColor: hexToRgba(colors.accent, 0.15) }]}>
+            <Text style={[styles.compactText, { color: colors.mutedForeground }]}>{pendingCount} pending</Text>
           </View>
         )}
       </View>
@@ -39,22 +43,34 @@ export function OfflineIndicator({ compact = false }: OfflineIndicatorProps) {
   }
 
   return (
-    <View style={[styles.container, isOnline && styles.onlineWithPending]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isOnline
+            ? hexToRgba(colors.accent, 0.1)
+            : hexToRgba(colors.destructive, 0.15),
+          borderBottomColor: isOnline
+            ? hexToRgba(colors.accent, 0.3)
+            : hexToRgba(colors.destructive, 0.3),
+        },
+      ]}
+    >
       <View style={styles.content}>
         <Text style={styles.icon}>{isOnline ? '🔄' : '📴'}</Text>
         <View style={styles.textContainer}>
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: colors.foreground }]}>
             {isOnline ? 'Syncing...' : 'You\'re Offline'}
           </Text>
           {!isOnline && (
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               {pendingCount > 0
                 ? `${pendingCount} item${pendingCount > 1 ? 's' : ''} will sync when online`
                 : 'Playing in offline mode'}
             </Text>
           )}
           {isOnline && pendingCount > 0 && (
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               Syncing {pendingCount} item{pendingCount > 1 ? 's' : ''}...
             </Text>
           )}
@@ -62,12 +78,21 @@ export function OfflineIndicator({ compact = false }: OfflineIndicatorProps) {
       </View>
 
       {isSyncing && (
-        <ActivityIndicator color="#facc15" size="small" />
+        <ActivityIndicator color={colors.accent} size="small" />
       )}
 
       {isOnline && pendingCount > 0 && !isSyncing && (
-        <Pressable style={styles.syncButton} onPress={syncPendingData}>
-          <Text style={styles.syncButtonText}>Sync Now</Text>
+        <Pressable
+          style={[
+            styles.syncButton,
+            {
+              backgroundColor: hexToRgba(colors.accent, 0.2),
+              borderColor: hexToRgba(colors.accent, 0.4),
+            },
+          ]}
+          onPress={syncPendingData}
+        >
+          <Text style={[styles.syncButtonText, { color: colors.accent }]}>Sync Now</Text>
         </Pressable>
       )}
     </View>
@@ -76,18 +101,12 @@ export function OfflineIndicator({ compact = false }: OfflineIndicatorProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(239, 68, 68, 0.3)',
     paddingVertical: 10,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  onlineWithPending: {
-    backgroundColor: 'rgba(250, 204, 21, 0.1)',
-    borderBottomColor: 'rgba(250, 204, 21, 0.3)',
   },
   content: {
     flexDirection: 'row',
@@ -104,25 +123,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
   },
   subtitle: {
     fontSize: 12,
-    color: '#94a3b8',
     marginTop: 2,
   },
   syncButton: {
-    backgroundColor: 'rgba(250, 204, 21, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.4)',
   },
   syncButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#facc15',
   },
   // Compact styles
   compactContainer: {
@@ -132,21 +146,16 @@ const styles = StyleSheet.create({
   compactBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
-  },
-  pendingBadge: {
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
   },
   compactIcon: {
     fontSize: 12,
   },
   compactText: {
     fontSize: 11,
-    color: '#94a3b8',
     fontWeight: '500',
   },
 });

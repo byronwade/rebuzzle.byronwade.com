@@ -4,193 +4,120 @@
  */
 
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../src/contexts/AuthContext';
-import { useAchievements } from '../src/contexts/AchievementsContext';
-import { useOffline } from '../src/contexts/OfflineContext';
-import { AvatarCircle } from '../src/components/AvatarCircle';
-import { OfflineIndicator } from '../src/components/OfflineIndicator';
+
+// Hardcoded colors for now (dark theme)
+const colors = {
+  background: '#121212',
+  foreground: '#EDEDED',
+  card: '#1A1A1A',
+  cardForeground: '#EDEDED',
+  primary: '#FAFAFA',
+  primaryForeground: '#171717',
+  secondary: '#262626',
+  secondaryForeground: '#FAFAFA',
+  muted: '#262626',
+  mutedForeground: '#999999',
+  accent: '#FACC15',
+  accentForeground: '#1A1A2E',
+  border: '#333333',
+  destructive: '#7F1D1D',
+};
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 export default function HomeScreen() {
-  const { isAuthenticated, user, stats } = useAuth();
-  const { progress, achievements } = useAchievements();
-  const { isOnline } = useOffline();
-
-  // Get recent unlocked achievements (last 3)
-  const recentAchievements = achievements
-    .filter((a) => a.unlocked)
-    .sort((a, b) => {
-      const dateA = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0;
-      const dateB = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0;
-      return dateB - dateA;
-    })
-    .slice(0, 3);
-
-  const achievementPercentage = progress
-    ? Math.round((progress.unlocked / progress.total) * 100)
-    : 0;
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Offline Indicator */}
-      {!isOnline && <OfflineIndicator />}
-
-      <View style={styles.content}>
-        <Text style={styles.title}>Rebuzzle</Text>
-        <Text style={styles.subtitle}>The Daily Puzzle Challenge</Text>
-
-        {/* User Card - shown when authenticated */}
-        {isAuthenticated && user ? (
-          <View style={styles.userCard}>
-            <View style={styles.userHeader}>
-              <AvatarCircle
-                username={user.username}
-                customInitials={user.avatarCustomInitials}
-                colorIndex={user.avatarColorIndex}
-                size={56}
-              />
-              <View style={styles.userInfo}>
-                <Text style={styles.username}>
-                  {user.isGuest ? 'Guest' : user.username}
-                </Text>
-                {stats && (
-                  <Text style={styles.userStats}>
-                    Level {stats.level || 1} • {stats.streak || 0} day streak
-                  </Text>
-                )}
-              </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft} />
+            <View style={styles.headerCenter}>
+              <Text style={[styles.title, { color: colors.accent }]}>Rebuzzle</Text>
+              <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+                The Daily Puzzle Challenge
+              </Text>
             </View>
-
-            {/* Stats Row */}
-            {stats && (
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.wins || 0}</Text>
-                  <Text style={styles.statLabel}>Solved</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.points || 0}</Text>
-                  <Text style={styles.statLabel}>Score</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.streak || 0}</Text>
-                  <Text style={styles.statLabel}>Streak</Text>
-                </View>
-              </View>
-            )}
-
-            {/* Achievement Progress */}
-            {progress && progress.total > 0 && (
-              <View style={styles.achievementSection}>
-                <View style={styles.achievementHeader}>
-                  <Text style={styles.achievementTitle}>Achievements</Text>
-                  <Text style={styles.achievementPercent}>{achievementPercentage}%</Text>
-                </View>
-                <View style={styles.achievementProgressBar}>
-                  <View
-                    style={[
-                      styles.achievementProgressFill,
-                      { width: `${achievementPercentage}%` },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.achievementSubtext}>
-                  {progress.unlocked}/{progress.total} unlocked • {progress.earnedPoints} pts
-                </Text>
-
-                {/* Recent Achievements */}
-                {recentAchievements.length > 0 && (
-                  <View style={styles.recentAchievements}>
-                    {recentAchievements.map((achievement) => (
-                      <View key={achievement.id} style={styles.recentBadge}>
-                        <Text style={styles.recentBadgeIcon}>{achievement.icon}</Text>
-                      </View>
-                    ))}
-                    <Link href="/achievements" asChild>
-                      <Pressable style={styles.viewAllBadge}>
-                        <Text style={styles.viewAllText}>+{progress.total - recentAchievements.length}</Text>
-                      </Pressable>
-                    </Link>
-                  </View>
-                )}
-              </View>
-            )}
+            <View style={styles.themeToggle}>
+              <Text style={styles.themeToggleText}>🌙</Text>
+            </View>
           </View>
-        ) : (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Welcome!</Text>
-            <Text style={styles.cardText}>
+
+          {/* Welcome Card */}
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.cardForeground }]}>Welcome!</Text>
+            <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
               Rebuzzle is a daily word puzzle game that challenges your creativity
               and lateral thinking.
             </Text>
           </View>
-        )}
 
-        <Link href="/game" asChild>
-          <Pressable style={styles.button}>
-            <Text style={styles.buttonText}>Play Today's Puzzle</Text>
-          </Pressable>
-        </Link>
+          <Link href="/game" asChild>
+            <Pressable style={[styles.button, { backgroundColor: colors.accent }]}>
+              <Text style={[styles.buttonText, { color: colors.accentForeground }]}>
+                Play Today's Puzzle
+              </Text>
+            </Pressable>
+          </Link>
 
-        {/* Auth buttons when not logged in */}
-        {!isAuthenticated && (
+          {/* Auth buttons */}
           <View style={styles.authButtons}>
             <Link href="/login" asChild>
-              <Pressable style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Sign In</Text>
+              <Pressable
+                style={[
+                  styles.secondaryButton,
+                  { backgroundColor: hexToRgba(colors.accent, 0.2) },
+                ]}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.accent }]}>
+                  Sign In
+                </Text>
               </Pressable>
             </Link>
             <Link href="/signup" asChild>
-              <Pressable style={styles.outlineButton}>
-                <Text style={styles.outlineButtonText}>Create Account</Text>
+              <Pressable style={[styles.outlineButton, { borderColor: colors.border }]}>
+                <Text style={[styles.outlineButtonText, { color: colors.foreground }]}>
+                  Create Account
+                </Text>
               </Pressable>
             </Link>
           </View>
-        )}
 
-        {/* Navigation links when logged in */}
-        {isAuthenticated && (
-          <View style={styles.navLinks}>
-            <Link href="/profile" asChild>
-              <Pressable style={styles.navLink}>
-                <Text style={styles.navLinkEmoji}>👤</Text>
-                <Text style={styles.navLinkText}>Profile</Text>
-              </Pressable>
-            </Link>
-            <Link href="/leaderboard" asChild>
-              <Pressable style={styles.navLink}>
-                <Text style={styles.navLinkEmoji}>🏆</Text>
-                <Text style={styles.navLinkText}>Leaderboard</Text>
-              </Pressable>
-            </Link>
-            <Link href="/achievements" asChild>
-              <Pressable style={styles.navLink}>
-                <Text style={styles.navLinkEmoji}>🎖️</Text>
-                <Text style={styles.navLinkText}>Achievements</Text>
-              </Pressable>
-            </Link>
+          <View style={styles.features}>
+            <FeatureItem emoji="🧩" text="Daily puzzles" colors={colors} />
+            <FeatureItem emoji="🔥" text="Build streaks" colors={colors} />
+            <FeatureItem emoji="🏆" text="Earn achievements" colors={colors} />
+            <FeatureItem emoji="📊" text="Track progress" colors={colors} />
           </View>
-        )}
-
-        <View style={styles.features}>
-          <FeatureItem emoji="🧩" text="Daily puzzles" />
-          <FeatureItem emoji="🔥" text="Build streaks" />
-          <FeatureItem emoji="🏆" text="Earn achievements" />
-          <FeatureItem emoji="📊" text="Track progress" />
         </View>
-      </View>
 
-      <Text style={styles.footer}>© 2024 Rebuzzle</Text>
+        <Text style={[styles.footer, { color: colors.mutedForeground }]}>© 2024 Rebuzzle</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function FeatureItem({ emoji, text }: { emoji: string; text: string }) {
+function FeatureItem({
+  emoji,
+  text,
+  colors,
+}: {
+  emoji: string;
+  text: string;
+  colors: { muted: string; mutedForeground: string };
+}) {
   return (
-    <View style={styles.featureItem}>
+    <View style={[styles.featureItem, { backgroundColor: hexToRgba(colors.muted, 0.5) }]}>
       <Text style={styles.featureEmoji}>{emoji}</Text>
-      <Text style={styles.featureText}>{text}</Text>
+      <Text style={[styles.featureText, { color: colors.mutedForeground }]}>{text}</Text>
     </View>
   );
 }
@@ -198,7 +125,9 @@ function FeatureItem({ emoji, text }: { emoji: string; text: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,
@@ -206,41 +135,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 24,
+  },
+  headerLeft: {
+    width: 44,
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  themeToggle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeToggleText: {
+    fontSize: 24,
+  },
   title: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#facc15',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#94a3b8',
-    marginBottom: 32,
+    marginBottom: 8,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 16,
     padding: 24,
     marginBottom: 32,
     width: '100%',
+    borderWidth: 1,
   },
   cardTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 12,
   },
   cardText: {
     fontSize: 16,
-    color: '#cbd5e1',
     lineHeight: 24,
   },
   userCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
     width: '100%',
+    borderWidth: 1,
   },
   userHeader: {
     flexDirection: 'row',
@@ -254,11 +203,9 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
   },
   userStats: {
     fontSize: 14,
-    color: '#94a3b8',
     marginTop: 2,
   },
   statsRow: {
@@ -266,7 +213,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   statItem: {
     alignItems: 'center',
@@ -274,18 +220,15 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#facc15',
   },
   statLabel: {
     fontSize: 12,
-    color: '#94a3b8',
     marginTop: 4,
   },
   achievementSection: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   achievementHeader: {
     flexDirection: 'row',
@@ -296,28 +239,23 @@ const styles = StyleSheet.create({
   achievementTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#facc15',
   },
   achievementPercent: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
   },
   achievementProgressBar: {
     height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 8,
   },
   achievementProgressFill: {
     height: '100%',
-    backgroundColor: '#facc15',
     borderRadius: 3,
   },
   achievementSubtext: {
     fontSize: 12,
-    color: '#64748b',
     textAlign: 'center',
   },
   recentAchievements: {
@@ -331,11 +269,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
   },
   recentBadgeIcon: {
     fontSize: 18,
@@ -344,24 +280,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   viewAllText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#94a3b8',
   },
   button: {
-    backgroundColor: '#facc15',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 30,
     marginBottom: 16,
   },
   buttonText: {
-    color: '#1a1a2e',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -371,25 +303,21 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   secondaryButton: {
-    backgroundColor: 'rgba(250, 204, 21, 0.2)',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
   },
   secondaryButtonText: {
-    color: '#facc15',
     fontSize: 16,
     fontWeight: '600',
   },
   outlineButton: {
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
   },
   outlineButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -403,7 +331,6 @@ const styles = StyleSheet.create({
   navLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
@@ -413,7 +340,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   navLinkText: {
-    color: '#fff',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -426,7 +352,6 @@ const styles = StyleSheet.create({
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -436,11 +361,9 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   featureText: {
-    color: '#94a3b8',
     fontSize: 13,
   },
   footer: {
-    color: '#64748b',
     fontSize: 12,
     textAlign: 'center',
     padding: 16,

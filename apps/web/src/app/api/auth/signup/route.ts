@@ -138,11 +138,12 @@ export async function POST(request: Request) {
           });
         }
       } catch (statsError) {
-        console.error("Error creating user stats:", statsError);
+        // Log with context for debugging - stats will be created on first game play
+        console.error(`[Signup] Failed to create user stats for ${userId}:`, statsError);
       }
     }
 
-    // Track signup event
+    // Track signup event (non-blocking)
     try {
       const eventId = `event_${Date.now()}_${Math.random().toString(36).substring(7)}`;
       await analyticsEventOps.create({
@@ -153,12 +154,12 @@ export async function POST(request: Request) {
         timestamp: new Date(),
         metadata: {
           username,
-          email,
+          // Don't log email in analytics for privacy
         },
       });
     } catch (error) {
-      // Don't fail signup if analytics fails
-      console.error("Error tracking signup:", error);
+      // Non-blocking: analytics failure shouldn't affect user experience
+      console.error(`[Signup] Analytics tracking failed for ${userId}:`, error);
     }
 
     // Auto-subscribe to email notifications (opt-in by default)
@@ -197,16 +198,16 @@ export async function POST(request: Request) {
         await subscriptionsCollection.insertOne(newSubscription);
       }
     } catch (error) {
-      // Don't fail signup if subscription creation fails
-      console.error("Error creating email subscription:", error);
+      // Non-blocking: subscription failure shouldn't affect signup
+      console.error(`[Signup] Email subscription creation failed for ${userId}:`, error);
     }
 
     // Send welcome email (non-blocking)
     try {
       await sendSignupWelcomeEmail(email, username);
     } catch (error) {
-      // Don't fail signup if email send fails
-      console.error("Error sending welcome email:", error);
+      // Non-blocking: welcome email failure shouldn't affect signup
+      console.error(`[Signup] Welcome email failed for ${userId}:`, error);
     }
 
     // Create JWT for the new user

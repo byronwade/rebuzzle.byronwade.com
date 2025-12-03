@@ -20,6 +20,15 @@ import Store from "electron-store";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Safe logging function to prevent EPIPE errors when stdout is unavailable
+function safeLog(...args: unknown[]): void {
+  try {
+    console.log(...args);
+  } catch {
+    // Ignore EPIPE errors when stdout is unavailable (e.g., app launched from Finder)
+  }
+}
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 if (process.platform === "win32") {
   import("electron-squirrel-startup")
@@ -98,6 +107,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let dailyReminderTimeout: NodeJS.Timeout | null = null;
 let streakCheckInterval: NodeJS.Timeout | null = null;
+let scheduledNotificationInterval: NodeJS.Timeout | null = null;
 
 // Configuration
 const isDev = process.env.NODE_ENV === "development" || process.env.VITE_DEV_SERVER_URL;
@@ -402,12 +412,12 @@ function setupDeepLinking(): void {
 
 function setupPowerMonitor(): void {
   powerMonitor.on("suspend", () => {
-    console.log("System suspended");
+    safeLog("System suspended");
     mainWindow?.webContents.send("power:suspend");
   });
 
   powerMonitor.on("resume", () => {
-    console.log("System resumed");
+    safeLog("System resumed");
     mainWindow?.webContents.send("power:resume");
 
     // Check for missed notifications
@@ -415,12 +425,12 @@ function setupPowerMonitor(): void {
   });
 
   powerMonitor.on("lock-screen", () => {
-    console.log("Screen locked");
+    safeLog("Screen locked");
     mainWindow?.webContents.send("power:lock");
   });
 
   powerMonitor.on("unlock-screen", () => {
-    console.log("Screen unlocked");
+    safeLog("Screen unlocked");
     mainWindow?.webContents.send("power:unlock");
   });
 
@@ -1053,7 +1063,7 @@ app.whenReady().then(() => {
   setupStreakWarning();
 
   // Check for scheduled notifications periodically
-  setInterval(checkScheduledNotifications, 60 * 1000); // Every minute
+  scheduledNotificationInterval = setInterval(checkScheduledNotifications, 60 * 1000); // Every minute
 
   // macOS: Re-create window when dock icon is clicked
   app.on("activate", () => {
@@ -1079,9 +1089,15 @@ app.on("will-quit", () => {
 
   if (dailyReminderTimeout) {
     clearTimeout(dailyReminderTimeout);
+    dailyReminderTimeout = null;
   }
   if (streakCheckInterval) {
     clearInterval(streakCheckInterval);
+    streakCheckInterval = null;
+  }
+  if (scheduledNotificationInterval) {
+    clearInterval(scheduledNotificationInterval);
+    scheduledNotificationInterval = null;
   }
 });
 

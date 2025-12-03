@@ -14,9 +14,11 @@ import {
   ScrollView,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '../contexts/ThemeContext';
+import { hexToRgba } from '../lib/theme';
 import type { NewlyUnlockedAchievement, AchievementRarity } from '../types';
 
-// Rarity colors
+// Rarity colors (consistent across themes for recognition)
 const RARITY_COLORS: Record<string, { border: string; bg: string; text: string }> = {
   common: { border: '#9ca3af', bg: 'rgba(156, 163, 175, 0.15)', text: '#9ca3af' },
   uncommon: { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e' },
@@ -58,6 +60,8 @@ export function AchievementUnlockedModal({
   onDismiss,
   visible,
 }: AchievementUnlockedModalProps) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -119,6 +123,8 @@ export function AchievementUnlockedModal({
           style={[
             styles.modal,
             {
+              backgroundColor: colors.card,
+              borderColor: hexToRgba(colors.accent, 0.3),
               transform: [{ scale: scaleAnim }],
             },
           ]}
@@ -126,7 +132,7 @@ export function AchievementUnlockedModal({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.celebration}>🎉</Text>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: colors.foreground }]}>
               Achievement{achievements.length > 1 ? 's' : ''} Unlocked!
             </Text>
           </View>
@@ -137,7 +143,7 @@ export function AchievementUnlockedModal({
             showsVerticalScrollIndicator={false}
           >
             {achievements.map((achievement) => {
-              const colors = RARITY_COLORS[achievement.rarity] || RARITY_COLORS.common;
+              const rarityColors = RARITY_COLORS[achievement.rarity] || RARITY_COLORS.common;
               const icon = ICON_MAP[achievement.icon] || ICON_MAP.default;
 
               return (
@@ -145,20 +151,20 @@ export function AchievementUnlockedModal({
                   key={achievement.id}
                   style={[
                     styles.achievementItem,
-                    { backgroundColor: colors.bg, borderColor: colors.border },
+                    { backgroundColor: rarityColors.bg, borderColor: rarityColors.border },
                   ]}
                 >
                   <Text style={styles.achievementIcon}>{icon}</Text>
                   <View style={styles.achievementInfo}>
-                    <Text style={styles.achievementName}>{achievement.name}</Text>
-                    <Text style={styles.achievementDescription}>
+                    <Text style={[styles.achievementName, { color: colors.foreground }]}>{achievement.name}</Text>
+                    <Text style={[styles.achievementDescription, { color: colors.mutedForeground }]}>
                       {achievement.description}
                     </Text>
                     <View style={styles.achievementMeta}>
-                      <Text style={[styles.rarityBadge, { color: colors.text }]}>
+                      <Text style={[styles.rarityBadge, { color: rarityColors.text }]}>
                         {achievement.rarity.toUpperCase()}
                       </Text>
-                      <Text style={styles.pointsBadge}>+{achievement.points} pts</Text>
+                      <Text style={[styles.pointsBadge, { color: colors.accent }]}>+{achievement.points} pts</Text>
                     </View>
                   </View>
                 </View>
@@ -168,15 +174,15 @@ export function AchievementUnlockedModal({
 
           {/* Total Points */}
           {totalPoints > 0 && (
-            <View style={styles.totalPoints}>
-              <Text style={styles.totalPointsLabel}>Total Points Earned</Text>
-              <Text style={styles.totalPointsValue}>+{totalPoints}</Text>
+            <View style={[styles.totalPoints, { borderTopColor: colors.border }]}>
+              <Text style={[styles.totalPointsLabel, { color: colors.mutedForeground }]}>Total Points Earned</Text>
+              <Text style={[styles.totalPointsValue, { color: colors.accent }]}>+{totalPoints}</Text>
             </View>
           )}
 
           {/* Dismiss Button */}
-          <Pressable style={styles.dismissButton} onPress={handleDismiss}>
-            <Text style={styles.dismissButtonText}>Awesome!</Text>
+          <Pressable style={[styles.dismissButton, { backgroundColor: colors.accent }]} onPress={handleDismiss}>
+            <Text style={[styles.dismissButtonText, { color: colors.accentForeground }]}>Awesome!</Text>
           </Pressable>
         </Animated.View>
       </Animated.View>
@@ -193,14 +199,12 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modal: {
-    backgroundColor: '#1a1a2e',
     borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 340,
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
   },
   header: {
     alignItems: 'center',
@@ -213,7 +217,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
     textAlign: 'center',
   },
   achievementsList: {
@@ -237,12 +240,10 @@ const styles = StyleSheet.create({
   achievementName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
     marginBottom: 4,
   },
   achievementDescription: {
     fontSize: 13,
-    color: '#94a3b8',
     marginBottom: 6,
   },
   achievementMeta: {
@@ -257,28 +258,23 @@ const styles = StyleSheet.create({
   },
   pointsBadge: {
     fontSize: 12,
-    color: '#facc15',
     fontWeight: '600',
   },
   totalPoints: {
     alignItems: 'center',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
     marginTop: 8,
   },
   totalPointsLabel: {
     fontSize: 12,
-    color: '#94a3b8',
     marginBottom: 4,
   },
   totalPointsValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#facc15',
   },
   dismissButton: {
-    backgroundColor: '#facc15',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -287,6 +283,5 @@ const styles = StyleSheet.create({
   dismissButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1a1a2e',
   },
 });

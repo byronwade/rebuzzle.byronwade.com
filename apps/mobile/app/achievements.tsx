@@ -16,7 +16,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAchievements } from '../src/contexts/AchievementsContext';
+import { useTheme } from '../src/contexts/ThemeContext';
 import { AchievementBadge } from '../src/components/AchievementBadge';
+import { hexToRgba } from '../src/lib/theme';
 import type { Achievement, AchievementCategory } from '../src/types';
 
 const CATEGORY_LABELS: Record<AchievementCategory, string> = {
@@ -54,6 +56,9 @@ export default function AchievementsScreen() {
     error,
     loadAchievements,
   } = useAchievements();
+
+  const { theme } = useTheme();
+  const colors = theme.colors;
 
   const [selectedCategory, setSelectedCategory] = useState<AchievementCategory | 'all'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -101,8 +106,25 @@ export default function AchievementsScreen() {
     setIsRefreshing(false);
   };
 
+  const getRarityColor = (rarity: string): string => {
+    switch (rarity) {
+      case 'common':
+        return colors.mutedForeground;
+      case 'uncommon':
+        return colors.success;
+      case 'rare':
+        return '#3b82f6';
+      case 'epic':
+        return '#8b5cf6';
+      case 'legendary':
+        return colors.accent;
+      default:
+        return colors.mutedForeground;
+    }
+  };
+
   const renderAchievementItem = ({ item }: { item: Achievement }) => (
-    <Pressable style={styles.achievementCard}>
+    <Pressable style={[styles.achievementCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.achievementLeft}>
         <AchievementBadge
           icon={item.icon}
@@ -114,25 +136,37 @@ export default function AchievementsScreen() {
         />
       </View>
       <View style={styles.achievementInfo}>
-        <Text style={[styles.achievementName, !item.unlocked && styles.lockedText]}>
+        <Text
+          style={[
+            styles.achievementName,
+            { color: item.unlocked ? colors.cardForeground : colors.mutedForeground },
+          ]}
+        >
           {item.unlocked || !item.secret ? item.name : '???'}
         </Text>
-        <Text style={[styles.achievementDescription, !item.unlocked && styles.lockedText]}>
+        <Text
+          style={[
+            styles.achievementDescription,
+            { color: item.unlocked ? colors.mutedForeground : colors.mutedForeground },
+          ]}
+        >
           {item.unlocked || !item.secret ? item.description : 'Complete to reveal'}
         </Text>
         {!item.unlocked && !item.secret && item.hint && (
-          <Text style={styles.achievementHint}>Hint: {item.hint}</Text>
+          <Text style={[styles.achievementHint, { color: colors.mutedForeground }]}>
+            Hint: {item.hint}
+          </Text>
         )}
         <View style={styles.achievementMeta}>
           <Text style={[styles.rarityLabel, { color: getRarityColor(item.rarity) }]}>
             {item.rarity.toUpperCase()}
           </Text>
-          <Text style={styles.pointsLabel}>{item.points} pts</Text>
+          <Text style={[styles.pointsLabel, { color: colors.mutedForeground }]}>{item.points} pts</Text>
         </View>
       </View>
       {item.unlocked && item.unlockedAt && (
-        <View style={styles.unlockedBadge}>
-          <Text style={styles.unlockedText}>✓</Text>
+        <View style={[styles.unlockedBadge, { backgroundColor: hexToRgba(colors.success, 0.2) }]}>
+          <Text style={[styles.unlockedText, { color: colors.success }]}>✓</Text>
         </View>
       )}
     </Pressable>
@@ -142,26 +176,26 @@ export default function AchievementsScreen() {
     <View style={styles.header}>
       {/* Progress Bar */}
       {progress && (
-        <View style={styles.progressCard}>
+        <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Your Progress</Text>
-            <Text style={styles.progressPercentage}>
+            <Text style={[styles.progressTitle, { color: colors.accent }]}>Your Progress</Text>
+            <Text style={[styles.progressPercentage, { color: colors.foreground }]}>
               {Math.round((progress.unlocked / progress.total) * 100)}%
             </Text>
           </View>
-          <View style={styles.progressBar}>
+          <View style={[styles.progressBar, { backgroundColor: colors.muted }]}>
             <View
               style={[
                 styles.progressFill,
-                { width: `${(progress.unlocked / progress.total) * 100}%` },
+                { width: `${(progress.unlocked / progress.total) * 100}%`, backgroundColor: colors.accent },
               ]}
             />
           </View>
           <View style={styles.progressStats}>
-            <Text style={styles.progressStat}>
+            <Text style={[styles.progressStat, { color: colors.mutedForeground }]}>
               {progress.unlocked}/{progress.total} Unlocked
             </Text>
-            <Text style={styles.progressStat}>
+            <Text style={[styles.progressStat, { color: colors.mutedForeground }]}>
               {progress.earnedPoints}/{progress.totalPoints} Points
             </Text>
           </View>
@@ -178,14 +212,16 @@ export default function AchievementsScreen() {
         <Pressable
           style={[
             styles.categoryTab,
-            selectedCategory === 'all' && styles.categoryTabActive,
+            { backgroundColor: colors.secondary },
+            selectedCategory === 'all' && { backgroundColor: colors.accent },
           ]}
           onPress={() => setSelectedCategory('all')}
         >
           <Text
             style={[
               styles.categoryTabText,
-              selectedCategory === 'all' && styles.categoryTabTextActive,
+              { color: colors.mutedForeground },
+              selectedCategory === 'all' && { color: colors.accentForeground },
             ]}
           >
             All ({categoryCounts.all.unlocked}/{categoryCounts.all.total})
@@ -200,14 +236,16 @@ export default function AchievementsScreen() {
               key={cat}
               style={[
                 styles.categoryTab,
-                selectedCategory === cat && styles.categoryTabActive,
+                { backgroundColor: colors.secondary },
+                selectedCategory === cat && { backgroundColor: colors.accent },
               ]}
               onPress={() => setSelectedCategory(cat)}
             >
               <Text
                 style={[
                   styles.categoryTabText,
-                  selectedCategory === cat && styles.categoryTabTextActive,
+                  { color: colors.mutedForeground },
+                  selectedCategory === cat && { color: colors.accentForeground },
                 ]}
               >
                 {CATEGORY_LABELS[cat]} ({categoryCounts[cat].unlocked}/{categoryCounts[cat].total})
@@ -221,10 +259,10 @@ export default function AchievementsScreen() {
 
   if (isLoading && achievements.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#facc15" />
-          <Text style={styles.loadingText}>Loading achievements...</Text>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading achievements...</Text>
         </View>
       </SafeAreaView>
     );
@@ -232,13 +270,22 @@ export default function AchievementsScreen() {
 
   if (error && achievements.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorEmoji}>😕</Text>
-          <Text style={styles.errorTitle}>Couldn't Load Achievements</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={() => loadAchievements()}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={[styles.errorTitle, { color: colors.foreground }]}>Couldn't Load Achievements</Text>
+          <Text style={[styles.errorText, { color: colors.mutedForeground }]}>{error}</Text>
+          <Pressable
+            style={[
+              styles.retryButton,
+              {
+                backgroundColor: hexToRgba(colors.accent, 0.15),
+                borderColor: hexToRgba(colors.accent, 0.3),
+              },
+            ]}
+            onPress={() => loadAchievements()}
+          >
+            <Text style={[styles.retryButtonText, { color: colors.accent }]}>Try Again</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -246,7 +293,7 @@ export default function AchievementsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <FlatList
         data={sortedAchievements}
         renderItem={renderAchievementItem}
@@ -257,14 +304,14 @@ export default function AchievementsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#facc15"
-            colors={['#facc15']}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
           />
         }
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               No achievements in this category
             </Text>
           </View>
@@ -274,27 +321,9 @@ export default function AchievementsScreen() {
   );
 }
 
-function getRarityColor(rarity: string): string {
-  switch (rarity) {
-    case 'common':
-      return '#9ca3af';
-    case 'uncommon':
-      return '#22c55e';
-    case 'rare':
-      return '#3b82f6';
-    case 'epic':
-      return '#8b5cf6';
-    case 'legendary':
-      return '#facc15';
-    default:
-      return '#9ca3af';
-  }
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
   },
   loadingContainer: {
     flex: 1,
@@ -304,7 +333,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#94a3b8',
   },
   errorContainer: {
     flex: 1,
@@ -319,27 +347,22 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   errorText: {
     fontSize: 14,
-    color: '#94a3b8',
     marginBottom: 24,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
   },
   retryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#facc15',
   },
   listContent: {
     paddingBottom: 24,
@@ -348,11 +371,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   progressCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     marginBottom: 16,
+    borderWidth: 1,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -363,23 +386,19 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#facc15',
   },
   progressPercentage: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 12,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#facc15',
     borderRadius: 4,
   },
   progressStats: {
@@ -388,7 +407,6 @@ const styles = StyleSheet.create({
   },
   progressStat: {
     fontSize: 12,
-    color: '#94a3b8',
   },
   categoryScroll: {
     marginBottom: 16,
@@ -400,28 +418,20 @@ const styles = StyleSheet.create({
   categoryTab: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
-  },
-  categoryTabActive: {
-    backgroundColor: '#facc15',
   },
   categoryTabText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#94a3b8',
-  },
-  categoryTabTextActive: {
-    color: '#1a1a2e',
   },
   achievementCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
+    borderWidth: 1,
   },
   achievementLeft: {
     marginRight: 14,
@@ -432,23 +442,17 @@ const styles = StyleSheet.create({
   achievementName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
     marginBottom: 4,
   },
   achievementDescription: {
     fontSize: 13,
-    color: '#94a3b8',
     marginBottom: 6,
     lineHeight: 18,
   },
   achievementHint: {
     fontSize: 11,
-    color: '#64748b',
     fontStyle: 'italic',
     marginBottom: 6,
-  },
-  lockedText: {
-    color: '#64748b',
   },
   achievementMeta: {
     flexDirection: 'row',
@@ -462,20 +466,17 @@ const styles = StyleSheet.create({
   },
   pointsLabel: {
     fontSize: 11,
-    color: '#64748b',
     fontWeight: '500',
   },
   unlockedBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   unlockedText: {
     fontSize: 14,
-    color: '#22c55e',
     fontWeight: 'bold',
   },
   emptyContainer: {
@@ -484,6 +485,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#64748b',
   },
 });

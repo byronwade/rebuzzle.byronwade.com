@@ -102,6 +102,18 @@ export interface Puzzle {
   publishedAt: string;
 }
 
+export interface PuzzleAttempt {
+  puzzleId: string;
+  attemptedAnswer: string;
+  isCorrect: boolean;
+  abandoned?: boolean;
+  attemptNumber: number;
+  maxAttempts: number;
+  timeSpentSeconds: number;
+  difficulty?: string;
+  hintsUsed?: number;
+}
+
 export interface GameState {
   puzzle: Puzzle | null;
   attempts: number;
@@ -132,6 +144,10 @@ export interface AppState {
   theme: 'light' | 'dark' | 'system';
   isOnline: boolean;
   isLoading: boolean;
+
+  // Server time sync
+  serverTimeOffset: number; // Difference between server and client time (ms)
+  nextPuzzleTime: string | null; // ISO string of next puzzle availability
 
   // Offline
   offlineAttempts: Array<{
@@ -165,6 +181,8 @@ const initialState: AppState = {
   theme: 'dark',
   isOnline: navigator.onLine,
   isLoading: true,
+  serverTimeOffset: 0,
+  nextPuzzleTime: null,
   offlineAttempts: [],
 };
 

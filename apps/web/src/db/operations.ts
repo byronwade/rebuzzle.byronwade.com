@@ -100,6 +100,41 @@ export const userOps = {
     );
     return result;
   },
+
+  async findGuestByIpHash(ipHash: string): Promise<User | null> {
+    const collection = getCollection<User>("users");
+    return await collection.findOne({ ipHash, isGuest: true });
+  },
+
+  async findGuestByDeviceId(deviceId: string): Promise<User | null> {
+    const collection = getCollection<User>("users");
+    return await collection.findOne({ deviceId, isGuest: true });
+  },
+
+  async createGuestUserWithIp(
+    guestToken: string,
+    ipHash: string,
+    deviceId?: string
+  ): Promise<User> {
+    const collection = getCollection<User>("users");
+    const guestNumber = Math.floor(Math.random() * 9000) + 1000;
+    const now = new Date();
+    const guestUser: NewUser = {
+      id: `guest_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      username: `Player${guestNumber}`,
+      email: `guest_${guestToken}@guest.rebuzzle.local`,
+      passwordHash: "",
+      createdAt: now,
+      isGuest: true,
+      guestToken,
+      ipHash,
+      deviceId,
+      lastSeenIp: ipHash,
+      lastSeenAt: now,
+    };
+    await collection.insertOne(guestUser);
+    return guestUser as User;
+  },
 };
 
 // ============================================================================
@@ -289,7 +324,7 @@ export const puzzleOps = {
   async findTodaysPuzzle(): Promise<Puzzle | null> {
     const collection = getCollection<Puzzle>("puzzles");
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);  // Use UTC midnight for consistent behavior across all platforms
 
     return await collection.findOne({
       publishedAt: { $gte: today },

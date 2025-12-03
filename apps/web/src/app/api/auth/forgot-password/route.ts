@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { getAppUrl } from "@/lib/env";
 import { sendPasswordResetEmail } from "@/lib/notifications/email-service";
 
 /**
@@ -43,8 +44,8 @@ export async function POST(request: Request) {
       resetTokenExpiry,
     });
 
-    // Generate reset URL
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${resetToken}`;
+    // Generate reset URL using centralized app URL
+    const resetUrl = `${getAppUrl()}/reset-password?token=${resetToken}`;
 
     // Send reset email using React Email template
     const emailResult = await sendPasswordResetEmail(email, user.username, resetUrl, 1);

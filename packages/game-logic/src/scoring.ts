@@ -15,12 +15,14 @@ export interface ScoreInput {
   wrongAttempts: number;
   streakDays: number;
   difficultyLevel: number;
+  hintsUsed?: number;
 }
 
 export interface ScoreBreakdown {
   baseScore: number;
   speedBonus: number;
   accuracyPenalty: number;
+  hintPenalty: number;
   streakBonus: number;
   difficultyBonus: number;
   totalScore: number;
@@ -56,6 +58,14 @@ export function calculateAccuracyPenalty(wrongAttempts: number): number {
 }
 
 /**
+ * Calculate the hint penalty based on hints used
+ */
+export function calculateHintPenalty(hintsUsed: number): number {
+  const penalty = hintsUsed * scoringConfig.hints.penaltyPerHint;
+  return Math.min(penalty, scoringConfig.hints.maxPenalty);
+}
+
+/**
  * Calculate the streak bonus based on consecutive days played
  */
 export function calculateStreakBonus(streakDays: number): number {
@@ -84,16 +94,18 @@ export function calculateScore(input: ScoreInput): ScoreBreakdown {
   const baseScore = scoringConfig.baseScore;
   const speedBonus = calculateSpeedBonus(input.timeTakenSeconds);
   const accuracyPenalty = calculateAccuracyPenalty(input.wrongAttempts);
+  const hintPenalty = calculateHintPenalty(input.hintsUsed ?? 0);
   const streakBonus = calculateStreakBonus(input.streakDays);
   const difficultyBonus = calculateDifficultyBonus(input.difficultyLevel);
 
-  const rawTotal = baseScore + speedBonus - accuracyPenalty + streakBonus + difficultyBonus;
+  const rawTotal = baseScore + speedBonus - accuracyPenalty - hintPenalty + streakBonus + difficultyBonus;
   const totalScore = Math.max(rawTotal, scoringConfig.minScore);
 
   return {
     baseScore,
     speedBonus,
     accuracyPenalty,
+    hintPenalty,
     streakBonus,
     difficultyBonus,
     totalScore,

@@ -15,8 +15,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useTheme } from '../src/contexts/ThemeContext';
 import { LeaderboardItem } from '../src/components/LeaderboardItem';
 import { api } from '../src/lib/api';
+import { hexToRgba } from '../src/lib/theme';
 import type { LeaderboardEntry } from '../src/types';
 
 type Timeframe = 'today' | 'week' | 'month' | 'allTime';
@@ -31,6 +33,8 @@ const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
 
 export default function LeaderboardScreen() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const colors = theme.colors;
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,8 +92,8 @@ export default function LeaderboardScreen() {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyEmoji}>🏆</Text>
-        <Text style={styles.emptyTitle}>No Rankings Yet</Text>
-        <Text style={styles.emptyText}>
+        <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Rankings Yet</Text>
+        <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
           Be the first to play and claim the top spot!
         </Text>
       </View>
@@ -97,9 +101,9 @@ export default function LeaderboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       {/* Filters */}
-      <View style={styles.filters}>
+      <View style={[styles.filters, { borderBottomColor: colors.border }]}>
         {/* Timeframe Pills */}
         <View style={styles.timeframePills}>
           {TIMEFRAME_OPTIONS.map((option) => (
@@ -107,14 +111,16 @@ export default function LeaderboardScreen() {
               key={option.value}
               style={[
                 styles.pill,
-                timeframe === option.value && styles.pillActive,
+                { backgroundColor: colors.secondary },
+                timeframe === option.value && { backgroundColor: colors.accent },
               ]}
               onPress={() => setTimeframe(option.value)}
             >
               <Text
                 style={[
                   styles.pillText,
-                  timeframe === option.value && styles.pillTextActive,
+                  { color: colors.mutedForeground },
+                  timeframe === option.value && { color: colors.accentForeground },
                 ]}
               >
                 {option.label}
@@ -125,19 +131,20 @@ export default function LeaderboardScreen() {
 
         {/* Sort Toggle */}
         <View style={styles.sortToggle}>
-          <Text style={styles.sortLabel}>Sort by:</Text>
-          <View style={styles.sortButtons}>
+          <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort by:</Text>
+          <View style={[styles.sortButtons, { backgroundColor: colors.secondary }]}>
             <Pressable
               style={[
                 styles.sortButton,
-                sortBy === 'points' && styles.sortButtonActive,
+                sortBy === 'points' && { backgroundColor: hexToRgba(colors.accent, 0.2) },
               ]}
               onPress={() => setSortBy('points')}
             >
               <Text
                 style={[
                   styles.sortButtonText,
-                  sortBy === 'points' && styles.sortButtonTextActive,
+                  { color: colors.mutedForeground },
+                  sortBy === 'points' && { color: colors.accent },
                 ]}
               >
                 Points
@@ -146,14 +153,15 @@ export default function LeaderboardScreen() {
             <Pressable
               style={[
                 styles.sortButton,
-                sortBy === 'streak' && styles.sortButtonActive,
+                sortBy === 'streak' && { backgroundColor: hexToRgba(colors.accent, 0.2) },
               ]}
               onPress={() => setSortBy('streak')}
             >
               <Text
                 style={[
                   styles.sortButtonText,
-                  sortBy === 'streak' && styles.sortButtonTextActive,
+                  { color: colors.mutedForeground },
+                  sortBy === 'streak' && { color: colors.accent },
                 ]}
               >
                 Streak
@@ -166,9 +174,18 @@ export default function LeaderboardScreen() {
       {/* Error State */}
       {error && !isLoading && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={() => fetchLeaderboard()}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+          <Pressable
+            style={[
+              styles.retryButton,
+              {
+                backgroundColor: hexToRgba(colors.accent, 0.15),
+                borderColor: hexToRgba(colors.accent, 0.3),
+              },
+            ]}
+            onPress={() => fetchLeaderboard()}
+          >
+            <Text style={[styles.retryButtonText, { color: colors.accent }]}>Try Again</Text>
           </Pressable>
         </View>
       )}
@@ -176,7 +193,7 @@ export default function LeaderboardScreen() {
       {/* Loading State */}
       {isLoading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#facc15" />
+          <ActivityIndicator size="large" color={colors.accent} />
         </View>
       )}
 
@@ -192,8 +209,8 @@ export default function LeaderboardScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor="#facc15"
-              colors={['#facc15']}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -202,8 +219,16 @@ export default function LeaderboardScreen() {
 
       {/* User's Position (if not in visible list) */}
       {user && !isLoading && leaderboard.length > 0 && !leaderboard.find(e => e.user.id === user.id) && (
-        <View style={styles.userPositionBanner}>
-          <Text style={styles.userPositionText}>
+        <View
+          style={[
+            styles.userPositionBanner,
+            {
+              backgroundColor: hexToRgba(colors.accent, 0.1),
+              borderTopColor: hexToRgba(colors.accent, 0.2),
+            },
+          ]}
+        >
+          <Text style={[styles.userPositionText, { color: colors.accent }]}>
             You're not ranked yet in this timeframe
           </Text>
         </View>
@@ -215,13 +240,11 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
   },
   filters: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   timeframePills: {
     flexDirection: 'row',
@@ -233,19 +256,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
-  },
-  pillActive: {
-    backgroundColor: '#facc15',
   },
   pillText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#94a3b8',
-  },
-  pillTextActive: {
-    color: '#1a1a2e',
   },
   sortToggle: {
     flexDirection: 'row',
@@ -254,11 +269,9 @@ const styles = StyleSheet.create({
   },
   sortLabel: {
     fontSize: 13,
-    color: '#64748b',
   },
   sortButtons: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -266,16 +279,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 16,
   },
-  sortButtonActive: {
-    backgroundColor: 'rgba(250, 204, 21, 0.2)',
-  },
   sortButtonText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#64748b',
-  },
-  sortButtonTextActive: {
-    color: '#facc15',
   },
   loadingContainer: {
     flex: 1,
@@ -290,22 +296,18 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
     marginBottom: 16,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
   },
   retryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#facc15',
   },
   listContent: {
     padding: 16,
@@ -325,24 +327,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: '#94a3b8',
     textAlign: 'center',
   },
   userPositionBanner: {
-    backgroundColor: 'rgba(250, 204, 21, 0.1)',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(250, 204, 21, 0.2)',
   },
   userPositionText: {
     fontSize: 13,
-    color: '#facc15',
     textAlign: 'center',
   },
 });

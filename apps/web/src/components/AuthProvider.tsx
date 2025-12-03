@@ -44,48 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshAuth: async () => {},
   });
 
-  // Create or get guest session
-  const createGuestSession = useCallback(async () => {
-    try {
-      const response = await fetch("/api/auth/guest", {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.user) {
-          setupSessionTracking(data.user.id);
-
-          // Also store guest token in localStorage as backup
-          if (typeof window !== "undefined") {
-            localStorage.setItem("rebuzzle_guest_id", data.user.id);
-          }
-
-          setAuthState((prev) => ({
-            ...prev,
-            isAuthenticated: true,
-            userId: data.user.id,
-            user: {
-              id: data.user.id,
-              username: data.user.username,
-              email: data.user.email,
-              isGuest: true,
-            },
-            isLoading: false,
-            isGuest: true,
-            error: undefined,
-          }));
-          return true;
-        }
-      }
-      return false;
-    } catch (error) {
-      console.error("Guest session creation failed:", error);
-      return false;
-    }
-  }, []);
+  // NOTE: Guest session creation has been moved to lazy creation
+  // Guests are now created only when viewing a puzzle via useLazyGuest hook
+  // This reduces spam and keeps statistics clean
 
   // Check for authentication state from server
   const checkAuth = useCallback(async () => {
@@ -129,39 +90,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("[Auth] Session check failed:", response.status, errorData);
       }
 
-      // No authentication found - create guest session
-      const guestCreated = await createGuestSession();
-
-      if (!guestCreated) {
-        // Fallback if guest creation fails
-        setAuthState((prev) => ({
-          ...prev,
-          isAuthenticated: false,
-          userId: null,
-          user: null,
-          isLoading: false,
-          isGuest: false,
-          error: undefined,
-        }));
-      }
+      // No authentication found - DON'T create guest here
+      // Guest will be created lazily when puzzle is viewed via useLazyGuest hook
+      setAuthState((prev) => ({
+        ...prev,
+        isAuthenticated: false,
+        userId: null,
+        user: null,
+        isLoading: false,
+        isGuest: false,
+        error: undefined,
+      }));
     } catch (error) {
       console.error("Auth check failed:", error);
-      // Try to create guest session as fallback
-      const guestCreated = await createGuestSession();
-
-      if (!guestCreated) {
-        setAuthState((prev) => ({
-          ...prev,
-          isAuthenticated: false,
-          userId: null,
-          user: null,
-          isLoading: false,
-          isGuest: false,
-          error: "Authentication check failed",
-        }));
-      }
+      // No guest creation - user can still browse, guest created on puzzle view
+      setAuthState((prev) => ({
+        ...prev,
+        isAuthenticated: false,
+        userId: null,
+        user: null,
+        isLoading: false,
+        isGuest: false,
+        error: undefined,
+      }));
     }
-  }, [createGuestSession]);
+  }, []);
 
   useEffect(() => {
     // Initialize session tracking

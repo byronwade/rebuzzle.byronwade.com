@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface TimerProps {
   /** Elapsed time in seconds */
@@ -18,6 +19,9 @@ interface TimerProps {
 }
 
 export function Timer({ seconds, style, size = 'medium', showIcon = true }: TimerProps) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
+
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
 
@@ -27,8 +31,8 @@ export function Timer({ seconds, style, size = 'medium', showIcon = true }: Time
 
   return (
     <View style={[styles.container, style]}>
-      {showIcon && <Text style={[styles.icon, { fontSize }]}>⏱</Text>}
-      <Text style={[styles.time, { fontSize }]}>{timeString}</Text>
+      {showIcon && <Text style={[styles.icon, { fontSize, color: colors.mutedForeground }]}>⏱</Text>}
+      <Text style={[styles.time, { fontSize, color: colors.foreground }]}>{timeString}</Text>
     </View>
   );
 }
@@ -39,11 +43,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  icon: {
-    color: '#94a3b8',
-  },
+  icon: {},
   time: {
-    color: '#fff',
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },

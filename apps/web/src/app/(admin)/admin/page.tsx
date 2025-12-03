@@ -5,6 +5,7 @@ import {
   ArrowUpDown,
   BarChart3,
   BookOpen,
+  Brain,
   Clock,
   Download,
   Edit,
@@ -59,6 +60,18 @@ const ToolsTab = dynamic(
   }
 );
 
+const AIInsightsTab = dynamic(
+  () => import("@/components/admin/tabs/AIInsightsTab").then((mod) => ({ default: mod.AIInsightsTab })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-neutral-700 dark:text-neutral-300" />
+      </div>
+    ),
+    ssr: false,
+  }
+);
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -98,7 +111,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
 
-type Tab = "stats" | "puzzles" | "blogs" | "users" | "analytics" | "tools";
+type Tab = "stats" | "puzzles" | "blogs" | "users" | "analytics" | "tools" | "ai-insights";
 
 interface AdminStats {
   overview: {
@@ -779,6 +792,10 @@ export default function AdminPage() {
             <Wrench className="mr-2 h-4 w-4" />
             Tools
           </TabsTrigger>
+          <TabsTrigger className="data-[state=active]:bg-background" value="ai-insights">
+            <Brain className="mr-2 h-4 w-4" />
+            AI Insights
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent className="space-y-6" value="stats">
@@ -874,6 +891,10 @@ export default function AdminPage() {
               fetchPuzzles(puzzlePage);
             }}
           />
+        </TabsContent>
+
+        <TabsContent className="space-y-6" value="ai-insights">
+          <AIInsightsTab />
         </TabsContent>
       </Tabs>
 

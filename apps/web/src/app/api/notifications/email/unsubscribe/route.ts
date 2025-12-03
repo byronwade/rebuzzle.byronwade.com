@@ -65,6 +65,7 @@ export async function POST(req: Request) {
 /**
  * GET /api/notifications/email/unsubscribe
  * One-click unsubscribe via email link
+ * Security: Uses updateOne to prevent bulk operations, returns consistent response to prevent enumeration
  */
 export async function GET(req: Request) {
   try {
@@ -78,29 +79,31 @@ export async function GET(req: Request) {
 
     const subscriptionsCollection = getCollection("emailSubscriptions");
 
+    // Build query - only one identifier at a time to prevent bulk operations
     const query: { email?: string; userId?: string } = {};
-    if (email) {
+    if (userId) {
+      // Prefer userId as it's more specific
+      query.userId = userId;
+    } else if (email) {
       query.email = email.toLowerCase().trim();
     }
-    if (userId) {
-      query.userId = userId;
-    }
 
-    const result = await subscriptionsCollection.updateMany(query, {
+    // Use updateOne to only affect a single subscription (security fix)
+    const result = await subscriptionsCollection.updateOne(query, {
       $set: {
         enabled: false,
         updatedAt: new Date(),
       },
     });
 
+    // Always redirect to success page to prevent email enumeration
+    // Don't reveal whether email exists or not
     if (result.modifiedCount > 0) {
-      // Redirect to success page
-      return NextResponse.redirect(
-        new URL(`/unsubscribe?email=${encodeURIComponent(email || "")}`, req.url)
-      );
+      // Actually unsubscribed
+      return NextResponse.redirect(new URL("/unsubscribe?success=true", req.url));
     }
-    // No subscription found
-    return NextResponse.redirect(new URL("/unsubscribe?error=not-found", req.url));
+    // No subscription found or already unsubscribed - still show success to prevent enumeration
+    return NextResponse.redirect(new URL("/unsubscribe?success=true", req.url));
   } catch (error) {
     console.error("[Notifications] Unsubscribe error:", error);
     return NextResponse.redirect(new URL("/unsubscribe?error=server-error", req.url));

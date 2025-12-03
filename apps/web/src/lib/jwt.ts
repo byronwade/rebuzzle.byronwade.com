@@ -68,12 +68,21 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
       algorithms: ["HS256"],
     });
 
+    // Validate required fields exist and are strings
+    if (
+      typeof payload.userId !== "string" ||
+      typeof payload.username !== "string" ||
+      typeof payload.email !== "string"
+    ) {
+      return null;
+    }
+
     return {
-      userId: payload.userId as string,
-      username: payload.username as string,
-      email: payload.email as string,
-      iat: payload.iat as number,
-      exp: payload.exp as number,
+      userId: payload.userId,
+      username: payload.username,
+      email: payload.email,
+      iat: typeof payload.iat === "number" ? payload.iat : undefined,
+      exp: typeof payload.exp === "number" ? payload.exp : undefined,
     };
   } catch (_error) {
     // Token is invalid, expired, or malformed
@@ -94,12 +103,21 @@ export function decodeToken(token: string): TokenPayload | null {
 
     const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
 
+    // Validate required fields exist and are strings
+    if (
+      typeof payload.userId !== "string" ||
+      typeof payload.username !== "string" ||
+      typeof payload.email !== "string"
+    ) {
+      return null;
+    }
+
     return {
       userId: payload.userId,
       username: payload.username,
       email: payload.email,
-      iat: payload.iat,
-      exp: payload.exp,
+      iat: typeof payload.iat === "number" ? payload.iat : undefined,
+      exp: typeof payload.exp === "number" ? payload.exp : undefined,
     };
   } catch (_error) {
     return null;

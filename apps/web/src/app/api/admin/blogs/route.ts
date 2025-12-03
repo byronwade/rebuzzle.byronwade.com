@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { BlogPost, NewBlogPost } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { verifyAdminAccess } from "@/lib/admin-auth";
+import { parsePagination, safeSearchRegex } from "@/lib/api-validation";
 
 /**
  * GET /api/admin/blogs
@@ -15,15 +16,14 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = Number.parseInt(searchParams.get("page") || "1", 10);
-    const limit = Number.parseInt(searchParams.get("limit") || "50", 10);
+    const { page, limit } = parsePagination(searchParams.get("page"), searchParams.get("limit"));
     const skip = (page - 1) * limit;
-    const search = searchParams.get("search") || "";
+    const search = safeSearchRegex(searchParams.get("search"));
 
     const blogPostsCollection = getCollection<BlogPost>("blogPosts");
 
-    // Build query
-    const query: any = {};
+    // Build query with proper typing
+    const query: { $or?: Array<Record<string, { $regex: string; $options: string }>> } = {};
 
     if (search) {
       query.$or = [

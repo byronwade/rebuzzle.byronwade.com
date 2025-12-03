@@ -5,9 +5,10 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import type { AchievementRarity } from '../types';
 
-// Rarity colors
+// Rarity colors (these remain constant across themes for recognition)
 const RARITY_COLORS: Record<AchievementRarity, { border: string; bg: string; text: string }> = {
   common: { border: '#9ca3af', bg: 'rgba(156, 163, 175, 0.1)', text: '#9ca3af' },
   uncommon: { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', text: '#22c55e' },
@@ -70,7 +71,9 @@ export function AchievementBadge({
   size = 'medium',
   style,
 }: AchievementBadgeProps) {
-  const colors = RARITY_COLORS[rarity];
+  const { theme } = useTheme();
+  const themeColors = theme.colors;
+  const rarityColors = RARITY_COLORS[rarity];
   const iconEmoji = ICON_MAP[icon] || ICON_MAP.default;
 
   const dimensions = size === 'small' ? 48 : size === 'large' ? 80 : 64;
@@ -90,8 +93,8 @@ export function AchievementBadge({
             width: dimensions,
             height: dimensions,
             borderRadius: dimensions / 2,
-            backgroundColor: unlocked ? colors.bg : 'rgba(100, 116, 139, 0.1)',
-            borderColor: unlocked ? colors.border : '#475569',
+            backgroundColor: unlocked ? rarityColors.bg : 'rgba(100, 116, 139, 0.1)',
+            borderColor: unlocked ? rarityColors.border : themeColors.muted,
           },
         ]}
       >
@@ -99,7 +102,7 @@ export function AchievementBadge({
           {displayIcon}
         </Text>
         {!unlocked && (
-          <View style={styles.lockOverlay}>
+          <View style={[styles.lockOverlay, { backgroundColor: themeColors.background }]}>
             <Text style={styles.lockIcon}>🔒</Text>
           </View>
         )}
@@ -109,7 +112,7 @@ export function AchievementBadge({
         <Text
           style={[
             styles.name,
-            { color: unlocked ? '#e2e8f0' : '#64748b' },
+            { color: unlocked ? themeColors.foreground : themeColors.mutedForeground },
           ]}
           numberOfLines={2}
         >
@@ -118,8 +121,8 @@ export function AchievementBadge({
       )}
 
       {points !== undefined && unlocked && (
-        <View style={[styles.pointsBadge, { backgroundColor: colors.bg }]}>
-          <Text style={[styles.pointsText, { color: colors.text }]}>+{points}</Text>
+        <View style={[styles.pointsBadge, { backgroundColor: rarityColors.bg }]}>
+          <Text style={[styles.pointsText, { color: rarityColors.text }]}>+{points}</Text>
         </View>
       )}
     </View>
@@ -144,7 +147,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -4,
     right: -4,
-    backgroundColor: '#1a1a2e',
     borderRadius: 10,
     padding: 2,
   },

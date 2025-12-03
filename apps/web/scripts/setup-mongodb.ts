@@ -184,6 +184,84 @@ async function setupMongoDB() {
       .collection("userSessions")
       .createIndex({ userId: 1, startTime: -1 });
 
+    // ========================================================================
+    // AI LEARNING SYSTEM COLLECTIONS
+    // ========================================================================
+
+    // AI Decisions collection - stores every AI decision with full context
+    console.log("🤖 Setting up aiDecisions collection...");
+    await db.createCollection("aiDecisions");
+    await db.collection("aiDecisions").createIndex({ id: 1 }, { unique: true });
+    await db.collection("aiDecisions").createIndex({ timestamp: -1 });
+    await db.collection("aiDecisions").createIndex({ operationId: 1 });
+    await db.collection("aiDecisions").createIndex({ decisionType: 1, timestamp: -1 });
+    await db.collection("aiDecisions").createIndex({ "output.success": 1, timestamp: -1 });
+    await db.collection("aiDecisions").createIndex({ entityId: 1, entityType: 1 });
+    await db.collection("aiDecisions").createIndex({ "qualityMetrics.score": 1 });
+    await db.collection("aiDecisions").createIndex({ provider: 1, model: 1, timestamp: -1 });
+    await db.collection("aiDecisions").createIndex({ userId: 1, timestamp: -1 });
+    // Compound index for common analytics queries
+    await db.collection("aiDecisions").createIndex({
+      decisionType: 1,
+      "output.success": 1,
+      timestamp: -1
+    });
+
+    // AI Errors collection - dedicated error tracking for pattern analysis
+    console.log("⚠️ Setting up aiErrors collection...");
+    await db.createCollection("aiErrors");
+    await db.collection("aiErrors").createIndex({ id: 1 }, { unique: true });
+    await db.collection("aiErrors").createIndex({ timestamp: -1 });
+    await db.collection("aiErrors").createIndex({ errorCode: 1, timestamp: -1 });
+    await db.collection("aiErrors").createIndex({ severity: 1, resolved: 1 });
+    await db.collection("aiErrors").createIndex({ decisionId: 1 });
+    await db.collection("aiErrors").createIndex({ tags: 1 });
+    await db.collection("aiErrors").createIndex({ operationId: 1 });
+    // Compound index for unresolved critical errors
+    await db.collection("aiErrors").createIndex({
+      resolved: 1,
+      severity: 1,
+      timestamp: -1
+    });
+
+    // AI Feedback collection - user feedback on AI outputs
+    console.log("💬 Setting up aiFeedback collection...");
+    await db.createCollection("aiFeedback");
+    await db.collection("aiFeedback").createIndex({ id: 1 }, { unique: true });
+    await db.collection("aiFeedback").createIndex({ puzzleId: 1 });
+    await db.collection("aiFeedback").createIndex({ userId: 1, timestamp: -1 });
+    await db.collection("aiFeedback").createIndex({ decisionId: 1 });
+    await db.collection("aiFeedback").createIndex({ processedForLearning: 1 });
+    await db.collection("aiFeedback").createIndex({ feedbackType: 1, timestamp: -1 });
+    await db.collection("aiFeedback").createIndex({ rating: 1 });
+    await db.collection("aiFeedback").createIndex({ timestamp: -1 });
+    // Compound index for feedback aggregation
+    await db.collection("aiFeedback").createIndex({
+      feedbackType: 1,
+      rating: 1,
+      timestamp: -1
+    });
+
+    // AI Configurations collection - versioned AI config with A/B testing
+    console.log("⚙️ Setting up aiConfigurations collection...");
+    await db.createCollection("aiConfigurations");
+    await db.collection("aiConfigurations").createIndex({ id: 1 }, { unique: true });
+    await db.collection("aiConfigurations").createIndex({ version: 1 }, { unique: true });
+    await db.collection("aiConfigurations").createIndex({ status: 1, isDefault: 1 });
+    await db.collection("aiConfigurations").createIndex({ "abTest.testId": 1 });
+    await db.collection("aiConfigurations").createIndex({ createdAt: -1 });
+
+    // AI Learning Events collection - tracks how feedback influences AI
+    console.log("📚 Setting up aiLearningEvents collection...");
+    await db.createCollection("aiLearningEvents");
+    await db.collection("aiLearningEvents").createIndex({ id: 1 }, { unique: true });
+    await db.collection("aiLearningEvents").createIndex({ status: 1, timestamp: -1 });
+    await db.collection("aiLearningEvents").createIndex({ appliedToConfigId: 1 });
+    await db.collection("aiLearningEvents").createIndex({ eventType: 1, timestamp: -1 });
+    await db.collection("aiLearningEvents").createIndex({ timestamp: -1 });
+    // Index for finding learning events by feedback
+    await db.collection("aiLearningEvents").createIndex({ feedbackIds: 1 });
+
     // List all collections
     console.log("\n📋 Available collections:");
     const collections = await db.listCollections().toArray();

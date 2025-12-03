@@ -19,13 +19,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useAchievements } from '../src/contexts/AchievementsContext';
+import { useTheme } from '../src/contexts/ThemeContext';
 import { AvatarCircle, AVATAR_COLORS } from '../src/components/AvatarCircle';
 import { api } from '../src/lib/api';
+import { hexToRgba } from '../src/lib/theme';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { isAuthenticated, user, stats, logout, refreshStats } = useAuth();
   const { progress } = useAchievements();
+  const { theme } = useTheme();
+  const colors = theme.colors;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState('');
@@ -99,9 +103,9 @@ export default function ProfileScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#facc15" />
+          <ActivityIndicator size="large" color={colors.accent} />
         </View>
       </SafeAreaView>
     );
@@ -112,7 +116,7 @@ export default function ProfileScreen() {
     : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.header}>
@@ -122,89 +126,89 @@ export default function ProfileScreen() {
             colorIndex={user.avatarColorIndex}
             size={80}
           />
-          <Text style={styles.username}>
+          <Text style={[styles.username, { color: colors.foreground }]}>
             {user.isGuest ? 'Guest' : user.username}
           </Text>
-          <Text style={styles.email}>{user.email}</Text>
+          <Text style={[styles.email, { color: colors.mutedForeground }]}>{user.email}</Text>
           {user.isGuest && (
-            <View style={styles.guestBadge}>
-              <Text style={styles.guestBadgeText}>Guest Account</Text>
+            <View style={[styles.guestBadge, { backgroundColor: hexToRgba(colors.accent, 0.15) }]}>
+              <Text style={[styles.guestBadgeText, { color: colors.accent }]}>Guest Account</Text>
             </View>
           )}
         </View>
 
         {/* Stats Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Your Stats</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.accent }]}>Your Stats</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats?.level || 1}</Text>
-              <Text style={styles.statLabel}>Level</Text>
+              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.level || 1}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Level</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats?.streak || 0}</Text>
-              <Text style={styles.statLabel}>Streak</Text>
+              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.streak || 0}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Streak</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats?.points || 0}</Text>
-              <Text style={styles.statLabel}>Points</Text>
+              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.points || 0}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Points</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats?.totalGames || 0}</Text>
-              <Text style={styles.statLabel}>Games</Text>
+              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.totalGames || 0}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Games</Text>
             </View>
           </View>
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
             <View style={styles.statRowItem}>
-              <Text style={styles.statRowLabel}>Win Rate</Text>
-              <Text style={styles.statRowValue}>
+              <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>Win Rate</Text>
+              <Text style={[styles.statRowValue, { color: colors.foreground }]}>
                 {stats?.totalGames
                   ? Math.round((stats.wins / stats.totalGames) * 100)
                   : 0}%
               </Text>
             </View>
             <View style={styles.statRowItem}>
-              <Text style={styles.statRowLabel}>Max Streak</Text>
-              <Text style={styles.statRowValue}>{stats?.maxStreak || 0}</Text>
+              <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>Max Streak</Text>
+              <Text style={[styles.statRowValue, { color: colors.foreground }]}>{stats?.maxStreak || 0}</Text>
             </View>
             <View style={styles.statRowItem}>
-              <Text style={styles.statRowLabel}>Perfect Solves</Text>
-              <Text style={styles.statRowValue}>{stats?.perfectSolves || 0}</Text>
+              <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>Perfect Solves</Text>
+              <Text style={[styles.statRowValue, { color: colors.foreground }]}>{stats?.perfectSolves || 0}</Text>
             </View>
           </View>
         </View>
 
         {/* Achievements Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Achievements</Text>
+            <Text style={[styles.cardTitle, { color: colors.accent }]}>Achievements</Text>
             <Link href="/achievements" asChild>
               <Pressable>
-                <Text style={styles.viewAllLink}>View All</Text>
+                <Text style={[styles.viewAllLink, { color: colors.mutedForeground }]}>View All</Text>
               </Pressable>
             </Link>
           </View>
           {progress ? (
             <>
               <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
+                <View style={[styles.progressBar, { backgroundColor: colors.muted }]}>
                   <View
-                    style={[styles.progressFill, { width: `${achievementPercentage}%` }]}
+                    style={[styles.progressFill, { width: `${achievementPercentage}%`, backgroundColor: colors.accent }]}
                   />
                 </View>
-                <Text style={styles.progressText}>
+                <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
                   {progress.unlocked}/{progress.total} unlocked
                 </Text>
               </View>
-              <View style={styles.achievementStats}>
-                <Text style={styles.achievementPointsLabel}>Points Earned</Text>
-                <Text style={styles.achievementPoints}>
+              <View style={[styles.achievementStats, { borderTopColor: colors.border }]}>
+                <Text style={[styles.achievementPointsLabel, { color: colors.mutedForeground }]}>Points Earned</Text>
+                <Text style={[styles.achievementPoints, { color: colors.foreground }]}>
                   {progress.earnedPoints}/{progress.totalPoints}
                 </Text>
               </View>
             </>
           ) : (
-            <Text style={styles.noData}>No achievements yet</Text>
+            <Text style={[styles.noData, { color: colors.mutedForeground }]}>No achievements yet</Text>
           )}
         </View>
 
@@ -212,23 +216,32 @@ export default function ProfileScreen() {
         <View style={styles.actions}>
           {!user.isGuest && (
             <Pressable
-              style={styles.editButton}
+              style={[
+                styles.editButton,
+                {
+                  backgroundColor: hexToRgba(colors.accent, 0.15),
+                  borderColor: hexToRgba(colors.accent, 0.3),
+                },
+              ]}
               onPress={() => setIsEditing(true)}
             >
-              <Text style={styles.editButtonText}>Edit Profile</Text>
+              <Text style={[styles.editButtonText, { color: colors.accent }]}>Edit Profile</Text>
             </Pressable>
           )}
 
           {user.isGuest && (
             <Link href="/signup" asChild>
-              <Pressable style={styles.upgradeButton}>
-                <Text style={styles.upgradeButtonText}>Create Account</Text>
+              <Pressable style={[styles.upgradeButton, { backgroundColor: colors.accent }]}>
+                <Text style={[styles.upgradeButtonText, { color: colors.accentForeground }]}>Create Account</Text>
               </Pressable>
             </Link>
           )}
 
-          <Pressable style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Logout</Text>
+          <Pressable
+            style={[styles.logoutButton, { borderColor: hexToRgba(colors.destructive, 0.3) }]}
+            onPress={handleLogout}
+          >
+            <Text style={[styles.logoutButtonText, { color: colors.destructive }]}>Logout</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -240,17 +253,17 @@ export default function ProfileScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setIsEditing(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Pressable onPress={() => setIsEditing(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
+              <Text style={[styles.modalCancel, { color: colors.mutedForeground }]}>Cancel</Text>
             </Pressable>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Profile</Text>
             <Pressable onPress={handleSaveProfile} disabled={isSaving}>
               {isSaving ? (
-                <ActivityIndicator size="small" color="#facc15" />
+                <ActivityIndicator size="small" color={colors.accent} />
               ) : (
-                <Text style={styles.modalSave}>Save</Text>
+                <Text style={[styles.modalSave, { color: colors.accent }]}>Save</Text>
               )}
             </Pressable>
           </View>
@@ -268,13 +281,20 @@ export default function ProfileScreen() {
 
             {/* Username */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Username</Text>
+              <Text style={[styles.formLabel, { color: colors.foreground }]}>Username</Text>
               <TextInput
-                style={styles.formInput}
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: colors.secondary,
+                    color: colors.foreground,
+                    borderColor: colors.border,
+                  },
+                ]}
                 value={editUsername}
                 onChangeText={setEditUsername}
                 placeholder="Enter username"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.mutedForeground}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -282,24 +302,31 @@ export default function ProfileScreen() {
 
             {/* Custom Initials */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Avatar Initials (optional)</Text>
+              <Text style={[styles.formLabel, { color: colors.foreground }]}>Avatar Initials (optional)</Text>
               <TextInput
-                style={styles.formInput}
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: colors.secondary,
+                    color: colors.foreground,
+                    borderColor: colors.border,
+                  },
+                ]}
                 value={editInitials}
                 onChangeText={(text) => setEditInitials(text.slice(0, 2).toUpperCase())}
                 placeholder="e.g. JD"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.mutedForeground}
                 autoCapitalize="characters"
                 maxLength={2}
               />
-              <Text style={styles.formHint}>
+              <Text style={[styles.formHint, { color: colors.mutedForeground }]}>
                 Leave empty to use username initials
               </Text>
             </View>
 
             {/* Color Picker */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Avatar Color</Text>
+              <Text style={[styles.formLabel, { color: colors.foreground }]}>Avatar Color</Text>
               <View style={styles.colorPicker}>
                 {AVATAR_COLORS.map((color, index) => (
                   <Pressable
@@ -307,7 +334,7 @@ export default function ProfileScreen() {
                     style={[
                       styles.colorOption,
                       { backgroundColor: color },
-                      editColorIndex === index && styles.colorOptionSelected,
+                      editColorIndex === index && [styles.colorOptionSelected, { borderColor: colors.foreground }],
                     ]}
                     onPress={() => setEditColorIndex(index)}
                   />
@@ -316,8 +343,8 @@ export default function ProfileScreen() {
             </View>
 
             {saveError && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{saveError}</Text>
+              <View style={[styles.errorContainer, { backgroundColor: hexToRgba(colors.destructive, 0.1) }]}>
+                <Text style={[styles.errorText, { color: colors.destructive }]}>{saveError}</Text>
               </View>
             )}
           </ScrollView>
@@ -330,7 +357,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
   },
   loadingContainer: {
     flex: 1,
@@ -348,32 +374,28 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginTop: 16,
   },
   email: {
     fontSize: 14,
-    color: '#94a3b8',
     marginTop: 4,
   },
   guestBadge: {
     marginTop: 12,
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
   guestBadgeText: {
     fontSize: 12,
-    color: '#facc15',
     fontWeight: '600',
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 16,
     marginBottom: 16,
+    borderWidth: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -384,11 +406,9 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#facc15',
   },
   viewAllLink: {
     fontSize: 14,
-    color: '#94a3b8',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -401,11 +421,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#facc15',
   },
   statLabel: {
     fontSize: 12,
-    color: '#94a3b8',
     marginTop: 4,
   },
   statsRow: {
@@ -413,60 +431,50 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   statRowItem: {
     alignItems: 'center',
   },
   statRowLabel: {
     fontSize: 11,
-    color: '#64748b',
     marginBottom: 4,
   },
   statRowValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#e2e8f0',
   },
   progressContainer: {
     marginBottom: 12,
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#facc15',
     borderRadius: 4,
   },
   progressText: {
     fontSize: 13,
-    color: '#94a3b8',
     textAlign: 'center',
   },
   achievementStats: {
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   achievementPointsLabel: {
     fontSize: 12,
-    color: '#64748b',
     marginBottom: 4,
   },
   achievementPoints: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#e2e8f0',
   },
   noData: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
   },
   actions: {
@@ -474,20 +482,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   editButton: {
-    backgroundColor: 'rgba(250, 204, 21, 0.15)',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(250, 204, 21, 0.3)',
   },
   editButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#facc15',
   },
   upgradeButton: {
-    backgroundColor: '#facc15',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -495,24 +499,20 @@ const styles = StyleSheet.create({
   upgradeButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1a1a2e',
   },
   logoutButton: {
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ef4444',
   },
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -520,21 +520,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   modalCancel: {
     fontSize: 16,
-    color: '#94a3b8',
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#fff',
   },
   modalSave: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#facc15',
   },
   modalContent: {
     flex: 1,
@@ -550,21 +546,16 @@ const styles = StyleSheet.create({
   formLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e2e8f0',
     marginBottom: 8,
   },
   formInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   formHint: {
     fontSize: 12,
-    color: '#64748b',
     marginTop: 6,
   },
   colorPicker: {
@@ -580,16 +571,14 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorOptionSelected: {
-    borderColor: '#fff',
+    borderWidth: 3,
   },
   errorContainer: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderRadius: 8,
     padding: 12,
     marginTop: 16,
   },
   errorText: {
-    color: '#ef4444',
     fontSize: 14,
     textAlign: 'center',
   },

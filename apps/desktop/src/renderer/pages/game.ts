@@ -12,9 +12,133 @@ import {
   pointsToNextLevel,
   type ScoreBreakdown,
 } from '@rebuzzle/game-logic';
+import { showCelebration } from '../lib/celebration';
+import { shareResults } from '../lib/share';
 
 // Game constants
 const MAX_ATTEMPTS = 3;
+const API_BASE = 'https://rebuzzle.byronwade.com';
+
+// Convert difficulty number to text name (matching web)
+function getDifficultyName(difficulty: number): string {
+  const names: Record<number, string> = {
+    1: 'Easy',
+    2: 'Medium',
+    3: 'Moderate',
+    4: 'Hard',
+    5: 'Difficult',
+    6: 'Evil',
+    7: 'Impossible',
+  };
+  return names[difficulty] || 'Unknown';
+}
+
+// Helper functions for web app parity
+function getPersonalizedGreeting(
+  streak: number,
+  wins: number
+): { icon: string; message: string; subtext: string } {
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  if (streak >= 7)
+    return {
+      icon: '🔥',
+      message: `${timeGreeting}! Day ${streak} of your streak`,
+      subtext: 'Keep it going!',
+    };
+  if (streak >= 3)
+    return {
+      icon: '🔥',
+      message: `${timeGreeting}! ${streak}-day streak`,
+      subtext: "You're on fire!",
+    };
+  if (streak === 1)
+    return {
+      icon: '✨',
+      message: `${timeGreeting}! Streak started`,
+      subtext: 'Come back tomorrow to keep it going',
+    };
+  if (wins > 0)
+    return { icon: '✨', message: `${timeGreeting}! Welcome back`, subtext: 'Fresh puzzle awaits' };
+  return { icon: '✨', message: `${timeGreeting}!`, subtext: "Ready for today's puzzle?" };
+}
+
+function getPuzzleQuestion(puzzleType: string): string {
+  const questions: Record<string, string> = {
+    rebus: 'What does this rebus puzzle represent?',
+    riddle: 'What is the answer to this riddle?',
+    trivia: 'What is the answer to this trivia question?',
+    'word-puzzle': 'What is the answer to this word puzzle?',
+    'logic-grid': 'Use deductive reasoning to solve this logic grid puzzle',
+    'number-sequence': 'What comes next in this number sequence?',
+    'caesar-cipher': 'Decode this encrypted message',
+    'word-ladder': 'Transform the start word into the end word',
+    'pattern-recognition': 'What pattern comes next?',
+    'cryptic-crossword': 'Solve this cryptic crossword clue',
+  };
+  return questions[puzzleType] || 'What is the answer to this puzzle?';
+}
+
+async function fetchSolveCount(puzzleId: string): Promise<number> {
+  try {
+    const response = await fetch(`${API_BASE}/api/puzzles/stats?puzzleId=${puzzleId}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.todaySolves || 0;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return 0;
+}
+
+function renderHintCard(
+  hints: string[],
+  hintsUsed: number,
+  isComplete: boolean
+): string {
+  if (!hints || hints.length === 0) return '';
+
+  const revealedHints = hints.slice(0, hintsUsed);
+  const hintsRemaining = hints.length - hintsUsed;
+
+  return `
+    <div class="hint-card" id="hint-card">
+      <div class="hint-card-header">
+        <div class="hint-card-title">
+          <span class="hint-icon">💡</span>
+          <span>Hints</span>
+        </div>
+        <span class="hint-count">${hintsUsed}/${hints.length}</span>
+      </div>
+      <div class="hint-list" id="hint-list">
+        ${revealedHints.length > 0
+          ? revealedHints
+              .map(
+                (hint, i) => `
+            <div class="hint-item">
+              <span class="hint-number">${i + 1}.</span>
+              <span>${hint}</span>
+            </div>
+          `
+              )
+              .join('')
+          : '<p class="hint-empty">No hints revealed yet</p>'
+        }
+      </div>
+      ${!isComplete && hintsRemaining > 0
+        ? `<button class="btn btn-hint" id="hint-btn">
+            <span class="hint-icon">💡</span>
+            Get Hint (${hintsRemaining} remaining) · -10 pts
+          </button>`
+        : hintsRemaining === 0 && hintsUsed > 0
+          ? '<p class="hint-exhausted">No more hints available</p>'
+          : ''
+      }
+    </div>
+  `;
+}
 
 export async function createGamePage(): Promise<HTMLElement> {
   const page = document.createElement('div');
@@ -65,55 +189,94 @@ async function loadPuzzle(): Promise<Puzzle | null> {
 
 function renderGame(container: HTMLElement, puzzle: Puzzle): void {
   const state = appStore.get('game');
+  const stats = appStore.get('stats');
+
+  // Get personalized greeting based on user stats
+  const greeting = getPersonalizedGreeting(stats?.streak || 0, stats?.wins || 0);
 
   container.innerHTML = `
-    <div class="game-header">
-      <div class="game-info">
-        <span class="badge badge-default">${puzzle.puzzleType}</span>
-        <span class="badge badge-default">${puzzle.difficulty}</span>
-      </div>
-      <div class="timer" id="game-timer">00:00</div>
-    </div>
+    <div class="game-layout">
+      <!-- Puzzle Area - takes up available space, vertically centered -->
+      <main class="puzzle-area">
+        <div class="puzzle-content">
+          <!-- Game info badges and attempts -->
+          <div class="game-header">
+            <div class="game-info">
+              <span class="badge badge-difficulty">${getDifficultyName(typeof puzzle.difficulty === 'number' ? puzzle.difficulty : 5)}</span>
+            </div>
+            <div class="attempts-indicator" id="attempts-indicator">
+              ${renderAttempts(0, MAX_ATTEMPTS)}
+            </div>
+          </div>
 
-    <div class="puzzle-container">
-      <div class="puzzle-text" id="puzzle-display">${formatPuzzle(puzzle.puzzle)}</div>
-    </div>
+          <!-- Personalized greeting -->
+          <div class="greeting">
+            <span class="greeting-icon">${greeting.icon}</span>
+            <span class="greeting-text">
+              <span class="greeting-message">${greeting.message}</span>
+              <span class="greeting-subtext"> · ${greeting.subtext}</span>
+            </span>
+          </div>
 
-    <div class="attempts-container" id="attempts-display">
-      ${renderAttempts(0, MAX_ATTEMPTS)}
-    </div>
+          <!-- Puzzle display section -->
+          <section class="puzzle-section">
+            <div class="puzzle-container">
+              <div class="puzzle-display" id="puzzle-display">${formatPuzzle(puzzle.puzzle)}</div>
+            </div>
+            <p class="puzzle-question">${getPuzzleQuestion(puzzle.puzzleType || 'rebus')}</p>
+            <div class="solve-counter" id="solve-counter"></div>
+          </section>
 
-    <div class="guess-history" id="guess-history"></div>
+          <!-- Guess history -->
+          <div class="guess-history" id="guess-history"></div>
 
-    <form class="answer-input-container" id="answer-form">
-      <input
-        type="text"
-        class="input answer-input"
-        id="answer-input"
-        placeholder="Enter your answer..."
-        autocomplete="off"
-        autocapitalize="off"
-        spellcheck="false"
-      />
-      <button type="submit" class="btn btn-primary" id="submit-btn">
-        Submit
-      </button>
-    </form>
+          <!-- Hint card -->
+          <div class="hint-container" id="hint-container">
+            ${renderHintCard(puzzle.hints || [], state.hintsUsed, state.isComplete)}
+          </div>
+        </div>
+      </main>
 
-    <div class="hint-container" id="hint-container">
-      ${puzzle.hints && puzzle.hints.length > 0 ? `
-        <button class="btn btn-ghost btn-sm" id="hint-btn">
-          Need a hint?
-        </button>
-      ` : ''}
+      <!-- Input Area - pinned to bottom -->
+      <section class="input-area">
+        <div class="input-area-content">
+          <form class="answer-input-container" id="answer-form">
+            <div class="input-wrapper" id="input-wrapper">
+              <input
+                type="text"
+                class="input answer-input"
+                id="answer-input"
+                placeholder="Type your answer..."
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+              <button type="submit" class="btn btn-primary submit-btn" id="submit-btn">
+                Submit
+              </button>
+            </div>
+            <p class="input-hint">Words turn <span class="text-success">green</span> when correct</p>
+          </form>
+        </div>
+      </section>
     </div>
   `;
 
   // Set up event listeners
   setupGameListeners(container, puzzle);
 
-  // Start timer
-  startTimer(container);
+  // Fetch and display solve count
+  if (puzzle.id) {
+    fetchSolveCount(puzzle.id).then((count) => {
+      const solveCounterEl = container.querySelector('#solve-counter');
+      if (solveCounterEl && count > 0) {
+        solveCounterEl.innerHTML = `
+          <span class="solve-icon">👥</span>
+          <span>${count.toLocaleString()} ${count === 1 ? 'player' : 'players'} solved today</span>
+        `;
+      }
+    });
+  }
 }
 
 function formatPuzzle(puzzleText: string): string {
@@ -129,10 +292,15 @@ function formatPuzzle(puzzleText: string): string {
 }
 
 function renderAttempts(used: number, max: number): string {
-  return Array(max)
-    .fill(0)
-    .map((_, i) => `<div class="attempt-dot ${i < used ? 'used' : ''}"></div>`)
-    .join('');
+  const remaining = max - used;
+  const filledHeart = `<svg class="heart-icon filled" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+  const emptyHeart = `<svg class="heart-icon empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+
+  let hearts = '';
+  for (let i = 0; i < max; i++) {
+    hearts += i < remaining ? filledHeart : emptyHeart;
+  }
+  return `${hearts}<span class="attempts-count">${remaining}/${max}</span>`;
 }
 
 function setupGameListeners(container: HTMLElement, puzzle: Puzzle): void {
@@ -191,20 +359,10 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
   // Update guess history
   addGuessToHistory(container, answer, isCorrect);
 
-  // Update attempts display
-  const attemptsDisplay = container.querySelector('#attempts-display');
-  if (attemptsDisplay) {
-    attemptsDisplay.innerHTML = renderAttempts(newAttempts, MAX_ATTEMPTS);
-
-    // Add correct class if won
-    if (isCorrect) {
-      attemptsDisplay.querySelectorAll('.attempt-dot').forEach((dot, i) => {
-        if (i < newAttempts) {
-          dot.classList.remove('used');
-          dot.classList.add('correct');
-        }
-      });
-    }
+  // Update attempts display (now in header)
+  const attemptsIndicator = container.querySelector('#attempts-indicator');
+  if (attemptsIndicator) {
+    attemptsIndicator.innerHTML = renderAttempts(newAttempts, MAX_ATTEMPTS);
   }
 
   if (isCorrect) {
@@ -217,6 +375,7 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
       wrongAttempts: newAttempts - 1,
       streakDays: stats?.streak || 0,
       difficultyLevel: typeof puzzle.difficulty === 'number' ? puzzle.difficulty : 5,
+      hintsUsed: state.hintsUsed,
     });
 
     // Update state
@@ -235,8 +394,9 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
     // Show success
     showSuccess(container, puzzle, scoreBreakdown, elapsedTime);
 
-    // Update stats on server
-    updateServerStats(true, newAttempts, elapsedTime);
+    // Record attempt to server (consistent with mobile/web)
+    const gameState = appStore.get('game');
+    recordPuzzleAttempt(puzzle, answer, true, newAttempts, elapsedTime, gameState.hintsUsed);
 
     // Update local stats
     if (window.electronAPI) {
@@ -260,8 +420,9 @@ function handleSubmit(container: HTMLElement, puzzle: Puzzle, answer: string): v
     // Show failure
     showFailure(container, puzzle);
 
-    // Update stats on server
-    updateServerStats(false, newAttempts, 0);
+    // Record attempt to server (consistent with mobile/web)
+    const elapsedTime = Math.floor((Date.now() - state.startTime) / 1000);
+    recordPuzzleAttempt(puzzle, answer, false, newAttempts, elapsedTime, state.hintsUsed);
   } else {
     // Wrong answer but still have attempts
     appStore.setState({
@@ -318,14 +479,17 @@ function showHint(container: HTMLElement, puzzle: Puzzle): void {
   // Show hint toast
   window.showToast(`Hint: ${hint}`, 'info', 5000);
 
-  // Update hint button
-  const hintBtn = container.querySelector('#hint-btn') as HTMLButtonElement | null;
-  if (hintBtn) {
-    if (hintIndex + 1 >= hints.length) {
-      hintBtn.disabled = true;
-      hintBtn.textContent = 'No more hints';
-    } else {
-      hintBtn.textContent = `Hint ${hintIndex + 2}/${hints.length}`;
+  // Re-render the hint card with updated state
+  const hintContainer = container.querySelector('#hint-container');
+  if (hintContainer) {
+    hintContainer.innerHTML = renderHintCard(hints, hintIndex + 1, state.isComplete);
+
+    // Re-attach hint button listener
+    const newHintBtn = hintContainer.querySelector('#hint-btn') as HTMLButtonElement | null;
+    if (newHintBtn) {
+      newHintBtn.addEventListener('click', () => {
+        showHint(container, puzzle);
+      });
     }
   }
 }
@@ -336,7 +500,19 @@ function showSuccess(
   score: ScoreBreakdown,
   elapsedTime: number
 ): void {
-  // Disable input
+  const stats = appStore.get('stats');
+  const gameState = appStore.get('game');
+
+  // Show celebration overlay with confetti
+  showCelebration({
+    score: score.totalScore,
+    streak: stats?.streak || 0,
+    attempts: gameState.attempts,
+    maxAttempts: MAX_ATTEMPTS,
+    timeTaken: elapsedTime,
+  });
+
+  // Disable input and show success message
   const form = container.querySelector('#answer-form');
   if (form) {
     form.innerHTML = `
@@ -348,7 +524,7 @@ function showSuccess(
     `;
   }
 
-  // Show score breakdown
+  // Show score breakdown with share button
   const scoreHtml = `
     <div class="score-breakdown card bounce-in" style="margin-top: var(--spacing-lg);">
       <h3>Score Breakdown</h3>
@@ -365,6 +541,12 @@ function showSuccess(
           <div class="score-item penalty">
             <span>Wrong Attempts</span>
             <span>-${score.accuracyPenalty}</span>
+          </div>
+        ` : ''}
+        ${score.hintPenalty > 0 ? `
+          <div class="score-item penalty">
+            <span>Hints Used</span>
+            <span>-${score.hintPenalty}</span>
           </div>
         ` : ''}
         ${score.streakBonus > 0 ? `
@@ -386,10 +568,37 @@ function showSuccess(
         </div>
       </div>
       <p class="time-display">Time: ${formatTime(elapsedTime)}</p>
+
+      <div class="share-container" style="margin-top: var(--spacing-lg); text-align: center;">
+        <button class="btn btn-primary" id="share-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+            <polyline points="16 6 12 2 8 6"></polyline>
+            <line x1="12" y1="2" x2="12" y2="15"></line>
+          </svg>
+          Share Results
+        </button>
+      </div>
     </div>
+
+    <div class="countdown-container" id="next-puzzle-countdown"></div>
   `;
 
   container.insertAdjacentHTML('beforeend', scoreHtml);
+
+  // Set up share button
+  const shareBtn = container.querySelector('#share-btn');
+  shareBtn?.addEventListener('click', () => {
+    shareResults({
+      success: true,
+      attempts: gameState.attempts,
+      maxAttempts: MAX_ATTEMPTS,
+      streak: stats?.streak || 0,
+    });
+  });
+
+  // Start countdown to next puzzle
+  startNextPuzzleCountdown(container);
 
   // Show notification
   if (window.electronAPI) {
@@ -416,42 +625,60 @@ function showFailure(container: HTMLElement, puzzle: Puzzle): void {
   }
 }
 
-async function updateServerStats(
-  won: boolean,
+async function recordPuzzleAttempt(
+  puzzle: Puzzle,
+  answer: string,
+  isCorrect: boolean,
   attempts: number,
-  timeSpent: number
+  timeSpentSeconds: number,
+  hintsUsed: number
 ): Promise<void> {
   try {
-    await api.updateStats({
-      won,
-      attempts,
-      timeSpent,
+    // Record the attempt to the API (same as mobile/web)
+    const result = await api.recordAttempt({
+      puzzleId: puzzle.id,
+      attemptedAnswer: answer,
+      isCorrect,
+      abandoned: !isCorrect && attempts >= MAX_ATTEMPTS,
+      attemptNumber: attempts,
+      maxAttempts: MAX_ATTEMPTS,
+      timeSpentSeconds,
+      difficulty: typeof puzzle.difficulty === 'string' ? puzzle.difficulty : undefined,
+      hintsUsed,
     });
+
+    if (!result.success) {
+      console.error('Failed to record attempt');
+      // Queue for offline sync
+      const state = appStore.get('offlineAttempts');
+      appStore.setState({
+        offlineAttempts: [
+          ...state,
+          {
+            puzzleId: puzzle.id,
+            timestamp: Date.now(),
+            score: isCorrect ? appStore.get('game').score || 0 : 0,
+            synced: false,
+          },
+        ],
+      });
+    }
   } catch (error) {
-    console.error('Failed to update stats:', error);
+    console.error('Failed to record attempt:', error);
     // Queue for offline sync
-    // TODO: Implement offline queue
+    const state = appStore.get('offlineAttempts');
+    appStore.setState({
+      offlineAttempts: [
+        ...state,
+        {
+          puzzleId: puzzle.id,
+          timestamp: Date.now(),
+          score: isCorrect ? appStore.get('game').score || 0 : 0,
+          synced: false,
+        },
+      ],
+    });
   }
-}
-
-function startTimer(container: HTMLElement): void {
-  const timerEl = container.querySelector('#game-timer');
-  if (!timerEl) return;
-
-  const startTime = appStore.get('game').startTime || Date.now();
-
-  const updateTimer = () => {
-    const gameState = appStore.get('game');
-    const currentPage = appStore.get('currentPage');
-    if (gameState.isComplete || currentPage !== '/') return;
-
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    timerEl.textContent = formatTime(elapsed);
-
-    requestAnimationFrame(updateTimer);
-  };
-
-  requestAnimationFrame(updateTimer);
 }
 
 function formatTime(seconds: number): string {
@@ -472,80 +699,59 @@ function renderError(container: HTMLElement, message: string): void {
   `;
 }
 
+function startNextPuzzleCountdown(container: HTMLElement): void {
+  const countdownEl = container.querySelector('#next-puzzle-countdown');
+  if (!countdownEl) return;
+
+  const updateCountdown = () => {
+    const { nextPuzzleTime, serverTimeOffset } = appStore.getState();
+    const currentPage = appStore.get('currentPage');
+
+    // Stop if page changed
+    if (currentPage !== '/') return;
+
+    if (!nextPuzzleTime) {
+      countdownEl.innerHTML = '';
+      return;
+    }
+
+    // Use server-adjusted time to prevent clock manipulation
+    const serverNow = Date.now() + serverTimeOffset;
+    const targetTime = new Date(nextPuzzleTime).getTime();
+    const remaining = targetTime - serverNow;
+
+    if (remaining <= 0) {
+      countdownEl.innerHTML = `
+        <div class="countdown-ready">
+          <p>New puzzle available!</p>
+          <button class="btn btn-primary" onclick="location.reload()">Play Now</button>
+        </div>
+      `;
+      return;
+    }
+
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+
+    countdownEl.innerHTML = `
+      <p class="countdown-label">Next puzzle in</p>
+      <p class="countdown-time">${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}</p>
+    `;
+
+    requestAnimationFrame(updateCountdown);
+  };
+
+  updateCountdown();
+}
+
 // Add game-specific styles
 const gameStyles = document.createElement('style');
 gameStyles.textContent = `
   .game-page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .game-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .game-info {
-    display: flex;
-    gap: var(--spacing-xs);
-  }
-
-  .timer {
-    font-family: var(--font-mono);
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-semibold);
-    color: hsl(var(--muted-foreground));
-  }
-
-  .puzzle-emoji {
-    font-size: 3rem;
-  }
-
-  .guess-history {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-
-  .guess-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-sm);
-  }
-
-  .guess-item.correct {
-    border-color: hsl(var(--success));
-    background: hsl(var(--success) / 0.1);
-  }
-
-  .guess-item.incorrect {
-    border-color: hsl(var(--destructive));
-    background: hsl(var(--destructive) / 0.1);
-  }
-
-  .guess-icon {
-    font-size: var(--font-size-lg);
-  }
-
-  .guess-item.correct .guess-icon {
-    color: hsl(var(--success));
-  }
-
-  .guess-item.incorrect .guess-icon {
-    color: hsl(var(--destructive));
-  }
-
-  .hint-container {
-    text-align: center;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
   }
 
   .success-message,
@@ -600,6 +806,41 @@ gameStyles.textContent = `
     font-size: var(--font-size-sm);
     color: hsl(var(--muted-foreground));
     margin-top: var(--spacing-md);
+  }
+
+  .countdown-container {
+    text-align: center;
+    padding: var(--spacing-lg);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-lg);
+    margin-top: var(--spacing-lg);
+  }
+
+  .countdown-label {
+    font-size: var(--font-size-sm);
+    color: hsl(var(--muted-foreground));
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .countdown-time {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: hsl(var(--foreground));
+  }
+
+  .countdown-ready {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .countdown-ready p {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: hsl(var(--success));
   }
 `;
 document.head.appendChild(gameStyles);
