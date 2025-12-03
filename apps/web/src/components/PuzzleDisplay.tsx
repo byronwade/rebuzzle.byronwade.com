@@ -33,27 +33,27 @@ function getPuzzleCategory(puzzleType: string): PuzzleCategory {
   return "default";
 }
 
-/** Size classes mapped by category and size */
+/** Size classes mapped by category and size - using viewport-responsive sizing */
 const SIZE_CLASSES: Record<PuzzleCategory, Record<DisplaySize, string>> = {
   text: {
-    small: "text-sm leading-relaxed sm:text-base",
-    medium: "text-sm leading-relaxed sm:text-base",
-    large: "text-sm leading-relaxed sm:text-base",
+    small: "puzzle-text-sm",
+    medium: "puzzle-text-sm",
+    large: "puzzle-text-sm",
   },
   monospace: {
-    small: "text-lg sm:text-xl md:text-2xl",
-    medium: "text-xl sm:text-2xl md:text-3xl",
-    large: "text-2xl sm:text-3xl md:text-4xl",
+    small: "puzzle-monospace-sm",
+    medium: "puzzle-monospace-md",
+    large: "puzzle-monospace-lg",
   },
   visual: {
-    small: "text-2xl sm:text-3xl md:text-4xl",
-    medium: "text-2xl sm:text-3xl md:text-4xl",
-    large: "text-3xl sm:text-4xl md:text-5xl",
+    small: "puzzle-visual-sm",
+    medium: "puzzle-visual-md",
+    large: "puzzle-visual-lg",
   },
   default: {
-    small: "text-base sm:text-lg md:text-xl",
-    medium: "text-2xl sm:text-3xl md:text-4xl",
-    large: "text-3xl sm:text-4xl md:text-5xl",
+    small: "puzzle-default-sm",
+    medium: "puzzle-default-md",
+    large: "puzzle-default-lg",
   },
 };
 
@@ -146,26 +146,20 @@ export function PuzzleContainer({
   className,
   variant = "compact", // Changed to compact for mobile-friendly default
 }: PuzzleContainerProps) {
-  const variantClasses = {
-    default: "p-4 sm:p-6 md:p-8", // Reduced from p-6 sm:p-8 md:p-12
-    compact: "p-3 sm:p-4 md:p-6", // Reduced from p-4 sm:p-6
-    spacious: "p-6 sm:p-8 md:p-10", // Reduced from p-8 sm:p-12 md:p-16
-  };
-
   return (
     <div
       className={cn(
         "rounded-3xl border-2 border-dashed bg-white shadow-inner",
         "border-gray-200 dark:border-gray-700 dark:bg-gray-800",
         "text-center",
-        // Responsive padding
-        variantClasses[variant],
+        // Viewport-responsive padding using CSS class
+        "puzzle-container-responsive",
         // Container constraints
         "w-full max-w-full",
         // No scrolling - content flows naturally
         "overflow-hidden",
-        // Responsive min-height for consistent appearance (reduced)
-        "min-h-[100px] sm:min-h-[120px] md:min-h-[140px]",
+        // Viewport-responsive min-height
+        "puzzle-min-height",
         className
       )}
     >

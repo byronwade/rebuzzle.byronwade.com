@@ -86,9 +86,11 @@ export function initTooltips(): void {
 }
 
 function handleMouseEnter(e: Event): void {
-  const target = e.target as HTMLElement;
-  const tooltipText = target.getAttribute('data-tooltip');
+  const target = e.target;
+  // Ensure target is an HTMLElement with getAttribute method
+  if (!(target instanceof HTMLElement)) return;
 
+  const tooltipText = target.getAttribute('data-tooltip');
   if (!tooltipText || !tooltipEl) return;
 
   // Clear any pending hide timeout
@@ -104,7 +106,9 @@ function handleMouseEnter(e: Event): void {
 }
 
 function handleMouseLeave(e: Event): void {
-  const target = e.target as HTMLElement;
+  const target = e.target;
+  // Ensure target is an HTMLElement with getAttribute method
+  if (!(target instanceof HTMLElement)) return;
   if (!target.getAttribute('data-tooltip')) return;
 
   // Clear any pending show timeout

@@ -46,7 +46,7 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className }: Layout
   const { gameState } = useGameContext();
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
       {/* Skip to main content link for accessibility */}
       <a
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -58,12 +58,12 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className }: Layout
       {/* Animated background */}
       <BackgroundDecoration />
 
-      {/* Header */}
+      {/* Header - shrink-0 to keep fixed size */}
       <Header nextPlayTime={nextPlayTime ?? null} puzzleType={puzzleType} gameState={gameState} />
 
-      {/* Main content */}
+      {/* Main content - flex-1 to fill remaining space, overflow-hidden for no-scroll */}
       <main
-        className={cn("fade-in-up relative z-10 flex-1 animate-in duration-700", className)}
+        className={cn("fade-in-up relative z-10 flex-1 overflow-hidden animate-in duration-700", className)}
         id="main-content"
       >
         {children}

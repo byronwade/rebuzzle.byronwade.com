@@ -927,8 +927,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       <KeyboardAwareLayout>
         {({ isKeyboardVisible }) => (
           <div className="flex flex-col h-full">
-            {/* Puzzle area - collapses when keyboard is visible */}
-            <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area">
+            {/* Puzzle area - collapses when keyboard is visible, centers content */}
+            <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area flex flex-col">
               {isKeyboardVisible ? (
                 /* COLLAPSED VIEW - minimal puzzle hint when keyboard is open */
                 <div className="flex flex-col items-center pt-2">
@@ -946,9 +946,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 </div>
               ) : (
                 /* EXPANDED VIEW - full puzzle display when keyboard is closed */
-                <div className="flex flex-col items-center justify-center min-h-full px-4 py-4 md:px-6">
+                <div className="flex-1 flex flex-col items-center justify-center px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6 overflow-hidden">
                   {/* Header row with greeting and hint badge */}
-                  <div className="flex items-center justify-between w-full max-w-2xl mb-4">
+                  <div className="flex items-center justify-between w-full max-w-2xl mb-[clamp(0.5rem,2vh,1rem)]">
                     {/* Personalized greeting - psychology: personal recognition increases engagement */}
                     <PersonalizedGreeting
                       streak={userStats.streak}
@@ -1002,9 +1002,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     <SolveCounter puzzleId={gameData.id} className="mt-3" />
                   </section>
 
-                  {/* Chat-style guess history - displays below puzzle */}
+                  {/* Chat-style guess history - displays below puzzle with limited height */}
                   {gameState.guessHistory.length > 0 && (
-                    <div className="w-full max-w-2xl mt-6 space-y-2 text-center">
+                    <div className="w-full max-w-2xl mt-[clamp(0.5rem,2vh,1.5rem)] space-y-2 text-center max-h-[clamp(60px,12vh,100px)] overflow-y-auto">
                       {gameState.guessHistory.map((attempt, index) => (
                         <div
                           key={index}

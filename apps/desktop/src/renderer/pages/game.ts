@@ -10,6 +10,9 @@ import {
   calculateScore,
   fuzzyMatch,
   calculateLevel,
+  getPuzzleDisplayConfig,
+  getPuzzleQuestion,
+  getPuzzleCssClass,
   type ScoreBreakdown,
 } from '@rebuzzle/game-logic';
 import { showCelebration } from '../lib/celebration';
@@ -30,7 +33,8 @@ import {
 
 // Game constants
 const MAX_ATTEMPTS = 3;
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000' : 'https://rebuzzle.byronwade.com');
+// Always use production API to ensure consistent puzzles across all platforms
+const API_BASE = import.meta.env.VITE_API_URL || 'https://rebuzzle.byronwade.com';
 
 // Cleanup function for countdown
 let countdownCleanup: (() => void) | null = null;
@@ -80,21 +84,7 @@ function getPersonalizedGreeting(
   return { icon: '✨', message: `${timeGreeting}!`, subtext: "Ready for today's puzzle?" };
 }
 
-function getPuzzleQuestion(puzzleType: string): string {
-  const questions: Record<string, string> = {
-    rebus: 'What does this rebus puzzle represent?',
-    riddle: 'What is the answer to this riddle?',
-    trivia: 'What is the answer to this trivia question?',
-    'word-puzzle': 'What is the answer to this word puzzle?',
-    'logic-grid': 'Use deductive reasoning to solve this logic grid puzzle',
-    'number-sequence': 'What comes next in this number sequence?',
-    'caesar-cipher': 'Decode this encrypted message',
-    'word-ladder': 'Transform the start word into the end word',
-    'pattern-recognition': 'What pattern comes next?',
-    'cryptic-crossword': 'Solve this cryptic crossword clue',
-  };
-  return questions[puzzleType] || 'What is the answer to this puzzle?';
-}
+// getPuzzleQuestion is now imported from @rebuzzle/game-logic
 
 async function fetchSolveCount(puzzleId: string): Promise<number> {
   try {
@@ -200,7 +190,7 @@ function renderGame(container: HTMLElement, puzzle: Puzzle): void {
           <!-- Puzzle display section -->
           <section class="puzzle-section">
             <div class="puzzle-container">
-              <div class="puzzle-display" id="puzzle-display">${formatPuzzle(puzzle.puzzle)}</div>
+              <div class="puzzle-display" id="puzzle-display">${formatPuzzle(puzzle.puzzle, puzzle.puzzleType || 'rebus')}</div>
             </div>
             <p class="puzzle-question">${getPuzzleQuestion(puzzle.puzzleType || 'rebus')}</p>
             <div class="solve-counter" id="solve-counter"></div>
@@ -258,16 +248,13 @@ function renderGame(container: HTMLElement, puzzle: Puzzle): void {
   }
 }
 
-function formatPuzzle(puzzleText: string): string {
-  // Handle emoji-based puzzles by making them larger
-  const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
-  const hasEmojis = emojiRegex.test(puzzleText);
+function formatPuzzle(puzzleText: string, puzzleType: string): string {
+  // Get display configuration from shared utility
+  const config = getPuzzleDisplayConfig(puzzleType);
+  const cssClass = getPuzzleCssClass(puzzleType);
 
-  if (hasEmojis) {
-    return `<span class="puzzle-emoji">${puzzleText}</span>`;
-  }
-
-  return puzzleText;
+  // Wrap in span with appropriate CSS class for styling
+  return `<span class="${cssClass}">${puzzleText}</span>`;
 }
 
 function renderAttempts(used: number, max: number): string {

@@ -1,6 +1,6 @@
 /**
  * Achievements Screen
- * Shows all achievements with progress, categories, and filtering
+ * Redesigned achievements view with filtering and progress display
  */
 
 import { useState, useMemo } from 'react';
@@ -9,96 +9,111 @@ import {
   Text,
   View,
   FlatList,
-  Pressable,
-  ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Stack } from 'expo-router';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { Trophy, Star, RefreshCw, Award } from 'lucide-react-native';
 import { useAchievements } from '../src/contexts/AchievementsContext';
 import { useTheme } from '../src/contexts/ThemeContext';
-import { AchievementBadge } from '../src/components/AchievementBadge';
+import { Button } from '../src/components/ui/Button';
 import { hexToRgba } from '../src/lib/theme';
-import type { Achievement, AchievementCategory } from '../src/types';
+import type { Achievement, AchievementCategory as AchievementCategoryType } from '../src/types';
 
-const CATEGORY_LABELS: Record<AchievementCategory, string> = {
-  beginner: 'Beginner',
-  solving: 'Solving',
-  speed: 'Speed',
-  streaks: 'Streaks',
-  mastery: 'Mastery',
-  social: 'Social',
-  explorer: 'Explorer',
-  collector: 'Collector',
-  elite: 'Elite',
-  legendary: 'Legendary',
-};
+// Achievement components
+import {
+  AchievementCard,
+  CategoryTabs,
+  RarityFilter,
+  type AchievementCategory,
+  type AchievementRarity,
+} from '../src/components/achievements';
 
-const CATEGORY_ORDER: AchievementCategory[] = [
-  'beginner',
-  'solving',
-  'speed',
-  'streaks',
-  'mastery',
-  'social',
-  'explorer',
-  'collector',
-  'elite',
-  'legendary',
-];
+// Map existing category types to new simplified categories
+function mapCategory(category: AchievementCategoryType): AchievementCategory {
+  switch (category) {
+    case 'beginner':
+    case 'solving':
+    case 'mastery':
+      return 'mastery';
+    case 'speed':
+      return 'speed';
+    case 'streaks':
+      return 'streak';
+    case 'social':
+      return 'social';
+    case 'explorer':
+    case 'collector':
+    case 'elite':
+    case 'legendary':
+      return 'special';
+    default:
+      return 'all';
+  }
+}
 
 export default function AchievementsScreen() {
   const {
     achievements,
     progress,
-    categories,
     isLoading,
     error,
     loadAchievements,
   } = useAchievements();
 
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const colors = theme.colors;
 
-  const [selectedCategory, setSelectedCategory] = useState<AchievementCategory | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<AchievementCategory>('all');
+  const [selectedRarity, setSelectedRarity] = useState<AchievementRarity | 'all'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Filter achievements by category
-  const filteredAchievements = useMemo(() => {
-    if (selectedCategory === 'all') {
-      return achievements;
-    }
-    return achievements.filter((a) => a.category === selectedCategory);
-  }, [achievements, selectedCategory]);
-
-  // Group achievements: unlocked first, then by rarity
-  const sortedAchievements = useMemo(() => {
-    return [...filteredAchievements].sort((a, b) => {
-      // Unlocked first
-      if (a.unlocked !== b.unlocked) {
-        return a.unlocked ? -1 : 1;
-      }
-      // Then by order
-      return a.order - b.order;
-    });
-  }, [filteredAchievements]);
-
-  // Get category counts
+  // Calculate category counts
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, { total: number; unlocked: number }> = {
-      all: { total: achievements.length, unlocked: achievements.filter((a) => a.unlocked).length },
+    const counts: Record<AchievementCategory, number> = {
+      all: achievements.length,
+      mastery: 0,
+      speed: 0,
+      streak: 0,
+      social: 0,
+      special: 0,
     };
 
-    CATEGORY_ORDER.forEach((cat) => {
-      const catAchievements = achievements.filter((a) => a.category === cat);
-      counts[cat] = {
-        total: catAchievements.length,
-        unlocked: catAchievements.filter((a) => a.unlocked).length,
-      };
+    achievements.forEach((a) => {
+      const cat = mapCategory(a.category);
+      if (cat !== 'all') {
+        counts[cat]++;
+      }
     });
 
     return counts;
   }, [achievements]);
+
+  // Filter achievements
+  const filteredAchievements = useMemo(() => {
+    let filtered = achievements;
+
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter((a) => mapCategory(a.category) === selectedCategory);
+    }
+
+    // Filter by rarity
+    if (selectedRarity !== 'all') {
+      filtered = filtered.filter((a) => a.rarity === selectedRarity);
+    }
+
+    // Sort: unlocked first, then by order
+    return [...filtered].sort((a, b) => {
+      if (a.unlocked !== b.unlocked) {
+        return a.unlocked ? -1 : 1;
+      }
+      return a.order - b.order;
+    });
+  }, [achievements, selectedCategory, selectedRarity]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -106,163 +121,116 @@ export default function AchievementsScreen() {
     setIsRefreshing(false);
   };
 
-  const getRarityColor = (rarity: string): string => {
-    switch (rarity) {
-      case 'common':
-        return colors.mutedForeground;
-      case 'uncommon':
-        return colors.success;
-      case 'rare':
-        return '#3b82f6';
-      case 'epic':
-        return '#8b5cf6';
-      case 'legendary':
-        return colors.accent;
-      default:
-        return colors.mutedForeground;
-    }
-  };
-
-  const renderAchievementItem = ({ item }: { item: Achievement }) => (
-    <Pressable style={[styles.achievementCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.achievementLeft}>
-        <AchievementBadge
-          icon={item.icon}
-          name={item.name}
-          rarity={item.rarity}
-          unlocked={item.unlocked}
-          secret={item.secret}
-          size="medium"
-        />
-      </View>
-      <View style={styles.achievementInfo}>
-        <Text
-          style={[
-            styles.achievementName,
-            { color: item.unlocked ? colors.cardForeground : colors.mutedForeground },
-          ]}
-        >
-          {item.unlocked || !item.secret ? item.name : '???'}
-        </Text>
-        <Text
-          style={[
-            styles.achievementDescription,
-            { color: item.unlocked ? colors.mutedForeground : colors.mutedForeground },
-          ]}
-        >
-          {item.unlocked || !item.secret ? item.description : 'Complete to reveal'}
-        </Text>
-        {!item.unlocked && !item.secret && item.hint && (
-          <Text style={[styles.achievementHint, { color: colors.mutedForeground }]}>
-            Hint: {item.hint}
-          </Text>
-        )}
-        <View style={styles.achievementMeta}>
-          <Text style={[styles.rarityLabel, { color: getRarityColor(item.rarity) }]}>
-            {item.rarity.toUpperCase()}
-          </Text>
-          <Text style={[styles.pointsLabel, { color: colors.mutedForeground }]}>{item.points} pts</Text>
-        </View>
-      </View>
-      {item.unlocked && item.unlockedAt && (
-        <View style={[styles.unlockedBadge, { backgroundColor: hexToRgba(colors.success, 0.2) }]}>
-          <Text style={[styles.unlockedText, { color: colors.success }]}>✓</Text>
-        </View>
-      )}
-    </Pressable>
+  const renderAchievementItem = ({ item, index }: { item: Achievement; index: number }) => (
+    <AchievementCard
+      id={item.id}
+      name={item.name}
+      description={item.description}
+      icon={item.icon}
+      points={item.points}
+      rarity={item.rarity as AchievementRarity}
+      isUnlocked={item.unlocked}
+      unlockedAt={item.unlockedAt ? new Date(item.unlockedAt) : undefined}
+      animationDelay={index * 30}
+    />
   );
 
   const renderHeader = () => (
     <View style={styles.header}>
-      {/* Progress Bar */}
+      {/* Progress Card */}
       {progress && (
-        <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          style={[
+            styles.progressCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.progressHeader}>
-            <Text style={[styles.progressTitle, { color: colors.accent }]}>Your Progress</Text>
-            <Text style={[styles.progressPercentage, { color: colors.foreground }]}>
+            <View style={styles.progressTitleRow}>
+              <Award size={20} color={colors.primary} strokeWidth={2} />
+              <Text style={[styles.progressTitle, { color: colors.foreground }]}>
+                Your Progress
+              </Text>
+            </View>
+            <Text style={[styles.progressPercentage, { color: colors.primary }]}>
               {Math.round((progress.unlocked / progress.total) * 100)}%
             </Text>
           </View>
-          <View style={[styles.progressBar, { backgroundColor: colors.muted }]}>
+
+          <View style={[styles.progressTrack, { backgroundColor: hexToRgba(colors.foreground, 0.1) }]}>
             <View
               style={[
                 styles.progressFill,
-                { width: `${(progress.unlocked / progress.total) * 100}%`, backgroundColor: colors.accent },
+                {
+                  width: `${(progress.unlocked / progress.total) * 100}%`,
+                  backgroundColor: colors.primary,
+                },
               ]}
             />
           </View>
+
           <View style={styles.progressStats}>
-            <Text style={[styles.progressStat, { color: colors.mutedForeground }]}>
-              {progress.unlocked}/{progress.total} Unlocked
-            </Text>
-            <Text style={[styles.progressStat, { color: colors.mutedForeground }]}>
-              {progress.earnedPoints}/{progress.totalPoints} Points
-            </Text>
+            <View style={styles.progressStatItem}>
+              <Trophy size={14} color={colors.mutedForeground} />
+              <Text style={[styles.progressStatValue, { color: colors.foreground }]}>
+                {progress.unlocked}/{progress.total}
+              </Text>
+              <Text style={[styles.progressStatLabel, { color: colors.mutedForeground }]}>
+                Unlocked
+              </Text>
+            </View>
+            <View style={[styles.progressDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.progressStatItem}>
+              <Star size={14} color={colors.mutedForeground} />
+              <Text style={[styles.progressStatValue, { color: colors.foreground }]}>
+                {progress.earnedPoints.toLocaleString()}
+              </Text>
+              <Text style={[styles.progressStatLabel, { color: colors.mutedForeground }]}>
+                Points
+              </Text>
+            </View>
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {/* Category Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryScroll}
-        contentContainerStyle={styles.categoryContent}
-      >
-        <Pressable
-          style={[
-            styles.categoryTab,
-            { backgroundColor: colors.secondary },
-            selectedCategory === 'all' && { backgroundColor: colors.accent },
-          ]}
-          onPress={() => setSelectedCategory('all')}
-        >
-          <Text
-            style={[
-              styles.categoryTabText,
-              { color: colors.mutedForeground },
-              selectedCategory === 'all' && { color: colors.accentForeground },
-            ]}
-          >
-            All ({categoryCounts.all.unlocked}/{categoryCounts.all.total})
-          </Text>
-        </Pressable>
+      <CategoryTabs
+        selected={selectedCategory}
+        onSelect={setSelectedCategory}
+        counts={categoryCounts}
+      />
 
-        {CATEGORY_ORDER.map((cat) => {
-          if (!categoryCounts[cat] || categoryCounts[cat].total === 0) return null;
-
-          return (
-            <Pressable
-              key={cat}
-              style={[
-                styles.categoryTab,
-                { backgroundColor: colors.secondary },
-                selectedCategory === cat && { backgroundColor: colors.accent },
-              ]}
-              onPress={() => setSelectedCategory(cat)}
-            >
-              <Text
-                style={[
-                  styles.categoryTabText,
-                  { color: colors.mutedForeground },
-                  selectedCategory === cat && { color: colors.accentForeground },
-                ]}
-              >
-                {CATEGORY_LABELS[cat]} ({categoryCounts[cat].unlocked}/{categoryCounts[cat].total})
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {/* Rarity Filter */}
+      <RarityFilter selected={selectedRarity} onSelect={setSelectedRarity} />
     </View>
+  );
+
+  const renderEmpty = () => (
+    <Animated.View entering={FadeIn.duration(300)} style={styles.emptyContainer}>
+      <Trophy size={56} color={colors.mutedForeground} strokeWidth={1.5} />
+      <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Achievements</Text>
+      <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+        No achievements match your current filters
+      </Text>
+    </Animated.View>
   );
 
   if (isLoading && achievements.length === 0) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+        <Stack.Screen
+          options={{
+            title: 'Achievements',
+            headerStyle: { backgroundColor: colors.card },
+            headerTintColor: colors.foreground,
+          }}
+        />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading achievements...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+            Loading achievements...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -271,22 +239,26 @@ export default function AchievementsScreen() {
   if (error && achievements.length === 0) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+        <Stack.Screen
+          options={{
+            title: 'Achievements',
+            headerStyle: { backgroundColor: colors.card },
+            headerTintColor: colors.foreground,
+          }}
+        />
         <View style={styles.errorContainer}>
           <Text style={styles.errorEmoji}>😕</Text>
-          <Text style={[styles.errorTitle, { color: colors.foreground }]}>Couldn't Load Achievements</Text>
+          <Text style={[styles.errorTitle, { color: colors.foreground }]}>
+            Couldn't Load Achievements
+          </Text>
           <Text style={[styles.errorText, { color: colors.mutedForeground }]}>{error}</Text>
-          <Pressable
-            style={[
-              styles.retryButton,
-              {
-                backgroundColor: hexToRgba(colors.accent, 0.15),
-                borderColor: hexToRgba(colors.accent, 0.3),
-              },
-            ]}
+          <Button
+            variant="outline"
             onPress={() => loadAchievements()}
+            icon={<RefreshCw size={16} color={colors.foreground} />}
           >
-            <Text style={[styles.retryButtonText, { color: colors.accent }]}>Try Again</Text>
-          </Pressable>
+            Try Again
+          </Button>
         </View>
       </SafeAreaView>
     );
@@ -294,28 +266,32 @@ export default function AchievementsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+      <Stack.Screen
+        options={{
+          title: 'Achievements',
+          headerStyle: { backgroundColor: colors.card },
+          headerTintColor: colors.foreground,
+        }}
+      />
       <FlatList
-        data={sortedAchievements}
+        data={filteredAchievements}
         renderItem={renderAchievementItem}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={[
+          styles.listContent,
+          filteredAchievements.length === 0 && styles.listContentEmpty,
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={colors.accent}
-            colors={[colors.accent]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              No achievements in this category
-            </Text>
-          </View>
-        }
       />
     </SafeAreaView>
   );
@@ -329,161 +305,127 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    gap: 12,
   },
   errorEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 56,
     marginBottom: 8,
   },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
   errorText: {
-    fontSize: 14,
-    marginBottom: 24,
+    fontSize: 15,
     textAlign: 'center',
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    marginBottom: 8,
   },
   listContent: {
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  listContentEmpty: {
+    flex: 1,
   },
   header: {
-    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   progressCard: {
     borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
-    marginBottom: 16,
+    padding: 18,
+    marginTop: 12,
+    marginBottom: 8,
     borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  progressTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   progressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
   progressPercentage: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '800',
   },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
+  progressTrack: {
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
   },
   progressStats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  progressStat: {
+  progressStatItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  progressStatValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  progressStatLabel: {
     fontSize: 12,
   },
-  categoryScroll: {
-    marginBottom: 16,
-  },
-  categoryContent: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  categoryTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  categoryTabText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  achievementCard: {
-    flexDirection: 'row',
+  progressDivider: {
+    width: 1,
+    height: 24,
     marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  achievementLeft: {
-    marginRight: 14,
-  },
-  achievementInfo: {
-    flex: 1,
-  },
-  achievementName: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  achievementDescription: {
-    fontSize: 13,
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  achievementHint: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    marginBottom: 6,
-  },
-  achievementMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  rarityLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  pointsLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  unlockedBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  unlockedText: {
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   emptyContainer: {
-    padding: 32,
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    gap: 12,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 8,
   },
   emptyText: {
     fontSize: 14,
+    textAlign: 'center',
   },
 });

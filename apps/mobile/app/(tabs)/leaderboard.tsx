@@ -1,6 +1,6 @@
 /**
  * Leaderboard Screen
- * Shows rankings with timeframe and sort filters
+ * Redesigned rankings with timeframe filters and user position
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,35 +15,38 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { RefreshCw, Trophy, TrendingUp, Flame } from 'lucide-react-native';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
-import { LeaderboardItem } from '../../src/components/LeaderboardItem';
+import { Button } from '../../src/components/ui/Button';
 import { api } from '../../src/lib/api';
 import { hexToRgba } from '../../src/lib/theme';
-import type { LeaderboardEntry } from '../../src/types';
+import type { LeaderboardEntry as LeaderboardEntryType } from '../../src/types';
 
-type Timeframe = 'today' | 'week' | 'month' | 'allTime';
+// New leaderboard components
+import {
+  TimeframeTabs,
+  LeaderboardEntry,
+  UserPosition,
+  type Timeframe,
+} from '../../src/components/leaderboard';
+
 type SortBy = 'points' | 'streak';
 
-const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-  { value: 'allTime', label: 'All Time' },
-];
-
 export default function LeaderboardScreen() {
-  const { user } = useAuth();
+  const { user, stats } = useAuth();
   const { theme, isDark } = useTheme();
   const colors = theme.colors;
 
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntryType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeframe, setTimeframe] = useState<Timeframe>('allTime');
+  const [timeframe, setTimeframe] = useState<Timeframe>('all');
   const [sortBy, setSortBy] = useState<SortBy>('points');
+  const [userRank, setUserRank] = useState<number | null>(null);
 
   const fetchLeaderboard = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) {
@@ -54,12 +57,20 @@ export default function LeaderboardScreen() {
     setError(null);
 
     try {
+      // Map timeframe to API format
+      const apiTimeframe = timeframe === 'all' ? 'allTime' : timeframe;
       const data = await api.getLeaderboard({
         limit: 50,
-        timeframe,
+        timeframe: apiTimeframe,
         sortBy,
       });
       setLeaderboard(data);
+
+      // Find user's rank if they're in the list
+      if (user) {
+        const userIndex = data.findIndex((e: LeaderboardEntryType) => e.user.id === user.id);
+        setUserRank(userIndex >= 0 ? userIndex + 1 : null);
+      }
     } catch (err) {
       console.error('Failed to fetch leaderboard:', err);
       setError('Failed to load leaderboard');
@@ -67,7 +78,7 @@ export default function LeaderboardScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [timeframe, sortBy]);
+  }, [timeframe, sortBy, user]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
@@ -80,7 +91,6 @@ export default function LeaderboardScreen() {
   };
 
   const handleTimeframeChange = (value: Timeframe) => {
-    Haptics.selectionAsync();
     setTimeframe(value);
   };
 
@@ -89,13 +99,18 @@ export default function LeaderboardScreen() {
     setSortBy(value);
   };
 
-  const renderItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => (
-    <LeaderboardItem
-      entry={item}
+  const renderItem = ({ item, index }: { item: LeaderboardEntryType; index: number }) => (
+    <LeaderboardEntry
       rank={index + 1}
+      username={item.user.username}
+      level={item.level || 1}
+      wins={item.wins || 0}
+      points={item.points}
+      streak={item.streak || 0}
+      avatarColorIndex={item.user.avatarColorIndex}
+      avatarInitials={item.user.avatarCustomInitials}
       isCurrentUser={user?.id === item.user.id}
-      sortBy={sortBy}
-      style={styles.listItem}
+      animationDelay={index * 30}
     />
   );
 
@@ -103,105 +118,49 @@ export default function LeaderboardScreen() {
     if (isLoading) return null;
 
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyEmoji}>🏆</Text>
+      <Animated.View entering={FadeIn.duration(300)} style={styles.emptyContainer}>
+        <Trophy size={64} color={colors.mutedForeground} strokeWidth={1.5} />
         <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Rankings Yet</Text>
         <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
           Be the first to play and claim the top spot!
         </Text>
-      </View>
+      </Animated.View>
     );
   };
 
+  const userInList = user && leaderboard.find(e => e.user.id === user.id);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      {/* Filters */}
-      <View
-        style={[
-          styles.filters,
-          {
-            borderBottomColor: colors.border,
-            backgroundColor: colors.card,
-          },
-        ]}
-      >
-        {/* Segmented Control for Timeframe */}
-        <View
-          style={[
-            styles.segmentedControl,
-            {
-              backgroundColor: colors.muted,
-              ...Platform.select({
-                ios: {
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: isDark ? 0.2 : 0.05,
-                  shadowRadius: 2,
-                },
-                android: {
-                  elevation: 1,
-                },
-              }),
-            },
-          ]}
-        >
-          {TIMEFRAME_OPTIONS.map((option) => (
-            <Pressable
-              key={option.value}
-              style={[
-                styles.segmentButton,
-                timeframe === option.value && [
-                  styles.segmentButtonActive,
-                  {
-                    backgroundColor: colors.card,
-                    ...Platform.select({
-                      ios: {
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 4,
-                      },
-                      android: {
-                        elevation: 2,
-                      },
-                    }),
-                  },
-                ],
-              ]}
-              onPress={() => handleTimeframeChange(option.value)}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  { color: colors.mutedForeground },
-                  timeframe === option.value && { color: colors.foreground, fontWeight: '600' },
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      {/* Filters Header */}
+      <View style={[styles.filtersContainer, { borderBottomColor: colors.border }]}>
+        {/* Timeframe Tabs */}
+        <TimeframeTabs selected={timeframe} onSelect={handleTimeframeChange} />
 
         {/* Sort Toggle */}
-        <View style={styles.sortToggle}>
+        <View style={styles.sortContainer}>
           <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort by:</Text>
-          <View style={[styles.sortButtons, { backgroundColor: colors.muted }]}>
+          <View style={[styles.sortButtons, { backgroundColor: hexToRgba(colors.foreground, 0.05) }]}>
             <Pressable
               style={[
                 styles.sortButton,
                 sortBy === 'points' && [
                   styles.sortButtonActive,
-                  { backgroundColor: hexToRgba(colors.accent, 0.2) },
+                  { backgroundColor: colors.primary },
                 ],
               ]}
               onPress={() => handleSortChange('points')}
             >
+              <TrendingUp
+                size={14}
+                color={sortBy === 'points' ? colors.primaryForeground : colors.mutedForeground}
+              />
               <Text
                 style={[
                   styles.sortButtonText,
-                  { color: colors.mutedForeground },
-                  sortBy === 'points' && { color: colors.accent, fontWeight: '600' },
+                  {
+                    color: sortBy === 'points' ? colors.primaryForeground : colors.mutedForeground,
+                  },
                 ]}
               >
                 Points
@@ -212,16 +171,21 @@ export default function LeaderboardScreen() {
                 styles.sortButton,
                 sortBy === 'streak' && [
                   styles.sortButtonActive,
-                  { backgroundColor: hexToRgba(colors.accent, 0.2) },
+                  { backgroundColor: colors.primary },
                 ],
               ]}
               onPress={() => handleSortChange('streak')}
             >
+              <Flame
+                size={14}
+                color={sortBy === 'streak' ? colors.primaryForeground : colors.mutedForeground}
+              />
               <Text
                 style={[
                   styles.sortButtonText,
-                  { color: colors.mutedForeground },
-                  sortBy === 'streak' && { color: colors.accent, fontWeight: '600' },
+                  {
+                    color: sortBy === 'streak' ? colors.primaryForeground : colors.mutedForeground,
+                  },
                 ]}
               >
                 Streak
@@ -233,27 +197,26 @@ export default function LeaderboardScreen() {
 
       {/* Error State */}
       {error && !isLoading && (
-        <View style={styles.errorContainer}>
+        <Animated.View entering={FadeIn.duration(300)} style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
-          <Pressable
-            style={[
-              styles.retryButton,
-              {
-                backgroundColor: hexToRgba(colors.accent, 0.15),
-                borderColor: hexToRgba(colors.accent, 0.3),
-              },
-            ]}
+          <Button
+            variant="outline"
+            size="sm"
             onPress={() => fetchLeaderboard()}
+            icon={<RefreshCw size={14} color={colors.foreground} />}
           >
-            <Text style={[styles.retryButtonText, { color: colors.accent }]}>Try Again</Text>
-          </Pressable>
-        </View>
+            Try Again
+          </Button>
+        </Animated.View>
       )}
 
       {/* Loading State */}
       {isLoading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+            Loading rankings...
+          </Text>
         </View>
       )}
 
@@ -264,34 +227,50 @@ export default function LeaderboardScreen() {
           renderItem={renderItem}
           keyExtractor={(item) => item.user.id}
           ListEmptyComponent={renderEmpty}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            leaderboard.length === 0 && styles.listContentEmpty,
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.accent}
-              colors={[colors.accent]}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* User's Position (if not in visible list) */}
-      {user && !isLoading && leaderboard.length > 0 && !leaderboard.find(e => e.user.id === user.id) && (
-        <View
+      {/* User Position - Sticky at bottom if user is in list */}
+      {user && !isLoading && leaderboard.length > 0 && userInList && userRank && (
+        <UserPosition
+          rank={userRank}
+          username={user.username}
+          points={stats?.points || 0}
+          streak={stats?.streak || 0}
+          avatarColorIndex={user.avatarColorIndex}
+          avatarInitials={user.avatarCustomInitials}
+        />
+      )}
+
+      {/* Not Ranked Banner */}
+      {user && !isLoading && leaderboard.length > 0 && !userInList && (
+        <Animated.View
+          entering={FadeInDown.duration(300)}
           style={[
-            styles.userPositionBanner,
+            styles.notRankedBanner,
             {
-              backgroundColor: hexToRgba(colors.accent, 0.1),
-              borderTopColor: hexToRgba(colors.accent, 0.2),
+              backgroundColor: hexToRgba(colors.warning, 0.1),
+              borderTopColor: colors.border,
             },
           ]}
         >
-          <Text style={[styles.userPositionText, { color: colors.accent }]}>
-            You're not ranked yet in this timeframe
+          <Text style={[styles.notRankedText, { color: colors.warning }]}>
+            You're not ranked yet in this timeframe. Play more to appear!
           </Text>
-        </View>
+        </Animated.View>
       )}
     </SafeAreaView>
   );
@@ -301,111 +280,91 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  filters: {
+  filtersContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
     borderBottomWidth: 1,
   },
-  segmentedControl: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 2,
-    marginBottom: 12,
-  },
-  segmentButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  segmentButtonActive: {
-    borderRadius: 8,
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  sortToggle: {
+  sortContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   sortLabel: {
     fontSize: 13,
+    fontWeight: '500',
   },
   sortButtons: {
     flexDirection: 'row',
-    borderRadius: 8,
-    overflow: 'hidden',
+    borderRadius: 10,
+    padding: 3,
   },
   sortButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
   },
   sortButtonActive: {},
   sortButtonText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    gap: 16,
   },
   errorText: {
-    fontSize: 16,
-    marginBottom: 16,
+    fontSize: 15,
     textAlign: 'center',
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   listContent: {
     padding: 16,
-    gap: 12,
   },
-  listItem: {
-    marginBottom: 0,
+  listContentEmpty: {
+    flex: 1,
   },
   emptyContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 48,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
+    gap: 12,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
+    paddingHorizontal: 24,
   },
-  userPositionBanner: {
-    paddingVertical: 12,
+  notRankedBanner: {
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderTopWidth: 1,
   },
-  userPositionText: {
+  notRankedText: {
     fontSize: 13,
     textAlign: 'center',
+    fontWeight: '500',
   },
 });

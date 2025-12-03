@@ -893,7 +893,8 @@ async function createWindow(): Promise<void> {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: true,
+      // Disable web security in dev mode to allow CORS requests to production API
+      webSecurity: !isDev,
       spellcheck: true,
     },
     show: false,

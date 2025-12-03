@@ -566,8 +566,48 @@ body {
   line-height: 1.4;
 }
 
+/* Puzzle type-specific styling (matching web app) */
+
+/* Visual puzzles - large emoji display */
+.puzzle-visual {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  white-space: pre-wrap;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+
+/* Text puzzles - smaller, left-aligned for readability */
+.puzzle-text {
+  font-size: 16px;
+  font-weight: 400;
+  text-align: left;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+/* Monospace puzzles - for ciphers and sequences */
+.puzzle-monospace {
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.05em;
+  white-space: pre-wrap;
+}
+
+/* Default puzzles - medium centered display */
+.puzzle-default {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+/* Legacy class for backwards compatibility */
 .puzzle-emoji {
   font-size: 48px;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 .puzzle-question {

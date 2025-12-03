@@ -1,19 +1,26 @@
-import { useState } from "react";
+/**
+ * Login Screen
+ * Redesigned authentication form with animations and consistent styling
+ */
+
+import { useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
   TextInput,
   View,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Link } from "expo-router";
-import { useAuth } from "../src/contexts/AuthContext";
-import { useTheme } from "../src/contexts/ThemeContext";
-import { hexToRgba } from "../src/lib/theme";
+  Pressable,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, Link, Stack } from 'expo-router';
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { Mail, Lock, LogIn, UserPlus, Sparkles } from 'lucide-react-native';
+import { useAuth } from '../src/contexts/AuthContext';
+import { useTheme } from '../src/contexts/ThemeContext';
+import { hexToRgba } from '../src/lib/theme';
+import { Button } from '../src/components/ui/Button';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,14 +28,17 @@ export default function LoginScreen() {
   const { theme } = useTheme();
   const colors = theme.colors;
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
+
+  const passwordRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
-      setError("Please enter your email and password");
+      setError('Please enter your email and password');
       return;
     }
 
@@ -39,97 +49,134 @@ export default function LoginScreen() {
       const result = await login(email.trim(), password);
 
       if (result.success) {
-        router.replace("/");
+        router.replace('/');
       } else {
-        setError(result.error || "Invalid email or password");
+        setError(result.error || 'Invalid email or password');
       }
     } catch {
-      setError("Login failed. Please try again.");
+      setError('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGuest = async () => {
-    setIsLoading(true);
+    setIsGuestLoading(true);
     try {
       const result = await continueAsGuest();
       if (result.success) {
-        router.replace("/");
+        router.replace('/');
       } else {
-        setError(result.error || "Failed to continue as guest");
+        setError(result.error || 'Failed to continue as guest');
       }
     } catch {
-      setError("Failed to continue as guest");
+      setError('Failed to continue as guest');
     } finally {
-      setIsLoading(false);
+      setIsGuestLoading(false);
     }
   };
 
+  const anyLoading = isLoading || isGuestLoading;
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["bottom"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+      <Stack.Screen
+        options={{
+          title: 'Sign In',
+          headerShown: false,
+        }}
+      />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <View style={styles.content}>
-          <View style={styles.header}>
+          {/* Logo/Brand Section */}
+          <Animated.View entering={FadeIn.delay(100).duration(400)} style={styles.brandSection}>
+            <View style={[styles.logoContainer, { backgroundColor: colors.primary }]}>
+              <Text style={styles.logoText}>R</Text>
+            </View>
+            <Text style={[styles.brandName, { color: colors.foreground }]}>Rebuzzle</Text>
+          </Animated.View>
+
+          {/* Header */}
+          <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.header}>
             <Text style={[styles.title, { color: colors.foreground }]}>Welcome Back</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Sign in to track your progress
+              Sign in to track your progress and compete on leaderboards
             </Text>
-          </View>
+          </Animated.View>
 
-          <View style={[styles.form, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Form Card */}
+          <Animated.View
+            entering={FadeInDown.delay(300).duration(400)}
+            style={[styles.form, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            {/* Email Input */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
-              <TextInput
+              <View
                 style={[
-                  styles.input,
+                  styles.inputContainer,
                   {
                     backgroundColor: colors.secondary,
-                    color: colors.foreground,
                     borderColor: colors.border,
                   },
                 ]}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.mutedForeground}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                autoComplete="email"
-                editable={!isLoading}
-              />
+              >
+                <Mail size={18} color={colors.mutedForeground} strokeWidth={2} />
+                <TextInput
+                  style={[styles.input, { color: colors.foreground }]}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.mutedForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                  editable={!anyLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                />
+              </View>
             </View>
 
+            {/* Password Input */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
-              <TextInput
+              <View
                 style={[
-                  styles.input,
+                  styles.inputContainer,
                   {
                     backgroundColor: colors.secondary,
-                    color: colors.foreground,
                     borderColor: colors.border,
                   },
                 ]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                placeholderTextColor={colors.mutedForeground}
-                secureTextEntry
-                textContentType="password"
-                autoComplete="password"
-                editable={!isLoading}
-                onSubmitEditing={handleLogin}
-              />
+              >
+                <Lock size={18} color={colors.mutedForeground} strokeWidth={2} />
+                <TextInput
+                  ref={passwordRef}
+                  style={[styles.input, { color: colors.foreground }]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter your password"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry
+                  textContentType="password"
+                  autoComplete="password"
+                  editable={!anyLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+              </View>
             </View>
 
+            {/* Error Message */}
             {error && (
-              <View
+              <Animated.View
+                entering={FadeIn.duration(200)}
                 style={[
                   styles.errorContainer,
                   {
@@ -139,56 +186,60 @@ export default function LoginScreen() {
                 ]}
               >
                 <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
-              </View>
+              </Animated.View>
             )}
 
-            <Pressable
-              style={[
-                styles.button,
-                { backgroundColor: colors.accent },
-                isLoading && styles.buttonDisabled,
-              ]}
+            {/* Sign In Button */}
+            <Button
+              variant="default"
+              size="lg"
               onPress={handleLogin}
-              disabled={isLoading}
+              loading={isLoading}
+              disabled={anyLoading}
+              icon={<LogIn size={18} color={colors.primaryForeground} strokeWidth={2} />}
+              style={styles.mainButton}
             >
-              {isLoading ? (
-                <ActivityIndicator color={colors.accentForeground} />
-              ) : (
-                <Text style={[styles.buttonText, { color: colors.accentForeground }]}>Sign In</Text>
-              )}
-            </Pressable>
-          </View>
+              Sign In
+            </Button>
+          </Animated.View>
 
-          <View style={styles.footer}>
+          {/* Sign Up Link */}
+          <Animated.View entering={FadeInUp.delay(400).duration(400)} style={styles.footer}>
             <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
               Don't have an account?
             </Text>
             <Link href="/signup" asChild>
-              <Pressable disabled={isLoading}>
-                <Text style={[styles.linkText, { color: colors.accent }]}>Sign up</Text>
+              <Pressable disabled={anyLoading} style={styles.linkButton}>
+                <UserPlus size={14} color={colors.primary} strokeWidth={2} />
+                <Text style={[styles.linkText, { color: colors.primary }]}>Sign up</Text>
               </Pressable>
             </Link>
-          </View>
+          </Animated.View>
 
-          <View style={styles.divider}>
+          {/* Divider */}
+          <Animated.View entering={FadeIn.delay(500).duration(400)} style={styles.divider}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          </View>
+          </Animated.View>
 
-          <Pressable
-            style={[
-              styles.ghostButton,
-              { borderColor: colors.border },
-              isLoading && styles.buttonDisabled,
-            ]}
-            onPress={handleGuest}
-            disabled={isLoading}
-          >
-            <Text style={[styles.ghostButtonText, { color: colors.mutedForeground }]}>
+          {/* Guest Button */}
+          <Animated.View entering={FadeInUp.delay(600).duration(400)}>
+            <Button
+              variant="outline"
+              size="lg"
+              onPress={handleGuest}
+              loading={isGuestLoading}
+              disabled={anyLoading}
+              icon={<Sparkles size={18} color={colors.foreground} strokeWidth={2} />}
+              style={styles.guestButton}
+            >
               Continue as Guest
+            </Button>
+            <Text style={[styles.guestHint, { color: colors.mutedForeground }]}>
+              Play without saving progress
             </Text>
-          </Pressable>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -205,97 +256,138 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    justifyContent: "center",
+    justifyContent: 'center',
+  },
+  brandSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  logoText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  brandName: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   header: {
-    marginBottom: 32,
-    alignItems: "center",
+    marginBottom: 24,
+    alignItems: 'center',
   },
   title: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: '800',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   form: {
     borderRadius: 16,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: 20,
     borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 8,
   },
-  input: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
     borderWidth: 1,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 14,
   },
   errorContainer: {
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
   },
   errorText: {
     fontSize: 14,
-    textAlign: "center",
+    textAlign: 'center',
+    fontWeight: '500',
   },
-  button: {
-    padding: 16,
+  mainButton: {
+    height: 48,
     borderRadius: 12,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: "bold",
   },
   footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   footerText: {
     fontSize: 14,
   },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   linkText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    fontSize: 14,
+    fontSize: 13,
     marginHorizontal: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  ghostButton: {
-    padding: 16,
+  guestButton: {
+    height: 48,
     borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 1,
   },
-  ghostButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+  guestHint: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

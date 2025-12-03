@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./fuzzy-match": "./src/fuzzy-match.ts",
     "./achievements": "./src/achievements/index.ts",
-    "./scoring": "./src/scoring.ts"
+    "./scoring": "./src/scoring.ts",
+    "./puzzle-display": "./src/puzzle-display.ts"
   },
   "dependencies": {
     "@rebuzzle/config": "workspace:*"

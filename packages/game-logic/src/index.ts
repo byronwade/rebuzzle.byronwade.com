@@ -43,3 +43,23 @@ export {
   type AchievementIcon,
   type AchievementRarity,
 } from "./achievements";
+
+// Puzzle display utilities for consistent formatting across platforms
+export {
+  CATEGORY_CSS_CLASSES,
+  EMOJI_FONT_STACK,
+  FONT_SIZE_VALUES,
+  FONT_WEIGHT_VALUES,
+  getFontFamilyValue,
+  getPuzzleCssClass,
+  getPuzzleDisplayCategory,
+  getPuzzleDisplayConfig,
+  getPuzzleQuestion,
+  MONO_FONT_STACK,
+  type FontFamily,
+  type FontSize,
+  type FontWeight,
+  type PuzzleDisplayCategory,
+  type PuzzleDisplayConfig,
+  type TextAlign,
+} from "./puzzle-display";

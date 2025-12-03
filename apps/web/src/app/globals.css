@@ -650,9 +650,7 @@ html {
 .keyboard-aware-container {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  height: 100vh; /* Fallback for older browsers */
-  max-height: 100vh;
+  height: 100%;
   overflow: hidden;
   transition: height 0.3s ease-out;
 }
@@ -693,6 +691,85 @@ html {
   will-change: padding, transform;
 }
 
+/* Viewport-responsive puzzle display - scales proportionally */
+.puzzle-area {
+  gap: clamp(0.25rem, 1.5vh, 0.75rem);
+}
+
+/* Viewport-responsive puzzle container */
+.puzzle-container-responsive {
+  padding: clamp(0.75rem, 2.5vh, 1.5rem) clamp(1rem, 3vw, 1.5rem);
+}
+
+/* Viewport-responsive min-height for puzzle container */
+.puzzle-min-height {
+  min-height: clamp(80px, 15vh, 140px);
+}
+
+/* Viewport-responsive text sizes */
+.greeting-responsive {
+  font-size: clamp(0.7rem, 1.5vh, 0.875rem);
+}
+
+/* ============================================
+   PUZZLE TYPE-SPECIFIC VIEWPORT-RESPONSIVE SIZES
+   Uses clamp() for smooth scaling based on viewport height
+   ============================================ */
+
+/* Visual puzzles (rebus, pattern-recognition) - emoji/visual content */
+.puzzle-visual-sm {
+  font-size: clamp(1.5rem, 5vh, 2.5rem);
+  line-height: 1.3;
+}
+
+.puzzle-visual-md {
+  font-size: clamp(1.75rem, 6vh, 3rem);
+  line-height: 1.3;
+}
+
+.puzzle-visual-lg {
+  font-size: clamp(2rem, 7vh, 3.5rem);
+  line-height: 1.3;
+}
+
+/* Monospace puzzles (number-sequence, caesar-cipher) */
+.puzzle-monospace-sm {
+  font-size: clamp(1rem, 3vh, 1.5rem);
+  line-height: 1.4;
+}
+
+.puzzle-monospace-md {
+  font-size: clamp(1.25rem, 4vh, 2rem);
+  line-height: 1.4;
+}
+
+.puzzle-monospace-lg {
+  font-size: clamp(1.5rem, 5vh, 2.5rem);
+  line-height: 1.4;
+}
+
+/* Text puzzles (riddle, trivia, logic-grid, cryptic-crossword) */
+.puzzle-text-sm {
+  font-size: clamp(0.8rem, 1.8vh, 1rem);
+  line-height: 1.6;
+}
+
+/* Default puzzles (word-puzzle, word-ladder) */
+.puzzle-default-sm {
+  font-size: clamp(0.875rem, 2vh, 1.25rem);
+  line-height: 1.4;
+}
+
+.puzzle-default-md {
+  font-size: clamp(1.25rem, 4vh, 2rem);
+  line-height: 1.4;
+}
+
+.puzzle-default-lg {
+  font-size: clamp(1.5rem, 5vh, 2.5rem);
+  line-height: 1.4;
+}
+
 /* Landscape phone handling - very constrained vertical space */
 @media (max-height: 500px) and (orientation: landscape) {
   .keyboard-aware-container {
@@ -707,6 +784,26 @@ html {
   .landscape-minimal-header {
     padding-top: 0.25rem;
     padding-bottom: 0.25rem;
+  }
+
+  /* Further reduce puzzle sizes in landscape */
+  .puzzle-visual-lg {
+    font-size: clamp(1.5rem, 12vh, 2.5rem);
+  }
+
+  .puzzle-min-height {
+    min-height: clamp(60px, 20vh, 100px);
+  }
+}
+
+/* Small viewport height - compact everything proportionally */
+@media (max-height: 700px) {
+  .puzzle-area {
+    gap: clamp(0.125rem, 1vh, 0.5rem);
+  }
+
+  .puzzle-min-height {
+    min-height: clamp(70px, 12vh, 110px);
   }
 }
 

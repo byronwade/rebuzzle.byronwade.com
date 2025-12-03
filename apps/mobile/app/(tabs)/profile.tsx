@@ -1,6 +1,6 @@
 /**
  * Profile Screen
- * User profile with stats, achievements progress, and settings
+ * Redesigned user profile with stats, achievements progress, and settings
  */
 
 import { useState, useEffect } from 'react';
@@ -18,13 +18,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { Edit3, LogOut, ChevronRight, Award, UserPlus } from 'lucide-react-native';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useAchievements } from '../../src/contexts/AchievementsContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { AvatarCircle, AVATAR_COLORS } from '../../src/components/AvatarCircle';
+import { Button } from '../../src/components/ui/Button';
 import { api } from '../../src/lib/api';
 import { hexToRgba } from '../../src/lib/theme';
+
+// New profile components
+import { LevelProgress, StatsGrid, PerformanceCard } from '../../src/components/profile';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -109,7 +115,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -119,23 +125,32 @@ export default function ProfileScreen() {
     ? Math.round((progress.unlocked / progress.total) * 100)
     : 0;
 
+  // Calculate level tier based on level
+  const getTier = (level: number): 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' => {
+    if (level >= 50) return 'diamond';
+    if (level >= 30) return 'platinum';
+    if (level >= 20) return 'gold';
+    if (level >= 10) return 'silver';
+    return 'bronze';
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
-        <View style={styles.header}>
+        <Animated.View entering={FadeIn.duration(300)} style={styles.header}>
           <View
             style={[
               styles.avatarContainer,
               Platform.select({
                 ios: {
-                  shadowColor: colors.accent,
+                  shadowColor: colors.primary,
                   shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
+                  shadowOpacity: 0.2,
+                  shadowRadius: 12,
                 },
                 android: {
-                  elevation: 4,
+                  elevation: 6,
                 },
               }),
             ]}
@@ -144,185 +159,134 @@ export default function ProfileScreen() {
               username={user.username}
               customInitials={user.avatarCustomInitials}
               colorIndex={user.avatarColorIndex}
-              size={80}
+              size={88}
             />
           </View>
           <Text style={[styles.username, { color: colors.foreground }]}>
             {user.isGuest ? 'Guest' : user.username}
           </Text>
-          <Text style={[styles.email, { color: colors.mutedForeground }]}>{user.email}</Text>
+          <View style={styles.userMeta}>
+            <Text style={[styles.levelBadge, { color: colors.primary }]}>
+              Level {stats?.level || 1}
+            </Text>
+            <Text style={[styles.metaSeparator, { color: colors.mutedForeground }]}>•</Text>
+            <Text style={[styles.email, { color: colors.mutedForeground }]}>{user.email}</Text>
+          </View>
           {user.isGuest && (
-            <View style={[styles.guestBadge, { backgroundColor: hexToRgba(colors.accent, 0.15) }]}>
-              <Text style={[styles.guestBadgeText, { color: colors.accent }]}>Guest Account</Text>
+            <View style={[styles.guestBadge, { backgroundColor: hexToRgba(colors.warning, 0.15) }]}>
+              <Text style={[styles.guestBadgeText, { color: colors.warning }]}>Guest Account</Text>
             </View>
           )}
-        </View>
+        </Animated.View>
 
-        {/* Stats Card */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.card,
-              borderColor: hexToRgba(colors.border, 0.5),
-              ...Platform.select({
-                ios: {
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: isDark ? 0.3 : 0.08,
-                  shadowRadius: 12,
-                },
-                android: {
-                  elevation: 4,
-                },
-              }),
-            },
-          ]}
-        >
-          <Text style={[styles.cardTitle, { color: colors.accent }]}>Your Stats</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.level || 1}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Level</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.streak || 0}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Streak</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.points || 0}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Points</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.accent }]}>{stats?.totalGames || 0}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Games</Text>
-            </View>
-          </View>
-          <View style={[styles.statsRow, { borderTopColor: hexToRgba(colors.border, 0.5) }]}>
-            <View style={styles.statRowItem}>
-              <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>Win Rate</Text>
-              <Text style={[styles.statRowValue, { color: colors.foreground }]}>
-                {stats?.totalGames
-                  ? Math.round((stats.wins / stats.totalGames) * 100)
-                  : 0}%
-              </Text>
-            </View>
-            <View style={styles.statRowItem}>
-              <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>Max Streak</Text>
-              <Text style={[styles.statRowValue, { color: colors.foreground }]}>{stats?.maxStreak || 0}</Text>
-            </View>
-            <View style={styles.statRowItem}>
-              <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>Perfect Solves</Text>
-              <Text style={[styles.statRowValue, { color: colors.foreground }]}>{stats?.perfectSolves || 0}</Text>
-            </View>
-          </View>
-        </View>
+        <View style={styles.content}>
+          {/* Level Progress */}
+          <Animated.View entering={FadeInDown.delay(100).duration(300)}>
+            <LevelProgress
+              level={stats?.level || 1}
+              currentXP={stats?.xp || 0}
+              requiredXP={stats?.nextLevelXP || 1000}
+              tier={getTier(stats?.level || 1)}
+            />
+          </Animated.View>
 
-        {/* Achievements Card */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.card,
-              borderColor: hexToRgba(colors.border, 0.5),
-              ...Platform.select({
-                ios: {
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: isDark ? 0.3 : 0.08,
-                  shadowRadius: 12,
-                },
-                android: {
-                  elevation: 4,
-                },
-              }),
-            },
-          ]}
-        >
-          <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, { color: colors.accent }]}>Achievements</Text>
+          {/* Stats Grid */}
+          <Animated.View entering={FadeInDown.delay(150).duration(300)}>
+            <StatsGrid
+              totalPoints={stats?.points || 0}
+              currentStreak={stats?.streak || 0}
+              puzzlesSolved={stats?.wins || 0}
+              bestStreak={stats?.maxStreak || 0}
+            />
+          </Animated.View>
+
+          {/* Performance Card */}
+          <Animated.View entering={FadeInDown.delay(200).duration(300)}>
+            <PerformanceCard
+              perfectGames={stats?.perfectSolves || 0}
+              fastestTime={stats?.fastestTime || 0}
+              totalGames={stats?.totalGames || 0}
+              winRate={stats?.totalGames ? Math.round((stats.wins / stats.totalGames) * 100) : 0}
+              averageTime={stats?.averageTime}
+            />
+          </Animated.View>
+
+          {/* Achievements Card */}
+          <Animated.View entering={FadeInDown.delay(250).duration(300)}>
             <Link href="/achievements" asChild>
-              <Pressable>
-                <Text style={[styles.viewAllLink, { color: colors.mutedForeground }]}>View All</Text>
-              </Pressable>
-            </Link>
-          </View>
-          {progress ? (
-            <>
-              <View style={styles.progressContainer}>
-                <View style={[styles.progressBar, { backgroundColor: colors.muted }]}>
-                  <View
-                    style={[styles.progressFill, { width: `${achievementPercentage}%`, backgroundColor: colors.accent }]}
-                  />
-                </View>
-                <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
-                  {progress.unlocked}/{progress.total} unlocked
-                </Text>
-              </View>
-              <View style={[styles.achievementStats, { borderTopColor: hexToRgba(colors.border, 0.5) }]}>
-                <Text style={[styles.achievementPointsLabel, { color: colors.mutedForeground }]}>Points Earned</Text>
-                <Text style={[styles.achievementPoints, { color: colors.foreground }]}>
-                  {progress.earnedPoints}/{progress.totalPoints}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <Text style={[styles.noData, { color: colors.mutedForeground }]}>No achievements yet</Text>
-          )}
-        </View>
-
-        {/* Actions */}
-        <View style={styles.actions}>
-          {!user.isGuest && (
-            <Pressable
-              style={[
-                styles.editButton,
-                {
-                  backgroundColor: hexToRgba(colors.accent, 0.15),
-                  borderColor: hexToRgba(colors.accent, 0.3),
-                },
-              ]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setIsEditing(true);
-              }}
-            >
-              <Text style={[styles.editButtonText, { color: colors.accent }]}>Edit Profile</Text>
-            </Pressable>
-          )}
-
-          {user.isGuest && (
-            <Link href="/signup" asChild>
               <Pressable
                 style={[
-                  styles.upgradeButton,
-                  {
-                    backgroundColor: colors.accent,
-                    ...Platform.select({
-                      ios: {
-                        shadowColor: colors.accent,
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 8,
-                      },
-                      android: {
-                        elevation: 4,
-                      },
-                    }),
-                  },
+                  styles.achievementsCard,
+                  { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
               >
-                <Text style={[styles.upgradeButtonText, { color: colors.accentForeground }]}>Create Account</Text>
+                <View style={styles.achievementsHeader}>
+                  <View style={[styles.achievementsIcon, { backgroundColor: hexToRgba(colors.primary, 0.12) }]}>
+                    <Award size={20} color={colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={styles.achievementsInfo}>
+                    <Text style={[styles.achievementsTitle, { color: colors.foreground }]}>
+                      Achievements
+                    </Text>
+                    {progress && (
+                      <Text style={[styles.achievementsSubtitle, { color: colors.mutedForeground }]}>
+                        {progress.unlocked}/{progress.total} unlocked • {progress.earnedPoints.toLocaleString()} pts
+                      </Text>
+                    )}
+                  </View>
+                  <ChevronRight size={20} color={colors.mutedForeground} />
+                </View>
+                {progress && (
+                  <View style={styles.achievementsProgress}>
+                    <View style={[styles.progressTrack, { backgroundColor: hexToRgba(colors.foreground, 0.1) }]}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${achievementPercentage}%`, backgroundColor: colors.primary },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                )}
               </Pressable>
             </Link>
-          )}
+          </Animated.View>
 
-          <Pressable
-            style={[styles.logoutButton, { borderColor: hexToRgba(colors.destructive, 0.3) }]}
-            onPress={handleLogout}
-          >
-            <Text style={[styles.logoutButtonText, { color: colors.destructive }]}>Logout</Text>
-          </Pressable>
+          {/* Actions */}
+          <Animated.View entering={FadeInDown.delay(300).duration(300)} style={styles.actions}>
+            {!user.isGuest && (
+              <Button
+                variant="outline"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsEditing(true);
+                }}
+                icon={<Edit3 size={16} color={colors.foreground} />}
+              >
+                Edit Profile
+              </Button>
+            )}
+
+            {user.isGuest && (
+              <Link href="/signup" asChild>
+                <Button
+                  variant="default"
+                  icon={<UserPlus size={16} color={colors.primaryForeground} />}
+                >
+                  Create Account
+                </Button>
+              </Link>
+            )}
+
+            <Button
+              variant="ghost"
+              onPress={handleLogout}
+              icon={<LogOut size={16} color={colors.destructive} />}
+              textStyle={{ color: colors.destructive }}
+            >
+              Logout
+            </Button>
+          </Animated.View>
         </View>
       </ScrollView>
 
@@ -341,9 +305,9 @@ export default function ProfileScreen() {
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Profile</Text>
             <Pressable onPress={handleSaveProfile} disabled={isSaving}>
               {isSaving ? (
-                <ActivityIndicator size="small" color={colors.accent} />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Text style={[styles.modalSave, { color: colors.accent }]}>Save</Text>
+                <Text style={[styles.modalSave, { color: colors.primary }]}>Save</Text>
               )}
             </Pressable>
           </View>
@@ -366,7 +330,7 @@ export default function ProfileScreen() {
                 style={[
                   styles.formInput,
                   {
-                    backgroundColor: colors.secondary,
+                    backgroundColor: colors.card,
                     color: colors.foreground,
                     borderColor: colors.border,
                   },
@@ -387,7 +351,7 @@ export default function ProfileScreen() {
                 style={[
                   styles.formInput,
                   {
-                    backgroundColor: colors.secondary,
+                    backgroundColor: colors.card,
                     color: colors.foreground,
                     borderColor: colors.border,
                   },
@@ -451,150 +415,102 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingTop: 24,
+    paddingBottom: 20,
     paddingHorizontal: 24,
   },
   avatarContainer: {
-    borderRadius: 40,
+    borderRadius: 44,
+    marginBottom: 16,
   },
   username: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 16,
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  userMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  levelBadge: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  metaSeparator: {
+    fontSize: 12,
   },
   email: {
     fontSize: 14,
-    marginTop: 4,
   },
   guestBadge: {
     marginTop: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   guestBadgeText: {
     fontSize: 12,
     fontWeight: '600',
   },
-  card: {
+  content: {
+    padding: 16,
+  },
+  achievementsCard: {
     borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 16,
-    marginBottom: 16,
     borderWidth: 1,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: 16,
     marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  viewAllLink: {
-    fontSize: 14,
-  },
-  statsGrid: {
+  achievementsHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
+    alignItems: 'center',
+    gap: 12,
   },
-  statItem: {
+  achievementsIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  achievementsInfo: {
+    flex: 1,
   },
-  statLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    borderTopWidth: 1,
-  },
-  statRowItem: {
-    alignItems: 'center',
-  },
-  statRowLabel: {
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  statRowValue: {
+  achievementsTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    marginBottom: 2,
   },
-  progressContainer: {
-    marginBottom: 12,
+  achievementsSubtitle: {
+    fontSize: 13,
   },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
+  achievementsProgress: {
+    marginTop: 12,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  achievementStats: {
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  achievementPointsLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  achievementPoints: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  noData: {
-    fontSize: 14,
-    textAlign: 'center',
+    borderRadius: 3,
   },
   actions: {
-    padding: 16,
     gap: 12,
-  },
-  editButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  editButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  upgradeButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  upgradeButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  logoutButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    marginTop: 8,
   },
   // Modal styles
   modalContainer: {
