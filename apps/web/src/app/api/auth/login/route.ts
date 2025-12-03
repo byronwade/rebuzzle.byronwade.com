@@ -87,17 +87,20 @@ export async function POST(request: Request) {
       email: user.email,
     });
 
-    // Create response with user data
+    // Create response with user data and token
+    // Token is included for desktop/mobile apps that use Bearer auth
+    // Web app uses HTTP-only cookie set below
     const response = NextResponse.json({
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
       },
+      token, // For desktop/mobile apps
       success: true,
     });
 
-    // Set secure HTTP-only cookie with JWT token
+    // Set secure HTTP-only cookie with JWT token (for web app)
     return setAuthCookie(response, token);
   } catch (error) {
     console.error("Login failed:", error);

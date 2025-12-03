@@ -101,31 +101,24 @@ let streakCheckInterval: NodeJS.Timeout | null = null;
 
 // Configuration
 const isDev = process.env.NODE_ENV === "development" || process.env.VITE_DEV_SERVER_URL;
-const DEV_URLS = ["http://localhost:3000", "http://localhost:3001"];
-const PROD_URL = "https://rebuzzle.byronwade.com";
-let WEB_URL = isDev ? DEV_URLS[0] : PROD_URL;
+// In dev mode, Vite serves renderer at port 5173
+const VITE_DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
+// In production, load from local dist folder
+const DIST_PATH = path.join(__dirname, "../dist/index.html");
 
 // Deep link protocol
 const PROTOCOL = "rebuzzle";
 
-// Check if a URL is reachable
-async function findAvailableDevServer(): Promise<string> {
-  if (!isDev) return PROD_URL;
+// Check if Vite dev server is available
+async function isDevServerAvailable(): Promise<boolean> {
+  if (!isDev) return false;
 
-  for (const url of DEV_URLS) {
-    try {
-      const response = await fetch(url, { method: "HEAD" });
-      if (response.ok) {
-        console.log(`Found dev server at ${url}`);
-        return url;
-      }
-    } catch {
-      // Server not available, try next
-    }
+  try {
+    const response = await fetch(VITE_DEV_URL, { method: "HEAD" });
+    return response.ok;
+  } catch {
+    return false;
   }
-
-  console.log("No dev server found, using production URL");
-  return PROD_URL;
 }
 
 // ============================================
@@ -785,8 +778,9 @@ function registerShortcuts(): void {
 // ============================================
 
 async function createWindow(): Promise<void> {
-  // Find available dev server
-  WEB_URL = await findAvailableDevServer();
+  // Check dev server availability
+  const devServerAvailable = await isDevServerAvailable();
+  console.log(isDev ? `Dev mode: Vite server ${devServerAvailable ? "available" : "not available"}` : "Production mode");
 
   const windowConfig: Electron.BrowserWindowConstructorOptions = {
     width: 1200,
@@ -833,8 +827,8 @@ async function createWindow(): Promise<void> {
 
   // Handle external links - open in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Allow navigation within the app
-    if (url.startsWith(WEB_URL) || url.startsWith("http://localhost")) {
+    // Allow navigation within the app (localhost for dev, file:// for prod)
+    if (url.startsWith("http://localhost") || url.startsWith("file://")) {
       return { action: "allow" };
     }
     // Open external links in browser
@@ -844,8 +838,8 @@ async function createWindow(): Promise<void> {
 
   // Handle navigation within the webContents
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    // Allow navigation to our web app
-    if (url.startsWith(WEB_URL) || url.startsWith("http://localhost")) {
+    // Allow navigation within the app
+    if (url.startsWith("http://localhost") || url.startsWith("file://")) {
       return;
     }
     // Prevent navigation to external sites, open in browser instead
@@ -853,88 +847,23 @@ async function createWindow(): Promise<void> {
     shell.openExternal(url);
   });
 
-  // Inject desktop-specific styles and scripts after page loads
+  // Inject desktop-specific data after page loads
   mainWindow.webContents.on("did-finish-load", () => {
-    // Add desktop-specific class to body
+    // Add platform info for CSS styling
     mainWindow?.webContents.executeJavaScript(`
-      document.body.classList.add('electron-app');
       document.body.dataset.platform = '${process.platform}';
-
-      // Add custom CSS for native feel
-      const style = document.createElement('style');
-      style.textContent = \`
-        /* Desktop-specific adjustments */
-        .electron-app {
-          /* Prevent text selection on UI elements */
-          user-select: none;
-        }
-
-        .electron-app input,
-        .electron-app textarea,
-        .electron-app [contenteditable] {
-          user-select: text;
-        }
-
-        /* macOS traffic light spacing */
-        .electron-app[data-platform="darwin"] header {
-          padding-left: 80px;
-        }
-
-        /* Smooth scrolling */
-        .electron-app {
-          scroll-behavior: smooth;
-        }
-
-        /* Hide scrollbar but keep functionality (macOS style) */
-        .electron-app::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-
-        .electron-app::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .electron-app::-webkit-scrollbar-thumb {
-          background: rgba(128, 128, 128, 0.3);
-          border-radius: 4px;
-        }
-
-        .electron-app::-webkit-scrollbar-thumb:hover {
-          background: rgba(128, 128, 128, 0.5);
-        }
-
-        /* Focus ring for keyboard navigation */
-        .electron-app *:focus-visible {
-          outline: 2px solid hsl(var(--primary));
-          outline-offset: 2px;
-        }
-      \`;
-      document.head.appendChild(style);
-
-      // Listen for navigation events from main process
-      if (window.electronAPI) {
-        window.electronAPI.receive('navigate', (path) => {
-          window.location.href = path;
-        });
-
-        window.electronAPI.receive('theme-changed', (isDark) => {
-          document.documentElement.classList.toggle('dark', isDark);
-        });
-
-        window.electronAPI.receive('power:suspend', () => {
-          window.dispatchEvent(new CustomEvent('electron:suspend'));
-        });
-
-        window.electronAPI.receive('power:resume', () => {
-          window.dispatchEvent(new CustomEvent('electron:resume'));
-        });
-      }
+      document.documentElement.dataset.platform = '${process.platform}';
     `);
   });
 
-  // Load the web app
-  mainWindow.loadURL(WEB_URL);
+  // Load the renderer - dev server in development, local file in production
+  if (isDev && devServerAvailable) {
+    console.log(`Loading Vite dev server: ${VITE_DEV_URL}`);
+    mainWindow.loadURL(VITE_DEV_URL);
+  } else {
+    console.log(`Loading production build: ${DIST_PATH}`);
+    mainWindow.loadFile(DIST_PATH);
+  }
 
   // Open DevTools in development
   if (isDev) {
@@ -1169,8 +1098,8 @@ app.on("certificate-error", (event, _webContents, _url, _error, _certificate, ca
 // Security: Prevent new window creation
 app.on("web-contents-created", (_event, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
-    // Allow same-origin navigation
-    if (url.startsWith(WEB_URL) || url.startsWith("http://localhost")) {
+    // Allow same-origin navigation (localhost for dev, file:// for prod)
+    if (url.startsWith("http://localhost") || url.startsWith("file://")) {
       return { action: "allow" };
     }
     // Open external URLs in browser

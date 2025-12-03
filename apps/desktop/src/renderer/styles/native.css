@@ -1,0 +1,392 @@
+/**
+ * Native Desktop Enhancements
+ * Platform-specific styling for native feel
+ */
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ============================================
+   TITLE BAR (macOS)
+   ============================================ */
+
+.title-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--title-bar-height);
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+
+  /* Make draggable */
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.title-bar-text {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Traffic light spacing for macOS */
+[data-platform="darwin"] .title-bar {
+  padding-left: var(--traffic-light-width);
+}
+
+/* Hide title bar text on Windows/Linux where we have native chrome */
+[data-platform="win32"] .title-bar,
+[data-platform="linux"] .title-bar {
+  display: none;
+}
+
+[data-platform="win32"] .app-container,
+[data-platform="linux"] .app-container {
+  padding-top: 0;
+}
+
+/* ============================================
+   APP CONTAINER
+   ============================================ */
+
+.app-container {
+  position: fixed;
+  top: var(--title-bar-height);
+  left: 0;
+  right: 0;
+  bottom: var(--nav-height);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+.app-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.app-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-container::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: var(--radius-full);
+}
+
+.app-container::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ============================================
+   BOTTOM NAVIGATION
+   ============================================ */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 var(--spacing-md);
+  z-index: 100;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  color: hsl(var(--muted-foreground));
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+
+  /* Prevent drag */
+  -webkit-app-region: no-drag;
+}
+
+.nav-item:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.nav-item.active {
+  color: hsl(var(--primary));
+}
+
+.nav-item.active .nav-icon {
+  transform: scale(1.1);
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  transition: transform var(--transition-fast);
+}
+
+.nav-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ============================================
+   ROUTE TRANSITIONS
+   ============================================ */
+
+.route-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.route-enter {
+  animation: fadeSlideIn var(--transition-slow) ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   LOADING STATE
+   ============================================ */
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--spacing-md);
+  color: hsl(var(--muted-foreground));
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+
+.toast-container {
+  position: fixed;
+  top: calc(var(--title-bar-height) + var(--spacing-md));
+  right: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  z-index: var(--z-toast);
+  pointer-events: none;
+}
+
+.toast {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-sm);
+  max-width: 320px;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all var(--transition-normal);
+  pointer-events: auto;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast-success {
+  border-left: 3px solid hsl(var(--success));
+}
+
+.toast-warning {
+  border-left: 3px solid hsl(var(--warning));
+}
+
+.toast-error {
+  border-left: 3px solid hsl(var(--destructive));
+}
+
+.toast-info {
+  border-left: 3px solid hsl(var(--info));
+}
+
+/* ============================================
+   VIBRANCY / GLASS EFFECTS
+   ============================================ */
+
+.glass {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-strong {
+  background: hsl(var(--card) / 0.9);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+
+/* ============================================
+   FOCUS STYLES
+   ============================================ */
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================
+   SELECTION
+   ============================================ */
+
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+/* ============================================
+   ERROR PAGE
+   ============================================ */
+
+.error-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.error-page h1 {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: hsl(var(--muted-foreground));
+  margin-bottom: var(--spacing-sm);
+}
+
+.error-page p {
+  color: hsl(var(--muted-foreground));
+  margin-bottom: var(--spacing-lg);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.bounce-in {
+  animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .loading-spinner {
+    animation: none;
+    border-color: hsl(var(--primary));
+  }
+}
