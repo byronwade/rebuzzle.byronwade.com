@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { BookOpen, Puzzle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -63,12 +64,13 @@ export async function generateMetadata({
       };
     }
 
+    // Pass date as string - generateBlogPostMetadata will handle conversion
     return generateBlogPostMetadata({
       title: post.title,
       slug: post.slug,
       excerpt: post.excerpt,
       content: post.content,
-      publishedAt: new Date(post.date),
+      publishedAt: post.date, // Pass as string, not new Date()
       answer: post.answer,
       puzzleType: post.puzzleType,
     });
@@ -81,6 +83,10 @@ export async function generateMetadata({
 }
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+  // Access headers first to make this component dynamic before any Date() operations
+  const headersList = await headers();
+  headersList.get("x-forwarded-proto");
+
   const { slug } = await params;
 
   try {
@@ -99,14 +105,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       fetchBlogPosts(),
     ]);
 
-    // Generate schemas
+    // Generate schemas - pass dates as strings, schema generator will handle conversion
     const articleSchema = generateArticleSchema({
       title: post.title,
       slug: post.slug,
       content: post.content,
       excerpt: post.excerpt,
-      publishedAt: new Date(post.date),
-      updatedAt: new Date(post.date),
+      publishedAt: post.date, // Pass as string
+      updatedAt: post.date, // Pass as string
       authorId: "rebuzzle-team",
       puzzleId: post.answer,
       answer: post.answer,
