@@ -1,6 +1,5 @@
 "use server";
 
-import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
 import { db } from "@/db";
 import { verifyToken } from "@/lib/jwt";
@@ -35,13 +34,6 @@ type JsonMetadata = {
     ogDescription: string;
   };
 };
-
-// Constants
-const CACHE_TIMES = {
-  SHORT: 60, // 1 minute
-  MEDIUM: 300, // 5 minutes (reduced from 1 hour to ensure faster puzzle updates)
-  LONG: 86_400, // 24 hours
-} as const;
 
 // Puzzle completion is now tracked in database
 // No cookies needed
@@ -133,121 +125,43 @@ async function getTodaysPuzzleData(): Promise<Puzzle | null> {
   }
 }
 
-// Cache the daily puzzle fetch with optimized query
-export const fetchGameData = unstable_cache(
-  async (isPreview = false, isCompleted = false): Promise<GameData> => {
-    try {
-      console.log("[fetchGameData] Starting with params:", {
-        isPreview,
-        isCompleted,
-      });
+// Fetch game data - no caching to ensure puzzle is always fresh
+// The puzzle only changes once per day, but we need users to always see today's puzzle
+export async function fetchGameData(isPreview = false, isCompleted = false): Promise<GameData> {
+  try {
+    console.log("[fetchGameData] Starting with params:", {
+      isPreview,
+      isCompleted,
+    });
 
-      // Early return for completed puzzles
-      if (isCompleted && !isPreview) {
-        console.log("[fetchGameData] Returning early due to completed puzzle");
-        return {
-          id: "",
-          puzzle: "",
-          answer: "",
-          explanation: "",
-          difficulty: 5, // Use numeric difficulty
-          leaderboard: [],
-          hints: [],
-          metadata: {},
-          isCompleted: true,
-          shouldRedirect: true,
-          blogPost: null,
-        };
-      }
-
-      const puzzle = await getTodaysPuzzleData();
-
-      if (!puzzle) {
-        // No puzzle available - return empty GameData to show NoPuzzleDisplay
-        return {
-          id: "",
-          puzzle: "",
-          answer: "",
-          explanation: "",
-          difficulty: 3,
-          leaderboard: [],
-          hints: [],
-          metadata: {},
-          isCompleted: false,
-          shouldRedirect: false,
-          blogPost: null,
-        };
-      }
-
-      // Extract puzzle display field - support both new (puzzle) and legacy (rebusPuzzle) fields
-      const puzzleAny = puzzle as any;
-      let puzzleDisplay = puzzleAny.puzzle || puzzleAny.rebusPuzzle || "";
-
-      // Safety check: If puzzle text matches answer, it's likely corrupted data
-      if (puzzleDisplay === puzzle.answer || puzzleDisplay.trim() === puzzle.answer.trim()) {
-        console.warn("⚠️ [GameData] Puzzle text matches answer - data may be corrupted");
-        // Try to reconstruct from metadata or use fallback
-        if (
-          (puzzleAny.metadata as any)?.clues &&
-          Array.isArray((puzzleAny.metadata as any).clues)
-        ) {
-          puzzleDisplay = (puzzleAny.metadata as any).clues.join("\n\n");
-        } else if (puzzleAny.clues && Array.isArray(puzzleAny.clues)) {
-          puzzleDisplay = puzzleAny.clues.join("\n\n");
-        } else {
-          puzzleDisplay =
-            "A logic grid puzzle. Use deductive reasoning to solve the relationships.";
-        }
-      }
-
-      const puzzleType = puzzleAny.puzzleType || puzzleAny.metadata?.puzzleType || "rebus";
-
-      console.log("[fetchGameData] Found puzzle:", {
-        id: puzzle.id || (puzzle as any).keyword,
-        hasPuzzle: !!puzzleDisplay,
-        puzzleType,
-        hasAnswer: !!puzzle.answer,
-        hasExplanation: !!puzzle.explanation,
-      });
-
-      const metadata = {
-        topic: (puzzle as any).topic,
-        keyword: (puzzle as any).keyword,
-        category: puzzle.category,
-        relevanceScore: (puzzle as any).relevanceScore,
-        hints: puzzle.hints,
-        puzzleType,
-      } as PuzzleMetadata;
-
-      return {
-        id: puzzle.id || (puzzle as any).keyword || "",
-        puzzle: puzzleDisplay,
-        puzzleType,
-        answer: puzzle.answer,
-        explanation: puzzle.explanation || "",
-        difficulty:
-          typeof puzzle.difficulty === "number"
-            ? puzzle.difficulty
-            : puzzle.difficulty === "easy"
-              ? 3
-              : puzzle.difficulty === "medium"
-                ? 5
-                : 7,
-        hints: puzzle.hints || [],
-        leaderboard: [],
-        isCompleted,
-        shouldRedirect: isCompleted && !isPreview,
-        metadata,
-        blogPost: null, // No blog post in offline mode
-      };
-    } catch (error) {
-      console.error("[fetchGameData] Error:", error);
+    // Early return for completed puzzles
+    if (isCompleted && !isPreview) {
+      console.log("[fetchGameData] Returning early due to completed puzzle");
       return {
         id: "",
         puzzle: "",
         answer: "",
         explanation: "",
-        difficulty: 3, // Use numeric difficulty
+        difficulty: 5, // Use numeric difficulty
+        leaderboard: [],
+        hints: [],
+        metadata: {},
+        isCompleted: true,
+        shouldRedirect: true,
+        blogPost: null,
+      };
+    }
+
+    const puzzle = await getTodaysPuzzleData();
+
+    if (!puzzle) {
+      // No puzzle available - return empty GameData to show NoPuzzleDisplay
+      return {
+        id: "",
+        puzzle: "",
+        answer: "",
+        explanation: "",
+        difficulty: 3,
         leaderboard: [],
         hints: [],
         metadata: {},
@@ -256,12 +170,84 @@ export const fetchGameData = unstable_cache(
         blogPost: null,
       };
     }
-  },
-  ["daily-puzzle"],
-  {
-    revalidate: CACHE_TIMES.MEDIUM,
-    tags: ["daily-puzzle"],
+
+    // Extract puzzle display field - support both new (puzzle) and legacy (rebusPuzzle) fields
+    const puzzleAny = puzzle as any;
+    let puzzleDisplay = puzzleAny.puzzle || puzzleAny.rebusPuzzle || "";
+
+    // Safety check: If puzzle text matches answer, it's likely corrupted data
+    if (puzzleDisplay === puzzle.answer || puzzleDisplay.trim() === puzzle.answer.trim()) {
+      console.warn("⚠️ [GameData] Puzzle text matches answer - data may be corrupted");
+      // Try to reconstruct from metadata or use fallback
+      if (
+        (puzzleAny.metadata as any)?.clues &&
+        Array.isArray((puzzleAny.metadata as any).clues)
+      ) {
+        puzzleDisplay = (puzzleAny.metadata as any).clues.join("\n\n");
+      } else if (puzzleAny.clues && Array.isArray(puzzleAny.clues)) {
+        puzzleDisplay = puzzleAny.clues.join("\n\n");
+      } else {
+        puzzleDisplay =
+          "A logic grid puzzle. Use deductive reasoning to solve the relationships.";
+      }
+    }
+
+    const puzzleType = puzzleAny.puzzleType || puzzleAny.metadata?.puzzleType || "rebus";
+
+    console.log("[fetchGameData] Found puzzle:", {
+      id: puzzle.id || (puzzle as any).keyword,
+      hasPuzzle: !!puzzleDisplay,
+      puzzleType,
+      hasAnswer: !!puzzle.answer,
+      hasExplanation: !!puzzle.explanation,
+    });
+
+    const metadata = {
+      topic: (puzzle as any).topic,
+      keyword: (puzzle as any).keyword,
+      category: puzzle.category,
+      relevanceScore: (puzzle as any).relevanceScore,
+      hints: puzzle.hints,
+      puzzleType,
+    } as PuzzleMetadata;
+
+    return {
+      id: puzzle.id || (puzzle as any).keyword || "",
+      puzzle: puzzleDisplay,
+      puzzleType,
+      answer: puzzle.answer,
+      explanation: puzzle.explanation || "",
+      difficulty:
+        typeof puzzle.difficulty === "number"
+          ? puzzle.difficulty
+          : puzzle.difficulty === "easy"
+            ? 3
+            : puzzle.difficulty === "medium"
+              ? 5
+              : 7,
+      hints: puzzle.hints || [],
+      leaderboard: [],
+      isCompleted,
+      shouldRedirect: isCompleted && !isPreview,
+      metadata,
+      blogPost: null, // No blog post in offline mode
+    };
+  } catch (error) {
+    console.error("[fetchGameData] Error:", error);
+    return {
+      id: "",
+      puzzle: "",
+      answer: "",
+      explanation: "",
+      difficulty: 3, // Use numeric difficulty
+      leaderboard: [],
+      hints: [],
+      metadata: {},
+      isCompleted: false,
+      shouldRedirect: false,
+      blogPost: null,
+    };
   }
-);
+}
 
 // All database-dependent functions below are removed.

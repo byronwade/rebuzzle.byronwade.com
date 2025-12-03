@@ -13,7 +13,8 @@ import {
 } from "@/lib/seo/structured-data";
 import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions";
 
-// PPR enabled globally via cacheComponents in next.config.mjs
+// Note: Page is dynamic by default due to use of headers() and dynamic data fetching
+// cacheComponents mode ensures fresh puzzle data while optimizing component caching
 
 /**
  * Generate dynamic metadata based on today's puzzle
