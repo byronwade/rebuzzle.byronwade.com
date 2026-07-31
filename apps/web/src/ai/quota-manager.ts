@@ -56,7 +56,7 @@ class QuotaManager {
   }> {
     this.resetIfNeeded();
 
-    const limits = AI_CONFIG.google.quotaLimits;
+    const limits = AI_CONFIG.rateLimits;
 
     // Check minute limit
     if (this.usage.minute.count >= limits.requestsPerMinute) {
@@ -94,7 +94,7 @@ class QuotaManager {
   getUsage() {
     this.resetIfNeeded();
 
-    const limits = AI_CONFIG.google.quotaLimits;
+    const limits = AI_CONFIG.rateLimits;
 
     return {
       minute: {
@@ -121,7 +121,7 @@ class QuotaManager {
     message: string;
   } {
     const usage = this.getUsage();
-    const threshold = AI_CONFIG.google.quotaLimits.warningThreshold * 100;
+    const threshold = 80;
 
     // Check day usage first (more important)
     if (usage.day.percentage >= 95) {

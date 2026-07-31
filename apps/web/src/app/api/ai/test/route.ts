@@ -1,20 +1,16 @@
 /**
- * AI API Test Endpoint
+ * AI API Test Endpoint — Vercel AI Gateway
  *
- * Simple endpoint to test if the AI API is working correctly.
- * REQUIRES ADMIN AUTHENTICATION - sensitive endpoint.
+ * REQUIRES ADMIN AUTHENTICATION.
  */
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { generateAIText } from "@/ai/client";
 import { AI_CONFIG, validateApiKeys } from "@/ai/config";
-import { verifyToken } from "@/lib/jwt";
 import { userOps } from "@/db/operations";
+import { verifyToken } from "@/lib/jwt";
 
-/**
- * Verify admin authentication
- */
 async function verifyAdmin(request: NextRequest): Promise<{ isAdmin: boolean; error?: string }> {
   try {
     const authHeader = request.headers.get("authorization");
@@ -24,7 +20,6 @@ async function verifyAdmin(request: NextRequest): Promise<{ isAdmin: boolean; er
 
     const token = authHeader.slice(7);
     const payload = await verifyToken(token);
-
     if (!payload) {
       return { isAdmin: false, error: "Invalid token" };
     }
@@ -41,62 +36,18 @@ async function verifyAdmin(request: NextRequest): Promise<{ isAdmin: boolean; er
 }
 
 export async function GET(request: NextRequest) {
-  // Require admin authentication for this sensitive endpoint
   const auth = await verifyAdmin(request);
   if (!auth.isAdmin) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
   try {
-    // Test 1: Validate API keys
     const keyValidation = validateApiKeys();
-
-    if (!keyValidation.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "API keys missing",
-          missing: keyValidation.missing,
-          provider: keyValidation.provider,
-        },
-        { status: 500 }
-      );
-    }
-
-    // Check API key format (don't expose the actual key)
-    const apiKey = process.env.GOOGLE_AI_API_KEY || AI_CONFIG.google.apiKey;
-    const keyLength = apiKey?.length || 0;
-
-    // Test direct API connectivity (without exposing key details)
-    let directApiTest: { success: boolean; totalModels?: number; error?: string } | null = null;
-    try {
-      const googleApiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
-        { method: "GET" }
-      );
-
-      if (googleApiResponse.ok) {
-        const modelsData = await googleApiResponse.json();
-        directApiTest = {
-          success: true,
-          totalModels: modelsData.models?.length || 0,
-        };
-      } else {
-        directApiTest = {
-          success: false,
-          error: `API returned status ${googleApiResponse.status}`,
-        };
-      }
-    } catch (error) {
-      directApiTest = {
-        success: false,
-        error: error instanceof Error ? error.message : "Connection failed",
-      };
-    }
-
-    // Test text generation
+    const gatewayKeyPresent = Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
     const startTime = Date.now();
-    let result: { text: string; usage?: unknown; finishReason?: string } | null = null;
+
+    let result: { text: string; usage?: unknown; finishReason?: string; modelUsed?: string } | null =
+      null;
     let lastError: Error | null = null;
 
     try {
@@ -113,46 +64,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Model test failed",
-          apiKeyInfo: {
-            present: !!apiKey,
-            lengthValid: keyLength === 39,
+          error: "Gateway model test failed",
+          gateway: {
+            keyPresent: gatewayKeyPresent,
+            provider: keyValidation.provider,
+            model: AI_CONFIG.models.gateway.fast,
           },
-          directApiTest,
-          modelUsed: AI_CONFIG.models.google.fast,
           lastError: lastError
-            ? {
-                name: lastError.name,
-                message: lastError.message,
-              }
+            ? { name: lastError.name, message: lastError.message }
             : null,
         },
         { status: 500 }
       );
     }
 
-    const duration = Date.now() - startTime;
-
     return NextResponse.json({
       success: true,
-      message: "AI API is working!",
+      message: "AI Gateway is working!",
       test: {
         response: result.text,
-        duration: `${duration}ms`,
+        duration: `${Date.now() - startTime}ms`,
         tokens: result.usage,
         finishReason: result.finishReason,
-        modelUsed: AI_CONFIG.models.google.fast,
+        modelUsed: result.modelUsed ?? AI_CONFIG.models.gateway.fast,
       },
       config: {
-        provider: keyValidation.provider,
-        apiKeyPresent: true,
-        directApiTest,
+        provider: "gateway",
+        puzzleAgentModel: AI_CONFIG.puzzleAgent.model,
+        gatewayKeyPresent,
       },
     });
   } catch (error) {
     console.error("[AI Test] Error:", error);
-
-    // Don't expose stack traces in production
     return NextResponse.json(
       {
         success: false,

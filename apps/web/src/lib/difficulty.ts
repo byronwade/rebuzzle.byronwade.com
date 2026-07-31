@@ -1,13 +1,8 @@
 /**
  * Difficulty Utility Functions
  *
- * Maps numeric difficulty levels (1-10 scale) to human-readable names
- * and provides daily difficulty information for the game UI.
- *
- * Difficulty Philosophy:
- * - This game challenges users with mid-level puzzles (4-8 range)
- * - All puzzles require genuine thinking and creativity
- * - "Easy" puzzles don't exist in our system by design
+ * Maps numeric difficulty (1–10) to canonical tiers shared with the Eve agent.
+ * Tiers are non-overlapping: Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8–9
  */
 
 import { GLOBAL_CONTEXT } from "@/ai/config/global";
@@ -15,7 +10,6 @@ import { GLOBAL_CONTEXT } from "@/ai/config/global";
 /** Human-readable difficulty tier names */
 export type DifficultyName = "Hard" | "Difficult" | "Evil" | "Impossible";
 
-/** Difficulty range definition */
 interface DifficultyRange {
   min: number;
   max: number;
@@ -31,137 +25,108 @@ export interface GroupedDifficultyInfo {
   name: DifficultyName;
   levels: number[];
   description: string;
+  accentClass: string;
 }
 
-/** Default difficulty ranges (used if global config unavailable) */
 const DEFAULT_RANGES: Record<Lowercase<DifficultyName>, DifficultyRange> = {
   hard: { min: 4, max: 5 },
-  difficult: { min: 5, max: 6 },
-  evil: { min: 6, max: 7 },
-  impossible: { min: 7, max: 8 },
+  difficult: { min: 6, max: 6 },
+  evil: { min: 7, max: 7 },
+  impossible: { min: 8, max: 9 },
 } as const;
 
-/**
- * Maps a numeric difficulty level to its text name
- *
- * @param difficulty - Numeric level (1-10), legacy string, or undefined
- * @returns The human-readable difficulty tier name
- *
- * @example
- * getDifficultyName(4) // "Hard"
- * getDifficultyName(7) // "Impossible"
- * getDifficultyName("medium") // "Hard" (legacy fallback)
- */
+const DESCRIPTIONS: Record<DifficultyName, string> = {
+  Hard: "Clever but fair — one clear idea with a light twist",
+  Difficult: "Second-look composition — parts lock together",
+  Evil: "Lateral thinking — the obvious reading is a trap",
+  Impossible: "Dense expert mode — still fair with the hint ladder",
+};
+
+/** Tailwind-friendly accent classes per tier (play UI) */
+export const DIFFICULTY_ACCENTS: Record<
+  DifficultyName,
+  { badge: string; glow: string; dot: string }
+> = {
+  Hard: {
+    badge: "bg-teal-500/15 text-teal-800 border-teal-500/30 dark:text-teal-200",
+    glow: "shadow-[0_0_24px_-8px_rgba(20,184,166,0.55)]",
+    dot: "bg-teal-500",
+  },
+  Difficult: {
+    badge: "bg-amber-500/15 text-amber-900 border-amber-500/35 dark:text-amber-100",
+    glow: "shadow-[0_0_24px_-8px_rgba(245,158,11,0.5)]",
+    dot: "bg-amber-500",
+  },
+  Evil: {
+    badge: "bg-rose-500/15 text-rose-900 border-rose-500/35 dark:text-rose-100",
+    glow: "shadow-[0_0_24px_-8px_rgba(244,63,94,0.5)]",
+    dot: "bg-rose-500",
+  },
+  Impossible: {
+    badge: "bg-slate-900/90 text-cyan-100 border-cyan-400/40 dark:bg-slate-950",
+    glow: "shadow-[0_0_28px_-6px_rgba(34,211,238,0.55)]",
+    dot: "bg-cyan-400",
+  },
+};
+
 export function getDifficultyName(difficulty: number | string | undefined): DifficultyName {
   const ranges = GLOBAL_CONTEXT.difficultyCalibration.ranges ?? DEFAULT_RANGES;
 
-  // Handle string or undefined values
   if (typeof difficulty === "string") {
-    // Legacy string values - map to numeric equivalents
-    if (difficulty === "easy") return "Hard";
-    if (difficulty === "medium") return "Hard";
-    if (difficulty === "hard") return "Hard";
-    // Try to parse as number
-    const num = Number.parseInt(difficulty, 10);
-    if (Number.isNaN(num)) {
-      return "Hard"; // Default fallback
+    if (difficulty === "easy" || difficulty === "medium" || difficulty === "hard") {
+      return "Hard";
     }
+    const num = Number.parseInt(difficulty, 10);
+    if (Number.isNaN(num)) return "Hard";
     difficulty = num;
   }
 
-  if (typeof difficulty !== "number" || difficulty < 1) {
-    return "Hard"; // Default fallback
-  }
+  if (typeof difficulty !== "number" || difficulty < 1) return "Hard";
 
-  // Map numeric difficulty to name using global config ranges
-  if (difficulty >= ranges.impossible.min && difficulty <= ranges.impossible.max) {
-    return "Impossible";
-  }
-  if (difficulty >= ranges.evil.min && difficulty <= ranges.evil.max) {
-    return "Evil";
-  }
+  if (difficulty >= ranges.impossible.min) return "Impossible";
+  if (difficulty >= ranges.evil.min && difficulty <= ranges.evil.max) return "Evil";
   if (difficulty >= ranges.difficult.min && difficulty <= ranges.difficult.max) {
     return "Difficult";
   }
-  if (difficulty >= ranges.hard.min && difficulty <= ranges.hard.max) {
-    return "Hard";
-  }
-
-  // Fallback for values outside expected range
+  if (difficulty >= ranges.hard.min && difficulty <= ranges.hard.max) return "Hard";
   if (difficulty < ranges.hard.min) return "Hard";
   return "Impossible";
 }
 
-/**
- * Get description for a difficulty name
- */
 export function getDifficultyDescription(name: DifficultyName): string {
-  const descriptions: Record<DifficultyName, string> = {
-    Hard: "Baseline challenging puzzles that require genuine thinking",
-    Difficult: "More challenging puzzles that push creative boundaries",
-    Evil: "Very challenging puzzles that require out-of-the-box thinking",
-    Impossible: "Extremely challenging but still achievable puzzles",
-  };
-  return descriptions[name];
+  return DESCRIPTIONS[name];
 }
 
-/**
- * Get all possible daily difficulties
- * Based on calculateDailyDifficulty: [5, 4, 5, 7, 6, 5, 4] (Sun-Sat)
- * Unique values: 4, 5, 6, 7
- */
 export function getDailyDifficulties(): DifficultyInfo[] {
-  const dailyLevels = [4, 5, 6, 7];
-
+  const dailyLevels = [4, 5, 6, 7, 8];
   return dailyLevels.map((level) => {
     const name = getDifficultyName(level);
+    return { level, name, description: getDifficultyDescription(name) };
+  });
+}
+
+export function getGroupedDailyDifficulties(): GroupedDifficultyInfo[] {
+  const order: DifficultyName[] = ["Hard", "Difficult", "Evil", "Impossible"];
+  const ranges = GLOBAL_CONTEXT.difficultyCalibration.ranges ?? DEFAULT_RANGES;
+
+  return order.map((name) => {
+    const key = name.toLowerCase() as Lowercase<DifficultyName>;
+    const range = ranges[key];
+    const levels: number[] = [];
+    for (let i = range.min; i <= range.max; i++) levels.push(i);
     return {
-      level,
       name,
+      levels,
       description: getDifficultyDescription(name),
+      accentClass: DIFFICULTY_ACCENTS[name].badge,
     };
   });
 }
 
-/**
- * Get daily difficulties grouped by name with level ranges
- * Groups levels that share the same difficulty name together
- */
-export function getGroupedDailyDifficulties(): GroupedDifficultyInfo[] {
-  const dailyLevels = [4, 5, 6, 7];
-
-  // Group levels by difficulty name
-  const grouped = new Map<DifficultyName, number[]>();
-
-  dailyLevels.forEach((level) => {
-    const name = getDifficultyName(level);
-    if (!grouped.has(name)) {
-      grouped.set(name, []);
-    }
-    grouped.get(name)?.push(level);
-  });
-
-  // Convert to array and sort by lowest level
-  return Array.from(grouped.entries())
-    .map(([name, levels]) => ({
-      name,
-      levels: levels.sort((a, b) => a - b),
-      description: getDifficultyDescription(name),
-    }))
-    .sort((a, b) => a.levels[0]! - b.levels[0]!);
-}
-
-/**
- * Maps numeric difficulty level to achievement category
- * Used consistently across achievements and stats tracking
- *
- * @param difficultyLevel - Numeric level (1-10)
- * @returns "easy" | "medium" | "hard"
- */
 export function getAchievementDifficultyCategory(
   difficultyLevel: number
 ): "easy" | "medium" | "hard" {
-  if (difficultyLevel <= 3) return "easy";
-  if (difficultyLevel <= 6) return "medium";
+  if (difficultyLevel <= 5) return "easy";
+  if (difficultyLevel <= 7) return "medium";
   return "hard";
 }

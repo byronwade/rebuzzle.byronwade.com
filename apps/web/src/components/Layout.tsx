@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
-import { MobileAppPrompt } from "./MobileAppPrompt";
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,7 +26,6 @@ interface LayoutProps {
  * - Animated background
  * - Header with navigation
  * - Main content area
- * - Mobile app prompt
  */
 export default function Layout({
   children,
@@ -80,27 +78,24 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className, isGamePa
       >
         {children}
       </main>
-
-      {/* Mobile app download prompt */}
-      <MobileAppPrompt />
     </div>
   );
 }
 
 /**
- * Animated background decoration
+ * Play atmosphere — cool mist + soft teal wash (not flat gray).
  */
 function BackgroundDecoration() {
   return (
-    <div aria-hidden="true" className="absolute inset-0 opacity-30 dark:opacity-20">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(128,128,128,0.05),rgba(255,255,255,0))] dark:bg-[radial-gradient(circle_at_50%_120%,rgba(128,128,128,0.15),rgba(0,0,0,0))]" />
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(45,212,191,0.14),transparent_55%),radial-gradient(90%_60%_at_100%_0%,rgba(14,165,233,0.08),transparent_45%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(190_30%_97%)_100%)] dark:bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(45,212,191,0.12),transparent_55%),linear-gradient(180deg,hsl(var(--background)),hsl(200_20%_8%))]" />
       <div
-        className="absolute inset-0 motion-safe:animate-pulse motion-reduce:animate-none"
+        className="absolute inset-0 opacity-[0.35] dark:opacity-[0.2] motion-safe:animate-pulse motion-reduce:animate-none"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 2px 2px, rgba(128, 128, 128, 0.1) 1px, transparent 0)",
-          backgroundSize: "20px 20px",
-          animationDuration: "4s",
+            "radial-gradient(circle at 1px 1px, rgba(15, 118, 110, 0.12) 1px, transparent 0)",
+          backgroundSize: "22px 22px",
+          animationDuration: "6s",
         }}
       />
     </div>

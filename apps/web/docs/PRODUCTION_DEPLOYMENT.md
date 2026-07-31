@@ -24,7 +24,11 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.com
 NODE_ENV=production
 
 # Database
+# Prefer the Vercel MongoDB marketplace variable when present:
+REBUZZLE_MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/rebuzzle
+# Or the legacy name:
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/rebuzzle
+MONGODB_DB=rebuzzle
 
 # AI Configuration
 AI_PROVIDER=gateway
@@ -81,7 +85,9 @@ AI_DIFFICULTY_ADJUSTMENT=true
    - Create API key
    - Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL`
 
-### 4. AI Gateway Setup
+### 4. AI Gateway + Eve puzzle agent
+
+Puzzle generation uses an Eve-aligned ToolLoopAgent (`apps/web/agent/` + `src/ai/puzzle-agent/`) routed through the Vercel AI Gateway. Requires **Node.js 24+**.
 
 1. **Vercel AI Gateway (Recommended)**
    - Go to Vercel Dashboard > AI Gateway
@@ -214,7 +220,7 @@ AI_DIFFICULTY_ADJUSTMENT=true
 
 ### Database Connection Issues
 
-- Verify `MONGODB_URI` is correct
+- Verify `REBUZZLE_MONGODB_URI` or `MONGODB_URI` is correct
 - Check MongoDB Atlas IP whitelist
 - Verify database user permissions
 - Check connection string format

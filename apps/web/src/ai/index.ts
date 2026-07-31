@@ -27,12 +27,8 @@ export {
 } from "@/db/utils/vector-operations";
 // Advanced Features (Ultra-sophisticated puzzle generation)
 export * from "./advanced";
-// Agent Orchestration
-export {
-  orchestratePersonalizedGeneration,
-  orchestratePuzzleGeneration,
-  orchestrateQualityReview,
-} from "./agents/orchestrator";
+// Agent Orchestration (legacy shim → Eve tool agent)
+export { orchestratePuzzleGeneration } from "./agents/orchestrator";
 // Caching
 export {
   cachedHints,

@@ -20,10 +20,12 @@ async function setupMongoDB() {
   try {
     // Connect to MongoDB
     const connectionString =
-      process.env.MONGODB_URI || process.env.DATABASE_URL;
+      process.env.REBUZZLE_MONGODB_URI ||
+      process.env.MONGODB_URI ||
+      process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error(
-        "MONGODB_URI or DATABASE_URL environment variable is required"
+        "REBUZZLE_MONGODB_URI, MONGODB_URI, or DATABASE_URL environment variable is required"
       );
     }
 
@@ -31,7 +33,8 @@ async function setupMongoDB() {
     const client = new MongoClient(connectionString);
     await client.connect();
 
-    const db = client.db();
+    const uriHasDbPath = /mongodb(?:\+srv)?:\/\/[^/]+\/[^/?]+/.test(connectionString);
+    const db = uriHasDbPath ? client.db() : client.db(process.env.MONGODB_DB || "rebuzzle");
     console.log("✅ Connected to MongoDB successfully!");
 
     // Create collections with indexes
@@ -278,7 +281,7 @@ async function setupMongoDB() {
   } catch (error) {
     console.error("\n❌ MongoDB setup failed:", error);
     console.log("\nTroubleshooting:");
-    console.log("1. Verify MONGODB_URI is set correctly");
+    console.log("1. Verify REBUZZLE_MONGODB_URI or MONGODB_URI is set correctly");
     console.log("2. Check if MongoDB Atlas cluster is active");
     console.log("3. Ensure network access is configured");
     console.log("4. Verify database user permissions");

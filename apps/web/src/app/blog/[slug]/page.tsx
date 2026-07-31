@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { connection } from "next/server";
 import { BookOpen, Puzzle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -84,8 +84,7 @@ export async function generateMetadata({
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   // Access headers first to make this component dynamic before any Date() operations
-  const headersList = await headers();
-  headersList.get("x-forwarded-proto");
+  await connection();
 
   const { slug } = await params;
 

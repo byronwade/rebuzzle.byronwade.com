@@ -1,12 +1,16 @@
+import { withEve } from "eve/next";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  // Cache Components (PPR + "use cache" / cacheLife / cacheTag)
   cacheComponents: true,
 
-  // Enable React Compiler for automatic memoization
-  // Disable in development to avoid HMR issues with compiler runtime
+  // React Compiler — automatic memoization (prod only to keep HMR snappy)
   reactCompiler: process.env.NODE_ENV === "production",
 
+  // Client router cache stale times
   experimental: {
     staleTimes: {
       dynamic: 30,
@@ -31,6 +35,8 @@ const nextConfig = {
       "@radix-ui/react-tooltip",
       "lucide-react",
       "date-fns",
+      "recharts",
+      "@rebuzzle/game-logic",
     ],
   },
 
@@ -58,7 +64,7 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://*.vercel.app https://*.vercel.com https://*.vercel.sh https://vitals.vercel-insights.com wss://*.vercel.app",
+      "connect-src 'self' https://*.vercel.app https://*.vercel.com https://*.vercel.sh https://vitals.vercel-insights.com https://ai-gateway.vercel.sh wss://*.vercel.app",
       "frame-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
@@ -112,4 +118,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withEve(nextConfig);

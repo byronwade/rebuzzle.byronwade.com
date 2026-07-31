@@ -3,54 +3,25 @@
 import { cookies } from "next/headers";
 import { db } from "@/db";
 import { verifyToken } from "@/lib/jwt";
-import type { GameData, PuzzleMetadata } from "../../lib/gameSettings";
+import type { GameData, PuzzleMetadata, PuzzleType } from "../../lib/gameSettings";
 import { getTodaysPuzzle } from "./puzzleGenerationActions";
 
 const AUTH_COOKIE = "rebuzzle_auth";
 
-interface Puzzle {
+/** Shape returned by getTodaysPuzzle (cached DB hit or generated/fallback). */
+type TodaysPuzzle = {
   id?: string;
-  rebusPuzzle: string;
-  difficulty: number;
+  puzzle?: string;
+  rebusPuzzle?: string;
+  puzzleType?: string;
+  difficulty: number | string;
   answer: string;
-  explanation: string;
-  hints: string[];
-  topic: string;
-  keyword: string;
-  category: string;
-  relevanceScore: number;
-}
-
-// Type definitions
-type JsonMetadata = {
+  explanation?: string;
   hints?: string[];
   topic?: string;
   keyword?: string;
   category?: string;
-  seoMetadata?: {
-    keywords: string[];
-    description: string;
-    ogTitle: string;
-    ogDescription: string;
-  };
-};
-
-// Puzzle completion is now tracked in database
-// No cookies needed
-
-// Helper to get today's date key (UTC)
-const _getTodayKey = () => {
-  const now = new Date();
-  return now.toISOString().split("T")[0];
-};
-
-// Get UTC date range for today
-const _getTodayRange = () => {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  return { today, tomorrow };
+  relevanceScore?: number;
 };
 
 /**
@@ -75,17 +46,15 @@ async function getCurrentUserId(): Promise<string | null> {
 
 /**
  * Check if user has already attempted today's puzzle (success or failure)
- * Returns status to show appropriate message
  */
-export const isPuzzleCompletedForToday = async (): Promise<{
+export async function isPuzzleCompletedForToday(): Promise<{
   hasAttempt: boolean;
   wasSuccessful: boolean;
-}> => {
+}> {
   try {
     const userId = await getCurrentUserId();
 
     if (!userId) {
-      // No user logged in - allow playing
       return { hasAttempt: false, wasSuccessful: false };
     }
 
@@ -98,156 +67,73 @@ export const isPuzzleCompletedForToday = async (): Promise<{
     console.error("[isPuzzleCompletedForToday] Error:", error);
     return { hasAttempt: false, wasSuccessful: false };
   }
-};
-
-// Set puzzle as completed in database
-export async function setPuzzleCompleted(): Promise<void> {
-  try {
-    // Puzzle completion is now tracked in database
-    // This function is kept for compatibility but does nothing
-    console.log("Puzzle completion tracked in database");
-  } catch (error) {
-    console.error("[setPuzzleCompleted] Error:", error);
-  }
 }
 
-// Helper to get today's puzzle using the server action
-async function getTodaysPuzzleData(): Promise<Puzzle | null> {
+function emptyGameData(): GameData {
+  return {
+    id: "",
+    puzzle: "",
+    answer: "",
+    explanation: "",
+    difficulty: 3,
+    leaderboard: [],
+    hints: [],
+    metadata: {},
+    isCompleted: false,
+    blogPost: null,
+  };
+}
+
+function toDifficulty(difficulty: number | string): number {
+  if (typeof difficulty === "number") {
+    return difficulty;
+  }
+  if (difficulty === "easy") return 3;
+  if (difficulty === "medium") return 5;
+  if (difficulty === "hard") return 7;
+  return Number(difficulty) || 5;
+}
+
+/**
+ * Fetch today's puzzle payload for the game board.
+ * Puzzle DB reads are cached via Cache Components ("use cache").
+ */
+export async function fetchGameData(_isPreview = false): Promise<GameData> {
   try {
     const result = await getTodaysPuzzle();
-    if (result.success && result.puzzle) {
-      return result.puzzle as Puzzle;
-    }
-    return null;
-  } catch (error) {
-    console.error("Failed to get today's puzzle:", error);
-    return null;
-  }
-}
-
-// Fetch game data - no caching to ensure puzzle is always fresh
-// The puzzle only changes once per day, but we need users to always see today's puzzle
-export async function fetchGameData(isPreview = false, isCompleted = false): Promise<GameData> {
-  try {
-    console.log("[fetchGameData] Starting with params:", {
-      isPreview,
-      isCompleted,
-    });
-
-    // Early return for completed puzzles
-    if (isCompleted && !isPreview) {
-      console.log("[fetchGameData] Returning early due to completed puzzle");
-      return {
-        id: "",
-        puzzle: "",
-        answer: "",
-        explanation: "",
-        difficulty: 5, // Use numeric difficulty
-        leaderboard: [],
-        hints: [],
-        metadata: {},
-        isCompleted: true,
-        shouldRedirect: true,
-        blogPost: null,
-      };
-    }
-
-    const puzzle = await getTodaysPuzzleData();
+    const puzzle = (result.success ? result.puzzle : null) as TodaysPuzzle | null;
 
     if (!puzzle) {
-      // No puzzle available - return empty GameData to show NoPuzzleDisplay
-      return {
-        id: "",
-        puzzle: "",
-        answer: "",
-        explanation: "",
-        difficulty: 3,
-        leaderboard: [],
-        hints: [],
-        metadata: {},
-        isCompleted: false,
-        shouldRedirect: false,
-        blogPost: null,
-      };
+      return emptyGameData();
     }
 
-    // Extract puzzle display field - support both new (puzzle) and legacy (rebusPuzzle) fields
-    const puzzleAny = puzzle as any;
-    let puzzleDisplay = puzzleAny.puzzle || puzzleAny.rebusPuzzle || "";
-
-    // Safety check: If puzzle text matches answer, it's likely corrupted data
-    if (puzzleDisplay === puzzle.answer || puzzleDisplay.trim() === puzzle.answer.trim()) {
-      console.warn("⚠️ [GameData] Puzzle text matches answer - data may be corrupted");
-      // Try to reconstruct from metadata or use fallback
-      if (
-        (puzzleAny.metadata as any)?.clues &&
-        Array.isArray((puzzleAny.metadata as any).clues)
-      ) {
-        puzzleDisplay = (puzzleAny.metadata as any).clues.join("\n\n");
-      } else if (puzzleAny.clues && Array.isArray(puzzleAny.clues)) {
-        puzzleDisplay = puzzleAny.clues.join("\n\n");
-      } else {
-        puzzleDisplay =
-          "A logic grid puzzle. Use deductive reasoning to solve the relationships.";
-      }
-    }
-
-    const puzzleType = puzzleAny.puzzleType || puzzleAny.metadata?.puzzleType || "rebus";
-
-    console.log("[fetchGameData] Found puzzle:", {
-      id: puzzle.id || (puzzle as any).keyword,
-      hasPuzzle: !!puzzleDisplay,
-      puzzleType,
-      hasAnswer: !!puzzle.answer,
-      hasExplanation: !!puzzle.explanation,
-    });
+    const puzzleDisplay = puzzle.puzzle || puzzle.rebusPuzzle || "";
+    const puzzleType = (puzzle.puzzleType || "rebus") as PuzzleType;
 
     const metadata = {
-      topic: (puzzle as any).topic,
-      keyword: (puzzle as any).keyword,
+      topic: puzzle.topic,
+      keyword: puzzle.keyword,
       category: puzzle.category,
-      relevanceScore: (puzzle as any).relevanceScore,
+      relevanceScore: puzzle.relevanceScore,
       hints: puzzle.hints,
       puzzleType,
     } as PuzzleMetadata;
 
     return {
-      id: puzzle.id || (puzzle as any).keyword || "",
+      id: puzzle.id || puzzle.keyword || "",
       puzzle: puzzleDisplay,
       puzzleType,
       answer: puzzle.answer,
       explanation: puzzle.explanation || "",
-      difficulty:
-        typeof puzzle.difficulty === "number"
-          ? puzzle.difficulty
-          : puzzle.difficulty === "easy"
-            ? 3
-            : puzzle.difficulty === "medium"
-              ? 5
-              : 7,
+      difficulty: toDifficulty(puzzle.difficulty),
       hints: puzzle.hints || [],
       leaderboard: [],
-      isCompleted,
-      shouldRedirect: isCompleted && !isPreview,
+      isCompleted: false,
       metadata,
-      blogPost: null, // No blog post in offline mode
+      blogPost: null,
     };
   } catch (error) {
     console.error("[fetchGameData] Error:", error);
-    return {
-      id: "",
-      puzzle: "",
-      answer: "",
-      explanation: "",
-      difficulty: 3, // Use numeric difficulty
-      leaderboard: [],
-      hints: [],
-      metadata: {},
-      isCompleted: false,
-      shouldRedirect: false,
-      blogPost: null,
-    };
+    return emptyGameData();
   }
 }
-
-// All database-dependent functions below are removed.

@@ -103,7 +103,8 @@ All puzzles are stored with:
 - `puzzle` - Generic puzzle display field (works for all types)
 - `puzzleType` - Type identifier (e.g., "rebus", "word-puzzle")
 - `rebusPuzzle` - Legacy field (only for rebus puzzles, for backward compatibility)
-- All other standard fields (answer, explanation, hints, difficulty, etc.)
+- All other standard fields (answer, explanation, hints, difficulty / `difficultyLevel`, etc.)
+- Difficulty tiers are enforced by the Eve tool agent — see `docs/DIFFICULTY_AND_GENERATION.md`
 
 ## Examples
 

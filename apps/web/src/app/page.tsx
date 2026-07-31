@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
+import { PrefetchGuestClient } from "@/components/prefetch-guest-client";
 import { PuzzleSkeleton } from "@/components/PuzzleSkeleton";
 import { generatePuzzleMetadata } from "@/lib/seo/metadata";
 import {
@@ -12,9 +12,6 @@ import {
   generateHowToSchema,
 } from "@/lib/seo/structured-data";
 import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions";
-
-// Note: Page is dynamic by default due to use of headers() and dynamic data fetching
-// cacheComponents mode ensures fresh puzzle data while optimizing component caching
 
 /**
  * Generate dynamic metadata based on today's puzzle
@@ -36,7 +33,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#8b5cf6",
+  themeColor: "#0f766e",
 };
 
 interface SearchParams {
@@ -200,14 +197,10 @@ function PuzzleAlreadyAttemptedDisplay({ wasSuccessful }: { wasSuccessful: boole
  */
 async function PuzzleContent({ params }: { params: { preview: boolean; test: boolean } }) {
   try {
-    // Access headers to ensure this component is dynamic before any operations
-    // This is required in Next.js 16 Cache Components mode
-    const headersList = await headers();
-    headersList.get("x-forwarded-proto");
+    // Opt into request-time rendering before Date/cookie-dependent work
+    await connection();
 
-    // params makes this component dynamic, but we need to ensure it's accessed
-    // before any operations that might use new Date()
-    const { preview, test } = params;
+    const { preview } = params;
 
     // Check if the puzzle has been attempted today (success or failure)
     const attemptStatus = await isPuzzleCompletedForToday();
@@ -217,17 +210,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
       return <PuzzleAlreadyAttemptedDisplay wasSuccessful={attemptStatus.wasSuccessful} />;
     }
 
-    // Fetch game data - pass false for isCompleted since we handle it above
-    const gameData = await fetchGameData(params.preview, false);
-
-    // Handle legacy shouldRedirect (kept for backwards compatibility)
-    if (gameData.shouldRedirect) {
-      if (gameData.isCompleted) {
-        redirect("/game-over?success=true");
-      } else {
-        redirect("/game-over?success=false");
-      }
-    }
+    const gameData = await fetchGameData(preview);
 
     // Handle no puzzle available - check both new and legacy fields
     const hasPuzzle = gameData.puzzle || gameData.rebusPuzzle;
@@ -345,6 +328,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
           }}
           type="application/ld+json"
         />
+        <PrefetchGuestClient />
         <GameBoard gameData={gameData} />
       </Layout>
     );
