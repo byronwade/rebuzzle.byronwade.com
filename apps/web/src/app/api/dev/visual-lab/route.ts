@@ -4,7 +4,12 @@
  */
 
 import { NextResponse } from "next/server";
-import { ensureGatewayKey, getGatewayApiKey } from "@/ai/client";
+import {
+  formatGatewayAuthError,
+  getGatewayAuthDiagnostics,
+  isGatewayAuthError,
+  probeGatewayAuth,
+} from "@/ai/client";
 import {
   isVisualLabMode,
   VISUAL_LAB_MODE_META,
@@ -19,21 +24,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, allowed: false }, { status: 401 });
   }
 
-  ensureGatewayKey();
-  const apiKey = getGatewayApiKey();
-
   return NextResponse.json({
     success: true,
     allowed: true,
     modes: VISUAL_LAB_MODES.map((id) => VISUAL_LAB_MODE_META[id]),
-    gateway: {
-      apiKeyPresent: Boolean(apiKey),
-      oidcEnvPresent: Boolean(process.env.VERCEL_OIDC_TOKEN),
-      onVercel: Boolean(process.env.VERCEL),
-      vercelEnv: process.env.VERCEL_ENV ?? null,
-      /** Prefer api key locally; on Vercel OIDC works without a key */
-      authPath: apiKey ? "api-key" : process.env.VERCEL ? "oidc" : "missing",
-    },
+    gateway: getGatewayAuthDiagnostics(),
   });
 }
 
@@ -65,6 +60,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const authProbe = await probeGatewayAuth();
+    if (!authProbe.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: authProbe.error,
+          gateway: authProbe.diagnostics,
+        },
+        { status: 503 }
+      );
+    }
+
     const difficulty =
       typeof body.difficulty === "number" && Number.isFinite(body.difficulty)
         ? body.difficulty
@@ -83,15 +90,23 @@ export async function POST(request: Request) {
       /** Explicit: never writes to the daily puzzle catalog */
       published: false,
       result,
+      gateway: authProbe.diagnostics,
     });
   } catch (error) {
     console.error("[dev/visual-lab]", error);
+    const diagnostics = getGatewayAuthDiagnostics();
+    const message = isGatewayAuthError(error)
+      ? formatGatewayAuthError(diagnostics)
+      : error instanceof Error
+        ? error.message
+        : "Visual lab generation failed";
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Visual lab generation failed",
+        error: message,
+        gateway: diagnostics,
       },
-      { status: 500 }
+      { status: isGatewayAuthError(error) ? 503 : 500 }
     );
   }
 }

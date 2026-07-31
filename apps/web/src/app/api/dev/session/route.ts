@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getGatewayAuthDiagnostics, probeGatewayAuth } from "@/ai/client";
 import { regenerateTodaysPuzzle } from "@/app/actions/regeneratePuzzleActions";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
         })
       : null,
     lock,
+    gateway: getGatewayAuthDiagnostics(),
   });
 }
 
@@ -112,11 +114,31 @@ export async function POST(request: Request) {
     }
 
     if (action === "regenerate") {
+      // Fail fast with an actionable message before deleting today's puzzle
+      const authProbe = await probeGatewayAuth();
+      if (!authProbe.ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: authProbe.error,
+            gateway: authProbe.diagnostics,
+          },
+          { status: 503 }
+        );
+      }
+
       // Clear personal lock so the new puzzle is immediately playable
       await db.puzzleAttemptOps.clearAttemptsForDate(userId, puzzleDate);
       const result = await regenerateTodaysPuzzle(body.puzzleType || undefined);
       if (!result.success) {
-        return NextResponse.json({ success: false, error: result.message }, { status: 500 });
+        return NextResponse.json(
+          {
+            success: false,
+            error: result.message,
+            gateway: getGatewayAuthDiagnostics(),
+          },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({
@@ -126,6 +148,7 @@ export async function POST(request: Request) {
         puzzle: result.puzzle
           ? toPublicPuzzle(result.puzzle as Record<string, unknown>)
           : undefined,
+        gateway: authProbe.diagnostics,
       });
     }
 

@@ -12,12 +12,24 @@ import { generateText, type LanguageModel, Output, streamText } from "ai";
 import type { z } from "zod";
 import { AI_CONFIG, validateApiKeys } from "./config";
 import { AIError, AIProviderError, parseAIError, QuotaExceededError } from "./errors";
-import { ensureGatewayKey, getGatewayApiKey } from "./gateway-auth";
+import {
+  assertGatewayAuthConfigured,
+  ensureGatewayKey,
+  getGatewayApiKey,
+} from "./gateway-auth";
 import { enforceQuota } from "./quota-manager";
 
 export type ModelTier = "fast" | "smart" | "creative";
 
-export { ensureGatewayKey, getGatewayApiKey } from "./gateway-auth";
+export {
+  assertGatewayAuthConfigured,
+  ensureGatewayKey,
+  formatGatewayAuthError,
+  getGatewayApiKey,
+  getGatewayAuthDiagnostics,
+  isGatewayAuthError,
+  probeGatewayAuth,
+} from "./gateway-auth";
 
 /** Shared gateway provider — API key when present, else OIDC on Vercel. */
 export function getAiGateway() {
@@ -28,6 +40,7 @@ export function getAiGateway() {
 /** Resolve a gateway language model for a tier (primary only). */
 export function getGatewayModel(tier: ModelTier = "smart"): LanguageModel {
   ensureGatewayKey();
+  assertGatewayAuthConfigured();
   const validation = validateApiKeys();
   if (!validation.valid) {
     throw new Error(`Missing API keys: ${validation.missing.join(", ")}`);
@@ -92,6 +105,7 @@ export async function generateAIText(params: {
 }> {
   await enforceQuota();
   ensureGatewayKey();
+  assertGatewayAuthConfigured();
 
   const tier = params.modelType ?? "smart";
   const modelsToTry = getGatewayModelChain(tier);
@@ -141,6 +155,7 @@ export async function generateAIObject<T>(params: {
 }): Promise<T> {
   await enforceQuota();
   ensureGatewayKey();
+  assertGatewayAuthConfigured();
 
   const tier = params.modelType ?? "smart";
   const modelsToTry = getGatewayModelChain(tier);
