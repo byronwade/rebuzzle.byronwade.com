@@ -72,18 +72,16 @@ async function generateBlogForYesterday() {
     const puzzlesCollection = getCollection<Puzzle>("puzzles");
     const blogPostsCollection = getCollection<NewBlogPost>("blogPosts");
 
-    // Find the puzzle that was active YESTERDAY
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Find the puzzle that was active YESTERDAY (UTC calendar day)
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayStart = new Date(`${todayKey}T00:00:00.000Z`);
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
 
     const previousPuzzle = await puzzlesCollection.findOne({
       publishedAt: {
-        $gte: yesterday,
-        $lt: today,
+        $gte: yesterdayStart,
+        $lt: todayStart,
       },
     });
 
