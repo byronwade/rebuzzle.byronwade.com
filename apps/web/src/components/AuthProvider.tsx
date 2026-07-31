@@ -40,8 +40,17 @@ const AuthContext = createContext<AuthState>({
   refreshAuth: async () => {},
 });
 
+type SeedFn = (session: ServerSession | null) => void;
+
+const AuthSeedContext = createContext<SeedFn>(() => {});
+
 export function useAuth() {
   return useContext(AuthContext);
+}
+
+/** Apply a streamed server session without remounting children. */
+export function useAuthSeed() {
+  return useContext(AuthSeedContext);
 }
 
 function sessionToState(session: ServerSession | null | undefined): Pick<
@@ -209,5 +218,22 @@ export function AuthProvider({
     setAuthState((prev) => ({ ...prev, refreshAuth }));
   }, [refreshAuth]);
 
-  return <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>;
+  const seedSession = useCallback((session: ServerSession | null) => {
+    const next = sessionToState(session);
+    setAuthState((prev) => ({
+      ...prev,
+      ...next,
+      isLoading: false,
+    }));
+    if (session?.authenticated && session.user) {
+      setupSessionTracking(session.user.id);
+    }
+    initialCheckComplete.current = true;
+  }, []);
+
+  return (
+    <AuthSeedContext.Provider value={seedSession}>
+      <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>
+    </AuthSeedContext.Provider>
+  );
 }

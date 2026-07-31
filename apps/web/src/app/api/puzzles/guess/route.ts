@@ -1,5 +1,5 @@
 import { gameSettings } from "@rebuzzle/config";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { validateAnswer } from "@/ai/services/answer-validation";
 import { db } from "@/db";
 import { updateUserStats } from "@/lib/auth";
@@ -39,7 +39,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    const limit = await guessRateLimit(request);
+    const [limit, userLimit, body] = await Promise.all([
+      guessRateLimit(request),
+      rateLimit({
+        windowMs: 60 * 1000,
+        maxRequests: 12,
+        keyGenerator: () => getUserKey(`guess:${user.userId}`),
+      })(request),
+      request.json() as Promise<{
+        puzzleId?: string;
+        guess?: string;
+        timeSpentSeconds?: number;
+        hintsUsed?: number;
+      }>,
+    ]);
+
     if (limit && !limit.success) {
       return NextResponse.json(
         { success: false, error: "Too many guesses. Slow down." },
@@ -54,26 +68,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Per-user budget as well (shared IPs / guests)
-    const userLimiter = rateLimit({
-      windowMs: 60 * 1000,
-      maxRequests: 12,
-      keyGenerator: () => getUserKey(`guess:${user.userId}`),
-    });
-    const userLimit = await userLimiter(request);
     if (userLimit && !userLimit.success) {
       return NextResponse.json(
         { success: false, error: "Too many guesses. Slow down." },
         { status: 429 }
       );
     }
-
-    const body = (await request.json()) as {
-      puzzleId?: string;
-      guess?: string;
-      timeSpentSeconds?: number;
-      hintsUsed?: number;
-    };
 
     const puzzleId = typeof body.puzzleId === "string" ? body.puzzleId.trim() : "";
     const guess = typeof body.guess === "string" ? body.guess.trim() : "";
@@ -89,14 +89,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Guess is too long" }, { status: 400 });
     }
 
-    const puzzle = await db.puzzleOps.findById(puzzleId);
+    const puzzleDate = getUtcPuzzleDate();
+
+    // Parallelize puzzle load + today check + attempt context
+    const [puzzle, todays, context] = await Promise.all([
+      db.puzzleOps.findById(puzzleId),
+      db.puzzleOps.findTodaysPuzzle(),
+      db.puzzleAttemptOps.getTodayGuessContext(user.userId, puzzleDate),
+    ]);
+
     if (!puzzle?.answer) {
       return NextResponse.json({ success: false, error: "Puzzle not found" }, { status: 404 });
     }
 
-    // Only today's active puzzle can be played for score/lock
-    const puzzleDate = getUtcPuzzleDate();
-    const todays = await db.puzzleOps.findTodaysPuzzle();
     if (!todays || todays.id !== puzzle.id) {
       return NextResponse.json(
         { success: false, error: "This puzzle is not playable today" },
@@ -105,14 +110,14 @@ export async function POST(request: Request) {
     }
 
     const maxAttempts = gameSettings.maxAttempts;
-    const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, puzzleDate);
-    if (lock.hasAttempt) {
+
+    if (context.hasFinal) {
       return NextResponse.json(
         {
           success: false,
           error: "Already played today",
           locked: true,
-          wasSuccessful: lock.wasSuccessful,
+          wasSuccessful: context.wasSuccessful,
           attemptsLeft: 0,
           gameOver: true,
         },
@@ -120,8 +125,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const priorGuesses = await db.puzzleAttemptOps.countTodayGuesses(user.userId, puzzleDate);
-    if (priorGuesses >= maxAttempts) {
+    if (context.guessCount >= maxAttempts) {
       return NextResponse.json(
         {
           success: false,
@@ -134,28 +138,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const attemptNumber = priorGuesses + 1;
+    const attemptNumber = context.guessCount + 1;
     const claimedHints = clampHints(body.hintsUsed, puzzle.hints?.length ?? 5);
-    const priorMaxHints = await db.puzzleAttemptOps.maxHintsUsedToday(
-      user.userId,
-      puzzleDate
-    );
-    // Never allow under-reporting below what was already claimed today
-    const hintsUsed = Math.max(claimedHints, priorMaxHints);
+    const hintsUsed = Math.max(claimedHints, context.maxHintsUsed);
 
-    // Prefer server-elapsed time from the first guess of the day
-    const firstGuess = await db.puzzleAttemptOps.findFirstGuessToday(
-      user.userId,
-      puzzleDate
-    );
     const nowMs = Date.now();
     let timeSpentSeconds: number;
-    if (firstGuess?.attemptedAt) {
+    if (context.firstGuessAt) {
       timeSpentSeconds = clampTimeSpent(
-        (nowMs - new Date(firstGuess.attemptedAt).getTime()) / 1000
+        (nowMs - context.firstGuessAt.getTime()) / 1000
       );
     } else {
-      // First guess of the day: accept client clock but hard-cap at 30 minutes
       timeSpentSeconds = Math.min(clampTimeSpent(body.timeSpentSeconds), 30 * 60);
     }
 
@@ -179,28 +172,26 @@ export async function POST(request: Request) {
               ? 5
               : Number(puzzle.difficulty) || 5;
 
-    const attemptData = {
-      id: crypto.randomUUID(),
-      userId: user.userId,
-      puzzleId: puzzle.id,
-      attemptedAnswer: guess,
-      isCorrect,
-      abandoned,
-      isFinal,
-      puzzleDate,
-      attemptedAt: new Date(),
-      completedAt: isCorrect ? new Date() : undefined,
-      attemptNumber,
-      maxAttempts,
-      timeSpentSeconds,
-      difficulty: getAchievementDifficultyCategory(difficultyLevel),
-      hintsUsed,
-    };
-
     const write = await db.puzzleAttemptOps.createAtomicDailyAttempt(
       user.userId,
       new Date(`${puzzleDate}T00:00:00.000Z`),
-      attemptData
+      {
+        id: crypto.randomUUID(),
+        userId: user.userId,
+        puzzleId: puzzle.id,
+        attemptedAnswer: guess,
+        isCorrect,
+        abandoned,
+        isFinal,
+        puzzleDate,
+        attemptedAt: new Date(),
+        completedAt: isCorrect ? new Date() : undefined,
+        attemptNumber,
+        maxAttempts,
+        timeSpentSeconds,
+        difficulty: getAchievementDifficultyCategory(difficultyLevel),
+        hintsUsed,
+      }
     );
 
     if (!write.success) {
@@ -218,42 +209,52 @@ export async function POST(request: Request) {
     }
 
     let pointsEarned = 0;
-    if (isFinal && write.success) {
-      // Stats only update when the daily lock write succeeded
-      await updateUserStats(user.userId, {
-        won: isCorrect,
-        attempts: attemptNumber,
-        timeSpent: timeSpentSeconds,
-        difficulty: difficultyLevel,
-      });
+    if (isFinal && isCorrect) {
+      // Cheap estimate for immediate UI; authoritative stats update after response
+      pointsEarned = calculateGamePoints(
+        attemptNumber,
+        timeSpentSeconds,
+        1,
+        difficultyLevel
+      );
+    }
 
-      if (isCorrect) {
-        // Approximate streak for response scoring; updateUserStats already persisted truth
-        const stats = await db.userStatsOps.findByUserId(user.userId);
-        pointsEarned = calculateGamePoints(
-          attemptNumber,
-          timeSpentSeconds,
-          stats?.streak ?? 1,
-          difficultyLevel
-        );
-
-        // Achievements — best-effort, don't fail the guess
+    if (isFinal) {
+      const uid = user.userId;
+      const pid = puzzle.id;
+      after(async () => {
         try {
-          const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
-          await checkAndAwardAchievements(user.userId, {
-            puzzleId: puzzle.id,
+          await updateUserStats(uid, {
+            won: isCorrect,
             attempts: attemptNumber,
-            maxAttempts,
-            timeTaken: timeSpentSeconds,
-            hintsUsed,
-            difficulty: getAchievementDifficultyCategory(difficultyLevel),
-            isCorrect: true,
-            score: pointsEarned,
+            timeSpent: timeSpentSeconds,
+            difficulty: difficultyLevel,
           });
-        } catch (achievementError) {
-          console.error("[guess] achievement error:", achievementError);
+
+          if (isCorrect) {
+            const stats = await db.userStatsOps.findByUserId(uid);
+            const score = calculateGamePoints(
+              attemptNumber,
+              timeSpentSeconds,
+              stats?.streak ?? 1,
+              difficultyLevel
+            );
+            const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
+            await checkAndAwardAchievements(uid, {
+              puzzleId: pid,
+              attempts: attemptNumber,
+              maxAttempts,
+              timeTaken: timeSpentSeconds,
+              hintsUsed,
+              difficulty: getAchievementDifficultyCategory(difficultyLevel),
+              isCorrect: true,
+              score,
+            });
+          }
+        } catch (error) {
+          console.error("[guess] post-response update failed:", error);
         }
-      }
+      });
     }
 
     return NextResponse.json({
@@ -267,7 +268,6 @@ export async function POST(request: Request) {
       gameOver: isFinal,
       locked: isFinal,
       wordResults,
-      // Reveal solution only after the day is locked for this user
       ...(isFinal
         ? {
             answer: puzzle.answer,

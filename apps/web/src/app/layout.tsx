@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AuthProvider } from "@/components/AuthProvider";
+import { AuthSessionSeed } from "@/components/AuthSessionSeed";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
 import { Toaster } from "@/components/ui/toaster";
@@ -205,14 +206,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Dynamic auth shell — reads cookies and seeds AuthProvider.
- * Wrapped in Suspense so the static document shell can still prerender.
+ * Streams session into the stable AuthProvider without remounting page children.
  */
-async function AuthShell({ children }: { children: React.ReactNode }) {
-  // Explicit dynamic boundary for cookie/session reads (Cache Components)
+async function AuthSessionLoader() {
   await connection();
-  const initialSession = await getServerSession();
-  return <AuthProvider initialSession={initialSession}>{children}</AuthProvider>;
+  const session = await getServerSession();
+  return <AuthSessionSeed session={session} />;
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -327,19 +326,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             disableTransitionOnChange
             enableSystem
           >
-            <Suspense
-              fallback={
-                <AuthProvider initialSession={null}>
-                  {children}
-                  <Toaster />
-                </AuthProvider>
-              }
-            >
-              <AuthShell>
-                {children}
-                <Toaster />
-              </AuthShell>
-            </Suspense>
+            <AuthProvider initialSession={null}>
+              <Suspense fallback={null}>
+                <AuthSessionLoader />
+              </Suspense>
+              {children}
+              <Toaster />
+            </AuthProvider>
           </ThemeProviderWrapper>
         </ErrorBoundary>
       </body>

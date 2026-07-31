@@ -310,75 +310,7 @@ function formatTime(seconds: number): string {
 /**
  * Calculate score based on performance
  * Re-exports the unified scoring function from gameSettings for backwards compatibility
- *
- * Note: The signature is kept compatible but now includes difficulty bonus internally
  */
 export { calculateGamePoints as calculateScore } from "@/lib/gameSettings";
 
-/**
- * Determine earned achievements based on performance
- */
-export function determineAchievements(
-  attempts: number,
-  maxAttempts: number,
-  timeTaken?: number,
-  streak?: number,
-  usedHints?: boolean
-): Achievement[] {
-  const achievements: Achievement[] = [];
-
-  // First Solve (would need to track this in user data)
-  // Not implemented here - needs backend check
-
-  // Perfect Solve - first attempt
-  if (attempts === 1) {
-    achievements.push({
-      id: "perfect",
-      name: "Perfect!",
-      description: "Solved on the first attempt",
-      icon: "star",
-    });
-  }
-
-  // Speed Demon - under 30 seconds
-  if (timeTaken !== undefined && timeTaken < 30) {
-    achievements.push({
-      id: "speed-demon",
-      name: "Speed Demon",
-      description: "Solved in under 30 seconds",
-      icon: "zap",
-    });
-  }
-
-  // Clutch - last attempt
-  if (attempts === maxAttempts) {
-    achievements.push({
-      id: "clutch",
-      name: "Clutch!",
-      description: "Solved on the last attempt",
-      icon: "trophy",
-    });
-  }
-
-  // No Hints
-  if (usedHints === false) {
-    achievements.push({
-      id: "no-hints",
-      name: "Pure Skill",
-      description: "Solved without using hints",
-      icon: "star",
-    });
-  }
-
-  // Streak achievements
-  if (streak && streak >= 7) {
-    achievements.push({
-      id: "week-streak",
-      name: "Perfect Week",
-      description: "7-day solving streak!",
-      icon: "flame",
-    });
-  }
-
-  return achievements;
-}
+export { determineAchievements } from "@/lib/game/celebration-achievements";

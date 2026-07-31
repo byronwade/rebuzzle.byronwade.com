@@ -162,7 +162,8 @@ export async function fetchGameOverSolution(): Promise<{
  */
 export async function fetchGameData(_isPreview = false): Promise<PublicGameData> {
   try {
-    const result = await getTodaysPuzzle();
+    // Never run Eve/AI on the interactive board path — cron owns generation.
+    const result = await getTodaysPuzzle(undefined, undefined, { allowAiGenerate: false });
     const puzzle = (result.success ? result.puzzle : null) as TodaysPuzzle | null;
 
     if (!puzzle) {

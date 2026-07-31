@@ -34,6 +34,8 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
   {
     collection: "users",
     indexes: [
+      // Primary app lookup by public id (auth, stats, admin)
+      { spec: { id: 1 }, options: { unique: true } },
       // Unique email lookup (authentication)
       { spec: { email: 1 }, options: { unique: true } },
       // Unique username lookup (profile display)
