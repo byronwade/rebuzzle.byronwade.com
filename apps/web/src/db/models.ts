@@ -113,7 +113,7 @@ export interface PuzzleAttempt {
   attemptedAnswer: string;
   isCorrect: boolean;
   attemptedAt: Date;
-  /** UTC calendar day key (YYYY-MM-DD) for daily lock enforcement */
+  /** Lock key: UTC YYYY-MM-DD for daily, or `archive:{puzzleId}` for replays */
   puzzleDate?: string;
   /** True when this row finalizes the day (win or out of attempts) */
   isFinal?: boolean;

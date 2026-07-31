@@ -94,106 +94,103 @@ export async function fetchBlogPosts(): Promise<BlogPostResponse[]> {
   cacheLife("hours");
   cacheTag("blog-posts", "blog-posts-list");
 
-    try {
+  try {
+    // Try to fetch from database first
+    const blogPostsCollection = getCollection("blogPosts");
 
-      // Try to fetch from database first
-      const blogPostsCollection = getCollection("blogPosts");
-
-      // Use aggregation pipeline with $lookup to join puzzles in a single query
-      const postsWithPuzzles = await blogPostsCollection
-        .aggregate([
-          // Sort by published date
-          { $sort: { publishedAt: -1 } },
-          // Limit to 10 posts
-          { $limit: 10 },
-          // Join with puzzles collection
-          {
-            $lookup: {
-              from: "puzzles",
-              localField: "puzzleId",
-              foreignField: "id",
-              as: "puzzleData",
-            },
+    // Use aggregation pipeline with $lookup to join puzzles in a single query
+    const postsWithPuzzles = await blogPostsCollection
+      .aggregate([
+        // Sort by published date
+        { $sort: { publishedAt: -1 } },
+        // Limit to 10 posts
+        { $limit: 10 },
+        // Join with puzzles collection
+        {
+          $lookup: {
+            from: "puzzles",
+            localField: "puzzleId",
+            foreignField: "id",
+            as: "puzzleData",
           },
-          // Unwind puzzle data (will be empty array if no puzzle found)
-          {
-            $unwind: {
-              path: "$puzzleData",
-              preserveNullAndEmptyArrays: true,
-            },
+        },
+        // Unwind puzzle data (will be empty array if no puzzle found)
+        {
+          $unwind: {
+            path: "$puzzleData",
+            preserveNullAndEmptyArrays: true,
           },
-          // Project the final structure
-          {
-            $project: {
-              slug: 1,
-              date: {
-                $dateToString: {
-                  format: "%Y-%m-%d",
-                  date: "$publishedAt",
-                },
+        },
+        // Project the final structure
+        {
+          $project: {
+            slug: 1,
+            date: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$publishedAt",
               },
-              title: 1,
-              puzzle: {
-                $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
-              },
-              puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
-              answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
-              explanation: {
-                $ifNull: ["$puzzleData.explanation", "No explanation available"],
-              },
-              content: 1,
-              excerpt: 1,
-              difficulty: { $ifNull: ["$puzzleData.difficulty", "general"] },
             },
+            title: 1,
+            puzzle: {
+              $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
+            },
+            puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
+            answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
+            explanation: {
+              $ifNull: ["$puzzleData.explanation", "No explanation available"],
+            },
+            content: 1,
+            excerpt: 1,
+            difficulty: { $ifNull: ["$puzzleData.difficulty", "general"] },
           },
-        ])
-        .toArray();
+        },
+      ])
+      .toArray();
 
-      if (postsWithPuzzles.length > 0) {
+    if (postsWithPuzzles.length > 0) {
+      // Transform to match expected format
+      const transformedPosts = postsWithPuzzles.map((post: any) => ({
+        slug: post.slug,
+        date: post.date,
+        title: post.title,
+        puzzle: post.puzzle,
+        puzzleType: post.puzzleType,
+        answer: post.answer,
+        explanation: post.explanation,
+        content: post.content,
+        excerpt: post.excerpt,
+        metadata: {
+          topic: post.difficulty,
+          keyword: (post.answer || "").replace(/\s+/g, ""),
+          category: post.difficulty,
+        },
+      }));
 
-        // Transform to match expected format
-        const transformedPosts = postsWithPuzzles.map((post: any) => ({
-          slug: post.slug,
-          date: post.date,
-          title: post.title,
-          puzzle: post.puzzle,
-          puzzleType: post.puzzleType,
-          answer: post.answer,
-          explanation: post.explanation,
-          content: post.content,
-          excerpt: post.excerpt,
-          metadata: {
-            topic: post.difficulty,
-            keyword: (post.answer || "").replace(/\s+/g, ""),
-            category: post.difficulty,
-          },
-        }));
+      // Filter out invalid posts (bad slugs, missing titles, etc.)
+      const validPosts = transformedPosts.filter((post) => {
+        // Filter out posts with invalid slugs (starting with "-" or empty)
+        if (!post.slug || post.slug.startsWith("-") || post.slug.length < 3) {
+          return false;
+        }
+        // Filter out posts with markdown headers as titles
+        if (post.title?.startsWith("#")) {
+          return false;
+        }
+        return true;
+      });
 
-        // Filter out invalid posts (bad slugs, missing titles, etc.)
-        const validPosts = transformedPosts.filter((post) => {
-          // Filter out posts with invalid slugs (starting with "-" or empty)
-          if (!post.slug || post.slug.startsWith("-") || post.slug.length < 3) {
-            return false;
-          }
-          // Filter out posts with markdown headers as titles
-          if (post.title?.startsWith("#")) {
-            return false;
-          }
-          return true;
-        });
-
-        return validPosts;
-      }
-
-      // No blog posts found in database
-      return [];
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("Database fetch failed:", error);
-      // Return empty array on error - no fallback to fake data
-      return [];
+      return validPosts;
     }
-  
+
+    // No blog posts found in database
+    return [];
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Database fetch failed:", error);
+    // Return empty array on error - no fallback to fake data
+    return [];
+  }
 }
 
 // Cache individual blog posts
@@ -202,115 +199,111 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
   cacheLife("hours");
   cacheTag("blog-posts", "blog-post");
 
-    if (!slug) {
-      // eslint-disable-next-line no-console
-      console.error("No slug provided to fetchBlogPost");
-      return null;
+  if (!slug) {
+    // eslint-disable-next-line no-console
+    console.error("No slug provided to fetchBlogPost");
+    return null;
+  }
+
+  try {
+    // Try to fetch from database using aggregation with $lookup
+    const blogPostsCollection = getCollection("blogPosts");
+
+    const posts = await blogPostsCollection
+      .aggregate([
+        // Match by slug
+        { $match: { slug } },
+        // Join with puzzles collection
+        {
+          $lookup: {
+            from: "puzzles",
+            localField: "puzzleId",
+            foreignField: "id",
+            as: "puzzleData",
+          },
+        },
+        // Unwind puzzle data
+        {
+          $unwind: {
+            path: "$puzzleData",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        // Project the final structure
+        {
+          $project: {
+            slug: 1,
+            date: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$publishedAt",
+              },
+            },
+            title: 1,
+            puzzle: {
+              $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
+            },
+            puzzleType: {
+              $ifNull: [{ $ifNull: ["$puzzleType", "$puzzleData.puzzleType"] }, "rebus"],
+            },
+            answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
+            explanation: {
+              $ifNull: ["$puzzleData.explanation", "No explanation available"],
+            },
+            content: 1,
+            excerpt: 1,
+            sections: 1,
+            seoMetadata: 1,
+            puzzleOrigin: 1,
+            difficulty: { $ifNull: ["$puzzleData.difficulty", "general"] },
+          },
+        },
+      ])
+      .toArray();
+
+    if (posts.length > 0) {
+      const post = posts[0]!;
+
+      return {
+        slug: post.slug,
+        date: post.date,
+        title: post.title,
+        puzzle: post.puzzle,
+        puzzleType: post.puzzleType,
+        answer: post.answer,
+        explanation: post.explanation,
+        content: post.content,
+        excerpt: post.excerpt,
+        sections: post.sections,
+        seoMetadata: post.seoMetadata,
+        puzzleOrigin: post.puzzleOrigin,
+        metadata: {
+          topic: post.difficulty,
+          keyword: (post.answer || "").replace(/\s+/g, ""),
+          category: post.difficulty,
+          seoMetadata: post.seoMetadata
+            ? {
+                keywords: [
+                  post.seoMetadata.focusKeyword,
+                  ...(post.seoMetadata.secondaryKeywords || []),
+                ].filter(Boolean),
+                description: post.seoMetadata.metaDescription,
+                ogTitle: post.title,
+                ogDescription: post.seoMetadata.metaDescription,
+              }
+            : undefined,
+        },
+      };
     }
 
-    try {
-      // Try to fetch from database using aggregation with $lookup
-      const blogPostsCollection = getCollection("blogPosts");
-
-      const posts = await blogPostsCollection
-        .aggregate([
-          // Match by slug
-          { $match: { slug } },
-          // Join with puzzles collection
-          {
-            $lookup: {
-              from: "puzzles",
-              localField: "puzzleId",
-              foreignField: "id",
-              as: "puzzleData",
-            },
-          },
-          // Unwind puzzle data
-          {
-            $unwind: {
-              path: "$puzzleData",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          // Project the final structure
-          {
-            $project: {
-              slug: 1,
-              date: {
-                $dateToString: {
-                  format: "%Y-%m-%d",
-                  date: "$publishedAt",
-                },
-              },
-              title: 1,
-              puzzle: {
-                $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
-              },
-              puzzleType: {
-                $ifNull: [
-                  { $ifNull: ["$puzzleType", "$puzzleData.puzzleType"] },
-                  "rebus",
-                ],
-              },
-              answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
-              explanation: {
-                $ifNull: ["$puzzleData.explanation", "No explanation available"],
-              },
-              content: 1,
-              excerpt: 1,
-              sections: 1,
-              seoMetadata: 1,
-              puzzleOrigin: 1,
-              difficulty: { $ifNull: ["$puzzleData.difficulty", "general"] },
-            },
-          },
-        ])
-        .toArray();
-
-      if (posts.length > 0) {
-        const post = posts[0]!;
-
-        return {
-          slug: post.slug,
-          date: post.date,
-          title: post.title,
-          puzzle: post.puzzle,
-          puzzleType: post.puzzleType,
-          answer: post.answer,
-          explanation: post.explanation,
-          content: post.content,
-          excerpt: post.excerpt,
-          sections: post.sections,
-          seoMetadata: post.seoMetadata,
-          puzzleOrigin: post.puzzleOrigin,
-          metadata: {
-            topic: post.difficulty,
-            keyword: (post.answer || "").replace(/\s+/g, ""),
-            category: post.difficulty,
-            seoMetadata: post.seoMetadata
-              ? {
-                  keywords: [
-                    post.seoMetadata.focusKeyword,
-                    ...(post.seoMetadata.secondaryKeywords || []),
-                  ].filter(Boolean),
-                  description: post.seoMetadata.metaDescription,
-                  ogTitle: post.title,
-                  ogDescription: post.seoMetadata.metaDescription,
-                }
-              : undefined,
-          },
-        };
-      }
-
-      // Blog post not found in database
-      return null;
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(`Database fetch failed for slug ${slug}:`, error);
-      // Return null on error - no fallback to fake data
-      return null;
-    }
-  
+    // Blog post not found in database
+    return null;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`Database fetch failed for slug ${slug}:`, error);
+    // Return null on error - no fallback to fake data
+    return null;
+  }
 }
 
 // Function for creating blog posts with database integration
@@ -329,7 +322,6 @@ export async function createBlogPost(postData: {
   postId?: string;
 }> {
   try {
-
     // Create blog post in database
     const blogPostsCollection = getCollection("blogPosts");
 
@@ -367,17 +359,14 @@ export async function createBlogPost(postData: {
       // Only send if published immediately
       if (postData.publishedAt <= new Date()) {
         // Trigger email send in background (don't await)
-        fetch(
-          `${getAppUrl()}/api/blog/send-notification`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              postId: id,
-              sendToAllUsers: false, // Send only to subscribers
-            }),
-          }
-        ).catch((error) => {
+        fetch(`${getAppUrl()}/api/blog/send-notification`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postId: id,
+            sendToAllUsers: false, // Send only to subscribers
+          }),
+        }).catch((error) => {
           console.error("[Blog] Failed to trigger email notifications:", error);
         });
       }
@@ -531,80 +520,79 @@ export async function fetchBlogArchiveStats(): Promise<ArchiveStats> {
   cacheLife("hours");
   cacheTag("blog-posts", "blog-archive");
 
-    try {
-      const blogPostsCollection = getCollection("blogPosts");
+  try {
+    const blogPostsCollection = getCollection("blogPosts");
 
-      const stats = await blogPostsCollection
-        .aggregate([
-          {
-            $lookup: {
-              from: "puzzles",
-              localField: "puzzleId",
-              foreignField: "id",
-              as: "puzzleData",
-            },
+    const stats = await blogPostsCollection
+      .aggregate([
+        {
+          $lookup: {
+            from: "puzzles",
+            localField: "puzzleId",
+            foreignField: "id",
+            as: "puzzleData",
           },
-          {
-            $unwind: {
-              path: "$puzzleData",
-              preserveNullAndEmptyArrays: true,
-            },
+        },
+        {
+          $unwind: {
+            path: "$puzzleData",
+            preserveNullAndEmptyArrays: true,
           },
-          {
-            $group: {
-              _id: {
-                year: { $year: "$publishedAt" },
-                month: { $month: "$publishedAt" },
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$publishedAt" },
+              month: { $month: "$publishedAt" },
+            },
+            count: { $sum: 1 },
+            puzzleTypes: { $push: { $ifNull: ["$puzzleData.puzzleType", "rebus"] } },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.year",
+            months: {
+              $push: {
+                month: "$_id.month",
+                postCount: "$count",
+                puzzleTypesArray: "$puzzleTypes",
               },
-              count: { $sum: 1 },
-              puzzleTypes: { $push: { $ifNull: ["$puzzleData.puzzleType", "rebus"] } },
             },
+            totalPosts: { $sum: "$count" },
           },
-          {
-            $group: {
-              _id: "$_id.year",
-              months: {
-                $push: {
-                  month: "$_id.month",
-                  postCount: "$count",
-                  puzzleTypesArray: "$puzzleTypes",
-                },
-              },
-              totalPosts: { $sum: "$count" },
-            },
-          },
-          { $sort: { _id: -1 } },
-        ])
-        .toArray();
+        },
+        { $sort: { _id: -1 } },
+      ])
+      .toArray();
 
-      // Transform to proper structure with puzzle type counts
-      const years: YearArchiveStats[] = stats.map((yearData: any) => ({
-        year: yearData._id,
-        totalPosts: yearData.totalPosts,
-        months: yearData.months
-          .map((m: any) => {
-            // Count puzzle types
-            const typeCounts: Record<string, number> = {};
-            for (const type of m.puzzleTypesArray || []) {
-              typeCounts[type] = (typeCounts[type] || 0) + 1;
-            }
-            return {
-              month: m.month,
-              postCount: m.postCount,
-              puzzleTypes: typeCounts,
-            };
-          })
-          .sort((a: MonthArchiveStats, b: MonthArchiveStats) => b.month - a.month),
-      }));
+    // Transform to proper structure with puzzle type counts
+    const years: YearArchiveStats[] = stats.map((yearData: any) => ({
+      year: yearData._id,
+      totalPosts: yearData.totalPosts,
+      months: yearData.months
+        .map((m: any) => {
+          // Count puzzle types
+          const typeCounts: Record<string, number> = {};
+          for (const type of m.puzzleTypesArray || []) {
+            typeCounts[type] = (typeCounts[type] || 0) + 1;
+          }
+          return {
+            month: m.month,
+            postCount: m.postCount,
+            puzzleTypes: typeCounts,
+          };
+        })
+        .sort((a: MonthArchiveStats, b: MonthArchiveStats) => b.month - a.month),
+    }));
 
-      const totalPosts = years.reduce((sum, y) => sum + y.totalPosts, 0);
+    const totalPosts = years.reduce((sum, y) => sum + y.totalPosts, 0);
 
-      return { years, totalPosts };
-    } catch (error) {
-      console.error("Error fetching archive stats:", error);
-      return { years: [], totalPosts: 0 };
-    }
-  
+    return { years, totalPosts };
+  } catch (error) {
+    console.error("Error fetching archive stats:", error);
+    return { years: [], totalPosts: 0 };
+  }
 }
 
 // ============================================================================
@@ -873,82 +861,81 @@ export async function fetchAdjacentPosts(currentDate: Date | string): Promise<Ad
 // ============================================================================
 
 export async function fetchAllBlogPosts(options?: {
-    year?: number;
-    month?: number;
-    puzzleType?: string;
-  }): Promise<BlogPostResponse[]> {
+  year?: number;
+  month?: number;
+  puzzleType?: string;
+}): Promise<BlogPostResponse[]> {
   "use cache";
   cacheLife("hours");
   cacheTag("blog-posts", "blog-posts-all");
 
-    try {
-      const blogPostsCollection = getCollection("blogPosts");
-      const { year, month, puzzleType } = options || {};
+  try {
+    const blogPostsCollection = getCollection("blogPosts");
+    const { year, month, puzzleType } = options || {};
 
-      const matchConditions: Record<string, unknown> = {};
+    const matchConditions: Record<string, unknown> = {};
 
-      if (year) {
-        const startDate = new Date(year, month ? month - 1 : 0, 1);
-        const endDate = month
-          ? new Date(year, month, 0, 23, 59, 59)
-          : new Date(year, 11, 31, 23, 59, 59);
-        matchConditions.publishedAt = { $gte: startDate, $lte: endDate };
-      }
-
-      const pipeline: object[] = [
-        { $match: matchConditions },
-        { $sort: { publishedAt: -1 } },
-        {
-          $lookup: {
-            from: "puzzles",
-            localField: "puzzleId",
-            foreignField: "id",
-            as: "puzzleData",
-          },
-        },
-        { $unwind: { path: "$puzzleData", preserveNullAndEmptyArrays: true } },
-      ];
-
-      if (puzzleType) {
-        pipeline.push({ $match: { "puzzleData.puzzleType": puzzleType } });
-      }
-
-      pipeline.push({
-        $project: {
-          slug: 1,
-          date: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
-          publishedAt: 1,
-          title: 1,
-          puzzle: {
-            $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
-          },
-          puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
-          answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
-          explanation: { $ifNull: ["$puzzleData.explanation", "No explanation available"] },
-          content: 1,
-          excerpt: 1,
-        },
-      });
-
-      const posts = await blogPostsCollection.aggregate(pipeline).toArray();
-
-      return posts
-        .map((post: any) => ({
-          slug: post.slug,
-          date: post.date,
-          publishedAt: post.publishedAt,
-          title: post.title,
-          puzzle: post.puzzle,
-          puzzleType: post.puzzleType,
-          answer: post.answer,
-          explanation: post.explanation,
-          content: post.content,
-          excerpt: post.excerpt,
-        }))
-        .filter((post) => post.slug && !post.slug.startsWith("-") && post.slug.length >= 3);
-    } catch (error) {
-      console.error("Error fetching all blog posts:", error);
-      return [];
+    if (year) {
+      const startDate = new Date(year, month ? month - 1 : 0, 1);
+      const endDate = month
+        ? new Date(year, month, 0, 23, 59, 59)
+        : new Date(year, 11, 31, 23, 59, 59);
+      matchConditions.publishedAt = { $gte: startDate, $lte: endDate };
     }
-  
+
+    const pipeline: object[] = [
+      { $match: matchConditions },
+      { $sort: { publishedAt: -1 } },
+      {
+        $lookup: {
+          from: "puzzles",
+          localField: "puzzleId",
+          foreignField: "id",
+          as: "puzzleData",
+        },
+      },
+      { $unwind: { path: "$puzzleData", preserveNullAndEmptyArrays: true } },
+    ];
+
+    if (puzzleType) {
+      pipeline.push({ $match: { "puzzleData.puzzleType": puzzleType } });
+    }
+
+    pipeline.push({
+      $project: {
+        slug: 1,
+        date: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
+        publishedAt: 1,
+        title: 1,
+        puzzle: {
+          $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
+        },
+        puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
+        answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
+        explanation: { $ifNull: ["$puzzleData.explanation", "No explanation available"] },
+        content: 1,
+        excerpt: 1,
+      },
+    });
+
+    const posts = await blogPostsCollection.aggregate(pipeline).toArray();
+
+    return posts
+      .map((post: any) => ({
+        slug: post.slug,
+        date: post.date,
+        publishedAt: post.publishedAt,
+        title: post.title,
+        puzzle: post.puzzle,
+        puzzleType: post.puzzleType,
+        answer: post.answer,
+        explanation: post.explanation,
+        content: post.content,
+        excerpt: post.excerpt,
+      }))
+      .filter((post) => post.slug && !post.slug.startsWith("-") && post.slug.length >= 3);
+  } catch (error) {
+    console.error("Error fetching all blog posts:", error);
+    return [];
+  }
 }

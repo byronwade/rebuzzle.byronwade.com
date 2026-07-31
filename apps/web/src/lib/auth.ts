@@ -101,8 +101,7 @@ function calculatePointsEarned(
     gameResult.difficulty
   );
   const multiplier =
-    typeof gameResult.pointsMultiplier === "number" &&
-    Number.isFinite(gameResult.pointsMultiplier)
+    typeof gameResult.pointsMultiplier === "number" && Number.isFinite(gameResult.pointsMultiplier)
       ? Math.max(0, gameResult.pointsMultiplier)
       : 1;
   return Math.floor(base * multiplier);

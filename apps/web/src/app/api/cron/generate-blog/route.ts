@@ -18,8 +18,7 @@ export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const vercelCronSecretEnv = process.env.VERCEL_CRON_SECRET;
 
-  const vercelOk =
-    Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
+  const vercelOk = Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
   const bearerOk = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
 
   if (isProduction) {
@@ -80,7 +79,7 @@ async function generateBlogForPreviousPuzzle() {
       todayStart: today.toISOString(),
     });
 
-    let puzzle = await puzzlesCollection.findOne({
+    const puzzle = await puzzlesCollection.findOne({
       publishedAt: {
         $gte: yesterday,
         $lt: today,
@@ -105,7 +104,6 @@ async function generateBlogForPreviousPuzzle() {
           return result;
         }
         if (result.success && "skipped" in result) {
-          continue;
         }
       }
 

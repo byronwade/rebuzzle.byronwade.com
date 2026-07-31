@@ -19,8 +19,7 @@ function authorizeWorkflow(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
   const vercelCronSecretEnv = process.env.VERCEL_CRON_SECRET;
 
-  const vercelOk =
-    Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
+  const vercelOk = Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
   const bearerOk = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
 
   if (process.env.NODE_ENV === "production") {

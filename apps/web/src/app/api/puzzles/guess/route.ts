@@ -102,9 +102,7 @@ export async function POST(request: Request) {
     }
 
     const isDaily = Boolean(todays && todays.id === puzzle.id);
-    const publishedKey = puzzle.publishedAt
-      ? getUtcPuzzleDate(new Date(puzzle.publishedAt))
-      : null;
+    const publishedKey = puzzle.publishedAt ? getUtcPuzzleDate(new Date(puzzle.publishedAt)) : null;
 
     // Archive: any published puzzle that is not today's daily
     if (!isDaily) {
@@ -159,9 +157,7 @@ export async function POST(request: Request) {
     const nowMs = Date.now();
     let timeSpentSeconds: number;
     if (context.firstGuessAt) {
-      timeSpentSeconds = clampTimeSpent(
-        (nowMs - context.firstGuessAt.getTime()) / 1000
-      );
+      timeSpentSeconds = clampTimeSpent((nowMs - context.firstGuessAt.getTime()) / 1000);
     } else {
       timeSpentSeconds = Math.min(clampTimeSpent(body.timeSpentSeconds), 30 * 60);
     }
@@ -226,8 +222,7 @@ export async function POST(request: Request) {
     let pointsEarned = 0;
     if (isFinal && isCorrect) {
       pointsEarned = Math.floor(
-        calculateGamePoints(attemptNumber, timeSpentSeconds, 1, difficultyLevel) *
-          pointsMultiplier
+        calculateGamePoints(attemptNumber, timeSpentSeconds, 1, difficultyLevel) * pointsMultiplier
       );
     }
 

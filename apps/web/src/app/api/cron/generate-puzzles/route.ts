@@ -16,8 +16,7 @@ export async function GET(request: Request) {
   const vercelCronSecretEnv = process.env.VERCEL_CRON_SECRET;
 
   // Accept either Vercel cron secret OR Bearer CRON_SECRET (true OR, not AND)
-  const vercelOk =
-    Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
+  const vercelOk = Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
   const bearerOk = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
 
   if (isProduction) {

@@ -94,9 +94,7 @@ export async function generateBlogPost(
   const typeName = puzzleTypeLabel(puzzleType);
   const display = getPuzzleDisplay(puzzle, puzzleType);
   const difficulty =
-    typeof puzzle.difficulty === "number"
-      ? puzzle.difficulty
-      : Number(puzzle.difficulty) || 5;
+    typeof puzzle.difficulty === "number" ? puzzle.difficulty : Number(puzzle.difficulty) || 5;
 
   const puzzleData = {
     puzzle: display,
@@ -147,8 +145,7 @@ export async function generateBlogPost(
       console.log("[Blog Generator] JSON parse failed — using text fallback");
     }
 
-    const difficultyPhrase =
-      difficulty >= 7 ? "Tricky" : difficulty >= 5 ? "Challenging" : "Fun";
+    const difficultyPhrase = difficulty >= 7 ? "Tricky" : difficulty >= 5 ? "Challenging" : "Fun";
     const fallbackTitle = `${difficultyPhrase} ${typeName} Puzzle`;
 
     let title: string;

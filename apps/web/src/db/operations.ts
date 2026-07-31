@@ -393,9 +393,7 @@ export const puzzleAttemptOps = {
     attemptsUsed?: number;
   }> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
-    const dateKey =
-      puzzleDate ||
-      new Date().toISOString().slice(0, 10);
+    const dateKey = puzzleDate || new Date().toISOString().slice(0, 10);
 
     // Prefer puzzleDate + isFinal (new lock path)
     const finalAttempt =
@@ -434,15 +432,9 @@ export const puzzleAttemptOps = {
   },
 
   /** Earliest guess today — used for server-side elapsed time. */
-  async findFirstGuessToday(
-    userId: string,
-    puzzleDate: string
-  ): Promise<PuzzleAttempt | null> {
+  async findFirstGuessToday(userId: string, puzzleDate: string): Promise<PuzzleAttempt | null> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
-    return await collection.findOne(
-      { userId, puzzleDate },
-      { sort: { attemptedAt: 1 } }
-    );
+    return await collection.findOne({ userId, puzzleDate }, { sort: { attemptedAt: 1 } });
   },
 
   /** Max hintsUsed reported on any guess today (prevents under-reporting later). */
@@ -528,8 +520,7 @@ export const puzzleAttemptOps = {
     attemptData: NewPuzzleAttempt
   ): Promise<{ success: boolean; attempt: PuzzleAttempt }> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
-    const puzzleDate =
-      attemptData.puzzleDate || todayStart.toISOString().slice(0, 10);
+    const puzzleDate = attemptData.puzzleDate || todayStart.toISOString().slice(0, 10);
     const isFinal = Boolean(
       attemptData.isFinal ?? (attemptData.isCorrect || attemptData.abandoned)
     );

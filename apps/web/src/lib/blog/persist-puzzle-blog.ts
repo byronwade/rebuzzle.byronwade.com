@@ -72,8 +72,24 @@ export async function persistBlogForPuzzle(puzzle: Puzzle): Promise<PersistPuzzl
     publishedAt: puzzle.publishedAt,
   });
 
-  const generated = await generateBlogPost(puzzle);
-  const puzzleType = getPuzzleType(puzzle);
+  const generated = await generateBlogPost({
+    puzzle: puzzle.puzzle ?? puzzle.rebusPuzzle,
+    rebusPuzzle: puzzle.rebusPuzzle,
+    puzzleType: puzzle.puzzleType,
+    answer: puzzle.answer,
+    difficulty: puzzle.difficulty,
+    category: puzzle.category,
+    explanation: puzzle.explanation,
+    publishedAt: puzzle.publishedAt,
+    hints: puzzle.hints,
+    metadata: puzzle.metadata,
+  });
+  const puzzleType = getPuzzleType({
+    puzzle: puzzle.puzzle ?? puzzle.rebusPuzzle,
+    rebusPuzzle: puzzle.rebusPuzzle,
+    puzzleType: puzzle.puzzleType,
+    metadata: puzzle.metadata,
+  });
   const baseSlug = slugify(generated.slug || generated.title);
   const slug = await ensureUniqueSlug(baseSlug, puzzle.id);
   const publishedAt = puzzle.publishedAt ? new Date(puzzle.publishedAt) : new Date();
