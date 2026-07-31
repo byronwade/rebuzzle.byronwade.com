@@ -338,8 +338,8 @@ export default function SettingsPage() {
                 </Label>
                 <p className="text-muted-foreground text-sm">
                   Shows a floating panel on every page: regenerate today&apos;s puzzle, unlock/replay
-                  the daily gate, and jump between play → locked → win/lose screens. Server actions
-                  require an admin account.
+                  the daily gate, and jump between play → locked → win/lose screens. Works for
+                  guests and signed-in accounts while this temporary tooling is enabled.
                 </p>
               </div>
               <Switch
