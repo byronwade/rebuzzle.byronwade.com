@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Flame, TrendingUp, X } from "lucide-react";
+import { Check, Flame, TrendingUp, UserPlus, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -52,7 +52,8 @@ interface GameOverClientProps {
 }
 
 export default function GameOverClient({ gameData, searchParams: params }: GameOverClientProps) {
-  const { userId } = useAuth();
+  const { userId, isGuest, isAuthenticated, isLoading: authLoading } = useAuth();
+  const showSignupCta = !authLoading && (!isAuthenticated || isGuest || !userId);
   const [loading, setLoading] = useState(false);
   const [streak, setStreak] = useState(0);
   const [displayScore, setDisplayScore] = useState(0);
@@ -372,6 +373,34 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 </Button>
               </Link>
             </div>
+
+            {/* Guest → account CTA (after play, never blocks the win) */}
+            {showSignupCta && (
+              <div className="rounded-xl border border-border bg-inset px-5 py-5 text-center space-y-3">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-foreground/5">
+                  <UserPlus className="h-4 w-4 text-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground text-sm">Keep your streak going</p>
+                  <p className="text-muted-foreground text-xs leading-5">
+                    Create a free account to save progress across devices. You already played as a
+                    guest — signing up won&apos;t lose today&apos;s solve.
+                  </p>
+                </div>
+                <Link href="/signup" className="block">
+                  <Button className="w-full">Create a free account</Button>
+                </Link>
+                <p className="text-muted-foreground text-xs">
+                  Already have one?{" "}
+                  <Link
+                    className="text-foreground underline-offset-2 hover:underline"
+                    href="/login"
+                  >
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            )}
 
             {/* Countdown */}
             <div className="border-border border-t pt-6 text-center">

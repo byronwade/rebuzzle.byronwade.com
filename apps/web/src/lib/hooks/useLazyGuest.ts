@@ -33,9 +33,7 @@ export function useLazyGuest(): LazyGuestResult {
     try {
       // Get localStorage backup ID if available
       const localStorageGuestId =
-        typeof window !== "undefined"
-          ? localStorage.getItem("rebuzzle_guest_id")
-          : null;
+        typeof window !== "undefined" ? localStorage.getItem("rebuzzle_guest_id") : null;
 
       // Call the lazy guest creation endpoint
       const response = await fetch("/api/auth/guest/lazy", {
@@ -46,16 +44,29 @@ export function useLazyGuest(): LazyGuestResult {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as {
+          success?: boolean;
+          user?: { id: string };
+          alreadyAuthenticated?: boolean;
+          isAuthenticated?: boolean;
+          error?: string;
+        };
         if (data.success && data.user) {
           // Store backup in localStorage
           if (typeof window !== "undefined") {
             localStorage.setItem("rebuzzle_guest_id", data.user.id);
           }
-          // Refresh auth context to pick up new session
+          // Refresh auth context to pick up new / existing session
           await refreshAuth();
           return true;
         }
+        // Legacy response shape — cookie already present
+        if (data.alreadyAuthenticated || data.isAuthenticated) {
+          await refreshAuth();
+          return true;
+        }
+        setError(data.error || "Failed to create guest session");
+        return false;
       }
 
       setError("Failed to create guest session");
