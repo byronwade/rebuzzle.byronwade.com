@@ -27,27 +27,41 @@ export interface GuestIdentificationInput {
 }
 
 /**
+ * Resolve a salt for IP hashing without taking down guest auth.
+ * Prefer IP_HASH_SALT; fall back to AUTH_SECRET (already required for JWTs).
+ */
+function resolveIpHashSalt(): string {
+  const dedicated = process.env.IP_HASH_SALT?.trim();
+  if (dedicated) return dedicated;
+
+  const authSecret = process.env.AUTH_SECRET?.trim();
+  if (authSecret) {
+    console.warn(
+      "[guest-identification] IP_HASH_SALT missing — falling back to AUTH_SECRET. Set IP_HASH_SALT for a dedicated hash salt."
+    );
+    return authSecret;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "IP_HASH_SALT (or AUTH_SECRET) is required in production for secure IP hashing. " +
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
+  }
+
+  console.warn(
+    "[guest-identification] IP_HASH_SALT not set. Using development fallback. Set this in production!"
+  );
+  return "dev-only-salt";
+}
+
+/**
  * Hash IP address for privacy-safe storage
  * Uses SHA-256 with a salt to prevent reverse lookup
  */
 export function hashIpAddress(ip: string): string {
-  const salt = process.env.IP_HASH_SALT;
-  if (!salt) {
-    // In production, require a proper salt for security
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "IP_HASH_SALT environment variable is required in production for secure IP hashing. " +
-          "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
-      );
-    }
-    // In development, use a warning and fallback
-    console.warn(
-      "Warning: IP_HASH_SALT not set. Using development fallback. Set this in production!"
-    );
-  }
-  return createHash("sha256")
-    .update(`${salt || "dev-only-salt"}:${ip}`)
-    .digest("hex");
+  const salt = resolveIpHashSalt();
+  return createHash("sha256").update(`${salt}:${ip}`).digest("hex");
 }
 
 /**

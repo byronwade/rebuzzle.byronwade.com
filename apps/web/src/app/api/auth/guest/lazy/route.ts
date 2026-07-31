@@ -138,9 +138,21 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    console.error("Lazy guest creation error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Lazy guest creation error:", message, error);
     return NextResponse.json(
-      { success: false, error: "Failed to create guest session" },
+      {
+        success: false,
+        error: "Failed to create guest session",
+        // Surface a short hint in non-production / when clearly a config miss
+        detail:
+          process.env.NODE_ENV !== "production" ||
+          message.includes("IP_HASH_SALT") ||
+          message.includes("AUTH_SECRET") ||
+          message.includes("Mongo")
+            ? message.slice(0, 180)
+            : undefined,
+      },
       { status: 500 }
     );
   }

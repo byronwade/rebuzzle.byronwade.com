@@ -419,7 +419,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         if (!created) {
           toast({
             title: "Session error",
-            description: "Couldn't start your session. Please refresh and try again.",
+            description:
+              "Couldn't start your guest session. Check your connection, then refresh and try again.",
             variant: "destructive",
           });
           return;
