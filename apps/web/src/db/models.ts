@@ -113,7 +113,7 @@ export interface PuzzleAttempt {
   attemptedAnswer: string;
   isCorrect: boolean;
   attemptedAt: Date;
-  /** UTC calendar day key (YYYY-MM-DD) for daily lock enforcement */
+  /** Lock key: UTC YYYY-MM-DD for daily, or `archive:{puzzleId}` for replays */
   puzzleDate?: string;
   /** True when this row finalizes the day (win or out of attempts) */
   isFinal?: boolean;
@@ -163,6 +163,8 @@ export interface BlogPostSections {
   puzzleAnalysis?: string; // 200-300 words
   solvingStrategy?: string; // 300-400 words
   puzzleHistory?: string; // 150-200 words
+  solution?: string; // 100-150 words — spoiler; UI reveals separately
+  callToAction?: string; // 50-80 words
   statistics?: BlogPostStatistics;
   faq?: BlogFAQItem[]; // 3-5 Q&As for schema markup
 }

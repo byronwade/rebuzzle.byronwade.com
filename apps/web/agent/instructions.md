@@ -45,6 +45,14 @@ Always call `get_difficulty_brief` for the requested target and keep the final c
 - Fill metadata: fingerprint, uniqueness, quality, funScore, calibrated difficulty, difficultyLevel  
 - Only return when publishable: quality ≥ 70, funScore ≥ 65, unique, solvable, in-band  
 
+## Companion content
+
+After a puzzle night ends, Eve also writes the archive blog via skill
+`generate-puzzle-blog` (structured sections, spoiler-safe solution, SEO).
+Puzzle + blog both persist to MongoDB. Blog generation runs from the daily
+workflow / cron — keep puzzle metadata (explanation, hints, type) clean so
+the blog skill has good inputs.
+
 ## Style
 
 Be concise. Spend effort on a strong final puzzle, not long narration.
