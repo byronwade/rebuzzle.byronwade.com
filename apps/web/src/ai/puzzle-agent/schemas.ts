@@ -1,7 +1,12 @@
 import { z } from "zod";
+import { TECHNIQUE_IDS } from "./quality";
 import { PuzzleVisualSchema } from "./visual/composition";
 
 export const DifficultyTierLabelSchema = z.enum(["Hard", "Difficult", "Evil", "Impossible"]);
+
+export const TechniqueIdSchema = z.enum(
+  TECHNIQUE_IDS as unknown as [string, ...string[]]
+);
 
 /** Final puzzle shape returned by the Eve / ToolLoop puzzle agent. */
 export const PuzzleAgentResultSchema = z.object({
@@ -12,12 +17,14 @@ export const PuzzleAgentResultSchema = z.object({
     answer: z.string().min(1),
     difficulty: z.number().min(1).max(10),
     difficultyLevel: DifficultyTierLabelSchema.describe("Canonical tier label"),
-    explanation: z.string().min(1),
+    explanation: z.string().min(24),
     category: z.string().min(1),
     hints: z.array(z.string()).min(3).max(6),
-    techniqueId: z.string().optional(),
+    techniqueId: TechniqueIdSchema.describe("Named technique from the library"),
     /** Generative board (custom pictograms, text layers, optional images) */
-    visual: PuzzleVisualSchema.optional(),
+    visual: PuzzleVisualSchema.describe(
+      "Required generative board from compose_puzzle_visual"
+    ),
   }),
   metadata: z.object({
     fingerprint: z.string(),

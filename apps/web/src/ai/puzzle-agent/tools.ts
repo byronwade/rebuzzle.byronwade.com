@@ -21,12 +21,19 @@ import {
   stressTestSolvability,
   validatePuzzleCandidate,
 } from "./tool-impl";
-import { VisualLayerSchema } from "./visual/composition";
+import { PuzzleVisualSchema, VisualLayerSchema } from "./visual/composition";
 
 const withType = CandidatePuzzleSchema.extend({
   puzzleType: z.string().optional(),
   targetDifficulty: z.number().optional(),
   techniqueId: z.string().optional(),
+});
+
+const scoreQualitySchema = CandidatePuzzleSchema.extend({
+  puzzleType: z.string().optional(),
+  targetDifficulty: z.number().optional(),
+  techniqueId: z.string().optional(),
+  visual: PuzzleVisualSchema.optional(),
 });
 
 export const puzzleAgentTools: ToolSet = {
@@ -157,8 +164,9 @@ export const puzzleAgentTools: ToolSet = {
   }),
 
   score_quality: tool({
-    description: "Score quality + fun. Aim for overall ≥ 70, publishable, correct tier fit.",
-    inputSchema: withType,
+    description:
+      "Score quality + fun. Aim for overall ≥ 74, funScore ≥ 68, known techniqueId, composed visual, publishable.",
+    inputSchema: scoreQualitySchema,
     execute: async (input) => scorePuzzleQuality(input),
   }),
 };

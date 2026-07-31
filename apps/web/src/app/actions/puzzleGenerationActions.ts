@@ -245,6 +245,11 @@ async function getOrGenerateDailyPuzzle(
         funScore: result.metadata.qualityMetrics?.scores?.fun,
         techniqueId: result.puzzle.techniqueId,
         visualStyleId: visual?.styleId,
+        difficultyLevel: result.puzzle.difficultyLevel,
+        difficultyScore: result.puzzle.difficulty,
+        fingerprint: result.metadata.fingerprint,
+        calibratedDifficulty: result.metadata.calibratedDifficulty,
+        generationMethod: "eve-tool-agent",
       },
     });
 

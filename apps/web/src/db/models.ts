@@ -139,6 +139,10 @@ export interface Puzzle {
     techniqueId?: string;
     visualStyleId?: string;
     funScore?: number;
+    /** Numeric difficulty 1–10 from generation */
+    difficultyScore?: number;
+    /** Canonical tier: Hard | Difficult | Evil | Impossible */
+    difficultyLevel?: string;
   };
   // Legacy field for backward compatibility (will be populated from puzzle field)
   rebusPuzzle?: string;

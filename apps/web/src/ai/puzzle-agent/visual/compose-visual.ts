@@ -4,6 +4,11 @@
  */
 
 import { getDifficultyLevelForScore } from "../difficulty-levels";
+import {
+  computeFunScore,
+  displayLeaksAnswer,
+  isKnownTechniqueId,
+} from "../quality";
 import { getTechniques } from "../technique-library";
 import {
   buildUnicodeFallback,
@@ -174,46 +179,53 @@ export async function composePuzzleVisual(
     );
   }
 
-  const answerLower = input.answer.toLowerCase().trim();
-  if (answerLower.length > 3 && unicodeFallback.toLowerCase().includes(answerLower)) {
+  if (displayLeaksAnswer(unicodeFallback, input.answer)) {
     issues.push("Answer text appears in the visual fallback — hide it");
   }
   for (const layer of visual.layers) {
-    if (
-      layer.kind === "text" &&
-      layer.content.toLowerCase().includes(answerLower) &&
-      answerLower.length > 3
-    ) {
+    if (layer.kind === "text" && displayLeaksAnswer(layer.content, input.answer)) {
       issues.push("Answer text appears in a text layer — hide it");
     }
   }
 
-  let techniqueBonus = -10;
   if (input.techniqueId) {
     const technique = getTechniques([input.techniqueId])[0];
     if (technique) {
-      techniqueBonus = 20;
       tips.push(...technique.howToAssemble.slice(0, 2));
     } else {
       issues.push(`Unknown techniqueId: ${input.techniqueId}`);
     }
+  } else {
+    issues.push("Missing techniqueId for compose_puzzle_visual");
   }
 
-  const pictogramBonus = Math.min(24, generated.pictograms * 8);
   const textLayers = visual.layers.filter((l) => l.kind === "text").length;
-  const textBonus = Math.min(12, textLayers * 4);
-  const imageBonus = Math.min(10, generated.images * 5);
-
-  const funScore = Math.max(
-    0,
-    Math.min(
-      100,
-      48 + pictogramBonus + textBonus + imageBonus + techniqueBonus - issues.length * 12
-    )
+  const styledText = visual.layers.some(
+    (l) =>
+      l.kind === "text" &&
+      "emphasis" in l &&
+      l.emphasis &&
+      ["large", "small", "strike", "stacked", "tiny"].includes(l.emphasis)
   );
+  const hasOperator = visual.layers.some((l) => l.kind === "operator");
+
+  const funScore = computeFunScore({
+    techniqueId: input.techniqueId,
+    knownTechnique: isKnownTechniqueId(input.techniqueId),
+    withinBudget,
+    issueCount: issues.length,
+    generativeParts: generated.pictograms + (styledText ? 1 : 0) + Math.min(1, generated.images),
+    unicodeParts: visual.mode === "unicode" ? Math.max(1, textLayers) : 0,
+    hasSpatialOrOperator: hasOperator || visual.layout === "stack" || visual.layout === "overlay",
+    hasStyledText: styledText,
+    explanationMapsWell: false,
+  });
 
   if (generated.pictograms === 0 && textLayers === 0) {
     tips.push("Prefer at least one custom pictogram or styled text layer for a generative board");
+  }
+  if (visual.mode === "unicode") {
+    issues.push("Compose fell back to unicode mode — regenerate pictogram SVGs before publishing");
   }
 
   return {

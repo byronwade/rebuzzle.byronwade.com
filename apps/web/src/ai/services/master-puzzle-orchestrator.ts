@@ -23,9 +23,9 @@ export interface GeneratedPuzzleResult {
     explanation: string;
     category: string;
     hints: string[];
-    techniqueId?: string;
+    techniqueId: string;
     /** Generative board (Ink Pictograms / text / optional images) */
-    visual?: PuzzleVisual;
+    visual: PuzzleVisual;
   };
   metadata: {
     fingerprint: string;
@@ -175,6 +175,5 @@ export async function selectOptimalPuzzle(params: {
   return generateMasterPuzzle({
     targetDifficulty: adjustedDifficulty,
     requireNovelty: params.preferNovelty,
-    qualityThreshold: 70,
   });
 }

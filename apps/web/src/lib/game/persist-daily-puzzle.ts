@@ -6,6 +6,7 @@ import { revalidateTag } from "next/cache";
 import { db } from "@/db";
 import type { PuzzleVisual } from "@/db/models";
 import { logger } from "@/lib/logger";
+import { toLegacyDifficultyLabel } from "./published-puzzle";
 
 export type PersistDailyPuzzleInput = {
   dateString: string;
@@ -21,12 +22,6 @@ export type PersistDailyPuzzleInput = {
   visual?: PuzzleVisual;
   metadataExtra?: Record<string, unknown>;
 };
-
-function toDifficultyLabel(difficulty: number): "easy" | "medium" | "hard" {
-  if (difficulty <= 3) return "easy";
-  if (difficulty <= 7) return "medium";
-  return "hard";
-}
 
 /**
  * Upsert-ish: if today's puzzle already exists, return it.
@@ -49,7 +44,7 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
     puzzle: input.puzzleDisplay,
     puzzleType: input.puzzleType,
     answer: input.answer,
-    difficulty: toDifficultyLabel(input.difficulty),
+    difficulty: toLegacyDifficultyLabel(input.difficulty),
     category: input.category || "general",
     explanation: input.explanation,
     hints: input.hints || [],
@@ -64,6 +59,8 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
       aiGenerated: input.aiGenerated,
       generatedAt: new Date().toISOString(),
       visualStyleId: input.visual?.styleId,
+      // Numeric 1–10 + canonical tier label (easy|medium|hard above is legacy UI mapping)
+      difficultyScore: input.difficulty,
       // Intentionally omit keyword (= answer) from metadata
       ...input.metadataExtra,
     },

@@ -57,17 +57,18 @@ export const AI_CONFIG = {
   puzzleAgent: {
     // Prefer creative-tier models for wordplay; override with EVE_PUZZLE_MODEL
     model: process.env.EVE_PUZZLE_MODEL || "openai/gpt-5.4-mini",
-    maxSteps: 20,
-    qualityThreshold: 70,
-    minFunScore: 65,
-    maxAttempts: 3,
+    maxSteps: 24,
+    qualityThreshold: 74,
+    minFunScore: 68,
+    maxAttempts: 4,
   },
 
   generation: {
     temperature: {
       factual: 0.3,
       balanced: 0.7,
-      creative: 0.9,
+      // Slightly lower than 0.9 — more coherent wordplay, less random emoji salad
+      creative: 0.82,
     },
     maxTokens: {
       short: 256,

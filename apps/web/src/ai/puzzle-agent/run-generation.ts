@@ -12,8 +12,15 @@ import { ensureGatewayKey, getAiGateway, getGatewayModelChain } from "../client"
 import { AI_CONFIG } from "../config";
 import { enforceQuota } from "../quota-manager";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
+import { evaluatePublishGates } from "./quality";
 import { type PuzzleAgentResult, PuzzleAgentResultSchema } from "./schemas";
-import { fingerprintCandidate, scorePuzzleQuality } from "./tool-impl";
+import {
+  calibratePuzzleDifficulty,
+  checkUniqueness,
+  fingerprintCandidate,
+  scorePuzzleQuality,
+  stressTestSolvability,
+} from "./tool-impl";
 import { puzzleAgentTools } from "./tools";
 
 export interface PuzzleGenerationParams {
@@ -50,12 +57,14 @@ function loadInstructions(): string {
     skill ? `\n\n## Skill: generate-daily-puzzle\n${skill}` : "",
     "",
     "## Hard publish rules (non-negotiable)",
-    "- techniqueId is required — pick a real technique from the library; no emoji salad.",
-    "- Prefer compose_puzzle_visual so the board uses Ink Pictogram SVGs + text layers.",
-    "- funScore must come from technique fit + clever wordplay, NOT emoji count padding.",
+    "- techniqueId is required and must be a real library id for the target tier.",
+    "- ALWAYS call compose_puzzle_visual — unicode-only boards are rejected at publish.",
+    "- Prefer ≥1 pictogram SVG; styled text (large/strike/stacked) is OK when typography is the joke.",
+    "- funScore comes from technique fit + mapping clarity, NOT emoji/pictogram padding.",
     "- rebusPuzzle must equal visual.unicodeFallback when visual is present.",
     "- rebusPuzzle must be non-empty and must NOT equal or contain the answer.",
-    "- Require overall quality ≥ threshold, funScore ≥ 65, unique, solvable, in-band difficulty.",
+    "- Hints: vague → specific; never dump letter scaffolds before the final hint.",
+    "- Pipeline must pass: validate → uniqueness → calibrate (in-band) → solvability → score_quality.",
     "- If validation fails, redesign the visual — do not bump scores or ship placeholders.",
   ].join("\n");
 }
@@ -71,85 +80,24 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
     `Generate one publishable ${puzzleType} puzzle.`,
     `Target difficulty: ${params.targetDifficulty}/10 → tier ${level.label} (band ${level.min}–${level.max}).`,
     `Component budget: ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
+    `Preferred techniques for this tier: ${level.techniques.join(", ")}.`,
     params.category ? `Preferred category: ${params.category}.` : null,
     params.theme ? `Theme: ${params.theme}.` : null,
     params.requireNovelty !== false
       ? "Novelty is required — avoid recent answers and similar visuals."
       : null,
-    `Quality gates: overall >= ${qualityThreshold}, funScore >= ${minFun}, publishable=true, unique, solvable.`,
+    `Quality gates: overall >= ${qualityThreshold}, funScore >= ${minFun}, publishable=true, unique, solvable, in-band, composed visual.`,
     priorFailure ? `Previous attempt failed: ${priorFailure}. Fix that specific issue.` : null,
     "Workflow:",
     "1) get_puzzle_type_spec + get_difficulty_brief",
     "2) list_recent_answers + propose_concept_seeds",
     "3) list_technique_library → pick techniqueId, then compose_puzzle_visual + craft_hint_ladder",
     "4) validate → uniqueness → calibrate → stress_test_solvability → score_quality",
-    "5) Revise until in-band, unique, solvable, publishable (prefer a composed visual with ≥1 pictogram SVG)",
+    "5) Revise until in-band, unique, solvable, publishable with a composed visual (≥1 pictogram SVG preferred)",
     "6) Return structured result with difficultyLevel + techniqueId + visual",
   ]
     .filter(Boolean)
     .join("\n");
-}
-
-function passesPublishGates(
-  puzzle: {
-    rebusPuzzle: string;
-    answer: string;
-    techniqueId?: string;
-    visual?: {
-      unicodeFallback?: string;
-      layers?: Array<{ kind: string; svg?: string }>;
-      mode?: string;
-    };
-  },
-  quality: { overall: number; funScore?: number; publishable?: boolean; issues?: string[] },
-  qualityThreshold: number
-): { ok: true } | { ok: false; reason: string } {
-  const visualFallback = puzzle.visual?.unicodeFallback?.trim();
-  const display = (visualFallback || puzzle.rebusPuzzle || "").trim();
-  const answer = (puzzle.answer || "").trim();
-  const minFun = AI_CONFIG.puzzleAgent.minFunScore;
-
-  if (!display) return { ok: false, reason: "Empty puzzle display" };
-  if (!answer) return { ok: false, reason: "Empty answer" };
-  if (display.toLowerCase() === answer.toLowerCase()) {
-    return { ok: false, reason: "Puzzle text equals answer" };
-  }
-  if (answer.length > 3 && display.toLowerCase().includes(answer.toLowerCase())) {
-    return { ok: false, reason: "Answer leaked into puzzle text" };
-  }
-  if (!puzzle.techniqueId) {
-    return { ok: false, reason: "Missing techniqueId" };
-  }
-  if (
-    puzzle.visual &&
-    visualFallback &&
-    puzzle.rebusPuzzle.trim() &&
-    puzzle.rebusPuzzle.trim() !== visualFallback
-  ) {
-    return {
-      ok: false,
-      reason: "rebusPuzzle must equal visual.unicodeFallback",
-    };
-  }
-  if (quality.overall < qualityThreshold) {
-    return {
-      ok: false,
-      reason: `Quality ${quality.overall} below threshold ${qualityThreshold}`,
-    };
-  }
-  if ((quality.funScore ?? 0) < minFun) {
-    return {
-      ok: false,
-      reason: `funScore ${quality.funScore ?? 0} below ${minFun}`,
-    };
-  }
-  if (quality.publishable === false) {
-    return {
-      ok: false,
-      reason: `Not publishable: ${(quality.issues || []).join("; ") || "failed quality checks"}`,
-    };
-  }
-  return { ok: true };
 }
 
 /**
@@ -164,6 +112,7 @@ export async function runPuzzleAgentGeneration(
   const start = Date.now();
   const maxAttempts = params.maxAttempts ?? AI_CONFIG.puzzleAgent.maxAttempts ?? 3;
   const qualityThreshold = params.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
+  const minFun = AI_CONFIG.puzzleAgent.minFunScore;
 
   // Primary Eve model, then creative-tier fallbacks
   const modelChain = Array.from(
@@ -196,43 +145,76 @@ export async function runPuzzleAgentGeneration(
         }
 
         const puzzle = output.puzzle;
-        const calibrated = output.metadata.calibratedDifficulty || puzzle.difficulty;
-        const level = getDifficultyLevelForScore(params.targetDifficulty || calibrated);
-        const fingerprint =
-          output.metadata.fingerprint ||
-          fingerprintCandidate({
-            rebusPuzzle: puzzle.rebusPuzzle,
-            answer: puzzle.answer,
-            category: puzzle.category,
-          });
 
         // Keep share string aligned with generative board
         if (puzzle.visual?.unicodeFallback) {
           puzzle.rebusPuzzle = puzzle.visual.unicodeFallback;
         }
 
+        const targetDifficulty = params.targetDifficulty || puzzle.difficulty;
+
+        const [uniqueness, calibration] = await Promise.all([
+          checkUniqueness({
+            rebusPuzzle: puzzle.rebusPuzzle,
+            answer: puzzle.answer,
+            category: puzzle.category,
+            difficulty: puzzle.difficulty,
+            explanation: puzzle.explanation,
+            hints: puzzle.hints,
+            techniqueId: puzzle.techniqueId,
+          }),
+          calibratePuzzleDifficulty({
+            rebusPuzzle: puzzle.rebusPuzzle,
+            answer: puzzle.answer,
+            category: puzzle.category,
+            difficulty: puzzle.difficulty,
+            explanation: puzzle.explanation,
+            hints: puzzle.hints,
+            puzzleType: params.puzzleType ?? "rebus",
+            targetDifficulty,
+          }),
+        ]);
+
+        const solvability = stressTestSolvability({
+          rebusPuzzle: puzzle.rebusPuzzle,
+          answer: puzzle.answer,
+          category: puzzle.category,
+          difficulty: puzzle.difficulty,
+          explanation: puzzle.explanation,
+          hints: puzzle.hints,
+          techniqueId: puzzle.techniqueId,
+          targetDifficulty,
+        });
+
         const quality = scorePuzzleQuality({
           ...puzzle,
-          targetDifficulty: params.targetDifficulty,
+          targetDifficulty,
           techniqueId: puzzle.techniqueId,
           visual: puzzle.visual,
         });
 
-        const gate = passesPublishGates(
-          {
-            rebusPuzzle: puzzle.rebusPuzzle,
-            answer: puzzle.answer,
-            techniqueId: puzzle.techniqueId,
-            visual: puzzle.visual,
-          },
-          {
-            overall: quality.overall,
-            funScore: quality.funScore,
-            publishable: quality.publishable,
-            issues: quality.issues,
-          },
-          qualityThreshold
-        );
+        const gate = evaluatePublishGates({
+          rebusPuzzle: puzzle.rebusPuzzle,
+          answer: puzzle.answer,
+          explanation: puzzle.explanation,
+          hints: puzzle.hints,
+          techniqueId: puzzle.techniqueId,
+          difficulty: puzzle.difficulty,
+          targetDifficulty,
+          qualityOverall: quality.overall,
+          funScore: quality.funScore,
+          qualityThreshold,
+          minFunScore: minFun,
+          publishable: quality.publishable,
+          qualityIssues: quality.issues,
+          visual: puzzle.visual,
+          isUnique: uniqueness.isUnique,
+          uniquenessScore: uniqueness.uniquenessScore,
+          solvable: solvability.solvable,
+          solvabilityBlockers: solvability.blockers,
+          calibratedDifficulty: calibration.rawCalibrated,
+          inBand: calibration.inBand,
+        });
 
         if (!gate.ok) {
           priorFailure = gate.reason;
@@ -240,8 +222,23 @@ export async function runPuzzleAgentGeneration(
           continue;
         }
 
+        const level = getDifficultyLevelForScore(targetDifficulty);
+        const fingerprint =
+          uniqueness.fingerprint ||
+          output.metadata.fingerprint ||
+          fingerprintCandidate({
+            rebusPuzzle: puzzle.rebusPuzzle,
+            answer: puzzle.answer,
+            category: puzzle.category,
+          });
+
         const difficultyLevel =
           puzzle.difficultyLevel || output.metadata.difficultyLevel || level.label;
+
+        // Prefer measured in-band calibration; fall back to tier target only if already gated in-band
+        const calibrated = calibration.inBand
+          ? calibration.calibratedDifficulty
+          : level.target;
 
         return {
           ...output,
@@ -254,6 +251,7 @@ export async function runPuzzleAgentGeneration(
           metadata: {
             ...output.metadata,
             fingerprint,
+            uniquenessScore: uniqueness.uniquenessScore,
             calibratedDifficulty: calibrated,
             difficultyLevel,
             qualityScore: quality.overall,
