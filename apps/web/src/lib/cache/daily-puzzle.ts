@@ -85,8 +85,8 @@ export async function getCachedDailyPuzzleFromDb(
   // Query by the passed dateString — never Date.now() inside "use cache"
   const existingPuzzle = await db.puzzleOps.findByDate(dateString);
   if (!existingPuzzle) {
-    // Misses must not stick for hours — generation may land moments later
-    cacheLife("minutes");
+    // Misses must not stick — generation may land moments later
+    cacheLife("seconds");
     return null;
   }
 

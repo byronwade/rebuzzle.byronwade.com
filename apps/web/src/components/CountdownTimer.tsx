@@ -3,7 +3,7 @@
 import { Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { getNextUtcMidnight, msUntilNextUtcMidnight } from "@/lib/game/daily-lock";
+import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 
 function formatCountdown(diffMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
@@ -16,23 +16,32 @@ function formatCountdown(diffMs: number): string {
 }
 
 /**
- * Counts down to the next UTC midnight (puzzle rollover), then reloads home.
+ * Counts down to a fixed next UTC midnight (captured once on the client),
+ * then navigates home so today's puzzle can load.
  */
 export function CountdownTimer() {
   const router = useRouter();
-  const [timeLeft, setTimeLeft] = useState(() => formatCountdown(msUntilNextUtcMidnight()));
+  const targetRef = useRef<Date | null>(null);
+  const [timeLeft, setTimeLeft] = useState("--:--:--");
+  const [nextAt, setNextAt] = useState<Date | null>(null);
   const reloadedRef = useRef(false);
 
   useEffect(() => {
+    // Capture once — calling getNextUtcMidnight() every tick never reaches zero
+    if (!targetRef.current) {
+      targetRef.current = getNextUtcMidnight();
+      setNextAt(targetRef.current);
+    }
+
     const tick = () => {
-      const diff = msUntilNextUtcMidnight();
+      const target = targetRef.current;
+      if (!target) return;
+      const diff = target.getTime() - Date.now();
       setTimeLeft(formatCountdown(diff));
 
       if (diff <= 0 && !reloadedRef.current) {
         reloadedRef.current = true;
-        // New UTC day — pull today's puzzle (don't sit on yesterday's results)
-        router.push("/");
-        router.refresh();
+        router.replace("/");
       }
     };
 
@@ -40,8 +49,6 @@ export function CountdownTimer() {
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [router]);
-
-  const nextAt = getNextUtcMidnight();
 
   return (
     <div className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 text-white shadow-lg">
@@ -51,10 +58,13 @@ export function CountdownTimer() {
           Next Puzzle In
         </div>
         <div className="font-bold text-3xl tabular-nums">{timeLeft}</div>
-        <div className="mt-1 text-[10px] uppercase tracking-wide opacity-75">
-          Resets {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
-          local ({nextAt.toISOString().slice(11, 16)} UTC)
-        </div>
+        {nextAt && (
+          <div className="mt-1 text-[10px] uppercase tracking-wide opacity-75">
+            Resets{" "}
+            {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} local (
+            {nextAt.toISOString().slice(11, 16)} UTC)
+          </div>
+        )}
       </div>
     </div>
   );

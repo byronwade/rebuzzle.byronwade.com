@@ -402,14 +402,18 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         return;
       }
 
-      // Must have an authenticated (or guest) session before scoring
+      // Must have a session cookie before scoring. ensureGuest sets cookies even
+      // if React auth state hasn't re-rendered yet — continue after success.
       if (!userId) {
-        toast({
-          title: "Getting ready…",
-          description: "Starting your session — try again in a moment.",
-        });
-        await ensureGuest();
-        return;
+        const created = await ensureGuest();
+        if (!created) {
+          toast({
+            title: "Session error",
+            description: "Couldn't start your session. Please refresh and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Update state with the guess if provided
@@ -480,6 +484,26 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             result.pointsEarned ??
             calculateGamePoints(attempts, timeTaken, userStats.streak + 1, difficultyLevel);
 
+          const winningHistory = [
+            ...gameState.guessHistory,
+            {
+              text: guessToCheck,
+              timestamp: new Date(),
+              wordResults,
+              attemptNumber: attempts,
+            },
+          ];
+
+          dispatch({
+            type: "ADD_GUESS_HISTORY",
+            payload: {
+              text: guessToCheck,
+              timestamp: new Date(),
+              wordResults,
+              attemptNumber: attempts,
+            },
+          });
+
           setCompletionState(true, guessToCheck, attempts, earnedPoints);
 
           const newStats = { ...userStats };
@@ -519,21 +543,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 answer: result.answer,
                 explanation: result.explanation,
                 puzzleId: gameData.id,
+                puzzleDate: new Date().toISOString().slice(0, 10),
               })
             );
           }
           localStorage.setItem(
             "lastGameCompletion",
             JSON.stringify({
-              guessHistory: [
-                ...gameState.guessHistory,
-                {
-                  text: guessToCheck,
-                  timestamp: new Date(),
-                  wordResults,
-                  attemptNumber: attempts,
-                },
-              ],
+              guessHistory: winningHistory,
               timeTaken,
               usedHints: gameState.hintsUsed,
               streak: userStats.streak + 1,
@@ -588,6 +605,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 answer: result.answer,
                 explanation: result.explanation,
                 puzzleId: gameData.id,
+                puzzleDate: new Date().toISOString().slice(0, 10),
               })
             );
           }

@@ -70,31 +70,40 @@ export default function GameOverClient({
     answer: gameData.answer || "",
     explanation: gameData.explanation || "",
   });
-  const [hasLocalLock, setHasLocalLock] = useState(Boolean(gameData.locked || gameData.answer));
 
   useEffect(() => {
-    // Prefer server solution (only present after daily lock); fall back to guess reveal
-    if (gameData.answer) {
-      setSolution({ answer: gameData.answer, explanation: gameData.explanation });
-      setHasLocalLock(true);
+    // Server lock is authoritative — never unlock results from localStorage alone
+    if (!gameData.locked) {
+      setSolution({ answer: "", explanation: "" });
       return;
     }
+
+    if (gameData.answer) {
+      setSolution({ answer: gameData.answer, explanation: gameData.explanation });
+      return;
+    }
+
+    // Locked but answer not in RSC payload — use today's guess reveal only
     try {
+      const todayKey = new Date().toISOString().slice(0, 10);
       const stored = localStorage.getItem("lastGameSolution");
       if (stored) {
-        const parsed = JSON.parse(stored) as { answer?: string; explanation?: string };
-        if (parsed.answer) {
+        const parsed = JSON.parse(stored) as {
+          answer?: string;
+          explanation?: string;
+          puzzleDate?: string;
+        };
+        if (parsed.answer && (!parsed.puzzleDate || parsed.puzzleDate === todayKey)) {
           setSolution({
             answer: parsed.answer,
             explanation: parsed.explanation || "",
           });
-          setHasLocalLock(true);
         }
       }
     } catch {
       // ignore
     }
-  }, [gameData.answer, gameData.explanation]);
+  }, [gameData.answer, gameData.explanation, gameData.locked]);
 
   useEffect(() => {
     async function loadClientExtras() {
@@ -159,7 +168,8 @@ export default function GameOverClient({
     loadClientExtras();
   }, [userId]);
 
-  const success = params.success === "true";
+  // Prefer server-locked success; URL param is cosmetic only when locked
+  const success = Boolean(gameData.locked) && params.success === "true";
   const attempts =
     typeof params.attempts === "string"
       ? Number.parseInt(params.attempts, 10)
@@ -201,8 +211,8 @@ export default function GameOverClient({
     return () => clearInterval(interval);
   }, [success, loading, finalScore, animationComplete]);
 
-  // Not locked and no local reveal — send them to play (don't leak empty "results")
-  if (!gameData.locked && !hasLocalLock && !solution.answer) {
+  // Server lock required — no spoofing via query params / stale localStorage
+  if (!gameData.locked) {
     return (
       <Layout>
         <div className="mx-auto max-w-lg px-4 py-16 text-center space-y-6">

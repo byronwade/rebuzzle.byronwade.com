@@ -14,7 +14,8 @@ import { enforceQuota } from "./quota-manager";
 
 export type ModelTier = "fast" | "smart" | "creative";
 
-function ensureGatewayKey(): void {
+/** Ensure gateway auth env is set (OIDC token → AI_GATEWAY_API_KEY). */
+export function ensureGatewayKey(): void {
   const key = AI_CONFIG.gateway.apiKey;
   if (key && !process.env.AI_GATEWAY_API_KEY) {
     process.env.AI_GATEWAY_API_KEY = key;

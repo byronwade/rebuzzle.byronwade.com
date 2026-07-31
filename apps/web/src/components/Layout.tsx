@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { DevToolsPanel } from "./DevToolsPanel";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
 
@@ -78,6 +79,9 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className, isGamePa
       >
         {children}
       </main>
+
+      {/* Temporary Dev Mode tools — enable in Settings */}
+      <DevToolsPanel />
     </div>
   );
 }

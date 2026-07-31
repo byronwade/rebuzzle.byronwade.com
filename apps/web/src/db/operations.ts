@@ -327,10 +327,14 @@ export const puzzleOps = {
     const start = new Date(`${dateString}T00:00:00.000Z`);
     const end = new Date(`${dateString}T23:59:59.999Z`);
 
-    return await collection.findOne({
-      publishedAt: { $gte: start, $lte: end },
-      active: true,
-    });
+    // Prefer newest if duplicates ever exist
+    return await collection.findOne(
+      {
+        publishedAt: { $gte: start, $lte: end },
+        active: true,
+      },
+      { sort: { publishedAt: -1, createdAt: -1 } }
+    );
   },
 
   async findTodaysPuzzle(): Promise<Puzzle | null> {
@@ -451,6 +455,22 @@ export const puzzleAttemptOps = {
       const n = typeof row.hintsUsed === "number" ? row.hintsUsed : 0;
       return Math.max(max, n);
     }, 0);
+  },
+
+  /** Dev tools: wipe a user's guesses for a UTC day so they can replay. */
+  async clearAttemptsForDate(userId: string, puzzleDate: string): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const result = await collection.deleteMany({ userId, puzzleDate });
+    // Also clear legacy rows keyed only by attemptedAt window
+    const legacy = await collection.deleteMany({
+      userId,
+      puzzleDate: { $exists: false },
+      attemptedAt: {
+        $gte: new Date(`${puzzleDate}T00:00:00.000Z`),
+        $lt: new Date(`${puzzleDate}T23:59:59.999Z`),
+      },
+    });
+    return (result.deletedCount ?? 0) + (legacy.deletedCount ?? 0);
   },
 
   /**

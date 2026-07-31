@@ -23,21 +23,25 @@ function formatCountdown(diffMs: number): string {
 
 export function Timer({ nextPlayTime, className }: TimerProps) {
   const router = useRouter();
-  const [timeLeft, setTimeLeft] = useState("");
+  const [timeLeft, setTimeLeft] = useState("--:--:--");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reloadedRef = useRef(false);
+  // Fixed target for this mount when nextPlayTime is null — set in effect to avoid prerender Date()
+  const fallbackTargetRef = useRef<Date | null>(null);
 
   useEffect(() => {
+    if (!fallbackTargetRef.current) {
+      fallbackTargetRef.current = getNextUtcMidnight();
+    }
+    const targetTime = nextPlayTime ? new Date(nextPlayTime) : fallbackTargetRef.current;
+
     const calculateTimeLeft = () => {
-      const now = new Date();
-      const targetTime = nextPlayTime ? new Date(nextPlayTime) : getNextUtcMidnight(now);
-      const difference = targetTime.getTime() - now.getTime();
+      const difference = targetTime.getTime() - Date.now();
 
       if (difference <= 0) {
         if (!reloadedRef.current) {
           reloadedRef.current = true;
-          router.push("/");
-          router.refresh();
+          router.replace("/");
         }
         return "00:00:00";
       }
