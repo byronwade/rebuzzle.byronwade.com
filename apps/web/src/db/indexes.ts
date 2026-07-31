@@ -347,6 +347,19 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     ],
   },
 
+  // Generation audit trail (Apex / Eve / fallback)
+  {
+    collection: "generationAudits",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      { spec: { createdAt: -1 } },
+      { spec: { dateString: 1, createdAt: -1 } },
+      { spec: { status: 1, createdAt: -1 } },
+      { spec: { engine: 1, createdAt: -1 } },
+      { spec: { answerKey: 1 }, options: { sparse: true } },
+    ],
+  },
+
   // Levels collection
   {
     collection: "levels",

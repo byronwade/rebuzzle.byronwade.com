@@ -4,6 +4,8 @@ import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
 import {
   baselineDifficultyForDate,
+  normalizeAnswerKey,
+  recordGenerationAudit,
   resolveAdaptiveDifficultyForDate,
 } from "@/ai/learning";
 import { db } from "@/db";
@@ -171,18 +173,31 @@ async function getOrGenerateDailyPuzzle(
     };
   }
 
-  // STEP 2: No puzzle in database — Eve tool agent + AI Gateway (ONCE per day)
-  logger.info("Generating new puzzle with Eve tool agent via AI Gateway", {
+  // STEP 2: No puzzle in database — Apex/Eve via AI Gateway (ONCE per day)
+  logger.info("Generating new puzzle with Apex/Eve via AI Gateway", {
     provider: "ai-gateway",
-    agent: "eve-puzzle",
+    agent: "apex-eve",
     willCostTokens: true,
     frequency: "once-per-day",
   });
 
+  const genStarted = Date.now();
+  let difficultyPlan: {
+    difficulty: number;
+    baseline: number;
+    delta: number;
+    reason: string;
+  } = {
+    difficulty: 5,
+    baseline: 5,
+    delta: 0,
+    reason: "unset",
+  };
+
   try {
     // Parse date string to Date object for difficulty calculation
     const puzzleDate = new Date(`${dateString}T00:00:00Z`);
-    const difficultyPlan = await calculateDailyDifficulty(puzzleDate);
+    difficultyPlan = await calculateDailyDifficulty(puzzleDate);
 
     logger.info("Adaptive difficulty plan", {
       dateString,
@@ -306,6 +321,25 @@ async function getOrGenerateDailyPuzzle(
       }
     })();
 
+    void recordGenerationAudit({
+      dateString,
+      puzzleId: persisted.id,
+      engine: result.metadata.engine === "apex" ? "apex" : "eve",
+      status: "success",
+      targetDifficulty: difficultyPlan.difficulty,
+      baselineDifficulty: difficultyPlan.baseline,
+      learningDelta: difficultyPlan.delta,
+      learningReason: difficultyPlan.reason,
+      techniqueId: result.puzzle.techniqueId,
+      difficultyLevel: result.puzzle.difficultyLevel,
+      qualityScore: result.metadata.qualityMetrics?.scores?.overall,
+      funScore: result.metadata.qualityMetrics?.scores?.fun,
+      uniquenessScore: result.metadata.uniquenessScore,
+      fingerprint: result.metadata.fingerprint,
+      answerKey: normalizeAnswerKey(result.puzzle.answer),
+      durationMs: Date.now() - genStarted,
+    });
+
     return {
       id: persisted.id,
       puzzle: puzzleDisplay,
@@ -362,6 +396,20 @@ async function getOrGenerateDailyPuzzle(
       metadataExtra: {
         fallbackReason: error instanceof Error ? error.message : "AI generation failed",
       },
+    });
+
+    void recordGenerationAudit({
+      dateString,
+      puzzleId: persisted.id,
+      engine: "fallback",
+      status: "fallback",
+      targetDifficulty: difficultyPlan.difficulty,
+      baselineDifficulty: difficultyPlan.baseline,
+      learningDelta: difficultyPlan.delta,
+      learningReason: difficultyPlan.reason,
+      answerKey: normalizeAnswerKey(fallback.answer),
+      durationMs: Date.now() - genStarted,
+      error: error instanceof Error ? error.message : String(error),
     });
 
     return {

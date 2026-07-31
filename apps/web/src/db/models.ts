@@ -147,7 +147,6 @@ export interface Puzzle {
     answerKey?: string;
     fingerprint?: string;
     calibratedDifficulty?: number;
-    uniquenessScore?: number;
     engine?: string;
     generationMethod?: string;
     archived?: boolean;

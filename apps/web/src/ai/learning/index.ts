@@ -14,6 +14,13 @@ export {
   loadAllAnswerKeys,
   normalizeAnswerKey,
 } from "./answer-registry";
+export { backfillAnswerKeys } from "./backfill-answer-keys";
+export {
+  getGenerationSystemHealth,
+  listRecentGenerationAudits,
+  recordGenerationAudit,
+  type GenerationAuditRecord,
+} from "./generation-audit";
 export {
   recordFinalAttemptSignal,
   resolveAdaptiveDifficultyForDate,

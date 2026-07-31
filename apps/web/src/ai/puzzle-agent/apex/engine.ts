@@ -200,7 +200,7 @@ export async function runApexGeneration(
         `Apex tournament found no publishable winner. Failures: ${failures.join(" | ") || "gates/rubric"}`
       );
     }
-    return finalizeWinner(fallback, ranked, brief, {
+    return await finalizeWinner(fallback, ranked, brief, {
       briefMs,
       generateMs,
       critiqueMs,
@@ -209,7 +209,7 @@ export async function runApexGeneration(
     }, failures);
   }
 
-  return finalizeWinner(winner, ranked, brief, {
+  return await finalizeWinner(winner, ranked, brief, {
     briefMs,
     generateMs,
     critiqueMs,
@@ -218,20 +218,41 @@ export async function runApexGeneration(
   }, failures);
 }
 
-function finalizeWinner(
+async function finalizeWinner(
   winner: ApexCandidate,
   ranked: ApexCandidate[],
   brief: GenerationBrief,
   phases: ApexEngineResult["phases"],
   failures: string[]
-): PuzzleAgentResult {
-  const runnersUp = ranked.filter((c) => c.id !== winner.id).slice(0, 3);
+): Promise<PuzzleAgentResult> {
+  // Final archive uniqueness gate — never ship a recycled answer
+  const { isAnswerRegistered } = await import("../../learning/answer-registry");
+  let chosen = winner;
+  const archiveHit = await isAnswerRegistered(chosen.answer);
+  if (archiveHit.taken) {
+    const alternate = ranked.find(
+      (c) => c.id !== chosen.id && (c.tournamentScore ?? -1) >= 0
+    );
+    if (!alternate) {
+      throw new Error(
+        `Apex winner answer already archived (${archiveHit.puzzleId}). No alternate candidate.`
+      );
+    }
+    const altHit = await isAnswerRegistered(alternate.answer);
+    if (altHit.taken) {
+      throw new Error("Apex candidates collided with archive answers — regenerate required");
+    }
+    chosen = alternate;
+  }
+
+  const runnersUp = ranked.filter((c) => c.id !== chosen.id).slice(0, 3);
   const thinkingSummary = [
     `Apex tournament winner (${brief.tierLabel})`,
-    `rubric ${winner.rubric?.overall ?? "?"}/100`,
-    `technique ${winner.techniqueId}`,
+    `rubric ${chosen.rubric?.overall ?? "?"}/100`,
+    `technique ${chosen.techniqueId}`,
     `candidates ${ranked.length}`,
     failures.length ? `slot failures ${failures.length}` : null,
+    learningNote(brief),
     `${phases.totalMs}ms`,
   ]
     .filter(Boolean)
@@ -239,36 +260,36 @@ function finalizeWinner(
 
   return {
     puzzle: {
-      rebusPuzzle: winner.rebusPuzzle,
-      answer: winner.answer,
-      difficulty: winner.difficulty,
-      difficultyLevel: winner.difficultyLevel,
-      explanation: winner.explanation,
-      category: winner.category,
-      hints: winner.hints,
-      techniqueId: winner.techniqueId,
-      visual: winner.visual,
+      rebusPuzzle: chosen.rebusPuzzle,
+      answer: chosen.answer,
+      difficulty: chosen.difficulty,
+      difficultyLevel: chosen.difficultyLevel,
+      explanation: chosen.explanation,
+      category: chosen.category,
+      hints: chosen.hints,
+      techniqueId: chosen.techniqueId,
+      visual: chosen.visual,
     },
     metadata: {
-      fingerprint: winner.fingerprint,
-      uniquenessScore: winner.uniquenessScore,
-      calibratedDifficulty: winner.calibratedDifficulty,
-      difficultyLevel: winner.difficultyLevel,
-      qualityScore: Math.max(winner.qualityOverall, winner.rubric?.overall ?? 0),
+      fingerprint: chosen.fingerprint,
+      uniquenessScore: chosen.uniquenessScore,
+      calibratedDifficulty: chosen.calibratedDifficulty,
+      difficultyLevel: chosen.difficultyLevel,
+      qualityScore: Math.max(chosen.qualityOverall, chosen.rubric?.overall ?? 0),
       qualityVerdict:
-        (winner.rubric?.overall ?? 0) >= 88
+        (chosen.rubric?.overall ?? 0) >= 88
           ? "excellent"
-          : (winner.rubric?.overall ?? 0) >= 78
+          : (chosen.rubric?.overall ?? 0) >= 78
             ? "good"
             : "acceptable",
-      funScore: winner.funScore,
+      funScore: chosen.funScore,
       generationAttempts: ranked.length,
       thinkingSummary,
-      visualStyleId: winner.visual.styleId,
+      visualStyleId: chosen.visual.styleId,
     },
     status: "success",
     recommendations: [
-      ...(winner.critique?.reviseInstructions ?? []).slice(0, 2),
+      ...(chosen.critique?.reviseInstructions ?? []).slice(0, 2),
       ...runnersUp.map(
         (r) =>
           `Runner-up: ${r.answer} (${r.techniqueId}, rubric ${r.rubric?.overall ?? "?"})`
@@ -278,6 +299,13 @@ function finalizeWinner(
         : "",
     ].filter(Boolean),
   };
+}
+
+function learningNote(brief: GenerationBrief): string | null {
+  if (!brief.learning.enabled) return null;
+  if (brief.learning.tooEasy) return "self-learn:raise-difficulty";
+  if (brief.learning.tooHard) return "self-learn:ease-difficulty";
+  return "self-learn:stable";
 }
 
 export type { ApexEngineResult, GenerationBrief };

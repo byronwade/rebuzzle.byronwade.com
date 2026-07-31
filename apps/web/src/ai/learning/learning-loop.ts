@@ -164,6 +164,14 @@ export async function runLearningCalibration(input?: {
     // non-blocking
   }
 
+  // Keep legacy rows uniqueness-ready
+  try {
+    const { backfillAnswerKeys } = await import("./backfill-answer-keys");
+    await backfillAnswerKeys({ limit: 100 });
+  } catch {
+    // non-blocking
+  }
+
   return {
     computedAt: new Date().toISOString(),
     adaptive,
