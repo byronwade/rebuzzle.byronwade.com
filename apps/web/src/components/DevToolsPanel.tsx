@@ -2,7 +2,7 @@
 
 /**
  * Temporary floating Dev Mode panel.
- * Enable via Settings → Dev Mode. Server actions require admin.
+ * Enable via Settings → Dev Mode. Server actions require a signed-in user (guest OK).
  */
 
 import {
@@ -63,7 +63,7 @@ export function DevToolsPanel() {
       };
       if (!res.ok || !data.allowed) {
         setAllowed(false);
-        setLockInfo("Admin login required for Dev Mode actions");
+        setLockInfo("Sign in as guest or account to use Dev Mode actions");
         return;
       }
       setAllowed(true);
@@ -159,7 +159,7 @@ export function DevToolsPanel() {
       {open && (
         <div className="space-y-3 p-3 text-xs">
           <p className="text-[11px] text-muted-foreground leading-snug">
-            Temporary testing tools. Actions require an admin account.
+            Temporary testing tools for signed-in users (including guests). Turn off when done.
           </p>
           <p className="rounded-md bg-muted/80 px-2 py-1.5 font-mono text-[10px] text-foreground/80">
             {lockInfo || (allowed === null ? "Checking access…" : "—")}
@@ -167,7 +167,7 @@ export function DevToolsPanel() {
 
           {allowed === false && (
             <p className="text-destructive text-[11px]">
-              Log in as admin (ADMIN_EMAIL / isAdmin) to use these actions.
+              Play as guest or sign in, then refresh to use these actions.
             </p>
           )}
 

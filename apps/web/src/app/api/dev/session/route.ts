@@ -1,25 +1,26 @@
 /**
- * Temporary Dev Mode APIs — admin only.
- * Lets you regenerate puzzles and walk gated play states while tuning Eve.
+ * Temporary Dev Mode APIs.
+ * Available to any signed-in user (including guests) while testing.
+ * Do not ship long-term without tightening access again.
  */
 
 import { NextResponse } from "next/server";
 import { regenerateTodaysPuzzle } from "@/app/actions/regeneratePuzzleActions";
 import { db } from "@/db";
-import { verifyAdminAccess } from "@/lib/admin-auth";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { toPublicPuzzle } from "@/lib/game/public-puzzle";
 
 export async function GET(request: Request) {
-  const admin = await verifyAdminAccess(request);
-  if (!admin) {
-    return NextResponse.json({ success: false, allowed: false }, { status: 403 });
+  const authUser = await getAuthenticatedUser(request);
+  if (!authUser) {
+    return NextResponse.json({ success: false, allowed: false }, { status: 401 });
   }
 
   const puzzleDate = getUtcPuzzleDate();
   const [puzzle, lock] = await Promise.all([
     db.puzzleOps.findTodaysPuzzle(),
-    db.puzzleAttemptOps.hasTodayAttempt(admin.id, puzzleDate),
+    db.puzzleAttemptOps.hasTodayAttempt(authUser.userId, puzzleDate),
   ]);
 
   return NextResponse.json({
@@ -38,19 +39,15 @@ export async function GET(request: Request) {
   });
 }
 
-type DevAction =
-  | "clear-attempts"
-  | "lock-win"
-  | "lock-lose"
-  | "regenerate";
+type DevAction = "clear-attempts" | "lock-win" | "lock-lose" | "regenerate";
 
 export async function POST(request: Request) {
   try {
-    const admin = await verifyAdminAccess(request);
-    if (!admin) {
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
       return NextResponse.json(
-        { success: false, error: "Admin access required for Dev Mode actions" },
-        { status: 403 }
+        { success: false, error: "Sign in (guest or account) to use Dev Mode actions" },
+        { status: 401 }
       );
     }
 
@@ -65,9 +62,10 @@ export async function POST(request: Request) {
     }
 
     const puzzleDate = getUtcPuzzleDate();
+    const userId = authUser.userId;
 
     if (action === "clear-attempts") {
-      const deleted = await db.puzzleAttemptOps.clearAttemptsForDate(admin.id, puzzleDate);
+      const deleted = await db.puzzleAttemptOps.clearAttemptsForDate(userId, puzzleDate);
       return NextResponse.json({
         success: true,
         action,
@@ -85,12 +83,12 @@ export async function POST(request: Request) {
         );
       }
 
-      await db.puzzleAttemptOps.clearAttemptsForDate(admin.id, puzzleDate);
+      await db.puzzleAttemptOps.clearAttemptsForDate(userId, puzzleDate);
 
       const isWin = action === "lock-win";
       await db.puzzleAttemptOps.create({
         id: crypto.randomUUID(),
-        userId: admin.id,
+        userId,
         puzzleId: puzzle.id,
         attemptedAnswer: isWin ? puzzle.answer : "dev-mode-wrong-guess",
         isCorrect: isWin,
@@ -115,13 +113,10 @@ export async function POST(request: Request) {
 
     if (action === "regenerate") {
       // Clear personal lock so the new puzzle is immediately playable
-      await db.puzzleAttemptOps.clearAttemptsForDate(admin.id, puzzleDate);
+      await db.puzzleAttemptOps.clearAttemptsForDate(userId, puzzleDate);
       const result = await regenerateTodaysPuzzle(body.puzzleType || undefined);
       if (!result.success) {
-        return NextResponse.json(
-          { success: false, error: result.message },
-          { status: 500 }
-        );
+        return NextResponse.json({ success: false, error: result.message }, { status: 500 });
       }
 
       return NextResponse.json({
