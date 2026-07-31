@@ -95,12 +95,9 @@ export async function fetchBlogPosts(): Promise<BlogPostResponse[]> {
   cacheTag("blog-posts", "blog-posts-list");
 
     try {
-      // eslint-disable-next-line no-console
-      console.log("Fetching blog posts from database...");
 
       // Try to fetch from database first
       const blogPostsCollection = getCollection("blogPosts");
-      const _puzzlesCollection = getCollection("puzzles");
 
       // Use aggregation pipeline with $lookup to join puzzles in a single query
       const postsWithPuzzles = await blogPostsCollection
@@ -153,8 +150,6 @@ export async function fetchBlogPosts(): Promise<BlogPostResponse[]> {
         .toArray();
 
       if (postsWithPuzzles.length > 0) {
-        // eslint-disable-next-line no-console
-        console.log(`Found ${postsWithPuzzles.length} blog posts in database`);
 
         // Transform to match expected format
         const transformedPosts = postsWithPuzzles.map((post: any) => ({
@@ -178,30 +173,19 @@ export async function fetchBlogPosts(): Promise<BlogPostResponse[]> {
         const validPosts = transformedPosts.filter((post) => {
           // Filter out posts with invalid slugs (starting with "-" or empty)
           if (!post.slug || post.slug.startsWith("-") || post.slug.length < 3) {
-            // eslint-disable-next-line no-console
-            console.warn(`Filtering out invalid blog post with slug: ${post.slug}`);
             return false;
           }
           // Filter out posts with markdown headers as titles
           if (post.title?.startsWith("#")) {
-            // eslint-disable-next-line no-console
-            console.warn(`Filtering out blog post with invalid title: ${post.title}`);
             return false;
           }
           return true;
         });
 
-        // eslint-disable-next-line no-console
-        console.log(
-          `Returning ${validPosts.length} valid blog posts (filtered ${transformedPosts.length - validPosts.length} invalid)`
-        );
-
         return validPosts;
       }
 
       // No blog posts found in database
-      // eslint-disable-next-line no-console
-      console.log("No blog posts found in database");
       return [];
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -223,9 +207,6 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
       console.error("No slug provided to fetchBlogPost");
       return null;
     }
-
-    // eslint-disable-next-line no-console
-    console.log(`Fetching blog post with slug: ${slug}`);
 
     try {
       // Try to fetch from database using aggregation with $lookup
@@ -280,8 +261,6 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
 
       if (posts.length > 0) {
         const post = posts[0]!;
-        // eslint-disable-next-line no-console
-        console.log(`Found blog post in database: ${post.title}`);
 
         return {
           slug: post.slug,
@@ -302,8 +281,6 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
       }
 
       // Blog post not found in database
-      // eslint-disable-next-line no-console
-      console.log(`No blog post found with slug: ${slug}`);
       return null;
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -330,8 +307,6 @@ export async function createBlogPost(postData: {
   postId?: string;
 }> {
   try {
-    // eslint-disable-next-line no-console
-    console.log("createBlogPost called with data:", postData);
 
     // Create blog post in database
     const blogPostsCollection = getCollection("blogPosts");
@@ -359,9 +334,6 @@ export async function createBlogPost(postData: {
         error: "Database insert failed",
       };
     }
-
-    // eslint-disable-next-line no-console
-    console.log("Blog post created successfully:", newPost.insertedId);
 
     // Revalidate the cache so the new post appears immediately
     revalidateTag("blog-posts", "max");
@@ -525,8 +497,7 @@ async function fetchBlogPostsPaginatedInternal(
   }
 }
 
-// Direct export - data fetching within Suspense boundaries doesn't need unstable_cache wrapper
-// The internal function already handles errors gracefully
+// Paginated fetches stay uncached (query-dependent); list/post use "use cache" above.
 export { fetchBlogPostsPaginatedInternal as fetchBlogPostsPaginated };
 
 // ============================================================================

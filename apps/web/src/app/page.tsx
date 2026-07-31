@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
@@ -13,9 +12,6 @@ import {
   generateHowToSchema,
 } from "@/lib/seo/structured-data";
 import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions";
-
-// Note: Page is dynamic by default due to use of headers() and dynamic data fetching
-// cacheComponents mode ensures fresh puzzle data while optimizing component caching
 
 /**
  * Generate dynamic metadata based on today's puzzle
@@ -214,17 +210,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
       return <PuzzleAlreadyAttemptedDisplay wasSuccessful={attemptStatus.wasSuccessful} />;
     }
 
-    // Fetch game data - pass false for isCompleted since we handle it above
-    const gameData = await fetchGameData(params.preview, false);
-
-    // Handle legacy shouldRedirect (kept for backwards compatibility)
-    if (gameData.shouldRedirect) {
-      if (gameData.isCompleted) {
-        redirect("/game-over?success=true");
-      } else {
-        redirect("/game-over?success=false");
-      }
-    }
+    const gameData = await fetchGameData(preview);
 
     // Handle no puzzle available - check both new and legacy fields
     const hasPuzzle = gameData.puzzle || gameData.rebusPuzzle;

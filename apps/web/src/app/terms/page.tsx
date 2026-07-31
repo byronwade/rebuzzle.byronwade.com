@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { connection } from "next/server";
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
@@ -14,10 +14,8 @@ export const metadata: Metadata = generateStaticPageMetadata({
 });
 
 export default async function TermsOfServicePage() {
-  // Access headers to mark component as dynamic (required before using new Date() in Next.js 16)
-  const headersList = await headers();
-  // Consume a header to ensure dynamic rendering
-  headersList.get("x-forwarded-proto");
+  // Request-time rendering before Date formatting
+  await connection();
 
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     year: "numeric",

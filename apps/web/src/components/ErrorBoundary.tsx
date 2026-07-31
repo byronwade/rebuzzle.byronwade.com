@@ -230,21 +230,3 @@ function areArraysEqual(a: unknown[], b: unknown[]): boolean {
   return a.every((item, index) => Object.is(item, b[index]));
 }
 
-/**
- * Higher-order component to wrap a component with an error boundary
- */
-export function withErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<ErrorBoundaryProps, "children">
-) {
-  const ComponentWithErrorBoundary = (props: P) => (
-    <ErrorBoundary {...errorBoundaryProps}>
-      <WrappedComponent {...props} />
-    </ErrorBoundary>
-  );
-
-  const displayName = WrappedComponent.displayName || WrappedComponent.name || "Component";
-  ComponentWithErrorBoundary.displayName = `withErrorBoundary(${displayName})`;
-
-  return ComponentWithErrorBoundary;
-}

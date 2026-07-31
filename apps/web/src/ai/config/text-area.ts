@@ -49,8 +49,6 @@ export interface TextAreaDifficultyConfig {
   messageTone: "helpful" | "balanced" | "challenging";
   /** Whether to provide error corrections */
   provideCorrections: boolean;
-  /** Whether psychological games are enabled */
-  psychologicalGamesEnabled: boolean;
 }
 
 /**
@@ -73,7 +71,6 @@ export const TEXT_AREA_CONFIG: Record<DifficultyLevel, TextAreaDifficultyConfig>
     showContextualHints: true,
     messageTone: "helpful",
     provideCorrections: true,
-    psychologicalGamesEnabled: true,
   },
 
   /**
@@ -92,7 +89,6 @@ export const TEXT_AREA_CONFIG: Record<DifficultyLevel, TextAreaDifficultyConfig>
     showContextualHints: true,
     messageTone: "balanced",
     provideCorrections: false,
-    psychologicalGamesEnabled: true,
   },
 
   /**
@@ -111,7 +107,6 @@ export const TEXT_AREA_CONFIG: Record<DifficultyLevel, TextAreaDifficultyConfig>
     showContextualHints: true,
     messageTone: "challenging",
     provideCorrections: false,
-    psychologicalGamesEnabled: true,
   },
 
   /**
@@ -130,7 +125,6 @@ export const TEXT_AREA_CONFIG: Record<DifficultyLevel, TextAreaDifficultyConfig>
     showContextualHints: false,
     messageTone: "challenging",
     provideCorrections: false,
-    psychologicalGamesEnabled: true,
   },
 };
 

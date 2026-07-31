@@ -72,8 +72,6 @@ export interface GameData {
   };
   /** Whether the user has completed this puzzle */
   isCompleted?: boolean;
-  /** Whether to redirect (e.g., already completed) */
-  shouldRedirect?: boolean;
   /** Associated blog post */
   blogPost?: BlogPostReference | null;
   /**

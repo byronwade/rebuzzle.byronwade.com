@@ -1,6 +1,6 @@
 import { BookOpen, FileText } from "lucide-react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { connection } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import BlogPost from "@/components/BlogPost";
@@ -15,12 +15,12 @@ import {
   generateFAQPageSchema,
   generateItemListSchema,
 } from "@/lib/seo/structured-data";
-import { fetchBlogPosts, fetchBlogPostsPaginated } from "../actions/blogActions";
+import { fetchBlogPostsPaginated } from "../actions/blogActions";
 
 export async function generateMetadata(): Promise<Metadata> {
-  await headers();
-  const posts = await fetchBlogPosts();
-  return generateBlogListMetadata(posts?.length ?? 0);
+  await connection();
+  const page = await fetchBlogPostsPaginated({ page: 1, limit: 1 });
+  return generateBlogListMetadata(page.totalCount);
 }
 
 function BlogListSkeleton() {
@@ -45,13 +45,11 @@ function BlogListSkeleton() {
 }
 
 export default async function BlogPage() {
-  await headers();
+  await connection();
 
   try {
-    const [blogPosts, paginatedPosts] = await Promise.all([
-      fetchBlogPosts(),
-      fetchBlogPostsPaginated({ page: 1, limit: 20 }),
-    ]);
+    const paginatedPosts = await fetchBlogPostsPaginated({ page: 1, limit: 20 });
+    const blogPosts = paginatedPosts.posts;
 
     // Empty state
     if (!blogPosts || blogPosts.length === 0) {

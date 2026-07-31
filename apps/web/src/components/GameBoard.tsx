@@ -4,8 +4,8 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import {
   analyticsEvents,
   trackEvent,
@@ -490,8 +490,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           setCompletionState(true, guessToCheck, attempts);
 
           // Puzzle completion will be tracked in database
-          console.log("✅ Puzzle completed successfully!");
-
           // Calculate time taken and difficulty for scoring
           const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
           const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
@@ -545,17 +543,18 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               if (!response.ok) {
                 console.error("Failed to update user stats in database");
                 // Show subtle error notification - user's progress is saved locally but not synced
-                toast.error("Progress saved locally", {
+                toast({
+                  title: "Progress saved locally",
                   description: "Your stats will sync when connection is restored.",
-                  duration: 3000,
+                  variant: "destructive",
                 });
               }
             } catch (error) {
               console.error("Error updating user stats:", error);
-              // Show subtle error notification - user's progress is saved locally but not synced
-              toast.error("Progress saved locally", {
+              toast({
+                title: "Progress saved locally",
                 description: "Your stats will sync when connection is restored.",
-                duration: 3000,
+                variant: "destructive",
               });
             }
           }
@@ -602,7 +601,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               .then((res) => res.json())
               .then((data) => {
                 if (data.newlyUnlocked?.length > 0) {
-                  console.log("New achievements unlocked:", data.newlyUnlocked);
                 }
               })
               .catch((err) => console.error("Error checking achievements:", err));
@@ -660,8 +658,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
 
           // Puzzle failure will be tracked in database
-          console.log("❌ Puzzle failed - stats updated in database");
-
           // Calculate time taken and difficulty for consistency
           const failureTimeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
           const failureDifficulty =

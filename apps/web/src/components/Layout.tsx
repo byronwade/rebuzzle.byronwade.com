@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
-import { MobileAppPrompt } from "./MobileAppPrompt";
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,7 +26,6 @@ interface LayoutProps {
  * - Animated background
  * - Header with navigation
  * - Main content area
- * - Mobile app prompt
  */
 export default function Layout({
   children,
@@ -80,9 +78,6 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className, isGamePa
       >
         {children}
       </main>
-
-      {/* Mobile app download prompt */}
-      <MobileAppPrompt />
     </div>
   );
 }
