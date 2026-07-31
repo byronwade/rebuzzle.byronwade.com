@@ -343,15 +343,9 @@ export default function SettingsPage() {
                   Enable testing tools
                 </Label>
                 <p className="text-muted-foreground text-sm">
-<<<<<<< HEAD
                   Shows a floating panel on every page: regenerate today&apos;s puzzle, unlock/replay
                   the daily gate, and jump between play → locked → win/lose screens. Works for
                   guests and signed-in accounts while this temporary tooling is enabled.
-=======
-                  Shows a floating panel on every page: regenerate today&apos;s puzzle,
-                  unlock/replay the daily gate, and jump between play → locked → win/lose screens.
-                  Server actions require an admin account.
->>>>>>> origin/cursor/visual-themes-8bit-8968
                 </p>
               </div>
               <Switch

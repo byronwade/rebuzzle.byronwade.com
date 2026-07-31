@@ -16,16 +16,6 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with gen
    - Set `rebusPuzzle` = returned `unicodeFallback`; keep the full `visual` for persist/UI.
 6. Write explanation; `craft_hint_ladder` for 3–5 hints.
 7. Pipeline: `validate_puzzle` → `check_uniqueness` → `calibrate_difficulty` → `stress_test_solvability` → `score_quality`.
-<<<<<<< HEAD
-8. If off-band, too similar, or quality < threshold — redesign components (not just the number).
-9. Emit final structured puzzle with `difficultyLevel` ∈ Hard | Difficult | Evil | Impossible.
-
-## After publish
-
-Yesterday's puzzle feeds skill `generate-puzzle-blog` (consistent archive post,
-spoilers behind reveal). Keep explanation + hints accurate — the blog skill
-reuses them when writing to MongoDB.
-=======
 8. If off-band, too similar, or quality < threshold — redesign layers (not just the number).
 9. Emit final structured puzzle with `difficultyLevel` ∈ Hard | Difficult | Evil | Impossible and optional `visual`.
 
@@ -35,4 +25,9 @@ reuses them when writing to MongoDB.
 - Text layers when size/case/strike/stack is the joke
 - Image tiles only when a scene is essential
 - Never put the answer in any layer
->>>>>>> origin/cursor/generative-puzzle-visuals-8968
+
+## After publish
+
+Yesterday's puzzle feeds skill `generate-puzzle-blog` (consistent archive post,
+spoilers behind reveal). Keep explanation + hints accurate — the blog skill
+reuses them when writing to MongoDB.
