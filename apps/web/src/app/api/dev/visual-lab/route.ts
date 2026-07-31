@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { ensureGatewayKey, getGatewayApiKey } from "@/ai/client";
 import {
   isVisualLabMode,
   VISUAL_LAB_MODE_META,
@@ -18,10 +19,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, allowed: false }, { status: 401 });
   }
 
+  ensureGatewayKey();
+  const apiKey = getGatewayApiKey();
+
   return NextResponse.json({
     success: true,
     allowed: true,
     modes: VISUAL_LAB_MODES.map((id) => VISUAL_LAB_MODE_META[id]),
+    gateway: {
+      apiKeyPresent: Boolean(apiKey),
+      oidcEnvPresent: Boolean(process.env.VERCEL_OIDC_TOKEN),
+      onVercel: Boolean(process.env.VERCEL),
+      vercelEnv: process.env.VERCEL_ENV ?? null,
+      /** Prefer api key locally; on Vercel OIDC works without a key */
+      authPath: apiKey ? "api-key" : process.env.VERCEL ? "oidc" : "missing",
+    },
   });
 }
 
