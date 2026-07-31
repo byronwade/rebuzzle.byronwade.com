@@ -135,8 +135,29 @@ export async function POST(request: Request) {
     }
 
     const attemptNumber = priorGuesses + 1;
-    const hintsUsed = clampHints(body.hintsUsed, puzzle.hints?.length ?? 5);
-    const timeSpentSeconds = clampTimeSpent(body.timeSpentSeconds);
+    const claimedHints = clampHints(body.hintsUsed, puzzle.hints?.length ?? 5);
+    const priorMaxHints = await db.puzzleAttemptOps.maxHintsUsedToday(
+      user.userId,
+      puzzleDate
+    );
+    // Never allow under-reporting below what was already claimed today
+    const hintsUsed = Math.max(claimedHints, priorMaxHints);
+
+    // Prefer server-elapsed time from the first guess of the day
+    const firstGuess = await db.puzzleAttemptOps.findFirstGuessToday(
+      user.userId,
+      puzzleDate
+    );
+    const nowMs = Date.now();
+    let timeSpentSeconds: number;
+    if (firstGuess?.attemptedAt) {
+      timeSpentSeconds = clampTimeSpent(
+        (nowMs - new Date(firstGuess.attemptedAt).getTime()) / 1000
+      );
+    } else {
+      // First guess of the day: accept client clock but hard-cap at 30 minutes
+      timeSpentSeconds = Math.min(clampTimeSpent(body.timeSpentSeconds), 30 * 60);
+    }
 
     const validation = await validateAnswer({
       guess,

@@ -1,7 +1,8 @@
 /**
  * AI Puzzle Generation API
  *
- * Generates dynamic puzzles using AI with quota management and error handling
+ * Admin-only. Daily puzzles are generated via scheduled/server actions, not
+ * the public client.
  */
 
 import { NextResponse } from "next/server";
@@ -14,19 +15,23 @@ import {
   RateLimitError,
   validatePuzzleQuality,
 } from "@/ai";
+import { verifyAdminAccess } from "@/lib/admin-auth";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    const admin = await verifyAdminAccess(req);
+    if (!admin) {
+      return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 });
+    }
+
+    const limit = await rateLimiters.ai(req);
+    if (limit && !limit.success) {
+      return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
+    }
+
     const body = await req.json();
     const { mode = "single", difficulty, category, theme, count = 1, validate = true } = body;
-
-    console.log("[AI API] Generating puzzle:", {
-      mode,
-      difficulty,
-      category,
-      theme,
-      count,
-    });
 
     // Generate puzzle(s)
     const startTime = Date.now();

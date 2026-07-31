@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { getUserKey, rateLimit, rateLimiters } from "@/lib/middleware/rate-limit";
 
 export async function POST(request: Request) {
   try {
@@ -14,13 +15,28 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
+      const limit = await rateLimiters.api(request);
+      if (limit && !limit.success) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+
+      // Cap share spam: a few per minute per user is plenty
+      const shareLimiter = rateLimit({
+        windowMs: 60 * 1000,
+        maxRequests: 3,
+        keyGenerator: () => getUserKey(`share:${authUser.userId}`),
+      });
+      const shareLimit = await shareLimiter(request);
+      if (shareLimit && !shareLimit.success) {
+        return NextResponse.json({ error: "Too many share updates" }, { status: 429 });
+      }
+
       const stats = await db.userStatsOps.findByUserId(authUser.userId);
       if (stats) {
         await db.userStatsOps.updateStats(authUser.userId, {
           sharedResults: (stats.sharedResults || 0) + 1,
         });
       } else {
-        // Create initial stats with sharedResults = 1
         await db.userStatsOps.create({
           id: `stats_${authUser.userId}`,
           userId: authUser.userId,
@@ -46,7 +62,6 @@ export async function POST(request: Request) {
           sharedResults: 1,
           createdAt: new Date(),
           updatedAt: new Date(),
-          // Psychological engagement fields
           streakFreezes: 1,
           streakShields: 0,
           luckySolveCount: 0,

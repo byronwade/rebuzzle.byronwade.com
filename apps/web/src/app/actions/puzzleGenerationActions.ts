@@ -96,7 +96,7 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
 
   // Double-check once more before generating (race with concurrent requests)
   try {
-    const raceCheck = await db.puzzleOps.findTodaysPuzzle();
+    const raceCheck = await db.puzzleOps.findByDate(dateString);
     if (raceCheck) {
       revalidateTag("daily-puzzle", "max");
       const cached = await getCachedDailyPuzzleFromDb(dateString);

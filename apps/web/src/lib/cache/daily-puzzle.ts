@@ -83,13 +83,14 @@ export async function getCachedDailyPuzzleFromDb(
 
   logger.info("Cache lookup for daily puzzle", { dateString });
 
-  const existingPuzzle = await db.puzzleOps.findTodaysPuzzle();
+  // Query by the passed dateString — never Date.now() inside "use cache"
+  const existingPuzzle = await db.puzzleOps.findByDate(dateString);
   if (!existingPuzzle) {
     return null;
   }
 
   logger.info("Cache hit: daily puzzle from database", {
-    answer: existingPuzzle.answer,
+    puzzleId: existingPuzzle.id,
     dateString,
   });
 

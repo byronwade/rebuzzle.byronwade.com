@@ -116,7 +116,7 @@ export default function GameOverClient({
         // Fallback: Load streak from database (only if we have a userId)
         if (userId) {
           try {
-            const response = await fetch(`/api/user/stats?userId=${userId}`);
+            const response = await fetch("/api/user/stats");
             if (response.ok) {
               const userStats = await response.json();
               if (userStats.stats?.streak) {
@@ -136,13 +136,15 @@ export default function GameOverClient({
             setTodaySolves(stats.todaySolves || 0);
 
             const storedData = localStorage.getItem("lastGameCompletion");
-            if (storedData && stats.solveTimeDistribution?.length > 0) {
+            if (storedData && stats.percentiles) {
               const parsed = JSON.parse(storedData) as CompletionData;
               const userTime = parsed.timeTaken;
-              const slowerCount = stats.solveTimeDistribution.filter(
-                (t: number) => t > userTime
-              ).length;
-              const pct = Math.round((slowerCount / stats.solveTimeDistribution.length) * 100);
+              // Approximate "faster than X%" from aggregate percentile buckets
+              let pct = 50;
+              if (userTime <= stats.percentiles.p25) pct = 75;
+              else if (userTime <= stats.percentiles.p50) pct = 50;
+              else if (userTime <= stats.percentiles.p75) pct = 25;
+              else pct = 10;
               setPercentile(Math.min(99, Math.max(1, pct)));
             }
           }

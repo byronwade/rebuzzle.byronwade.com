@@ -321,15 +321,21 @@ export const puzzleOps = {
     return await collection.findOne({ id });
   },
 
-  async findTodaysPuzzle(): Promise<Puzzle | null> {
+  /** Find the active puzzle published on a UTC calendar day (YYYY-MM-DD). */
+  async findByDate(dateString: string): Promise<Puzzle | null> {
     const collection = getCollection<Puzzle>("puzzles");
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);  // Use UTC midnight for consistent behavior across all platforms
+    const start = new Date(`${dateString}T00:00:00.000Z`);
+    const end = new Date(`${dateString}T23:59:59.999Z`);
 
     return await collection.findOne({
-      publishedAt: { $gte: today },
+      publishedAt: { $gte: start, $lte: end },
       active: true,
     });
+  },
+
+  async findTodaysPuzzle(): Promise<Puzzle | null> {
+    const dateString = new Date().toISOString().slice(0, 10);
+    return await this.findByDate(dateString);
   },
 
   async findActivePuzzles(limit = 10): Promise<Puzzle[]> {
@@ -420,6 +426,31 @@ export const puzzleAttemptOps = {
   async countTodayGuesses(userId: string, puzzleDate: string): Promise<number> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
     return await collection.countDocuments({ userId, puzzleDate });
+  },
+
+  /** Earliest guess today — used for server-side elapsed time. */
+  async findFirstGuessToday(
+    userId: string,
+    puzzleDate: string
+  ): Promise<PuzzleAttempt | null> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    return await collection.findOne(
+      { userId, puzzleDate },
+      { sort: { attemptedAt: 1 } }
+    );
+  },
+
+  /** Max hintsUsed reported on any guess today (prevents under-reporting later). */
+  async maxHintsUsedToday(userId: string, puzzleDate: string): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const rows = await collection
+      .find({ userId, puzzleDate })
+      .project({ hintsUsed: 1 })
+      .toArray();
+    return rows.reduce((max, row) => {
+      const n = typeof row.hintsUsed === "number" ? row.hintsUsed : 0;
+      return Math.max(max, n);
+    }, 0);
   },
 
   /**

@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import Script from "next/script";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -225,39 +224,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const router = useRouter();
   const { userId, isLoading: authLoading } = useAuth();
   const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
-  const [guestReady, setGuestReady] = useState(false);
-  const { startGame, recordAttempt, endGame, setGameState: setContextGameState } = useGameContext();
+  // PrefetchGuestClient warms the session in idle time; board stays interactive.
+  const guestReady = Boolean(userId) || !authLoading;
+  const { startGame, endGame, setGameState: setContextGameState } = useGameContext();
 
-  // Ensure guest account exists when puzzle is viewed (lazy creation)
-  useEffect(() => {
-    const initGuest = async () => {
-      if (authLoading) return; // Wait for auth check to complete
-
-      if (!userId) {
-        const created = await ensureGuest();
-        if (created) {
-          setGuestReady(true);
-        } else {
-          console.error("Failed to create guest session");
-          // Still allow viewing puzzle even if guest creation fails
-          setGuestReady(true);
-        }
-      } else {
-        setGuestReady(true);
-      }
-    };
-
-    initGuest();
-  }, [userId, authLoading, ensureGuest]);
-
-  // Load actual user stats from database on mount
-  // This ensures the local state reflects real stats for correct scoring
+  // Load stats after auth — cookie identity, no userId query param
   useEffect(() => {
     if (!userId) return;
 
     const loadUserStats = async () => {
       try {
-        const response = await fetch(`/api/user/stats?userId=${userId}`);
+        const response = await fetch("/api/user/stats");
         if (response.ok) {
           const data = await response.json();
           if (data.stats) {
@@ -766,13 +743,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     handleKeyPress,
   ]);
 
-  // Show loading while creating guest session
-  if (isCreatingGuest || authLoading || (!userId && !guestReady)) {
+  // Only block on the initial auth check — guest warm happens in the background
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">Setting up your session...</p>
+          <p className="text-muted-foreground">Loading puzzle...</p>
         </div>
       </div>
     );
@@ -780,29 +757,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
   return (
     <>
-      <Script id="structured-data" type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Game",
-          name: "Rebuzzle",
-          description:
-            "A daily rebus puzzle game challenging players to solve visual word puzzles.",
-          url: "https://rebuzzle.com",
-          genre: "Puzzle",
-          gamePlatform: "Web Browser",
-          applicationCategory: "Game",
-          operatingSystem: "Any",
-          author: {
-            "@type": "Organization",
-            name: "Rebuzzle Team",
-          },
-          offers: {
-            "@type": "Offer",
-            price: "0",
-            priceCurrency: "USD",
-          },
-        })}
-      </Script>
       {/* Main content area - keyboard-aware layout */}
       <KeyboardAwareLayout>
         {({ isKeyboardVisible }) => (
@@ -922,8 +876,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 <SmartAnswerInput
                   puzzleId={gameData.id}
                   difficulty={currentEventPuzzle?.difficulty || 5}
-                  disabled={gameState.gameOver || gameState.isSubmitting || !userId}
-                  isSubmitting={gameState.isSubmitting}
+                  disabled={
+                    gameState.gameOver ||
+                    gameState.isSubmitting ||
+                    (!userId && isCreatingGuest)
+                  }
+                  isSubmitting={gameState.isSubmitting || isCreatingGuest}
                   onSubmit={handleGuess}
                   puzzle={currentEventPuzzle?.puzzle || ""}
                   puzzleType={currentEventPuzzle?.puzzleType || "rebus"}

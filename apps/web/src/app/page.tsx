@@ -231,7 +231,9 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
 
     // Generate Game schema for JSON-LD — never include the live answer
     const publishedAtStr =
-      gameData.metadata?.publishedAt || gameData.publishedAt || new Date().toISOString();
+      gameData.metadata?.publishedAt ||
+      gameData.publishedAt ||
+      `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
 
     const gameSchema = generateGameSchema({
       id: gameData.id,
