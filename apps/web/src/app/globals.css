@@ -153,10 +153,13 @@
     --accent: 0 0% 97%;
     --accent-foreground: 0 0% 21%;
 
-    --border: 0 0% 70%;
-    --border-strong: 0 0% 20%;
-    --input: 0 0% 70%;
-    --ring: 0 0% 40%;
+    /* Hairlines are the same ink as the chunky inset ring below. When they
+       were a mid grey, every raised element showed a grey 1px line sitting
+       just inside a black 2px ring — one muddy edge instead of one clean one. */
+    --border: 0 0% 15%;
+    --border-strong: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 15%;
 
     --link: 212 100% 42%;
     --link-deep: 212 100% 36%;
@@ -204,10 +207,10 @@
     --accent: 0 0% 27%;
     --accent-foreground: 0 0% 98%;
 
-    --border: 0 0% 45%;
-    --border-strong: 0 0% 80%;
-    --input: 0 0% 45%;
-    --ring: 0 0% 70%;
+    --border: 0 0% 92%;
+    --border-strong: 0 0% 92%;
+    --input: 0 0% 92%;
+    --ring: 0 0% 92%;
 
     --link: 212 100% 65%;
     --link-deep: 212 100% 72%;
@@ -246,11 +249,8 @@
     line-height: 1.4;
   }
 
-  html[data-skin="8bit"] :focus-visible {
-    outline-width: 3px;
-    outline-offset: 2px;
-    border-radius: 0;
-  }
+  /* The skin's focus treatment lives in the utilities layer instead — it has
+     to outrank `.focus-ring`, which is a utility. See "8-BIT SKIN OVERRIDES". */
 }
 
 @layer base {
@@ -382,6 +382,100 @@
   .focus-ring:focus-visible {
     outline: none;
     box-shadow: 0 0 0 1px var(--focus-edge), 0 0 0 4px var(--focus-halo);
+  }
+
+  /* ============================================================
+     OVERLAY ERGONOMICS
+     Menus, selects and their items, wherever they are portalled to.
+     ============================================================ */
+
+  /*
+   * Coarse pointers get real touch targets.
+   *
+   * These are matched on ARIA roles rather than component classes because the
+   * panels are portalled to <body>, so they sit outside any container a page
+   * could style, and every menu-like surface in the app already reports the
+   * right role.
+   */
+  @media (pointer: coarse) {
+    [role="menu"] [role="menuitem"],
+    [role="menu"] [role="menuitemcheckbox"],
+    [role="menu"] [role="menuitemradio"],
+    [role="listbox"] [role="option"] {
+      min-height: 44px;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+      font-size: 0.9375rem;
+    }
+
+    /* Separators need to read at arm's length, not at laptop distance. */
+    [role="menu"] [role="separator"],
+    [role="listbox"] [role="separator"] {
+      margin-top: 0.375rem;
+      margin-bottom: 0.375rem;
+    }
+  }
+
+  /* Momentum scrolling for the rare menu long enough to need it. */
+  [role="menu"],
+  [role="listbox"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ============================================================
+     8-BIT SKIN OVERRIDES
+     These have to live in the utilities layer: each one competes with a
+     single-class Tailwind utility, and layer order beats specificity, so the
+     same rules in @layer base would silently lose.
+     ============================================================ */
+
+  /*
+   * Square corners are the whole point of the skin, and `--radius: 0` alone
+   * does not get there: `rounded-full` avatars, the marketing pill and the
+   * `rounded-xl`/`2xl` card sizes are all fixed values that ignore the token.
+   * One rounded pill in a pixel UI reads as a bug, so the geometry is reset
+   * outright rather than chased value by value.
+   *
+   * Tracking goes with it. Press Start 2P is a fixed bitmap face that is
+   * already generously spaced; the display tracking and the mono-caps eyebrows
+   * both push it into overflowing its container.
+   */
+  html[data-skin="8bit"] *,
+  html[data-skin="8bit"] *::before,
+  html[data-skin="8bit"] *::after {
+    border-radius: 0 !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* Restore the hard pixel outline in place of the soft halo. */
+  html[data-skin="8bit"] :focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /*
+   * `.focus-ring` draws its ring as a box-shadow, so the halo has to be
+   * cleared for the outline above to be the only ring. Note the tight scope:
+   * clearing box-shadow on every `:focus-visible` element instead also erased
+   * the drop shadow of open menus, because Radix moves focus onto the panel.
+   */
+  html[data-skin="8bit"] .focus-ring:focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  /*
+   * Press Start 2P runs roughly twice the advance width of Geist, so panels
+   * sized for a proportional face wrap every other row. Widths are in px on
+   * purpose: the skin drops the root font size to 12px, which would quietly
+   * shrink any rem-based minimum by a quarter.
+   */
+  html[data-skin="8bit"] [role="menu"],
+  html[data-skin="8bit"] [role="listbox"] {
+    width: auto;
+    min-width: 260px;
+    max-width: calc(100vw - 24px);
   }
 
   .shadow-border {
