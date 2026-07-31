@@ -51,7 +51,7 @@ Shared definitions: `puzzle-agent/difficulty-levels.ts`, `lib/difficulty.ts`, `c
 | Variable | Purpose |
 | --- | --- |
 | `AI_GATEWAY_API_KEY` | Local gateway auth |
-| `EVE_PUZZLE_MODEL` | Override agent model (default `google/gemini-2.5-flash`) |
+| `EVE_PUZZLE_MODEL` | Override agent model (default `openai/gpt-5.6-luna`) |
 | `DEFAULT_PUZZLE_TYPE` | Default type (`rebus`) |
 
 On Vercel, OIDC is used automatically. Provider keys live in the AI Gateway dashboard.
