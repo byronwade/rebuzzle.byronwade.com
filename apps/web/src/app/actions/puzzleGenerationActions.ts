@@ -110,9 +110,10 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
     );
   }
 
-  // STEP 2: No puzzle in database - generate with Google AI (ONE TIME!)
-  logger.info("Generating new puzzle with AI", {
-    provider: "google-gemini",
+  // STEP 2: No puzzle in database — Eve tool agent + AI Gateway (ONCE per day)
+  logger.info("Generating new puzzle with Eve tool agent via AI Gateway", {
+    provider: "ai-gateway",
+    agent: "eve-puzzle",
     willCostTokens: true,
     frequency: "once-per-day",
   });

@@ -1,20 +1,11 @@
 /**
- * Advanced AI Puzzle System - Central Exports
- *
- * Ultra-sophisticated puzzle generation with:
- * - Chain-of-thought reasoning
- * - Uniqueness guarantees
- * - Difficulty calibration
- * - Quality assurance
- * - Performance analytics
+ * Advanced AI Puzzle System — Eve tool agent + AI Gateway
  */
 
-// Advanced Generation
 export {
   generateWithChainOfThought,
-  // Deprecated functions removed - use generateMasterPuzzle instead
 } from "./services/advanced-puzzle-generator";
-// Difficulty Calibration
+
 export {
   aiSelfTest,
   analyzePlayerPerformance,
@@ -23,7 +14,7 @@ export {
   calibrateDifficulty,
   type DifficultyProfile,
 } from "./services/difficulty-calibrator";
-// Master Orchestrator
+
 export {
   type GeneratedPuzzleResult,
   generateMasterBatch,
@@ -32,7 +23,6 @@ export {
   selectOptimalPuzzle,
 } from "./services/master-puzzle-orchestrator";
 
-// Quality Assurance
 export {
   adversarialTest,
   analyzeQuality,
@@ -40,7 +30,7 @@ export {
   type QualityMetrics,
   runQualityPipeline,
 } from "./services/quality-assurance";
-// Uniqueness Tracking
+
 export {
   calculateSimilarity,
   calculateUniquenessScore,
@@ -51,3 +41,6 @@ export {
   isComponentCombinationUnique,
   validateUniqueness,
 } from "./services/uniqueness-tracker";
+
+export { runPuzzleAgentGeneration } from "./puzzle-agent/run-generation";
+export type { PuzzleAgentResult } from "./puzzle-agent/schemas";

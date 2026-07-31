@@ -2,6 +2,9 @@
   "name": "@rebuzzle/web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -27,10 +30,8 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@ai-sdk/gateway": "^2.0.17",
-    "@ai-sdk/google": "^2.0.23",
-    "@ai-sdk/groq": "^1.0.8",
-    "@ai-sdk/xai": "^1.0.8",
+    "@ai-sdk/gateway": "^4.0.33",
+    "@opentelemetry/api": "^1.9.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-avatar": "^1.1.2",
@@ -57,14 +58,16 @@
     "@tanstack/react-virtual": "^3.13.12",
     "@types/web-push": "^3.6.4",
     "@vercel/analytics": "^1.4.1",
-    "ai": "^5.0.76",
+    "ai": "^7.0.44",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "dotenv": "^17.2.3",
+    "eve": "^0.29.2",
     "jose": "^6.1.2",
+    "just-bash": "^3.0.0",
     "lucide-react": "^0.468.0",
     "mongodb": "^6.0.0",
     "next": "16.3.0-canary.104",

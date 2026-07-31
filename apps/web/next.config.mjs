@@ -1,3 +1,5 @@
+import { withEve } from "eve/next";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -62,7 +64,7 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://*.vercel.app https://*.vercel.com https://*.vercel.sh https://vitals.vercel-insights.com wss://*.vercel.app",
+      "connect-src 'self' https://*.vercel.app https://*.vercel.com https://*.vercel.sh https://vitals.vercel-insights.com https://ai-gateway.vercel.sh wss://*.vercel.app",
       "frame-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
@@ -116,4 +118,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withEve(nextConfig);
