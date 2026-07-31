@@ -5,47 +5,36 @@ import type {
   ContextualHint,
   WordSuggestion,
 } from "@/ai/services/text-area-feedback";
-import { generateContextualHint, generateSuggestions } from "@/ai/services/text-area-feedback";
 
 /**
- * Server action to generate suggestions
+ * Suggestion / contextual-hint actions intentionally return empty results.
+ *
+ * Loading the answer server-side to drive autocomplete while the puzzle is
+ * still open is an answer oracle (character/word leakage). Daily play uses
+ * precomputed `puzzle.hints` and authoritative scoring via /api/puzzles/guess.
  */
-export async function generateSuggestionsAction(params: {
+export async function generateSuggestionsAction(_params: {
   currentInput: string;
-  correctAnswer: string;
+  puzzleId: string;
   difficulty: number;
   puzzleType?: string;
   puzzle?: string;
+  correctAnswer?: string;
 }): Promise<{
   characterSuggestions: CharacterSuggestion[];
   wordSuggestions: WordSuggestion[];
 }> {
-  try {
-    return await generateSuggestions(params);
-  } catch (error) {
-    console.error("[aiActions] Failed to generate suggestions:", error);
-    return {
-      characterSuggestions: [],
-      wordSuggestions: [],
-    };
-  }
+  return { characterSuggestions: [], wordSuggestions: [] };
 }
 
-/**
- * Server action to generate contextual hint
- */
-export async function generateContextualHintAction(params: {
+export async function generateContextualHintAction(_params: {
   currentInput: string;
-  correctAnswer: string;
+  puzzleId: string;
   difficulty: number;
   puzzleType?: string;
   puzzle?: string;
   timeSpent?: number;
+  correctAnswer?: string;
 }): Promise<ContextualHint | null> {
-  try {
-    return await generateContextualHint(params);
-  } catch (error) {
-    console.error("[aiActions] Failed to generate contextual hint:", error);
-    return null;
-  }
+  return null;
 }

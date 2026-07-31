@@ -19,6 +19,7 @@ interface GameData {
   explanation: string;
   difficulty: number;
   puzzleType?: string;
+  locked?: boolean;
   metadata?: {
     puzzleType?: string;
   };
@@ -65,6 +66,36 @@ export default function GameOverClient({
   const [percentile, setPercentile] = useState<number | null>(null);
   const [todaySolves, setTodaySolves] = useState<number | null>(null);
 
+  const [solution, setSolution] = useState({
+    answer: gameData.answer || "",
+    explanation: gameData.explanation || "",
+  });
+  const [hasLocalLock, setHasLocalLock] = useState(Boolean(gameData.locked || gameData.answer));
+
+  useEffect(() => {
+    // Prefer server solution (only present after daily lock); fall back to guess reveal
+    if (gameData.answer) {
+      setSolution({ answer: gameData.answer, explanation: gameData.explanation });
+      setHasLocalLock(true);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem("lastGameSolution");
+      if (stored) {
+        const parsed = JSON.parse(stored) as { answer?: string; explanation?: string };
+        if (parsed.answer) {
+          setSolution({
+            answer: parsed.answer,
+            explanation: parsed.explanation || "",
+          });
+          setHasLocalLock(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [gameData.answer, gameData.explanation]);
+
   useEffect(() => {
     async function loadClientExtras() {
       try {
@@ -85,7 +116,7 @@ export default function GameOverClient({
         // Fallback: Load streak from database (only if we have a userId)
         if (userId) {
           try {
-            const response = await fetch(`/api/user/stats?userId=${userId}`);
+            const response = await fetch("/api/user/stats");
             if (response.ok) {
               const userStats = await response.json();
               if (userStats.stats?.streak) {
@@ -105,13 +136,15 @@ export default function GameOverClient({
             setTodaySolves(stats.todaySolves || 0);
 
             const storedData = localStorage.getItem("lastGameCompletion");
-            if (storedData && stats.solveTimeDistribution?.length > 0) {
+            if (storedData && stats.percentiles) {
               const parsed = JSON.parse(storedData) as CompletionData;
               const userTime = parsed.timeTaken;
-              const slowerCount = stats.solveTimeDistribution.filter(
-                (t: number) => t > userTime
-              ).length;
-              const pct = Math.round((slowerCount / stats.solveTimeDistribution.length) * 100);
+              // Approximate "faster than X%" from aggregate percentile buckets
+              let pct = 50;
+              if (userTime <= stats.percentiles.p25) pct = 75;
+              else if (userTime <= stats.percentiles.p50) pct = 50;
+              else if (userTime <= stats.percentiles.p75) pct = 25;
+              else pct = 10;
               setPercentile(Math.min(99, Math.max(1, pct)));
             }
           }
@@ -168,6 +201,23 @@ export default function GameOverClient({
     return () => clearInterval(interval);
   }, [success, loading, finalScore, animationComplete]);
 
+  // Not locked and no local reveal — send them to play (don't leak empty "results")
+  if (!gameData.locked && !hasLocalLock && !solution.answer) {
+    return (
+      <Layout>
+        <div className="mx-auto max-w-lg px-4 py-16 text-center space-y-6">
+          <h1 className="text-2xl font-bold tracking-tight">Play today&apos;s puzzle</h1>
+          <p className="text-muted-foreground text-sm">
+            Results unlock after you finish today&apos;s puzzle.
+          </p>
+          <Link href="/">
+            <Button className="w-full">Go to puzzle</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       {success && showConfetti && <Confetti />}
@@ -191,11 +241,11 @@ export default function GameOverClient({
                 The Answer
               </p>
               <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground uppercase">
-                {gameData.answer}
+                {solution.answer}
               </h2>
-              {gameData.explanation && (
+              {solution.explanation && (
                 <p className="mt-4 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  {gameData.explanation}
+                  {solution.explanation}
                 </p>
               )}
             </div>
@@ -291,7 +341,7 @@ export default function GameOverClient({
             {/* Share Button */}
             <EnhancedShareButton
               attempts={attempts}
-              answer={gameData.answer}
+              answer={solution.answer}
               className="w-full"
               difficulty={gameData.difficulty}
               maxAttempts={gameSettings.maxAttempts}
@@ -338,11 +388,11 @@ export default function GameOverClient({
                 The Answer Was
               </p>
               <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground uppercase">
-                {gameData.answer}
+                {solution.answer}
               </h2>
-              {gameData.explanation && (
+              {solution.explanation && (
                 <p className="mt-4 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  {gameData.explanation}
+                  {solution.explanation}
                 </p>
               )}
             </div>

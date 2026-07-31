@@ -56,8 +56,11 @@ export interface GameData {
   puzzle: string;
   /** Type of puzzle for rendering and validation */
   puzzleType?: PuzzleType;
-  /** Correct answer to the puzzle */
-  answer: string;
+  /**
+   * Correct answer — only present after the day is locked (game over)
+   * or for trusted server-side consumers. Never send to an active board.
+   */
+  answer?: string;
   /** Explanation shown after solving */
   explanation: string;
   /** Difficulty level (1-10 scale) */

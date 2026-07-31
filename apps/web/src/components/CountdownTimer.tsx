@@ -1,37 +1,47 @@
 "use client";
 
 import { Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { getNextUtcMidnight, msUntilNextUtcMidnight } from "@/lib/game/daily-lock";
 
+function formatCountdown(diffMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Counts down to the next UTC midnight (puzzle rollover), then reloads home.
+ */
 export function CountdownTimer() {
-  const [timeLeft, setTimeLeft] = useState("");
+  const router = useRouter();
+  const [timeLeft, setTimeLeft] = useState(() => formatCountdown(msUntilNextUtcMidnight()));
+  const reloadedRef = useRef(false);
 
   useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
+    const tick = () => {
+      const diff = msUntilNextUtcMidnight();
+      setTimeLeft(formatCountdown(diff));
 
-      const diff = tomorrow.getTime() - now.getTime();
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      if (diff <= 0 && !reloadedRef.current) {
+        reloadedRef.current = true;
+        // New UTC day — pull today's puzzle (don't sit on yesterday's results)
+        router.push("/");
+        router.refresh();
+      }
     };
 
-    // Update immediately
-    setTimeLeft(calculateTimeLeft());
-
-    // Update every second
-    const interval = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
-
+    tick();
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [router]);
+
+  const nextAt = getNextUtcMidnight();
 
   return (
     <div className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 text-white shadow-lg">
@@ -41,6 +51,10 @@ export function CountdownTimer() {
           Next Puzzle In
         </div>
         <div className="font-bold text-3xl tabular-nums">{timeLeft}</div>
+        <div className="mt-1 text-[10px] uppercase tracking-wide opacity-75">
+          Resets {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
+          local ({nextAt.toISOString().slice(11, 16)} UTC)
+        </div>
       </div>
     </div>
   );

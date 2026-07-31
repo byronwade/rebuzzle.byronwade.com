@@ -96,7 +96,7 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
 
   // Double-check once more before generating (race with concurrent requests)
   try {
-    const raceCheck = await db.puzzleOps.findTodaysPuzzle();
+    const raceCheck = await db.puzzleOps.findByDate(dateString);
     if (raceCheck) {
       revalidateTag("daily-puzzle", "max");
       const cached = await getCachedDailyPuzzleFromDb(dateString);
@@ -228,8 +228,8 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
 
     // STEP 3: Store in database for all future users today
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Bind publishedAt to the UTC dateString so findByDate lookups match
+      const publishedAt = new Date(`${dateString}T00:00:00.000Z`);
 
       const puzzle = {
         id: crypto.randomUUID(),
@@ -244,7 +244,7 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
         category: result.puzzle.category || "general",
         explanation: result.puzzle.explanation,
         hints: result.puzzle.hints || [],
-        publishedAt: today,
+        publishedAt,
         createdAt: new Date(),
         active: true,
         metadata: {

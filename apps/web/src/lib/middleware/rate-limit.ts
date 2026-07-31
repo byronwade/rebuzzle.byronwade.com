@@ -149,4 +149,10 @@ export const rateLimiters = {
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 10, // 10 requests per minute
   }),
+
+  // Daily puzzle guesses
+  guess: rateLimit({
+    windowMs: 60 * 1000,
+    maxRequests: 20,
+  }),
 };

@@ -1,11 +1,10 @@
+import { HomePageSkeleton } from "@/components/page-skeletons";
+
+/**
+ * Instant route shell — content-shaped, never a bare spinner.
+ * Most navigations land on the puzzle; other routes with their own
+ * loading.tsx override this.
+ */
 export default function RootLoading() {
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <div
-        aria-label="Loading"
-        className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground"
-        role="status"
-      />
-    </div>
-  );
+  return <HomePageSkeleton />;
 }

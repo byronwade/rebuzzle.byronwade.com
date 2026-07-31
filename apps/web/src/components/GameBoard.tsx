@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import Script from "next/script";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -13,8 +12,7 @@ import {
   trackPuzzleCompletion,
   trackPuzzleStart,
 } from "@/lib/analytics";
-import { getAchievementDifficultyCategory } from "@/lib/difficulty";
-import { checkGuess } from "@/lib/gameLogic";
+import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
@@ -28,6 +26,7 @@ import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
 import { calculateScore, determineAchievements } from "./CelebrationOverlay";
 import { useGameContext } from "./GameContext";
+import { PuzzleSkeleton } from "./PuzzleSkeleton";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { GuessTrail } from "./GuessTrail";
 import { HintBadge } from "./HintBadge";
@@ -36,13 +35,11 @@ import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay"
 import { PuzzleMinimal } from "./PuzzleMinimal";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 
-
 const CelebrationOverlay = dynamic(
   () => import("./CelebrationOverlay").then((mod) => mod.CelebrationOverlay),
   { ssr: false }
 );
 
-// Simple local implementations to replace deleted dependencies
 interface UserStats {
   points: number;
   streak: number;
@@ -53,39 +50,6 @@ interface UserStats {
   lastPlayDate: string | null;
   dailyChallengeStreak: number;
 }
-
-// Note: calculatePoints has been replaced by calculateGamePoints from gameSettings
-// which includes all 4 scoring factors: Speed, Accuracy, Streak, and Difficulty
-
-// Simple Levenshtein distance for similarity calculation
-const calculateSimilarity = (a: string, b: string): number => {
-  if (a === b) return 100;
-  if (!a || !b) return 0;
-
-  const matrix: number[][] = [];
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0]![j] = j;
-  }
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i]![j] = matrix[i - 1]?.[j - 1]!;
-      } else {
-        matrix[i]![j] = Math.min(
-          matrix[i - 1]?.[j - 1]! + 1,
-          matrix[i]?.[j - 1]! + 1,
-          matrix[i - 1]?.[j]! + 1
-        );
-      }
-    }
-  }
-  const distance = matrix[b.length]?.[a.length]!;
-  const maxLength = Math.max(a.length, b.length);
-  return Math.round((1 - distance / maxLength) * 100);
-};
 
 interface GameBoardProps {
   gameData: GameData;
@@ -262,39 +226,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const router = useRouter();
   const { userId, isLoading: authLoading } = useAuth();
   const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
-  const [guestReady, setGuestReady] = useState(false);
-  const { startGame, recordAttempt, endGame, setGameState: setContextGameState } = useGameContext();
+  // PrefetchGuestClient warms the session in idle time; board stays interactive.
+  const guestReady = Boolean(userId) || !authLoading;
+  const { startGame, endGame, setGameState: setContextGameState } = useGameContext();
 
-  // Ensure guest account exists when puzzle is viewed (lazy creation)
-  useEffect(() => {
-    const initGuest = async () => {
-      if (authLoading) return; // Wait for auth check to complete
-
-      if (!userId) {
-        const created = await ensureGuest();
-        if (created) {
-          setGuestReady(true);
-        } else {
-          console.error("Failed to create guest session");
-          // Still allow viewing puzzle even if guest creation fails
-          setGuestReady(true);
-        }
-      } else {
-        setGuestReady(true);
-      }
-    };
-
-    initGuest();
-  }, [userId, authLoading, ensureGuest]);
-
-  // Load actual user stats from database on mount
-  // This ensures the local state reflects real stats for correct scoring
+  // Load stats after auth — cookie identity, no userId query param
   useEffect(() => {
     if (!userId) return;
 
     const loadUserStats = async () => {
       try {
-        const response = await fetch(`/api/user/stats?userId=${userId}`);
+        const response = await fetch("/api/user/stats");
         if (response.ok) {
           const data = await response.json();
           if (data.stats) {
@@ -362,43 +304,36 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   }, [gameData.id, gameData.difficulty, puzzleType, guestReady]);
 
   const setCompletionState = useCallback(
-    (success: boolean, finalGuess: string, attempts: number) => {
-      // Calculate next play time
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
+    (success: boolean, finalGuess: string, attempts: number, serverScore?: number) => {
+      // Daily rollover is UTC midnight — matches server puzzle day + lock
+      const tomorrow = getNextUtcMidnight();
 
-      // Calculate time taken
       const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
-
-      // Get difficulty level (default to 5)
       const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
 
-      // Calculate base score for celebration using unified scoring:
-      // - Speed Bonus: faster = more points
-      // - Accuracy: fewer attempts = higher score
-      // - Hints: fewer hints = higher score
-      // - Streak Multiplier: consecutive days = bonus
-      // - Difficulty Bonus: harder puzzles = bigger rewards
-      let score = success
-        ? calculateScore(attempts, timeTaken, userStats.streak, difficultyLevel, gameState.hintsUsed)
-        : 0;
+      // Prefer authoritative server points; fall back to local estimate for UX only
+      let score =
+        typeof serverScore === "number" && serverScore > 0
+          ? serverScore
+          : success
+            ? calculateScore(
+                attempts,
+                timeTaken,
+                userStats.streak,
+                difficultyLevel,
+                gameState.hintsUsed
+              )
+            : 0;
 
-      // Variable rewards - psychology: unpredictable rewards create stronger habits
       let isLucky = false;
       let dailyMultiplier = 1;
 
-      if (success) {
-        // Check for lucky solve (5% chance of 2x points)
+      // Only apply cosmetic lucky/daily multipliers when we don't have server score
+      if (success && !(typeof serverScore === "number" && serverScore > 0)) {
         const luckyResult = rollLuckySolve();
         isLucky = luckyResult.isLucky;
-
-        // Check for daily bonus multiplier
         const dailyBonus = getDailyBonusMultiplier();
         dailyMultiplier = dailyBonus.multiplier;
-
-        // Apply multipliers (lucky takes precedence, they don't stack)
         if (isLucky) {
           score = Math.round(score * luckyResult.multiplier);
         } else if (dailyBonus.hasBonus) {
@@ -406,7 +341,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         }
       }
 
-      // Dispatch completion action (batches all state updates)
       dispatch({
         type: "SET_COMPLETION",
         payload: {
@@ -420,14 +354,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         },
       });
 
-      // Trigger haptic feedback
       if (success) {
         haptics.celebration();
       } else {
         haptics.error();
       }
     },
-    [gameState.startTime, userStats.streak, gameData.difficulty]
+    [gameState.startTime, gameState.hintsUsed, userStats.streak, gameData.difficulty]
   );
 
   const handleIncorrectGuess = useCallback((attemptsLeft: number, similarity?: number) => {
@@ -469,6 +402,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         return;
       }
 
+      // Must have an authenticated (or guest) session before scoring
+      if (!userId) {
+        toast({
+          title: "Getting ready…",
+          description: "Starting your session — try again in a moment.",
+        });
+        await ensureGuest();
+        return;
+      }
+
       // Update state with the guess if provided
       if (guessValue !== undefined && guessValue !== gameState.currentGuess) {
         dispatch({ type: "SET_CURRENT_GUESS", payload: guessValue });
@@ -480,87 +423,74 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       const previousAttemptsLeft = gameState.attemptsLeft;
       const previousLastSubmittedGuess = gameState.lastSubmittedGuess;
       const guessToCheck = guess;
+      const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
+      const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
 
       try {
-        const result = await checkGuess(guessToCheck, currentEventPuzzle.answer);
+        const response = await fetch("/api/puzzles/guess", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            puzzleId: gameData.id,
+            guess: guessToCheck,
+            timeSpentSeconds: timeTaken,
+            hintsUsed: gameState.hintsUsed,
+          }),
+        });
+
+        const result = (await response.json()) as {
+          success?: boolean;
+          correct?: boolean;
+          similarity?: number;
+          attemptNumber?: number;
+          attemptsLeft?: number;
+          gameOver?: boolean;
+          locked?: boolean;
+          wasSuccessful?: boolean;
+          wordResults?: WordResult[];
+          answer?: string;
+          explanation?: string;
+          pointsEarned?: number;
+          error?: string;
+        };
+
         dispatch({ type: "SET_FEEDBACK_MESSAGE", payload: "" });
 
+        // Already locked / replay blocked
+        if (response.status === 409 || result.locked) {
+          setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts);
+          router.push(
+            result.wasSuccessful
+              ? `/game-over?success=true&guess=${encodeURIComponent(guessToCheck)}`
+              : `/game-over?success=false&guess=${encodeURIComponent(guessToCheck)}&attempts=${gameSettings.maxAttempts}`
+          );
+          return;
+        }
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || "Failed to process guess");
+        }
+
+        const wordResults: WordResult[] = result.wordResults || [];
+        const attemptNumber = result.attemptNumber ?? gameSettings.maxAttempts - previousAttemptsLeft + 1;
+
         if (result.correct) {
-          // Optimistically update UI for correct guess
-          const attempts = gameSettings.maxAttempts - previousAttemptsLeft + 1;
-          setCompletionState(true, guessToCheck, attempts);
+          const attempts = attemptNumber;
+          const earnedPoints =
+            result.pointsEarned ??
+            calculateGamePoints(attempts, timeTaken, userStats.streak + 1, difficultyLevel);
 
-          // Puzzle completion will be tracked in database
-          // Calculate time taken and difficulty for scoring
-          const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
-          const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
+          setCompletionState(true, guessToCheck, attempts, earnedPoints);
 
-          // Update stats using unified scoring system
           const newStats = { ...userStats };
           newStats.totalGames += 1;
           newStats.wins += 1;
           newStats.streak += 1;
-
-          // Use unified scoring function with all 4 factors:
-          // Speed Bonus, Accuracy, Streak Multiplier, Difficulty Bonus
-          const earnedPoints = calculateGamePoints(
-            attempts,
-            timeTaken,
-            newStats.streak,
-            difficultyLevel
-          );
           newStats.points += earnedPoints;
-
-          // Simple level calculation
           newStats.level = Math.floor(newStats.points / 1000) + 1;
-
-          // Simple achievements check
-          const newAchievements: string[] = [];
-          if (newStats.streak === 5) newAchievements.push("5-day streak");
-          if (newStats.wins === 10) newAchievements.push("10 wins");
-          newStats.achievements = [...newStats.achievements, ...newAchievements];
-
           newStats.lastPlayDate = new Date().toISOString();
-
           setUserStats(newStats);
 
-          // Update stats in database with time and difficulty for proper scoring
-          if (userId) {
-            try {
-              const response = await fetch("/api/user/update-stats", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  userId,
-                  gameResult: {
-                    won: true,
-                    attempts,
-                    timeSpent: timeTaken,
-                    difficulty: difficultyLevel,
-                  },
-                }),
-              });
-
-              if (!response.ok) {
-                console.error("Failed to update user stats in database");
-                // Show subtle error notification - user's progress is saved locally but not synced
-                toast({
-                  title: "Progress saved locally",
-                  description: "Your stats will sync when connection is restored.",
-                  variant: "destructive",
-                });
-              }
-            } catch (error) {
-              console.error("Error updating user stats:", error);
-              toast({
-                title: "Progress saved locally",
-                description: "Your stats will sync when connection is restored.",
-                variant: "destructive",
-              });
-            }
-          }
-
-          // Track puzzle completion
           trackPuzzleCompletion({
             puzzleId: gameData.id || "unknown",
             puzzleType,
@@ -581,69 +511,43 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             score: earnedPoints,
           });
 
-          // Check and award achievements (fire and forget - don't block UI)
-          if (userId) {
-            fetch("/api/user/achievements", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                gameContext: {
-                  puzzleId: gameData.id,
-                  attempts,
-                  maxAttempts: gameSettings.maxAttempts,
-                  timeTaken,
-                  hintsUsed: gameState.hintsUsed,
-                  difficulty: getAchievementDifficultyCategory(difficultyLevel),
-                  isCorrect: true,
-                  score: earnedPoints,
-                },
-              }),
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.newlyUnlocked?.length > 0) {
-                }
+          // Persist solution + completion for game-over (server reveals only after lock)
+          if (result.answer || result.explanation) {
+            localStorage.setItem(
+              "lastGameSolution",
+              JSON.stringify({
+                answer: result.answer,
+                explanation: result.explanation,
+                puzzleId: gameData.id,
               })
-              .catch((err) => console.error("Error checking achievements:", err));
+            );
           }
+          localStorage.setItem(
+            "lastGameCompletion",
+            JSON.stringify({
+              guessHistory: [
+                ...gameState.guessHistory,
+                {
+                  text: guessToCheck,
+                  timestamp: new Date(),
+                  wordResults,
+                  attemptNumber: attempts,
+                },
+              ],
+              timeTaken,
+              usedHints: gameState.hintsUsed,
+              streak: userStats.streak + 1,
+              score: earnedPoints,
+            })
+          );
 
-          // Record successful puzzle attempt (for puzzle locking)
-          fetch("/api/puzzles/attempt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              puzzleId: gameData.id,
-              attemptedAnswer: guessToCheck,
-              isCorrect: true,
-              abandoned: false,
-              attemptNumber: attempts,
-              maxAttempts: gameSettings.maxAttempts,
-              timeSpentSeconds: timeTaken,
-              difficulty: getAchievementDifficultyCategory(difficultyLevel),
-              hintsUsed: gameState.hintsUsed,
-            }),
-          }).catch((err) => console.error("Error recording puzzle attempt:", err));
-
-          // Celebration overlay will handle the redirect via onComplete callback
-          // No need for setTimeout here as the overlay handles timing
-          return; // Exit early - don't run incorrect guess logic
+          return;
         }
 
-        // Handle incorrect guess
-        const newAttemptsLeft = previousAttemptsLeft - 1;
+        // Incorrect guess
+        const newAttemptsLeft = result.attemptsLeft ?? previousAttemptsLeft - 1;
         dispatch({ type: "SET_ATTEMPTS_LEFT", payload: newAttemptsLeft });
         dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: guessToCheck });
-
-        // Add to guess history
-        const guessWords = guessToCheck.trim().toUpperCase().split(/\s+/);
-        const answerWords = currentEventPuzzle.answer.toUpperCase().split(/\s+/);
-        const wordResults: WordResult[] = guessWords.map((word, index) => {
-          const correctWord = answerWords[index]?.toUpperCase() || "";
-          const correct = word === correctWord;
-          // Calculate similarity for close guesses
-          const similarity = correct ? 100 : calculateSimilarity(word, correctWord);
-          return { word, correct, similarity };
-        });
 
         dispatch({
           type: "ADD_GUESS_HISTORY",
@@ -651,53 +555,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             text: guessToCheck,
             timestamp: new Date(),
             wordResults,
-            attemptNumber: gameSettings.maxAttempts - newAttemptsLeft,
+            attemptNumber,
           },
         });
 
-        if (newAttemptsLeft <= 0) {
+        if (result.gameOver || newAttemptsLeft <= 0) {
           setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
 
-          // Puzzle failure will be tracked in database
-          // Calculate time taken and difficulty for consistency
-          const failureTimeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
-          const failureDifficulty =
-            typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
-
-          // Update stats for failure
           const newStats = { ...userStats };
           newStats.totalGames += 1;
-          newStats.streak = 0; // Reset streak on failure
+          newStats.streak = 0;
           newStats.lastPlayDate = new Date().toISOString();
-
           setUserStats(newStats);
 
-          // Update stats in database
-          if (userId) {
-            try {
-              const response = await fetch("/api/user/update-stats", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  userId,
-                  gameResult: {
-                    won: false,
-                    attempts: gameSettings.maxAttempts,
-                    timeSpent: failureTimeTaken,
-                    difficulty: failureDifficulty,
-                  },
-                }),
-              });
-
-              if (!response.ok) {
-                console.error("Failed to update user stats in database");
-              }
-            } catch (error) {
-              console.error("Error updating user stats:", error);
-            }
-          }
-
-          // Track puzzle abandonment (failed to complete)
           trackPuzzleAbandon({
             puzzleId: gameData.id || "unknown",
             puzzleType,
@@ -711,25 +581,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             hintsUsed: gameState.hintsUsed,
           });
 
-          // Record failed puzzle attempt (for puzzle locking)
-          fetch("/api/puzzles/attempt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              puzzleId: gameData.id,
-              attemptedAnswer: guessToCheck,
-              isCorrect: false,
-              abandoned: true,
-              attemptNumber: gameSettings.maxAttempts,
-              maxAttempts: gameSettings.maxAttempts,
-              timeSpentSeconds: failureTimeTaken,
-              difficulty: getAchievementDifficultyCategory(failureDifficulty),
-              hintsUsed: gameState.hintsUsed,
-            }),
-          }).catch((err) => console.error("Error recording puzzle attempt:", err));
+          if (result.answer || result.explanation) {
+            localStorage.setItem(
+              "lastGameSolution",
+              JSON.stringify({
+                answer: result.answer,
+                explanation: result.explanation,
+                puzzleId: gameData.id,
+              })
+            );
+          }
 
-          // Store game completion data in localStorage for failure page
-          const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
           const completionData = {
             guessHistory: [
               ...gameState.guessHistory,
@@ -747,35 +609,32 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           };
           localStorage.setItem("lastGameCompletion", JSON.stringify(completionData));
 
-          // Redirect to game-over page immediately (no delay)
           router.push(
             `/game-over?success=false&guess=${encodeURIComponent(guessToCheck)}&attempts=${gameSettings.maxAttempts}`
           );
-          return; // Exit early - game is over
+          return;
         }
 
-        // Track guess submission (only for non-final incorrect guesses)
         trackEvent(analyticsEvents.GUESS_SUBMITTED, {
           puzzleId: gameData.id || "unknown",
           puzzleType,
-          attemptNumber: gameSettings.maxAttempts - newAttemptsLeft,
+          attemptNumber,
           isCorrect: false,
         });
 
-        // Calculate overall similarity for near-miss detection
         const overallSimilarity =
-          wordResults.length > 0
-            ? Math.round(
-                wordResults.reduce((acc, w) => acc + (w.similarity ?? 0), 0) / wordResults.length
-              )
-            : 0;
+          typeof result.similarity === "number"
+            ? result.similarity
+            : wordResults.length > 0
+              ? Math.round(
+                  wordResults.reduce((acc, w) => acc + (w.similarity ?? 0), 0) / wordResults.length
+                )
+              : 0;
 
         handleIncorrectGuess(newAttemptsLeft, overallSimilarity);
-
         dispatch({ type: "RESET_GUESS" });
       } catch (error) {
         console.error("Error processing guess:", error);
-        // Rollback optimistic update on error
         dispatch({ type: "SET_ATTEMPTS_LEFT", payload: previousAttemptsLeft });
         dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: previousLastSubmittedGuess });
         setError({
@@ -794,14 +653,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       gameState.lastSubmittedGuess,
       gameState.startTime,
       gameState.guessHistory,
+      gameState.hintsUsed,
       currentEventPuzzle,
       setCompletionState,
       userStats,
+      userId,
+      ensureGuest,
       gameData.id,
       puzzleType,
       gameData.difficulty,
       router,
-      userId,
       handleIncorrectGuess,
     ]
   );
@@ -816,26 +677,20 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       )
         return;
 
+      // Free-form answers — no answer-length gating (answer is not on the client)
       if (key === "ENTER") {
-        if (gameState.isGuessFilled) {
+        if (gameState.currentGuess.trim()) {
           handleGuess();
         }
       } else if (key === "BACKSPACE") {
         const newGuess = gameState.currentGuess.slice(0, -1);
-        const isFilled =
-          newGuess.length === currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length;
         dispatch({ type: "SET_CURRENT_GUESS", payload: newGuess });
-        dispatch({ type: "SET_IS_GUESS_FILLED", payload: isFilled });
+        dispatch({ type: "SET_IS_GUESS_FILLED", payload: newGuess.trim().length > 0 });
         dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: null });
       } else if (/^[A-Z]$/.test(key)) {
-        const newGuess =
-          gameState.currentGuess.length < currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length
-            ? gameState.currentGuess + key
-            : gameState.currentGuess;
-        const isFilled =
-          newGuess.length === currentEventPuzzle.answer.replace(/[^a-zA-Z]/g, "").length;
+        const newGuess = gameState.currentGuess + key;
         dispatch({ type: "SET_CURRENT_GUESS", payload: newGuess });
-        dispatch({ type: "SET_IS_GUESS_FILLED", payload: isFilled });
+        dispatch({ type: "SET_IS_GUESS_FILLED", payload: true });
         dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: null });
       }
     },
@@ -843,7 +698,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       gameState.gameOver,
       gameState.nextPlayTime,
       gameState.currentGuess,
-      gameState.isGuessFilled,
       gameState.isSubmitting,
       currentEventPuzzle,
       handleGuess,
@@ -889,43 +743,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     handleKeyPress,
   ]);
 
-  // Show loading while creating guest session
-  if (isCreatingGuest || authLoading || (!userId && !guestReady)) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">Setting up your session...</p>
-        </div>
-      </div>
-    );
+  // Rare: auth still resolving without a seeded session — keep puzzle-shaped shell
+  if (authLoading) {
+    return <PuzzleSkeleton />;
   }
 
   return (
     <>
-      <Script id="structured-data" type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Game",
-          name: "Rebuzzle",
-          description:
-            "A daily rebus puzzle game challenging players to solve visual word puzzles.",
-          url: "https://rebuzzle.com",
-          genre: "Puzzle",
-          gamePlatform: "Web Browser",
-          applicationCategory: "Game",
-          operatingSystem: "Any",
-          author: {
-            "@type": "Organization",
-            name: "Rebuzzle Team",
-          },
-          offers: {
-            "@type": "Offer",
-            price: "0",
-            priceCurrency: "USD",
-          },
-        })}
-      </Script>
       {/* Main content area - keyboard-aware layout */}
       <KeyboardAwareLayout>
         {({ isKeyboardVisible }) => (
@@ -1043,10 +867,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             >
               <div className="mx-auto max-w-2xl">
                 <SmartAnswerInput
-                  correctAnswer={currentEventPuzzle?.answer || ""}
+                  puzzleId={gameData.id}
                   difficulty={currentEventPuzzle?.difficulty || 5}
-                  disabled={gameState.gameOver || gameState.isSubmitting}
-                  isSubmitting={gameState.isSubmitting}
+                  disabled={
+                    gameState.gameOver ||
+                    gameState.isSubmitting ||
+                    (!userId && isCreatingGuest)
+                  }
+                  isSubmitting={gameState.isSubmitting || isCreatingGuest}
                   onSubmit={handleGuess}
                   puzzle={currentEventPuzzle?.puzzle || ""}
                   puzzleType={currentEventPuzzle?.puzzleType || "rebus"}

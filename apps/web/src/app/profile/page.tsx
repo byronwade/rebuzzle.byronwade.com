@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
+import { ProfilePageSkeleton } from "@/components/page-skeletons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,7 @@ const createDefaultStats = (): UserStats => ({
 // Helper function to load stats from API
 const loadStatsFromAPI = async (userId: string): Promise<UserStats | null> => {
   try {
-    const response = await fetch(`/api/user/stats?userId=${userId}`, {
+    const response = await fetch("/api/user/stats", {
       credentials: "include",
     });
 
@@ -117,9 +118,12 @@ const loadStatsFromLocalStorage = (): UserStats | null => {
 };
 
 export default function ProfilePage() {
-  const { user, isAuthenticated } = useAuth();
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  // Paint instantly from local cache / defaults — refresh from API in background
+  const [stats, setStats] = useState<UserStats>(() => {
+    if (typeof window === "undefined") return createDefaultStats();
+    return loadStatsFromLocalStorage() || createDefaultStats();
+  });
   const [avatarPreferences, setAvatarPreferences] = useState<AvatarPreferences | null>(null);
 
   // Get username from auth context
@@ -139,35 +143,29 @@ export default function ProfilePage() {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
+    if (authLoading) return;
+
     const loadStats = async () => {
       if (isAuthenticated && user) {
         const apiStats = await loadStatsFromAPI(user.id);
         if (apiStats) {
           setStats(apiStats);
-          setIsLoading(false);
           return;
         }
       }
 
-      // Fallback to localStorage for guest users or if database fetch fails
       const localStats = loadStatsFromLocalStorage();
-      setStats(localStats || createDefaultStats());
-      setIsLoading(false);
+      if (localStats) {
+        setStats(localStats);
+      }
     };
 
-    loadStats().catch(() => {
-      setIsLoading(false);
-    });
-  }, [isAuthenticated, user]);
+    void loadStats();
+  }, [isAuthenticated, user, authLoading]);
 
-  if (isLoading || !stats) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center py-12">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      </Layout>
-    );
+  // Only the very first SSR paint without local cache uses the shell
+  if (authLoading && !user) {
+    return <ProfilePageSkeleton />;
   }
 
   // Calculate level and progress

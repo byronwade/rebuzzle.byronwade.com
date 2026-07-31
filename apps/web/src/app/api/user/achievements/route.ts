@@ -1,8 +1,8 @@
 /**
  * User Achievements API Route
  *
- * GET - Get current user's achievements and progress
- * POST - Award achievement to user (after game completion)
+ * GET  - Current user's achievements and progress
+ * POST - Only share_result manual awards (game achievements come from /api/puzzles/guess)
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -10,12 +10,15 @@ import { userAchievementOps, userOps } from "@/db/operations";
 import {
   ALL_ACHIEVEMENTS,
   awardAchievement,
-  checkAndAwardAchievements,
-  type GameContext,
   getUserAchievementProgress,
 } from "@/lib/achievements";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { sendAchievementUnlockedEmail } from "@/lib/notifications/email-service";
+
+/** Achievements that may be claimed from the client (everything else is server-only). */
+const CLIENT_AWARDABLE = new Set(["share_result"]);
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,137 +69,88 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    const limit = await rateLimiters.api(request);
+    if (limit && !limit.success) {
+      return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
+    }
+
     const body = await request.json();
     const { gameContext, manualAward } = body;
 
-    // Manual award (for special achievements like share_result)
-    if (manualAward) {
-      const { achievementId } = manualAward;
-
-      // Validate achievement ID exists
-      if (!achievementId || typeof achievementId !== "string") {
-        return NextResponse.json(
-          { success: false, error: "Invalid achievementId" },
-          { status: 400 }
-        );
-      }
-
-      // Verify achievement exists in definitions
-      const achievement = ALL_ACHIEVEMENTS.find((a) => a.id === achievementId);
-      if (!achievement) {
-        return NextResponse.json(
-          { success: false, error: `Achievement not found: ${achievementId}` },
-          { status: 404 }
-        );
-      }
-
-      const awarded = await awardAchievement(user.id, achievementId);
-
-      if (awarded && !user.isGuest) {
-        // Send email notification
-        const progress = await getUserAchievementProgress(user.id);
-        await sendAchievementUnlockedEmail(user.email, {
-          username: user.username,
-          achievementName: achievement.name,
-          achievementDescription: achievement.description,
-          achievementRarity: achievement.rarity,
-          achievementPoints: achievement.points,
-          achievementIcon: achievement.icon,
-          totalUnlocked: progress.unlocked,
-          totalAchievements: progress.total,
-        });
-      }
-
-      return NextResponse.json({
-        success: true,
-        awarded,
-        achievementId,
-      });
-    }
-
-    // Check and award achievements after game completion
+    // Client-trusted gameContext is no longer accepted — /api/puzzles/guess awards these.
     if (gameContext) {
-      // Validate required gameContext fields
-      if (
-        typeof gameContext.puzzleId !== "string" ||
-        typeof gameContext.attempts !== "number" ||
-        typeof gameContext.isCorrect !== "boolean"
-      ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Game achievements are awarded automatically via /api/puzzles/guess",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (!manualAward) {
+      return NextResponse.json(
+        { success: false, error: "Missing manualAward" },
+        { status: 400 }
+      );
+    }
+
+    const { achievementId } = manualAward;
+    if (!achievementId || typeof achievementId !== "string") {
+      return NextResponse.json(
+        { success: false, error: "Invalid achievementId" },
+        { status: 400 }
+      );
+    }
+
+    if (!CLIENT_AWARDABLE.has(achievementId)) {
+      return NextResponse.json(
+        { success: false, error: "This achievement cannot be claimed from the client" },
+        { status: 403 }
+      );
+    }
+
+    const achievement = ALL_ACHIEVEMENTS.find((a) => a.id === achievementId);
+    if (!achievement) {
+      return NextResponse.json(
+        { success: false, error: `Achievement not found: ${achievementId}` },
+        { status: 404 }
+      );
+    }
+
+    // share_result: require today's puzzle to be finished first
+    if (achievementId === "share_result") {
+      const { puzzleAttemptOps } = await import("@/db/operations");
+      const lock = await puzzleAttemptOps.hasTodayAttempt(user.id, getUtcPuzzleDate());
+      if (!lock.hasAttempt) {
         return NextResponse.json(
-          {
-            success: false,
-            error:
-              "Invalid gameContext: puzzleId (string), attempts (number), and isCorrect (boolean) are required",
-          },
-          { status: 400 }
+          { success: false, error: "Finish today's puzzle before sharing for achievements" },
+          { status: 403 }
         );
       }
+    }
 
-      // Validate attempts is positive and within bounds
-      if (gameContext.attempts < 1 || gameContext.attempts > 10) {
-        return NextResponse.json(
-          { success: false, error: "Invalid attempts: must be between 1 and 10" },
-          { status: 400 }
-        );
-      }
+    const awarded = await awardAchievement(user.id, achievementId);
 
-      const context: GameContext = {
-        puzzleId: gameContext.puzzleId,
-        attempts: gameContext.attempts,
-        maxAttempts: Math.min(Math.max(gameContext.maxAttempts || 5, 1), 10),
-        timeTaken: gameContext.timeTaken,
-        hintsUsed: gameContext.hintsUsed || 0,
-        difficulty: gameContext.difficulty || "medium",
-        isCorrect: gameContext.isCorrect,
-        score: gameContext.score || 0,
-      };
-
-      const result = await checkAndAwardAchievements(user.id, context);
-
-      // Send email notifications for newly unlocked achievements (non-guests only)
-      if (result.newlyUnlocked.length > 0 && !user.isGuest) {
-        const progress = await getUserAchievementProgress(user.id);
-
-        // Send emails for each new achievement (in background)
-        for (const achievement of result.newlyUnlocked) {
-          sendAchievementUnlockedEmail(user.email, {
-            username: user.username,
-            achievementName: achievement.name,
-            achievementDescription: achievement.description,
-            achievementRarity: achievement.rarity,
-            achievementPoints: achievement.points,
-            achievementIcon: achievement.icon,
-            totalUnlocked: progress.unlocked,
-            totalAchievements: progress.total,
-          })
-            .then(() => {
-              // Mark email as sent
-              userAchievementOps.markEmailSent(user.id, achievement.id);
-            })
-            .catch((err) => {
-              console.error(`Failed to send achievement email for ${achievement.id}:`, err);
-            });
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        newlyUnlocked: result.newlyUnlocked.map((a) => ({
-          id: a.id,
-          name: a.name,
-          description: a.description,
-          icon: a.icon,
-          rarity: a.rarity,
-          points: a.points,
-        })),
-        totalNewPoints: result.newlyUnlocked.reduce((sum, a) => sum + a.points, 0),
+    if (awarded && !user.isGuest) {
+      const progress = await getUserAchievementProgress(user.id);
+      await sendAchievementUnlockedEmail(user.email, {
+        username: user.username,
+        achievementName: achievement.name,
+        achievementDescription: achievement.description,
+        achievementRarity: achievement.rarity,
+        achievementPoints: achievement.points,
+        achievementIcon: achievement.icon,
+        totalUnlocked: progress.unlocked,
+        totalAchievements: progress.total,
       });
     }
 
-    return NextResponse.json(
-      { success: false, error: "Missing gameContext or manualAward" },
-      { status: 400 }
-    );
+    return NextResponse.json({
+      success: true,
+      awarded,
+      achievementId,
+    });
   } catch (error) {
     console.error("Error checking achievements:", error);
     return NextResponse.json(

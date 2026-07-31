@@ -1,6 +1,7 @@
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -199,6 +200,8 @@ export const metadata: Metadata = {
  * Wrapped in Suspense so the static document shell can still prerender.
  */
 async function AuthShell({ children }: { children: React.ReactNode }) {
+  // Explicit dynamic boundary for cookie/session reads (Cache Components)
+  await connection();
   const initialSession = await getServerSession();
   return <AuthProvider initialSession={initialSession}>{children}</AuthProvider>;
 }
