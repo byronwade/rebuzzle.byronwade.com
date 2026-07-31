@@ -54,7 +54,13 @@ export type RunVisualLabResult = {
     model?: string;
     error?: string;
   };
-  /** Full Eve / Apex puzzle preview (not persisted) */
+  /** Invented or AI-chosen seed (shown in Dev Lab) */
+  seed?: {
+    concept: string;
+    answer: string;
+    difficulty: number;
+  };
+  /** Full Eve / Apex puzzle preview — API may persist as inactive lab row */
   puzzle?: {
     rebusPuzzle: string;
     answer: string;
@@ -69,6 +75,8 @@ export type RunVisualLabResult = {
     funScore?: number;
     engine?: "apex" | "eve";
     thinkingSummary?: string;
+    fingerprint?: string;
+    uniquenessScore?: number;
   };
   compose?: {
     funScore: number;
@@ -140,6 +148,11 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
         durationMs: Date.now() - start,
         engine: result.metadata.engine,
       },
+      seed: {
+        concept: result.puzzle.category || "rebus",
+        answer: result.puzzle.answer,
+        difficulty: result.puzzle.difficulty,
+      },
       visual: result.puzzle.visual,
       puzzle: {
         rebusPuzzle: result.puzzle.rebusPuzzle,
@@ -155,6 +168,8 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
         funScore: result.metadata.qualityMetrics.scores.fun,
         engine: result.metadata.engine,
         thinkingSummary: result.metadata.aiThinking.summary,
+        fingerprint: result.metadata.fingerprint,
+        uniquenessScore: result.metadata.uniquenessScore,
       },
     };
   }
@@ -175,6 +190,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     usesAi: modeMeta.usesAi,
     estimatedCost: modeMeta.estimatedCost,
   };
+  const seed = { concept, answer, difficulty };
 
   if (mode === "pictogram") {
     const pictogram = await generatePictogram({
@@ -194,6 +210,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     return {
       mode,
       meta: { ...baseMeta, durationMs: Date.now() - start },
+      seed,
       pictogram: {
         ok: pictogram.ok,
         concept: pictogram.concept,
@@ -237,6 +254,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     return {
       mode,
       meta: { ...baseMeta, durationMs: Date.now() - start },
+      seed,
       image: {
         ok: image.ok,
         alt: image.alt,
@@ -261,6 +279,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     return {
       mode,
       meta: { ...baseMeta, durationMs: Date.now() - start },
+      seed,
       visual,
       compose: {
         funScore: 55,
@@ -292,6 +311,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     return {
       mode,
       meta: { ...baseMeta, durationMs: Date.now() - start },
+      seed,
       visual: composed.visual,
       compose: {
         funScore: composed.funScore,
@@ -318,6 +338,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     return {
       mode,
       meta: { ...baseMeta, durationMs: Date.now() - start },
+      seed,
       visual: composed.visual,
       compose: {
         funScore: composed.funScore,

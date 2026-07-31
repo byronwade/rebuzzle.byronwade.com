@@ -5,7 +5,7 @@
  * Preview only; never publishes today's puzzle.
  */
 
-import { FlaskConical, Loader2, Sparkles } from "lucide-react";
+import { FlaskConical, Loader2, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PuzzleContainer, PuzzleDisplay } from "@/components/PuzzleDisplay";
@@ -30,6 +30,12 @@ type LabResult = {
     durationMs: number;
     usesAi: boolean;
     estimatedCost: string;
+    engine?: string;
+  };
+  seed?: {
+    concept: string;
+    answer: string;
+    difficulty: number;
   };
   visual?: PuzzleVisual;
   pictogram?: {
@@ -58,6 +64,7 @@ type LabResult = {
     visual?: PuzzleVisual;
     qualityScore?: number;
     funScore?: number;
+    thinkingSummary?: string;
   };
   compose?: {
     funScore: number;
@@ -73,6 +80,8 @@ type LabResult = {
     };
   };
 };
+
+type QualityVote = "like" | "dislike";
 
 const FALLBACK_MODES: ModeMeta[] = [
   {
@@ -142,6 +151,9 @@ export function DevVisualLab() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<LabResult | null>(null);
+  const [puzzleId, setPuzzleId] = useState<string | null>(null);
+  const [vote, setVote] = useState<QualityVote | null>(null);
+  const [voteSaving, setVoteSaving] = useState(false);
 
   useEffect(() => {
     setDevOn(isDevModeEnabled());
@@ -176,6 +188,8 @@ export function DevVisualLab() {
     setBusy(true);
     setError("");
     setResult(null);
+    setPuzzleId(null);
+    setVote(null);
     try {
       const res = await fetch("/api/dev/visual-lab", {
         method: "POST",
@@ -185,21 +199,48 @@ export function DevVisualLab() {
           mode: selected,
           // Concept, answer, and difficulty are invented by the AI / adaptive loop
           renderImages: true,
+          persist: true,
         }),
       });
       const data = (await res.json()) as {
         success?: boolean;
         result?: LabResult;
+        puzzleId?: string;
+        persisted?: boolean;
         error?: string;
       };
       if (!res.ok || !data.success || !data.result) {
         throw new Error(data.error || "Generation failed");
       }
       setResult(data.result);
+      setPuzzleId(data.puzzleId || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const submitVote = async (next: QualityVote) => {
+    if (!puzzleId || voteSaving) return;
+    setVoteSaving(true);
+    setVote(next);
+    try {
+      await fetch("/api/puzzles/rating", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          puzzleId,
+          vote: next,
+          source: "dev_lab",
+          solved: true,
+        }),
+      });
+    } catch {
+      // keep local selection
+    } finally {
+      setVoteSaving(false);
     }
   };
 
@@ -221,6 +262,10 @@ export function DevVisualLab() {
   const previewVisual = result?.visual || result?.puzzle?.visual;
   const previewFallback =
     result?.puzzle?.rebusPuzzle || result?.visual?.unicodeFallback || "◆";
+  const revealedAnswer = result?.puzzle?.answer || result?.seed?.answer || "";
+  const revealedDifficulty =
+    result?.puzzle?.difficulty ?? result?.seed?.difficulty ?? null;
+  const revealedConcept = result?.seed?.concept || result?.pictogram?.concept || "";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-14">
@@ -306,6 +351,72 @@ export function DevVisualLab() {
             </PuzzleContainer>
           </section>
 
+          {revealedAnswer ? (
+            <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-5 text-center">
+              <p className="mb-2 font-medium text-[10px] uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                Answer
+              </p>
+              <p className="font-semibold text-2xl tracking-tight text-foreground md:text-3xl">
+                {revealedAnswer}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
+                {revealedConcept ? <span>Concept: {revealedConcept}</span> : null}
+                {revealedDifficulty != null ? <span>Difficulty {revealedDifficulty}/10</span> : null}
+                {puzzleId ? (
+                  <span className="font-mono text-[10px] text-subtle">saved · {puzzleId.slice(0, 8)}</span>
+                ) : (
+                  <span className="text-subtle">not saved</span>
+                )}
+              </div>
+              {result.puzzle?.explanation ? (
+                <p className="mx-auto mt-3 max-w-md text-muted-foreground text-sm leading-6">
+                  {result.puzzle.explanation}
+                </p>
+              ) : null}
+              <div className="mt-5 flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!puzzleId || voteSaving}
+                  onClick={() => void submitVote("like")}
+                  className={cn(
+                    "gap-2",
+                    vote === "like" && "border-success/50 bg-success/10 text-success"
+                  )}
+                >
+                  <ThumbsUp className="h-4 w-4" />
+                  Like
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!puzzleId || voteSaving}
+                  onClick={() => void submitVote("dislike")}
+                  className={cn(
+                    "gap-2",
+                    vote === "dislike" && "border-destructive/50 bg-destructive/10 text-destructive"
+                  )}
+                >
+                  <ThumbsDown className="h-4 w-4" />
+                  Dislike
+                </Button>
+              </div>
+              {!puzzleId ? (
+                <p className="mt-2 text-muted-foreground text-xs">
+                  Persist failed — regenerate to enable votes.
+                </p>
+              ) : vote ? (
+                <p className="mt-2 text-muted-foreground text-xs">
+                  Saved — votes tune future generation.
+                </p>
+              ) : (
+                <p className="mt-2 text-muted-foreground text-xs">
+                  Rate this board so Eve can learn what works.
+                </p>
+              )}
+            </section>
+          ) : null}
+
           <section className="grid gap-3 sm:grid-cols-2 text-xs">
             <MetaCard
               title="Run"
@@ -364,21 +475,16 @@ export function DevVisualLab() {
             )}
           </section>
 
-          {result.puzzle?.explanation && (
+          {result.puzzle?.hints?.length ? (
             <section className="rounded-lg border border-border bg-inset p-4 text-sm">
-              <p className="mb-1 font-medium text-xs uppercase tracking-wide text-subtle">
-                Explanation
-              </p>
-              <p>{result.puzzle.explanation}</p>
-              {result.puzzle.hints?.length ? (
-                <ul className="mt-3 list-disc space-y-1 pl-5 text-muted-foreground text-xs">
-                  {result.puzzle.hints.map((h) => (
-                    <li key={h}>{h}</li>
-                  ))}
-                </ul>
-              ) : null}
+              <p className="mb-1 font-medium text-xs uppercase tracking-wide text-subtle">Hints</p>
+              <ul className="list-disc space-y-1 pl-5 text-muted-foreground text-xs">
+                {result.puzzle.hints.map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
+              </ul>
             </section>
-          )}
+          ) : null}
 
           <details className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
             <summary className="cursor-pointer font-medium">Raw JSON</summary>

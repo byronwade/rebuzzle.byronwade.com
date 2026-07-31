@@ -4,10 +4,14 @@
 
 import { isFeatureEnabled } from "../../config/feature-flags";
 import { measureWindowPerformance } from "../../learning/performance-monitor";
+import {
+  loadQualityVoteAggregate,
+  qualityVotesToGuidance,
+} from "../../learning/puzzle-quality-vote";
 import type { LearningDigest } from "./types";
 
 /**
- * Aggregate recent finals into avoid/prefer guidance and a numeric difficulty delta.
+ * Aggregate recent finals + like/dislike quality votes into generation guidance.
  */
 export async function loadLearningDigest(input?: {
   lookbackDays?: number;
@@ -31,10 +35,13 @@ export async function loadLearningDigest(input?: {
   const lookbackDays = input?.lookbackDays ?? 7;
 
   try {
-    const window = await measureWindowPerformance({
-      lookbackDays,
-      minFinals: 8,
-    });
+    const [window, qualityVotes] = await Promise.all([
+      measureWindowPerformance({
+        lookbackDays,
+        minFinals: 8,
+      }),
+      loadQualityVoteAggregate({ lookbackDays: Math.max(lookbackDays, 14) }),
+    ]);
 
     const avoidPatterns: string[] = [];
     const preferPatterns: string[] = [];
@@ -74,12 +81,17 @@ export async function loadLearningDigest(input?: {
       preferPatterns.push("Make hint 2 structural, not just thematic");
     }
 
+    const qualityGuidance = qualityVotesToGuidance(qualityVotes);
+    preferPatterns.push(...qualityGuidance.preferPatterns);
+    avoidPatterns.push(...qualityGuidance.avoidPatterns);
+    difficultyDriftNotes.push(...qualityGuidance.notes);
+
     return {
       enabled: true,
       avoidPatterns,
       preferPatterns,
       difficultyDriftNotes,
-      sampleSize: window.finalPlays,
+      sampleSize: window.finalPlays + qualityVotes.total,
       targetDifficultyDelta: window.difficultyDelta,
       tooEasy: window.tooEasy,
       tooHard: window.tooHard,

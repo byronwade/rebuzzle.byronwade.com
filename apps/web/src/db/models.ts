@@ -167,6 +167,16 @@ export interface Puzzle {
     estimatedSolveRate?: number;
     /** Rolling sim bias applied when publishing */
     simCalibrationBias?: number;
+    /** Dev Visual Lab preview (inactive) */
+    lab?: boolean;
+    source?: string;
+    labMode?: string;
+    createdByUserId?: string;
+    likes?: number;
+    dislikes?: number;
+    lastQualityVote?: "like" | "dislike";
+    lastQualityVoteAt?: string;
+    qualityVoteSource?: string;
   };
   // Legacy field for backward compatibility (will be populated from puzzle field)
   rebusPuzzle?: string;
