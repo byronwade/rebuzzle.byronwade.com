@@ -1,4 +1,4 @@
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
@@ -16,14 +16,23 @@ import {
   generateWebSiteSchema,
 } from "@/lib/seo/structured-data";
 
-// Distinctive, highly-legible UI font (self-hosted via next/font)
-const jakarta = Plus_Jakarta_Sans({
+// Geometric sans carries display, body, button — everything narrative.
+const geistSans = Geist({
   subsets: ["latin"],
   display: "swap",
   preload: true,
-  fallback: ["system-ui", "arial"],
+  fallback: ["Inter", "system-ui", "-apple-system", "sans-serif"],
   adjustFontFallback: true,
   variable: "--font-sans",
+});
+
+// Mono carries the technical layer only: eyebrows, code, puzzle ciphers.
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+  variable: "--font-mono",
 });
 
 // Enhanced viewport configuration for mobile
@@ -33,8 +42,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#8b5cf6" },
-    { media: "(prefers-color-scheme: dark)", color: "#8b5cf6" },
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
 };
 
@@ -189,7 +198,7 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-status-bar-style": "default",
     "apple-mobile-web-app-title": "Rebuzzle",
     "application-name": "Rebuzzle",
-    "msapplication-TileColor": "#8b5cf6",
+    "msapplication-TileColor": "#171717",
     "msapplication-config": "/browserconfig.xml",
   },
 };
@@ -292,18 +301,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta content="Rebuzzle" name="application-name" />
 
         {/* Microsoft specific meta tags */}
-        <meta content="#8b5cf6" name="msapplication-TileColor" />
+        <meta content="#171717" name="msapplication-TileColor" />
         <meta content="/icon-192x192.png" name="msapplication-TileImage" />
 
         {/* Notification permission hint for mobile */}
         <meta content="granted" name="notification-permission" />
       </head>
       <body
-        className={`${jakarta.variable} ${jakarta.className} min-h-screen overflow-x-hidden bg-background font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen overflow-x-hidden bg-background font-sans antialiased`}
       >
         {/* Skip to content link for keyboard navigation */}
         <a
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:font-medium focus:text-background focus:text-sm"
           href="#main-content"
         >
           Skip to content

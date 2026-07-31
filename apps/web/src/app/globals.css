@@ -2,60 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   REBUZZLE DESIGN SYSTEM
+   A stark ink-on-canvas system: near-white surfaces, a 200-step
+   neutral ladder for every hairline and disabled state, and a
+   single multi-stop mesh gradient as the only decorative chrome.
+   ============================================================ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
+    /* — Surface ladder — */
+    --background: 0 0% 98%; /* canvas-soft  #fafafa — the page body */
+    --foreground: 0 0% 9%; /* ink          #171717 */
+    --card: 0 0% 100%; /* canvas       #ffffff */
     --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
+    --inset: 0 0% 96%; /* canvas-soft-2 #f5f5f5 */
+
+    /* — Ink primary — the single conversion colour — */
     --primary: 0 0% 9%;
     --primary-foreground: 0 0% 98%;
+
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted-foreground: 0 0% 40%; /* body #666 — readable secondary text */
+    --subtle-foreground: 0 0% 53%; /* mute #888 — lowest-priority text */
     --accent: 0 0% 96%;
     --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
+
+    /* — Hairlines — */
+    --border: 0 0% 92%; /* hairline        #ebebeb */
+    --border-strong: 0 0% 63%; /* hairline-strong #a1a1a1 */
+    --input: 0 0% 92%;
     --ring: 0 0% 9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+
+    /* — Semantic — */
+    --link: 212 100% 48%; /* #0070f3 */
+    --link-deep: 213 90% 42%; /* #0761d1 */
+    --success: 131 35% 46%;
+    --warning: 37 91% 55%; /* #f5a623 */
+    --destructive: 0 100% 47%; /* #ee0000 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* — Brand gradient stops (hero scale only) — */
+    --grad-develop-start: #007cf0;
+    --grad-develop-end: #00dfd8;
+    --grad-preview-start: #7928ca;
+    --grad-preview-end: #ff0080;
+    --grad-ship-start: #ff4d4d;
+    --grad-ship-end: #f9cb28;
+
+    /* — Charts inherit the gradient palette, never a sixth accent — */
+    --chart-1: 212 100% 47%;
+    --chart-2: 178 100% 44%;
+    --chart-3: 280 67% 47%;
+    --chart-4: 330 100% 50%;
+    --chart-5: 44 94% 57%;
+
+    /* — Stacked elevation — small offsets + inset hairline, never one heavy drop — */
+    --shadow-border: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+    --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.02), 0 2px 2px rgb(0 0 0 / 0.04);
+    --shadow-md: 0 2px 2px rgb(0 0 0 / 0.04), 0 8px 8px -8px rgb(0 0 0 / 0.04);
+    --shadow-lg: 0 2px 2px rgb(0 0 0 / 0.04), 0 8px 16px -4px rgb(0 0 0 / 0.04);
+    --shadow-menu: 0 1px 1px rgb(0 0 0 / 0.02), 0 8px 16px -4px rgb(0 0 0 / 0.04),
+      0 24px 32px -8px rgb(0 0 0 / 0.06);
+
+    --radius: 0.5rem; /* marketing radius 8px; sm 4px / md 6px derive from it */
+    --header-height: 56px;
   }
 
   .dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 93%;
-    --card: 0 0% 10%;
+    --background: 0 0% 4%; /* #0a0a0a */
+    --foreground: 0 0% 93%; /* #ededed */
+    --card: 0 0% 6%; /* #0f0f0f */
     --card-foreground: 0 0% 93%;
-    --popover: 0 0% 10%;
+    --popover: 0 0% 7%;
     --popover-foreground: 0 0% 93%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 18%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 30%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --inset: 0 0% 10%;
+
+    --primary: 0 0% 93%;
+    --primary-foreground: 0 0% 4%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 63%;
+    --subtle-foreground: 0 0% 53%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 93%;
+
+    --border: 0 0% 18%; /* #2e2e2e */
+    --border-strong: 0 0% 33%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 63%;
+
+    --link: 212 100% 60%; /* #3291ff */
+    --link-deep: 212 100% 70%;
+    --success: 131 41% 56%;
+    --warning: 37 91% 60%;
+    --destructive: 0 100% 62%;
+    --destructive-foreground: 0 0% 100%;
+
+    --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 0.09);
+    --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.24), 0 2px 2px rgb(0 0 0 / 0.2);
+    --shadow-md: 0 2px 2px rgb(0 0 0 / 0.28), 0 8px 8px -8px rgb(0 0 0 / 0.32);
+    --shadow-lg: 0 2px 2px rgb(0 0 0 / 0.28), 0 8px 16px -4px rgb(0 0 0 / 0.32);
+    --shadow-menu: 0 1px 1px rgb(0 0 0 / 0.24), 0 8px 16px -4px rgb(0 0 0 / 0.32),
+      0 24px 32px -8px rgb(0 0 0 / 0.4);
   }
 }
 
@@ -63,17 +118,52 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "ss03", "cv01", "cv09";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Display type is tracked negative — that tracking is part of the voice. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold tracking-tight;
+    text-wrap: balance;
+  }
+
+  h1 {
+    letter-spacing: -0.04em;
+  }
+
+  h2 {
+    letter-spacing: -0.035em;
+  }
+
+  h3 {
+    letter-spacing: -0.03em;
+  }
+
+  ::selection {
+    background-color: hsl(var(--foreground));
+    color: hsl(var(--background));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* One consistent focus ring across the whole surface */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
   }
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Smooth scrolling on mobile */
 @media (max-width: 768px) {
   html {
     scroll-behavior: smooth;
@@ -84,524 +174,135 @@ html {
   }
 }
 
-/* Enhanced Animations */
-@keyframes shake {
-  0% {
-    transform: translateX(0);
+/* ============================================================
+   ELEVATION + SURFACE UTILITIES
+   ============================================================ */
+
+@layer components {
+  /* Level 1 — the universal "this is a card" cue: hairline ring only. */
+  .surface {
+    @apply rounded-lg border border-border bg-card;
   }
 
-  10% {
-    transform: translateX(-10px);
+  /* Level 2 — subtle drop. Template / list cards. */
+  .surface-raised {
+    @apply rounded-lg border border-border bg-card;
+    box-shadow: var(--shadow-sm);
   }
 
-  20% {
-    transform: translateX(10px);
+  /* Level 4 — float stack. Pricing / callout panels. */
+  .surface-float {
+    @apply rounded-xl border border-border bg-card;
+    box-shadow: var(--shadow-lg);
   }
 
-  30% {
-    transform: translateX(-10px);
+  /* Inset region — a step deeper than the page. */
+  .surface-inset {
+    @apply rounded-lg border border-border;
+    background-color: hsl(var(--inset));
   }
 
-  40% {
-    transform: translateX(10px);
+  /* Polarity-flipped band — the brand's chief depth cue between sections. */
+  .band-dark {
+    @apply bg-foreground text-background;
   }
 
-  50% {
-    transform: translateX(-10px);
+  /* Mono eyebrow — the voice of the technical layer. */
+  .eyebrow {
+    @apply font-mono text-[11px] text-subtle uppercase tracking-[0.14em];
   }
 
-  60% {
-    transform: translateX(10px);
+  /* Marketing CTA pill vs. 6px in-app radius: pick a scale per screen. */
+  .cta-pill {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 font-medium text-[15px] text-background transition-opacity hover:opacity-90;
   }
 
-  70% {
-    transform: translateX(-10px);
+  .cta-pill-secondary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 font-medium text-[15px] text-foreground transition-colors hover:bg-muted;
   }
 
-  80% {
-    transform: translateX(10px);
-  }
-
-  90% {
-    transform: translateX(-10px);
-  }
-
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes bounce-in {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
-
-  70% {
-    transform: scale(0.9);
-  }
-
-  100% {
-    transform: scale(1);
-    opacity: 1;
+  /* A single row of hairline-separated stats. */
+  .hairline-grid {
+    @apply divide-y divide-border border border-border sm:divide-x sm:divide-y-0;
   }
 }
 
-@keyframes slide-up {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes pulse-success {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-  }
-
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-  }
-}
-
-@keyframes pulse-error {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-  }
-
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-  }
-}
-
-@keyframes typing-indicator {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.7;
-    transform: scale(1.02);
-  }
-}
-
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes ripple {
-  0% {
-    transform: scale(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(4);
-    opacity: 0;
-  }
-}
-
-@keyframes particle-float {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateY(-20px) scale(0.5);
-    opacity: 0;
-  }
-}
-
-/* Mobile-optimized animations */
-@media (max-width: 768px) {
-  @keyframes bounce-in {
-    0% {
-      transform: scale(0.5) translateY(-20px);
-      opacity: 0;
-    }
-
-    50% {
-      transform: scale(1.02) translateY(-5px);
-    }
-
-    70% {
-      transform: scale(0.98) translateY(0);
-    }
-
-    100% {
-      transform: scale(1) translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes slide-up {
-    from {
-      transform: translateY(15px);
-      opacity: 0;
-    }
-
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-}
-
-/* Animation utility classes */
-.shake {
-  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-}
-
-.bounce-in {
-  animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.slide-up {
-  animation: slide-up 0.4s ease-out;
-}
-
-.pulse-success {
-  animation: pulse-success 0.6s ease-in-out;
-}
-
-.pulse-error {
-  animation: pulse-error 0.6s ease-in-out;
-}
-
-.typing-indicator {
-  animation: typing-indicator 1.5s ease-in-out infinite;
-}
-
-.fade-in-up {
-  animation: fade-in-up 0.5s ease-out;
-}
-
-.ripple-effect {
-  animation: ripple 0.6s linear;
-}
-
-.particle-float {
-  animation: particle-float 1s ease-out forwards;
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .shake,
-  .bounce-in,
-  .slide-up,
-  .pulse-success,
-  .pulse-error,
-  .typing-indicator,
-  .fade-in-up,
-  .ripple-effect,
-  .particle-float {
-    animation: none;
-  }
-
-  .interactive-element {
-    transition: none;
-  }
-
-  .interactive-element:hover {
-    transform: none;
-  }
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms;
-    animation-iteration-count: 1;
-    transition-duration: 0.01ms;
-    scroll-behavior: auto;
-  }
-}
-/* Interactive elements */
-.interactive-element {
-  transition: all 0.2s ease-in-out;
-  transform-origin: center;
-}
-
-.interactive-element:hover {
-  transform: translateY(-1px);
-}
-
-.interactive-element:active {
-  transform: translateY(0);
-}
-
-/* Enhanced focus styles */
-.custom-focus:focus {
-  outline: none;
-  ring: 2px;
-  ring-color: rgb(147 51 234 / 0.5);
-  ring-offset: 2px;
-  ring-offset-color: rgb(255 255 255);
-}
-
-/* Better default focus for all interactive elements */
-:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-  border-radius: 2px;
-  transition: outline-offset 0.15s ease;
-}
-
-/* Subtle hover lift effect */
-.hover-lift {
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Active press effect */
-.active-press:active {
-  transform: translateY(1px);
-  transition: transform 0.1s ease;
-}
-
-/* Enhanced transition utilities */
 @layer utilities {
-  .transition-smooth {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  .shadow-border {
+    box-shadow: var(--shadow-border);
   }
 
-  .transition-bounce {
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  .shadow-level-1 {
+    box-shadow: var(--shadow-border);
   }
 
-  .transition-spring {
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  .shadow-level-2 {
+    box-shadow: var(--shadow-sm), var(--shadow-border);
   }
 
-  /* Elevation system with consistent shadows */
-  .elevation-1 {
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  .shadow-level-3 {
+    box-shadow: var(--shadow-md), var(--shadow-border);
   }
 
-  .elevation-2 {
-    box-shadow:
-      0 1px 3px 0 rgba(0, 0, 0, 0.1),
-      0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  .shadow-level-4 {
+    box-shadow: var(--shadow-lg), var(--shadow-border);
   }
 
-  .elevation-3 {
-    box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.1),
-      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  .shadow-level-5 {
+    box-shadow: var(--shadow-menu), var(--shadow-border);
   }
 
-  .elevation-4 {
-    box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.1),
-      0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  }
-
-  .elevation-5 {
-    box-shadow:
-      0 20px 25px -5px rgba(0, 0, 0, 0.1),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  }
-
-  /* Typography improvements */
   .text-balance {
     text-wrap: balance;
   }
 
-  .tracking-snug {
-    letter-spacing: -0.015em;
+  .text-pretty {
+    text-wrap: pretty;
   }
 
-  .tracking-relaxed {
-    letter-spacing: 0.025em;
+  /* The brand mesh — one unified object, hero scale only, never miniaturised. */
+  .mesh-gradient {
+    background-image:
+      radial-gradient(at 18% 0%, var(--grad-develop-start) 0px, transparent 55%),
+      radial-gradient(at 62% 8%, var(--grad-preview-start) 0px, transparent 50%),
+      radial-gradient(at 92% 0%, var(--grad-preview-end) 0px, transparent 55%),
+      radial-gradient(at 40% 30%, var(--grad-develop-end) 0px, transparent 45%),
+      radial-gradient(at 82% 34%, var(--grad-ship-end) 0px, transparent 45%);
   }
 
-  .leading-relaxed {
-    line-height: 1.75;
-  }
-
-  /* Gradient utilities */
-  .gradient-primary {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--primary)) 0%,
-      hsl(var(--primary) / 0.8) 100%
+  /* Text set in the develop→preview gradient. Headline scale only. */
+  .text-gradient {
+    background-image: linear-gradient(
+      90deg,
+      var(--grad-develop-start),
+      var(--grad-preview-start) 45%,
+      var(--grad-preview-end)
     );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
   }
 
-  .gradient-accent {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--accent)) 0%,
-      hsl(var(--accent) / 0.6) 100%
-    );
-  }
-
-  .gradient-shimmer {
+  /* A 1px hairline that fades at both ends — section dividers. */
+  .rule-fade {
+    height: 1px;
     background: linear-gradient(
       90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.1) 50%,
-      transparent 100%
+      transparent,
+      hsl(var(--border)) 15%,
+      hsl(var(--border)) 85%,
+      transparent
     );
   }
-  /* Responsive utilities */
-  .text-responsive {
-    @apply text-sm xs:text-base sm:text-lg;
+
+  /* Faint engineered grid — background texture at very low contrast. */
+  .grid-texture {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.7) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.7) 1px, transparent 1px);
+    background-size: 64px 64px;
   }
 
-  .text-responsive-lg {
-    @apply text-base xs:text-lg sm:text-xl md:text-2xl;
-  }
-
-  .text-responsive-xl {
-    @apply text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl;
-  }
-
-  .padding-responsive {
-    @apply p-2 xs:p-3 sm:p-4 md:p-6;
-  }
-
-  .padding-responsive-sm {
-    @apply p-1 xs:p-2 sm:p-3;
-  }
-
-  .gap-responsive {
-    @apply gap-2 xs:gap-3 sm:gap-4;
-  }
-
-  .gap-responsive-sm {
-    @apply gap-1 xs:gap-2 sm:gap-3;
-  }
-
-  /* Mobile-first breakpoint utilities */
-  .mobile-only {
-    @apply block xs:hidden;
-  }
-
-  .mobile-hidden {
-    @apply hidden xs:block;
-  }
-
-  .tablet-only {
-    @apply hidden sm:block md:hidden;
-  }
-
-  .desktop-only {
-    @apply hidden md:block;
-  }
-
-  /* Touch-friendly sizing */
-  .touch-target {
-    @apply min-h-[44px] min-w-[44px];
-  }
-
-  /* Safe area support */
-  .safe-area-inset {
-    padding-top: env(safe-area-inset-top);
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-  }
-
-  /* Overflow handling utilities */
-  .overflow-visible-important {
-    overflow: visible;
-  }
-
-  .overflow-visible-x {
-    overflow-x: visible;
-  }
-
-  .overflow-visible-y {
-    overflow-y: visible;
-  }
-
-  /* Container overflow fixes */
-  .animation-container {
-    overflow: visible;
-    contain: none;
-  }
-
-  .no-clip {
-    clip-path: none;
-    -webkit-clip-path: none;
-  }
-
-  /* Prevent animation clipping */
-  .preserve-3d {
-    transform-style: preserve-3d;
-  }
-
-  .backface-visible {
-    backface-visibility: visible;
-  }
-
-  /* Enhanced card overflow handling */
-  .card-overflow-visible {
-    overflow: visible;
-    contain: layout style;
-  }
-
-  .card-overflow-visible * {
-    overflow: visible;
-  }
-}
-
-/* Mobile-specific styles */
-@media (max-width: 768px) {
-  .touch-action-manipulation {
-    touch-action: manipulation;
-  }
-
-  .select-none {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-
-  .tap-highlight-transparent {
-    -webkit-tap-highlight-color: transparent;
-  }
-}
-
-/* ============================================
-   KEYBOARD-AWARE LAYOUT UTILITIES
-   ============================================ */
-
-/* Dynamic viewport height units - accounts for virtual keyboard */
-@layer utilities {
   .h-dvh {
     height: 100dvh;
   }
@@ -618,11 +319,6 @@ html {
     height: 100svh;
   }
 
-  .h-lvh {
-    height: 100lvh;
-  }
-
-  /* Safe area bottom padding utility */
   .pb-safe {
     padding-bottom: max(env(safe-area-inset-bottom), 16px);
   }
@@ -632,13 +328,148 @@ html {
   }
 }
 
-/* iOS Safari specific fixes for viewport height */
+/* ============================================================
+   MOTION
+   Short, eased, and reversible. Nothing bounces.
+   ============================================================ */
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-6px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  60% {
+    transform: translateX(-4px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mesh-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(-2%, 1.5%, 0) scale(1.06);
+  }
+}
+
+.shake {
+  animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   PLAY SURFACE
+   The game is an app, not a marketing page: 6px radii, hairlines,
+   no gradient except a single atmospheric wash behind the stage.
+   ============================================================ */
+
+.play-chrome {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.play-stage {
+  position: relative;
+}
+
+.play-puzzle-panel {
+  position: relative;
+  border-radius: 12px;
+  padding: clamp(0.75rem, 2vh, 1.25rem) clamp(0.75rem, 3vw, 1.5rem);
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-lg);
+  animation: panel-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.play-dock {
+  background-color: hsl(var(--background) / 0.85);
+  border-top: 1px solid hsl(var(--border));
+  backdrop-filter: blur(12px);
+}
+
+.play-fade-in {
+  animation: fade-in-up 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.guess-chip {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.guess-chip:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-puzzle-panel,
+  .play-fade-in,
+  .guess-chip {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+   KEYBOARD-AWARE LAYOUT
+   ============================================================ */
+
 @supports (-webkit-touch-callout: none) {
   .keyboard-aware-container {
     height: -webkit-fill-available;
   }
 
-  /* Ensure inputs don't zoom on iOS */
+  /* Stop iOS zooming the viewport on input focus */
   input,
   textarea,
   select {
@@ -646,7 +477,6 @@ html {
   }
 }
 
-/* Keyboard-aware container styles */
 .keyboard-aware-container {
   display: flex;
   flex-direction: column;
@@ -655,35 +485,15 @@ html {
   transition: height 0.3s ease-out;
 }
 
-/* When keyboard is visible, apply compact styles */
-.keyboard-visible .puzzle-area {
-  flex: 0 0 auto;
-  overflow: hidden;
-}
-
+.keyboard-visible .puzzle-area,
 .keyboard-visible .input-area {
   flex: 0 0 auto;
 }
 
-/* Smooth collapse/expand transitions */
-.puzzle-collapse-transition {
-  transition:
-    max-height 0.3s ease-out,
-    opacity 0.2s ease-out,
-    transform 0.3s ease-out;
+.keyboard-visible .puzzle-area {
+  overflow: hidden;
 }
 
-.puzzle-collapsed {
-  max-height: 80px;
-  opacity: 0.9;
-}
-
-.puzzle-expanded {
-  max-height: 100vh;
-  opacity: 1;
-}
-
-/* Input area keyboard transition */
 .input-area-keyboard-transition {
   transition:
     padding 0.2s ease-out,
@@ -691,32 +501,32 @@ html {
   will-change: padding, transform;
 }
 
-/* Viewport-responsive puzzle display - scales proportionally */
+.keyboard-layout-active {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================================
+   VIEWPORT-RESPONSIVE PUZZLE TYPOGRAPHY
+   Puzzle content scales with viewport height so the stage never
+   scrolls, on any device, with or without the keyboard up.
+   ============================================================ */
+
 .puzzle-area {
   gap: clamp(0.25rem, 1.5vh, 0.75rem);
 }
 
-/* Viewport-responsive puzzle container */
 .puzzle-container-responsive {
   padding: clamp(0.75rem, 2.5vh, 1.5rem) clamp(1rem, 3vw, 1.5rem);
 }
 
-/* Viewport-responsive min-height for puzzle container */
 .puzzle-min-height {
   min-height: clamp(80px, 15vh, 140px);
 }
 
-/* Viewport-responsive text sizes */
-.greeting-responsive {
-  font-size: clamp(0.7rem, 1.5vh, 0.875rem);
-}
-
-/* ============================================
-   PUZZLE TYPE-SPECIFIC VIEWPORT-RESPONSIVE SIZES
-   Uses clamp() for smooth scaling based on viewport height
-   ============================================ */
-
-/* Visual puzzles (rebus, pattern-recognition) - emoji/visual content */
+/* Visual puzzles (rebus, pattern-recognition) */
 .puzzle-visual-sm {
   font-size: clamp(1.5rem, 5vh, 2.5rem);
   line-height: 1.3;
@@ -736,21 +546,24 @@ html {
 .puzzle-monospace-sm {
   font-size: clamp(1rem, 3vh, 1.5rem);
   line-height: 1.4;
+  letter-spacing: 0.04em;
 }
 
 .puzzle-monospace-md {
   font-size: clamp(1.25rem, 4vh, 2rem);
   line-height: 1.4;
+  letter-spacing: 0.04em;
 }
 
 .puzzle-monospace-lg {
   font-size: clamp(1.5rem, 5vh, 2.5rem);
   line-height: 1.4;
+  letter-spacing: 0.04em;
 }
 
 /* Text puzzles (riddle, trivia, logic-grid, cryptic-crossword) */
 .puzzle-text-sm {
-  font-size: clamp(0.8rem, 1.8vh, 1rem);
+  font-size: clamp(0.85rem, 1.9vh, 1.05rem);
   line-height: 1.6;
 }
 
@@ -770,23 +583,7 @@ html {
   line-height: 1.4;
 }
 
-/* Landscape phone handling - very constrained vertical space */
 @media (max-height: 500px) and (orientation: landscape) {
-  .keyboard-aware-container {
-    /* In landscape, keep minimal chrome */
-  }
-
-  .puzzle-compact-landscape {
-    padding: 0.5rem;
-    min-height: auto;
-  }
-
-  .landscape-minimal-header {
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
-  }
-
-  /* Further reduce puzzle sizes in landscape */
   .puzzle-visual-lg {
     font-size: clamp(1.5rem, 12vh, 2.5rem);
   }
@@ -796,7 +593,6 @@ html {
   }
 }
 
-/* Small viewport height - compact everything proportionally */
 @media (max-height: 700px) {
   .puzzle-area {
     gap: clamp(0.125rem, 1vh, 0.5rem);
@@ -804,100 +600,5 @@ html {
 
   .puzzle-min-height {
     min-height: clamp(70px, 12vh, 110px);
-  }
-}
-
-/* Prevent body scroll when keyboard-aware layout is active */
-.keyboard-layout-active {
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-  height: 100%;
-}
-
-/* —— Play app surface —— */
-:root {
-  --play-accent: 173 80% 40%;
-  --play-ink: 200 25% 12%;
-}
-
-.play-chrome {
-  box-shadow: 0 1px 0 hsl(var(--border) / 0.6);
-}
-
-.play-stage {
-  position: relative;
-}
-
-.play-puzzle-panel {
-  border-radius: 1.5rem;
-  padding: clamp(0.75rem, 2vh, 1.25rem) clamp(0.5rem, 2vw, 1rem);
-  background: linear-gradient(
-    165deg,
-    hsl(0 0% 100% / 0.72),
-    hsl(190 40% 98% / 0.55)
-  );
-  border: 1px solid hsl(var(--border) / 0.55);
-  box-shadow:
-    0 20px 50px -28px hsl(173 60% 30% / 0.35),
-    inset 0 1px 0 hsl(0 0% 100% / 0.65);
-  backdrop-filter: blur(10px);
-  animation: play-panel-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.dark .play-puzzle-panel {
-  background: linear-gradient(
-    165deg,
-    hsl(200 20% 12% / 0.75),
-    hsl(200 25% 10% / 0.55)
-  );
-  box-shadow: 0 24px 60px -30px hsl(173 70% 40% / 0.25);
-}
-
-.play-dock {
-  background: linear-gradient(
-    180deg,
-    hsl(var(--background) / 0.55),
-    hsl(var(--background) / 0.92)
-  );
-  border-top: 1px solid hsl(var(--border) / 0.5);
-  backdrop-filter: blur(14px);
-}
-
-.play-fade-in {
-  animation: play-fade-up 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.guess-chip:active {
-  transform: scale(0.97);
-}
-
-@keyframes play-panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes play-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .play-puzzle-panel,
-  .play-fade-in,
-  .guess-chip {
-    animation: none !important;
   }
 }

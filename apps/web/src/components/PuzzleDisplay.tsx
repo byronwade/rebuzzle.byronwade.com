@@ -88,12 +88,13 @@ export function PuzzleDisplay({
   const isRebus = puzzleType === "rebus";
 
   const baseClasses = cn(
-    // Base text color
-    "text-gray-800 dark:text-gray-200",
-    // Font family
-    isMonospace && "font-mono tracking-wider",
-    // Font weight
-    isTextBased ? "font-normal" : "font-bold",
+    // Base text color — the puzzle is the loudest ink on the page
+    "text-foreground",
+    // Font family — mono is reserved for ciphers and sequences
+    isMonospace && "font-mono",
+    // Font weight — 600 is the ceiling
+    isTextBased ? "font-normal" : "font-semibold",
+    !isTextBased && "tracking-[-0.02em]",
     // Size classes
     SIZE_CLASSES[category][size],
     // Line height
@@ -149,9 +150,9 @@ export function PuzzleContainer({
   return (
     <div
       className={cn(
-        "rounded-3xl border-2 border-dashed bg-white shadow-inner",
-        "border-gray-200 dark:border-gray-700 dark:bg-gray-800",
-        "text-center",
+        // An inset region a step deeper than the card it sits in
+        "rounded-lg border border-border bg-inset",
+        "flex flex-col items-center justify-center text-center",
         // Viewport-responsive padding using CSS class
         "puzzle-container-responsive",
         // Container constraints
@@ -200,9 +201,5 @@ export function PuzzleQuestion({ puzzleType = "rebus", className }: PuzzleQuesti
                         ? "Solve this cryptic crossword clue"
                         : "What is the answer to this puzzle?";
 
-  return (
-    <p className={cn("font-medium text-muted-foreground", "text-sm", "mt-4", className)}>
-      {questionText}
-    </p>
-  );
+  return <p className={cn("mt-4 text-balance text-subtle text-sm", className)}>{questionText}</p>;
 }

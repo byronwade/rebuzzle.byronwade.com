@@ -105,8 +105,7 @@ export function PuzzleMinimal({ puzzle, puzzleType, className }: PuzzleMinimalPr
           )}
           style={{
             // Ensure emojis and special characters render correctly
-            fontFamily:
-              '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+            fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
           }}
         >
           {content}

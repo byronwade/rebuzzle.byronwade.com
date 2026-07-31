@@ -103,7 +103,7 @@ export default function AdminHeader() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="cursor-pointer bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 focus:bg-red-100 focus:text-red-700"
+                  className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
@@ -119,7 +119,7 @@ export default function AdminHeader() {
               variant="outline"
             >
               <Avatar className="h-6 w-6">
-                <AvatarFallback className="bg-gray-100">G</AvatarFallback>
+                <AvatarFallback>G</AvatarFallback>
               </Avatar>
               <span className="hidden sm:inline">Sign In</span>
             </Button>

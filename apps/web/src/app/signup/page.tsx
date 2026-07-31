@@ -195,17 +195,14 @@ export default function SignupPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
         <div className="flex justify-center">
-          <Card className="w-full max-w-md p-8">
+          <Card className="w-full max-w-[400px] p-8" variant="float">
             {/* Header */}
-            <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-neutral-700 to-neutral-800">
-                <span className="text-4xl">🧩</span>
-              </div>
-              <h1 className="mb-2 font-semibold text-base md:text-lg">Join Rebuzzle</h1>
-              <p className="text-muted-foreground text-sm">
-                Create your account and start competing!
+            <div className="mb-7 text-center">
+              <h1 className="font-semibold text-2xl tracking-[-0.04em]">Create your account.</h1>
+              <p className="mt-2 text-muted-foreground text-sm">
+                Keep your streak, points and achievements across devices.
               </p>
             </div>
 
@@ -220,7 +217,7 @@ export default function SignupPage() {
               {errors.form && (
                 <div
                   aria-live="polite"
-                  className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-destructive text-sm"
+                  className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5 text-destructive text-sm"
                   role="alert"
                 >
                   {errors.form}
@@ -232,7 +229,7 @@ export default function SignupPage() {
                 <div className="relative">
                   <User
                     aria-hidden="true"
-                    className="absolute top-3 left-3 h-4 w-4 text-muted-foreground"
+                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
                   />
                   <Input
                     aria-describedby={errors.username ? "username-error" : "username-help"}
@@ -240,7 +237,7 @@ export default function SignupPage() {
                     autoComplete="username"
                     className={
                       errors.username
-                        ? "border-destructive pl-10 focus-visible:ring-destructive"
+                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
                         : "pl-10"
                     }
                     id="username"
@@ -256,11 +253,11 @@ export default function SignupPage() {
                   />
                 </div>
                 {errors.username ? (
-                  <p className="text-destructive text-sm" id="username-error" role="alert">
+                  <p className="text-destructive text-xs" id="username-error" role="alert">
                     {errors.username}
                   </p>
                 ) : (
-                  <p className="text-muted-foreground text-xs" id="username-help">
+                  <p className="text-subtle text-xs" id="username-help">
                     At least 3 characters
                   </p>
                 )}
@@ -271,7 +268,7 @@ export default function SignupPage() {
                 <div className="relative">
                   <Mail
                     aria-hidden="true"
-                    className="absolute top-3 left-3 h-4 w-4 text-muted-foreground"
+                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
                   />
                   <Input
                     aria-describedby={errors.email ? "email-error" : undefined}
@@ -279,7 +276,7 @@ export default function SignupPage() {
                     autoComplete="email"
                     className={
                       errors.email
-                        ? "border-destructive pl-10 focus-visible:ring-destructive"
+                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
                         : "pl-10"
                     }
                     id="email"
@@ -295,7 +292,7 @@ export default function SignupPage() {
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-destructive text-sm" id="email-error" role="alert">
+                  <p className="text-destructive text-xs" id="email-error" role="alert">
                     {errors.email}
                   </p>
                 )}
@@ -306,7 +303,7 @@ export default function SignupPage() {
                 <div className="relative">
                   <Lock
                     aria-hidden="true"
-                    className="absolute top-3 left-3 h-4 w-4 text-muted-foreground"
+                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
                   />
                   <Input
                     aria-describedby={errors.password ? "password-error" : "password-help"}
@@ -314,7 +311,7 @@ export default function SignupPage() {
                     autoComplete="new-password"
                     className={
                       errors.password
-                        ? "border-destructive pl-10 focus-visible:ring-destructive"
+                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
                         : "pl-10"
                     }
                     id="password"
@@ -329,11 +326,11 @@ export default function SignupPage() {
                   />
                 </div>
                 {errors.password ? (
-                  <p className="text-destructive text-sm" id="password-error" role="alert">
+                  <p className="text-destructive text-xs" id="password-error" role="alert">
                     {errors.password}
                   </p>
                 ) : (
-                  <p className="text-muted-foreground text-xs" id="password-help">
+                  <p className="text-subtle text-xs" id="password-help">
                     Must be at least 6 characters
                   </p>
                 )}
@@ -344,7 +341,7 @@ export default function SignupPage() {
                 <div className="relative">
                   <Lock
                     aria-hidden="true"
-                    className="absolute top-3 left-3 h-4 w-4 text-muted-foreground"
+                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
                   />
                   <Input
                     aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
@@ -352,7 +349,7 @@ export default function SignupPage() {
                     autoComplete="new-password"
                     className={
                       errors.confirmPassword
-                        ? "border-destructive pl-10 focus-visible:ring-destructive"
+                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
                         : "pl-10"
                     }
                     id="confirmPassword"
@@ -367,7 +364,7 @@ export default function SignupPage() {
                   />
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-destructive text-sm" id="confirmPassword-error" role="alert">
+                  <p className="text-destructive text-xs" id="confirmPassword-error" role="alert">
                     {errors.confirmPassword}
                   </p>
                 )}
@@ -384,14 +381,14 @@ export default function SignupPage() {
                   <>
                     <div
                       aria-hidden="true"
-                      className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
+                      className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-60"
                     />
                     <span>Creating account…</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus aria-hidden="true" className="mr-2 h-4 w-4" />
-                    Create Account
+                    <UserPlus aria-hidden="true" className="h-4 w-4" />
+                    Create account
                   </>
                 )}
               </Button>
@@ -405,23 +402,23 @@ export default function SignupPage() {
               </h3>
               <ul className="space-y-2 text-foreground text-sm">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Check className="h-3.5 w-3.5 text-success" />
                   Track your streak and statistics
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Check className="h-3.5 w-3.5 text-success" />
                   Compete on the global leaderboard
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Check className="h-3.5 w-3.5 text-success" />
                   Earn achievements and badges
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Check className="h-3.5 w-3.5 text-success" />
                   Sync your progress across devices
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Check className="h-3.5 w-3.5 text-success" />
                   Get daily puzzle notifications
                 </li>
               </ul>
@@ -431,7 +428,10 @@ export default function SignupPage() {
             <div className="mt-6 text-center">
               <p className="text-muted-foreground text-sm">
                 Already have an account?{" "}
-                <Link className="font-semibold text-foreground hover:text-primary" href="/login">
+                <Link
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                  href="/login"
+                >
                   Log in
                 </Link>
               </p>
@@ -439,8 +439,11 @@ export default function SignupPage() {
 
             {/* Back Link */}
             <div className="mt-4 text-center">
-              <Link className="text-muted-foreground text-sm hover:text-foreground" href="/">
-                ← Back to Game
+              <Link
+                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+                href="/"
+              >
+                ← Back to the puzzle
               </Link>
             </div>
           </Card>

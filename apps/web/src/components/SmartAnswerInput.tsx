@@ -406,9 +406,8 @@ export function SmartAnswerInput({
       {/* Clean input container with success state feedback */}
       <div
         className={cn(
-          "rounded-2xl border bg-background px-4 py-3 shadow-sm transition-colors duration-200",
-          isCorrect && "border-green-500 bg-green-50/50 dark:bg-green-950/20",
-          !isCorrect && "border-border"
+          "rounded-lg border bg-card px-4 py-1.5 shadow-sm transition-colors duration-200",
+          isCorrect ? "border-success/50 bg-success/[0.06]" : "border-border"
         )}
       >
         {/* Input area */}
@@ -444,14 +443,14 @@ export function SmartAnswerInput({
                         <span
                           className={cn(
                             "transition-colors duration-200",
-                            status === "correct" && "text-green-600",
+                            status === "correct" && "text-success",
                             status === "partial" &&
                               characterConfig.showPartial &&
-                              "text-neutral-600 dark:text-neutral-400",
+                              "text-muted-foreground",
                             status === "incorrect" &&
                               characterConfig.showIncorrect &&
-                              "text-neutral-400 dark:text-neutral-600 opacity-50",
-                            isValid && status === "unknown" && "text-green-600"
+                              "text-subtle opacity-50",
+                            isValid && status === "unknown" && "text-success"
                           )}
                           key={charIndex}
                           style={{
@@ -471,7 +470,7 @@ export function SmartAnswerInput({
                 <span
                   className={cn(
                     "transition-colors duration-200",
-                    isValid && "font-semibold text-green-600"
+                    isValid && "font-medium text-success"
                   )}
                   key={partIndex}
                 >
@@ -489,16 +488,15 @@ export function SmartAnswerInput({
             autoComplete="off"
             autoCorrect="off"
             className={cn(
-              "min-h-[44px] max-h-[120px] resize-none border-0 bg-transparent py-3 px-0 text-base shadow-none",
+              "max-h-[120px] min-h-[44px] resize-none border-0 bg-transparent px-0 py-3 text-base",
               "relative z-10",
               "transition-colors duration-200",
               // Make text transparent so colored overlay shows through, but keep caret visible
-              value && "text-transparent caret-black dark:caret-white",
-              isSubmitting && "opacity-75 cursor-wait",
-              "text-base sm:text-base",
+              value && "text-transparent caret-foreground",
+              isSubmitting && "cursor-wait opacity-75",
               "touch-manipulation",
-              "focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-0",
-              (disabled || isSubmitting) && "opacity-60 cursor-not-allowed"
+              "hover:border-0 focus-visible:border-0 focus-visible:ring-0",
+              (disabled || isSubmitting) && "cursor-not-allowed opacity-60"
             )}
             disabled={disabled || isSubmitting}
             onBlur={handleBlur}
@@ -522,7 +520,7 @@ export function SmartAnswerInput({
           {isCorrect && !isSubmitting && (
             <p
               aria-live="polite"
-              className="flex items-center gap-1.5 font-medium text-green-600 text-xs"
+              className="flex items-center gap-1.5 font-medium text-success text-xs"
               id="answer-feedback"
               role="status"
             >
@@ -540,8 +538,8 @@ export function SmartAnswerInput({
 
           {/* Default hint */}
           {value.length === 0 && !isSubmitting && (
-            <p className="text-muted-foreground text-xs">
-              Words turn <span className="text-green-600">green</span> when correct
+            <p className="text-subtle text-xs">
+              Words turn <span className="text-success">green</span> when correct
             </p>
           )}
         </div>

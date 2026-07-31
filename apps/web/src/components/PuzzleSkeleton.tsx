@@ -28,38 +28,31 @@ export function PuzzleSkeleton({ variant = "full", className }: PuzzleSkeletonPr
   }
 
   return (
-    <div className={cn("mx-auto max-w-4xl px-4 py-3 md:px-6", className)}>
-      <main className="space-y-6" role="status" aria-label="Loading puzzle">
-        {/* Status Bar Skeleton */}
+    <div className={cn("mx-auto max-w-2xl px-4 py-6 md:px-6", className)}>
+      <main aria-label="Loading puzzle" className="space-y-5" role="status">
+        {/* Difficulty + hint rail */}
+        <section aria-hidden="true" className="flex items-center justify-between">
+          <Skeleton className="h-6 w-28 rounded-full" />
+          <Skeleton className="h-6 w-32 rounded-full" />
+        </section>
+
+        {/* Puzzle panel */}
         <section
           aria-hidden="true"
-          className="flex items-center justify-between rounded-2xl border border-border/50 bg-card/80 p-4 backdrop-blur-sm"
+          className="rounded-xl border border-border bg-card p-5 shadow-lg"
         >
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-8 w-24 rounded-full" />
-            <Skeleton className="h-8 w-20 rounded-full" />
+          <div className="rounded-lg border border-border bg-inset p-8 md:p-10">
+            <Skeleton className="mx-auto h-12 w-3/4 bg-border/60" />
+            <Skeleton className="mx-auto mt-3 h-8 w-1/2 bg-border/60" />
           </div>
-          <Skeleton className="h-8 w-20 rounded-full" />
+          <Skeleton className="mx-auto mt-4 h-4 w-56" />
         </section>
 
-        {/* Puzzle Display Skeleton */}
-        <section aria-hidden="true" className="space-y-4 text-center">
-          <div className="rounded-3xl border-2 border-dashed border-border bg-card p-8 md:p-12">
-            <Skeleton className="mx-auto h-16 w-3/4 md:h-20" />
-            <Skeleton className="mx-auto mt-4 h-8 w-1/2" />
-          </div>
-          <Skeleton className="mx-auto h-5 w-64" />
+        {/* Answer dock */}
+        <section aria-hidden="true">
+          <Skeleton className="h-[68px] w-full rounded-lg" />
         </section>
 
-        {/* Answer Input Skeleton */}
-        <section aria-hidden="true" className="space-y-4">
-          <Skeleton className="h-24 w-full rounded-2xl" />
-        </section>
-
-        {/* Submit Button Skeleton */}
-        <Skeleton className="h-14 w-full rounded-2xl" />
-
-        {/* Screen reader announcement */}
         <span className="sr-only">Loading puzzle, please wait...</span>
       </main>
     </div>
@@ -72,11 +65,11 @@ export function PuzzleSkeleton({ variant = "full", className }: PuzzleSkeletonPr
 function CompactSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-4 p-4", className)} role="status" aria-label="Loading">
-      <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="rounded-lg border border-border bg-card p-6">
         <Skeleton className="mx-auto h-12 w-2/3" />
         <Skeleton className="mx-auto mt-3 h-4 w-1/2" />
       </div>
-      <Skeleton className="h-12 w-full rounded-xl" />
+      <Skeleton className="h-10 w-full rounded-md" />
       <span className="sr-only">Loading...</span>
     </div>
   );

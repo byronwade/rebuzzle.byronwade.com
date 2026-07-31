@@ -215,7 +215,7 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
         type="application/ld+json"
       />
 
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="mb-6 text-sm">
           <ol className="flex flex-wrap items-center gap-2">
@@ -242,13 +242,13 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
         </nav>
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="mb-4 font-semibold text-base md:text-lg">{puzzleInfo.name}</h1>
+        <div className="mt-10">
+          <h1 className="mb-4 font-semibold text-xl tracking-[-0.03em]">{puzzleInfo.name}</h1>
           <p className="mb-4 text-muted-foreground text-sm">{puzzleInfo.description}</p>
 
           {/* Examples */}
           {puzzleInfo.examples.length > 0 && (
-            <div className="rounded-lg border bg-muted/50 p-4">
+            <div className="rounded-lg border border-border bg-inset p-4">
               <h2 className="mb-2 font-medium text-sm">Examples:</h2>
               <ul className="space-y-1 text-muted-foreground text-sm">
                 {puzzleInfo.examples.map((example, idx) => (
@@ -273,7 +273,7 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
             </div>
           </div>
         ) : (
-          <div className="rounded-lg border bg-muted/50 p-8 text-center">
+          <div className="rounded-xl border border-border bg-inset px-6 py-12 text-center">
             <p className="text-muted-foreground text-sm">
               No {puzzleInfo.name.toLowerCase()} solutions yet. Check back soon!
             </p>
@@ -282,7 +282,7 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
 
         {/* Related Puzzle Types */}
         {relatedTypes.length > 0 && (
-          <div className="mt-12 border-t pt-8">
+          <div className="mt-16 border-border border-t pt-8">
             <h2 className="mb-4 font-semibold text-base">Other Puzzle Types</h2>
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {relatedTypes.slice(0, 6).map((relatedType) => {
@@ -290,7 +290,7 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
                 if (!relatedInfo) return null;
                 return (
                   <Link
-                    className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+                    className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong/50"
                     href={`/puzzles/${relatedType}`}
                     key={relatedType}
                   >

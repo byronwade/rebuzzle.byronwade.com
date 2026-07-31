@@ -163,16 +163,13 @@ export default function LoginPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
         <div className="flex justify-center">
-          <Card className="w-full max-w-md p-8">
+          <Card className="w-full max-w-[400px] p-8" variant="float">
             {/* Header */}
-            <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-neutral-700 to-neutral-800">
-                <span className="text-4xl">🧩</span>
-              </div>
-              <h1 className="mb-2 font-semibold text-base md:text-lg">Welcome Back!</h1>
-              <p className="text-muted-foreground text-sm">
+            <div className="mb-7 text-center">
+              <h1 className="mb-2 font-semibold text-2xl tracking-[-0.04em]">Welcome back.</h1>
+              <p className="mt-2 text-muted-foreground text-sm">
                 Log in to track your progress and compete
               </p>
             </div>
@@ -183,7 +180,7 @@ export default function LoginPage() {
               {errors.form && (
                 <div
                   aria-live="polite"
-                  className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-destructive text-sm"
+                  className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5 text-destructive text-sm"
                   role="alert"
                 >
                   {errors.form}
@@ -195,7 +192,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <Mail
                     aria-hidden="true"
-                    className="absolute top-3 left-3 h-4 w-4 text-muted-foreground"
+                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
                   />
                   <Input
                     aria-describedby={errors.email ? "email-error" : undefined}
@@ -203,7 +200,7 @@ export default function LoginPage() {
                     autoComplete="email"
                     className={
                       errors.email
-                        ? "border-destructive pl-10 focus-visible:ring-destructive"
+                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
                         : "pl-10"
                     }
                     id="email"
@@ -219,7 +216,7 @@ export default function LoginPage() {
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-destructive text-sm" id="email-error" role="alert">
+                  <p className="text-destructive text-xs" id="email-error" role="alert">
                     {errors.email}
                   </p>
                 )}
@@ -230,7 +227,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock
                     aria-hidden="true"
-                    className="absolute top-3 left-3 h-4 w-4 text-muted-foreground"
+                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
                   />
                   <Input
                     aria-describedby={errors.password ? "password-error" : "password-help"}
@@ -238,7 +235,7 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     className={
                       errors.password
-                        ? "border-destructive pl-10 focus-visible:ring-destructive"
+                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
                         : "pl-10"
                     }
                     id="password"
@@ -253,11 +250,11 @@ export default function LoginPage() {
                   />
                 </div>
                 {errors.password ? (
-                  <p className="text-destructive text-sm" id="password-error" role="alert">
+                  <p className="text-destructive text-xs" id="password-error" role="alert">
                     {errors.password}
                   </p>
                 ) : (
-                  <p className="text-muted-foreground text-xs" id="password-help">
+                  <p className="text-subtle text-xs" id="password-help">
                     Must be at least 6 characters
                   </p>
                 )}
@@ -266,7 +263,7 @@ export default function LoginPage() {
               {/* Forgot Password Link */}
               <div className="flex justify-end">
                 <Link
-                  className="text-muted-foreground text-sm hover:text-foreground"
+                  className="text-muted-foreground text-sm transition-colors hover:text-foreground"
                   href="/forgot-password"
                 >
                   Forgot password?
@@ -284,14 +281,14 @@ export default function LoginPage() {
                   <>
                     <div
                       aria-hidden="true"
-                      className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
+                      className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-60"
                     />
                     <span>Logging in…</span>
                   </>
                 ) : (
                   <>
-                    <LogIn aria-hidden="true" className="mr-2 h-4 w-4" />
-                    Log In
+                    <LogIn aria-hidden="true" className="h-4 w-4" />
+                    Log in
                   </>
                 )}
               </Button>
@@ -300,21 +297,24 @@ export default function LoginPage() {
             {/* Divider */}
             <div className="relative my-6">
               <Separator />
-              <span className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 bg-card px-2 text-muted-foreground text-xs">
-                OR
+              <span className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 bg-card px-3 font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
+                or
               </span>
             </div>
 
             {/* Guest Play */}
             <Button className="w-full" onClick={handleGuestPlay} size="lg" variant="outline">
-              Continue as Guest
+              Continue as guest
             </Button>
 
             {/* Signup Link */}
             <div className="mt-6 text-center text-sm">
               <p className="text-muted-foreground">
                 Don't have an account?{" "}
-                <Link className="font-semibold text-foreground hover:text-primary" href="/signup">
+                <Link
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                  href="/signup"
+                >
                   Sign up
                 </Link>
               </p>
@@ -322,8 +322,11 @@ export default function LoginPage() {
 
             {/* Back Link */}
             <div className="mt-6 text-center">
-              <Link className="text-muted-foreground text-sm hover:text-foreground" href="/">
-                ← Back to Game
+              <Link
+                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+                href="/"
+              >
+                ← Back to the puzzle
               </Link>
             </div>
           </Card>

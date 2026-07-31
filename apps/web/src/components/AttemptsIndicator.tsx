@@ -68,11 +68,7 @@ export function AttemptsIndicator({
       <Tooltip>
         <TooltipTrigger asChild>
           <div
-            className={cn(
-              "flex items-center gap-2 cursor-default",
-              isLastAttempt && "animate-pulse",
-              className
-            )}
+            className={cn("flex cursor-default items-center gap-2", className)}
             role="status"
             aria-label={`${remainingAttempts} of ${maxAttempts} attempts remaining`}
           >
@@ -83,24 +79,23 @@ export function AttemptsIndicator({
 
                 return (
                   <Heart
-                    key={index}
-                    className={cn(
-                      "h-5 w-5 transition-all duration-300",
-                      isFilled
-                        ? "fill-red-500 text-red-500"
-                        : "fill-transparent text-neutral-300 dark:text-neutral-600",
-                      isAnimating && "animate-heartbreak scale-125",
-                      isLastAttempt && isFilled && "animate-pulse"
-                    )}
                     aria-hidden="true"
+                    className={cn(
+                      "h-3.5 w-3.5 transition-all duration-300",
+                      isFilled && isLastAttempt && "fill-destructive text-destructive",
+                      isFilled && !isLastAttempt && "fill-foreground text-foreground",
+                      !isFilled && "fill-transparent text-border-strong/50",
+                      isAnimating && "scale-125"
+                    )}
+                    key={index}
                   />
                 );
               })}
             </div>
             <span
               className={cn(
-                "text-sm font-medium",
-                isLastAttempt ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                "font-mono text-xs tabular-nums",
+                isLastAttempt ? "text-destructive" : "text-subtle"
               )}
             >
               {remainingAttempts}/{maxAttempts}

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Layout from "@/components/Layout";
-import { getCachedLeaderboardData } from "@/lib/cache/leaderboard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCachedLeaderboardData } from "@/lib/cache/leaderboard";
 import LeaderboardClient from "./leaderboard-client";
 
 function LeaderboardFallback() {

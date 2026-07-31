@@ -71,9 +71,9 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
   // Loading state
   if (isLoading) {
     return (
-      <Button className="h-9 w-9 rounded-full p-0" disabled size="icon" variant="ghost">
-        <Avatar className="h-8 w-8">
-          <AvatarFallback className="animate-pulse bg-muted text-xs" />
+      <Button className="h-8 w-8 rounded-full p-0" disabled size="icon" variant="ghost">
+        <Avatar className="h-7 w-7">
+          <AvatarFallback className="animate-pulse bg-inset text-xs" />
         </Avatar>
       </Button>
     );
@@ -87,18 +87,18 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            className="group h-9 gap-2 rounded-full border border-dashed border-amber-500/40 bg-transparent pl-1 pr-2 hover:border-amber-500 hover:bg-amber-500/10"
+            className="group h-8 gap-1.5 rounded-full border border-warning/40 border-dashed bg-transparent pr-2 pl-1 hover:border-warning hover:bg-warning/10"
             size="sm"
             variant="ghost"
           >
-            <Avatar className="h-7 w-7">
+            <Avatar className="h-6 w-6 ring-0">
               <AvatarFallback
                 className={cn(getAvatarClassName(avatarProps), "text-xs font-medium")}
               >
                 {avatarProps.initials}
               </AvatarFallback>
             </Avatar>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -111,8 +111,8 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="text-sm font-medium">{user.username}</span>
-              <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+              <span className="font-medium text-sm">{user.username}</span>
+              <span className="flex items-center gap-1 text-warning text-xs">
                 <Zap className="h-3 w-3" />
                 Guest account
               </span>
@@ -120,7 +120,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="cursor-pointer gap-2 bg-primary text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground"
+            className="cursor-pointer gap-2 bg-foreground text-background focus:bg-foreground/85 focus:text-background"
             onClick={() => router.push("/signup")}
           >
             <User className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             className="cursor-pointer gap-2"
             onClick={() => router.push("/leaderboard")}
           >
-            <Trophy className="h-4 w-4 text-amber-500" />
+            <Trophy className="h-4 w-4" />
             Leaderboard
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -176,26 +176,26 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            className="group h-9 gap-2 rounded-full border border-border bg-transparent pl-1 pr-2 hover:bg-accent"
+            className="group h-8 gap-1.5 rounded-full border border-border bg-card pr-2 pl-1 hover:bg-muted"
             size="sm"
             variant="ghost"
           >
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-muted text-xs font-medium text-muted-foreground">
+            <Avatar className="h-6 w-6 ring-0">
+              <AvatarFallback className="bg-inset font-medium text-muted-foreground text-xs">
                 ?
               </AvatarFallback>
             </Avatar>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <div className="px-2 py-3 text-center">
-            <p className="text-sm font-medium">Welcome!</p>
-            <p className="text-xs text-muted-foreground">Sign in to track your progress</p>
+          <div className="px-2 py-3">
+            <p className="font-medium text-sm">Welcome</p>
+            <p className="text-muted-foreground text-xs">Sign in to track your progress</p>
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="cursor-pointer gap-2 bg-primary text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground"
+            className="cursor-pointer gap-2 bg-foreground text-background focus:bg-foreground/85 focus:text-background"
             onClick={() => router.push("/login")}
           >
             <User className="h-4 w-4" />
@@ -248,22 +248,22 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       <DropdownMenuTrigger asChild>
         <Button
           className={cn(
-            "group h-9 gap-2 rounded-full border bg-transparent pl-1 pr-2 hover:bg-accent",
-            hasStreak ? "border-orange-500/40 hover:border-orange-500" : "border-border"
+            "group h-8 gap-1.5 rounded-full border bg-card pr-2 pl-1 hover:bg-muted",
+            hasStreak ? "border-warning/40 hover:border-warning" : "border-border"
           )}
           size="sm"
           variant="ghost"
         >
           <div className="relative">
-            <Avatar className="h-7 w-7">
+            <Avatar className="h-6 w-6 ring-0">
               <AvatarFallback
-                className={cn(getAvatarClassName(avatarProps), "text-xs font-medium")}
+                className={cn(getAvatarClassName(avatarProps), "font-medium text-[10px]")}
               >
                 {avatarProps.initials}
               </AvatarFallback>
             </Avatar>
             {hasStreak && (
-              <div className="-bottom-0.5 -right-0.5 absolute flex h-3.5 w-3.5 items-center justify-center rounded-full bg-orange-500 text-[8px] font-bold text-white ring-2 ring-background">
+              <div className="-bottom-0.5 -right-0.5 absolute flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning font-semibold text-[8px] text-background ring-2 ring-background">
                 {streak > 9 ? "9+" : streak}
               </div>
             )}
@@ -283,17 +283,17 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               </AvatarFallback>
             </Avatar>
             {hasStreak && (
-              <div className="-bottom-0.5 -right-0.5 absolute flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white ring-2 ring-popover">
+              <div className="-bottom-0.5 -right-0.5 absolute flex h-4 w-4 items-center justify-center rounded-full bg-warning font-semibold text-[9px] text-background ring-2 ring-popover">
                 {streak > 99 ? "99" : streak}
               </div>
             )}
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-medium truncate">{user.username}</span>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate font-medium text-sm">{user.username}</span>
             {user.email ? (
-              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+              <span className="truncate text-muted-foreground text-xs">{user.email}</span>
             ) : hasStreak ? (
-              <span className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
+              <span className="flex items-center gap-1 text-warning text-xs">
                 <Flame className="h-3 w-3" />
                 {streak} day streak
               </span>
@@ -301,36 +301,27 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           </div>
         </div>
 
-        {/* Quick stats */}
-        <div className="mx-2 mb-2 flex items-center justify-around rounded-md bg-muted/50 py-2">
-          <div className="flex flex-col items-center">
-            <span
-              className={cn(
-                "text-sm font-semibold",
-                hasStreak ? "text-orange-500" : "text-muted-foreground"
-              )}
-            >
-              {streak}
-            </span>
-            <span className="text-[10px] text-muted-foreground">Streak</span>
-          </div>
-          <div className="h-6 w-px bg-border" />
-          <div className="flex flex-col items-center">
-            <span className="text-sm font-semibold text-amber-500">0</span>
-            <span className="text-[10px] text-muted-foreground">Wins</span>
-          </div>
-          <div className="h-6 w-px bg-border" />
-          <div className="flex flex-col items-center">
-            <span className="text-sm font-semibold text-purple-500">0</span>
-            <span className="text-[10px] text-muted-foreground">XP</span>
-          </div>
+        {/* Quick stats — hairline-divided, mono numerals */}
+        <div className="mx-1 mb-1 grid grid-cols-3 divide-x divide-border rounded-md border border-border bg-inset">
+          {[
+            { label: "Streak", value: streak },
+            { label: "Wins", value: 0 },
+            { label: "XP", value: 0 },
+          ].map((stat) => (
+            <div className="flex flex-col items-center py-2" key={stat.label}>
+              <span className="font-mono font-medium text-foreground text-sm tabular-nums">
+                {stat.value}
+              </span>
+              <span className="text-[10px] text-subtle uppercase tracking-[0.08em]">
+                {stat.label}
+              </span>
+            </div>
+          ))}
         </div>
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Account
-        </DropdownMenuLabel>
+        <DropdownMenuLabel>Account</DropdownMenuLabel>
         <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => router.push("/profile")}>
           <User className="h-4 w-4" />
           Profile
@@ -342,14 +333,12 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Game
-        </DropdownMenuLabel>
+        <DropdownMenuLabel>Game</DropdownMenuLabel>
         <DropdownMenuItem
           className="cursor-pointer gap-2"
           onClick={() => router.push("/leaderboard")}
         >
-          <Trophy className="h-4 w-4 text-amber-500" />
+          <Trophy className="h-4 w-4" />
           Leaderboard
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -383,7 +372,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
-          className="cursor-pointer gap-2 text-red-600 focus:bg-red-50 focus:text-red-600 dark:text-red-400 dark:focus:bg-red-950/50"
+          className="cursor-pointer gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4" />

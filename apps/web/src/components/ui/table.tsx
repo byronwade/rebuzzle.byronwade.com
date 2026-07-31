@@ -15,7 +15,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead className={cn("[&_tr]:border-b", className)} ref={ref} {...props} />
+  <thead className={cn("bg-inset [&_tr]:border-b", className)} ref={ref} {...props} />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -32,7 +32,7 @@ const TableFooter = React.forwardRef<
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
   <tfoot
-    className={cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)}
+    className={cn("border-t bg-inset font-medium [&>tr]:last:border-b-0", className)}
     ref={ref}
     {...props}
   />
@@ -43,7 +43,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
   ({ className, ...props }, ref) => (
     <tr
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-border border-b transition-colors hover:bg-inset/70 data-[state=selected]:bg-inset",
         className
       )}
       ref={ref}
@@ -59,7 +59,8 @@ const TableHead = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <th
     className={cn(
-      "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      // Header carries the mono voice: uppercase, tracked, caption scale.
+      "h-9 px-3 text-left align-middle font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     ref={ref}
@@ -74,7 +75,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     className={cn(
-      "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "px-3 py-2.5 align-middle text-sm [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     ref={ref}

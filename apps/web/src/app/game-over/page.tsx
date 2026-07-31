@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import Layout from "@/components/Layout";
 import { fetchGameData } from "@/app/actions/gameActions";
+import Layout from "@/components/Layout";
 import GameOverClient from "./game-over-client";
 
 function GameOverFallback() {

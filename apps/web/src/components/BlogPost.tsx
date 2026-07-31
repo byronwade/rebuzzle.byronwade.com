@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Calendar, ChevronRight, Clock, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -27,33 +27,12 @@ interface BlogPostProps {
 
 const puzzleTypeLabels: Record<string, string> = {
   rebus: "Rebus",
-  "logic-grid": "Logic Grid",
+  "logic-grid": "Logic grid",
   "cryptic-crossword": "Cryptic",
   "number-sequence": "Sequence",
   "pattern-recognition": "Pattern",
   "caesar-cipher": "Cipher",
   trivia: "Trivia",
-};
-
-const puzzleTypeColors: Record<string, string> = {
-  rebus: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-  "logic-grid": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-  "cryptic-crossword":
-    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  "number-sequence": "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  "pattern-recognition": "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
-  "caesar-cipher": "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-  trivia: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
-};
-
-const puzzleTypeAccent: Record<string, string> = {
-  rebus: "group-hover:border-purple-500/40",
-  "logic-grid": "group-hover:border-blue-500/40",
-  "cryptic-crossword": "group-hover:border-emerald-500/40",
-  "number-sequence": "group-hover:border-amber-500/40",
-  "pattern-recognition": "group-hover:border-pink-500/40",
-  "caesar-cipher": "group-hover:border-red-500/40",
-  trivia: "group-hover:border-cyan-500/40",
 };
 
 export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
@@ -83,153 +62,106 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
     ? puzzleTypeLabels[post.puzzleType] || post.puzzleType
     : "Puzzle";
 
-  const typeColor = post.puzzleType
-    ? puzzleTypeColors[post.puzzleType] || "bg-muted text-muted-foreground"
-    : "bg-muted text-muted-foreground";
-
-  const accentColor = post.puzzleType
-    ? puzzleTypeAccent[post.puzzleType] || "group-hover:border-primary/40"
-    : "group-hover:border-primary/40";
-
   const readingTime =
     post.seoMetadata?.readingTime || Math.ceil((post.excerpt?.length || 100) / 50);
 
+  // Featured — the one card that gets a shadow and a full excerpt.
   if (variant === "featured") {
     return (
-      <Link href={`/blog/${post.slug}`} className="block group">
+      <Link className="group block" href={`/blog/${post.slug}`}>
         <article
           className={cn(
-            "relative overflow-hidden rounded-xl border transition-all duration-300",
-            "hover:shadow-lg hover:-translate-y-0.5",
-            accentColor,
-            isToday
-              ? "bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 border-amber-300/50 dark:border-amber-700/50"
-              : "bg-card"
+            "rounded-xl border border-border bg-card p-6 shadow-sm transition-colors duration-200",
+            "hover:border-border-strong/50"
           )}
         >
-          {/* Today ribbon */}
-          {isToday && (
-            <div className="absolute top-3 -right-8 bg-amber-500 text-white text-xs font-semibold px-10 py-1 rotate-45 shadow-sm">
-              Today
-            </div>
-          )}
-
-          <div className="p-5">
-            {/* Top meta */}
-            <div className="flex items-center gap-2 mb-3">
-              <Badge className={cn("text-xs font-medium border", typeColor)}>{typeLabel}</Badge>
-              <span className="text-xs text-muted-foreground">{formatDate(post.date)}</span>
-              <span className="text-muted-foreground/40">•</span>
-              <span className="text-xs text-muted-foreground">{readingTime} min read</span>
-            </div>
-
-            {/* Title */}
-            <h2 className="font-bold text-lg text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
-              {post.title}
-            </h2>
-
-            {/* Excerpt */}
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{post.excerpt}</p>
-
-            {/* CTA */}
-            <div className="flex items-center text-sm font-medium text-primary">
-              <BookOpen className="size-4 mr-2" />
-              Read the full breakdown
-              <ChevronRight className="size-4 ml-1 group-hover:translate-x-1 transition-transform" />
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="mono">{typeLabel}</Badge>
+            {isToday && <Badge variant="secondary">Today</Badge>}
+            <span className="font-mono text-subtle text-xs">
+              {formatDate(post.date)} · {readingTime} min
+            </span>
           </div>
+
+          <h2 className="mt-4 line-clamp-2 text-balance font-semibold text-foreground text-xl tracking-[-0.03em]">
+            {post.title}
+          </h2>
+
+          <p className="mt-2 line-clamp-2 text-muted-foreground text-sm leading-6">
+            {post.excerpt}
+          </p>
+
+          <span className="mt-5 inline-flex items-center gap-1.5 font-medium text-foreground text-sm">
+            Read the breakdown
+            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
         </article>
       </Link>
     );
   }
 
+  // Compact — sidebar / "more posts" list.
   if (variant === "compact") {
     return (
-      <Link href={`/blog/${post.slug}`} className="block group">
-        <article className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-accent/50 transition-colors">
-          {/* Date pill */}
-          <div className="flex-shrink-0 w-14 text-center py-1.5 rounded-md bg-muted/50">
-            <div className="text-sm font-bold text-foreground leading-none">
+      <Link className="group block" href={`/blog/${post.slug}`}>
+        <article className="flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted">
+          <div className="w-12 shrink-0 rounded-md border border-border bg-inset py-1.5 text-center">
+            <div className="font-mono font-medium text-foreground text-sm leading-none tabular-nums">
               {new Date(post.date).getDate()}
             </div>
-            <div className="text-[10px] text-muted-foreground uppercase mt-0.5">
+            <div className="mt-1 font-mono text-[9px] text-subtle uppercase tracking-[0.08em]">
               {new Date(post.date).toLocaleDateString("en-US", { month: "short" })}
             </div>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <Badge className={cn("text-[10px] h-4 font-medium border px-1.5", typeColor)}>
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
                 {typeLabel}
-              </Badge>
+              </span>
               {isToday && (
-                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                  NEW
+                <span className="font-mono text-[10px] text-warning uppercase tracking-[0.08em]">
+                  New
                 </span>
               )}
             </div>
-            <h2 className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
-              {post.title}
-            </h2>
+            <h2 className="truncate font-medium text-foreground text-sm">{post.title}</h2>
           </div>
 
-          <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          <ChevronRight className="size-4 shrink-0 text-subtle transition-transform group-hover:translate-x-0.5" />
         </article>
       </Link>
     );
   }
 
-  // Default variant - clean, content-focused design
+  // Default — a hairline-separated index row. No card chrome; the rule between
+  // rows carries the structure, which keeps a long archive calm.
   return (
-    <Link href={`/blog/${post.slug}`} className="block group">
-      <article
-        className={cn(
-          "relative p-4 rounded-xl border transition-all duration-200",
-          "hover:shadow-md hover:-translate-y-0.5",
-          accentColor,
-          isToday
-            ? "bg-gradient-to-r from-amber-50/80 via-transparent to-transparent dark:from-amber-950/30 border-amber-200/60 dark:border-amber-800/60"
-            : "bg-card"
-        )}
-      >
-        {/* Top row: Badge + Date + Reading time */}
-        <div className="flex items-center gap-2 mb-2">
-          <Badge className={cn("text-xs font-medium border", typeColor)}>{typeLabel}</Badge>
-          {isToday && (
-            <Badge className="bg-amber-500 hover:bg-amber-500 text-white text-[10px] h-5 gap-1 font-semibold">
-              <Sparkles className="size-3" />
-              Today
-            </Badge>
-          )}
+    <Link className="group block" href={`/blog/${post.slug}`}>
+      <article className="-mx-4 rounded-lg px-4 py-6 transition-colors hover:bg-card">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <Badge variant="mono">{typeLabel}</Badge>
+          {isToday && <Badge variant="secondary">Today</Badge>}
           {isYesterday && !isToday && (
-            <span className="text-xs text-muted-foreground">Yesterday</span>
+            <span className="font-mono text-subtle text-xs">Yesterday</span>
           )}
-          <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
-            <Calendar className="size-3" />
-            {formatDate(post.date)}
+          <span className="ml-auto font-mono text-subtle text-xs tabular-nums">
+            {formatDate(post.date)} · {readingTime} min
           </span>
         </div>
 
-        {/* Title - the main focus */}
-        <h2 className="font-semibold text-base text-foreground mb-1.5 group-hover:text-primary transition-colors line-clamp-2">
+        <h2 className="mt-3 line-clamp-2 text-balance font-semibold text-foreground text-lg tracking-[-0.03em]">
           {post.title}
         </h2>
 
-        {/* Excerpt teaser */}
-        <p className="text-sm text-muted-foreground line-clamp-1 mb-3">{post.excerpt}</p>
+        <p className="mt-1.5 line-clamp-2 text-muted-foreground text-sm leading-6">
+          {post.excerpt}
+        </p>
 
-        {/* Bottom row */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Clock className="size-3" />
-            {readingTime} min read
-          </span>
-          <span className="text-xs font-medium text-primary flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
-            Read more
-            <ChevronRight className="size-4" />
-          </span>
-        </div>
+        <span className="mt-3 inline-flex items-center gap-1.5 font-medium text-foreground text-sm">
+          Read more
+          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+        </span>
       </article>
     </Link>
   );

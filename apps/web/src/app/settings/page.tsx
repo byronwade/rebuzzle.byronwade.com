@@ -284,11 +284,11 @@ export default function SettingsPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
         <div className="mb-8">
           <div className="mb-2 flex items-center gap-3">
-            <SettingsIcon className="h-8 w-8 text-neutral-700 dark:text-neutral-300" />
+            <SettingsIcon className="h-5 w-5 text-subtle" />
             <h1 className="font-semibold text-base md:text-lg">Settings</h1>
           </div>
           <p className="text-muted-foreground text-sm">Manage your preferences and game settings</p>
@@ -300,7 +300,7 @@ export default function SettingsPage() {
             <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
+                  <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[#7928ca] to-[#ff0080]">
                     <Trophy className="size-5 text-white" />
                   </div>
                   <div>
@@ -417,7 +417,7 @@ export default function SettingsPage() {
                     value={passwordForm.currentPassword}
                   />
                   {passwordErrors.currentPassword && (
-                    <p className="mt-1 text-red-600 dark:text-red-400 text-sm">
+                    <p className="mt-1.5 text-destructive text-xs">
                       {passwordErrors.currentPassword}
                     </p>
                   )}
@@ -441,9 +441,7 @@ export default function SettingsPage() {
                     value={passwordForm.newPassword}
                   />
                   {passwordErrors.newPassword && (
-                    <p className="mt-1 text-red-600 dark:text-red-400 text-sm">
-                      {passwordErrors.newPassword}
-                    </p>
+                    <p className="mt-1.5 text-destructive text-xs">{passwordErrors.newPassword}</p>
                   )}
                 </div>
 
@@ -470,7 +468,7 @@ export default function SettingsPage() {
                     value={passwordForm.confirmPassword}
                   />
                   {passwordErrors.confirmPassword && (
-                    <p className="mt-1 text-red-600 dark:text-red-400 text-sm">
+                    <p className="mt-1.5 text-destructive text-xs">
                       {passwordErrors.confirmPassword}
                     </p>
                   )}

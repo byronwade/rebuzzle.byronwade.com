@@ -3,8 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
-import { PrefetchGuestClient } from "@/components/prefetch-guest-client";
 import { PuzzleSkeleton } from "@/components/PuzzleSkeleton";
+import { PrefetchGuestClient } from "@/components/prefetch-guest-client";
 import { generatePuzzleMetadata } from "@/lib/seo/metadata";
 import {
   generateFAQPageSchema,
@@ -53,42 +53,84 @@ function PuzzleShell() {
 }
 
 /**
+ * Shared status surface for the three non-playable states.
+ *
+ * One card, hairline chrome, mono eyebrow, ink CTA — the same shape every
+ * time so a failed load and a finished puzzle read as the same system.
+ */
+function StatusPanel({
+  eyebrow,
+  title,
+  children,
+  action,
+  secondaryAction,
+  headingId,
+  role = "status",
+}: {
+  eyebrow: string;
+  title: string;
+  children: React.ReactNode;
+  action?: { href: string; label: string };
+  secondaryAction?: { href: string; label: string };
+  headingId: string;
+  role?: "status" | "alert";
+}) {
+  return (
+    <div className="mx-auto flex max-w-page items-center justify-center px-4 py-16 md:px-6 md:py-24">
+      {/* The heading sits inside the live region, so it is announced with the
+          body — no aria-labelledby needed (and status/alert don't accept it). */}
+      <div
+        className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-lg"
+        role={role}
+      >
+        <p className="eyebrow">{eyebrow}</p>
+        <h1
+          className="mt-3 text-balance font-semibold text-2xl text-foreground tracking-[-0.04em]"
+          id={headingId}
+        >
+          {title}
+        </h1>
+        <p className="mt-3 text-balance text-muted-foreground text-sm leading-6">{children}</p>
+        {(action || secondaryAction) && (
+          <div className="mt-7 flex flex-col items-center gap-3">
+            {action && (
+              <a
+                className="inline-flex h-10 w-full items-center justify-center rounded-md bg-foreground px-4 font-medium text-background text-sm transition-opacity hover:opacity-90"
+                href={action.href}
+              >
+                {action.label}
+              </a>
+            )}
+            {secondaryAction && (
+              <a
+                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+                href={secondaryAction.href}
+              >
+                {secondaryAction.label}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Error component - with better styling and accessibility
  */
 function ErrorDisplay({ error }: { error: Error }) {
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
-        <div
-          aria-labelledby="error-title"
-          className="space-y-4 rounded-3xl border border-destructive/20 bg-card px-4 py-3 text-center shadow-xl md:px-6"
-          role="alert"
-        >
-          <div
-            aria-hidden="true"
-            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 motion-safe:animate-bounce motion-reduce:animate-none"
-          >
-            <span className="text-4xl">😅</span>
-          </div>
-          <div>
-            <h1
-              className="mb-2 font-semibold text-base text-destructive md:text-lg"
-              id="error-title"
-            >
-              Oops! Something went wrong
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              We're having trouble loading today's puzzle. Please try refreshing the page.
-            </p>
-          </div>
-          <a
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
-            href="/"
-          >
-            Try Again
-          </a>
-        </div>
-      </div>
+      <StatusPanel
+        action={{ href: "/", label: "Try again" }}
+        eyebrow="Error"
+        headingId="error-title"
+        role="alert"
+        title="Something went wrong."
+      >
+        We're having trouble loading today's puzzle. Refreshing the page usually fixes it.
+      </StatusPanel>
     </Layout>
   );
 }
@@ -99,43 +141,14 @@ function ErrorDisplay({ error }: { error: Error }) {
 function NoPuzzleDisplay() {
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
-        <div
-          aria-labelledby="no-puzzle-title"
-          className="space-y-4 rounded-3xl border border-border bg-card px-4 py-3 text-center shadow-xl md:px-6"
-          role="status"
-        >
-          <div
-            aria-hidden="true"
-            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 motion-safe:animate-pulse motion-reduce:animate-none"
-          >
-            <span className="text-4xl">🧩</span>
-          </div>
-          <div>
-            <h1
-              className="mb-2 font-semibold text-base text-foreground md:text-lg"
-              id="no-puzzle-title"
-            >
-              No Puzzle Available
-            </h1>
-            <p className="text-muted-foreground text-sm">Check back later for today's puzzle!</p>
-          </div>
-          <div aria-hidden="true" className="flex justify-center gap-2">
-            <div
-              className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce motion-reduce:animate-none"
-              style={{ animationDelay: "0ms" }}
-            />
-            <div
-              className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce motion-reduce:animate-none"
-              style={{ animationDelay: "150ms" }}
-            />
-            <div
-              className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce motion-reduce:animate-none"
-              style={{ animationDelay: "300ms" }}
-            />
-          </div>
-        </div>
-      </div>
+      <StatusPanel
+        eyebrow="No puzzle yet"
+        headingId="no-puzzle-title"
+        secondaryAction={{ href: "/blog", label: "Read the blog while you wait" }}
+        title="Today's puzzle isn't live."
+      >
+        A new puzzle lands every day at midnight. Check back shortly.
+      </StatusPanel>
     </Layout>
   );
 }
@@ -146,48 +159,17 @@ function NoPuzzleDisplay() {
 function PuzzleAlreadyAttemptedDisplay({ wasSuccessful }: { wasSuccessful: boolean }) {
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
-        <div
-          aria-labelledby="puzzle-attempted-title"
-          className="space-y-4 rounded-3xl border border-border bg-card px-4 py-3 text-center shadow-xl md:px-6"
-          role="status"
-        >
-          <div
-            aria-hidden="true"
-            className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${
-              wasSuccessful ? "bg-green-100 dark:bg-green-900/30" : "bg-muted"
-            }`}
-          >
-            <span className="text-4xl">{wasSuccessful ? "🎉" : "😔"}</span>
-          </div>
-          <div>
-            <h1
-              className="mb-2 font-semibold text-base text-foreground md:text-lg"
-              id="puzzle-attempted-title"
-            >
-              {wasSuccessful
-                ? "You completed today's puzzle!"
-                : "You already attempted today's puzzle"}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {wasSuccessful
-                ? "Great job! Come back tomorrow for a new puzzle."
-                : "Better luck tomorrow! A new puzzle awaits."}
-            </p>
-          </div>
-          <div className="flex flex-col items-center gap-3 pt-2">
-            <a
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-primary-foreground shadow-lg transition-all duration-300 hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
-              href="/game-over"
-            >
-              View Results
-            </a>
-            <a className="text-muted-foreground text-sm hover:text-foreground" href="/leaderboard">
-              Check the Leaderboard
-            </a>
-          </div>
-        </div>
-      </div>
+      <StatusPanel
+        action={{ href: "/game-over", label: "View results" }}
+        eyebrow={wasSuccessful ? "Solved" : "Attempted"}
+        headingId="puzzle-attempted-title"
+        secondaryAction={{ href: "/leaderboard", label: "Check the leaderboard" }}
+        title={wasSuccessful ? "You solved today's puzzle." : "You've used today's attempt."}
+      >
+        {wasSuccessful
+          ? "Nicely done. A new puzzle lands at midnight."
+          : "One puzzle a day, one shot at it. A new puzzle lands at midnight."}
+      </StatusPanel>
     </Layout>
   );
 }

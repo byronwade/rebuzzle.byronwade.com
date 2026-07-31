@@ -82,31 +82,36 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   sparkles: Sparkles,
 };
 
+/**
+ * Rarity ladder. It climbs the brand's own gradient stops — teal → blue →
+ * violet → amber — so a wall of badges never introduces a colour that isn't
+ * already in the system.
+ */
 const rarityConfig = {
   common: {
     label: "Common",
-    color: "text-slate-600 dark:text-slate-400",
-    bg: "bg-slate-100 dark:bg-slate-800/50",
+    color: "text-muted-foreground",
+    bg: "bg-inset",
   },
   uncommon: {
     label: "Uncommon",
-    color: "text-green-600 dark:text-green-400",
-    bg: "bg-green-50 dark:bg-green-900/30",
+    color: "text-[#0d9488] dark:text-[#00dfd8]",
+    bg: "bg-[#00dfd8]/10",
   },
   rare: {
     label: "Rare",
-    color: "text-blue-600 dark:text-blue-400",
-    bg: "bg-blue-50 dark:bg-blue-900/30",
+    color: "text-link",
+    bg: "bg-link/10",
   },
   epic: {
     label: "Epic",
-    color: "text-purple-600 dark:text-purple-400",
-    bg: "bg-purple-50 dark:bg-purple-900/30",
+    color: "text-[#7928ca] dark:text-[#a875e8]",
+    bg: "bg-[#7928ca]/10",
   },
   legendary: {
     label: "Legendary",
-    color: "text-amber-600 dark:text-amber-400",
-    bg: "bg-amber-50 dark:bg-amber-900/30",
+    color: "text-[#ab570a] dark:text-warning",
+    bg: "bg-warning/10",
   },
 };
 
@@ -133,14 +138,19 @@ const levelTiers: Array<{
   icon: React.ComponentType<{ className?: string }>;
   color: string;
 }> = [
-  { name: "Rookie", levels: [1, 10], icon: Star, color: "text-slate-500" },
-  { name: "Bronze", levels: [11, 20], icon: Medal, color: "text-amber-700 dark:text-amber-600" },
-  { name: "Silver", levels: [21, 35], icon: Shield, color: "text-slate-400" },
-  { name: "Gold", levels: [36, 50], icon: Trophy, color: "text-yellow-600 dark:text-yellow-500" },
-  { name: "Platinum", levels: [51, 65], icon: Gem, color: "text-cyan-600 dark:text-cyan-400" },
-  { name: "Diamond", levels: [66, 80], icon: Sparkles, color: "text-blue-500 dark:text-blue-400" },
-  { name: "Master", levels: [81, 95], icon: Crown, color: "text-purple-600 dark:text-purple-400" },
-  { name: "Grandmaster", levels: [96, 100], icon: Flame, color: "text-red-600 dark:text-red-400" },
+  { name: "Rookie", levels: [1, 10], icon: Star, color: "text-subtle" },
+  { name: "Bronze", levels: [11, 20], icon: Medal, color: "text-muted-foreground" },
+  { name: "Silver", levels: [21, 35], icon: Shield, color: "text-border-strong" },
+  { name: "Gold", levels: [36, 50], icon: Trophy, color: "text-[#ab570a] dark:text-warning" },
+  { name: "Platinum", levels: [51, 65], icon: Gem, color: "text-[#0d9488] dark:text-[#00dfd8]" },
+  { name: "Diamond", levels: [66, 80], icon: Sparkles, color: "text-link" },
+  { name: "Master", levels: [81, 95], icon: Crown, color: "text-[#7928ca] dark:text-[#a875e8]" },
+  {
+    name: "Grandmaster",
+    levels: [96, 100],
+    icon: Flame,
+    color: "text-[#c0005f] dark:text-[#ff4da6]",
+  },
 ];
 
 export default function AchievementsPage() {
@@ -194,17 +204,15 @@ export default function AchievementsPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
+      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="font-semibold text-xl text-foreground flex items-center gap-2">
-            <Trophy className="size-5 text-amber-500" />
-            Achievements & Levels
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Track your progress and unlock rewards
+        <header className="mb-8">
+          <p className="eyebrow">Progress</p>
+          <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Achievements.</h1>
+          <p className="mt-3 text-muted-foreground text-sm">
+            Track what you've unlocked and what's still ahead.
           </p>
-        </div>
+        </header>
 
         {/* Tabs */}
         <Tabs defaultValue="achievements" className="space-y-6">
@@ -319,7 +327,7 @@ export default function AchievementsPage() {
                                     {achievement.name}
                                   </span>
                                   {achievement.unlocked && (
-                                    <CheckCircle className="size-3.5 text-green-500 flex-shrink-0" />
+                                    <CheckCircle className="size-3.5 shrink-0 text-success" />
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
@@ -374,7 +382,7 @@ export default function AchievementsPage() {
                             Lvl {tier.levels[0]}-{tier.levels[1]}
                           </span>
                         </div>
-                        <span className="text-xs text-muted-foreground font-mono">
+                        <span className="font-mono text-subtle text-xs tabular-nums">
                           {startPoints.toLocaleString()}-{endPoints.toLocaleString()} pts
                         </span>
                       </div>
@@ -387,28 +395,28 @@ export default function AchievementsPage() {
             {/* Scoring Info */}
             <Card>
               <CardContent className="p-4">
-                <h3 className="font-medium text-sm mb-3">How Points Work</h3>
+                <h3 className="eyebrow mb-4">How points work</h3>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <Target className="size-4 text-green-500" />
+                    <Target className="size-3.5 text-subtle" />
                     <span className="text-muted-foreground">
                       Base: <span className="text-foreground">100</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="size-4 text-blue-500" />
+                    <Clock className="size-3.5 text-subtle" />
                     <span className="text-muted-foreground">
                       Speed: <span className="text-foreground">+50 max</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Flame className="size-4 text-orange-500" />
+                    <Flame className="size-3.5 text-subtle" />
                     <span className="text-muted-foreground">
                       Streak: <span className="text-foreground">+5/day</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Brain className="size-4 text-purple-500" />
+                    <Brain className="size-3.5 text-subtle" />
                     <span className="text-muted-foreground">
                       Hard: <span className="text-foreground">+10/lvl</span>
                     </span>

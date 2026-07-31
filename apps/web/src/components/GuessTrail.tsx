@@ -20,36 +20,33 @@ export function GuessTrail({ attempts, className }: GuessTrailProps) {
   if (attempts.length === 0) return null;
 
   return (
-    <div
+    <ul
       aria-label="Guess history"
-      className={cn(
-        "flex w-full max-w-2xl flex-wrap items-center justify-center gap-2",
-        className
-      )}
+      className={cn("flex w-full max-w-2xl flex-wrap items-center justify-center gap-2", className)}
     >
       {attempts.map((attempt) => {
         const allCorrect = attempt.wordResults.every((w) => w.correct);
         const close = attempt.wordResults.some((w) => (w.similarity ?? 0) >= 70);
         return (
-          <div
+          <li
             key={`${attempt.attemptNumber}-${attempt.text}`}
             className={cn(
-              "guess-chip inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-transform duration-200",
-              "animate-in fade-in-50 zoom-in-95 motion-reduce:animate-none",
+              "guess-chip inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm",
+              "fade-in-50 zoom-in-95 animate-in motion-reduce:animate-none",
               allCorrect
-                ? "border-teal-500/40 bg-teal-500/10 text-teal-800 dark:text-teal-200"
+                ? "border-success/30 bg-success/10 text-success"
                 : close
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100"
-                  : "border-border/80 bg-background/70 text-foreground/80 backdrop-blur-sm"
+                  ? "border-warning/30 bg-warning/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground"
             )}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wider opacity-50">
+            <span className="font-mono text-[10px] text-subtle tabular-nums">
               {attempt.attemptNumber}
             </span>
             <span className="font-medium">{attempt.text}</span>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

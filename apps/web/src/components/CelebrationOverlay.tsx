@@ -153,7 +153,7 @@ export function CelebrationOverlay({
   }, [phase, achievements]);
 
   const getAchievementIcon = useCallback((iconType: Achievement["icon"]) => {
-    const iconClass = "h-5 w-5";
+    const iconClass = "h-4 w-4";
     switch (iconType) {
       case "trophy":
         return <Trophy className={iconClass} />;
@@ -174,126 +174,117 @@ export function CelebrationOverlay({
 
   return (
     <div
+      aria-label="Celebration"
+      aria-modal="true"
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center",
-        "bg-black/60 backdrop-blur-sm",
+        "fixed inset-0 z-50 flex items-center justify-center overflow-hidden",
+        // Polarity-flipped band: the win screen is the page's dark section.
+        "bg-[#0a0a0a]",
         "transition-opacity duration-200",
         phase === "dimming" ? "opacity-0" : "opacity-100",
         className
       )}
       role="dialog"
-      aria-modal="true"
-      aria-label="Celebration"
     >
-      <div className="flex flex-col items-center gap-6 p-8 text-center">
-        {/* Checkmark animation */}
+      {/* The brand mesh, at hero scale — the only decoration on this screen */}
+      <div
+        aria-hidden
+        className="mesh-gradient pointer-events-none absolute -top-1/4 left-1/2 h-[720px] w-[1100px] -translate-x-1/2 opacity-30 blur-[90px] motion-safe:animate-mesh-drift"
+      />
+
+      <div className="relative flex flex-col items-center gap-7 px-6 py-8 text-center">
         <div
           className={cn(
-            "rounded-full bg-green-500 p-6 text-white shadow-lg",
+            "flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#0a0a0a]",
             "transition-all duration-500 ease-out",
-            phase === "dimming" ? "scale-0 opacity-0" : "scale-100 opacity-100",
-            phase === "checkmark" && "animate-bounce"
+            phase === "dimming" ? "scale-90 opacity-0" : "scale-100 opacity-100"
           )}
         >
-          <Check className="h-16 w-16" strokeWidth={3} />
+          <Check className="h-8 w-8" strokeWidth={2.5} />
         </div>
 
-        {/* Score display */}
         <div
           className={cn(
             "transition-all duration-500",
             ["score", "streak", "achievements", "complete"].includes(phase)
               ? "translate-y-0 opacity-100"
-              : "translate-y-4 opacity-0"
+              : "translate-y-3 opacity-0"
           )}
         >
-          <p className="text-lg text-white/80 font-medium mb-1">Score</p>
-          <p className="text-6xl font-bold text-white tabular-nums">{displayScore}</p>
+          <p className="font-mono text-[11px] text-white/50 uppercase tracking-[0.14em]">Score</p>
+          <p className="mt-2 font-semibold text-6xl text-white tracking-[-0.05em] tabular-nums">
+            {displayScore}
+          </p>
         </div>
 
-        {/* Lucky Solve / Daily Bonus indicator */}
         {(isLuckySolve || (dailyBonusMultiplier && dailyBonusMultiplier > 1)) && (
           <div
             className={cn(
-              "flex items-center gap-2 rounded-full px-4 py-2",
+              "inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 backdrop-blur-sm",
               "transition-all duration-500",
               ["score", "streak", "achievements", "complete"].includes(phase)
-                ? "translate-y-0 opacity-100 scale-100"
-                : "translate-y-4 opacity-0 scale-95",
-              isLuckySolve
-                ? "bg-gradient-to-r from-purple-500 to-pink-500"
-                : "bg-gradient-to-r from-amber-400 to-orange-500"
+                ? "translate-y-0 scale-100 opacity-100"
+                : "translate-y-3 scale-95 opacity-0"
             )}
           >
-            <Sparkles className="h-5 w-5 text-white animate-pulse" />
-            <div className="text-white">
-              <span className="font-bold text-sm">
-                {isLuckySolve ? "Lucky Solve!" : "Bonus Day!"}
-              </span>
-              <span className="text-xs ml-2 opacity-90">
-                {isLuckySolve ? "2x" : `${dailyBonusMultiplier}x`} points!
-              </span>
-            </div>
+            <Sparkles className="h-3.5 w-3.5 text-white/70" />
+            <span className="font-medium text-sm text-white">
+              {isLuckySolve ? "Lucky solve" : "Bonus day"}
+            </span>
+            <span className="font-mono text-white/50 text-xs">
+              {isLuckySolve ? "2x" : `${dailyBonusMultiplier}x`}
+            </span>
           </div>
         )}
 
-        {/* Streak display */}
         {streak > 0 && (
           <div
             className={cn(
-              "flex items-center gap-2 rounded-full bg-orange-500/90 px-6 py-3 text-white",
+              "inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 backdrop-blur-sm",
               "transition-all duration-500",
               ["streak", "achievements", "complete"].includes(phase)
-                ? "translate-y-0 opacity-100 scale-100"
-                : "translate-y-4 opacity-0 scale-95",
-              phase === "streak" && "animate-pulse"
+                ? "translate-y-0 scale-100 opacity-100"
+                : "translate-y-3 scale-95 opacity-0"
             )}
           >
-            <Flame className="h-6 w-6" />
-            <span className="text-xl font-bold">{streak} Day Streak!</span>
+            <Flame className="h-3.5 w-3.5 text-white/70" />
+            <span className="font-medium text-sm text-white">{streak} day streak</span>
           </div>
         )}
 
-        {/* Attempts info */}
         <p
           className={cn(
-            "text-white/70 text-sm",
-            "transition-all duration-500",
+            "font-mono text-white/45 text-xs tabular-nums",
+            "transition-opacity duration-500",
             ["streak", "achievements", "complete"].includes(phase) ? "opacity-100" : "opacity-0"
           )}
         >
           Solved in {attempts} of {maxAttempts} attempts
-          {timeTaken !== undefined && ` • ${formatTime(timeTaken)}`}
+          {timeTaken !== undefined && ` · ${formatTime(timeTaken)}`}
         </p>
 
-        {/* Achievements */}
         {achievements.length > 0 && (
           <div
             className={cn(
-              "space-y-2 w-full max-w-xs",
-              "transition-all duration-500",
+              "w-full max-w-sm space-y-2",
+              "transition-opacity duration-500",
               phase === "achievements" || phase === "complete" ? "opacity-100" : "opacity-0"
             )}
           >
-            <p className="text-white/60 text-xs uppercase tracking-wide mb-3">
-              Achievements Unlocked
+            <p className="mb-3 font-mono text-[11px] text-white/45 uppercase tracking-[0.14em]">
+              Achievements unlocked
             </p>
-            {achievements.slice(0, visibleAchievements).map((achievement, index) => (
+            {achievements.slice(0, visibleAchievements).map((achievement) => (
               <div
+                className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3"
                 key={achievement.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg bg-white/10 px-4 py-3",
-                  "transform transition-all duration-300",
-                  "animate-slideIn"
-                )}
-                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500 text-white">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white">
                   {getAchievementIcon(achievement.icon)}
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-white">{achievement.name}</p>
-                  <p className="text-xs text-white/60">{achievement.description}</p>
+                  <p className="font-medium text-sm text-white">{achievement.name}</p>
+                  <p className="text-white/45 text-xs">{achievement.description}</p>
                 </div>
               </div>
             ))}

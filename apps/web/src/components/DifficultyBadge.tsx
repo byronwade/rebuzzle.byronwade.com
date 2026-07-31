@@ -23,23 +23,22 @@ export function DifficultyBadge({
   const accents = DIFFICULTY_ACCENTS[name];
 
   return (
-    <div className={cn("inline-flex flex-col items-start gap-1", className)}>
+    <div className={cn("inline-flex flex-col items-start gap-1.5", className)}>
       <span
         className={cn(
-          "inline-flex items-center gap-2 rounded-full border font-semibold tracking-wide",
+          "inline-flex items-center gap-2 rounded-full border font-medium",
           accents.badge,
-          accents.glow,
-          size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-1.5 text-sm"
+          size === "sm" ? "px-2.5 py-0.5 text-xs" : "px-3 py-1 text-[13px]"
         )}
       >
-        <span className={cn("h-2 w-2 rounded-full", accents.dot)} aria-hidden />
+        <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", accents.dot)} />
         {name}
         {typeof difficulty === "number" ? (
-          <span className="opacity-70 font-medium tabular-nums">{difficulty}/10</span>
+          <span className="font-mono text-[11px] tabular-nums opacity-60">{difficulty}/10</span>
         ) : null}
       </span>
       {showDescription ? (
-        <span className="max-w-[16rem] text-left text-muted-foreground text-xs leading-snug">
+        <span className="max-w-[18rem] text-balance text-left text-subtle text-xs leading-5">
           {getDifficultyDescription(name)}
         </span>
       ) : null}

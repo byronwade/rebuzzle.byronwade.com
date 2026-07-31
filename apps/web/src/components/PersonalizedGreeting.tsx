@@ -32,7 +32,7 @@ export function PersonalizedGreeting({
     if (streak >= 7) {
       return {
         icon: Flame,
-        iconColor: "text-orange-500",
+        iconColor: "text-warning",
         message: `${timeGreeting}! Day ${streak} of your streak`,
         subtext: "Keep it going!",
       };
@@ -42,7 +42,7 @@ export function PersonalizedGreeting({
     if (streak >= 3) {
       return {
         icon: Flame,
-        iconColor: "text-orange-400",
+        iconColor: "text-warning",
         message: `${timeGreeting}! ${streak}-day streak`,
         subtext: "You're on fire!",
       };
@@ -52,7 +52,7 @@ export function PersonalizedGreeting({
     if (streak === 1) {
       return {
         icon: Sparkles,
-        iconColor: "text-purple-500",
+        iconColor: "text-subtle",
         message: `${timeGreeting}! Streak started`,
         subtext: "Come back tomorrow to keep it going",
       };
@@ -62,7 +62,7 @@ export function PersonalizedGreeting({
     if (level >= 10 && wins > 0) {
       return {
         icon: Trophy,
-        iconColor: "text-amber-500",
+        iconColor: "text-warning",
         message: `${timeGreeting}! Level ${level}`,
         subtext: `${wins} puzzles solved`,
       };
@@ -72,7 +72,7 @@ export function PersonalizedGreeting({
     if (wins > 0) {
       return {
         icon: Sparkles,
-        iconColor: "text-blue-500",
+        iconColor: "text-link",
         message: `${timeGreeting}! Welcome back`,
         subtext: "Fresh puzzle awaits",
       };
@@ -81,7 +81,7 @@ export function PersonalizedGreeting({
     // New player
     return {
       icon: Sparkles,
-      iconColor: "text-purple-500",
+      iconColor: "text-subtle",
       message: `${timeGreeting}!`,
       subtext: "Ready for today's puzzle?",
     };

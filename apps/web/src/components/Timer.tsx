@@ -65,12 +65,10 @@ export function Timer({ nextPlayTime, className }: TimerProps) {
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div
-            className={cn("font-mono text-gray-400 text-xs xs:text-sm cursor-default", className)}
-          >
-            <span className="xs:inline hidden">Next puzzle in: </span>
-            <span className="xs:hidden">Next: </span>
-            <span className="font-semibold text-gray-600">{timeLeft}</span>
+          <div className={cn("cursor-default font-mono text-subtle text-xs", className)}>
+            <span className="xs:inline hidden">Next puzzle in </span>
+            <span className="xs:hidden">Next </span>
+            <span className="text-foreground tabular-nums">{timeLeft}</span>
           </div>
         </TooltipTrigger>
         <TooltipContent>New puzzle available at midnight</TooltipContent>
