@@ -113,7 +113,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
                     <button
                       aria-label={`Difficulty: ${getDifficultyName(gameState.difficulty)}. Click for tiers.`}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium text-xs focus-ring transition-colors",
                         DIFFICULTY_ACCENTS[getDifficultyName(gameState.difficulty)].badge
                       )}
                       type="button"

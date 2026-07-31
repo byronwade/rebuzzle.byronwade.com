@@ -38,7 +38,7 @@ export function DifficultyBadge({
         ) : null}
       </span>
       {showDescription ? (
-        <span className="max-w-[18rem] text-balance text-left text-subtle text-xs leading-5">
+        <span className="hidden max-w-[18rem] text-balance text-left text-subtle text-xs leading-5 sm:block">
           {getDifficultyDescription(name)}
         </span>
       ) : null}

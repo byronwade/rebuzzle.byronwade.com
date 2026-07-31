@@ -193,29 +193,26 @@ interface PuzzleQuestionProps {
   className?: string;
 }
 
+/** The prompt shown under the puzzle, per type. */
+const QUESTIONS: Record<string, string> = {
+  rebus: "What does this rebus puzzle represent?",
+  "word-puzzle": "What is the answer to this word puzzle?",
+  riddle: "What is the answer to this riddle?",
+  "logic-grid": "Use deductive reasoning to solve this logic grid puzzle",
+  "number-sequence": "What comes next in this number sequence?",
+  "caesar-cipher": "Decode this encrypted message",
+  "word-ladder": "Transform the start word into the end word",
+  "pattern-recognition": "What pattern comes next?",
+  trivia: "What is the answer to this trivia question?",
+  "cryptic-crossword": "Solve this cryptic crossword clue",
+};
+
+export function getPuzzleQuestion(puzzleType = "rebus"): string {
+  return QUESTIONS[puzzleType] ?? "What is the answer to this puzzle?";
+}
+
 export function PuzzleQuestion({ puzzleType = "rebus", className }: PuzzleQuestionProps) {
-  const questionText =
-    puzzleType === "rebus"
-      ? "What does this rebus puzzle represent?"
-      : puzzleType === "word-puzzle"
-        ? "What is the answer to this word puzzle?"
-        : puzzleType === "riddle"
-          ? "What is the answer to this riddle?"
-          : puzzleType === "logic-grid"
-            ? "Use deductive reasoning to solve this logic grid puzzle"
-            : puzzleType === "number-sequence"
-              ? "What comes next in this number sequence?"
-              : puzzleType === "caesar-cipher"
-                ? "Decode this encrypted message"
-                : puzzleType === "word-ladder"
-                  ? "Transform the start word into the end word"
-                  : puzzleType === "pattern-recognition"
-                    ? "What pattern comes next?"
-                    : puzzleType === "trivia"
-                      ? "What is the answer to this trivia question?"
-                      : puzzleType === "cryptic-crossword"
-                        ? "Solve this cryptic crossword clue"
-                        : "What is the answer to this puzzle?";
+  const questionText = getPuzzleQuestion(puzzleType);
 
   return <p className={cn("mt-4 text-balance text-subtle text-sm", className)}>{questionText}</p>;
 }
