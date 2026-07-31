@@ -13,8 +13,7 @@ export interface SolveResultCardProps {
   streak: number;
   attempts: number;
   maxAttempts: number;
-  timeTakenSeconds: number;
-  finalGuess: string;
+  resultsHref: string;
   className?: string;
 }
 
@@ -28,14 +27,10 @@ export function SolveResultCard({
   streak,
   attempts,
   maxAttempts,
-  timeTakenSeconds,
-  finalGuess,
+  resultsHref,
   className,
 }: SolveResultCardProps) {
   const { isGuest, userId } = useAuth();
-  const resultsHref = success
-    ? `/game-over?success=true&guess=${encodeURIComponent(finalGuess)}&attempts=${attempts}&time=${timeTakenSeconds}`
-    : `/game-over?success=false&guess=${encodeURIComponent(finalGuess)}&attempts=${maxAttempts}`;
 
   return (
     <div

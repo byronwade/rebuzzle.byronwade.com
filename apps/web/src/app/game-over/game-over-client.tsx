@@ -4,13 +4,13 @@ import { Check, Flame, TrendingUp, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { calculateScore } from "@/components/CelebrationOverlay";
 import { Confetti } from "@/components/Confetti";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { gameSettings } from "@/lib/gameSettings";
+import { consumeJustSolvedSessionFlag } from "@/lib/game/game-over-href";
+import { calculateGamePoints, gameSettings } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -175,19 +175,19 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     typeof params.time === "string" ? Number.parseInt(params.time, 10) : completionData?.timeTaken;
   const difficulty = gameData?.difficulty ?? 5;
 
-  // Calculate final score using unified scoring:
-  // calculateScore(attempts, timeTaken, streakDays, difficulty)
   const finalScore = success
-    ? completionData?.score || calculateScore(attempts, timeTaken, streak, difficulty)
+    ? completionData?.score || calculateGamePoints(attempts, timeTaken ?? 0, streak, difficulty)
     : 0;
 
-  // Animate score counter and trigger confetti on success
+  // Animate score counter; skip confetti/haptics if we just celebrated in-thread
   useEffect(() => {
     if (!success || loading || animationComplete) return;
 
-    // Trigger confetti immediately
-    setShowConfetti(true);
-    haptics.celebration();
+    const alreadyCelebrated = consumeJustSolvedSessionFlag();
+    if (!alreadyCelebrated) {
+      setShowConfetti(true);
+      haptics.celebration();
+    }
 
     const duration = 800;
     const steps = 30;

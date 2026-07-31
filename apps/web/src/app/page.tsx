@@ -151,7 +151,10 @@ function PuzzleAlreadyAttemptedDisplay({ wasSuccessful }: { wasSuccessful: boole
   return (
     <Layout>
       <StatusPanel
-        action={{ href: "/game-over", label: "View results" }}
+        action={{
+          href: wasSuccessful ? "/game-over?success=true" : "/game-over?success=false",
+          label: "View results",
+        }}
         eyebrow={wasSuccessful ? "Solved" : "Attempted"}
         headingId="puzzle-attempted-title"
         secondaryAction={{ href: "/leaderboard", label: "Check the leaderboard" }}

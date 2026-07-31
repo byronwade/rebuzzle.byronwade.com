@@ -1,20 +1,7 @@
 "use client";
 
-import {
-  ChevronDown,
-  Flame,
-  HelpCircle,
-  LogOut,
-  Moon,
-  Settings,
-  Sun,
-  Trophy,
-  User,
-  Zap,
-} from "lucide-react";
+import { ChevronDown, Flame, HelpCircle, LogOut, Settings, Trophy, User, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,12 +24,6 @@ type UserMenuProps = {
 export function UserMenu({ isAuthenticated }: UserMenuProps) {
   const { user, isLoading, isGuest } = useAuth();
   const router = useRouter();
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleLogout = async () => {
     try {
@@ -63,13 +44,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
     }
   };
 
-  const handleThemeToggle = () => {
-    if (!mounted) return;
-    const currentTheme = resolvedTheme || theme || "light";
-    setTheme(currentTheme === "dark" ? "light" : "dark");
-  };
-
-  // Loading state
   if (isLoading) {
     return (
       <Button className="h-8 w-8 rounded-full p-0" disabled size="icon" variant="ghost">
@@ -80,7 +54,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
     );
   }
 
-  // Guest user with tracked stats
   if (isGuest && user) {
     const avatarProps = generateAvatarProps(user.username);
 
@@ -119,6 +92,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               </span>
             </div>
           </div>
+          <DropdownMenuSeparator />
           <div className="space-y-1.5 px-1.5 pb-1.5">
             <Button
               className="h-9 w-full justify-start gap-2"
@@ -160,29 +134,11 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             How It Works
           </DropdownMenuItem>
           <VisualThemeMenuItems />
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={handleThemeToggle}
-            disabled={!mounted}
-          >
-            {mounted && resolvedTheme === "dark" ? (
-              <>
-                <Sun className="h-4 w-4" />
-                Light Mode
-              </>
-            ) : (
-              <>
-                <Moon className="h-4 w-4" />
-                Dark Mode
-              </>
-            )}
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     );
   }
 
-  // Not authenticated
   if (!(isAuthenticated && user)) {
     return (
       <DropdownMenu>
@@ -205,6 +161,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             <p className="font-medium text-sm">Welcome</p>
             <p className="text-muted-foreground text-xs">Sign in to track your progress</p>
           </div>
+          <DropdownMenuSeparator />
           <div className="space-y-1.5 px-1.5 pb-1.5">
             <Button
               className="h-9 w-full justify-start gap-2"
@@ -233,35 +190,24 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           </DropdownMenuItem>
           <DropdownMenuItem
             className="cursor-pointer gap-2"
+            onClick={() => router.push("/leaderboard")}
+          >
+            <Trophy className="h-4 w-4" />
+            Leaderboard
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer gap-2"
             onClick={() => router.push("/how-it-works")}
           >
             <HelpCircle className="h-4 w-4" />
             How It Works
           </DropdownMenuItem>
           <VisualThemeMenuItems />
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={handleThemeToggle}
-            disabled={!mounted}
-          >
-            {mounted && resolvedTheme === "dark" ? (
-              <>
-                <Sun className="h-4 w-4" />
-                Light Mode
-              </>
-            ) : (
-              <>
-                <Moon className="h-4 w-4" />
-                Dark Mode
-              </>
-            )}
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     );
   }
 
-  // Authenticated user
   const avatarProps = generateAvatarProps(user.username);
   const streak = (user as { streak?: number }).streak ?? 0;
   const hasStreak = streak > 0;
@@ -295,7 +241,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        {/* User info header */}
         <div className="flex items-center gap-3 px-2 py-3">
           <div className="relative">
             <Avatar className="h-10 w-10">
@@ -324,7 +269,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           </div>
         </div>
 
-        {/* Quick stats — hairline-divided, mono numerals */}
         <div className="mx-1 mb-1 grid grid-cols-3 divide-x divide-border rounded-md border border-border bg-inset">
           {[
             { label: "Streak", value: streak },
@@ -373,24 +317,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
         </DropdownMenuItem>
 
         <VisualThemeMenuItems />
-
-        <DropdownMenuItem
-          className="cursor-pointer gap-2"
-          onClick={handleThemeToggle}
-          disabled={!mounted}
-        >
-          {mounted && resolvedTheme === "dark" ? (
-            <>
-              <Sun className="h-4 w-4" />
-              Light Mode
-            </>
-          ) : (
-            <>
-              <Moon className="h-4 w-4" />
-              Dark Mode
-            </>
-          )}
-        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
