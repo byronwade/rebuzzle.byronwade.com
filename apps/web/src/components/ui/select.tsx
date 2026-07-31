@@ -67,7 +67,7 @@ const SelectContent = React.forwardRef<
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       className={cn(
-        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-menu data-[state=closed]:animate-out data-[state=open]:animate-in",
+        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-[var(--radix-select-content-available-height)] min-w-[8rem] max-w-[calc(100vw-1.5rem)] origin-[var(--radix-select-content-transform-origin)] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-menu data-[state=closed]:animate-out data-[state=open]:animate-in",
         position === "popper" &&
           "data-[side=left]:-translate-x-1 data-[side=top]:-translate-y-1 data-[side=right]:translate-x-1 data-[side=bottom]:translate-y-1",
         className
@@ -98,7 +98,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     className={cn(
-      "px-2 py-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]",
+      "select-none px-2 pt-2 pb-1 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]",
       className
     )}
     ref={ref}
@@ -113,7 +113,9 @@ const SelectItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Item
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pr-8 pl-2 text-muted-foreground text-sm transition-colors focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[state=checked]:text-foreground",
+      // Mirrors the dropdown item recipe, `active:` included — a select on a
+      // touch device has the same no-hover problem a menu does.
+      "relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pr-8 pl-2 text-muted-foreground text-sm outline-none transition-colors focus:bg-muted focus:text-foreground active:bg-muted active:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[state=checked]:text-foreground",
       className
     )}
     ref={ref}

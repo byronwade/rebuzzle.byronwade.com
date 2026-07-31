@@ -102,7 +102,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-64">
           <div className="flex items-center gap-3 px-2 py-3">
             <Avatar className="h-10 w-10">
               <AvatarFallback
@@ -147,13 +147,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           >
             <Trophy className="h-4 w-4" />
             Leaderboard
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => router.push("/settings")}
-          >
-            <Settings className="h-4 w-4" />
-            Settings
           </DropdownMenuItem>
           <DropdownMenuItem
             className="cursor-pointer gap-2"
@@ -204,7 +197,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-64">
           <div className="px-2 py-3">
             <p className="font-medium text-sm">Welcome</p>
             <p className="text-muted-foreground text-xs">Sign in to track your progress</p>
@@ -295,7 +288,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
         {/* User info header */}
         <div className="flex items-center gap-3 px-2 py-3">
           <div className="relative">
