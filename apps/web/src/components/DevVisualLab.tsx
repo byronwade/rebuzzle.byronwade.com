@@ -10,8 +10,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PuzzleContainer, PuzzleDisplay } from "@/components/PuzzleDisplay";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { isDevModeEnabled } from "@/lib/dev-mode";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
@@ -126,6 +124,14 @@ const FALLBACK_MODES: ModeMeta[] = [
     usesAi: true,
     estimatedCost: "high",
   },
+  {
+    id: "apex-tournament",
+    label: "Apex tournament",
+    description:
+      "Multi-candidate generation with critique, player sim, and rubric — preview only.",
+    usesAi: true,
+    estimatedCost: "high",
+  },
 ];
 
 export function DevVisualLab() {
@@ -133,9 +139,6 @@ export function DevVisualLab() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [modes, setModes] = useState<ModeMeta[]>(FALLBACK_MODES);
   const [mode, setMode] = useState("pictogram");
-  const [concept, setConcept] = useState("bee");
-  const [answer, setAnswer] = useState("before");
-  const [difficulty, setDifficulty] = useState(5);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<LabResult | null>(null);
@@ -180,9 +183,7 @@ export function DevVisualLab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: selected,
-          concept,
-          answer,
-          difficulty,
+          // Concept, answer, and difficulty are invented by the AI / adaptive loop
           renderImages: true,
         }),
       });
@@ -218,7 +219,8 @@ export function DevVisualLab() {
   }
 
   const previewVisual = result?.visual || result?.puzzle?.visual;
-  const previewFallback = result?.puzzle?.rebusPuzzle || result?.visual?.unicodeFallback || concept;
+  const previewFallback =
+    result?.puzzle?.rebusPuzzle || result?.visual?.unicodeFallback || "◆";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-14">
@@ -232,8 +234,8 @@ export function DevVisualLab() {
         </div>
         <p className="text-muted-foreground text-sm">
           Exercise every generative path — custom pictograms, text devices, unicode emoji, image
-          tiles, hybrid boards, composed rebuses, or a full Eve puzzle. Nothing here replaces
-          today&apos;s published puzzle.
+          tiles, hybrid boards, composed rebuses, or a full Eve / Apex puzzle. The AI picks
+          concept, answer, and difficulty. Nothing here replaces today&apos;s published puzzle.
         </p>
       </div>
 
@@ -268,41 +270,6 @@ export function DevVisualLab() {
             </button>
           );
         })}
-      </div>
-
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="lab-concept">Concept</Label>
-          <Input
-            id="lab-concept"
-            value={concept}
-            onChange={(e) => setConcept(e.target.value)}
-            placeholder="bee"
-            disabled={busy}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="lab-answer">Sample answer</Label>
-          <Input
-            id="lab-answer"
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder="before"
-            disabled={busy}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="lab-difficulty">Difficulty (4–9)</Label>
-          <Input
-            id="lab-difficulty"
-            type="number"
-            min={4}
-            max={9}
-            value={difficulty}
-            onChange={(e) => setDifficulty(Number(e.target.value) || 5)}
-            disabled={busy}
-          />
-        </div>
       </div>
 
       <div className="mb-8 flex flex-wrap gap-2">

@@ -2,11 +2,13 @@
  * Dev Visual Lab runner — exercises generative visual paths without publishing.
  */
 
+import { resolveAdaptiveDifficultyForDate } from "@/ai/learning";
 import { generateMasterPuzzle } from "@/ai/services/master-puzzle-orchestrator";
 import { composePuzzleVisual } from "./compose-visual";
 import { buildUnicodeFallback, type PuzzleVisual, type VisualLayer } from "./composition";
 import { generateImageTile } from "./generate-image-tile";
 import { generatePictogram } from "./generate-pictogram";
+import { inventLabBrief } from "./invent-lab-brief";
 import {
   buildLabLayers,
   guessEmoji,
@@ -108,10 +110,64 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
   const start = Date.now();
   const mode = input.mode;
   const modeMeta = VISUAL_LAB_MODE_META[mode];
-  const concept = (input.concept || "bee").trim().slice(0, 48) || "bee";
-  const answer = (input.answer || "before").trim().slice(0, 64) || "before";
-  const difficulty = Math.max(4, Math.min(9, input.difficulty ?? 5));
   const renderImages = input.renderImages !== false;
+
+  // Full Eve / Apex: AI invents concept + answer; only difficulty may be adapted.
+  if (mode === "full-puzzle" || mode === "apex-tournament") {
+    const adaptive = await resolveAdaptiveDifficultyForDate(new Date());
+    const difficulty = Math.max(
+      4,
+      Math.min(9, input.difficulty ?? adaptive.target)
+    );
+    const result = await generateMasterPuzzle({
+      targetDifficulty: difficulty,
+      puzzleType: "rebus",
+      // Intentionally omit theme — Eve/Apex chooses concept + answer
+      requireNovelty: true,
+      maxAttempts: mode === "apex-tournament" ? 2 : 1,
+      qualityThreshold: mode === "apex-tournament" ? 70 : 60,
+      candidateCount: mode === "apex-tournament" ? undefined : 1,
+      useLearningFeedback: mode === "apex-tournament",
+    });
+
+    return {
+      mode,
+      meta: {
+        label: modeMeta.label,
+        description: modeMeta.description,
+        usesAi: modeMeta.usesAi,
+        estimatedCost: modeMeta.estimatedCost,
+        durationMs: Date.now() - start,
+        engine: result.metadata.engine,
+      },
+      visual: result.puzzle.visual,
+      puzzle: {
+        rebusPuzzle: result.puzzle.rebusPuzzle,
+        answer: result.puzzle.answer,
+        difficulty: result.puzzle.difficulty,
+        difficultyLevel: result.puzzle.difficultyLevel,
+        explanation: result.puzzle.explanation,
+        category: result.puzzle.category,
+        hints: result.puzzle.hints,
+        techniqueId: result.puzzle.techniqueId,
+        visual: result.puzzle.visual,
+        qualityScore: result.metadata.qualityMetrics.scores.overall,
+        funScore: result.metadata.qualityMetrics.scores.fun,
+        engine: result.metadata.engine,
+        thinkingSummary: result.metadata.aiThinking.summary,
+      },
+    };
+  }
+
+  // Probe modes: invent concept/answer/difficulty when the UI omits them
+  const brief = await inventLabBrief({
+    concept: input.concept,
+    answer: input.answer,
+    difficulty: input.difficulty,
+  });
+  const concept = brief.concept;
+  const answer = brief.answer;
+  const difficulty = brief.difficulty;
 
   const baseMeta = {
     label: modeMeta.label,
@@ -274,41 +330,5 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     };
   }
 
-  // full-puzzle / apex-tournament — Eve / Apex, preview only
-  const result = await generateMasterPuzzle({
-    targetDifficulty: difficulty,
-    puzzleType: "rebus",
-    theme: concept,
-    category: "visual_wordplay",
-    requireNovelty: false,
-    maxAttempts: mode === "apex-tournament" ? 2 : 1,
-    qualityThreshold: mode === "apex-tournament" ? 70 : 60,
-    candidateCount: mode === "apex-tournament" ? undefined : 1,
-    useLearningFeedback: mode === "apex-tournament",
-  });
-
-  return {
-    mode,
-    meta: {
-      ...baseMeta,
-      durationMs: Date.now() - start,
-      engine: result.metadata.engine,
-    },
-    visual: result.puzzle.visual,
-    puzzle: {
-      rebusPuzzle: result.puzzle.rebusPuzzle,
-      answer: result.puzzle.answer,
-      difficulty: result.puzzle.difficulty,
-      difficultyLevel: result.puzzle.difficultyLevel,
-      explanation: result.puzzle.explanation,
-      category: result.puzzle.category,
-      hints: result.puzzle.hints,
-      techniqueId: result.puzzle.techniqueId,
-      visual: result.puzzle.visual,
-      qualityScore: result.metadata.qualityMetrics.scores.overall,
-      funScore: result.metadata.qualityMetrics.scores.fun,
-      engine: result.metadata.engine,
-      thinkingSummary: result.metadata.aiThinking.summary,
-    },
-  };
+  throw new Error(`Unsupported visual lab mode: ${mode}`);
 }

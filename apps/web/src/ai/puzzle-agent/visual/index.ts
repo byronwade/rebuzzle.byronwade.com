@@ -34,6 +34,7 @@ export {
   type VisualLabMode,
   type VisualLabModeMeta,
 } from "./lab-recipes";
+export { inventLabBrief, type LabBrief } from "./invent-lab-brief";
 export { type RunVisualLabInput, type RunVisualLabResult, runVisualLab } from "./run-visual-lab";
 export {
   IMAGE_TILE_STYLE_GUIDE,
