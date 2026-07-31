@@ -1,7 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -12,13 +10,13 @@ import {
   trackPuzzleCompletion,
   trackPuzzleStart,
 } from "@/lib/analytics";
-import { determineAchievements } from "@/lib/game/celebration-achievements";
+import { fireConfetti } from "@/lib/confetti";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
-  calculateGamePoints as calculateScore,
   engagementConfig,
   gameSettings,
   getDailyBonusMultiplier,
@@ -28,6 +26,7 @@ import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
+import { ChatLockedDock } from "./ChatLockedDock";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { useGameContext } from "./GameContext";
 import { GuessThread, type ThreadTurn } from "./GuessThread";
@@ -37,11 +36,7 @@ import { getPuzzleQuestion } from "./PuzzleDisplay";
 import { PuzzleMinimal } from "./PuzzleMinimal";
 import { PuzzleStage } from "./PuzzleStage";
 import { SmartAnswerInput } from "./SmartAnswerInput";
-
-const CelebrationOverlay = dynamic(
-  () => import("./CelebrationOverlay").then((mod) => mod.CelebrationOverlay),
-  { ssr: false }
-);
+import { SolveResultCard } from "./SolveResultCard";
 
 interface UserStats {
   points: number;
@@ -72,39 +67,25 @@ interface GuessAttempt {
   attemptNumber: number;
 }
 
-// Game state reducer
 interface GameState {
-  currentGuess: string;
   gameOver: boolean;
   nextPlayTime: Date | null;
   attemptsLeft: number;
-  shake: boolean;
-  feedbackMessage: string;
   lastSubmittedGuess: string | null;
   finalGuess: string | null;
   wasSuccessful: boolean;
   finalAttempts: number;
-  isGuessFilled: boolean;
+  finalScore: number;
+  timeTakenSeconds: number;
   isSubmitting: boolean;
   guessHistory: GuessAttempt[];
-  showCelebration: boolean;
-  celebrationScore: number;
   startTime: number;
-  // Bonus indicators for variable rewards
-  isLuckySolve: boolean;
-  dailyBonusMultiplier: number;
-  // Hint state
   hintsUsed: number;
   currentHintIndex: number;
 }
 
 type GameAction =
-  | { type: "SET_CURRENT_GUESS"; payload: string }
-  | { type: "SET_GAME_OVER"; payload: boolean }
-  | { type: "SET_NEXT_PLAY_TIME"; payload: Date | null }
   | { type: "SET_ATTEMPTS_LEFT"; payload: number }
-  | { type: "SET_SHAKE"; payload: boolean }
-  | { type: "SET_FEEDBACK_MESSAGE"; payload: string }
   | { type: "SET_LAST_SUBMITTED_GUESS"; payload: string | null }
   | {
       type: "SET_COMPLETION";
@@ -114,31 +95,17 @@ type GameAction =
         attempts: number;
         nextPlayTime: Date;
         score: number;
-        isLuckySolve?: boolean;
-        dailyBonusMultiplier?: number;
+        timeTakenSeconds: number;
       };
     }
-  | { type: "SET_IS_GUESS_FILLED"; payload: boolean }
   | { type: "SET_IS_SUBMITTING"; payload: boolean }
-  | { type: "RESET_GUESS" }
   | { type: "ADD_GUESS_HISTORY"; payload: GuessAttempt }
-  | { type: "SET_SHOW_CELEBRATION"; payload: boolean }
   | { type: "REVEAL_HINT" };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
-    case "SET_CURRENT_GUESS":
-      return { ...state, currentGuess: action.payload };
-    case "SET_GAME_OVER":
-      return { ...state, gameOver: action.payload };
-    case "SET_NEXT_PLAY_TIME":
-      return { ...state, nextPlayTime: action.payload };
     case "SET_ATTEMPTS_LEFT":
       return { ...state, attemptsLeft: action.payload };
-    case "SET_SHAKE":
-      return { ...state, shake: action.payload };
-    case "SET_FEEDBACK_MESSAGE":
-      return { ...state, feedbackMessage: action.payload };
     case "SET_LAST_SUBMITTED_GUESS":
       return { ...state, lastSubmittedGuess: action.payload };
     case "SET_COMPLETION":
@@ -149,24 +116,16 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         wasSuccessful: action.payload.wasSuccessful,
         finalAttempts: action.payload.attempts,
         nextPlayTime: action.payload.nextPlayTime,
-        showCelebration: action.payload.wasSuccessful,
-        celebrationScore: action.payload.score,
-        isLuckySolve: action.payload.isLuckySolve ?? false,
-        dailyBonusMultiplier: action.payload.dailyBonusMultiplier ?? 1,
+        finalScore: action.payload.score,
+        timeTakenSeconds: action.payload.timeTakenSeconds,
       };
-    case "SET_IS_GUESS_FILLED":
-      return { ...state, isGuessFilled: action.payload };
     case "SET_IS_SUBMITTING":
       return { ...state, isSubmitting: action.payload };
-    case "RESET_GUESS":
-      return { ...state, currentGuess: "", isGuessFilled: false };
     case "ADD_GUESS_HISTORY":
       return {
         ...state,
         guessHistory: [...state.guessHistory, action.payload],
       };
-    case "SET_SHOW_CELEBRATION":
-      return { ...state, showCelebration: action.payload };
     case "REVEAL_HINT":
       return {
         ...state,
@@ -179,24 +138,18 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
 };
 
 const initialState: GameState = {
-  currentGuess: "",
   gameOver: false,
   nextPlayTime: null,
   attemptsLeft: gameSettings.maxAttempts,
-  shake: false,
-  feedbackMessage: "",
   lastSubmittedGuess: null,
   finalGuess: null,
   wasSuccessful: false,
   finalAttempts: 0,
-  isGuessFilled: false,
+  finalScore: 0,
+  timeTakenSeconds: 0,
   isSubmitting: false,
   guessHistory: [],
-  showCelebration: false,
-  celebrationScore: 0,
   startTime: Date.now(),
-  isLuckySolve: false,
-  dailyBonusMultiplier: 1,
   hintsUsed: 0,
   currentHintIndex: 0,
 };
@@ -248,11 +201,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
    */
   const streamQuip = useCallback(
     async (id: number, guess: string, tier: ReactionTier) => {
+      // Never spend credits after the day is locked, or on the winning turn.
+      if (tier === "correct" || tier === "out") return;
+
       patchTurn(id, { quipPending: true });
       try {
         const response = await fetch("/api/puzzles/quip", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ puzzleId: gameData.id, guess, tier }),
         });
 
@@ -284,7 +241,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     },
     [gameData.id, patchTurn]
   );
-  const router = useRouter();
   const { userId, isLoading: authLoading } = useAuth();
   const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
   // PrefetchGuestClient warms the session in idle time; board stays interactive.
@@ -338,13 +294,22 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     });
   }, [gameState.attemptsLeft, setContextGameState]);
 
-  // Check if the game is completed from gameData
+  // Server already marked today complete (e.g. revisit) — lock the board in place
   useEffect(() => {
-    if (gameData.isCompleted) {
-      dispatch({ type: "SET_GAME_OVER", payload: true });
-      endGame();
-    }
-  }, [gameData.isCompleted, endGame]);
+    if (!gameData.isCompleted || gameState.gameOver) return;
+    dispatch({
+      type: "SET_COMPLETION",
+      payload: {
+        finalGuess: "",
+        wasSuccessful: false,
+        attempts: gameSettings.maxAttempts,
+        nextPlayTime: getNextUtcMidnight(),
+        score: 0,
+        timeTakenSeconds: 0,
+      },
+    });
+    endGame();
+  }, [gameData.isCompleted, gameState.gameOver, endGame]);
 
   // Track puzzle start AFTER guest is created
   useEffect(() => {
@@ -364,12 +329,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     });
   }, [gameData.id, gameData.difficulty, puzzleType, guestReady]);
 
+  const dismissKeyboard = useCallback(() => {
+    if (typeof document !== "undefined") {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    }
+  }, []);
+
   const setCompletionState = useCallback(
     (success: boolean, finalGuess: string, attempts: number, serverScore?: number) => {
-      // Daily rollover is UTC midnight — matches server puzzle day + lock
       const tomorrow = getNextUtcMidnight();
-
-      const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
+      const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
       const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
 
       // Prefer authoritative server points; fall back to local estimate for UX only
@@ -377,28 +346,22 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         typeof serverScore === "number" && serverScore > 0
           ? serverScore
           : success
-            ? calculateScore(
+            ? calculateGamePoints(
                 attempts,
-                timeTaken,
+                timeTakenSeconds,
                 userStats.streak,
                 difficultyLevel,
                 gameState.hintsUsed
               )
             : 0;
 
-      let isLucky = false;
-      let dailyMultiplier = 1;
-
-      // Only apply cosmetic lucky/daily multipliers when we don't have server score
       if (success && !(typeof serverScore === "number" && serverScore > 0)) {
         const luckyResult = rollLuckySolve();
-        isLucky = luckyResult.isLucky;
         const dailyBonus = getDailyBonusMultiplier();
-        dailyMultiplier = dailyBonus.multiplier;
-        if (isLucky) {
+        if (luckyResult.isLucky) {
           score = Math.round(score * luckyResult.multiplier);
         } else if (dailyBonus.hasBonus) {
-          score = Math.round(score * dailyMultiplier);
+          score = Math.round(score * dailyBonus.multiplier);
         }
       }
 
@@ -410,54 +373,40 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           attempts,
           nextPlayTime: tomorrow,
           score,
-          isLuckySolve: isLucky,
-          dailyBonusMultiplier: dailyMultiplier,
+          timeTakenSeconds,
         },
       });
 
+      dismissKeyboard();
       if (success) {
         haptics.celebration();
+        markJustSolvedInSession();
+        void fireConfetti();
       } else {
         haptics.error();
       }
     },
-    [gameState.startTime, gameState.hintsUsed, userStats.streak, gameData.difficulty]
+    [
+      dismissKeyboard,
+      gameState.startTime,
+      gameState.hintsUsed,
+      userStats.streak,
+      gameData.difficulty,
+    ]
   );
 
-  const handleIncorrectGuess = useCallback((attemptsLeft: number, similarity?: number) => {
-    dispatch({ type: "SET_SHAKE", payload: true });
-
-    // Near-miss feedback - psychology: Zeigarnik effect makes almost-wins more motivating
+  const handleIncorrectGuess = useCallback((_attemptsLeft: number, similarity?: number) => {
     const isNearMiss = similarity !== undefined && similarity >= engagementConfig.nearMissThreshold;
-    const message = isNearMiss
-      ? `So close! ${attemptsLeft} ${attemptsLeft === 1 ? "attempt" : "attempts"} left.`
-      : `Incorrect! ${attemptsLeft} ${attemptsLeft === 1 ? "attempt" : "attempts"} left.`;
-
-    dispatch({
-      type: "SET_FEEDBACK_MESSAGE",
-      payload: message,
-    });
-
-    // Haptic feedback - different for near-miss
     if (isNearMiss) {
-      haptics.warning(); // Gentler feedback for near-miss
+      haptics.warning();
     } else {
       haptics.error();
     }
-
-    setTimeout(
-      () => {
-        dispatch({ type: "SET_SHAKE", payload: false });
-        dispatch({ type: "SET_FEEDBACK_MESSAGE", payload: "" });
-      },
-      isNearMiss ? 1500 : 1000
-    ); // Show near-miss message longer
   }, []);
 
   const handleGuess = useCallback(
     async (guessValue?: string) => {
-      // Use provided guess value or fall back to state
-      const guess = guessValue?.trim() || gameState.currentGuess.trim();
+      const guess = guessValue?.trim() ?? "";
 
       if (gameState.gameOver || !currentEventPuzzle || !guess || gameState.isSubmitting) {
         return;
@@ -477,14 +426,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         }
       }
 
-      // Update state with the guess if provided
-      if (guessValue !== undefined && guessValue !== gameState.currentGuess) {
-        dispatch({ type: "SET_CURRENT_GUESS", payload: guessValue });
-      }
-
-      // Optimistic UI update - disable input immediately
       dispatch({ type: "SET_IS_SUBMITTING", payload: true });
-      dispatch({ type: "SET_FEEDBACK_MESSAGE", payload: "Checking..." });
       const previousAttemptsLeft = gameState.attemptsLeft;
       const previousLastSubmittedGuess = gameState.lastSubmittedGuess;
       const guessToCheck = guess;
@@ -496,6 +438,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             puzzleId: gameData.id,
             guess: guessToCheck,
@@ -521,16 +464,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           error?: string;
         };
 
-        dispatch({ type: "SET_FEEDBACK_MESSAGE", payload: "" });
-
-        // Already locked / replay blocked
+        // Already locked / replay blocked — stay in-thread, don't hard-cut away
         if (response.status === 409 || result.locked) {
           setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts);
-          router.push(
-            result.wasSuccessful
-              ? `/game-over?success=true&guess=${encodeURIComponent(guessToCheck)}`
-              : `/game-over?success=false&guess=${encodeURIComponent(guessToCheck)}&attempts=${gameSettings.maxAttempts}`
-          );
+          toast({
+            title: result.wasSuccessful ? "Already solved today" : "Day already locked",
+            description: "Chat is locked. Open full results anytime from the dock.",
+          });
           return;
         }
 
@@ -708,9 +648,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           };
           localStorage.setItem("lastGameCompletion", JSON.stringify(completionData));
 
-          router.push(
-            `/game-over?success=false&guess=${encodeURIComponent(guessToCheck)}&attempts=${gameSettings.maxAttempts}`
-          );
+          // Stay in the thread — chat stays locked.
           return;
         }
 
@@ -731,9 +669,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               : 0;
 
         handleIncorrectGuess(newAttemptsLeft, overallSimilarity);
-        dispatch({ type: "RESET_GUESS" });
 
         // Eve's riff arrives behind the instant line, in its own bubble.
+        // Never request a quip after the day locks — that burns AI credits.
         if (reaction) {
           void streamQuip(turnId, guessToCheck, reaction.tier);
         }
@@ -751,7 +689,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     },
     [
       gameState.gameOver,
-      gameState.currentGuess,
       gameState.attemptsLeft,
       gameState.isSubmitting,
       gameState.lastSubmittedGuess,
@@ -766,87 +703,37 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       gameData.id,
       puzzleType,
       gameData.difficulty,
-      router,
       handleIncorrectGuess,
       streamQuip,
     ]
   );
 
-  const handleKeyPress = useCallback(
-    (key: string) => {
-      if (
-        gameState.gameOver ||
-        gameState.nextPlayTime ||
-        !currentEventPuzzle ||
-        gameState.isSubmitting
-      )
-        return;
-
-      // Free-form answers — no answer-length gating (answer is not on the client)
-      if (key === "ENTER") {
-        if (gameState.currentGuess.trim()) {
-          handleGuess();
-        }
-      } else if (key === "BACKSPACE") {
-        const newGuess = gameState.currentGuess.slice(0, -1);
-        dispatch({ type: "SET_CURRENT_GUESS", payload: newGuess });
-        dispatch({ type: "SET_IS_GUESS_FILLED", payload: newGuess.trim().length > 0 });
-        dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: null });
-      } else if (/^[A-Z]$/.test(key)) {
-        const newGuess = gameState.currentGuess + key;
-        dispatch({ type: "SET_CURRENT_GUESS", payload: newGuess });
-        dispatch({ type: "SET_IS_GUESS_FILLED", payload: true });
-        dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: null });
-      }
-    },
-    [
-      gameState.gameOver,
-      gameState.nextPlayTime,
-      gameState.currentGuess,
-      gameState.isSubmitting,
-      currentEventPuzzle,
-      handleGuess,
-    ]
-  );
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (gameState.gameOver || gameState.nextPlayTime || gameState.isSubmitting) return;
-
-      // Don't interfere with textarea/input keydown handlers
-      const activeElement = document.activeElement;
-      const isInputFocused =
-        activeElement instanceof HTMLTextAreaElement || activeElement instanceof HTMLInputElement;
-
-      if (event.key === "Enter") {
-        // Only handle Enter for the old GuessBoxes component, not for SmartAnswerInput
-        if (!isInputFocused && gameState.isGuessFilled) {
-          event.preventDefault();
-          handleGuess();
-        }
-        // If input is focused, let SmartAnswerInput handle it
-      } else if (event.key === "Backspace") {
-        if (!isInputFocused) {
-          handleKeyPress("BACKSPACE");
-        }
-      } else {
-        const key = event.key.toUpperCase();
-        if (/^[A-Z]$/.test(key) && !isInputFocused) {
-          handleKeyPress(key);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+  const resultsHref = useMemo(() => {
+    if (!gameState.gameOver) return "/game-over";
+    return buildGameOverHref({
+      success: gameState.wasSuccessful,
+      guess: gameState.finalGuess || "",
+      attempts: gameState.wasSuccessful ? gameState.finalAttempts : gameSettings.maxAttempts,
+      timeTakenSeconds: gameState.timeTakenSeconds,
+    });
   }, [
     gameState.gameOver,
-    gameState.nextPlayTime,
-    gameState.isGuessFilled,
-    gameState.isSubmitting,
-    handleGuess,
-    handleKeyPress,
+    gameState.wasSuccessful,
+    gameState.finalGuess,
+    gameState.finalAttempts,
+    gameState.timeTakenSeconds,
   ]);
+
+  const resultCard = gameState.gameOver ? (
+    <SolveResultCard
+      success={gameState.wasSuccessful}
+      score={gameState.finalScore}
+      streak={userStats.streak}
+      attempts={gameState.finalAttempts}
+      maxAttempts={gameSettings.maxAttempts}
+      resultsHref={resultsHref}
+    />
+  ) : null;
 
   // Puzzle data is already on the server-rendered board — never blank it for
   // auth/guest warm-up. Guest creation only disables submit (below).
@@ -854,154 +741,126 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     <>
       {/* Main content area - keyboard-aware layout */}
       <KeyboardAwareLayout>
-        {({ isKeyboardVisible }) => (
-          <div className="flex flex-col h-full">
-            {/* Puzzle area - collapses when keyboard is visible, centers content */}
-            <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area flex flex-col">
-              {isKeyboardVisible ? (
-                /* COLLAPSED VIEW - minimal puzzle hint when keyboard is open */
-                <div className="flex flex-col items-center pt-2">
-                  <PuzzleMinimal
-                    puzzle={puzzleDisplay}
-                    puzzleType={puzzleType}
-                    visual={gameData.visual}
-                    className="w-full max-w-2xl"
-                  />
-                  {/* Show last guess attempt in collapsed view */}
-                  {gameState.guessHistory.length > 0 && (
-                    <div className="mt-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
-                      Last: {gameState.guessHistory[gameState.guessHistory.length - 1]?.text}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* EXPANDED VIEW — focused play stage */
-                <div
-                  className={cn(
-                    "play-stage flex flex-1 flex-col items-center overflow-hidden px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6",
-                    hasThread ? "justify-start" : "justify-center"
-                  )}
-                >
-                  <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
-                    <DifficultyBadge
-                      className="play-fade-in"
-                      difficulty={currentEventPuzzle?.difficulty}
-                      showDescription={!hasThread}
-                    />
-                    {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
-                      <HintBadge
-                        hints={gameData.hints}
-                        gameId={gameData.id}
-                        onHintReveal={(hintIndex) => {
-                          dispatch({ type: "REVEAL_HINT" });
-                          trackEvent(analyticsEvents.HINT_USED, {
-                            puzzleId: gameData.id || "unknown",
-                            hintIndex,
-                          });
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  <section aria-label="Puzzle" className="w-full max-w-2xl">
-                    <PuzzleStage
+        {({ isKeyboardVisible }) => {
+          // After lock, always show the full thread + result — never the collapsed keyboard view.
+          const collapsed = isKeyboardVisible && !gameState.gameOver;
+          return (
+            <div className="flex flex-col h-full">
+              {/* Puzzle area - collapses when keyboard is visible, centers content */}
+              <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area flex flex-col">
+                {collapsed ? (
+                  /* COLLAPSED VIEW - minimal puzzle hint when keyboard is open */
+                  <div className="flex flex-col items-center pt-2">
+                    <PuzzleMinimal
                       puzzle={puzzleDisplay}
                       puzzleType={puzzleType}
-                      question={getPuzzleQuestion(puzzleType)}
-                      state={hasThread ? "docked" : "hero"}
                       visual={gameData.visual}
+                      className="w-full max-w-2xl"
                     />
-                  </section>
+                    {/* Show last guess attempt in collapsed view */}
+                    {gameState.guessHistory.length > 0 && (
+                      <div className="mt-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
+                        Last: {gameState.guessHistory[gameState.guessHistory.length - 1]?.text}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* EXPANDED VIEW — focused play stage */
+                  <div
+                    className={cn(
+                      "play-stage flex flex-1 flex-col items-center overflow-hidden px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6",
+                      hasThread ? "justify-start" : "justify-center"
+                    )}
+                  >
+                    <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
+                      <DifficultyBadge
+                        className="play-fade-in"
+                        difficulty={currentEventPuzzle?.difficulty}
+                        showDescription={!hasThread}
+                      />
+                      {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
+                        <HintBadge
+                          hints={gameData.hints}
+                          gameId={gameData.id}
+                          onHintReveal={(hintIndex) => {
+                            dispatch({ type: "REVEAL_HINT" });
+                            trackEvent(analyticsEvents.HINT_USED, {
+                              puzzleId: gameData.id || "unknown",
+                              hintIndex,
+                            });
+                          }}
+                        />
+                      )}
+                    </div>
 
-                  {hasThread && (
-                    <GuessThread
-                      className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl flex-1 px-0.5 pb-2"
-                      turns={turns}
-                    />
-                  )}
+                    <section aria-label="Puzzle" className="w-full max-w-2xl">
+                      <PuzzleStage
+                        puzzle={puzzleDisplay}
+                        puzzleType={puzzleType}
+                        question={getPuzzleQuestion(puzzleType)}
+                        state={hasThread ? "docked" : "hero"}
+                        visual={gameData.visual}
+                      />
+                    </section>
+
+                    {hasThread ? (
+                      <GuessThread
+                        className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl flex-1 px-0.5 pb-2"
+                        footer={resultCard}
+                        turns={turns}
+                      />
+                    ) : resultCard ? (
+                      <div className="mt-[clamp(0.75rem,2.5vh,1.25rem)] w-full max-w-2xl px-0.5 pb-2">
+                        {resultCard}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </main>
+
+              {/* Error display - positioned above input area */}
+              {error && (
+                <div
+                  className="mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none"
+                  role="alert"
+                >
+                  <div className="rounded-lg border border-destructive/25 bg-card p-4 text-center shadow-lg">
+                    <p className="font-medium text-destructive text-sm">{error.message}</p>
+                    {error.details && (
+                      <p className="mt-1.5 text-muted-foreground text-xs">{error.details}</p>
+                    )}
+                    <Button
+                      className="mt-3"
+                      onClick={() => setError(null)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
                 </div>
               )}
-            </main>
 
-            {/* Error display - positioned above input area */}
-            {error && (
-              <div
-                className="mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none"
-                role="alert"
+              <section
+                aria-label={gameState.gameOver ? "Day locked" : "Answer input"}
+                className="input-area input-area-keyboard-transition play-dock z-30 shrink-0 px-4 pt-5 pb-safe-lg md:px-6"
               >
-                <div className="rounded-lg border border-destructive/25 bg-card p-4 text-center shadow-lg">
-                  <p className="font-medium text-destructive text-sm">{error.message}</p>
-                  {error.details && (
-                    <p className="mt-1.5 text-muted-foreground text-xs">{error.details}</p>
+                <div className="mx-auto max-w-2xl">
+                  {gameState.gameOver ? (
+                    <ChatLockedDock success={gameState.wasSuccessful} resultsHref={resultsHref} />
+                  ) : (
+                    <SmartAnswerInput
+                      disabled={gameState.isSubmitting || (!userId && isCreatingGuest)}
+                      isSubmitting={gameState.isSubmitting || isCreatingGuest}
+                      onSubmit={handleGuess}
+                    />
                   )}
-                  <Button
-                    className="mt-3"
-                    onClick={() => setError(null)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Dismiss
-                  </Button>
                 </div>
-              </div>
-            )}
-
-            <section
-              aria-label="Answer input"
-              className="input-area input-area-keyboard-transition play-dock z-30 shrink-0 px-4 pt-5 pb-safe-lg md:px-6"
-            >
-              <div className="mx-auto max-w-2xl">
-                <SmartAnswerInput
-                  puzzleId={gameData.id}
-                  difficulty={currentEventPuzzle?.difficulty || 5}
-                  disabled={
-                    gameState.gameOver || gameState.isSubmitting || (!userId && isCreatingGuest)
-                  }
-                  isSubmitting={gameState.isSubmitting || isCreatingGuest}
-                  onSubmit={handleGuess}
-                  puzzle={currentEventPuzzle?.puzzle || ""}
-                  puzzleType={currentEventPuzzle?.puzzleType || "rebus"}
-                />
-              </div>
-            </section>
-          </div>
-        )}
-      </KeyboardAwareLayout>
-
-      {/* Celebration Overlay */}
-      <CelebrationOverlay
-        isVisible={gameState.showCelebration}
-        score={gameState.celebrationScore}
-        streak={userStats.streak}
-        attempts={gameState.finalAttempts}
-        maxAttempts={gameSettings.maxAttempts}
-        timeTaken={Math.floor((Date.now() - gameState.startTime) / 1000)}
-        achievements={determineAchievements(
-          gameState.finalAttempts,
-          gameSettings.maxAttempts,
-          Math.floor((Date.now() - gameState.startTime) / 1000),
-          userStats.streak,
-          gameState.hintsUsed === 0 // "Pure Skill" achievement when no hints used
-        )}
-        isLuckySolve={gameState.isLuckySolve}
-        dailyBonusMultiplier={gameState.dailyBonusMultiplier}
-        onComplete={() => {
-          dispatch({ type: "SET_SHOW_CELEBRATION", payload: false });
-          // Store game completion data in localStorage for success page
-          const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
-          const completionData = {
-            guessHistory: gameState.guessHistory,
-            timeTaken,
-            usedHints: gameState.hintsUsed,
-            streak: userStats.streak,
-            score: gameState.celebrationScore,
-          };
-          localStorage.setItem("lastGameCompletion", JSON.stringify(completionData));
-          router.push(
-            `/game-over?success=true&guess=${encodeURIComponent(gameState.finalGuess || "")}&attempts=${gameState.finalAttempts}&time=${timeTaken}`
+              </section>
+            </div>
           );
         }}
-      />
+      </KeyboardAwareLayout>
     </>
   );
 }

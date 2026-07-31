@@ -1,6 +1,8 @@
 "use client";
 
-import { Check, Gamepad2, Palette } from "lucide-react";
+import { Check, Gamepad2, Moon, Palette, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -16,24 +18,37 @@ const THEME_ICONS: Record<VisualTheme, typeof Palette> = {
 };
 
 /**
- * Theme picker for the account dropdown — works for guest, signed-out, and signed-in.
+ * Appearance section for the account dropdown — visual skin + light/dark.
+ * Owns its own leading separator so parents don't double-stack rules.
  */
 export function VisualThemeMenuItems() {
-  const { visualTheme, setVisualTheme, mounted } = useVisualTheme();
+  const { visualTheme, setVisualTheme, mounted: visualMounted } = useVisualTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [colorMounted, setColorMounted] = useState(false);
+
+  useEffect(() => {
+    setColorMounted(true);
+  }, []);
+
+  const handleColorToggle = () => {
+    if (!colorMounted) return;
+    const current = resolvedTheme || theme || "light";
+    setTheme(current === "dark" ? "light" : "dark");
+  };
 
   return (
     <>
       <DropdownMenuSeparator />
-      <DropdownMenuLabel>Theme</DropdownMenuLabel>
+      <DropdownMenuLabel>Appearance</DropdownMenuLabel>
       {VISUAL_THEMES.map((id) => {
         const meta = VISUAL_THEME_META[id];
         const Icon = THEME_ICONS[id];
-        const selected = mounted && visualTheme === id;
+        const selected = visualMounted && visualTheme === id;
         return (
           <DropdownMenuItem
             key={id}
-            className="cursor-pointer gap-2"
-            disabled={!mounted}
+            className={cn("cursor-pointer gap-2", selected && "bg-muted/70 text-foreground")}
+            disabled={!visualMounted}
             onClick={() => setVisualTheme(id)}
           >
             <Icon className="h-4 w-4 shrink-0" />
@@ -45,6 +60,23 @@ export function VisualThemeMenuItems() {
           </DropdownMenuItem>
         );
       })}
+      <DropdownMenuItem
+        className="cursor-pointer gap-2"
+        disabled={!colorMounted}
+        onClick={handleColorToggle}
+      >
+        {colorMounted && resolvedTheme === "dark" ? (
+          <>
+            <Sun className="h-4 w-4" />
+            Light mode
+          </>
+        ) : (
+          <>
+            <Moon className="h-4 w-4" />
+            Dark mode
+          </>
+        )}
+      </DropdownMenuItem>
     </>
   );
 }
