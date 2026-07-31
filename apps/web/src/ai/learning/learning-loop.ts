@@ -172,11 +172,11 @@ export async function runLearningCalibration(input?: {
     // non-blocking
   }
 
-  // Mark recent difficulty perception feedback as consumed by this calibration
+  // Mark recent difficulty + quality feedback as consumed by this calibration
   try {
     await getCollection("aiFeedback").updateMany(
       {
-        feedbackType: "difficulty_accuracy",
+        feedbackType: { $in: ["difficulty_accuracy", "puzzle_quality"] },
         processedForLearning: false,
       },
       {

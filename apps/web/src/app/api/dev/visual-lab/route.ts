@@ -1,5 +1,5 @@
 /**
- * Dev Mode Visual Lab API — generate visual variants without publishing.
+ * Dev Mode Visual Lab API — generate visual variants, persist for feedback.
  * Auth: any signed-in user (guest OK), same gate as /api/dev/session.
  */
 
@@ -17,6 +17,7 @@ import {
 } from "@/ai/puzzle-agent/visual/lab-recipes";
 import { runVisualLab } from "@/ai/puzzle-agent/visual/run-visual-lab";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { persistLabPuzzle } from "@/lib/game/persist-lab-puzzle";
 
 export async function GET(request: Request) {
   const authUser = await getAuthenticatedUser(request);
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
       answer?: unknown;
       difficulty?: unknown;
       renderImages?: unknown;
+      persist?: unknown;
     };
 
     if (!isVisualLabMode(body.mode)) {
@@ -85,10 +87,49 @@ export async function POST(request: Request) {
       renderImages: body.renderImages !== false,
     });
 
+    // Always store generations as inactive lab puzzles so we can like/dislike + learn
+    let puzzleId: string | undefined;
+    const answer = result.puzzle?.answer || result.seed?.answer;
+    if (body.persist !== false && answer) {
+      try {
+        const persisted = await persistLabPuzzle({
+          puzzleDisplay:
+            result.puzzle?.rebusPuzzle ||
+            result.visual?.unicodeFallback ||
+            "◆",
+          answer,
+          difficulty: result.puzzle?.difficulty ?? result.seed?.difficulty ?? 5,
+          difficultyLevel: result.puzzle?.difficultyLevel,
+          category: result.puzzle?.category || "dev_lab",
+          explanation:
+            result.puzzle?.explanation ||
+            (result.seed
+              ? `Dev Lab ${body.mode} probe — concept “${result.seed.concept}”.`
+              : undefined),
+          hints: result.puzzle?.hints,
+          techniqueId: result.puzzle?.techniqueId,
+          visual: result.puzzle?.visual || result.visual,
+          rebusPuzzle: result.puzzle?.rebusPuzzle,
+          labMode: body.mode,
+          engine: result.meta.engine || result.puzzle?.engine,
+          qualityScore: result.puzzle?.qualityScore,
+          funScore: result.puzzle?.funScore ?? result.compose?.funScore,
+          fingerprint: result.puzzle?.fingerprint,
+          uniquenessScore: result.puzzle?.uniquenessScore,
+          createdByUserId: authUser.userId,
+        });
+        puzzleId = persisted.id;
+      } catch (persistError) {
+        console.warn("[dev/visual-lab] persist soft-failed", persistError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      /** Explicit: never writes to the daily puzzle catalog */
+      /** Inactive lab row may exist; never swaps today's daily */
       published: false,
+      persisted: Boolean(puzzleId),
+      puzzleId,
       result,
       gateway: authProbe.diagnostics,
     });

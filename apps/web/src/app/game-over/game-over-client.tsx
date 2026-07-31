@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Flame, TrendingUp, UserPlus, X } from "lucide-react";
+import { Check, Flame, ThumbsDown, ThumbsUp, TrendingUp, UserPlus, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -27,6 +27,7 @@ interface GameData {
 }
 
 type PerceptionChoice = "too_easy" | "just_right" | "too_hard";
+type QualityVote = "like" | "dislike";
 
 interface WordResult {
   word: string;
@@ -68,6 +69,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   const [todaySolves, setTodaySolves] = useState<number | null>(null);
   const [perception, setPerception] = useState<PerceptionChoice | null>(null);
   const [perceptionSaving, setPerceptionSaving] = useState(false);
+  const [qualityVote, setQualityVote] = useState<QualityVote | null>(null);
+  const [qualityVoteSaving, setQualityVoteSaving] = useState(false);
 
   const [solution, setSolution] = useState({
     answer: gameData.answer || "",
@@ -181,6 +184,18 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     typeof params.time === "string" ? Number.parseInt(params.time, 10) : completionData?.timeTaken;
   const difficulty = gameData?.difficulty ?? 5;
 
+  function resolvePuzzleId(): string {
+    if (gameData.puzzleId) return gameData.puzzleId;
+    try {
+      const stored = localStorage.getItem("lastGameSolution");
+      if (!stored) return "";
+      const parsed = JSON.parse(stored) as { puzzleId?: string };
+      return parsed.puzzleId || "";
+    } catch {
+      return "";
+    }
+  }
+
   useEffect(() => {
     const puzzleId = gameData.puzzleId;
     if (!puzzleId || typeof window === "undefined") return;
@@ -194,24 +209,18 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       ) {
         setPerception(stored);
       }
+      const qualityKey = `puzzleQualityVote:${puzzleId}`;
+      const qualityStored = localStorage.getItem(qualityKey);
+      if (qualityStored === "like" || qualityStored === "dislike") {
+        setQualityVote(qualityStored);
+      }
     } catch {
       // ignore
     }
   }, [gameData.puzzleId]);
 
   async function submitPerception(choice: PerceptionChoice) {
-    const puzzleId =
-      gameData.puzzleId ||
-      (() => {
-        try {
-          const stored = localStorage.getItem("lastGameSolution");
-          if (!stored) return "";
-          const parsed = JSON.parse(stored) as { puzzleId?: string };
-          return parsed.puzzleId || "";
-        } catch {
-          return "";
-        }
-      })();
+    const puzzleId = resolvePuzzleId();
 
     if (!puzzleId || perceptionSaving || perception) return;
     setPerceptionSaving(true);
@@ -234,6 +243,34 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       // Non-blocking — local selection still stands
     } finally {
       setPerceptionSaving(false);
+    }
+  }
+
+  async function submitQualityVote(vote: QualityVote) {
+    const puzzleId = resolvePuzzleId();
+    if (!puzzleId || qualityVoteSaving) return;
+    setQualityVoteSaving(true);
+    setQualityVote(vote);
+    try {
+      localStorage.setItem(`puzzleQualityVote:${puzzleId}`, vote);
+      await fetch("/api/puzzles/rating", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          puzzleId,
+          vote,
+          source: "game_over",
+          solved: success,
+          timeSpentSeconds: typeof timeTaken === "number" ? timeTaken : 0,
+          hintsUsed: completionData?.usedHints ?? 0,
+          attemptNumber: attempts,
+        }),
+      });
+    } catch {
+      // Non-blocking — local selection still stands
+    } finally {
+      setQualityVoteSaving(false);
     }
   }
 
@@ -393,6 +430,44 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               </div>
               {perception && (
                 <p className="text-muted-foreground text-xs">Thanks — this tunes tomorrow&apos;s puzzle</p>
+              )}
+            </div>
+
+            <div className="space-y-3 text-center">
+              <p className="eyebrow">Did you enjoy this puzzle?</p>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={qualityVoteSaving}
+                  onClick={() => void submitQualityVote("like")}
+                  className={cn(
+                    "gap-2",
+                    qualityVote === "like" && "border-success/50 bg-success/10 text-success"
+                  )}
+                >
+                  <ThumbsUp className="h-4 w-4" />
+                  Like
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={qualityVoteSaving}
+                  onClick={() => void submitQualityVote("dislike")}
+                  className={cn(
+                    "gap-2",
+                    qualityVote === "dislike" &&
+                      "border-destructive/50 bg-destructive/10 text-destructive"
+                  )}
+                >
+                  <ThumbsDown className="h-4 w-4" />
+                  Dislike
+                </Button>
+              </div>
+              {qualityVote && (
+                <p className="text-muted-foreground text-xs">
+                  Saved — likes help Eve craft better boards
+                </p>
               )}
             </div>
 
@@ -561,6 +636,44 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               </div>
               {perception && (
                 <p className="text-muted-foreground text-xs">Thanks — this tunes tomorrow&apos;s puzzle</p>
+              )}
+            </div>
+
+            <div className="space-y-3 text-center">
+              <p className="eyebrow">Did you enjoy this puzzle?</p>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={qualityVoteSaving}
+                  onClick={() => void submitQualityVote("like")}
+                  className={cn(
+                    "gap-2",
+                    qualityVote === "like" && "border-success/50 bg-success/10 text-success"
+                  )}
+                >
+                  <ThumbsUp className="h-4 w-4" />
+                  Like
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={qualityVoteSaving}
+                  onClick={() => void submitQualityVote("dislike")}
+                  className={cn(
+                    "gap-2",
+                    qualityVote === "dislike" &&
+                      "border-destructive/50 bg-destructive/10 text-destructive"
+                  )}
+                >
+                  <ThumbsDown className="h-4 w-4" />
+                  Dislike
+                </Button>
+              </div>
+              {qualityVote && (
+                <p className="text-muted-foreground text-xs">
+                  Saved — likes help Eve craft better boards
+                </p>
               )}
             </div>
 
