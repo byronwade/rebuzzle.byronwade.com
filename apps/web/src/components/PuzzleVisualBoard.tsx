@@ -143,8 +143,8 @@ function ImageTile({
 
   if (!safe) return null;
 
+  // data: URLs from AI Gateway aren't a fit for next/image
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- generative data URLs / gateway tiles
     <img
       src={src}
       alt={layer.alt}
