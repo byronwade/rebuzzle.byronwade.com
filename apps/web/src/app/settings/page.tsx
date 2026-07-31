@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  Check,
   ChevronRight,
   FlaskConical,
+  Gamepad2,
   Lock,
-  Moon,
+  Palette,
   Save,
   Settings as SettingsIcon,
   Shield,
@@ -25,14 +27,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { useVisualTheme } from "@/components/VisualThemeProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { AvatarPreferences } from "@/lib/avatar";
 import { isDevModeEnabled, setDevModeEnabled } from "@/lib/dev-mode";
+import { cn } from "@/lib/utils";
+import { VISUAL_THEME_META, VISUAL_THEMES, type VisualTheme } from "@/lib/visual-theme";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+  const { visualTheme, setVisualTheme, mounted: themeMounted } = useVisualTheme();
   const { user, isAuthenticated } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [devMode, setDevMode] = useState(false);
@@ -337,9 +343,9 @@ export default function SettingsPage() {
                   Enable testing tools
                 </Label>
                 <p className="text-muted-foreground text-sm">
-                  Shows a floating panel on every page: regenerate today&apos;s puzzle, unlock/replay
-                  the daily gate, and jump between play → locked → win/lose screens. Server actions
-                  require an admin account.
+                  Shows a floating panel on every page: regenerate today&apos;s puzzle,
+                  unlock/replay the daily gate, and jump between play → locked → win/lose screens.
+                  Server actions require an admin account.
                 </p>
               </div>
               <Switch
@@ -407,17 +413,83 @@ export default function SettingsPage() {
           {/* Appearance */}
           <Card className="p-6">
             <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
-              <Moon className="h-5 w-5" />
+              <Palette className="h-5 w-5" />
               Appearance
             </h2>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-base">Theme</Label>
+                  <p className="text-muted-foreground text-sm">
+                    Visual style for the whole app. Default is the current Rebuzzle look; 8-bit is
+                    inspired by{" "}
+                    <a
+                      className="text-link underline-offset-2 hover:underline"
+                      href="https://www.8bitcn.com/docs"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      8bitcn/ui
+                    </a>
+                    .
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {VISUAL_THEMES.map((id) => {
+                    const meta = VISUAL_THEME_META[id];
+                    const selected = themeMounted && visualTheme === id;
+                    const Icon = id === "8bit" ? Gamepad2 : Palette;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        disabled={!themeMounted}
+                        onClick={() => {
+                          setVisualTheme(id as VisualTheme);
+                          toast({
+                            title: `${meta.label} theme`,
+                            description: meta.description,
+                          });
+                        }}
+                        className={cn(
+                          "relative flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-colors",
+                          "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          selected ? "border-foreground bg-muted/40" : "border-border bg-card"
+                        )}
+                      >
+                        <div className="flex w-full items-center gap-2">
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="font-medium text-sm">{meta.label}</span>
+                          {selected && <Check className="ml-auto h-4 w-4" />}
+                        </div>
+                        <p className="text-muted-foreground text-xs leading-snug">
+                          {meta.description}
+                        </p>
+                        {id === "8bit" && (
+                          <span
+                            className="mt-1 font-normal text-[10px] uppercase tracking-wide text-subtle"
+                            style={{ fontFamily: "var(--font-pixel), monospace" }}
+                          >
+                            PRESS START
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Separator />
+
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="cursor-pointer text-base" htmlFor="dark-mode">
                     Dark Mode
                   </Label>
-                  <p className="text-muted-foreground text-sm">Switch to dark theme</p>
+                  <p className="text-muted-foreground text-sm">
+                    Works with every theme (Default and 8-bit)
+                  </p>
                 </div>
                 <Switch
                   checked={settings.darkMode}

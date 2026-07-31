@@ -1,4 +1,4 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
@@ -8,6 +8,7 @@ import { AuthSessionSeed } from "@/components/AuthSessionSeed";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
 import { Toaster } from "@/components/ui/toaster";
+import { VisualThemeProvider } from "@/components/VisualThemeProvider";
 import { getServerSession } from "@/lib/auth/get-server-session";
 import {
   generateAccessibilitySchema,
@@ -17,6 +18,7 @@ import {
   generateSoftwareApplicationSchema,
   generateWebSiteSchema,
 } from "@/lib/seo/structured-data";
+import { VISUAL_THEME_BOOTSTRAP_SCRIPT } from "@/lib/visual-theme";
 
 // Geometric sans carries display, body, button — everything narrative.
 const geistSans = Geist({
@@ -25,7 +27,8 @@ const geistSans = Geist({
   preload: true,
   fallback: ["Inter", "system-ui", "-apple-system", "sans-serif"],
   adjustFontFallback: true,
-  variable: "--font-sans",
+  // Distinct from --font-sans so visual skins can rebind the semantic stack.
+  variable: "--font-geist-sans",
 });
 
 // Mono carries the technical layer only: eyebrows, code, puzzle ciphers.
@@ -34,7 +37,16 @@ const geistMono = Geist_Mono({
   display: "swap",
   preload: false,
   fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
-  variable: "--font-mono",
+  variable: "--font-geist-mono",
+});
+
+// Pixel face for the optional 8-bit visual skin (8bitcn-inspired).
+const pressStart = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-pixel",
 });
 
 // Enhanced viewport configuration for mobile
@@ -236,8 +248,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const accessibilitySchema = generateAccessibilitySchema();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      className={`${geistSans.variable} ${geistMono.variable} ${pressStart.variable}`}
+      data-skin="default"
+      lang="en"
+      suppressHydrationWarning
+    >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: VISUAL_THEME_BOOTSTRAP_SCRIPT }} />
         {/* JSON-LD Structured Data */}
         <script
           dangerouslySetInnerHTML={{
@@ -309,9 +327,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Notification permission hint for mobile */}
         <meta content="granted" name="notification-permission" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen overflow-x-hidden bg-background font-sans antialiased`}
-      >
+      <body className="min-h-screen overflow-x-hidden bg-background font-sans antialiased">
         {/* Skip to content link for keyboard navigation */}
         <a
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:font-medium focus:text-background focus:text-sm"
@@ -326,13 +342,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             disableTransitionOnChange
             enableSystem
           >
-            <AuthProvider initialSession={null}>
-              <Suspense fallback={null}>
-                <AuthSessionLoader />
-              </Suspense>
-              {children}
-              <Toaster />
-            </AuthProvider>
+            <VisualThemeProvider>
+              <AuthProvider initialSession={null}>
+                <Suspense fallback={null}>
+                  <AuthSessionLoader />
+                </Suspense>
+                {children}
+                <Toaster />
+              </AuthProvider>
+            </VisualThemeProvider>
           </ThemeProviderWrapper>
         </ErrorBoundary>
       </body>

@@ -28,6 +28,7 @@ import {
 import { generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
+import { VisualThemeMenuItems } from "./VisualThemeMenuItems";
 
 type UserMenuProps = {
   isAuthenticated: boolean;
@@ -142,11 +143,19 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           </DropdownMenuItem>
           <DropdownMenuItem
             className="cursor-pointer gap-2"
+            onClick={() => router.push("/settings")}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer gap-2"
             onClick={() => router.push("/how-it-works")}
           >
             <HelpCircle className="h-4 w-4" />
             How It Works
           </DropdownMenuItem>
+          <VisualThemeMenuItems />
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer gap-2"
@@ -210,11 +219,19 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer gap-2"
+            onClick={() => router.push("/settings")}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer gap-2"
             onClick={() => router.push("/how-it-works")}
           >
             <HelpCircle className="h-4 w-4" />
             How It Works
           </DropdownMenuItem>
+          <VisualThemeMenuItems />
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer gap-2"
@@ -349,6 +366,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           How It Works
         </DropdownMenuItem>
 
+        <VisualThemeMenuItems />
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
