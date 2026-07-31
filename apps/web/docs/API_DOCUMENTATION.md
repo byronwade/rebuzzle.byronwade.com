@@ -320,7 +320,7 @@ Puzzle generation uses the Eve tool agent + Vercel AI Gateway
 canonical bands: Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8–9.
 See `docs/DIFFICULTY_AND_GENERATION.md`.
 
-Durable Eve sessions (when mounted via `withEve`) are available at `/eve/v1/*`.
+Puzzle generation uses the in-process Eve ToolLoopAgent + AI Gateway (server actions / cron). Durable `/eve/v1/*` HTTP sessions are not mounted in production.
 
 #### `POST /api/ai/generate-puzzle` / admin generate routes
 
