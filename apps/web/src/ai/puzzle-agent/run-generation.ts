@@ -7,9 +7,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { gateway } from "@ai-sdk/gateway";
 import { Output, stepCountIs, ToolLoopAgent } from "ai";
-import { ensureGatewayKey, getGatewayModelChain } from "../client";
+import { ensureGatewayKey, getAiGateway, getGatewayModelChain } from "../client";
 import { AI_CONFIG } from "../config";
 import { enforceQuota } from "../quota-manager";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
@@ -178,7 +177,7 @@ export async function runPuzzleAgentGeneration(
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const agent = new ToolLoopAgent({
-          model: gateway(modelId),
+          model: getAiGateway()(modelId),
           instructions: loadInstructions(),
           tools: puzzleAgentTools,
           temperature: AI_CONFIG.generation.temperature.creative,

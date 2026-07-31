@@ -10,6 +10,7 @@ import {
   ChevronUp,
   FlaskConical,
   Loader2,
+  Palette,
   RefreshCw,
   Trophy,
   Unlock,
@@ -190,6 +191,16 @@ export function DevToolsPanel() {
               Generate new puzzle
             </Button>
             <Button
+              className="h-8 w-full justify-start gap-2 border-amber-500/30 text-xs"
+              disabled={!!busy}
+              onClick={() => go("/dev/visual-lab")}
+              size="sm"
+              variant="outline"
+            >
+              <Palette className="h-3.5 w-3.5" />
+              Visual Lab (pictogram / text / image)
+            </Button>
+            <Button
               className="h-8 w-full justify-start gap-2 text-xs"
               disabled={!!busy || allowed === false}
               onClick={() => void runAction("clear-attempts", "/")}
@@ -259,6 +270,7 @@ export function DevToolsPanel() {
                 [
                   ["/", "Home"],
                   ["/?preview=true", "Preview"],
+                  ["/dev/visual-lab", "Visual Lab"],
                   ["/game-over", "Game over"],
                   ["/leaderboard", "Board"],
                   ["/settings", "Settings"],

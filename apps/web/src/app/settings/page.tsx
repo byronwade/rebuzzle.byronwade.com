@@ -343,9 +343,10 @@ export default function SettingsPage() {
                   Enable testing tools
                 </Label>
                 <p className="text-muted-foreground text-sm">
-                  Shows a floating panel on every page: regenerate today&apos;s puzzle, unlock/replay
-                  the daily gate, and jump between play → locked → win/lose screens. Works for
-                  guests and signed-in accounts while this temporary tooling is enabled.
+                  Shows a floating panel on every page: regenerate today&apos;s puzzle, open the
+                  Visual Lab (pictogram / text / image / hybrid previews), unlock/replay the daily
+                  gate, and jump between play → locked → win/lose screens. Works for guests and
+                  signed-in accounts while this temporary tooling is enabled.
                 </p>
               </div>
               <Switch
@@ -364,6 +365,17 @@ export default function SettingsPage() {
                 }}
               />
             </div>
+            {devMode && (
+              <div className="mt-4 border-amber-500/20 border-t pt-4">
+                <Link
+                  className="inline-flex items-center gap-2 text-amber-800 text-sm underline-offset-2 hover:underline dark:text-amber-300"
+                  href="/dev/visual-lab"
+                >
+                  <Palette className="h-4 w-4" />
+                  Open Visual Lab — test pictogram / text / image generation
+                </Link>
+              </div>
+            )}
           </Card>
 
           {/* Gameplay */}

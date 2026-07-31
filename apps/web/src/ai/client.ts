@@ -2,7 +2,9 @@
  * AI Client — Vercel AI Gateway only
  *
  * All model calls route through AI Gateway (`provider/model` ids).
- * Auth: `AI_GATEWAY_API_KEY` locally, or Vercel OIDC on Vercel.
+ * Auth: `AI_GATEWAY_API_KEY` (vck_…) locally, or Vercel OIDC on Vercel.
+ * Never promote OIDC JWTs into AI_GATEWAY_API_KEY — that forces api-key
+ * auth and causes "Unauthenticated" on production.
  */
 
 import { createGateway, gateway } from "@ai-sdk/gateway";
@@ -10,16 +12,17 @@ import { generateText, type LanguageModel, Output, streamText } from "ai";
 import type { z } from "zod";
 import { AI_CONFIG, validateApiKeys } from "./config";
 import { AIError, AIProviderError, parseAIError, QuotaExceededError } from "./errors";
+import { ensureGatewayKey, getGatewayApiKey } from "./gateway-auth";
 import { enforceQuota } from "./quota-manager";
 
 export type ModelTier = "fast" | "smart" | "creative";
 
-/** Ensure gateway auth env is set (OIDC token → AI_GATEWAY_API_KEY). */
-export function ensureGatewayKey(): void {
-  const key = AI_CONFIG.gateway.apiKey;
-  if (key && !process.env.AI_GATEWAY_API_KEY) {
-    process.env.AI_GATEWAY_API_KEY = key;
-  }
+export { ensureGatewayKey, getGatewayApiKey } from "./gateway-auth";
+
+/** Shared gateway provider — API key when present, else OIDC on Vercel. */
+export function getAiGateway() {
+  const apiKey = getGatewayApiKey();
+  return apiKey ? createGateway({ apiKey }) : gateway;
 }
 
 /** Resolve a gateway language model for a tier (primary only). */
@@ -29,7 +32,7 @@ export function getGatewayModel(tier: ModelTier = "smart"): LanguageModel {
   if (!validation.valid) {
     throw new Error(`Missing API keys: ${validation.missing.join(", ")}`);
   }
-  return gateway(AI_CONFIG.models.gateway[tier]);
+  return getAiGateway()(AI_CONFIG.models.gateway[tier]);
 }
 
 /** Primary + fallback gateway model ids for a tier. */
@@ -100,7 +103,7 @@ export async function generateAIText(params: {
 
     try {
       const result = await generateText({
-        model: gateway(modelId),
+        model: getAiGateway()(modelId),
         prompt: params.prompt,
         system: params.system,
         temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
@@ -149,7 +152,7 @@ export async function generateAIObject<T>(params: {
 
     try {
       const result = await generateText({
-        model: gateway(modelId),
+        model: getAiGateway()(modelId),
         prompt: params.prompt,
         system: params.system,
         temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
@@ -209,10 +212,8 @@ export function getAIProvider(): {
   getAllModels: (tier?: ModelTier) => string[];
   getModelInstance: (tier?: ModelTier) => LanguageModel;
 } {
-  ensureGatewayKey();
-  const gw = createGateway({
-    apiKey: AI_CONFIG.gateway.apiKey || undefined,
-  });
+  const apiKey = getGatewayApiKey();
+  const gw = apiKey ? createGateway({ apiKey }) : createGateway();
   return {
     getName: () => "gateway" as const,
     getProvider: () => gw,
@@ -220,7 +221,7 @@ export function getAIProvider(): {
     getFallbackModels: (tier: ModelTier = "smart") =>
       AI_CONFIG.models.fallbacks.gateway[tier] ?? [],
     getAllModels: (tier: ModelTier = "smart") => getGatewayModelChain(tier),
-    getModelInstance: (tier: ModelTier = "smart") => gateway(AI_CONFIG.models.gateway[tier]),
+    getModelInstance: (tier: ModelTier = "smart") => gw(AI_CONFIG.models.gateway[tier]),
   };
 }
 

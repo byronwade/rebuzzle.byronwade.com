@@ -26,6 +26,16 @@ export {
   generatePictogram,
 } from "./generate-pictogram";
 export {
+  buildLabLayers,
+  guessEmoji,
+  isVisualLabMode,
+  VISUAL_LAB_MODE_META,
+  VISUAL_LAB_MODES,
+  type VisualLabMode,
+  type VisualLabModeMeta,
+} from "./lab-recipes";
+export { type RunVisualLabInput, type RunVisualLabResult, runVisualLab } from "./run-visual-lab";
+export {
   IMAGE_TILE_STYLE_GUIDE,
   INK_PICTOGRAM_PALETTE,
   INK_PICTOGRAM_STYLE_GUIDE,

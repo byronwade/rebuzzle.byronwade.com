@@ -9,7 +9,12 @@ export const AI_CONFIG = {
   defaultProvider: "gateway" as const,
 
   gateway: {
-    apiKey: process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN,
+    /**
+     * API key only (`vck_…`). Do NOT put VERCEL_OIDC_TOKEN here —
+     * the gateway SDK must authenticate OIDC with authMethod "oidc",
+     * and stuffing a JWT into AI_GATEWAY_API_KEY breaks production auth.
+     */
+    apiKey: process.env.AI_GATEWAY_API_KEY,
   },
 
   models: {

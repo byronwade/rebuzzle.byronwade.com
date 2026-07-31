@@ -2,14 +2,13 @@
  * Embeddings Service — Vercel AI Gateway only
  */
 
-import { gateway } from "@ai-sdk/gateway";
 import { embed } from "ai";
-import { getAIProvider, withRetry } from "../client";
+import { getAIProvider, getAiGateway, withRetry } from "../client";
 import { AI_CONFIG } from "../config";
 
 function getEmbeddingModel() {
   const embeddingModelId = AI_CONFIG.embeddings.gateway || "google/gemini-embedding-001";
-  return gateway.embeddingModel(embeddingModelId);
+  return getAiGateway().embeddingModel(embeddingModelId);
 }
 
 /**
