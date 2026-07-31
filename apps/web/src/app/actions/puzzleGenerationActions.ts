@@ -134,8 +134,8 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
       targetDifficulty: difficulty,
       requireNovelty: true,
       qualityThreshold: 70,
-      maxAttempts: 3, // Increased from 2 to 3 for better chance of success
-      puzzleType: typeToUse, // Use config-driven puzzle type
+      maxAttempts: 4,
+      puzzleType: typeToUse,
     });
 
     logger.info("AI puzzle generation successful", {
@@ -429,16 +429,16 @@ export async function previewPuzzleGeneration() {
     const result = await generateMasterPuzzle({
       targetDifficulty: 5,
       requireNovelty: true,
-      qualityThreshold: 70, // Lowered for more realistic testing
-      maxAttempts: 1,
+      qualityThreshold: 70,
+      maxAttempts: 2,
     });
 
     return {
       success: true,
       puzzle: result.puzzle,
       metadata: result.metadata,
-      message: "Successfully generated puzzle with Google AI",
-      provider: "google-gemini",
+      message: "Successfully generated puzzle via Eve ToolLoopAgent + AI Gateway",
+      provider: "ai-gateway",
     };
   } catch (error) {
     logger.error(

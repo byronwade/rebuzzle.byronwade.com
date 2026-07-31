@@ -457,6 +457,22 @@ export const puzzleAttemptOps = {
     }, 0);
   },
 
+  /** Dev tools: wipe a user's guesses for a UTC day so they can replay. */
+  async clearAttemptsForDate(userId: string, puzzleDate: string): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const result = await collection.deleteMany({ userId, puzzleDate });
+    // Also clear legacy rows keyed only by attemptedAt window
+    const legacy = await collection.deleteMany({
+      userId,
+      puzzleDate: { $exists: false },
+      attemptedAt: {
+        $gte: new Date(`${puzzleDate}T00:00:00.000Z`),
+        $lt: new Date(`${puzzleDate}T23:59:59.999Z`),
+      },
+    });
+    return (result.deletedCount ?? 0) + (legacy.deletedCount ?? 0);
+  },
+
   /**
    * Record a guess. Finals use a unique partial index on {userId, puzzleDate}
    * so concurrent completions cannot both succeed.

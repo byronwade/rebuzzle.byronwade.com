@@ -50,9 +50,12 @@ export const AI_CONFIG = {
 
   /** Eve / ToolLoopAgent puzzle generation */
   puzzleAgent: {
-    model: process.env.EVE_PUZZLE_MODEL || "google/gemini-2.5-flash",
-    maxSteps: 16,
+    // Prefer creative-tier models for wordplay; override with EVE_PUZZLE_MODEL
+    model: process.env.EVE_PUZZLE_MODEL || "openai/gpt-5.4-mini",
+    maxSteps: 20,
     qualityThreshold: 70,
+    minFunScore: 65,
+    maxAttempts: 3,
   },
 
   generation: {

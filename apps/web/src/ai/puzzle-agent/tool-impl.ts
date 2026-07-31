@@ -222,14 +222,17 @@ export function assembleVisualComponents(input: {
     }
   }
 
+  // Reward technique fit + spatial structure; cap emoji so agents can't pad for funScore
+  const emojiBonus = Math.min(12, emojiCount * 3);
   const funScore = Math.max(
     0,
     Math.min(
       100,
-      55 +
-        emojiCount * 6 +
+      50 +
+        emojiBonus +
         components.arrows.length * 8 +
-        (technique ? 10 : 0) -
+        components.symbols.length * 4 +
+        (technique ? 18 : -12) -
         issues.length * 15
     )
   );
@@ -448,6 +451,11 @@ export function scorePuzzleQuality(
   } else {
     strengths.push(`${input.hints.length} hints`);
   }
+  if (!input.techniqueId) {
+    issues.push("Missing techniqueId — pick a named technique from the library");
+  } else {
+    strengths.push(`Technique ${input.techniqueId}`);
+  }
 
   const assembly = assembleVisualComponents({
     answer,
@@ -470,7 +478,8 @@ export function scorePuzzleQuality(
   score -= issues.length * 11;
   score += Math.min(12, strengths.length * 3);
   score += Math.round((assembly.funScore - 50) / 10);
-  if (hasEmoji) score += 3;
+  // Small visual bonus only — technique already weighted in funScore
+  if (hasEmoji && input.techniqueId) score += 2;
   score = Math.max(0, Math.min(100, score));
 
   const verdict =
@@ -491,7 +500,7 @@ export function scorePuzzleQuality(
     issues,
     funScore: assembly.funScore,
     tier: level.label,
-    publishable: score >= 70 && issues.length === 0,
+    publishable: score >= 70 && issues.length === 0 && Boolean(input.techniqueId),
   };
 }
 

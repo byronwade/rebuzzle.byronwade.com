@@ -2,6 +2,7 @@
 
 import {
   ChevronRight,
+  FlaskConical,
   Lock,
   Moon,
   Save,
@@ -26,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { AvatarPreferences } from "@/lib/avatar";
+import { isDevModeEnabled, setDevModeEnabled } from "@/lib/dev-mode";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -33,6 +35,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [devMode, setDevMode] = useState(false);
   const [settings, setSettings] = useState({
     notifications: false,
     sound: true,
@@ -71,6 +74,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
+    setDevMode(isDevModeEnabled());
   }, []);
 
   // Load profile data
@@ -317,6 +321,44 @@ export default function SettingsPage() {
 
           {/* Email Notifications Form */}
           <EmailNotificationForm />
+
+          {/* Temporary Dev Mode */}
+          <Card className="border-amber-500/40 p-6">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
+              <FlaskConical className="h-5 w-5 text-amber-600" />
+              Dev Mode
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-[10px] text-amber-800 uppercase tracking-wide dark:text-amber-300">
+                Temporary
+              </span>
+            </h2>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label className="cursor-pointer text-base" htmlFor="dev-mode">
+                  Enable testing tools
+                </Label>
+                <p className="text-muted-foreground text-sm">
+                  Shows a floating panel on every page: regenerate today&apos;s puzzle, unlock/replay
+                  the daily gate, and jump between play → locked → win/lose screens. Server actions
+                  require an admin account.
+                </p>
+              </div>
+              <Switch
+                checked={devMode}
+                disabled={!mounted}
+                id="dev-mode"
+                onCheckedChange={(checked) => {
+                  setDevMode(checked);
+                  setDevModeEnabled(checked);
+                  toast({
+                    title: checked ? "Dev Mode on" : "Dev Mode off",
+                    description: checked
+                      ? "Look for the amber Dev Mode panel (bottom-right)."
+                      : "Testing tools hidden.",
+                  });
+                }}
+              />
+            </div>
+          </Card>
 
           {/* Gameplay */}
           <Card className="p-6">
