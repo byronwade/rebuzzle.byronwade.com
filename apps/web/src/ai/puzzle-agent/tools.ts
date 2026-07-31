@@ -4,6 +4,12 @@
 
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
+import { buildGenerationBrief } from "./apex/curriculum";
+import { critiqueCandidate } from "./apex/critique";
+import { applyPlayerSimHeuristics, simulatePlayerSolve } from "./apex/player-sim";
+import { scoreRubric } from "./apex/rubric";
+import type { ApexCandidate } from "./apex/types";
+import { isKnownTechniqueId } from "./quality";
 import { CandidatePuzzleSchema } from "./schemas";
 import {
   assembleVisualComponents,
@@ -22,6 +28,7 @@ import {
   validatePuzzleCandidate,
 } from "./tool-impl";
 import { PuzzleVisualSchema, VisualLayerSchema } from "./visual/composition";
+import type { TechniqueId } from "./technique-library";
 
 const withType = CandidatePuzzleSchema.extend({
   puzzleType: z.string().optional(),
@@ -168,5 +175,104 @@ export const puzzleAgentTools: ToolSet = {
       "Score quality + fun. Aim for overall ≥ 74, funScore ≥ 68, known techniqueId, composed visual, publishable.",
     inputSchema: scoreQualitySchema,
     execute: async (input) => scorePuzzleQuality(input),
+  }),
+
+  get_generation_brief: tool({
+    description:
+      "Apex curriculum brief: diversity memory, learning digest, phrase-bank seeds, preferred techniques.",
+    inputSchema: z.object({
+      targetDifficulty: z.number(),
+      puzzleType: z.string().optional(),
+      theme: z.string().optional(),
+      category: z.string().optional(),
+      useLearningFeedback: z.boolean().optional(),
+    }),
+    execute: async (input) => buildGenerationBrief(input),
+  }),
+
+  critique_candidate: tool({
+    description:
+      "Adversarial editor critique — ship/revise/reject with aha + false-lead scores.",
+    inputSchema: z.object({
+      rebusPuzzle: z.string(),
+      answer: z.string(),
+      explanation: z.string(),
+      hints: z.array(z.string()),
+      techniqueId: z.string(),
+      difficulty: z.number(),
+      tierLabel: z.enum(["Hard", "Difficult", "Evil", "Impossible"]),
+      unicodeFallback: z.string().optional(),
+    }),
+    execute: async (input) => critiqueCandidate(input),
+  }),
+
+  simulate_player_solve: tool({
+    description:
+      "Simulate clever players: wrong parses, hint fairness, estimated solve rate.",
+    inputSchema: z.object({
+      rebusPuzzle: z.string(),
+      answer: z.string(),
+      explanation: z.string(),
+      hints: z.array(z.string()),
+      techniqueId: z.string(),
+      tierLabel: z.enum(["Hard", "Difficult", "Evil", "Impossible"]),
+    }),
+    execute: async (input) => {
+      const sim = await simulatePlayerSolve(input);
+      return applyPlayerSimHeuristics(sim, {
+        answer: input.answer,
+        hints: input.hints,
+        tierLabel: input.tierLabel,
+      });
+    },
+  }),
+
+  score_rubric: tool({
+    description:
+      "Multi-dimensional tournament rubric (aha, fairness, novelty, visual craft, shareability).",
+    inputSchema: scoreQualitySchema.extend({
+      uniquenessScore: z.number().optional(),
+      calibratedDifficulty: z.number().optional(),
+      isUnique: z.boolean().optional(),
+      solvable: z.boolean().optional(),
+      inBand: z.boolean().optional(),
+      funScore: z.number().optional(),
+      qualityOverall: z.number().optional(),
+    }),
+    execute: async (input) => {
+      const techniqueId = (
+        isKnownTechniqueId(input.techniqueId) ? input.techniqueId : "simple_compound"
+      ) as TechniqueId;
+      const visual = input.visual ?? {
+        styleId: "ink-pictogram-v1" as const,
+        mode: "unicode" as const,
+        layout: "row" as const,
+        layers: [{ kind: "text" as const, content: input.rebusPuzzle || "?", emphasis: "normal" as const }],
+        unicodeFallback: input.rebusPuzzle,
+      };
+      const candidate: ApexCandidate = {
+        id: "tool-score",
+        rebusPuzzle: input.rebusPuzzle,
+        answer: input.answer,
+        difficulty: input.difficulty,
+        difficultyLevel: "Hard",
+        explanation: input.explanation,
+        category: input.category,
+        hints: input.hints,
+        techniqueId,
+        visual,
+        fingerprint: "",
+        uniquenessScore: input.uniquenessScore ?? 70,
+        calibratedDifficulty: input.calibratedDifficulty ?? input.difficulty,
+        inBand: input.inBand ?? true,
+        isUnique: input.isUnique ?? true,
+        solvable: input.solvable ?? true,
+        qualityOverall: input.qualityOverall ?? 70,
+        funScore: input.funScore ?? 70,
+        publishable: true,
+        rejectReasons: [],
+      };
+      return scoreRubric(candidate);
+    },
   }),
 };

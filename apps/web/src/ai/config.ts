@@ -61,6 +61,23 @@ export const AI_CONFIG = {
     qualityThreshold: 74,
     minFunScore: 68,
     maxAttempts: 4,
+    /**
+     * Apex engine — multi-candidate tournament with critique + player sim.
+     * Disable with EVE_APEX_ENGINE=0
+     */
+    apex: {
+      enabled: process.env.EVE_APEX_ENGINE !== "0" && process.env.EVE_APEX_ENGINE !== "false",
+      candidateCount: Math.max(
+        2,
+        Math.min(5, Number(process.env.EVE_APEX_CANDIDATES || 3) || 3)
+      ),
+      minRubricOverall: Math.max(
+        70,
+        Math.min(95, Number(process.env.EVE_APEX_MIN_RUBRIC || 78) || 78)
+      ),
+      critiqueEnabled: process.env.EVE_APEX_CRITIQUE !== "0",
+      playerSimEnabled: process.env.EVE_APEX_PLAYER_SIM !== "0",
+    },
   },
 
   generation: {

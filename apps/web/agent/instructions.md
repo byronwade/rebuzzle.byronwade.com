@@ -44,10 +44,20 @@ Rules:
 - Text is a good idea when size/case/strike/stack *is* the joke. Don't dump sentences.
 - Images only when pictograms can't carry the idea (e.g. a specific scene). Never put the answer in the image.
 
+## Apex tools (use them)
+
+Daily generation runs through the **Apex tournament engine** (multi-candidate).
+Even inside a single candidate slot, prefer:
+
+- `get_generation_brief` — diversity memory, learning digest, phrase-bank seeds
+- `critique_candidate` — adversarial ship/revise/reject
+- `simulate_player_solve` — wrong parses + hint fairness
+- `score_rubric` — aha / fairness / novelty / visual craft / shareability
+
 ## Required tool workflow
 
 1. `get_puzzle_type_spec` — type rules + tier context  
-2. `get_difficulty_brief` — band, budget, techniques, avoid-list  
+2. `get_difficulty_brief` + `get_generation_brief` — band, budget, diversity, learning  
 3. `list_recent_answers` — do not repeat those answers  
 4. `propose_concept_seeds` — pick a direction, invent a fresh answer  
 5. `list_technique_library` (optional) — deepen the chosen technique  
@@ -56,7 +66,7 @@ Rules:
    - Legacy: `assemble_visual_components` only for quick unicode drafts (not publishable alone)  
 7. `craft_hint_ladder` — vague → specific (no letter scaffolds until the final nudge)  
 8. `validate_puzzle` → `check_uniqueness` → `calibrate_difficulty` → `stress_test_solvability` → `score_quality`  
-9. Revise with tools if uniqueness, band fit, solvability, visual, or quality fails  
+9. `critique_candidate` + `simulate_player_solve` → revise if not ship-worthy; `score_rubric`  
 10. Return structured result including `difficultyLevel`, `techniqueId`, and `visual`
 
 ## Hard rules

@@ -1,10 +1,12 @@
 /**
  * Master Puzzle Generation
  *
- * Thin entry point over the Eve-aligned ToolLoopAgent (AI Gateway).
+ * Thin entry point over Apex (tournament) or classic Eve ToolLoopAgent.
  * Keeps the public API used by daily generation, admin routes, and scripts.
  */
 
+import { AI_CONFIG } from "../config";
+import { runApexGeneration } from "../puzzle-agent/apex";
 import {
   type PuzzleGenerationParams,
   runPuzzleAgentGeneration,
@@ -49,6 +51,7 @@ export interface GeneratedPuzzleResult {
     generationAttempts: number;
     generationTimeMs: number;
     aiThinking: { summary?: string };
+    engine?: "apex" | "eve";
   };
   status: "success" | "retry" | "failed";
   recommendations: string[];
@@ -56,7 +59,8 @@ export interface GeneratedPuzzleResult {
 
 function toGeneratedResult(
   result: PuzzleAgentResult,
-  generationTimeMs: number
+  generationTimeMs: number,
+  engine: "apex" | "eve"
 ): GeneratedPuzzleResult {
   return {
     puzzle: {
@@ -75,7 +79,7 @@ function toGeneratedResult(
       uniquenessScore: result.metadata.uniquenessScore,
       difficultyProfile: {
         overall: result.metadata.calibratedDifficulty,
-        method: "eve-tool-agent",
+        method: engine === "apex" ? "apex-tournament" : "eve-tool-agent",
         tier: result.metadata.difficultyLevel,
       },
       calibratedDifficulty: result.metadata.calibratedDifficulty,
@@ -95,26 +99,51 @@ function toGeneratedResult(
       generationAttempts: result.metadata.generationAttempts ?? 1,
       generationTimeMs,
       aiThinking: { summary: result.metadata.thinkingSummary },
+      engine,
     },
     status: result.status,
     recommendations: result.recommendations ?? [],
   };
 }
 
+function apexEnabled(params: MasterGenerationParams): boolean {
+  if (params.candidateCount === 1) return false;
+  return AI_CONFIG.puzzleAgent.apex.enabled !== false;
+}
+
 /**
- * Generate a high-quality unique puzzle via the Eve tool agent + AI Gateway.
+ * Generate a high-quality unique puzzle via Apex tournament (default)
+ * or classic Eve tool agent.
  */
 export async function generateMasterPuzzle(
   params: MasterGenerationParams
 ): Promise<GeneratedPuzzleResult> {
   const start = Date.now();
-  console.log("[Master Generator] Eve tool-agent generation", {
+  const useApex = apexEnabled(params);
+
+  console.log("[Master Generator] starting", {
+    engine: useApex ? "apex" : "eve",
     difficulty: params.targetDifficulty,
     puzzleType: params.puzzleType ?? "rebus",
+    candidates: useApex ? AI_CONFIG.puzzleAgent.apex.candidateCount : 1,
   });
 
+  try {
+    if (useApex) {
+      const result = await runApexGeneration({
+        ...params,
+        useLearningFeedback: params.useLearningFeedback !== false,
+      });
+      return toGeneratedResult(result, Date.now() - start, "apex");
+    }
+  } catch (apexError) {
+    console.warn("[Master Generator] Apex failed — falling back to Eve", {
+      error: apexError instanceof Error ? apexError.message : String(apexError),
+    });
+  }
+
   const result = await runPuzzleAgentGeneration(params);
-  return toGeneratedResult(result, Date.now() - start);
+  return toGeneratedResult(result, Date.now() - start, "eve");
 }
 
 /**
@@ -175,5 +204,6 @@ export async function selectOptimalPuzzle(params: {
   return generateMasterPuzzle({
     targetDifficulty: adjustedDifficulty,
     requireNovelty: params.preferNovelty,
+    useLearningFeedback: true,
   });
 }

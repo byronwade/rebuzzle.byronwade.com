@@ -33,6 +33,19 @@ export interface PuzzleGenerationParams {
   puzzleType?: string;
   userId?: string;
   useLearningFeedback?: boolean;
+  /** Apex curriculum brief text injected into the agent prompt */
+  briefSummary?: string;
+  /** Preferred techniques from diversity memory */
+  preferredTechniques?: string[];
+  /** Soft-banned techniques (recently overused) */
+  avoidTechniques?: string[];
+  /** Phrase-bank inspirations (not mandatory answers) */
+  phraseSeeds?: string[];
+  /** Banned normalized answer keys */
+  bannedAnswerKeys?: string[];
+  /** Tournament candidate slot (1-based) — encourages diversity across slots */
+  candidateIndex?: number;
+  candidateCount?: number;
 }
 
 function loadInstructions(): string {
@@ -75,25 +88,44 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
   const minFun = AI_CONFIG.puzzleAgent.minFunScore;
 
   const level = getDifficultyLevelForScore(params.targetDifficulty);
+  const preferred = params.preferredTechniques?.length
+    ? params.preferredTechniques
+    : level.techniques;
+
+  const slot =
+    params.candidateIndex && params.candidateCount
+      ? `Tournament candidate ${params.candidateIndex}/${params.candidateCount} — invent a DISTINCT direction from other slots.`
+      : null;
 
   return [
     `Generate one publishable ${puzzleType} puzzle.`,
     `Target difficulty: ${params.targetDifficulty}/10 → tier ${level.label} (band ${level.min}–${level.max}).`,
     `Component budget: ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
-    `Preferred techniques for this tier: ${level.techniques.join(", ")}.`,
+    `Preferred techniques: ${preferred.join(", ")}.`,
+    params.avoidTechniques?.length
+      ? `Avoid overused techniques when possible: ${params.avoidTechniques.join(", ")}.`
+      : null,
     params.category ? `Preferred category: ${params.category}.` : null,
     params.theme ? `Theme: ${params.theme}.` : null,
+    params.phraseSeeds?.length
+      ? `Phrase-bank inspiration (do NOT copy if recently used; invent a cousin idea): ${params.phraseSeeds.join("; ")}.`
+      : null,
+    params.bannedAnswerKeys?.length
+      ? `Banned answer keys (normalized): ${params.bannedAnswerKeys.slice(0, 30).join(", ")}.`
+      : null,
+    params.briefSummary ? `Curriculum brief: ${params.briefSummary}` : null,
+    slot,
     params.requireNovelty !== false
       ? "Novelty is required — avoid recent answers and similar visuals."
       : null,
     `Quality gates: overall >= ${qualityThreshold}, funScore >= ${minFun}, publishable=true, unique, solvable, in-band, composed visual.`,
     priorFailure ? `Previous attempt failed: ${priorFailure}. Fix that specific issue.` : null,
     "Workflow:",
-    "1) get_puzzle_type_spec + get_difficulty_brief",
+    "1) get_puzzle_type_spec + get_difficulty_brief + get_generation_brief (if available)",
     "2) list_recent_answers + propose_concept_seeds",
     "3) list_technique_library → pick techniqueId, then compose_puzzle_visual + craft_hint_ladder",
     "4) validate → uniqueness → calibrate → stress_test_solvability → score_quality",
-    "5) Revise until in-band, unique, solvable, publishable with a composed visual (≥1 pictogram SVG preferred)",
+    "5) Optional: critique_candidate + simulate_player_solve, then revise",
     "6) Return structured result with difficultyLevel + techniqueId + visual",
   ]
     .filter(Boolean)

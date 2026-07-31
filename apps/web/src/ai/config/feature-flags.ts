@@ -11,6 +11,8 @@ export interface AIFeatureFlags {
   recommendations: boolean;
   agentOrchestration: boolean;
   semanticCache: boolean;
+  /** Apex multi-candidate tournament generation */
+  apexEngine: boolean;
 }
 
 /**
@@ -39,6 +41,10 @@ export function getFeatureFlags(): AIFeatureFlags {
     semanticCache:
       process.env.AI_ENABLE_SEMANTIC_CACHE !== "false" &&
       process.env.AI_ENABLE_SEMANTIC_CACHE !== "0",
+
+    // Apex: multi-candidate tournament with critique + player sim (default on)
+    apexEngine:
+      process.env.EVE_APEX_ENGINE !== "false" && process.env.EVE_APEX_ENGINE !== "0",
   };
 
   // In development, enable all features by default (including agent orchestration)
@@ -48,6 +54,7 @@ export function getFeatureFlags(): AIFeatureFlags {
     flags.learning = flags.learning !== false;
     flags.recommendations = flags.recommendations !== false;
     flags.semanticCache = flags.semanticCache !== false;
+    flags.apexEngine = flags.apexEngine !== false;
     // Enable agent orchestration by default in development (unless explicitly disabled)
     if (
       process.env.AI_ENABLE_AGENT_ORCHESTRATION !== "false" &&

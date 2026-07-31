@@ -249,7 +249,8 @@ async function getOrGenerateDailyPuzzle(
         difficultyScore: result.puzzle.difficulty,
         fingerprint: result.metadata.fingerprint,
         calibratedDifficulty: result.metadata.calibratedDifficulty,
-        generationMethod: "eve-tool-agent",
+        generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
+        engine: result.metadata.engine ?? "eve",
       },
     });
 

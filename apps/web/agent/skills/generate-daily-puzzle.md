@@ -5,9 +5,9 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with gen
 
 # Generate daily puzzle
 
-1. `get_puzzle_type_spec` + `get_difficulty_brief` for the target score.
+1. `get_puzzle_type_spec` + `get_difficulty_brief` + `get_generation_brief` for the target score.
 2. `list_recent_answers` (lookback 60 days) — ban those answers (exact reuse fails publish).
-3. `propose_concept_seeds` → choose one seed, invent a **new** answer.
+3. `propose_concept_seeds` → choose one seed, invent a **new** answer (phrase-bank is inspiration only).
 4. Pick a technique from the brief; optionally `list_technique_library`.
 5. **Compose a generative visual** (required path):
    - Plan layers: pictogram concepts + text emphasis + operators (+ rare image).
@@ -17,8 +17,11 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with gen
    - Unicode-only mode is rejected — ensure ≥1 pictogram SVG or styled text layers.
 6. Write an explanation that maps each visual part → answer token; `craft_hint_ladder` for 3–5 hints.
 7. Pipeline: `validate_puzzle` → `check_uniqueness` → `calibrate_difficulty` → `stress_test_solvability` → `score_quality`.
-8. If off-band, duplicate answer, weak visual, or quality < threshold — redesign layers (not just the number).
-9. Emit final structured puzzle with `difficultyLevel` ∈ Hard | Difficult | Evil | Impossible, required `techniqueId`, and required `visual`.
+8. `critique_candidate` + `simulate_player_solve` + `score_rubric` — revise if not ship-worthy.
+9. If off-band, duplicate answer, weak visual, or quality < threshold — redesign layers (not just the number).
+10. Emit final structured puzzle with `difficultyLevel` ∈ Hard | Difficult | Evil | Impossible, required `techniqueId`, and required `visual`.
+
+Daily cron uses the **Apex tournament** (multiple candidates + rubric). Be excellent — only the winner publishes.
 
 ## Visual guidance
 

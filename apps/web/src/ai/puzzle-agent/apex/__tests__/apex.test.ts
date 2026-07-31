@@ -1,0 +1,125 @@
+import { phraseBankSize, samplePhraseBank } from "../phrase-bank";
+import { scoreRubric, tournamentScore } from "../rubric";
+import { pickWinner, rankCandidates } from "../tournament";
+import type { ApexCandidate } from "../types";
+
+function fakeCandidate(overrides: Partial<ApexCandidate> = {}): ApexCandidate {
+  return {
+    id: overrides.id ?? "c1",
+    rebusPuzzle: "☀️ + 🌻",
+    answer: "sunflower",
+    difficulty: 5,
+    difficultyLevel: "Hard",
+    explanation:
+      "Sun pictogram plus flower pictogram map to the compound sunflower because each half is literal.",
+    category: "compound",
+    hints: [
+      "Think garden compounds.",
+      "Two pictures join into one word.",
+      "Single word.",
+      'Final nudge: it starts with "S".',
+    ],
+    techniqueId: "simple_compound",
+    visual: {
+      styleId: "ink-pictogram-v1",
+      mode: "composed",
+      layout: "row",
+      unicodeFallback: "☀️ + 🌻",
+      layers: [
+        {
+          kind: "pictogram",
+          concept: "sun",
+          emojiFallback: "☀️",
+          svg: "<svg></svg>",
+        },
+        { kind: "operator", symbol: "+" },
+        {
+          kind: "pictogram",
+          concept: "flower",
+          emojiFallback: "🌻",
+          svg: "<svg></svg>",
+        },
+      ],
+    },
+    fingerprint: "abc",
+    uniquenessScore: 85,
+    calibratedDifficulty: 5,
+    inBand: true,
+    isUnique: true,
+    solvable: true,
+    qualityOverall: 80,
+    funScore: 78,
+    publishable: true,
+    critique: {
+      verdict: "ship",
+      summary: "Clean compound",
+      strengths: ["clear mapping"],
+      flaws: [],
+      reviseInstructions: [],
+      falseLeadQuality: 40,
+      ahaPredicted: 82,
+    },
+    playerSim: {
+      firstWrongParses: ["sunshine"],
+      likelySolvePath: "read sun + flower",
+      hintUnlockOrderLooksFair: true,
+      unfairReasons: [],
+      estimatedSolveRate: 0.55,
+      confidence: 0.7,
+    },
+    rejectReasons: [],
+    ...overrides,
+  };
+}
+
+describe("phrase bank", () => {
+  it("has a substantial curated corpus", () => {
+    expect(phraseBankSize()).toBeGreaterThanOrEqual(40);
+  });
+
+  it("samples non-banned phrases near the target difficulty", () => {
+    const banned = new Set(["sunflower", "pieceofcake"]);
+    const samples = samplePhraseBank({
+      targetDifficulty: 6,
+      preferredTechniques: ["idiom_as_picture", "positional_phrase"],
+      bannedAnswerKeys: banned,
+      limit: 6,
+    });
+    expect(samples.length).toBeGreaterThan(0);
+    expect(samples.every((s) => !banned.has(s.answer.replace(/[^a-z0-9]/gi, "").toLowerCase()))).toBe(
+      true
+    );
+  });
+});
+
+describe("rubric + tournament", () => {
+  it("scores a strong composed candidate highly", () => {
+    const rubric = scoreRubric(fakeCandidate());
+    expect(rubric.overall).toBeGreaterThanOrEqual(70);
+    expect(rubric.visualCraft).toBeGreaterThanOrEqual(70);
+    expect(rubric.ahaMoment).toBeGreaterThanOrEqual(60);
+  });
+
+  it("rejects critique-reject and non-unique candidates in tournament", () => {
+    const good = fakeCandidate({ id: "good" });
+    const bad = fakeCandidate({
+      id: "bad",
+      isUnique: false,
+      uniquenessScore: 10,
+      critique: {
+        verdict: "reject",
+        summary: "lazy",
+        strengths: [],
+        flaws: ["emoji salad"],
+        reviseInstructions: ["redesign"],
+        falseLeadQuality: 10,
+        ahaPredicted: 20,
+      },
+    });
+    const ranked = rankCandidates([bad, good], 70);
+    expect(ranked[0]?.id).toBe("good");
+    expect(tournamentScore(bad, 70)).toBeLessThan(0);
+    const { winner } = pickWinner([bad, good], 70);
+    expect(winner?.id).toBe("good");
+  });
+});
