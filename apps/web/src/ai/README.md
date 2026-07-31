@@ -25,7 +25,7 @@ getTodaysPuzzle
 
 Authoritative Eve files live under `apps/web/agent/` (instructions, skills, `defineTool` wrappers). In-process generation uses the same implementations in `src/ai/puzzle-agent/`.
 
-`withEve(nextConfig)` mounts durable Eve HTTP at `/eve/v1/*`.
+Puzzle generation runs **in-process** via ToolLoopAgent + AI Gateway (no separate Eve Vercel service). Durable `/eve/v1/*` HTTP mounting via `withEve()` is intentionally not enabled — it breaks monorepo Vercel deploys unless `eve build` artifacts exist under `.eve/vercel-services/eve`.
 
 ## Difficulty tiers (canonical)
 
