@@ -236,6 +236,8 @@ export async function POST(request: Request) {
             attempts: attemptNumber,
             timeSpent: timeSpentSeconds,
             difficulty: difficultyLevel,
+            maxAttempts,
+            hintsUsed,
             pointsMultiplier,
             affectsStreak: !isArchive,
           });
@@ -251,7 +253,7 @@ export async function POST(request: Request) {
               ) * pointsMultiplier
             );
             const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
-            await checkAndAwardAchievements(uid, {
+            const { newlyUnlocked } = await checkAndAwardAchievements(uid, {
               puzzleId: pid,
               attempts: attemptNumber,
               maxAttempts,
@@ -261,6 +263,30 @@ export async function POST(request: Request) {
               isCorrect: true,
               score,
             });
+
+            // Email non-guest users about freshly unlocked badges (Resend)
+            if (newlyUnlocked.length > 0) {
+              const dbUser = await db.userOps.findById(uid);
+              if (dbUser && !dbUser.isGuest && dbUser.email) {
+                const { getUserAchievementProgress } = await import("@/lib/achievements/service");
+                const { sendAchievementUnlockedEmail } = await import(
+                  "@/lib/notifications/email-service"
+                );
+                const progress = await getUserAchievementProgress(uid);
+                for (const achievement of newlyUnlocked.slice(0, 3)) {
+                  await sendAchievementUnlockedEmail(dbUser.email, {
+                    username: dbUser.username,
+                    achievementName: achievement.name,
+                    achievementDescription: achievement.description,
+                    achievementRarity: achievement.rarity,
+                    achievementPoints: achievement.points,
+                    achievementIcon: achievement.icon,
+                    totalUnlocked: progress.unlocked,
+                    totalAchievements: progress.total,
+                  });
+                }
+              }
+            }
           }
         } catch (error) {
           console.error("[guess] post-response update failed:", error);

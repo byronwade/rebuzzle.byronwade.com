@@ -353,25 +353,25 @@ export async function createBlogPost(postData: {
     revalidateTag("blog-posts", "max");
     revalidateTag("blog-posts-list", "max");
 
-    // Send blog post notification emails (non-blocking)
-    // This can be called separately via API if needed
+    // Morning cron (/api/cron/send-blog-emails) is the primary blast.
+    // Optional immediate send when CRON_SECRET is available (manual creates).
     try {
-      // Only send if published immediately
-      if (postData.publishedAt <= new Date()) {
-        // Trigger email send in background (don't await)
+      if (postData.publishedAt <= new Date() && process.env.CRON_SECRET) {
         fetch(`${getAppUrl()}/api/blog/send-notification`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.CRON_SECRET}`,
+          },
           body: JSON.stringify({
             postId: id,
-            sendToAllUsers: false, // Send only to subscribers
+            sendToAllUsers: false,
           }),
         }).catch((error) => {
           console.error("[Blog] Failed to trigger email notifications:", error);
         });
       }
     } catch (error) {
-      // Don't fail blog post creation if email send fails
       console.error("[Blog] Error triggering email notifications:", error);
     }
 
