@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
-import { ProfilePageSkeleton } from "@/components/page-skeletons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,11 +161,6 @@ export default function ProfilePage() {
 
     void loadStats();
   }, [isAuthenticated, user, authLoading]);
-
-  // Only the very first SSR paint without local cache uses the shell
-  if (authLoading && !user) {
-    return <ProfilePageSkeleton />;
-  }
 
   // Calculate level and progress
   const calculateLevelProgress = (userStats: UserStats) => {

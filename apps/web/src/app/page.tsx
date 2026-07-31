@@ -320,27 +320,28 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
 }
 
 /**
- * Home page with PPR optimization
- *
- * With PPR enabled:
- * 1. Static shell renders instantly
- * 2. Dynamic content streams in as ready
- * 3. User sees content faster
- *
- * Enhanced with Suspense for better streaming and loading states
+ * Resolve searchParams inside the Suspense boundary so the shell can paint
+ * immediately (awaiting in the page root blocks the fallback).
  */
-export default async function Home({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  // searchParams makes this component dynamic, so we don't need to access headers()
+async function HomeContent({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
+  return (
+    <PuzzleContent
+      params={{
+        preview: params?.preview === "true",
+        test: params?.test === "true",
+      }}
+    />
+  );
+}
 
+/**
+ * Home page — sync shell + streamed puzzle (Suspense, not route loading.tsx).
+ */
+export default function Home({ searchParams }: { searchParams: Promise<SearchParams> }) {
   return (
     <Suspense fallback={<HomePageSkeleton />}>
-      <PuzzleContent
-        params={{
-          preview: params?.preview === "true",
-          test: params?.test === "true",
-        }}
-      />
+      <HomeContent searchParams={searchParams} />
     </Suspense>
   );
 }

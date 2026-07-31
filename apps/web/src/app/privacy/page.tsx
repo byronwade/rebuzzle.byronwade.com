@@ -1,7 +1,6 @@
 import { Shield } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import Layout from "@/components/Layout";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
 
@@ -13,15 +12,11 @@ export const metadata: Metadata = generateStaticPageMetadata({
   keywords: ["privacy policy", "data protection", "GDPR", "user privacy", "data security"],
 });
 
-export default async function PrivacyPolicyPage() {
-  // Request-time rendering before Date formatting
-  await connection();
+/** Static legal copy — no request-time Date/connection (keeps the page prerenderable). */
+const LAST_UPDATED = "July 1, 2026";
 
-  const lastUpdated = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+export default function PrivacyPolicyPage() {
+  const lastUpdated = LAST_UPDATED;
 
   return (
     <Layout>

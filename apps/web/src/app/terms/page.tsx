@@ -1,7 +1,6 @@
 import { FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import Layout from "@/components/Layout";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
 
@@ -13,15 +12,11 @@ export const metadata: Metadata = generateStaticPageMetadata({
   keywords: ["terms of service", "terms and conditions", "user agreement", "legal"],
 });
 
-export default async function TermsOfServicePage() {
-  // Request-time rendering before Date formatting
-  await connection();
+/** Static legal copy — no request-time Date/connection (keeps the page prerenderable). */
+const LAST_UPDATED = "July 1, 2026";
 
-  const lastUpdated = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+export default function TermsOfServicePage() {
+  const lastUpdated = LAST_UPDATED;
 
   return (
     <Layout>

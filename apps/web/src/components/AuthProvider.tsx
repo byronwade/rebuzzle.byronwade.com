@@ -210,7 +210,8 @@ export function AuthProvider({
   }, [pathname, checkAuth, authState.isLoading]);
 
   const refreshAuth = useCallback(async () => {
-    setAuthState((prev) => ({ ...prev, isLoading: true }));
+    // Quiet refresh — do not flip isLoading or the whole UI flashes a skeleton
+    // (guest warm-up, post-login, etc.). Keep the current shell painted.
     await checkAuth();
   }, [checkAuth]);
 
