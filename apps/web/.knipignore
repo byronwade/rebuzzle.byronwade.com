@@ -1,0 +1,25 @@
+# Ignore intentionally unused files
+
+# Email templates (used dynamically)
+emails/
+
+# Utility scripts (not imported)
+scripts/generate-migrations.ts
+scripts/setup-database.ts
+scripts/setup-neon-auth.ts
+scripts/setup-neon.ts
+scripts/test-database.ts
+
+# UI component library (keep unused components for future use)
+src/components/ui/
+
+# Database schema files (may be imported dynamically)
+src/db/schema.ts
+src/db/utils.ts
+
+# Animation utilities (may be used via CSS)
+src/lib/animations.ts
+
+
+
+

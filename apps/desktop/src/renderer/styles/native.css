@@ -1,0 +1,915 @@
+/**
+ * Native Desktop Enhancements
+ * Platform-specific styling for native feel
+ */
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ============================================
+   TITLE BAR (macOS)
+   ============================================ */
+
+.title-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--title-bar-height);
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+
+  /* Make draggable */
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.title-bar-text {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Traffic light spacing for macOS */
+[data-platform="darwin"] .title-bar {
+  padding-left: var(--traffic-light-width);
+}
+
+/* Hide title bar text on Windows/Linux where we have native chrome */
+[data-platform="win32"] .title-bar,
+[data-platform="linux"] .title-bar {
+  display: none;
+}
+
+[data-platform="win32"] .app-container,
+[data-platform="linux"] .app-container {
+  padding-top: 0;
+}
+
+/* ============================================
+   APP CONTAINER
+   ============================================ */
+
+.app-container {
+  position: fixed;
+  top: var(--title-bar-height);
+  left: var(--sidebar-width);
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+.app-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.app-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-container::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: var(--radius-full);
+}
+
+.app-container::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ============================================
+   SIDEBAR NAVIGATION
+   ============================================ */
+
+.sidebar-nav {
+  position: fixed;
+  top: var(--title-bar-height);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background: hsl(var(--card));
+  border-right: 1px solid hsl(var(--border));
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md) 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  margin-bottom: var(--spacing-md);
+}
+
+.logo-text {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+}
+
+.sidebar-items {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-sm);
+}
+
+.sidebar-footer {
+  padding: 0 var(--spacing-sm);
+  margin-top: auto;
+}
+
+.sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  color: hsl(var(--muted-foreground));
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-item:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.sidebar-item.active {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.sidebar-item.active .nav-icon {
+  transform: scale(1.1);
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  transition: transform var(--transition-fast);
+}
+
+/* Tooltip on hover */
+.sidebar-item::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 8px);
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.sidebar-item:hover::after {
+  opacity: 1;
+}
+
+/* ============================================
+   ROUTE TRANSITIONS
+   ============================================ */
+
+.route-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.route-enter {
+  animation: fadeSlideIn var(--transition-slow) ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   LOADING STATE
+   ============================================ */
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--spacing-md);
+  color: hsl(var(--muted-foreground));
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+
+.toast-container {
+  position: fixed;
+  top: calc(var(--title-bar-height) + var(--spacing-md));
+  right: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  z-index: var(--z-toast);
+  pointer-events: none;
+}
+
+.toast {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-sm);
+  max-width: 320px;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all var(--transition-normal);
+  pointer-events: auto;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast-success {
+  border-left: 3px solid hsl(var(--success));
+}
+
+.toast-warning {
+  border-left: 3px solid hsl(var(--warning));
+}
+
+.toast-error {
+  border-left: 3px solid hsl(var(--destructive));
+}
+
+.toast-info {
+  border-left: 3px solid hsl(var(--info));
+}
+
+/* ============================================
+   VIBRANCY / GLASS EFFECTS
+   ============================================ */
+
+.glass {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-strong {
+  background: hsl(var(--card) / 0.9);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+
+/* ============================================
+   FOCUS STYLES
+   ============================================ */
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================
+   SELECTION
+   ============================================ */
+
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+/* ============================================
+   ERROR PAGE
+   ============================================ */
+
+.error-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.error-page h1 {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: hsl(var(--muted-foreground));
+  margin-bottom: var(--spacing-sm);
+}
+
+.error-page p {
+  color: hsl(var(--muted-foreground));
+  margin-bottom: var(--spacing-lg);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.bounce-in {
+  animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .loading-spinner {
+    animation: none;
+    border-color: hsl(var(--primary));
+  }
+}
+
+/* ============================================
+   GAME PAGE LAYOUT (Web App Parity)
+   ============================================ */
+
+/* Main game layout - flex column filling the page */
+.game-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: calc(100vh - var(--title-bar-height));
+}
+
+/* Puzzle area - takes remaining space, scrollable */
+.puzzle-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Puzzle content - centered vertically and horizontally */
+.puzzle-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 24px 16px;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  gap: 16px;
+}
+
+/* Puzzle section - centered text */
+.puzzle-section {
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Input area - pinned to bottom */
+.input-area {
+  flex-shrink: 0;
+  background: hsl(var(--background));
+  border-top: 1px solid hsl(var(--border) / 0.3);
+  padding: 16px 16px 24px;
+}
+
+.input-area-content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* Game header - badges and timer */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.game-info {
+  display: flex;
+  gap: 6px;
+}
+
+.timer {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Personalized Greeting */
+.greeting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+}
+
+.greeting-icon {
+  font-size: 14px;
+}
+
+.greeting-message {
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.greeting-subtext {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Enhanced Puzzle Container */
+.puzzle-container {
+  border: 2px dashed hsl(var(--border));
+  border-radius: 24px;
+  background: hsl(var(--card));
+  padding: 32px 24px;
+  text-align: center;
+  min-height: 100px;
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.puzzle-display {
+  font-size: 24px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+/* Puzzle type-specific styling (matching web app) */
+
+/* Visual puzzles - large emoji display */
+.puzzle-visual {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  white-space: pre-wrap;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+
+/* Text puzzles - smaller, left-aligned for readability */
+.puzzle-text {
+  font-size: 16px;
+  font-weight: 400;
+  text-align: left;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+/* Monospace puzzles - for ciphers and sequences */
+.puzzle-monospace {
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.05em;
+  white-space: pre-wrap;
+}
+
+/* Default puzzles - medium centered display */
+.puzzle-default {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+/* Legacy class for backwards compatibility */
+.puzzle-emoji {
+  font-size: 48px;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.puzzle-question {
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+/* Solve Counter */
+.solve-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.solve-icon {
+  font-size: 12px;
+}
+
+/* Attempts container */
+.attempts-container {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.attempt-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: hsl(var(--muted));
+  transition: all 0.2s ease;
+}
+
+.attempt-dot.used {
+  background: hsl(var(--destructive) / 0.6);
+}
+
+.attempt-dot.correct {
+  background: hsl(142 71% 45%);
+}
+
+/* Attempts Indicator (Heart Icons) */
+.attempts-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.heart-icon {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease;
+}
+
+.heart-icon.filled {
+  color: hsl(0 84% 60%);
+}
+
+.heart-icon.empty {
+  color: hsl(var(--muted-foreground) / 0.4);
+}
+
+.attempts-count {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  margin-left: 6px;
+  font-weight: 500;
+}
+
+/* Difficulty Badge */
+.badge-difficulty {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Guess history */
+.guess-history {
+  width: 100%;
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.guess-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  animation: fadeSlideIn var(--transition-normal) ease-out;
+}
+
+.guess-item.correct {
+  border-color: hsl(var(--success));
+  background: hsl(var(--success) / 0.1);
+}
+
+.guess-item.incorrect {
+  border-color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.1);
+}
+
+.guess-icon {
+  font-size: var(--font-size-lg);
+}
+
+.guess-item.correct .guess-icon {
+  color: hsl(var(--success));
+}
+
+.guess-item.incorrect .guess-icon {
+  color: hsl(var(--destructive));
+}
+
+/* Enhanced Hint Card */
+.hint-card {
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 16px;
+  background: hsl(var(--card) / 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 12px;
+}
+
+.hint-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.hint-card-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(45 93% 47%);
+}
+
+.hint-icon {
+  font-size: 14px;
+}
+
+.hint-count {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+
+.hint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.hint-item {
+  display: flex;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.hint-number {
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+  min-width: 18px;
+}
+
+.hint-empty {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.hint-exhausted {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.btn-hint {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: hsl(45 93% 47% / 0.1);
+  border: 1px solid hsl(45 93% 47% / 0.3);
+  color: hsl(45 93% 47%);
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-hint:hover {
+  background: hsl(45 93% 47% / 0.2);
+  border-color: hsl(45 93% 47% / 0.5);
+}
+
+.btn-hint:active {
+  transform: scale(0.98);
+}
+
+/* Enhanced Input Styling - matches web rounded-2xl style */
+.answer-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.input-wrapper {
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem; /* rounded-2xl = 16px */
+  background: hsl(var(--background));
+  padding: 12px 16px;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.input-wrapper:focus-within {
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+.input-wrapper.correct {
+  border-color: hsl(142 71% 45%);
+  background: hsl(142 71% 45% / 0.05);
+}
+
+/* Remove ALL styling from inner input */
+.input-wrapper .answer-input,
+.input-wrapper .input.answer-input,
+.input-wrapper input.input,
+.input-wrapper input {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  flex: 1;
+  padding: 0;
+  font-size: var(--font-size-base);
+  min-width: 0;
+  color: hsl(var(--foreground));
+}
+
+.input-wrapper .answer-input:focus,
+.input-wrapper .input.answer-input:focus,
+.input-wrapper input.input:focus,
+.input-wrapper input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.input-wrapper .submit-btn {
+  flex-shrink: 0;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: var(--font-size-sm);
+}
+
+.input-hint {
+  font-size: var(--font-size-xs);
+  color: hsl(var(--muted-foreground));
+  padding-left: 4px;
+}
+
+.text-success {
+  color: hsl(142 71% 45%);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Hint container styling */
+.hint-container {
+  width: 100%;
+  max-width: 400px;
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalPassThroughEnv": [
+    "REBUZZLE_MONGODB_URI",
+    "MONGODB_URI",
+    "DATABASE_URL",
+    "MONGODB_DB",
+    "AI_GATEWAY_API_KEY",
+    "AI_PROVIDER",
+    "AUTH_SECRET",
+    "CRON_SECRET",
+    "VERCEL_CRON_SECRET",
+    "VERCEL_OIDC_TOKEN",
+    "NEXT_PUBLIC_APP_URL",
+    "RESEND_API_KEY",
+    "RESEND_FROM_EMAIL",
+    "FROM_EMAIL",
+    "EVE_PUZZLE_MODEL",
+    "DEFAULT_PUZZLE_TYPE",
+    "AI_PUZZLE_GENERATION",
+    "AI_ADVANCED_GENERATION",
+    "AI_SMART_VALIDATION",
+    "AI_DYNAMIC_HINTS",
+    "XAI_API_KEY",
+    "GOOGLE_AI_API_KEY",
+    "GROQ_API_KEY",
+    "OPENAI_API_KEY",
+    "VAPID_PRIVATE_KEY",
+    "VAPID_PUBLIC_KEY",
+    "SENTRY_AUTH_TOKEN",
+    "SENTRY_ORG",
+    "SENTRY_PROJECT",
+    "CLERK_SECRET_KEY",
+    "NODE_ENV",
+    "VERCEL",
+    "VERCEL_ENV",
+    "VERCEL_URL",
+    "CI",
+    "PLANETSCALE_DB",
+    "PLANETSCALE_DB_USERNAME",
+    "PLANETSCALE_DB_PASSWORD",
+    "PLANETSCALE_DB_HOST",
+    "PLANETSCALE_SSL_CERT_PATH"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", ".expo/**"],
+      "passThroughEnv": [
+        "REBUZZLE_MONGODB_URI",
+        "MONGODB_URI",
+        "DATABASE_URL",
+        "AI_GATEWAY_API_KEY",
+        "AI_PROVIDER",
+        "AUTH_SECRET",
+        "CRON_SECRET",
+        "NEXT_PUBLIC_APP_URL",
+        "PLANETSCALE_DB",
+        "PLANETSCALE_DB_USERNAME",
+        "PLANETSCALE_DB_PASSWORD",
+        "PLANETSCALE_DB_HOST",
+        "PLANETSCALE_SSL_CERT_PATH"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    }
+  }
+}

@@ -1,0 +1,604 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   REBUZZLE DESIGN SYSTEM
+   A stark ink-on-canvas system: near-white surfaces, a 200-step
+   neutral ladder for every hairline and disabled state, and a
+   single multi-stop mesh gradient as the only decorative chrome.
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* — Surface ladder — */
+    --background: 0 0% 98%; /* canvas-soft  #fafafa — the page body */
+    --foreground: 0 0% 9%; /* ink          #171717 */
+    --card: 0 0% 100%; /* canvas       #ffffff */
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --inset: 0 0% 96%; /* canvas-soft-2 #f5f5f5 */
+
+    /* — Ink primary — the single conversion colour — */
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%; /* body #666 — readable secondary text */
+    --subtle-foreground: 0 0% 53%; /* mute #888 — lowest-priority text */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+
+    /* — Hairlines — */
+    --border: 0 0% 92%; /* hairline        #ebebeb */
+    --border-strong: 0 0% 63%; /* hairline-strong #a1a1a1 */
+    --input: 0 0% 92%;
+    --ring: 0 0% 9%;
+
+    /* — Semantic — */
+    --link: 212 100% 48%; /* #0070f3 */
+    --link-deep: 213 90% 42%; /* #0761d1 */
+    --success: 131 35% 46%;
+    --warning: 37 91% 55%; /* #f5a623 */
+    --destructive: 0 100% 47%; /* #ee0000 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* — Brand gradient stops (hero scale only) — */
+    --grad-develop-start: #007cf0;
+    --grad-develop-end: #00dfd8;
+    --grad-preview-start: #7928ca;
+    --grad-preview-end: #ff0080;
+    --grad-ship-start: #ff4d4d;
+    --grad-ship-end: #f9cb28;
+
+    /* — Charts inherit the gradient palette, never a sixth accent — */
+    --chart-1: 212 100% 47%;
+    --chart-2: 178 100% 44%;
+    --chart-3: 280 67% 47%;
+    --chart-4: 330 100% 50%;
+    --chart-5: 44 94% 57%;
+
+    /* — Stacked elevation — small offsets + inset hairline, never one heavy drop — */
+    --shadow-border: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+    --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.02), 0 2px 2px rgb(0 0 0 / 0.04);
+    --shadow-md: 0 2px 2px rgb(0 0 0 / 0.04), 0 8px 8px -8px rgb(0 0 0 / 0.04);
+    --shadow-lg: 0 2px 2px rgb(0 0 0 / 0.04), 0 8px 16px -4px rgb(0 0 0 / 0.04);
+    --shadow-menu: 0 1px 1px rgb(0 0 0 / 0.02), 0 8px 16px -4px rgb(0 0 0 / 0.04),
+      0 24px 32px -8px rgb(0 0 0 / 0.06);
+
+    --radius: 0.5rem; /* marketing radius 8px; sm 4px / md 6px derive from it */
+    --header-height: 56px;
+  }
+
+  .dark {
+    --background: 0 0% 4%; /* #0a0a0a */
+    --foreground: 0 0% 93%; /* #ededed */
+    --card: 0 0% 6%; /* #0f0f0f */
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 93%;
+    --inset: 0 0% 10%;
+
+    --primary: 0 0% 93%;
+    --primary-foreground: 0 0% 4%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 63%;
+    --subtle-foreground: 0 0% 53%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 93%;
+
+    --border: 0 0% 18%; /* #2e2e2e */
+    --border-strong: 0 0% 33%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 63%;
+
+    --link: 212 100% 60%; /* #3291ff */
+    --link-deep: 212 100% 70%;
+    --success: 131 41% 56%;
+    --warning: 37 91% 60%;
+    --destructive: 0 100% 62%;
+    --destructive-foreground: 0 0% 100%;
+
+    --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 0.09);
+    --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.24), 0 2px 2px rgb(0 0 0 / 0.2);
+    --shadow-md: 0 2px 2px rgb(0 0 0 / 0.28), 0 8px 8px -8px rgb(0 0 0 / 0.32);
+    --shadow-lg: 0 2px 2px rgb(0 0 0 / 0.28), 0 8px 16px -4px rgb(0 0 0 / 0.32);
+    --shadow-menu: 0 1px 1px rgb(0 0 0 / 0.24), 0 8px 16px -4px rgb(0 0 0 / 0.32),
+      0 24px 32px -8px rgb(0 0 0 / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "ss03", "cv01", "cv09";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Display type is tracked negative — that tracking is part of the voice. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold tracking-tight;
+    text-wrap: balance;
+  }
+
+  h1 {
+    letter-spacing: -0.04em;
+  }
+
+  h2 {
+    letter-spacing: -0.035em;
+  }
+
+  h3 {
+    letter-spacing: -0.03em;
+  }
+
+  ::selection {
+    background-color: hsl(var(--foreground));
+    color: hsl(var(--background));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* One consistent focus ring across the whole surface */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* ============================================================
+   ELEVATION + SURFACE UTILITIES
+   ============================================================ */
+
+@layer components {
+  /* Level 1 — the universal "this is a card" cue: hairline ring only. */
+  .surface {
+    @apply rounded-lg border border-border bg-card;
+  }
+
+  /* Level 2 — subtle drop. Template / list cards. */
+  .surface-raised {
+    @apply rounded-lg border border-border bg-card;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Level 4 — float stack. Pricing / callout panels. */
+  .surface-float {
+    @apply rounded-xl border border-border bg-card;
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Inset region — a step deeper than the page. */
+  .surface-inset {
+    @apply rounded-lg border border-border;
+    background-color: hsl(var(--inset));
+  }
+
+  /* Polarity-flipped band — the brand's chief depth cue between sections. */
+  .band-dark {
+    @apply bg-foreground text-background;
+  }
+
+  /* Mono eyebrow — the voice of the technical layer. */
+  .eyebrow {
+    @apply font-mono text-[11px] text-subtle uppercase tracking-[0.14em];
+  }
+
+  /* Marketing CTA pill vs. 6px in-app radius: pick a scale per screen. */
+  .cta-pill {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 font-medium text-[15px] text-background transition-opacity hover:opacity-90;
+  }
+
+  .cta-pill-secondary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 font-medium text-[15px] text-foreground transition-colors hover:bg-muted;
+  }
+
+  /* A single row of hairline-separated stats. */
+  .hairline-grid {
+    @apply divide-y divide-border border border-border sm:divide-x sm:divide-y-0;
+  }
+}
+
+@layer utilities {
+  .shadow-border {
+    box-shadow: var(--shadow-border);
+  }
+
+  .shadow-level-1 {
+    box-shadow: var(--shadow-border);
+  }
+
+  .shadow-level-2 {
+    box-shadow: var(--shadow-sm), var(--shadow-border);
+  }
+
+  .shadow-level-3 {
+    box-shadow: var(--shadow-md), var(--shadow-border);
+  }
+
+  .shadow-level-4 {
+    box-shadow: var(--shadow-lg), var(--shadow-border);
+  }
+
+  .shadow-level-5 {
+    box-shadow: var(--shadow-menu), var(--shadow-border);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* The brand mesh — one unified object, hero scale only, never miniaturised. */
+  .mesh-gradient {
+    background-image:
+      radial-gradient(at 18% 0%, var(--grad-develop-start) 0px, transparent 55%),
+      radial-gradient(at 62% 8%, var(--grad-preview-start) 0px, transparent 50%),
+      radial-gradient(at 92% 0%, var(--grad-preview-end) 0px, transparent 55%),
+      radial-gradient(at 40% 30%, var(--grad-develop-end) 0px, transparent 45%),
+      radial-gradient(at 82% 34%, var(--grad-ship-end) 0px, transparent 45%);
+  }
+
+  /* Text set in the develop→preview gradient. Headline scale only. */
+  .text-gradient {
+    background-image: linear-gradient(
+      90deg,
+      var(--grad-develop-start),
+      var(--grad-preview-start) 45%,
+      var(--grad-preview-end)
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  /* A 1px hairline that fades at both ends — section dividers. */
+  .rule-fade {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--border)) 15%,
+      hsl(var(--border)) 85%,
+      transparent
+    );
+  }
+
+  /* Faint engineered grid — background texture at very low contrast. */
+  .grid-texture {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.7) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.7) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .h-dvh {
+    height: 100dvh;
+  }
+
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+
+  .max-h-dvh {
+    max-height: 100dvh;
+  }
+
+  .h-svh {
+    height: 100svh;
+  }
+
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+
+  .pb-safe-lg {
+    padding-bottom: max(env(safe-area-inset-bottom), 32px);
+  }
+}
+
+/* ============================================================
+   MOTION
+   Short, eased, and reversible. Nothing bounces.
+   ============================================================ */
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-6px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  60% {
+    transform: translateX(-4px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mesh-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(-2%, 1.5%, 0) scale(1.06);
+  }
+}
+
+.shake {
+  animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   PLAY SURFACE
+   The game is an app, not a marketing page: 6px radii, hairlines,
+   no gradient except a single atmospheric wash behind the stage.
+   ============================================================ */
+
+.play-chrome {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.play-stage {
+  position: relative;
+}
+
+.play-puzzle-panel {
+  position: relative;
+  border-radius: 12px;
+  padding: clamp(0.75rem, 2vh, 1.25rem) clamp(0.75rem, 3vw, 1.5rem);
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-lg);
+  animation: panel-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.play-dock {
+  background-color: hsl(var(--background) / 0.85);
+  border-top: 1px solid hsl(var(--border));
+  backdrop-filter: blur(12px);
+}
+
+.play-fade-in {
+  animation: fade-in-up 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.guess-chip {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.guess-chip:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-puzzle-panel,
+  .play-fade-in,
+  .guess-chip {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+   KEYBOARD-AWARE LAYOUT
+   ============================================================ */
+
+@supports (-webkit-touch-callout: none) {
+  .keyboard-aware-container {
+    height: -webkit-fill-available;
+  }
+
+  /* Stop iOS zooming the viewport on input focus */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+.keyboard-aware-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  transition: height 0.3s ease-out;
+}
+
+.keyboard-visible .puzzle-area,
+.keyboard-visible .input-area {
+  flex: 0 0 auto;
+}
+
+.keyboard-visible .puzzle-area {
+  overflow: hidden;
+}
+
+.input-area-keyboard-transition {
+  transition:
+    padding 0.2s ease-out,
+    transform 0.2s ease-out;
+  will-change: padding, transform;
+}
+
+.keyboard-layout-active {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================================
+   VIEWPORT-RESPONSIVE PUZZLE TYPOGRAPHY
+   Puzzle content scales with viewport height so the stage never
+   scrolls, on any device, with or without the keyboard up.
+   ============================================================ */
+
+.puzzle-area {
+  gap: clamp(0.25rem, 1.5vh, 0.75rem);
+}
+
+.puzzle-container-responsive {
+  padding: clamp(0.75rem, 2.5vh, 1.5rem) clamp(1rem, 3vw, 1.5rem);
+}
+
+.puzzle-min-height {
+  min-height: clamp(80px, 15vh, 140px);
+}
+
+/* Visual puzzles (rebus, pattern-recognition) */
+.puzzle-visual-sm {
+  font-size: clamp(1.5rem, 5vh, 2.5rem);
+  line-height: 1.3;
+}
+
+.puzzle-visual-md {
+  font-size: clamp(1.75rem, 6vh, 3rem);
+  line-height: 1.3;
+}
+
+.puzzle-visual-lg {
+  font-size: clamp(2rem, 7vh, 3.5rem);
+  line-height: 1.3;
+}
+
+/* Monospace puzzles (number-sequence, caesar-cipher) */
+.puzzle-monospace-sm {
+  font-size: clamp(1rem, 3vh, 1.5rem);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+
+.puzzle-monospace-md {
+  font-size: clamp(1.25rem, 4vh, 2rem);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+
+.puzzle-monospace-lg {
+  font-size: clamp(1.5rem, 5vh, 2.5rem);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+
+/* Text puzzles (riddle, trivia, logic-grid, cryptic-crossword) */
+.puzzle-text-sm {
+  font-size: clamp(0.85rem, 1.9vh, 1.05rem);
+  line-height: 1.6;
+}
+
+/* Default puzzles (word-puzzle, word-ladder) */
+.puzzle-default-sm {
+  font-size: clamp(0.875rem, 2vh, 1.25rem);
+  line-height: 1.4;
+}
+
+.puzzle-default-md {
+  font-size: clamp(1.25rem, 4vh, 2rem);
+  line-height: 1.4;
+}
+
+.puzzle-default-lg {
+  font-size: clamp(1.5rem, 5vh, 2.5rem);
+  line-height: 1.4;
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .puzzle-visual-lg {
+    font-size: clamp(1.5rem, 12vh, 2.5rem);
+  }
+
+  .puzzle-min-height {
+    min-height: clamp(60px, 20vh, 100px);
+  }
+}
+
+@media (max-height: 700px) {
+  .puzzle-area {
+    gap: clamp(0.125rem, 1vh, 0.5rem);
+  }
+
+  .puzzle-min-height {
+    min-height: clamp(70px, 12vh, 110px);
+  }
+}

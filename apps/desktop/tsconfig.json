@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@/*": ["./src/renderer/*"],
+      "@rebuzzle/game-logic": ["../../packages/game-logic/src"],
+      "@rebuzzle/config": ["../../packages/config/src"]
+    }
+  },
+  "include": ["src/**/*.ts", "electron/**/*.ts"],
+  "exclude": ["node_modules", "dist", "dist-electron", "release"]
+}
