@@ -35,7 +35,12 @@
     "VERCEL",
     "VERCEL_ENV",
     "VERCEL_URL",
-    "CI"
+    "CI",
+    "PLANETSCALE_DB",
+    "PLANETSCALE_DB_USERNAME",
+    "PLANETSCALE_DB_PASSWORD",
+    "PLANETSCALE_DB_HOST",
+    "PLANETSCALE_SSL_CERT_PATH"
   ],
   "tasks": {
     "build": {
@@ -49,7 +54,12 @@
         "AI_PROVIDER",
         "AUTH_SECRET",
         "CRON_SECRET",
-        "NEXT_PUBLIC_APP_URL"
+        "NEXT_PUBLIC_APP_URL",
+        "PLANETSCALE_DB",
+        "PLANETSCALE_DB_USERNAME",
+        "PLANETSCALE_DB_PASSWORD",
+        "PLANETSCALE_DB_HOST",
+        "PLANETSCALE_SSL_CERT_PATH"
       ]
     },
     "dev": {

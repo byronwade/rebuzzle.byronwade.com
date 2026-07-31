@@ -51,7 +51,18 @@ export async function getServerSession(): Promise<ServerSession> {
       },
     };
   } catch (error) {
-    console.error("[getServerSession] Error:", error);
+    // Cache Components prerender intentionally rejects cookies() once the
+    // static shell is done — treat that as unauthenticated, not a failure.
+    const digest =
+      error && typeof error === "object" && "digest" in error
+        ? String((error as { digest?: unknown }).digest)
+        : "";
+    if (
+      digest !== "HANGING_PROMISE_REJECTION" &&
+      !(error instanceof Error && error.message.includes("prerendering"))
+    ) {
+      console.error("[getServerSession] Error:", error);
+    }
     return { authenticated: false, user: null };
   }
 }
