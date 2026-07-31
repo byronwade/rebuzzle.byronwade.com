@@ -8,12 +8,6 @@ const nextConfig = {
   // React Compiler — automatic memoization (prod only to keep HMR snappy)
   reactCompiler: process.env.NODE_ENV === "production",
 
-  // Opt out of immutable static asset uploads for now. Vercel's preview-comment
-  // patcher currently fails deploys with:
-  // "Cannot patch preview comments when immutable static file upload is enabled"
-  // even on Next 16.3 canaries newer than the suggested floor.
-  supportsImmutableAssets: false,
-
   // Client router cache stale times
   experimental: {
     staleTimes: {
