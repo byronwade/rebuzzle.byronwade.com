@@ -32,3 +32,16 @@ export {
   measureWindowPerformance,
   type WindowPerformance,
 } from "./performance-monitor";
+export {
+  aggregatePerceptionDelta,
+  isDifficultyPerceptionChoice,
+  mapDifficultyPerception,
+  type DifficultyPerceptionChoice,
+  type PerceptionMapping,
+} from "./difficulty-perception";
+export {
+  applySimCalibration,
+  computeSimCalibrationFromPairs,
+  loadSimCalibration,
+  type SimCalibration,
+} from "./sim-calibration";

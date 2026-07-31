@@ -37,6 +37,10 @@ export const PuzzleAgentResultSchema = z.object({
     generationAttempts: z.number().optional(),
     thinkingSummary: z.string().optional(),
     visualStyleId: z.string().optional(),
+    /** Calibrated player-sim solve rate (0–1) */
+    estimatedSolveRate: z.number().min(0).max(1).optional(),
+    /** Rolling sim bias applied (live − estimated), if any */
+    simCalibrationBias: z.number().optional(),
   }),
   status: z.enum(["success", "retry", "failed"]),
   recommendations: z.array(z.string()).default([]),

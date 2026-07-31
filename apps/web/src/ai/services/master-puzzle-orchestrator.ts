@@ -52,6 +52,8 @@ export interface GeneratedPuzzleResult {
     generationTimeMs: number;
     aiThinking: { summary?: string };
     engine?: "apex" | "eve";
+    estimatedSolveRate?: number;
+    simCalibrationBias?: number;
   };
   status: "success" | "retry" | "failed";
   recommendations: string[];
@@ -100,6 +102,8 @@ function toGeneratedResult(
       generationTimeMs,
       aiThinking: { summary: result.metadata.thinkingSummary },
       engine,
+      estimatedSolveRate: result.metadata.estimatedSolveRate,
+      simCalibrationBias: result.metadata.simCalibrationBias,
     },
     status: result.status,
     recommendations: result.recommendations ?? [],

@@ -60,7 +60,8 @@ function toCandidate(
 
 async function enrichCandidate(
   candidate: ApexCandidate,
-  brief: GenerationBrief
+  brief: GenerationBrief,
+  simCalibration?: { adjustment: number; sampleSize: number }
 ): Promise<ApexCandidate> {
   const apex = AI_CONFIG.puzzleAgent.apex;
   let next = { ...candidate };
@@ -95,11 +96,25 @@ async function enrichCandidate(
       techniqueId: candidate.techniqueId,
       tierLabel: brief.tierLabel,
     });
-    const playerSim = applyPlayerSimHeuristics(rawSim, {
+    let playerSim = applyPlayerSimHeuristics(rawSim, {
       answer: candidate.answer,
       hints: candidate.hints,
       tierLabel: brief.tierLabel,
     });
+    if (
+      simCalibration &&
+      simCalibration.sampleSize >= 6 &&
+      Math.abs(simCalibration.adjustment) >= 0.02
+    ) {
+      const { applySimCalibration } = await import("../../learning/sim-calibration");
+      playerSim = {
+        ...playerSim,
+        estimatedSolveRate: applySimCalibration(
+          playerSim.estimatedSolveRate,
+          simCalibration
+        ),
+      };
+    }
     next = { ...next, playerSim };
     if (!playerSim.hintUnlockOrderLooksFair || playerSim.unfairReasons.length > 2) {
       next = {
@@ -185,7 +200,20 @@ export async function runApexGeneration(
   }
 
   const critiqueStarted = Date.now();
-  const enriched = await Promise.all(candidates.map((c) => enrichCandidate(c, brief)));
+  let simCalibration: { adjustment: number; sampleSize: number } | undefined;
+  try {
+    const { loadSimCalibration } = await import("../../learning/sim-calibration");
+    const loaded = await loadSimCalibration();
+    simCalibration = {
+      adjustment: loaded.adjustment,
+      sampleSize: loaded.sampleSize,
+    };
+  } catch {
+    simCalibration = undefined;
+  }
+  const enriched = await Promise.all(
+    candidates.map((c) => enrichCandidate(c, brief, simCalibration))
+  );
   const critiqueMs = Date.now() - critiqueStarted;
 
   const selectStarted = Date.now();
@@ -200,22 +228,36 @@ export async function runApexGeneration(
         `Apex tournament found no publishable winner. Failures: ${failures.join(" | ") || "gates/rubric"}`
       );
     }
-    return await finalizeWinner(fallback, ranked, brief, {
+    return await finalizeWinner(
+      fallback,
+      ranked,
+      brief,
+      {
+        briefMs,
+        generateMs,
+        critiqueMs,
+        selectMs,
+        totalMs: Date.now() - started,
+      },
+      failures,
+      simCalibration
+    );
+  }
+
+  return await finalizeWinner(
+    winner,
+    ranked,
+    brief,
+    {
       briefMs,
       generateMs,
       critiqueMs,
       selectMs,
       totalMs: Date.now() - started,
-    }, failures);
-  }
-
-  return await finalizeWinner(winner, ranked, brief, {
-    briefMs,
-    generateMs,
-    critiqueMs,
-    selectMs,
-    totalMs: Date.now() - started,
-  }, failures);
+    },
+    failures,
+    simCalibration
+  );
 }
 
 async function finalizeWinner(
@@ -223,7 +265,8 @@ async function finalizeWinner(
   ranked: ApexCandidate[],
   brief: GenerationBrief,
   phases: ApexEngineResult["phases"],
-  failures: string[]
+  failures: string[],
+  simCalibration?: { adjustment: number; sampleSize: number }
 ): Promise<PuzzleAgentResult> {
   // Final archive uniqueness gate — never ship a recycled answer
   const { isAnswerRegistered } = await import("../../learning/answer-registry");
@@ -286,6 +329,11 @@ async function finalizeWinner(
       generationAttempts: ranked.length,
       thinkingSummary,
       visualStyleId: chosen.visual.styleId,
+      estimatedSolveRate: chosen.playerSim?.estimatedSolveRate,
+      simCalibrationBias:
+        simCalibration && simCalibration.sampleSize >= 6
+          ? simCalibration.adjustment
+          : undefined,
     },
     status: "success",
     recommendations: [

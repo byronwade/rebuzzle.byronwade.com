@@ -136,6 +136,59 @@ interface AIError {
   tags: string[];
 }
 
+interface GenerationHealthPayload {
+  health: {
+    auditsLast7d: number;
+    successRate: number;
+    fallbackRate: number;
+    apexShare: number;
+    avgQuality: number | null;
+    lastSuccessAt: string | null;
+  };
+  playerPressure: {
+    finalPlays: number;
+    solveRate: number;
+    medianSolveSeconds: number | null;
+    abandonRate: number;
+    tooEasy: boolean;
+    tooHard: boolean;
+    difficultyDelta: number;
+    notes: string[];
+  };
+  adaptiveDifficulty: {
+    baseline: number;
+    delta: number;
+    target: number;
+    tierLabel: string;
+    reason: string;
+  };
+  recentAudits: Array<{
+    id: string;
+    dateString: string;
+    engine: string;
+    status: string;
+    targetDifficulty: number;
+    techniqueId?: string;
+    qualityScore?: number;
+    funScore?: number;
+    estimatedSolveRate?: number;
+    createdAt: string;
+  }>;
+  recentLearningEvents: Array<{
+    id: string;
+    eventType: string;
+    status: string;
+    change?: {
+      parameter?: string;
+      oldValue?: unknown;
+      newValue?: unknown;
+      reason?: string;
+    };
+    timestamp: string;
+  }>;
+  generatedAt: string;
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -146,6 +199,8 @@ export function AIInsightsTab() {
   const [analytics, setAnalytics] = useState<AIAnalyticsOverview | null>(null);
   const [decisions, setDecisions] = useState<AIDecision[]>([]);
   const [errors, setErrors] = useState<AIError[]>([]);
+  const [generationHealth, setGenerationHealth] = useState<GenerationHealthPayload | null>(null);
+  const [generationLoading, setGenerationLoading] = useState(false);
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -211,11 +266,29 @@ export function AIInsightsTab() {
     }
   }, [dateRange]);
 
+  const fetchGenerationHealth = useCallback(async () => {
+    setGenerationLoading(true);
+    try {
+      const response = await fetch("/api/admin/ai/generation-health");
+      if (response.ok) {
+        const data = (await response.json()) as GenerationHealthPayload & {
+          success?: boolean;
+        };
+        setGenerationHealth(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch generation health:", error);
+    } finally {
+      setGenerationLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAnalytics();
     fetchDecisions();
     fetchErrors();
-  }, [fetchAnalytics, fetchDecisions, fetchErrors]);
+    fetchGenerationHealth();
+  }, [fetchAnalytics, fetchDecisions, fetchErrors, fetchGenerationHealth]);
 
   const handlePresetChange = (preset: string) => {
     const now = new Date();
@@ -273,6 +346,7 @@ export function AIInsightsTab() {
               fetchAnalytics();
               fetchDecisions();
               fetchErrors();
+              fetchGenerationHealth();
             }}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -302,7 +376,7 @@ export function AIInsightsTab() {
           </TabsTrigger>
           <TabsTrigger value="learning">
             <Sparkles className="mr-2 h-4 w-4" />
-            Learning
+            Generation
           </TabsTrigger>
           <TabsTrigger value="config">
             <Settings className="mr-2 h-4 w-4" />
@@ -781,30 +855,227 @@ export function AIInsightsTab() {
           </Card>
         </TabsContent>
 
-        {/* Learning Tab */}
+        {/* Generation / Learning Health Tab */}
         <TabsContent value="learning" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Automatic Learning</CardTitle>
-              <CardDescription>
-                AI automatically learns from user feedback to improve quality
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <Sparkles className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  Learning loop is active. The AI will automatically adjust
-                  parameters based on feedback.
-                </p>
-                {analytics && analytics.overview.learningEventsApplied > 0 && (
-                  <p className="mt-2 text-sm">
-                    {analytics.overview.learningEventsApplied} improvements applied
-                  </p>
-                )}
+          {generationLoading && !generationHealth ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {[...Array(8)].map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+          ) : generationHealth ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <MetricCard
+                  title="Generations (7d)"
+                  value={generationHealth.health.auditsLast7d.toString()}
+                  icon={<Sparkles className="h-4 w-4" />}
+                  subtitle="Audit trail rows"
+                />
+                <MetricCard
+                  title="Publish Success"
+                  value={formatPercent(generationHealth.health.successRate)}
+                  icon={<Target className="h-4 w-4" />}
+                  subtitle={`Fallback ${formatPercent(generationHealth.health.fallbackRate)}`}
+                />
+                <MetricCard
+                  title="Apex Share"
+                  value={formatPercent(generationHealth.health.apexShare)}
+                  icon={<Cpu className="h-4 w-4" />}
+                  subtitle="Tournament engine"
+                />
+                <MetricCard
+                  title="Avg Quality"
+                  value={
+                    generationHealth.health.avgQuality !== null
+                      ? generationHealth.health.avgQuality.toFixed(0)
+                      : "—"
+                  }
+                  icon={<Zap className="h-4 w-4" />}
+                  subtitle="Rubric / quality score"
+                />
+                <MetricCard
+                  title="Adaptive Target"
+                  value={`${generationHealth.adaptiveDifficulty.target}`}
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  subtitle={`${generationHealth.adaptiveDifficulty.tierLabel} · Δ${generationHealth.adaptiveDifficulty.delta >= 0 ? "+" : ""}${generationHealth.adaptiveDifficulty.delta}`}
+                />
+                <MetricCard
+                  title="Solve Rate (7d)"
+                  value={formatPercent(generationHealth.playerPressure.solveRate)}
+                  icon={<Activity className="h-4 w-4" />}
+                  subtitle={`${generationHealth.playerPressure.finalPlays} finals`}
+                />
+                <MetricCard
+                  title="Median Solve"
+                  value={
+                    generationHealth.playerPressure.medianSolveSeconds !== null
+                      ? `${Math.round(generationHealth.playerPressure.medianSolveSeconds)}s`
+                      : "—"
+                  }
+                  icon={<Clock className="h-4 w-4" />}
+                  subtitle={
+                    generationHealth.playerPressure.tooEasy
+                      ? "Pressure: too easy"
+                      : generationHealth.playerPressure.tooHard
+                        ? "Pressure: too hard"
+                        : "Pressure: stable"
+                  }
+                />
+                <MetricCard
+                  title="Abandon Rate"
+                  value={formatPercent(generationHealth.playerPressure.abandonRate)}
+                  icon={<AlertTriangle className="h-4 w-4" />}
+                  subtitle="Final plays"
+                />
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Adaptive Difficulty</CardTitle>
+                    <CardDescription>Schedule spine + live learning delta</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <p>
+                      Baseline {generationHealth.adaptiveDifficulty.baseline} → target{" "}
+                      {generationHealth.adaptiveDifficulty.target} (
+                      {generationHealth.adaptiveDifficulty.tierLabel})
+                    </p>
+                    <p className="text-muted-foreground">
+                      {generationHealth.adaptiveDifficulty.reason}
+                    </p>
+                    {generationHealth.playerPressure.notes.length > 0 && (
+                      <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                        {generationHealth.playerPressure.notes.map((note) => (
+                          <li key={note}>{note}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Learning Events</CardTitle>
+                    <CardDescription>Calibration pulses from play + perception</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {generationHealth.recentLearningEvents.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Parameter</TableHead>
+                            <TableHead>Change</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {generationHealth.recentLearningEvents.slice(0, 8).map((event) => (
+                            <TableRow key={event.id}>
+                              <TableCell className="font-mono text-xs">
+                                {event.change?.parameter ?? event.eventType}
+                              </TableCell>
+                              <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
+                                {event.change?.reason ??
+                                  `${String(event.change?.oldValue ?? "")} → ${String(event.change?.newValue ?? "")}`}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{event.status}</Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No learning events yet</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Generation Audits</CardTitle>
+                  <CardDescription>
+                    Every publish attempt — Apex, Eve, and fallbacks
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {generationHealth.recentAudits.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Engine</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Technique</TableHead>
+                          <TableHead>Quality</TableHead>
+                          <TableHead>Target</TableHead>
+                          <TableHead>Est. Solve</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {generationHealth.recentAudits.map((audit) => (
+                          <TableRow key={audit.id}>
+                            <TableCell className="font-mono text-xs">
+                              {audit.dateString}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{audit.engine}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  audit.status === "success"
+                                    ? "default"
+                                    : audit.status === "fallback"
+                                      ? "secondary"
+                                      : "destructive"
+                                }
+                              >
+                                {audit.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {audit.techniqueId ?? "—"}
+                            </TableCell>
+                            <TableCell>
+                              {typeof audit.qualityScore === "number"
+                                ? audit.qualityScore.toFixed(0)
+                                : "—"}
+                            </TableCell>
+                            <TableCell>{audit.targetDifficulty}</TableCell>
+                            <TableCell>
+                              {typeof audit.estimatedSolveRate === "number"
+                                ? `${Math.round(audit.estimatedSolveRate * 100)}%`
+                                : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="py-8 text-center text-muted-foreground">
+                      No generation audits yet — run daily generate or regenerate
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Sparkles className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    Generation health unavailable. Confirm admin access and that audits are
+                    being written.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Config Tab */}

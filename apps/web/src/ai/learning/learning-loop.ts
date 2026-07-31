@@ -172,6 +172,28 @@ export async function runLearningCalibration(input?: {
     // non-blocking
   }
 
+  // Mark recent difficulty perception feedback as consumed by this calibration
+  try {
+    await getCollection("aiFeedback").updateMany(
+      {
+        feedbackType: "difficulty_accuracy",
+        processedForLearning: false,
+      },
+      {
+        $set: {
+          processedForLearning: true,
+          learningImpact: {
+            appliedAt: new Date(),
+            adjustmentType: "targetDifficulty",
+            adjustmentValue: adaptive.delta,
+          },
+        },
+      }
+    );
+  } catch {
+    // non-blocking
+  }
+
   return {
     computedAt: new Date().toISOString(),
     adaptive,

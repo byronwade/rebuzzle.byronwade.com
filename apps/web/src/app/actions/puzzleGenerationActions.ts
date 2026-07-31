@@ -295,6 +295,8 @@ async function getOrGenerateDailyPuzzle(
         learningDifficultyDelta: difficultyPlan.delta,
         learningReason: difficultyPlan.reason,
         selfLearning: true,
+        estimatedSolveRate: result.metadata.estimatedSolveRate,
+        simCalibrationBias: result.metadata.simCalibrationBias,
       },
     });
 
@@ -337,6 +339,8 @@ async function getOrGenerateDailyPuzzle(
       uniquenessScore: result.metadata.uniquenessScore,
       fingerprint: result.metadata.fingerprint,
       answerKey: normalizeAnswerKey(result.puzzle.answer),
+      estimatedSolveRate: result.metadata.estimatedSolveRate,
+      simCalibrationBias: result.metadata.simCalibrationBias,
       durationMs: Date.now() - genStarted,
     });
 

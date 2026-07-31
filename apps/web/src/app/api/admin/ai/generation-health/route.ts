@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import {
   getGenerationSystemHealth,
   listRecentGenerationAudits,
+  loadSimCalibration,
   measureWindowPerformance,
   resolveAdaptiveDifficultyForDate,
 } from "@/ai/learning";
-import { aiLearningEventOps } from "@/db/ai-operations";
+import { aiFeedbackOps, aiLearningEventOps } from "@/db/ai-operations";
 import { verifyAdminAccess } from "@/lib/admin-auth";
 
 /**
@@ -19,13 +20,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Admin access required" }, { status: 401 });
     }
 
-    const [health, window, adaptive, audits, learningEvents] = await Promise.all([
-      getGenerationSystemHealth(),
-      measureWindowPerformance({ lookbackDays: 7, minFinals: 8 }),
-      resolveAdaptiveDifficultyForDate(new Date()),
-      listRecentGenerationAudits(20),
-      aiLearningEventOps.findRecent(20),
-    ]);
+    const [health, window, adaptive, audits, learningEvents, simCalibration, unprocessedFeedback] =
+      await Promise.all([
+        getGenerationSystemHealth(),
+        measureWindowPerformance({ lookbackDays: 7, minFinals: 8 }),
+        resolveAdaptiveDifficultyForDate(new Date()),
+        listRecentGenerationAudits(20),
+        aiLearningEventOps.findRecent(20),
+        loadSimCalibration(),
+        aiFeedbackOps.countUnprocessed(),
+      ]);
 
     return NextResponse.json({
       success: true,
@@ -41,6 +45,8 @@ export async function GET(request: Request) {
         notes: window.notes,
       },
       adaptiveDifficulty: adaptive,
+      simCalibration,
+      unprocessedFeedback,
       recentAudits: audits,
       recentLearningEvents: learningEvents,
       generatedAt: new Date().toISOString(),

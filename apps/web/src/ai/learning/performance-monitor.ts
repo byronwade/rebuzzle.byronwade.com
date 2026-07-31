@@ -50,6 +50,40 @@ function avg(values: number[]): number | null {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
+async function loadPerceptionVotes(lookbackDays: number): Promise<{
+  tooEasy: number;
+  justRight: number;
+  tooHard: number;
+}> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - lookbackDays);
+  try {
+    const docs = (await getCollection("aiFeedback")
+      .find({
+        feedbackType: "difficulty_accuracy",
+        timestamp: { $gte: cutoff },
+      })
+      .project({ metrics: 1, context: 1 })
+      .limit(500)
+      .toArray()) as Array<{
+      metrics?: { tooEasy?: boolean; tooHard?: boolean };
+      context?: { difficultyPerception?: number };
+    }>;
+
+    let tooEasy = 0;
+    let tooHard = 0;
+    let justRight = 0;
+    for (const doc of docs) {
+      if (doc.metrics?.tooEasy) tooEasy += 1;
+      else if (doc.metrics?.tooHard) tooHard += 1;
+      else justRight += 1;
+    }
+    return { tooEasy, justRight, tooHard };
+  } catch {
+    return { tooEasy: 0, justRight: 0, tooHard: 0 };
+  }
+}
+
 /**
  * Aggregate final daily plays into a difficulty-pressure signal.
  * Fast solves + high solve rate → push harder tomorrow.
@@ -166,6 +200,28 @@ export async function measureWindowPerformance(input?: {
       notes.push("Healthy challenge band — hold difficulty, sharpen aha craft");
     }
 
+    // Blend explicit difficulty perception votes (when enough exist)
+    try {
+      const { aggregatePerceptionDelta } = await import("./difficulty-perception");
+      const votes = await loadPerceptionVotes(lookbackDays);
+      const perception = aggregatePerceptionDelta(votes);
+      if (perception.delta !== 0) {
+        // Soft blend: perception can nudge ±1 beyond behavioral delta
+        const blended = Math.max(
+          -2,
+          Math.min(2, difficultyDelta + Math.sign(perception.delta))
+        );
+        if (blended !== difficultyDelta) {
+          difficultyDelta = blended;
+          notes.push(...perception.notes);
+        } else {
+          notes.push(...perception.notes);
+        }
+      }
+    } catch {
+      // non-blocking
+    }
+
     if (!notes.length) {
       notes.push("Performance within target band — maintain schedule with light adaptation");
     }
@@ -231,13 +287,37 @@ export async function measurePuzzlePerformance(puzzleId: string): Promise<{
       suggestedActualDifficultyDelta = 1; // was harder than labeled
     }
 
+    let perceivedTooEasy = suggestedActualDifficultyDelta < 0;
+    let perceivedTooHard = suggestedActualDifficultyDelta > 0;
+
+    try {
+      const feedback = (await getCollection("aiFeedback")
+        .find({ puzzleId, feedbackType: "difficulty_accuracy" })
+        .project({ metrics: 1 })
+        .limit(100)
+        .toArray()) as Array<{ metrics?: { tooEasy?: boolean; tooHard?: boolean } }>;
+      if (feedback.length >= 3) {
+        const easy = feedback.filter((f) => f.metrics?.tooEasy).length;
+        const hard = feedback.filter((f) => f.metrics?.tooHard).length;
+        perceivedTooEasy = easy / feedback.length >= 0.4;
+        perceivedTooHard = hard / feedback.length >= 0.4;
+        if (perceivedTooEasy && suggestedActualDifficultyDelta >= 0) {
+          suggestedActualDifficultyDelta = -1;
+        } else if (perceivedTooHard && suggestedActualDifficultyDelta <= 0) {
+          suggestedActualDifficultyDelta = 1;
+        }
+      }
+    } catch {
+      // keep behavioral signals
+    }
+
     return {
       puzzleId,
       finals: finals.length,
       solveRate,
       medianSolveSeconds,
-      perceivedTooEasy: suggestedActualDifficultyDelta < 0,
-      perceivedTooHard: suggestedActualDifficultyDelta > 0,
+      perceivedTooEasy,
+      perceivedTooHard,
       suggestedActualDifficultyDelta,
     };
   } catch {

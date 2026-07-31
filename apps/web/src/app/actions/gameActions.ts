@@ -126,6 +126,7 @@ export async function fetchGameOverSolution(): Promise<{
   difficulty: number;
   puzzleType?: PuzzleType;
   locked: boolean;
+  puzzleId?: string;
 }> {
   try {
     const [userId, puzzleResult] = await Promise.all([getCurrentUserId(), getTodaysPuzzle()]);
@@ -147,6 +148,7 @@ export async function fetchGameOverSolution(): Promise<{
       difficulty: toDifficulty(puzzle.difficulty),
       puzzleType: (puzzle.puzzleType || "rebus") as PuzzleType,
       locked,
+      puzzleId: puzzle.id,
     };
   } catch (error) {
     console.error("[fetchGameOverSolution] Error:", error);

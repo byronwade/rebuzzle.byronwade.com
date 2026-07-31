@@ -163,6 +163,10 @@ export interface Puzzle {
     learningDifficultyDelta?: number;
     learningReason?: string;
     selfLearning?: boolean;
+    /** Apex player-sim estimate at publish time (0–1) */
+    estimatedSolveRate?: number;
+    /** Rolling sim bias applied when publishing */
+    simCalibrationBias?: number;
   };
   // Legacy field for backward compatibility (will be populated from puzzle field)
   rebusPuzzle?: string;

@@ -23,6 +23,8 @@ export type GenerationAuditRecord = {
   uniquenessScore?: number;
   fingerprint?: string;
   answerKey?: string;
+  estimatedSolveRate?: number;
+  simCalibrationBias?: number;
   candidateCount?: number;
   durationMs?: number;
   error?: string;
