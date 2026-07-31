@@ -1,8 +1,7 @@
 /**
  * Puzzle Loading Skeleton
  *
- * Shows while puzzle data is loading for better perceived performance.
- * Supports dark mode and reduced motion preferences.
+ * Matches the play-stage layout so the board feels instant while streaming.
  */
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +15,7 @@ interface PuzzleSkeletonProps {
 }
 
 /**
- * Full puzzle loading skeleton with all sections
+ * Full puzzle loading skeleton — mirrors GameBoard play stage + dock
  */
 export function PuzzleSkeleton({ variant = "full", className }: PuzzleSkeletonProps) {
   if (variant === "minimal") {
@@ -28,47 +27,42 @@ export function PuzzleSkeleton({ variant = "full", className }: PuzzleSkeletonPr
   }
 
   return (
-    <div className={cn("mx-auto max-w-4xl px-4 py-3 md:px-6", className)}>
-      <main className="space-y-6" role="status" aria-label="Loading puzzle">
-        {/* Status Bar Skeleton */}
-        <section
-          aria-hidden="true"
-          className="flex items-center justify-between rounded-2xl border border-border/50 bg-card/80 p-4 backdrop-blur-sm"
-        >
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-8 w-24 rounded-full" />
-            <Skeleton className="h-8 w-20 rounded-full" />
-          </div>
+    <div
+      className={cn("flex h-full min-h-[70vh] flex-col", className)}
+      role="status"
+      aria-label="Loading puzzle"
+    >
+      <main className="flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6">
+        <div className="mb-[clamp(0.75rem,2.5vh,1.25rem)] flex w-full max-w-2xl items-start justify-between gap-3">
+          <Skeleton className="h-8 w-28 rounded-full" />
           <Skeleton className="h-8 w-20 rounded-full" />
-        </section>
+        </div>
 
-        {/* Puzzle Display Skeleton */}
-        <section aria-hidden="true" className="space-y-4 text-center">
-          <div className="rounded-3xl border-2 border-dashed border-border bg-card p-8 md:p-12">
-            <Skeleton className="mx-auto h-16 w-3/4 md:h-20" />
-            <Skeleton className="mx-auto mt-4 h-8 w-1/2" />
+        <section className="w-full max-w-2xl space-y-4 text-center" aria-hidden="true">
+          <div className="rounded-3xl border border-border/60 bg-card/60 px-6 py-10 md:py-14">
+            <Skeleton className="mx-auto h-14 w-3/4 md:h-16" />
+            <Skeleton className="mx-auto mt-4 h-6 w-1/2" />
           </div>
-          <Skeleton className="mx-auto h-5 w-64" />
+          <Skeleton className="mx-auto h-4 w-40" />
         </section>
 
-        {/* Answer Input Skeleton */}
-        <section aria-hidden="true" className="space-y-4">
-          <Skeleton className="h-24 w-full rounded-2xl" />
-        </section>
-
-        {/* Submit Button Skeleton */}
-        <Skeleton className="h-14 w-full rounded-2xl" />
-
-        {/* Screen reader announcement */}
-        <span className="sr-only">Loading puzzle, please wait...</span>
+        <div className="mt-[clamp(0.75rem,2.5vh,1.5rem)] w-full max-w-2xl space-y-2" aria-hidden="true">
+          <Skeleton className="h-8 w-2/3 rounded-full" />
+        </div>
       </main>
+
+      <section className="shrink-0 px-4 pt-3 pb-safe-lg md:px-6" aria-hidden="true">
+        <div className="mx-auto max-w-2xl space-y-2">
+          <Skeleton className="h-14 w-full rounded-2xl" />
+          <Skeleton className="h-3 w-48" />
+        </div>
+      </section>
+
+      <span className="sr-only">Loading puzzle</span>
     </div>
   );
 }
 
-/**
- * Compact skeleton for smaller spaces
- */
 function CompactSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-4 p-4", className)} role="status" aria-label="Loading">
@@ -77,14 +71,11 @@ function CompactSkeleton({ className }: { className?: string }) {
         <Skeleton className="mx-auto mt-3 h-4 w-1/2" />
       </div>
       <Skeleton className="h-12 w-full rounded-xl" />
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">Loading</span>
     </div>
   );
 }
 
-/**
- * Minimal skeleton for tight spaces
- */
 function MinimalSkeleton({ className }: { className?: string }) {
   return (
     <div
@@ -97,7 +88,7 @@ function MinimalSkeleton({ className }: { className?: string }) {
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/2" />
       </div>
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">Loading</span>
     </div>
   );
 }

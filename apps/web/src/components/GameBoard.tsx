@@ -25,6 +25,7 @@ import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
 import { calculateScore, determineAchievements } from "./CelebrationOverlay";
 import { useGameContext } from "./GameContext";
+import { PuzzleSkeleton } from "./PuzzleSkeleton";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { GuessTrail } from "./GuessTrail";
 import { HintBadge } from "./HintBadge";
@@ -743,16 +744,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     handleKeyPress,
   ]);
 
-  // Only block on the initial auth check — guest warm happens in the background
+  // Rare: auth still resolving without a seeded session — keep puzzle-shaped shell
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading puzzle...</p>
-        </div>
-      </div>
-    );
+    return <PuzzleSkeleton />;
   }
 
   return (

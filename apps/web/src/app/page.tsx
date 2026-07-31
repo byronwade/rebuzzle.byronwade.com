@@ -3,8 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
+import { HomePageSkeleton } from "@/components/page-skeletons";
 import { PrefetchGuestClient } from "@/components/prefetch-guest-client";
-import { PuzzleSkeleton } from "@/components/PuzzleSkeleton";
 import { generatePuzzleMetadata } from "@/lib/seo/metadata";
 import {
   generateFAQPageSchema,
@@ -43,17 +43,6 @@ export const viewport: Viewport = {
 interface SearchParams {
   preview?: string;
   test?: string;
-}
-
-/**
- * Static shell component - prerendered instantly with skeleton
- */
-function PuzzleShell() {
-  return (
-    <Layout>
-      <PuzzleSkeleton />
-    </Layout>
-  );
 }
 
 /**
@@ -365,7 +354,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
   const params = await searchParams;
 
   return (
-    <Suspense fallback={<PuzzleShell />}>
+    <Suspense fallback={<HomePageSkeleton />}>
       <PuzzleContent
         params={{
           preview: params?.preview === "true",

@@ -1,18 +1,8 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import Layout from "@/components/Layout";
 import { fetchGameOverSolution } from "@/app/actions/gameActions";
+import { GameOverPageSkeleton } from "@/components/page-skeletons";
 import GameOverClient from "./game-over-client";
-
-function GameOverFallback() {
-  return (
-    <Layout>
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
-      </div>
-    </Layout>
-  );
-}
 
 async function GameOverContent({
   searchParams,
@@ -46,7 +36,7 @@ export default function GameOverPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   return (
-    <Suspense fallback={<GameOverFallback />}>
+    <Suspense fallback={<GameOverPageSkeleton />}>
       <GameOverContent searchParams={searchParams} />
     </Suspense>
   );

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
+import { AuthFormSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -164,17 +165,7 @@ export default function ResetPasswordPage() {
   };
 
   if (!token) {
-    return (
-      <Layout>
-        <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
-          <div className="flex justify-center">
-            <Card className="w-full max-w-md p-8">
-              <p className="text-center text-muted-foreground">Loading...</p>
-            </Card>
-          </div>
-        </div>
-      </Layout>
-    );
+    return <AuthFormSkeleton />;
   }
 
   return (
