@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
+import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
 import { verifyToken } from "@/lib/jwt";
-
-const AUTH_COOKIE = "rebuzzle_auth";
 
 export type ServerSessionUser = {
   id: string;
@@ -25,7 +24,8 @@ export type ServerSession = {
 export async function getServerSession(): Promise<ServerSession> {
   try {
     const cookieStore = await cookies();
-    const authToken = cookieStore.get(AUTH_COOKIE)?.value;
+    const authToken =
+      cookieStore.get(AUTH_COOKIE_NAME)?.value || cookieStore.get(LEGACY_AUTH_COOKIE_NAME)?.value;
 
     if (!authToken) {
       return { authenticated: false, user: null };

@@ -494,6 +494,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       try {
         const response = await fetch("/api/puzzles/guess", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             puzzleId: gameData.id,
