@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { db } from "@/db";
 import { verifyToken } from "@/lib/jwt";
 
 const AUTH_COOKIE = "rebuzzle_auth";
@@ -19,6 +18,9 @@ export type ServerSession = {
 /**
  * Read the auth cookie on the server and return a session suitable for
  * seeding the client AuthProvider (avoids a client waterfall on first paint).
+ *
+ * Uses JWT claims only — no Mongo round-trip on the document critical path.
+ * Stale users are corrected on next /api/auth/session refresh.
  */
 export async function getServerSession(): Promise<ServerSession> {
   try {
@@ -34,19 +36,15 @@ export async function getServerSession(): Promise<ServerSession> {
       return { authenticated: false, user: null };
     }
 
-    const user = await db.userOps.findById(payload.userId);
-    if (!user) {
-      return { authenticated: false, user: null };
-    }
-
-    const isGuest = user.email?.endsWith("@guest.rebuzzle.local") ?? false;
+    const email = payload.email || "";
+    const isGuest = email.endsWith("@guest.rebuzzle.local");
 
     return {
       authenticated: true,
       user: {
-        id: user.id,
-        username: user.username || user.email?.split("@")[0] || "User",
-        email: user.email || "",
+        id: payload.userId,
+        username: payload.username || email.split("@")[0] || "User",
+        email,
         isGuest,
       },
     };

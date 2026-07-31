@@ -76,8 +76,13 @@ const FALLBACK_PUZZLES = [
  * @param dateString - Date string in YYYY-MM-DD format
  * @param puzzleType - Optional puzzle type (e.g., "rebus", "word-puzzle")
  */
-async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string) {
-  logger.info("Getting puzzle for date", { dateString });
+async function getOrGenerateDailyPuzzle(
+  dateString: string,
+  puzzleType?: string,
+  options?: { allowAiGenerate?: boolean }
+) {
+  const allowAiGenerate = options?.allowAiGenerate !== false;
+  logger.info("Getting puzzle for date", { dateString, allowAiGenerate });
 
   // STEP 1: Cross-request cached DB read via Cache Components ("use cache")
   try {
@@ -110,6 +115,41 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
       "Final pre-generation check failed",
       finalCheckError instanceof Error ? finalCheckError : new Error(String(finalCheckError))
     );
+  }
+
+  // Interactive play path: never block TTFB on Eve — persist a fast fallback.
+  // Cron / regenerate / admin regenerate should call with allowAiGenerate: true.
+  if (!allowAiGenerate) {
+    const [y, m, d] = dateString.split("-").map(Number);
+    const dayOfYear = Math.floor(
+      (Date.UTC(y!, (m ?? 1) - 1, d ?? 1) - Date.UTC(y!, 0, 0)) / 86_400_000
+    );
+    const fallback = FALLBACK_PUZZLES[dayOfYear % FALLBACK_PUZZLES.length]!;
+    const persisted = await persistDailyPuzzle({
+      dateString,
+      puzzleDisplay: fallback.rebusPuzzle,
+      puzzleType: "rebus",
+      answer: fallback.answer,
+      difficulty: fallback.difficulty,
+      category: fallback.category,
+      explanation: fallback.explanation,
+      hints: fallback.hints,
+      aiGenerated: false,
+      rebusPuzzle: fallback.rebusPuzzle,
+      metadataExtra: { fallbackReason: "Play-path fast seed (AI deferred to cron)" },
+    });
+    return {
+      id: persisted.id,
+      ...fallback,
+      puzzle: fallback.rebusPuzzle,
+      puzzleType: "rebus" as const,
+      date: dateString,
+      topic: fallback.category,
+      relevanceScore: 7,
+      aiGenerated: false,
+      fromDatabase: true,
+      fallbackReason: "Play-path fast seed",
+    };
   }
 
   // STEP 2: No puzzle in database — Eve tool agent + AI Gateway (ONCE per day)
@@ -306,13 +346,17 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
  * @param puzzleType - Optional puzzle type (e.g., "rebus", "word-puzzle"). Defaults to DEFAULT_PUZZLE_TYPE or "rebus"
  * @param dateString - Optional date string in YYYY-MM-DD format. If not provided, uses today's date.
  */
-export async function getTodaysPuzzle(puzzleType?: string, dateString?: string) {
+export async function getTodaysPuzzle(
+  puzzleType?: string,
+  dateString?: string,
+  options?: { allowAiGenerate?: boolean }
+) {
   try {
     // Use provided date string or get today's date
     // NOTE: If called from generateMetadata, dateString should be provided
     // after accessing headers/cookies to satisfy Next.js 16 requirements
     const todayString = dateString || getTodayDateString();
-    const puzzle = await getOrGenerateDailyPuzzle(todayString, puzzleType);
+    const puzzle = await getOrGenerateDailyPuzzle(todayString, puzzleType, options);
 
     return {
       success: true,

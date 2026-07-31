@@ -1,11 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { DevToolsPanel } from "./DevToolsPanel";
 import { Footer } from "./Footer";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
+
+const DevToolsPanel = dynamic(
+  () => import("./DevToolsPanel").then((m) => m.DevToolsPanel),
+  { ssr: false }
+);
 
 interface LayoutProps {
   children: ReactNode;

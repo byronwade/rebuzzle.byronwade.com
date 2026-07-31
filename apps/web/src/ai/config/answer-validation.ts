@@ -175,10 +175,11 @@ export const IGNORABLE_WORDS: string[] = ["a", "an", "the"];
 
 export const ANSWER_VALIDATION_CONFIG: AnswerValidationConfig = {
   enabled: true,
-  alwaysUseAI: true, // Always use AI for best semantic matching
+  // Prefer fast local matching; AI only for mid-similarity near-misses
+  alwaysUseAI: false,
   quickAcceptThreshold: 0.98, // Skip AI if nearly exact
-  aiMinimumSimilarity: 0.3, // Don't bother AI for very different answers
-  aiTimeoutMs: 5000, // Don't block UX too long
+  aiMinimumSimilarity: 0.45, // Don't bother AI for very different answers
+  aiTimeoutMs: 1800, // Keep guess INP snappy
   tolerateWordOrderVariations: true,
   expandContractions: true,
   ignorePunctuation: true,

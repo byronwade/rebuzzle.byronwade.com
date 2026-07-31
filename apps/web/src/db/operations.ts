@@ -381,6 +381,7 @@ export const puzzleAttemptOps = {
 
   /**
    * Check if user has already finalized today's puzzle (won or out of attempts).
+   * Hot path for home lock — no countDocuments.
    */
   async hasTodayAttempt(
     userId: string,
@@ -398,31 +399,31 @@ export const puzzleAttemptOps = {
 
     // Prefer puzzleDate + isFinal (new lock path)
     const finalAttempt =
-      (await collection.findOne({
-        userId,
-        puzzleDate: dateKey,
-        isFinal: true,
-      })) ||
-      // Legacy fallback: finals without puzzleDate/isFinal
-      (await collection.findOne({
-        userId,
-        attemptedAt: {
-          $gte: new Date(`${dateKey}T00:00:00.000Z`),
-          $lt: new Date(`${dateKey}T23:59:59.999Z`),
+      (await collection.findOne(
+        {
+          userId,
+          puzzleDate: dateKey,
+          isFinal: true,
         },
-        $or: [{ isCorrect: true }, { abandoned: true }],
-      }));
-
-    const attemptsUsed = await collection.countDocuments({
-      userId,
-      puzzleDate: dateKey,
-    });
+        { projection: { isCorrect: 1, puzzleId: 1 } }
+      )) ||
+      // Legacy fallback: finals without puzzleDate/isFinal
+      (await collection.findOne(
+        {
+          userId,
+          attemptedAt: {
+            $gte: new Date(`${dateKey}T00:00:00.000Z`),
+            $lt: new Date(`${dateKey}T23:59:59.999Z`),
+          },
+          $or: [{ isCorrect: true }, { abandoned: true }],
+        },
+        { projection: { isCorrect: 1, puzzleId: 1 } }
+      ));
 
     return {
       hasAttempt: !!finalAttempt,
       wasSuccessful: finalAttempt?.isCorrect ?? false,
       puzzleId: finalAttempt?.puzzleId,
-      attemptsUsed,
     };
   },
 
@@ -447,14 +448,58 @@ export const puzzleAttemptOps = {
   /** Max hintsUsed reported on any guess today (prevents under-reporting later). */
   async maxHintsUsedToday(userId: string, puzzleDate: string): Promise<number> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const top = await collection.findOne(
+      { userId, puzzleDate },
+      { sort: { hintsUsed: -1 }, projection: { hintsUsed: 1 } }
+    );
+    return typeof top?.hintsUsed === "number" ? top.hintsUsed : 0;
+  },
+
+  /**
+   * Single round-trip for guess handling: lock + count + first guess + max hints.
+   */
+  async getTodayGuessContext(
+    userId: string,
+    puzzleDate: string
+  ): Promise<{
+    hasFinal: boolean;
+    wasSuccessful: boolean;
+    guessCount: number;
+    firstGuessAt: Date | null;
+    maxHintsUsed: number;
+  }> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
     const rows = await collection
       .find({ userId, puzzleDate })
-      .project({ hintsUsed: 1 })
+      .project({ isFinal: 1, isCorrect: 1, abandoned: 1, attemptedAt: 1, hintsUsed: 1 })
       .toArray();
-    return rows.reduce((max, row) => {
-      const n = typeof row.hintsUsed === "number" ? row.hintsUsed : 0;
-      return Math.max(max, n);
-    }, 0);
+
+    let hasFinal = false;
+    let wasSuccessful = false;
+    let firstGuessAt: Date | null = null;
+    let maxHintsUsed = 0;
+
+    for (const row of rows) {
+      if (row.isFinal || row.isCorrect || row.abandoned) {
+        hasFinal = true;
+        if (row.isCorrect) wasSuccessful = true;
+      }
+      if (row.attemptedAt) {
+        const at = new Date(row.attemptedAt);
+        if (!firstGuessAt || at < firstGuessAt) firstGuessAt = at;
+      }
+      if (typeof row.hintsUsed === "number" && row.hintsUsed > maxHintsUsed) {
+        maxHintsUsed = row.hintsUsed;
+      }
+    }
+
+    return {
+      hasFinal,
+      wasSuccessful,
+      guessCount: rows.length,
+      firstGuessAt,
+      maxHintsUsed,
+    };
   },
 
   /** Dev tools: wipe a user's guesses for a UTC day so they can replay. */

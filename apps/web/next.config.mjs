@@ -49,8 +49,10 @@ const nextConfig = {
 
   images: {
     formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 60 * 60 * 24 * 30,
   },
+
+  transpilePackages: ["@rebuzzle/game-logic", "@rebuzzle/config"],
 
   async headers() {
     const isProduction = process.env.NODE_ENV === "production";
@@ -109,6 +111,24 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value: cspDirectives,
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/:file(.*)\\.(ico|png|jpg|jpeg|gif|webp|avif|svg|woff2)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
           },
         ],
       },

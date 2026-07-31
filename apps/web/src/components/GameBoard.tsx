@@ -24,7 +24,8 @@ import {
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
-import { calculateScore, determineAchievements } from "./CelebrationOverlay";
+import { determineAchievements } from "@/lib/game/celebration-achievements";
+import { calculateGamePoints as calculateScore } from "@/lib/gameSettings";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { useGameContext } from "./GameContext";
 import { GuessTrail } from "./GuessTrail";
