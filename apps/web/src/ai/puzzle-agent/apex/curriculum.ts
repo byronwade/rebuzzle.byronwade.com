@@ -3,6 +3,7 @@
  */
 
 import { AI_CONFIG } from "../../config";
+import { loadAllAnswerKeys } from "../../learning/answer-registry";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
 import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
@@ -30,7 +31,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   const minFunScore = AI_CONFIG.puzzleAgent.minFunScore;
   const candidateCount = input.candidateCount ?? AI_CONFIG.puzzleAgent.apex?.candidateCount ?? 3;
 
-  const [diversity, learning] = await Promise.all([
+  const [diversity, learning, archiveKeys] = await Promise.all([
     loadDiversitySnapshot({ lookbackDays: 45 }),
     input.useLearningFeedback === false
       ? Promise.resolve({
@@ -39,25 +40,43 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
           preferPatterns: [] as string[],
           difficultyDriftNotes: [] as string[],
           sampleSize: 0,
+          targetDifficultyDelta: 0,
+          tooEasy: false,
+          tooHard: false,
+          medianSolveSeconds: null as number | null,
+          solveRate: null as number | null,
         })
       : loadLearningDigest(),
+    loadAllAnswerKeys(500),
   ]);
 
-  const banned = new Set(diversity.bannedAnswerKeys);
+  // Ban recent + full archive answers so retired puzzles still block reuse
+  const banned = new Set([...diversity.bannedAnswerKeys, ...archiveKeys]);
   const overused = new Set(diversity.overusedTechniques);
 
-  // Prefer underused techniques from this tier; avoid overused ones
+  // Prefer underused techniques from this tier; avoid overused ones.
+  // When players are finishing too quickly, bias toward harder techniques in-band.
+  const harderBias = learning.tooEasy
+    ? (["false_lead_visual", "nested_homophone", "multi_layer_phonetic", "triple_layer_composition", "rare_but_fair_idiom"] as TechniqueId[])
+    : [];
+
   const preferredTechniques = (
     [
+      ...harderBias.filter((t) => level.techniques.includes(t)),
       ...diversity.underusedTechniques.filter((t) => level.techniques.includes(t)),
       ...level.techniques.filter((t) => !overused.has(t)),
       ...level.techniques,
     ] as TechniqueId[]
   ).filter((t, i, arr) => arr.indexOf(t) === i) as TechniqueId[];
 
-  const avoidTechniques = diversity.overusedTechniques.filter((t) =>
-    level.techniques.includes(t)
-  );
+  const avoidTechniques = [
+    ...diversity.overusedTechniques.filter((t) => level.techniques.includes(t)),
+    ...(learning.tooEasy
+      ? (["simple_compound", "obvious_emoji_sum"] as string[]).filter((t) =>
+          level.techniques.includes(t)
+        )
+      : []),
+  ];
 
   const phraseSuggestions = samplePhraseBank({
     targetDifficulty: input.targetDifficulty,
@@ -72,20 +91,26 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     `Tier ${level.label} (${level.min}–${level.max}), budget ${level.componentBudget.min}–${level.componentBudget.max}.`,
     `Prefer techniques: ${preferredTechniques.slice(0, 4).join(", ")}.`,
     avoidTechniques.length
-      ? `Avoid overused: ${avoidTechniques.slice(0, 3).join(", ")}.`
+      ? `Avoid overused/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`
       : "Technique diversity looks healthy.",
-    `Ban ${banned.size} recent answers.`,
+    `Ban ${banned.size} archived+recent answers (never reuse).`,
     phraseSuggestions.length
       ? `Phrase seeds (inspire, don't copy if banned): ${phraseSuggestions
           .slice(0, 4)
           .map((p) => p.answer)
           .join("; ")}.`
       : "Invent a fresh answer outside the ban list.",
+    learning.enabled && learning.difficultyDriftNotes.length
+      ? `Self-learning: ${learning.difficultyDriftNotes.slice(0, 2).join("; ")}.`
+      : null,
     learning.enabled && learning.avoidPatterns.length
       ? `Learning avoid: ${learning.avoidPatterns.slice(0, 2).join("; ")}.`
       : null,
     learning.enabled && learning.preferPatterns.length
       ? `Learning prefer: ${learning.preferPatterns.slice(0, 2).join("; ")}.`
+      : null,
+    learning.targetDifficultyDelta !== 0
+      ? `Applied difficulty delta: ${learning.targetDifficultyDelta > 0 ? "+" : ""}${learning.targetDifficultyDelta}.`
       : null,
   ]
     .filter(Boolean)

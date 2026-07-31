@@ -232,6 +232,18 @@ export async function POST(request: Request) {
       const pid = puzzle.id;
       after(async () => {
         try {
+          // Self-learning pulse — fast solves raise tomorrow's difficulty
+          const { recordFinalAttemptSignal } = await import("@/ai/learning");
+          await recordFinalAttemptSignal({
+            puzzleId: pid,
+            userId: uid,
+            isCorrect,
+            timeSpentSeconds,
+            attemptNumber,
+            hintsUsed,
+            isArchive,
+          });
+
           await updateUserStats(uid, {
             won: isCorrect,
             attempts: attemptNumber,

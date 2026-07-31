@@ -42,7 +42,32 @@ export async function POST(request: Request) {
 
     logger.info("Starting daily content generation", { triggeredBy });
 
-    logger.info("Generating daily puzzle via Eve");
+    // Self-learning calibration before generation — adapt difficulty from recent play
+    let learning: {
+      target?: number;
+      baseline?: number;
+      delta?: number;
+      reason?: string;
+      eventId?: string;
+    } = {};
+    try {
+      const { runLearningCalibration } = await import("@/ai/learning");
+      const policy = await runLearningCalibration();
+      learning = {
+        target: policy.adaptive.target,
+        baseline: policy.adaptive.baseline,
+        delta: policy.adaptive.delta,
+        reason: policy.adaptive.reason,
+        eventId: policy.eventId,
+      };
+      logger.info("Self-learning calibration applied", learning);
+    } catch (learnError) {
+      logger.warn("Self-learning calibration skipped", {
+        error: learnError instanceof Error ? learnError.message : String(learnError),
+      });
+    }
+
+    logger.info("Generating daily puzzle via Apex/Eve");
     const puzzleResult = await generateNextPuzzle();
 
     if (!puzzleResult.success) {
@@ -61,6 +86,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
+      learning,
       puzzle: {
         success: puzzleResult.success,
         cached: "cached" in puzzleResult ? puzzleResult.cached : undefined,

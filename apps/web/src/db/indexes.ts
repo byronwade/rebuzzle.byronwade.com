@@ -90,6 +90,10 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { active: 1, publishedAt: -1, puzzleType: 1 } },
       // Speeds UTC-day lookups used by findByDate
       { spec: { active: 1, publishedAt: 1 } },
+      // Archive-wide answer uniqueness (active + retired)
+      { spec: { "metadata.answerKey": 1 }, options: { sparse: true } },
+      // Fingerprint lookups for uniqueness tooling
+      { spec: { "metadata.fingerprint": 1 }, options: { sparse: true } },
     ],
   },
 

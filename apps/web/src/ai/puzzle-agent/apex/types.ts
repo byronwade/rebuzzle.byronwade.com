@@ -67,6 +67,12 @@ export type LearningDigest = {
   preferPatterns: string[];
   difficultyDriftNotes: string[];
   sampleSize: number;
+  /** Apply to scheduled difficulty before generation */
+  targetDifficultyDelta: number;
+  tooEasy: boolean;
+  tooHard: boolean;
+  medianSolveSeconds: number | null;
+  solveRate: number | null;
 };
 
 export type GenerationBrief = {

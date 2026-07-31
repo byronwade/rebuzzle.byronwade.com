@@ -2,6 +2,10 @@
 
 import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
+import {
+  baselineDifficultyForDate,
+  resolveAdaptiveDifficultyForDate,
+} from "@/ai/learning";
 import { db } from "@/db";
 import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
@@ -20,18 +24,32 @@ function getTodayDateString(date?: Date): string {
 }
 
 /**
- * Calculate daily difficulty (varies by day of week)
- *
- * NOTE: In Next.js 16, this function should only be called after accessing
- * uncached data. Pass a date parameter when possible.
+ * Adaptive daily difficulty: weekly spine + self-learning pressure from recent play.
  */
-function calculateDailyDifficulty(date?: Date): number {
+async function calculateDailyDifficulty(date?: Date): Promise<{
+  difficulty: number;
+  baseline: number;
+  delta: number;
+  reason: string;
+}> {
   const dateToUse = date || new Date();
-  const dayOfWeek = dateToUse.getUTCDay(); // Use UTC day for consistent behavior across all platforms
-  // Sunday = 5 (moderate), Wednesday = 7 (hardest), balanced across week
-  // Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8 — rotate across the week
-  const difficulties = [5, 4, 6, 8, 7, 5, 4]; // Sun–Sat
-  return difficulties[dayOfWeek] || 5;
+  try {
+    const adaptive = await resolveAdaptiveDifficultyForDate(dateToUse);
+    return {
+      difficulty: adaptive.target,
+      baseline: adaptive.baseline,
+      delta: adaptive.delta,
+      reason: adaptive.reason,
+    };
+  } catch {
+    const baseline = baselineDifficultyForDate(dateToUse);
+    return {
+      difficulty: baseline,
+      baseline,
+      delta: 0,
+      reason: "Learning unavailable — weekly spine only",
+    };
+  }
 }
 
 /**
@@ -136,6 +154,7 @@ async function getOrGenerateDailyPuzzle(
       hints: fallback.hints,
       aiGenerated: false,
       rebusPuzzle: fallback.rebusPuzzle,
+      allowDuplicateAnswer: true,
       metadataExtra: { fallbackReason: "Play-path fast seed (AI deferred to cron)" },
     });
     return {
@@ -163,7 +182,12 @@ async function getOrGenerateDailyPuzzle(
   try {
     // Parse date string to Date object for difficulty calculation
     const puzzleDate = new Date(`${dateString}T00:00:00Z`);
-    const difficulty = calculateDailyDifficulty(puzzleDate);
+    const difficultyPlan = await calculateDailyDifficulty(puzzleDate);
+
+    logger.info("Adaptive difficulty plan", {
+      dateString,
+      ...difficultyPlan,
+    });
 
     // Generate puzzle using AI (Master Orchestrator)
     // Use provided puzzleType, or default to rebus puzzle type for backward compatibility
@@ -171,11 +195,12 @@ async function getOrGenerateDailyPuzzle(
     const typeToUse = puzzleType || process.env.DEFAULT_PUZZLE_TYPE || "rebus";
 
     const result = await generateMasterPuzzle({
-      targetDifficulty: difficulty,
+      targetDifficulty: difficultyPlan.difficulty,
       requireNovelty: true,
-      qualityThreshold: 70,
+      qualityThreshold: 74,
       maxAttempts: 4,
       puzzleType: typeToUse,
+      useLearningFeedback: true,
     });
 
     logger.info("AI puzzle generation successful", {
@@ -251,6 +276,10 @@ async function getOrGenerateDailyPuzzle(
         calibratedDifficulty: result.metadata.calibratedDifficulty,
         generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
         engine: result.metadata.engine ?? "eve",
+        learningBaselineDifficulty: difficultyPlan.baseline,
+        learningDifficultyDelta: difficultyPlan.delta,
+        learningReason: difficultyPlan.reason,
+        selfLearning: true,
       },
     });
 
@@ -329,6 +358,7 @@ async function getOrGenerateDailyPuzzle(
       hints: fallback.hints,
       aiGenerated: false,
       rebusPuzzle: fallback.rebusPuzzle,
+      allowDuplicateAnswer: true,
       metadataExtra: {
         fallbackReason: error instanceof Error ? error.message : "AI generation failed",
       },
@@ -402,6 +432,7 @@ export async function getTodaysPuzzle(
         hints: lastResortPuzzle.hints,
         aiGenerated: false,
         rebusPuzzle: lastResortPuzzle.rebusPuzzle,
+        allowDuplicateAnswer: true,
         metadataExtra: { fallbackReason: "Emergency fallback" },
       });
 

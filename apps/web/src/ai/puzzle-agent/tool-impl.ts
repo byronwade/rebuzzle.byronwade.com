@@ -443,19 +443,9 @@ export async function checkUniqueness(
     techniqueId: input.techniqueId,
   });
 
-  // Hard ban: exact/near-exact answer reuse in the last 60 days
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 60);
-  const answerKey = normalizeAnswerKey(input.answer);
-  const recent = await getCollection("puzzles")
-    .find({ createdAt: { $gte: cutoff } })
-    .project({ answer: 1, rebusPuzzle: 1, puzzle: 1 })
-    .limit(120)
-    .toArray();
-
-  const exactAnswerHit = recent.find(
-    (p) => normalizeAnswerKey(String(p.answer ?? "")) === answerKey && answerKey.length > 0
-  );
+  // Hard ban: answer reuse across the FULL archive (active + retired)
+  const { isAnswerRegistered } = await import("../learning/answer-registry");
+  const archiveHit = await isAnswerRegistered(input.answer);
 
   const uniqueness = await validateUniqueness({
     rebusPuzzle: display,
@@ -464,7 +454,7 @@ export async function checkUniqueness(
     explanation: input.explanation,
   });
 
-  const isUnique = uniqueness.isUnique && !exactAnswerHit;
+  const isUnique = uniqueness.isUnique && !archiveHit.taken;
 
   const uniquenessScore = isUnique
     ? await calculateUniquenessScore({
@@ -476,18 +466,21 @@ export async function checkUniqueness(
     : 0;
 
   const recommendations = [...(uniqueness.recommendations ?? [])];
-  if (exactAnswerHit) {
-    recommendations.unshift("Answer already used recently — invent a different phrase");
+  if (archiveHit.taken) {
+    recommendations.unshift(
+      `Answer already in archive${archiveHit.active === false ? " (retired puzzle)" : ""} — invent a different phrase`
+    );
   }
 
   return {
     fingerprint,
     isUnique,
-    similarityScore: exactAnswerHit ? 1 : uniqueness.similarityScore,
+    similarityScore: archiveHit.taken ? 1 : uniqueness.similarityScore,
     uniquenessScore,
     conflictingPuzzles: uniqueness.conflictingPuzzles,
     recommendations,
-    exactAnswerCollision: Boolean(exactAnswerHit),
+    exactAnswerCollision: archiveHit.taken,
+    conflictingPuzzleId: archiveHit.puzzleId,
   };
 }
 

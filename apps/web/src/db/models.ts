@@ -143,6 +143,27 @@ export interface Puzzle {
     difficultyScore?: number;
     /** Canonical tier: Hard | Difficult | Evil | Impossible */
     difficultyLevel?: string;
+    /** Normalized answer for archive-wide uniqueness */
+    answerKey?: string;
+    fingerprint?: string;
+    calibratedDifficulty?: number;
+    uniquenessScore?: number;
+    engine?: string;
+    generationMethod?: string;
+    archived?: boolean;
+    retiredAt?: string;
+    retiredReason?: string;
+    /** Live calibration from real players */
+    liveSolveRate?: number;
+    liveMedianSolveSeconds?: number | null;
+    liveFinals?: number;
+    perceivedTooEasy?: boolean;
+    perceivedTooHard?: boolean;
+    lastCalibratedAt?: string;
+    learningBaselineDifficulty?: number;
+    learningDifficultyDelta?: number;
+    learningReason?: string;
+    selfLearning?: boolean;
   };
   // Legacy field for backward compatibility (will be populated from puzzle field)
   rebusPuzzle?: string;
