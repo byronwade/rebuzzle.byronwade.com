@@ -19,6 +19,7 @@ interface GameData {
   explanation: string;
   difficulty: number;
   puzzleType?: string;
+  locked?: boolean;
   metadata?: {
     puzzleType?: string;
   };
@@ -62,6 +63,45 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   const [percentile, setPercentile] = useState<number | null>(null);
   const [todaySolves, setTodaySolves] = useState<number | null>(null);
 
+  const [solution, setSolution] = useState({
+    answer: gameData.answer || "",
+    explanation: gameData.explanation || "",
+  });
+
+  useEffect(() => {
+    // Server lock is authoritative — never unlock results from localStorage alone
+    if (!gameData.locked) {
+      setSolution({ answer: "", explanation: "" });
+      return;
+    }
+
+    if (gameData.answer) {
+      setSolution({ answer: gameData.answer, explanation: gameData.explanation });
+      return;
+    }
+
+    // Locked but answer not in RSC payload — use today's guess reveal only
+    try {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const stored = localStorage.getItem("lastGameSolution");
+      if (stored) {
+        const parsed = JSON.parse(stored) as {
+          answer?: string;
+          explanation?: string;
+          puzzleDate?: string;
+        };
+        if (parsed.answer && (!parsed.puzzleDate || parsed.puzzleDate === todayKey)) {
+          setSolution({
+            answer: parsed.answer,
+            explanation: parsed.explanation || "",
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [gameData.answer, gameData.explanation, gameData.locked]);
+
   useEffect(() => {
     async function loadClientExtras() {
       try {
@@ -82,7 +122,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
         // Fallback: Load streak from database (only if we have a userId)
         if (userId) {
           try {
-            const response = await fetch(`/api/user/stats?userId=${userId}`);
+            const response = await fetch("/api/user/stats");
             if (response.ok) {
               const userStats = await response.json();
               if (userStats.stats?.streak) {
@@ -102,13 +142,15 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             setTodaySolves(stats.todaySolves || 0);
 
             const storedData = localStorage.getItem("lastGameCompletion");
-            if (storedData && stats.solveTimeDistribution?.length > 0) {
+            if (storedData && stats.percentiles) {
               const parsed = JSON.parse(storedData) as CompletionData;
               const userTime = parsed.timeTaken;
-              const slowerCount = stats.solveTimeDistribution.filter(
-                (t: number) => t > userTime
-              ).length;
-              const pct = Math.round((slowerCount / stats.solveTimeDistribution.length) * 100);
+              // Approximate "faster than X%" from aggregate percentile buckets
+              let pct = 50;
+              if (userTime <= stats.percentiles.p25) pct = 75;
+              else if (userTime <= stats.percentiles.p50) pct = 50;
+              else if (userTime <= stats.percentiles.p75) pct = 25;
+              else pct = 10;
               setPercentile(Math.min(99, Math.max(1, pct)));
             }
           }
@@ -123,7 +165,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     loadClientExtras();
   }, [userId]);
 
-  const success = params.success === "true";
+  // Prefer server-locked success; URL param is cosmetic only when locked
+  const success = Boolean(gameData.locked) && params.success === "true";
   const attempts =
     typeof params.attempts === "string"
       ? Number.parseInt(params.attempts, 10)
@@ -165,6 +208,23 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     return () => clearInterval(interval);
   }, [success, loading, finalScore, animationComplete]);
 
+  // Server lock required — no spoofing via query params / stale localStorage
+  if (!gameData.locked) {
+    return (
+      <Layout>
+        <div className="mx-auto max-w-lg px-4 py-16 text-center space-y-6">
+          <h1 className="text-2xl font-bold tracking-tight">Play today&apos;s puzzle</h1>
+          <p className="text-muted-foreground text-sm">
+            Results unlock after you finish today&apos;s puzzle.
+          </p>
+          <Link href="/">
+            <Button className="w-full">Go to puzzle</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       {success && showConfetti && <Confetti />}
@@ -186,11 +246,11 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             <div className="border-border border-y py-8 text-center">
               <p className="eyebrow mb-3">The Answer</p>
               <h2 className="text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
-                {gameData.answer}
+                {solution.answer}
               </h2>
-              {gameData.explanation && (
+              {solution.explanation && (
                 <p className="mx-auto mt-5 max-w-sm text-balance text-muted-foreground text-sm leading-6">
-                  {gameData.explanation}
+                  {solution.explanation}
                 </p>
               )}
             </div>
@@ -290,7 +350,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             {/* Share Button */}
             <EnhancedShareButton
               attempts={attempts}
-              answer={gameData.answer}
+              answer={solution.answer}
               className="w-full"
               difficulty={gameData.difficulty}
               maxAttempts={gameSettings.maxAttempts}
@@ -337,11 +397,11 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             <div className="border-border border-y py-8 text-center">
               <p className="eyebrow mb-3">The Answer Was</p>
               <h2 className="text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
-                {gameData.answer}
+                {solution.answer}
               </h2>
-              {gameData.explanation && (
+              {solution.explanation && (
                 <p className="mx-auto mt-5 max-w-sm text-balance text-muted-foreground text-sm leading-6">
-                  {gameData.explanation}
+                  {solution.explanation}
                 </p>
               )}
             </div>

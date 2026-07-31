@@ -5,23 +5,24 @@ import { getAuthenticatedUser } from "@/lib/auth-middleware";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const requestedUserId = searchParams.get("userId");
     const timeframe = (searchParams.get("timeframe") || "today") as
       | "today"
       | "week"
       | "month"
       | "allTime";
 
-    if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
-    }
-
-    // Security: Verify the authenticated user matches the requested userId
     const authUser = await getAuthenticatedUser(request);
-    if (!authUser || authUser.userId !== userId) {
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Cookie identity wins; optional userId must match (no IDOR)
+    if (requestedUserId && requestedUserId !== authUser.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = authUser.userId;
     const { user, stats } = await getUserWithStats(userId);
     const rank = await getUserRank(userId, timeframe);
 

@@ -15,24 +15,23 @@ export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   const vercelCronSecretEnv = process.env.VERCEL_CRON_SECRET;
 
-  // Check Vercel cron secret first (automatically set by Vercel)
-  if (vercelCronSecretEnv && vercelCronSecret !== vercelCronSecretEnv) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-  }
+  // Accept either Vercel cron secret OR Bearer CRON_SECRET (true OR, not AND)
+  const vercelOk =
+    Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
+  const bearerOk = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
 
-  // Fallback to custom CRON_SECRET if Vercel secret not available
-  if (cronSecret) {
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-  } else if (isProduction) {
-    // In production, require at least one authentication method
-    if (!vercelCronSecretEnv) {
+  if (isProduction) {
+    if (!(vercelCronSecretEnv || cronSecret)) {
       return NextResponse.json(
         { success: false, error: "Cron authentication not configured" },
         { status: 500 }
       );
     }
+    if (!(vercelOk || bearerOk)) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+  } else if ((vercelCronSecretEnv || cronSecret) && !(vercelOk || bearerOk)) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
   try {

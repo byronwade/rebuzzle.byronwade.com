@@ -1,49 +1,62 @@
 import { NextResponse } from "next/server";
 import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
+import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { toPublicPuzzle } from "@/lib/game/public-puzzle";
 
+/**
+ * GET /api/puzzle/today
+ *
+ * Public daily puzzle for clients. Never includes the answer.
+ * Scoring goes through POST /api/puzzles/guess.
+ */
 export async function GET() {
   try {
     const result = await getTodaysPuzzle();
-
-    // Calculate next puzzle time (next midnight UTC)
     const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
+    const nextPuzzleTime = getNextUtcMidnight(now).toISOString();
 
-    if (result.success) {
+    if (result.success && result.puzzle) {
+      const raw = result.puzzle as Record<string, unknown>;
       return NextResponse.json({
         success: true,
-        puzzle: result.puzzle,
+        puzzle: toPublicPuzzle({
+          id: raw.id,
+          puzzle: raw.puzzle ?? raw.rebusPuzzle,
+          rebusPuzzle: raw.rebusPuzzle,
+          puzzleType: raw.puzzleType ?? "rebus",
+          difficulty: raw.difficulty,
+          hints: raw.hints ?? [],
+          date: raw.date,
+          category: raw.category,
+          topic: raw.topic,
+          relevanceScore: raw.relevanceScore,
+          aiGenerated: raw.aiGenerated ?? false,
+        }),
         cached: result.cached,
         generatedAt: result.generatedAt,
-        // Server time data for accurate countdown
         serverTime: now.toISOString(),
-        nextPuzzleTime: tomorrow.toISOString(),
+        nextPuzzleTime,
       });
     }
+
     return NextResponse.json(
       {
         success: false,
         error: "Failed to generate puzzle",
         serverTime: now.toISOString(),
-        nextPuzzleTime: tomorrow.toISOString(),
+        nextPuzzleTime,
       },
       { status: 500 }
     );
   } catch (error) {
     console.error("Error in puzzle API:", error);
     const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
-
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
         serverTime: now.toISOString(),
-        nextPuzzleTime: tomorrow.toISOString(),
+        nextPuzzleTime: getNextUtcMidnight(now).toISOString(),
       },
       { status: 500 }
     );

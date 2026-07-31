@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { cn } from "@/lib/utils";
 
 interface TimerProps {
@@ -9,46 +11,49 @@ interface TimerProps {
   className?: string;
 }
 
+function formatCountdown(diffMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
 export function Timer({ nextPlayTime, className }: TimerProps) {
-  const [timeLeft, setTimeLeft] = useState("");
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const router = useRouter();
+  const [timeLeft, setTimeLeft] = useState("--:--:--");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const reloadedRef = useRef(false);
+  // Fixed target for this mount when nextPlayTime is null — set in effect to avoid prerender Date()
+  const fallbackTargetRef = useRef<Date | null>(null);
 
   useEffect(() => {
+    if (!fallbackTargetRef.current) {
+      fallbackTargetRef.current = getNextUtcMidnight();
+    }
+    const targetTime = nextPlayTime ? new Date(nextPlayTime) : fallbackTargetRef.current;
+
     const calculateTimeLeft = () => {
-      const now = new Date();
-      let targetTime: Date;
-
-      if (nextPlayTime) {
-        targetTime = new Date(nextPlayTime);
-      } else {
-        targetTime = new Date(now);
-        targetTime.setHours(24, 0, 0, 0);
-      }
-
-      const difference = targetTime.getTime() - now.getTime();
+      const difference = targetTime.getTime() - Date.now();
 
       if (difference <= 0) {
+        if (!reloadedRef.current) {
+          reloadedRef.current = true;
+          router.replace("/");
+        }
         return "00:00:00";
       }
 
-      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((difference / 1000 / 60) % 60);
-      const seconds = Math.floor((difference / 1000) % 60);
-
-      return `${hours.toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      return formatCountdown(difference);
     };
 
-    // Clear any existing interval before creating a new one
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
 
-    // Calculate immediately on mount/update
     setTimeLeft(calculateTimeLeft());
-
-    // Then update every second
     intervalRef.current = setInterval(() => {
       setTimeLeft(calculateTimeLeft());
     }, 1000);
@@ -59,7 +64,7 @@ export function Timer({ nextPlayTime, className }: TimerProps) {
         intervalRef.current = null;
       }
     };
-  }, [nextPlayTime]);
+  }, [nextPlayTime, router]);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -71,7 +76,7 @@ export function Timer({ nextPlayTime, className }: TimerProps) {
             <span className="text-foreground tabular-nums">{timeLeft}</span>
           </div>
         </TooltipTrigger>
-        <TooltipContent>New puzzle available at midnight</TooltipContent>
+        <TooltipContent>New puzzle available at midnight UTC</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

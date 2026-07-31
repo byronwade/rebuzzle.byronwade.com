@@ -5,5 +5,5 @@ import { defineAgent } from "eve";
  * Models resolve through Vercel AI Gateway (`provider/model` ids).
  */
 export default defineAgent({
-  model: process.env.EVE_PUZZLE_MODEL || "google/gemini-2.5-flash",
+  model: process.env.EVE_PUZZLE_MODEL || "openai/gpt-5.4-mini",
 });

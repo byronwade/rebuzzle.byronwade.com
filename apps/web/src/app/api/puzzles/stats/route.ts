@@ -1,51 +1,62 @@
 /**
  * Puzzle Statistics API
  *
- * Returns daily statistics for puzzles including:
- * - Number of players who solved today
- * - Average solve time
- * - Solve time distribution for percentile calculation
+ * Aggregates only — no raw solve-time dumps (privacy + payload size).
  */
 
 import { NextResponse } from "next/server";
 import { ensureConnection, getCollection } from "@/db/mongodb";
+import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 interface PuzzleStats {
   todaySolves: number;
   averageSolveTime: number;
   averageAttempts: number;
-  solveTimeDistribution: number[]; // Array of solve times for percentile calc
+  /** Percentile buckets for client comparison (not raw times) */
+  percentiles: { p25: number; p50: number; p75: number; p90: number };
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+  return sorted[idx] ?? 0;
 }
 
 export async function GET(request: Request) {
   try {
+    const limit = await rateLimiters.public(request);
+    if (limit && !limit.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const { searchParams } = new URL(request.url);
     const puzzleId = searchParams.get("puzzleId");
 
     await ensureConnection();
     const attemptsCollection = getCollection("puzzleAttempts");
 
-    // Get today's date range (UTC)
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const dateKey = getUtcPuzzleDate();
+    const today = new Date(`${dateKey}T00:00:00.000Z`);
+    const tomorrow = new Date(`${dateKey}T23:59:59.999Z`);
 
-    // Build query for today's successful attempts
     const query: Record<string, unknown> = {
       isCorrect: true,
-      attemptedAt: {
-        $gte: today,
-        $lt: tomorrow,
-      },
+      $or: [
+        { puzzleDate: dateKey },
+        {
+          attemptedAt: {
+            $gte: today,
+            $lte: tomorrow,
+          },
+        },
+      ],
     };
 
-    // If puzzleId provided, filter by it
     if (puzzleId) {
       query.puzzleId = puzzleId;
     }
 
-    // Get all successful attempts today
     const attempts = await attemptsCollection
       .find(query)
       .project({
@@ -53,16 +64,16 @@ export async function GET(request: Request) {
         attemptNumber: 1,
         userId: 1,
       })
+      .limit(5000)
       .toArray();
 
-    // Count unique users who solved (not duplicate attempts)
     const uniqueUsers = new Set(attempts.map((a) => a.userId));
     const todaySolves = uniqueUsers.size;
 
-    // Calculate averages
     const validTimes = attempts
       .filter((a) => typeof a.timeSpentSeconds === "number" && a.timeSpentSeconds > 0)
-      .map((a) => a.timeSpentSeconds as number);
+      .map((a) => a.timeSpentSeconds as number)
+      .sort((a, b) => a - b);
 
     const validAttempts = attempts
       .filter((a) => typeof a.attemptNumber === "number")
@@ -78,14 +89,16 @@ export async function GET(request: Request) {
         ? Math.round((validAttempts.reduce((a, b) => a + b, 0) / validAttempts.length) * 10) / 10
         : 0;
 
-    // Return solve times sorted for percentile calculation
-    const solveTimeDistribution = validTimes.sort((a, b) => a - b);
-
     const stats: PuzzleStats = {
       todaySolves,
       averageSolveTime,
       averageAttempts,
-      solveTimeDistribution,
+      percentiles: {
+        p25: percentile(validTimes, 25),
+        p50: percentile(validTimes, 50),
+        p75: percentile(validTimes, 75),
+        p90: percentile(validTimes, 90),
+      },
     };
 
     return NextResponse.json(stats);

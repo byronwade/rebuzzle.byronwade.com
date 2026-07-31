@@ -21,6 +21,7 @@ interface IndexDefinition {
       expireAfterSeconds?: number;
       name?: string;
       background?: boolean;
+      partialFilterExpression?: Record<string, unknown>;
     };
   }>;
 }
@@ -85,6 +86,8 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { createdAt: -1 } },
       // Combined index for filtered date queries
       { spec: { active: 1, publishedAt: -1, puzzleType: 1 } },
+      // Speeds UTC-day lookups used by findByDate
+      { spec: { active: 1, publishedAt: 1 } },
     ],
   },
 
@@ -102,6 +105,17 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { puzzleId: 1, isCorrect: 1 } },
       // Time-based analytics
       { spec: { attemptedAt: -1 } },
+      // Daily final-attempt lock: one completed/abandoned play per user per UTC day
+      {
+        spec: { userId: 1, puzzleDate: 1 },
+        options: {
+          unique: true,
+          name: "userId_1_puzzleDate_1_final",
+          partialFilterExpression: { isFinal: true },
+        },
+      },
+      // Count today's guesses quickly
+      { spec: { userId: 1, puzzleDate: 1, attemptedAt: 1 } },
     ],
   },
 

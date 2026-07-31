@@ -40,8 +40,10 @@ Always call `get_difficulty_brief` for the requested target and keep the final c
 
 - Never put the answer literally in the puzzle display  
 - Prefer visual wordplay (emoji, position, phonetics, math symbols)  
+- Always set a real `techniqueId` from the library — no emoji-padding for funScore  
 - Keep content appropriate for a general audience  
 - Fill metadata: fingerprint, uniqueness, quality, funScore, calibrated difficulty, difficultyLevel  
+- Only return when publishable: quality ≥ 70, funScore ≥ 65, unique, solvable, in-band  
 
 ## Style
 

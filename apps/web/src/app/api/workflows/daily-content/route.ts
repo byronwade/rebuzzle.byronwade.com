@@ -15,8 +15,33 @@ import { logger } from "@/lib/logger";
  *
  * Native implementation - no workflow library needed
  */
+function authorizeWorkflow(request: Request): boolean {
+  const authHeader = request.headers.get("authorization");
+  const vercelCronSecret = request.headers.get("x-vercel-cron-secret");
+  const cronSecret = process.env.CRON_SECRET;
+  const vercelCronSecretEnv = process.env.VERCEL_CRON_SECRET;
+
+  const vercelOk =
+    Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
+  const bearerOk = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
+
+  // In production require at least one configured secret and a match
+  if (process.env.NODE_ENV === "production") {
+    if (!(vercelCronSecretEnv || cronSecret)) return false;
+    return vercelOk || bearerOk;
+  }
+
+  // Dev: allow if no secrets configured, otherwise require a match
+  if (!(vercelCronSecretEnv || cronSecret)) return true;
+  return vercelOk || bearerOk;
+}
+
 export async function POST(request: Request) {
   try {
+    if (!authorizeWorkflow(request)) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const triggeredBy = body.triggeredBy || "manual";
 
@@ -27,10 +52,11 @@ export async function POST(request: Request) {
     const puzzleResult = await generateNextPuzzle();
 
     if (!puzzleResult.success) {
-      logger.error(
-        "Puzzle generation failed",
-        new Error((puzzleResult as any).error || "Unknown error")
-      );
+      const errMsg =
+        "error" in puzzleResult && typeof puzzleResult.error === "string"
+          ? puzzleResult.error
+          : "Unknown error";
+      logger.error("Puzzle generation failed", new Error(errMsg));
     }
 
     // Step 1.5: Revalidate puzzle cache to ensure all users see the new puzzle
@@ -42,9 +68,18 @@ export async function POST(request: Request) {
     logger.info("Generating blog post for previous puzzle");
     const blogResult = await generateBlogForYesterday();
 
+    // Don't echo puzzle answers in the workflow response
     return NextResponse.json({
       success: true,
-      puzzle: puzzleResult,
+      puzzle: {
+        success: puzzleResult.success,
+        cached: "cached" in puzzleResult ? puzzleResult.cached : undefined,
+        fallback: "fallback" in puzzleResult ? puzzleResult.fallback : undefined,
+        puzzleId:
+          puzzleResult.success && puzzleResult.puzzle
+            ? (puzzleResult.puzzle as { id?: string }).id
+            : undefined,
+      },
       blog: blogResult,
       completedAt: new Date().toISOString(),
     });
@@ -72,18 +107,16 @@ async function generateBlogForYesterday() {
     const puzzlesCollection = getCollection<Puzzle>("puzzles");
     const blogPostsCollection = getCollection<NewBlogPost>("blogPosts");
 
-    // Find the puzzle that was active YESTERDAY
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Find the puzzle that was active YESTERDAY (UTC calendar day)
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayStart = new Date(`${todayKey}T00:00:00.000Z`);
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
 
     const previousPuzzle = await puzzlesCollection.findOne({
       publishedAt: {
-        $gte: yesterday,
-        $lt: today,
+        $gte: yesterdayStart,
+        $lt: todayStart,
       },
     });
 

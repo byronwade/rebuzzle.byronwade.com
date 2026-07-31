@@ -1,14 +1,27 @@
 /**
  * AI Hint Generation API
  *
- * Generates progressive hints for puzzles
+ * Admin-only. Public gameplay uses precomputed puzzle.hints from the DB.
+ * Accepting a client-supplied answer here would leak / mint solutions.
  */
 
 import { NextResponse } from "next/server";
 import { generateAdaptiveHint, generateContextualHint, generateHints } from "@/ai";
+import { verifyAdminAccess } from "@/lib/admin-auth";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    const admin = await verifyAdminAccess(req);
+    if (!admin) {
+      return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 });
+    }
+
+    const limit = await rateLimiters.ai(req);
+    if (limit && !limit.success) {
+      return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
+    }
+
     const body = await req.json();
     const {
       mode = "progressive",
@@ -34,8 +47,6 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
-    console.log("[AI API] Generating hints:", { mode, puzzle, answer });
 
     const startTime = Date.now();
 

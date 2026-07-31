@@ -14,6 +14,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { userOps, userStatsOps } from "@/db/operations";
 import { signToken } from "@/lib/jwt";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 import {
   extractClientIp,
   extractDeviceId,
@@ -26,6 +27,14 @@ const AUTH_COOKIE = "rebuzzle_auth";
 
 export async function POST(request: Request) {
   try {
+    const limit = await rateLimiters.auth(request);
+    if (limit && !limit.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many guest sessions. Try again later." },
+        { status: 429 }
+      );
+    }
+
     const cookieStore = await cookies();
     const existingAuthToken = cookieStore.get(AUTH_COOKIE)?.value;
 
@@ -103,24 +112,22 @@ export async function POST(request: Request) {
       identifiedBy: identification.identifiedBy,
     });
 
-    // Set cookies (only for web - desktop/mobile use Bearer tokens)
-    if (!deviceId) {
-      response.cookies.set(GUEST_TOKEN_COOKIE, guestUser.guestToken!, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 365, // 1 year
-        path: "/",
-      });
+    // Always set cookies for browser clients. Native apps can still use Bearer tokens.
+    response.cookies.set(GUEST_TOKEN_COOKIE, guestUser.guestToken!, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      path: "/",
+    });
 
-      response.cookies.set(AUTH_COOKIE, jwt, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 365, // 1 year for guests
-        path: "/",
-      });
-    }
+    response.cookies.set(AUTH_COOKIE, jwt, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365, // 1 year for guests
+      path: "/",
+    });
 
     return response;
   } catch (error) {

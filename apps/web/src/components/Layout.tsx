@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { DevToolsPanel } from "./DevToolsPanel";
 import { Footer } from "./Footer";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
@@ -96,6 +97,9 @@ function LayoutContent({
           <Footer />
         </div>
       )}
+
+      {/* Temporary Dev Mode tools — enable in Settings */}
+      <DevToolsPanel />
     </div>
   );
 }

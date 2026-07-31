@@ -78,18 +78,22 @@ export async function getCachedDailyPuzzleFromDb(
   dateString: string
 ): Promise<CachedDailyPuzzle | null> {
   "use cache";
-  cacheLife("hours");
   cacheTag("daily-puzzle", `daily-puzzle-${dateString}`);
 
   logger.info("Cache lookup for daily puzzle", { dateString });
 
-  const existingPuzzle = await db.puzzleOps.findTodaysPuzzle();
+  // Query by the passed dateString — never Date.now() inside "use cache"
+  const existingPuzzle = await db.puzzleOps.findByDate(dateString);
   if (!existingPuzzle) {
+    // Misses must not stick — generation may land moments later
+    cacheLife("seconds");
     return null;
   }
 
+  cacheLife("hours");
+
   logger.info("Cache hit: daily puzzle from database", {
-    answer: existingPuzzle.answer,
+    puzzleId: existingPuzzle.id,
     dateString,
   });
 

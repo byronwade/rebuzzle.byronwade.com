@@ -1,12 +1,13 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { getTodaysPuzzle } from "./puzzleGenerationActions";
 
 /**
- * Delete today's puzzle from the database
- * This allows regenerating it with the new system
+ * Delete today's puzzle from the database (UTC day window only).
  */
 export async function deleteTodaysPuzzle(): Promise<{
   success: boolean;
@@ -14,18 +15,23 @@ export async function deleteTodaysPuzzle(): Promise<{
 }> {
   try {
     const collection = getCollection<Puzzle>("puzzles");
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);  // Use UTC for consistent behavior
+    const dateKey = getUtcPuzzleDate();
+    const start = new Date(`${dateKey}T00:00:00.000Z`);
+    const end = new Date(`${dateKey}T23:59:59.999Z`);
 
     const result = await collection.deleteMany({
-      publishedAt: { $gte: today },
+      publishedAt: { $gte: start, $lte: end },
       active: true,
     });
+
+    // Must bust Data Cache or getTodaysPuzzle will keep serving the deleted row
+    revalidateTag("daily-puzzle", "max");
+    revalidateTag(`daily-puzzle-${dateKey}`, "max");
 
     if (result.deletedCount > 0) {
       return {
         success: true,
-        message: `Deleted ${result.deletedCount} puzzle(s) for today`,
+        message: `Deleted ${result.deletedCount} puzzle(s) for ${dateKey}`,
       };
     }
 
@@ -43,16 +49,12 @@ export async function deleteTodaysPuzzle(): Promise<{
 }
 
 /**
- * Regenerate today's puzzle using the new system
- * This deletes the old puzzle and generates a new one
- *
- * @param puzzleType - Optional puzzle type (e.g., "rebus", "word-puzzle"). Defaults to DEFAULT_PUZZLE_TYPE or "rebus"
+ * Regenerate today's puzzle (admin path only — callers must authorize).
  */
 export async function regenerateTodaysPuzzle(
   puzzleType?: string
-): Promise<{ success: boolean; message: string; puzzle?: any }> {
+): Promise<{ success: boolean; message: string; puzzle?: unknown }> {
   try {
-    // Step 1: Delete today's puzzle
     const deleteResult = await deleteTodaysPuzzle();
     if (!deleteResult.success) {
       return {
@@ -61,15 +63,14 @@ export async function regenerateTodaysPuzzle(
       };
     }
 
-    console.log(`✅ Deleted old puzzle: ${deleteResult.message}`);
-
-    // Step 2: Generate new puzzle (this will use the new system)
     const puzzleResult = await getTodaysPuzzle(puzzleType);
 
     if (!(puzzleResult.success && puzzleResult.puzzle)) {
       return {
         success: false,
-        message: `Failed to generate new puzzle: ${"error" in puzzleResult ? puzzleResult.error : "Unknown error"}`,
+        message: `Failed to generate new puzzle: ${
+          "error" in puzzleResult ? puzzleResult.error : "Unknown error"
+        }`,
       };
     }
 
@@ -77,7 +78,7 @@ export async function regenerateTodaysPuzzle(
 
     return {
       success: true,
-      message: `Successfully regenerated today's puzzle with the new system (type: ${typeUsed})`,
+      message: `Successfully regenerated today's puzzle (type: ${typeUsed})`,
       puzzle: puzzleResult.puzzle,
     };
   } catch (error) {

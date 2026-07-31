@@ -113,6 +113,10 @@ export interface PuzzleAttempt {
   attemptedAnswer: string;
   isCorrect: boolean;
   attemptedAt: Date;
+  /** UTC calendar day key (YYYY-MM-DD) for daily lock enforcement */
+  puzzleDate?: string;
+  /** True when this row finalizes the day (win or out of attempts) */
+  isFinal?: boolean;
   // Enhanced tracking for learning system
   timeSpentSeconds?: number; // Time spent before solving/abandoning
   hintsUsed?: number; // Number of hints used
@@ -375,6 +379,8 @@ export interface NewPuzzleAttempt {
   attemptedAnswer: string;
   isCorrect: boolean;
   attemptedAt: Date;
+  puzzleDate?: string;
+  isFinal?: boolean;
   // Enhanced tracking for learning system
   timeSpentSeconds?: number;
   hintsUsed?: number;
