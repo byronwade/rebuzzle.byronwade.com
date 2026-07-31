@@ -33,7 +33,6 @@ import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
 import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay";
 import { PuzzleMinimal } from "./PuzzleMinimal";
-import { PuzzleSkeleton } from "./PuzzleSkeleton";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 
 const CelebrationOverlay = dynamic(
@@ -762,11 +761,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     handleKeyPress,
   ]);
 
-  // Auth still resolving — keep a puzzle-shaped shell (no spinner page)
-  if (authLoading || isCreatingGuest) {
-    return <PuzzleSkeleton />;
-  }
-
+  // Puzzle data is already on the server-rendered board — never blank it for
+  // auth/guest warm-up. Guest creation only disables submit (below).
   return (
     <>
       {/* Main content area - keyboard-aware layout */}

@@ -44,7 +44,7 @@ function BlogListSkeleton() {
   );
 }
 
-export default async function BlogPage() {
+async function BlogContent() {
   await connection();
 
   try {
@@ -205,4 +205,26 @@ export default async function BlogPage() {
       </Layout>
     );
   }
+}
+
+/** Sync shell — stream posts inside Suspense (no route loading.tsx flash). */
+export default function BlogPage() {
+  return (
+    <Suspense
+      fallback={
+        <Layout>
+          <div className="mx-auto max-w-3xl space-y-6 px-4 py-14 md:px-6 md:py-20">
+            <div className="space-y-3 border-border border-b pb-8">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-10 w-56" />
+              <Skeleton className="h-4 w-80 max-w-full" />
+            </div>
+            <BlogListSkeleton />
+          </div>
+        </Layout>
+      }
+    >
+      <BlogContent />
+    </Suspense>
+  );
 }
