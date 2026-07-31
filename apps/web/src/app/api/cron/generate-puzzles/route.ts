@@ -54,11 +54,24 @@ export async function GET(request: Request) {
     // Trigger the workflow by making a request to it
     const workflowUrl = `${getAppUrl()}/api/workflows/daily-content`;
 
+    // Forward cron auth so the workflow can authorize in production
+    const forwardHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (authHeader) {
+      forwardHeaders.Authorization = authHeader;
+    }
+    if (vercelCronSecret) {
+      forwardHeaders["x-vercel-cron-secret"] = vercelCronSecret;
+    } else if (vercelCronSecretEnv) {
+      forwardHeaders["x-vercel-cron-secret"] = vercelCronSecretEnv;
+    } else if (cronSecret) {
+      forwardHeaders.Authorization = `Bearer ${cronSecret}`;
+    }
+
     const workflowResponse = await fetch(workflowUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardHeaders,
       body: JSON.stringify({
         triggeredBy: "cron",
         triggeredAt: new Date().toISOString(),

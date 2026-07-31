@@ -1,19 +1,17 @@
-import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { generateBlogPost } from "@/ai/services/blog-generator";
+import { NextResponse } from "next/server";
 import { generateNextPuzzle } from "@/app/actions/puzzleGenerationActions";
-import type { NewBlogPost, Puzzle } from "@/db/models";
+import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { persistBlogForPuzzle } from "@/lib/blog/persist-puzzle-blog";
 import { logger } from "@/lib/logger";
 
 /**
  * Daily Content Generation Workflow
  *
- * Runs daily at midnight (via cron job) to:
- * 1. Generate today's puzzle
- * 2. Generate blog post for yesterday's puzzle
- *
- * Native implementation - no workflow library needed
+ * Midnight (via cron):
+ * 1. Eve generates today's puzzle → Mongo `puzzles`
+ * 2. Eve generates blog for yesterday's puzzle → Mongo `blogPosts` (full fields)
  */
 function authorizeWorkflow(request: Request): boolean {
   const authHeader = request.headers.get("authorization");
@@ -25,13 +23,11 @@ function authorizeWorkflow(request: Request): boolean {
     Boolean(vercelCronSecretEnv) && vercelCronSecret === vercelCronSecretEnv;
   const bearerOk = Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`;
 
-  // In production require at least one configured secret and a match
   if (process.env.NODE_ENV === "production") {
     if (!(vercelCronSecretEnv || cronSecret)) return false;
     return vercelOk || bearerOk;
   }
 
-  // Dev: allow if no secrets configured, otherwise require a match
   if (!(vercelCronSecretEnv || cronSecret)) return true;
   return vercelOk || bearerOk;
 }
@@ -47,8 +43,7 @@ export async function POST(request: Request) {
 
     logger.info("Starting daily content generation", { triggeredBy });
 
-    // Step 1: Generate today's puzzle
-    logger.info("Generating daily puzzle");
+    logger.info("Generating daily puzzle via Eve");
     const puzzleResult = await generateNextPuzzle();
 
     if (!puzzleResult.success) {
@@ -59,16 +54,12 @@ export async function POST(request: Request) {
       logger.error("Puzzle generation failed", new Error(errMsg));
     }
 
-    // Step 1.5: Revalidate puzzle cache to ensure all users see the new puzzle
     logger.info("Revalidating puzzle cache");
     revalidateTag("daily-puzzle", "max");
-    logger.info("Puzzle cache revalidated successfully");
 
-    // Step 2: Generate blog post for yesterday's puzzle
-    logger.info("Generating blog post for previous puzzle");
+    logger.info("Generating Eve blog for yesterday's puzzle");
     const blogResult = await generateBlogForYesterday();
 
-    // Don't echo puzzle answers in the workflow response
     return NextResponse.json({
       success: true,
       puzzle: {
@@ -99,15 +90,10 @@ export async function POST(request: Request) {
   }
 }
 
-/**
- * Generate blog post for yesterday's puzzle
- */
 async function generateBlogForYesterday() {
   try {
     const puzzlesCollection = getCollection<Puzzle>("puzzles");
-    const blogPostsCollection = getCollection<NewBlogPost>("blogPosts");
 
-    // Find the puzzle that was active YESTERDAY (UTC calendar day)
     const todayKey = new Date().toISOString().slice(0, 10);
     const todayStart = new Date(`${todayKey}T00:00:00.000Z`);
     const yesterdayStart = new Date(todayStart);
@@ -124,39 +110,8 @@ async function generateBlogForYesterday() {
       return { success: false, error: "no_puzzle_found" };
     }
 
-    // Check if blog post already exists
-    const existingPost = await blogPostsCollection.findOne({
-      puzzleId: previousPuzzle.id,
-    });
-
-    if (existingPost) {
-      return { success: true, skipped: "already_exists" };
-    }
-
-    logger.info("Generating blog post", { puzzleId: previousPuzzle.id });
-
-    const generatedPost = await generateBlogPost(previousPuzzle);
-
-    const newBlogPost: NewBlogPost = {
-      id: crypto.randomUUID(),
-      title: generatedPost.title,
-      slug: generatedPost.slug,
-      content: generatedPost.content,
-      excerpt: generatedPost.excerpt,
-      authorId: "ai-system",
-      puzzleId: previousPuzzle.id,
-      publishedAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await blogPostsCollection.insertOne(newBlogPost);
-
-    return {
-      success: true,
-      postId: newBlogPost.id,
-      title: newBlogPost.title,
-    };
+    // Puzzle is already in Mongo from when it was published — blog archives it.
+    return await persistBlogForPuzzle(previousPuzzle);
   } catch (error) {
     logger.error(
       "Blog generation failed",

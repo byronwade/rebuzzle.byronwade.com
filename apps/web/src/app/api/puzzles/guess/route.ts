@@ -7,8 +7,10 @@ import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getAchievementDifficultyCategory } from "@/lib/difficulty";
 import { buildWordResults } from "@/lib/game/build-word-results";
 import {
+  ARCHIVE_POINTS_MULTIPLIER,
   clampHints,
   clampTimeSpent,
+  getArchiveLockKey,
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
 import { calculateGamePoints } from "@/lib/gameSettings";
@@ -27,10 +29,9 @@ const guessRateLimit = rateLimit({
 /**
  * POST /api/puzzles/guess
  *
- * Authoritative daily-puzzle guess handler.
- * - Loads the answer from the DB (never trusts the client)
- * - Enforces attempt budget + one final play per UTC day
- * - Updates stats only after a successful lock write
+ * Authoritative guess handler for:
+ * - Today's daily puzzle (full points, streak-affecting)
+ * - Past/archive puzzles (half points, does not affect streak)
  */
 export async function POST(request: Request) {
   try {
@@ -89,37 +90,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Guess is too long" }, { status: 400 });
     }
 
-    const puzzleDate = getUtcPuzzleDate();
+    const todayKey = getUtcPuzzleDate();
 
-    // Parallelize puzzle load + today check + attempt context
-    const [puzzle, todays, context] = await Promise.all([
+    const [puzzle, todays] = await Promise.all([
       db.puzzleOps.findById(puzzleId),
       db.puzzleOps.findTodaysPuzzle(),
-      db.puzzleAttemptOps.getTodayGuessContext(user.userId, puzzleDate),
     ]);
 
     if (!puzzle?.answer) {
       return NextResponse.json({ success: false, error: "Puzzle not found" }, { status: 404 });
     }
 
-    if (!todays || todays.id !== puzzle.id) {
-      return NextResponse.json(
-        { success: false, error: "This puzzle is not playable today" },
-        { status: 403 }
-      );
+    const isDaily = Boolean(todays && todays.id === puzzle.id);
+    const publishedKey = puzzle.publishedAt
+      ? getUtcPuzzleDate(new Date(puzzle.publishedAt))
+      : null;
+
+    // Archive: any published puzzle that is not today's daily
+    if (!isDaily) {
+      if (!publishedKey || publishedKey >= todayKey) {
+        return NextResponse.json(
+          { success: false, error: "This puzzle is not playable yet" },
+          { status: 403 }
+        );
+      }
     }
 
+    const isArchive = !isDaily;
+    const lockKey = isArchive ? getArchiveLockKey(puzzle.id) : todayKey;
+    const pointsMultiplier = isArchive ? ARCHIVE_POINTS_MULTIPLIER : 1;
+
+    const context = await db.puzzleAttemptOps.getTodayGuessContext(user.userId, lockKey);
     const maxAttempts = gameSettings.maxAttempts;
 
     if (context.hasFinal) {
       return NextResponse.json(
         {
           success: false,
-          error: "Already played today",
+          error: isArchive ? "Already completed this archive puzzle" : "Already played today",
           locked: true,
           wasSuccessful: context.wasSuccessful,
           attemptsLeft: 0,
           gameOver: true,
+          isArchive,
         },
         { status: 409 }
       );
@@ -133,6 +146,7 @@ export async function POST(request: Request) {
           locked: true,
           attemptsLeft: 0,
           gameOver: true,
+          isArchive,
         },
         { status: 409 }
       );
@@ -174,7 +188,7 @@ export async function POST(request: Request) {
 
     const write = await db.puzzleAttemptOps.createAtomicDailyAttempt(
       user.userId,
-      new Date(`${puzzleDate}T00:00:00.000Z`),
+      new Date(`${todayKey}T00:00:00.000Z`),
       {
         id: crypto.randomUUID(),
         userId: user.userId,
@@ -183,7 +197,7 @@ export async function POST(request: Request) {
         isCorrect,
         abandoned,
         isFinal,
-        puzzleDate,
+        puzzleDate: lockKey,
         attemptedAt: new Date(),
         completedAt: isCorrect ? new Date() : undefined,
         attemptNumber,
@@ -198,11 +212,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Already played today",
+          error: isArchive ? "Already completed this archive puzzle" : "Already played today",
           locked: true,
           wasSuccessful: write.attempt.isCorrect,
           attemptsLeft: 0,
           gameOver: true,
+          isArchive,
         },
         { status: 409 }
       );
@@ -210,12 +225,9 @@ export async function POST(request: Request) {
 
     let pointsEarned = 0;
     if (isFinal && isCorrect) {
-      // Cheap estimate for immediate UI; authoritative stats update after response
-      pointsEarned = calculateGamePoints(
-        attemptNumber,
-        timeSpentSeconds,
-        1,
-        difficultyLevel
+      pointsEarned = Math.floor(
+        calculateGamePoints(attemptNumber, timeSpentSeconds, 1, difficultyLevel) *
+          pointsMultiplier
       );
     }
 
@@ -229,15 +241,19 @@ export async function POST(request: Request) {
             attempts: attemptNumber,
             timeSpent: timeSpentSeconds,
             difficulty: difficultyLevel,
+            pointsMultiplier,
+            affectsStreak: !isArchive,
           });
 
           if (isCorrect) {
             const stats = await db.userStatsOps.findByUserId(uid);
-            const score = calculateGamePoints(
-              attemptNumber,
-              timeSpentSeconds,
-              stats?.streak ?? 1,
-              difficultyLevel
+            const score = Math.floor(
+              calculateGamePoints(
+                attemptNumber,
+                timeSpentSeconds,
+                stats?.streak ?? 1,
+                difficultyLevel
+              ) * pointsMultiplier
             );
             const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
             await checkAndAwardAchievements(uid, {
@@ -268,6 +284,8 @@ export async function POST(request: Request) {
       gameOver: isFinal,
       locked: isFinal,
       wordResults,
+      isArchive,
+      pointsMultiplier,
       ...(isFinal
         ? {
             answer: puzzle.answer,

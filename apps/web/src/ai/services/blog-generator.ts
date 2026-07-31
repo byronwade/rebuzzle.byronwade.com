@@ -1,10 +1,12 @@
 /**
- * Blog Post Generator Service
+ * Blog Post Generator — Eve skill + structured JSON
  *
- * Uses AI to generate engaging blog posts for past puzzles
- * with structured sections for SEO optimization
+ * Loads agent/skills/generate-puzzle-blog.md so nightly posts stay
+ * consistent with the Eve agent system while using the shared AI Gateway.
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { generateAIText } from "@/ai/client";
 import { BLOG_CONFIG } from "@/ai/config/blog";
 import type { BlogFAQItem, BlogPostSEOMetadata, BlogPostSections } from "@/db/models";
@@ -16,12 +18,10 @@ export interface GeneratedBlogPost {
   content: string;
   slug: string;
   excerpt: string;
-  // NEW: Structured sections for enhanced display
   sections?: BlogPostSections;
   seoMetadata?: BlogPostSEOMetadata;
 }
 
-// AI response structure
 interface AIBlogResponse {
   title: string;
   metaDescription: string;
@@ -39,189 +39,167 @@ interface AIBlogResponse {
   fullContent: string;
 }
 
+function loadEveBlogSkill(): string {
+  try {
+    return readFileSync(join(process.cwd(), "agent/skills/generate-puzzle-blog.md"), "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function puzzleTypeLabel(puzzleType: string): string {
+  switch (puzzleType) {
+    case "rebus":
+      return "Rebus";
+    case "logic-grid":
+      return "Logic Grid";
+    case "cryptic-crossword":
+      return "Cryptic Crossword";
+    case "number-sequence":
+      return "Number Sequence";
+    case "pattern-recognition":
+      return "Pattern Recognition";
+    case "caesar-cipher":
+      return "Caesar Cipher";
+    case "trivia":
+      return "Trivia";
+    default:
+      return "Puzzle";
+  }
+}
+
+function stripAnswerFromTitle(title: string, answer: string, fallback: string): string {
+  if (!title.toLowerCase().includes(answer.toLowerCase())) {
+    return title.length > 60 ? `${title.slice(0, 57)}...` : title;
+  }
+  return fallback;
+}
+
 /**
- * Generate a blog post for a specific puzzle
+ * Generate a blog post for a specific puzzle (Eve blog skill + BLOG_CONFIG).
  */
 export async function generateBlogPost(
   puzzle: PuzzleLike & {
     answer: string;
-    difficulty: any;
+    difficulty: number | string;
     category?: string;
     explanation?: string;
+    publishedAt?: Date | string;
+    hints?: unknown[];
   }
 ): Promise<GeneratedBlogPost> {
-  console.log(`[Blog Generator] Generating post for puzzle: ${puzzle.answer}`);
+  console.log(`[Blog Generator] Eve generating post for puzzle: ${puzzle.answer}`);
 
   const puzzleType = getPuzzleType(puzzle);
+  const typeName = puzzleTypeLabel(puzzleType);
+  const display = getPuzzleDisplay(puzzle, puzzleType);
+  const difficulty =
+    typeof puzzle.difficulty === "number"
+      ? puzzle.difficulty
+      : Number(puzzle.difficulty) || 5;
 
   const puzzleData = {
-    puzzle: getPuzzleDisplay(puzzle, puzzleType),
-    rebusPuzzle: getPuzzleDisplay(puzzle, puzzleType), // For backward compatibility
+    puzzle: display,
+    rebusPuzzle: display,
     puzzleType,
     answer: puzzle.answer,
     category: puzzle.category,
-    difficulty: puzzle.difficulty,
+    difficulty,
     explanation: puzzle.explanation || "A visual word puzzle.",
-    complexityScore: (puzzle as any).complexityScore,
-    hints: (puzzle as any).hints,
+    hints: puzzle.hints,
   };
+
+  const skill = loadEveBlogSkill();
+  const system = [
+    BLOG_CONFIG.prompts.system,
+    skill ? `\n\n## Eve skill: generate-puzzle-blog\n${skill}` : "",
+    "",
+    "You are Eve. Follow the skill output contract exactly. Return ONLY valid JSON.",
+  ].join("\n");
+
+  const publishedKey =
+    puzzle.publishedAt != null
+      ? new Date(puzzle.publishedAt).toISOString().slice(0, 10)
+      : "yesterday";
 
   try {
     const response = await generateAIText({
-      system: BLOG_CONFIG.prompts.system,
-      prompt: BLOG_CONFIG.prompts.generatePost(puzzleData),
-      temperature: 0.8, // Higher creativity for unique, elaborate content
-      modelType: "smart", // Use smart model for comprehensive writing
-      // Note: maxTokens handled by model defaults (typically 8192+ for smart models)
+      system,
+      prompt: [
+        BLOG_CONFIG.prompts.generatePost(puzzleData),
+        "",
+        `Puzzle live date (UTC): ${publishedKey}`,
+        "Write the archive post for that day — consistent series voice, lightly unique.",
+      ].join("\n"),
+      temperature: 0.65,
+      modelType: "smart",
     });
 
     const responseText = response.text;
+    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+    const rawJson = jsonMatch?.[1] ?? responseText;
 
-    // Try to parse JSON response
     let parsedResponse: AIBlogResponse | null = null;
-    let content: string;
+    try {
+      parsedResponse = JSON.parse(rawJson.trim()) as AIBlogResponse;
+      console.log("[Blog Generator] Parsed Eve JSON response");
+    } catch {
+      console.log("[Blog Generator] JSON parse failed — using text fallback");
+    }
+
+    const difficultyPhrase =
+      difficulty >= 7 ? "Tricky" : difficulty >= 5 ? "Challenging" : "Fun";
+    const fallbackTitle = `${difficultyPhrase} ${typeName} Puzzle`;
+
     let title: string;
+    let content: string;
     let excerpt: string;
     let sections: BlogPostSections | undefined;
     let seoMetadata: BlogPostSEOMetadata | undefined;
 
-    const puzzleTypeName =
-      puzzleData.puzzleType === "rebus"
-        ? "Rebus"
-        : puzzleData.puzzleType === "logic-grid"
-          ? "Logic Grid"
-          : puzzleData.puzzleType === "cryptic-crossword"
-            ? "Cryptic Crossword"
-            : puzzleData.puzzleType === "number-sequence"
-              ? "Number Sequence"
-              : puzzleData.puzzleType === "pattern-recognition"
-                ? "Pattern Recognition"
-                : puzzleData.puzzleType === "caesar-cipher"
-                  ? "Caesar Cipher"
-                  : puzzleData.puzzleType === "trivia"
-                    ? "Trivia"
-                    : "Puzzle";
-
-    // Try to extract JSON from the response
-    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-    const rawJson = jsonMatch?.[1] ?? responseText;
-
-    try {
-      parsedResponse = JSON.parse(rawJson.trim()) as AIBlogResponse;
-      console.log("[Blog Generator] Successfully parsed JSON response");
-    } catch {
-      console.log("[Blog Generator] Could not parse JSON, using fallback extraction");
-    }
-
     if (parsedResponse) {
-      // Use structured JSON response
-      title = parsedResponse.title || `Today's ${puzzleTypeName} Challenge`;
+      title = stripAnswerFromTitle(
+        parsedResponse.title || fallbackTitle,
+        puzzle.answer,
+        fallbackTitle
+      );
       content = parsedResponse.fullContent || responseText;
       excerpt =
         parsedResponse.metaDescription ||
-        `A comprehensive analysis of yesterday's ${puzzleTypeName.toLowerCase()} puzzle.`;
+        `A look back at the ${typeName.toLowerCase()} puzzle from ${publishedKey}.`;
 
-      // Build sections object
       sections = {
         introduction: parsedResponse.sections?.introduction,
         puzzleAnalysis: parsedResponse.sections?.puzzleAnalysis,
         solvingStrategy: parsedResponse.sections?.solvingStrategy,
         puzzleHistory: parsedResponse.sections?.puzzleHistory,
+        solution: parsedResponse.sections?.solution,
+        callToAction: parsedResponse.sections?.callToAction,
         faq: parsedResponse.faq,
       };
 
-      // Build SEO metadata
-      const wordCount = content.split(/\s+/).length;
+      const wordCount = content.split(/\s+/).filter(Boolean).length;
       seoMetadata = {
-        focusKeyword: parsedResponse.focusKeyword || `${puzzleTypeName.toLowerCase()} puzzle`,
+        focusKeyword: parsedResponse.focusKeyword || `${typeName.toLowerCase()} puzzle`,
         secondaryKeywords: parsedResponse.secondaryKeywords || [],
         metaDescription: parsedResponse.metaDescription || excerpt,
-        readingTime: Math.ceil(wordCount / 200), // ~200 words per minute
+        readingTime: Math.max(1, Math.ceil(wordCount / 200)),
         wordCount,
       };
     } else {
-      // Fallback: Extract from plain text response
       content = responseText;
-      title = `Today's ${puzzleTypeName} Challenge`;
-
-      // Try to extract title from H1
+      title = fallbackTitle;
       const h1Match = content.match(/^#\s+(.+)$/m);
       if (h1Match?.[1]) {
-        const candidate = h1Match[1]
-          .replace(/\*\*/g, "")
-          .replace(/🧩|💡|✨|🎯/g, "")
-          .trim();
-
-        // Check if candidate contains the answer
-        const answerLower = puzzle.answer.toLowerCase();
-        const candidateLower = candidate.toLowerCase();
-        if (!candidateLower.includes(answerLower)) {
-          const words = candidate.split(/\s+/);
-          if (words.length <= 8 && candidate.length <= 60) {
-            title = candidate;
-          } else if (words.length > 8) {
-            title = words.slice(0, 8).join(" ");
-            if (title.length > 60) {
-              title = `${title.substring(0, 57)}...`;
-            }
-          } else if (candidate.length > 60) {
-            title = `${candidate.substring(0, 57)}...`;
-          }
-        }
+        title = stripAnswerFromTitle(
+          h1Match[1].replace(/\*\*/g, "").trim(),
+          puzzle.answer,
+          fallbackTitle
+        );
       }
-
-      // Fallback title
-      if (title === `Today's ${puzzleTypeName} Challenge` || title.length > 60) {
-        const difficultyPhrase =
-          puzzleData.difficulty >= 7
-            ? "Tricky"
-            : puzzleData.difficulty >= 5
-              ? "Challenging"
-              : "Fun";
-        title = `${difficultyPhrase} ${puzzleTypeName} Puzzle`;
-      }
-
-      // Generate excerpt from first paragraph
-      excerpt = `A comprehensive analysis of yesterday's ${puzzleTypeName.toLowerCase()} puzzle.`;
-      const paragraphs = content.split(/\n\n+/);
-      const execSummaryIndex = paragraphs.findIndex(
-        (p) =>
-          p.toLowerCase().includes("executive summary") || p.toLowerCase().includes("introduction")
-      );
-
-      if (execSummaryIndex >= 0 && execSummaryIndex + 1 < paragraphs.length) {
-        const summaryPara = paragraphs[execSummaryIndex + 1];
-        if (summaryPara && !summaryPara.startsWith("#") && summaryPara.length > 50) {
-          excerpt = summaryPara
-            .replace(/\*\*/g, "")
-            .replace(/\[.*?\]/g, "")
-            .substring(0, 200)
-            .trim();
-          if (excerpt.length > 150) excerpt += "...";
-        }
-      }
-
-      if (excerpt.length < 100) {
-        const firstPara = paragraphs.find((p) => !p.startsWith("#") && p.length > 100);
-        if (firstPara) {
-          excerpt = firstPara
-            .replace(/\*\*/g, "")
-            .replace(/\[.*?\]/g, "")
-            .substring(0, 200)
-            .trim();
-          if (excerpt.length > 150) excerpt += "...";
-        }
-      }
+      excerpt = `A look back at the ${typeName.toLowerCase()} puzzle from ${publishedKey}.`;
     }
 
-    // Validate title doesn't contain answer
-    if (title.toLowerCase().includes(puzzle.answer.toLowerCase())) {
-      const difficultyPhrase =
-        puzzleData.difficulty >= 7 ? "Tricky" : puzzleData.difficulty >= 5 ? "Challenging" : "Fun";
-      title = `${difficultyPhrase} ${puzzleTypeName} Puzzle`;
-    }
-
-    // Generate slug from title
     const slug = title
       .toLowerCase()
       .replace(/[^\w\s-]/g, "")

@@ -86,6 +86,7 @@ function calculatePointsEarned(
     attempts: number;
     timeSpent?: number;
     difficulty?: number;
+    pointsMultiplier?: number;
   },
   currentStreak: number
 ): number {
@@ -93,12 +94,18 @@ function calculatePointsEarned(
     return 0;
   }
 
-  return calculateGamePoints(
+  const base = calculateGamePoints(
     gameResult.attempts,
     gameResult.timeSpent,
     currentStreak,
     gameResult.difficulty
   );
+  const multiplier =
+    typeof gameResult.pointsMultiplier === "number" &&
+    Number.isFinite(gameResult.pointsMultiplier)
+      ? Math.max(0, gameResult.pointsMultiplier)
+      : 1;
+  return Math.floor(base * multiplier);
 }
 
 /**
@@ -153,6 +160,10 @@ function calculateNewStats(
     difficulty?: number;
     maxAttempts?: number;
     hintsUsed?: number;
+    /** 1 = full daily points; 0.5 = archive replay */
+    pointsMultiplier?: number;
+    /** When false (archive), streaks and lastPlayDate stay untouched */
+    affectsStreak?: boolean;
   }
 ) {
   const now = new Date();
@@ -166,18 +177,24 @@ function calculateNewStats(
     : null;
 
   const isNewDay = !lastPlayDate || lastPlayDate.getTime() !== today.getTime();
+  const affectsStreak = gameResult.affectsStreak !== false;
 
-  // Calculate streak first so we can use it for points
-  const newStreak = calculateStreak(currentStats, gameResult, isNewDay);
+  // Archive plays never break or advance the daily streak
+  const newStreak = affectsStreak
+    ? calculateStreak(currentStats, gameResult, isNewDay)
+    : currentStats?.streak || 0;
   const maxStreak = Math.max(currentStats?.maxStreak || 0, newStreak);
 
-  // Pass streak to points calculation for streak bonus
-  const pointsEarned = calculatePointsEarned(gameResult, newStreak);
+  // Pass streak to points calculation for streak bonus (archive uses current streak for scoring)
+  const streakForPoints = affectsStreak ? newStreak : currentStats?.streak || 0;
+  const pointsEarned = calculatePointsEarned(gameResult, streakForPoints);
   const newPoints = (currentStats?.points || 0) + pointsEarned;
   const newWins = (currentStats?.wins || 0) + (gameResult.won ? 1 : 0);
   const newTotalGames = (currentStats?.totalGames || 0) + 1;
 
-  const newDailyStreak = calculateDailyStreak(currentStats, gameResult, isNewDay);
+  const newDailyStreak = affectsStreak
+    ? calculateDailyStreak(currentStats, gameResult, isNewDay)
+    : currentStats?.dailyChallengeStreak || 0;
 
   // Use centralized level calculation from gameSettings
   const newLevel = calculateLevel(newPoints);
@@ -248,7 +265,7 @@ function calculateNewStats(
     wins: newWins,
     level: newLevel,
     dailyChallengeStreak: newDailyStreak,
-    lastPlayDate: now,
+    lastPlayDate: affectsStreak ? now : currentStats?.lastPlayDate || now,
     // Achievement tracking fields
     perfectSolves,
     clutchSolves,
@@ -278,6 +295,8 @@ export async function updateUserStats(
     attempts: number;
     timeSpent?: number;
     difficulty?: number;
+    pointsMultiplier?: number;
+    affectsStreak?: boolean;
   }
 ): Promise<boolean> {
   try {

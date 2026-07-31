@@ -611,6 +611,11 @@ export const blogPostOps = {
     return await collection.findOne({ slug });
   },
 
+  async findByPuzzleId(puzzleId: string): Promise<BlogPost | null> {
+    const collection = getCollection<BlogPost>("blogPosts");
+    return await collection.findOne({ puzzleId });
+  },
+
   async findPublished(limit = 10): Promise<BlogPost[]> {
     const collection = getCollection<BlogPost>("blogPosts");
     return await collection

@@ -246,13 +246,21 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
               puzzle: {
                 $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
               },
-              puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
+              puzzleType: {
+                $ifNull: [
+                  { $ifNull: ["$puzzleType", "$puzzleData.puzzleType"] },
+                  "rebus",
+                ],
+              },
               answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
               explanation: {
                 $ifNull: ["$puzzleData.explanation", "No explanation available"],
               },
               content: 1,
               excerpt: 1,
+              sections: 1,
+              seoMetadata: 1,
+              puzzleOrigin: 1,
               difficulty: { $ifNull: ["$puzzleData.difficulty", "general"] },
             },
           },
@@ -272,10 +280,24 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
           explanation: post.explanation,
           content: post.content,
           excerpt: post.excerpt,
+          sections: post.sections,
+          seoMetadata: post.seoMetadata,
+          puzzleOrigin: post.puzzleOrigin,
           metadata: {
             topic: post.difficulty,
             keyword: (post.answer || "").replace(/\s+/g, ""),
             category: post.difficulty,
+            seoMetadata: post.seoMetadata
+              ? {
+                  keywords: [
+                    post.seoMetadata.focusKeyword,
+                    ...(post.seoMetadata.secondaryKeywords || []),
+                  ].filter(Boolean),
+                  description: post.seoMetadata.metaDescription,
+                  ogTitle: post.title,
+                  ogDescription: post.seoMetadata.metaDescription,
+                }
+              : undefined,
           },
         };
       }

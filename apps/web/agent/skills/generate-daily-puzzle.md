@@ -14,3 +14,9 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with dif
 7. Pipeline: `validate_puzzle` → `check_uniqueness` → `calibrate_difficulty` → `stress_test_solvability` → `score_quality`.
 8. If off-band, too similar, or quality < threshold — redesign components (not just the number).
 9. Emit final structured puzzle with `difficultyLevel` ∈ Hard | Difficult | Evil | Impossible.
+
+## After publish
+
+Yesterday's puzzle feeds skill `generate-puzzle-blog` (consistent archive post,
+spoilers behind reveal). Keep explanation + hints accurate — the blog skill
+reuses them when writing to MongoDB.

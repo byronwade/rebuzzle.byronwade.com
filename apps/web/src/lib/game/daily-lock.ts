@@ -2,9 +2,24 @@
  * Daily puzzle lock helpers — UTC calendar day keys for anti-replay.
  */
 
+/** Archive replays award half of normal points. */
+export const ARCHIVE_POINTS_MULTIPLIER = 0.5;
+
 /** UTC YYYY-MM-DD for a Date (defaults to now). */
 export function getUtcPuzzleDate(date: Date = new Date()): string {
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Lock key for archive/replay plays so they don't collide with the
+ * unique {userId, puzzleDate} final index used by the daily challenge.
+ */
+export function getArchiveLockKey(puzzleId: string): string {
+  return `archive:${puzzleId}`;
+}
+
+export function isArchiveLockKey(key: string): boolean {
+  return key.startsWith("archive:");
 }
 
 export function getUtcDayBounds(puzzleDate: string): { start: Date; end: Date } {

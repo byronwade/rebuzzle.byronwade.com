@@ -163,6 +163,8 @@ export interface BlogPostSections {
   puzzleAnalysis?: string; // 200-300 words
   solvingStrategy?: string; // 300-400 words
   puzzleHistory?: string; // 150-200 words
+  solution?: string; // 100-150 words — spoiler; UI reveals separately
+  callToAction?: string; // 50-80 words
   statistics?: BlogPostStatistics;
   faq?: BlogFAQItem[]; // 3-5 Q&As for schema markup
 }
