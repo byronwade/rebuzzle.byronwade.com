@@ -32,6 +32,7 @@ export type RunVisualLabResult = {
     durationMs: number;
     usesAi: boolean;
     estimatedCost: string;
+    engine?: "apex" | "eve";
   };
   /** Composed board when applicable */
   visual?: PuzzleVisual;
@@ -51,7 +52,7 @@ export type RunVisualLabResult = {
     model?: string;
     error?: string;
   };
-  /** Full Eve puzzle preview (not persisted) */
+  /** Full Eve / Apex puzzle preview (not persisted) */
   puzzle?: {
     rebusPuzzle: string;
     answer: string;
@@ -64,6 +65,8 @@ export type RunVisualLabResult = {
     visual?: PuzzleVisual;
     qualityScore?: number;
     funScore?: number;
+    engine?: "apex" | "eve";
+    thinkingSummary?: string;
   };
   compose?: {
     funScore: number;
@@ -271,20 +274,26 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
     };
   }
 
-  // full-puzzle — Eve agent, preview only
+  // full-puzzle / apex-tournament — Eve / Apex, preview only
   const result = await generateMasterPuzzle({
     targetDifficulty: difficulty,
     puzzleType: "rebus",
     theme: concept,
     category: "visual_wordplay",
     requireNovelty: false,
-    maxAttempts: 1,
-    qualityThreshold: 60,
+    maxAttempts: mode === "apex-tournament" ? 2 : 1,
+    qualityThreshold: mode === "apex-tournament" ? 70 : 60,
+    candidateCount: mode === "apex-tournament" ? undefined : 1,
+    useLearningFeedback: mode === "apex-tournament",
   });
 
   return {
     mode,
-    meta: { ...baseMeta, durationMs: Date.now() - start },
+    meta: {
+      ...baseMeta,
+      durationMs: Date.now() - start,
+      engine: result.metadata.engine,
+    },
     visual: result.puzzle.visual,
     puzzle: {
       rebusPuzzle: result.puzzle.rebusPuzzle,
@@ -298,6 +307,8 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
       visual: result.puzzle.visual,
       qualityScore: result.metadata.qualityMetrics.scores.overall,
       funScore: result.metadata.qualityMetrics.scores.fun,
+      engine: result.metadata.engine,
+      thinkingSummary: result.metadata.aiThinking.summary,
     },
   };
 }

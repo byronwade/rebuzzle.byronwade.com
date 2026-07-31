@@ -2,6 +2,12 @@
 
 import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
+import {
+  baselineDifficultyForDate,
+  normalizeAnswerKey,
+  recordGenerationAudit,
+  resolveAdaptiveDifficultyForDate,
+} from "@/ai/learning";
 import { db } from "@/db";
 import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
@@ -20,18 +26,32 @@ function getTodayDateString(date?: Date): string {
 }
 
 /**
- * Calculate daily difficulty (varies by day of week)
- *
- * NOTE: In Next.js 16, this function should only be called after accessing
- * uncached data. Pass a date parameter when possible.
+ * Adaptive daily difficulty: weekly spine + self-learning pressure from recent play.
  */
-function calculateDailyDifficulty(date?: Date): number {
+async function calculateDailyDifficulty(date?: Date): Promise<{
+  difficulty: number;
+  baseline: number;
+  delta: number;
+  reason: string;
+}> {
   const dateToUse = date || new Date();
-  const dayOfWeek = dateToUse.getUTCDay(); // Use UTC day for consistent behavior across all platforms
-  // Sunday = 5 (moderate), Wednesday = 7 (hardest), balanced across week
-  // Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8 — rotate across the week
-  const difficulties = [5, 4, 6, 8, 7, 5, 4]; // Sun–Sat
-  return difficulties[dayOfWeek] || 5;
+  try {
+    const adaptive = await resolveAdaptiveDifficultyForDate(dateToUse);
+    return {
+      difficulty: adaptive.target,
+      baseline: adaptive.baseline,
+      delta: adaptive.delta,
+      reason: adaptive.reason,
+    };
+  } catch {
+    const baseline = baselineDifficultyForDate(dateToUse);
+    return {
+      difficulty: baseline,
+      baseline,
+      delta: 0,
+      reason: "Learning unavailable — weekly spine only",
+    };
+  }
 }
 
 /**
@@ -137,6 +157,7 @@ async function getOrGenerateDailyPuzzle(
       hints: fallback.hints,
       aiGenerated: false,
       rebusPuzzle: fallback.rebusPuzzle,
+      allowDuplicateAnswer: true,
       metadataExtra: { fallbackReason: "Play-path fast seed (AI deferred to cron)" },
     });
     return {
@@ -153,18 +174,36 @@ async function getOrGenerateDailyPuzzle(
     };
   }
 
-  // STEP 2: No puzzle in database — Eve tool agent + AI Gateway (ONCE per day)
-  logger.info("Generating new puzzle with Eve tool agent via AI Gateway", {
+  // STEP 2: No puzzle in database — Apex/Eve via AI Gateway (ONCE per day)
+  logger.info("Generating new puzzle with Apex/Eve via AI Gateway", {
     provider: "ai-gateway",
-    agent: "eve-puzzle",
+    agent: "apex-eve",
     willCostTokens: true,
     frequency: "once-per-day",
   });
 
+  const genStarted = Date.now();
+  let difficultyPlan: {
+    difficulty: number;
+    baseline: number;
+    delta: number;
+    reason: string;
+  } = {
+    difficulty: 5,
+    baseline: 5,
+    delta: 0,
+    reason: "unset",
+  };
+
   try {
     // Parse date string to Date object for difficulty calculation
     const puzzleDate = new Date(`${dateString}T00:00:00Z`);
-    const difficulty = calculateDailyDifficulty(puzzleDate);
+    difficultyPlan = await calculateDailyDifficulty(puzzleDate);
+
+    logger.info("Adaptive difficulty plan", {
+      dateString,
+      ...difficultyPlan,
+    });
 
     // Generate puzzle using AI (Master Orchestrator)
     // Use provided puzzleType, or default to rebus puzzle type for backward compatibility
@@ -172,11 +211,12 @@ async function getOrGenerateDailyPuzzle(
     const typeToUse = puzzleType || process.env.DEFAULT_PUZZLE_TYPE || "rebus";
 
     const result = await generateMasterPuzzle({
-      targetDifficulty: difficulty,
+      targetDifficulty: difficultyPlan.difficulty,
       requireNovelty: true,
-      qualityThreshold: 70,
+      qualityThreshold: 74,
       maxAttempts: 4,
       puzzleType: typeToUse,
+      useLearningFeedback: true,
     });
 
     logger.info("AI puzzle generation successful", {
@@ -246,6 +286,18 @@ async function getOrGenerateDailyPuzzle(
         funScore: result.metadata.qualityMetrics?.scores?.fun,
         techniqueId: result.puzzle.techniqueId,
         visualStyleId: visual?.styleId,
+        difficultyLevel: result.puzzle.difficultyLevel,
+        difficultyScore: result.puzzle.difficulty,
+        fingerprint: result.metadata.fingerprint,
+        calibratedDifficulty: result.metadata.calibratedDifficulty,
+        generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
+        engine: result.metadata.engine ?? "eve",
+        learningBaselineDifficulty: difficultyPlan.baseline,
+        learningDifficultyDelta: difficultyPlan.delta,
+        learningReason: difficultyPlan.reason,
+        selfLearning: true,
+        estimatedSolveRate: result.metadata.estimatedSolveRate,
+        simCalibrationBias: result.metadata.simCalibrationBias,
       },
     });
 
@@ -271,6 +323,27 @@ async function getOrGenerateDailyPuzzle(
         });
       }
     })();
+
+    void recordGenerationAudit({
+      dateString,
+      puzzleId: persisted.id,
+      engine: result.metadata.engine === "apex" ? "apex" : "eve",
+      status: "success",
+      targetDifficulty: difficultyPlan.difficulty,
+      baselineDifficulty: difficultyPlan.baseline,
+      learningDelta: difficultyPlan.delta,
+      learningReason: difficultyPlan.reason,
+      techniqueId: result.puzzle.techniqueId,
+      difficultyLevel: result.puzzle.difficultyLevel,
+      qualityScore: result.metadata.qualityMetrics?.scores?.overall,
+      funScore: result.metadata.qualityMetrics?.scores?.fun,
+      uniquenessScore: result.metadata.uniquenessScore,
+      fingerprint: result.metadata.fingerprint,
+      answerKey: normalizeAnswerKey(result.puzzle.answer),
+      estimatedSolveRate: result.metadata.estimatedSolveRate,
+      simCalibrationBias: result.metadata.simCalibrationBias,
+      durationMs: Date.now() - genStarted,
+    });
 
     return {
       id: persisted.id,
@@ -329,9 +402,24 @@ async function getOrGenerateDailyPuzzle(
       hints: fallback.hints,
       aiGenerated: false,
       rebusPuzzle: fallback.rebusPuzzle,
+      allowDuplicateAnswer: true,
       metadataExtra: {
         fallbackReason: error instanceof Error ? error.message : "AI generation failed",
       },
+    });
+
+    void recordGenerationAudit({
+      dateString,
+      puzzleId: persisted.id,
+      engine: "fallback",
+      status: "fallback",
+      targetDifficulty: difficultyPlan.difficulty,
+      baselineDifficulty: difficultyPlan.baseline,
+      learningDelta: difficultyPlan.delta,
+      learningReason: difficultyPlan.reason,
+      answerKey: normalizeAnswerKey(fallback.answer),
+      durationMs: Date.now() - genStarted,
+      error: error instanceof Error ? error.message : String(error),
     });
 
     return {
@@ -407,6 +495,7 @@ export async function getTodaysPuzzle(
         hints: lastResortPuzzle.hints,
         aiGenerated: false,
         rebusPuzzle: lastResortPuzzle.rebusPuzzle,
+        allowDuplicateAnswer: true,
         metadataExtra: { fallbackReason: "Emergency fallback" },
       });
 

@@ -438,7 +438,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({
             puzzleId: gameData.id,
             guess: guessToCheck,

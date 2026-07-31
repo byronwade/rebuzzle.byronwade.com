@@ -22,24 +22,24 @@ export const AI_CONFIG = {
       // Prefer capable gateway models for puzzle assembly; flash for cheap ops
       fast: "google/gemini-2.5-flash-lite",
       smart: "google/gemini-2.5-flash",
-      creative: "openai/gpt-5.4-mini",
+      creative: "openai/gpt-5.6-luna",
     },
     fallbacks: {
       gateway: {
         fast: [
           "google/gemini-2.5-flash-lite",
           "google/gemini-2.5-flash",
-          "openai/gpt-5.4-nano",
+          "openai/gpt-5.6-luna",
           "xai/grok-4.1-fast-non-reasoning",
         ],
         smart: [
           "google/gemini-2.5-flash",
           "google/gemini-2.5-pro",
-          "openai/gpt-5.4-mini",
+          "openai/gpt-5.6-luna",
           "anthropic/claude-sonnet-4.6",
         ],
         creative: [
-          "openai/gpt-5.4-mini",
+          "openai/gpt-5.6-luna",
           "google/gemini-2.5-flash",
           "xai/grok-4.1-fast-reasoning",
           "anthropic/claude-sonnet-4.6",
@@ -56,18 +56,36 @@ export const AI_CONFIG = {
   /** Eve / ToolLoopAgent puzzle generation */
   puzzleAgent: {
     // Prefer creative-tier models for wordplay; override with EVE_PUZZLE_MODEL
-    model: process.env.EVE_PUZZLE_MODEL || "openai/gpt-5.4-mini",
-    maxSteps: 20,
-    qualityThreshold: 70,
-    minFunScore: 65,
-    maxAttempts: 3,
+    model: process.env.EVE_PUZZLE_MODEL || "openai/gpt-5.6-luna",
+    maxSteps: 24,
+    qualityThreshold: 74,
+    minFunScore: 68,
+    maxAttempts: 4,
+    /**
+     * Apex engine — multi-candidate tournament with critique + player sim.
+     * Disable with EVE_APEX_ENGINE=0
+     */
+    apex: {
+      enabled: process.env.EVE_APEX_ENGINE !== "0" && process.env.EVE_APEX_ENGINE !== "false",
+      candidateCount: Math.max(
+        2,
+        Math.min(5, Number(process.env.EVE_APEX_CANDIDATES || 3) || 3)
+      ),
+      minRubricOverall: Math.max(
+        70,
+        Math.min(95, Number(process.env.EVE_APEX_MIN_RUBRIC || 78) || 78)
+      ),
+      critiqueEnabled: process.env.EVE_APEX_CRITIQUE !== "0",
+      playerSimEnabled: process.env.EVE_APEX_PLAYER_SIM !== "0",
+    },
   },
 
   generation: {
     temperature: {
       factual: 0.3,
       balanced: 0.7,
-      creative: 0.9,
+      // Slightly lower than 0.9 — more coherent wordplay, less random emoji salad
+      creative: 0.82,
     },
     maxTokens: {
       short: 256,

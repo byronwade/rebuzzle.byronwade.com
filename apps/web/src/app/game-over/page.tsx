@@ -21,6 +21,7 @@ async function GameOverContent({
         difficulty: solution.difficulty,
         puzzleType: solution.puzzleType,
         locked: solution.locked,
+        puzzleId: solution.puzzleId,
         metadata: {
           puzzleType: solution.puzzleType,
         },

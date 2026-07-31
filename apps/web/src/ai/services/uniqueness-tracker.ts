@@ -22,6 +22,7 @@ export function createPuzzleFingerprint(puzzle: {
   rebusPuzzle: string;
   answer: string;
   category: string;
+  techniqueId?: string;
 }): string {
   // Normalize answer
   const normalizedAnswer = puzzle.answer.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -39,8 +40,10 @@ export function createPuzzleFingerprint(puzzle: {
     .sort()
     .join("_");
 
-  // Create composite fingerprint
-  const composite = `${normalizedAnswer}::${emojis}::${textComponents}::${puzzle.category}`;
+  const technique = (puzzle.techniqueId || "unknown").toLowerCase();
+
+  // Create composite fingerprint (include technique so identical emoji+answer with different craft still differs)
+  const composite = `${normalizedAnswer}::${emojis}::${textComponents}::${puzzle.category}::${technique}`;
 
   return createHash("sha256").update(composite).digest("hex");
 }
@@ -75,8 +78,13 @@ export function calculateSimilarity(
   const emojis2 = new Set(puzzleText2.match(emojiPattern) || []);
   const emojiSim = jaccardSimilarity(emojis1, emojis2);
 
-  // Combined similarity (weighted)
-  return answerSim * 0.6 + emojiSim * 0.4;
+  // Exact / near-exact answers dominate — generative boards often lack shared emoji
+  if (answerSim >= 0.92) {
+    return Math.max(answerSim, 0.92);
+  }
+
+  // Combined similarity (weighted toward answer; emoji is weak signal for SVG boards)
+  return answerSim * 0.75 + emojiSim * 0.25;
 }
 
 function levenshteinSimilarity(s1: string, s2: string): number {

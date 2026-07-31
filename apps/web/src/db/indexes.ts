@@ -90,6 +90,10 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { active: 1, publishedAt: -1, puzzleType: 1 } },
       // Speeds UTC-day lookups used by findByDate
       { spec: { active: 1, publishedAt: 1 } },
+      // Archive-wide answer lookups (app enforces uniqueness; sparse for legacy rows)
+      { spec: { "metadata.answerKey": 1 }, options: { sparse: true, name: "metadata_answerKey_sparse" } },
+      // Fingerprint lookups for uniqueness tooling
+      { spec: { "metadata.fingerprint": 1 }, options: { sparse: true } },
     ],
   },
 
@@ -340,6 +344,19 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { status: 1, timestamp: -1 } },
       // Applied config reference
       { spec: { appliedToConfigId: 1 }, options: { sparse: true } },
+    ],
+  },
+
+  // Generation audit trail (Apex / Eve / fallback)
+  {
+    collection: "generationAudits",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      { spec: { createdAt: -1 } },
+      { spec: { dateString: 1, createdAt: -1 } },
+      { spec: { status: 1, createdAt: -1 } },
+      { spec: { engine: 1, createdAt: -1 } },
+      { spec: { answerKey: 1 }, options: { sparse: true } },
     ],
   },
 

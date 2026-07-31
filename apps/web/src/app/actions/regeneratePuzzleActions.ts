@@ -2,18 +2,23 @@
 
 import { revalidateTag } from "next/cache";
 import { formatGatewayAuthError, isGatewayAuthError, probeGatewayAuth } from "@/ai/client";
+import { resolveAdaptiveDifficultyForDate } from "@/ai/learning";
+import { normalizeAnswerKey } from "@/ai/learning/answer-registry";
 import { generateMasterPuzzle } from "@/ai/services/master-puzzle-orchestrator";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
+import { logger } from "@/lib/logger";
 
 /**
- * Delete today's puzzle from the database (UTC day window only).
+ * Soft-retire today's puzzle into the archive instead of hard-deleting.
+ * Retired puzzles stay in Mongo so answers/fingerprints remain unique forever.
  */
-export async function deleteTodaysPuzzle(): Promise<{
+export async function archiveTodaysPuzzle(): Promise<{
   success: boolean;
   message: string;
+  archivedIds: string[];
 }> {
   try {
     const collection = getCollection<Puzzle>("puzzles");
@@ -21,44 +26,66 @@ export async function deleteTodaysPuzzle(): Promise<{
     const start = new Date(`${dateKey}T00:00:00.000Z`);
     const end = new Date(`${dateKey}T23:59:59.999Z`);
 
-    const result = await collection.deleteMany({
-      publishedAt: { $gte: start, $lte: end },
-      active: true,
-    });
+    const existing = await collection
+      .find({ publishedAt: { $gte: start, $lte: end }, active: true })
+      .project({ id: 1 })
+      .toArray();
 
-    // Must bust Data Cache or getTodaysPuzzle will keep serving the deleted row
+    const archivedIds = existing.map((p) => String(p.id));
+
+    if (archivedIds.length) {
+      await collection.updateMany(
+        { id: { $in: archivedIds } },
+        {
+          $set: {
+            active: false,
+            "metadata.archived": true,
+            "metadata.retiredAt": new Date().toISOString(),
+            "metadata.retiredReason": "regenerate",
+            "metadata.retiredDateKey": dateKey,
+          },
+        }
+      );
+    }
+
     revalidateTag("daily-puzzle", "max");
     revalidateTag(`daily-puzzle-${dateKey}`, "max");
 
-    if (result.deletedCount > 0) {
-      return {
-        success: true,
-        message: `Deleted ${result.deletedCount} puzzle(s) for ${dateKey}`,
-      };
-    }
+    logger.info("Archived today's puzzle(s) before regenerate", {
+      dateKey,
+      count: archivedIds.length,
+      archivedIds,
+    });
 
     return {
       success: true,
-      message: "No puzzle found for today to delete",
+      message: archivedIds.length
+        ? `Archived ${archivedIds.length} puzzle(s) for ${dateKey}`
+        : `No active puzzle for ${dateKey} to archive`,
+      archivedIds,
     };
   } catch (error) {
-    console.error("Error deleting today's puzzle:", error);
+    console.error("Error archiving today's puzzle:", error);
     return {
       success: false,
       message: error instanceof Error ? error.message : "Unknown error",
+      archivedIds: [],
     };
   }
 }
 
-function calculateDailyDifficulty(date: Date): number {
-  const dayOfWeek = date.getUTCDay();
-  const difficulties = [5, 4, 6, 8, 7, 5, 4];
-  return difficulties[dayOfWeek] || 5;
+/** @deprecated Prefer archiveTodaysPuzzle — hard delete destroys uniqueness history */
+export async function deleteTodaysPuzzle(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const result = await archiveTodaysPuzzle();
+  return { success: result.success, message: result.message };
 }
 
 /**
  * Regenerate today's puzzle (admin path only — callers must authorize).
- * Generates via AI Gateway first; only swaps the DB row after a successful result.
+ * Probes AI Gateway auth, generates first, then archives the prior row and persists.
  */
 export async function regenerateTodaysPuzzle(
   puzzleType?: string
@@ -74,25 +101,28 @@ export async function regenerateTodaysPuzzle(
 
     const dateKey = getUtcPuzzleDate();
     const typeToUse = puzzleType || process.env.DEFAULT_PUZZLE_TYPE || "rebus";
-    const difficulty = calculateDailyDifficulty(new Date(`${dateKey}T00:00:00Z`));
+    const difficultyPlan = await resolveAdaptiveDifficultyForDate(
+      new Date(`${dateKey}T00:00:00Z`)
+    );
 
-    // Generate BEFORE deleting so a failed run keeps the current daily puzzle.
+    // Generate BEFORE archiving so a failed run keeps the current daily puzzle.
     const result = await generateMasterPuzzle({
-      targetDifficulty: difficulty,
+      targetDifficulty: difficultyPlan.target,
       requireNovelty: true,
-      qualityThreshold: 70,
+      qualityThreshold: 74,
       maxAttempts: 4,
       puzzleType: typeToUse,
+      useLearningFeedback: true,
     });
 
     const puzzleDisplay =
       result.puzzle.visual?.unicodeFallback?.trim() || result.puzzle.rebusPuzzle;
 
-    const deleteResult = await deleteTodaysPuzzle();
-    if (!deleteResult.success) {
+    const archiveResult = await archiveTodaysPuzzle();
+    if (!archiveResult.success) {
       return {
         success: false,
-        message: `Generated OK but failed to delete old puzzle: ${deleteResult.message}`,
+        message: `Generated OK but failed to archive old puzzle: ${archiveResult.message}`,
       };
     }
 
@@ -112,12 +142,29 @@ export async function regenerateTodaysPuzzle(
         regeneratedAt: new Date().toISOString(),
         techniqueId: result.puzzle.techniqueId,
         qualityScore: result.metadata.qualityMetrics?.scores?.overall,
+        uniquenessScore: result.metadata.uniquenessScore,
+        funScore: result.metadata.qualityMetrics?.scores?.fun,
+        visualStyleId: result.puzzle.visual?.styleId,
+        difficultyLevel: result.puzzle.difficultyLevel,
+        difficultyScore: result.puzzle.difficulty,
+        fingerprint: result.metadata.fingerprint,
+        calibratedDifficulty: result.metadata.calibratedDifficulty,
+        generationMethod:
+          result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
+        engine: result.metadata.engine ?? "eve",
+        learningBaselineDifficulty: difficultyPlan.baseline,
+        learningDifficultyDelta: difficultyPlan.delta,
+        learningReason: difficultyPlan.reason,
+        selfLearning: true,
+        estimatedSolveRate: result.metadata.estimatedSolveRate,
+        simCalibrationBias: result.metadata.simCalibrationBias,
+        answerKey: normalizeAnswerKey(result.puzzle.answer),
       },
     });
 
     return {
       success: true,
-      message: `Successfully regenerated today's puzzle (type: ${typeToUse})`,
+      message: `Successfully regenerated today's puzzle (type: ${typeToUse}; archived ${archiveResult.archivedIds.length})`,
       puzzle: {
         id: persisted.id,
         puzzle: puzzleDisplay,

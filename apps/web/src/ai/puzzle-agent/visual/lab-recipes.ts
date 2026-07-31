@@ -13,6 +13,7 @@ export const VISUAL_LAB_MODES = [
   "hybrid",
   "composed",
   "full-puzzle",
+  "apex-tournament",
 ] as const;
 
 export type VisualLabMode = (typeof VISUAL_LAB_MODES)[number];
@@ -73,6 +74,14 @@ export const VISUAL_LAB_MODE_META: Record<VisualLabMode, VisualLabModeMeta> = {
     id: "full-puzzle",
     label: "Full Eve puzzle",
     description: "Run the full ToolLoopAgent once — preview only, not published.",
+    usesAi: true,
+    estimatedCost: "high",
+  },
+  "apex-tournament": {
+    id: "apex-tournament",
+    label: "Apex tournament",
+    description:
+      "Multi-candidate generation with critique, player sim, and rubric — preview only.",
     usesAi: true,
     estimatedCost: "high",
   },

@@ -139,6 +139,34 @@ export interface Puzzle {
     techniqueId?: string;
     visualStyleId?: string;
     funScore?: number;
+    /** Numeric difficulty 1–10 from generation */
+    difficultyScore?: number;
+    /** Canonical tier: Hard | Difficult | Evil | Impossible */
+    difficultyLevel?: string;
+    /** Normalized answer for archive-wide uniqueness */
+    answerKey?: string;
+    fingerprint?: string;
+    calibratedDifficulty?: number;
+    engine?: string;
+    generationMethod?: string;
+    archived?: boolean;
+    retiredAt?: string;
+    retiredReason?: string;
+    /** Live calibration from real players */
+    liveSolveRate?: number;
+    liveMedianSolveSeconds?: number | null;
+    liveFinals?: number;
+    perceivedTooEasy?: boolean;
+    perceivedTooHard?: boolean;
+    lastCalibratedAt?: string;
+    learningBaselineDifficulty?: number;
+    learningDifficultyDelta?: number;
+    learningReason?: string;
+    selfLearning?: boolean;
+    /** Apex player-sim estimate at publish time (0–1) */
+    estimatedSolveRate?: number;
+    /** Rolling sim bias applied when publishing */
+    simCalibrationBias?: number;
   };
   // Legacy field for backward compatibility (will be populated from puzzle field)
   rebusPuzzle?: string;

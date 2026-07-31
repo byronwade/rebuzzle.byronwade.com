@@ -20,10 +20,13 @@ interface GameData {
   difficulty: number;
   puzzleType?: string;
   locked?: boolean;
+  puzzleId?: string;
   metadata?: {
     puzzleType?: string;
   };
 }
+
+type PerceptionChoice = "too_easy" | "just_right" | "too_hard";
 
 interface WordResult {
   word: string;
@@ -63,6 +66,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   // Global comparison stats
   const [percentile, setPercentile] = useState<number | null>(null);
   const [todaySolves, setTodaySolves] = useState<number | null>(null);
+  const [perception, setPerception] = useState<PerceptionChoice | null>(null);
+  const [perceptionSaving, setPerceptionSaving] = useState(false);
 
   const [solution, setSolution] = useState({
     answer: gameData.answer || "",
@@ -175,6 +180,62 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   const timeTaken =
     typeof params.time === "string" ? Number.parseInt(params.time, 10) : completionData?.timeTaken;
   const difficulty = gameData?.difficulty ?? 5;
+
+  useEffect(() => {
+    const puzzleId = gameData.puzzleId;
+    if (!puzzleId || typeof window === "undefined") return;
+    try {
+      const key = `difficultyPerception:${puzzleId}`;
+      const stored = localStorage.getItem(key);
+      if (
+        stored === "too_easy" ||
+        stored === "just_right" ||
+        stored === "too_hard"
+      ) {
+        setPerception(stored);
+      }
+    } catch {
+      // ignore
+    }
+  }, [gameData.puzzleId]);
+
+  async function submitPerception(choice: PerceptionChoice) {
+    const puzzleId =
+      gameData.puzzleId ||
+      (() => {
+        try {
+          const stored = localStorage.getItem("lastGameSolution");
+          if (!stored) return "";
+          const parsed = JSON.parse(stored) as { puzzleId?: string };
+          return parsed.puzzleId || "";
+        } catch {
+          return "";
+        }
+      })();
+
+    if (!puzzleId || perceptionSaving || perception) return;
+    setPerceptionSaving(true);
+    setPerception(choice);
+    try {
+      localStorage.setItem(`difficultyPerception:${puzzleId}`, choice);
+      await fetch("/api/puzzles/difficulty-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          puzzleId,
+          perception: choice,
+          solved: success,
+          timeSpentSeconds: typeof timeTaken === "number" ? timeTaken : 0,
+          hintsUsed: completionData?.usedHints ?? 0,
+          attemptNumber: attempts,
+        }),
+      });
+    } catch {
+      // Non-blocking — local selection still stands
+    } finally {
+      setPerceptionSaving(false);
+    }
+  }
 
   const finalScore = success
     ? completionData?.score || calculateGamePoints(attempts, timeTaken ?? 0, streak, difficulty)
@@ -300,6 +361,40 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 </span>
               </div>
             )}
+
+            {/* Difficulty perception — feeds self-learning */}
+            <div className="space-y-3 text-center">
+              <p className="eyebrow">How did it feel?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { id: "too_easy", label: "Too easy" },
+                    { id: "just_right", label: "Just right" },
+                    { id: "too_hard", label: "Too hard" },
+                  ] as const
+                ).map((option) => {
+                  const selected = perception === option.id;
+                  return (
+                    <Button
+                      key={option.id}
+                      type="button"
+                      variant="outline"
+                      disabled={Boolean(perception) || perceptionSaving}
+                      onClick={() => void submitPerception(option.id)}
+                      className={cn(
+                        "h-auto py-3 text-xs sm:text-sm",
+                        selected && "border-foreground bg-inset"
+                      )}
+                    >
+                      {option.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              {perception && (
+                <p className="text-muted-foreground text-xs">Thanks — this tunes tomorrow&apos;s puzzle</p>
+              )}
+            </div>
 
             {/* Guess History */}
             {completionData?.guessHistory && completionData.guessHistory.length > 0 && (
@@ -432,6 +527,40 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 <p className="mx-auto mt-5 max-w-sm text-balance text-muted-foreground text-sm leading-6">
                   {solution.explanation}
                 </p>
+              )}
+            </div>
+
+            {/* Difficulty perception — still valuable on losses */}
+            <div className="space-y-3 text-center">
+              <p className="eyebrow">How did it feel?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { id: "too_easy", label: "Too easy" },
+                    { id: "just_right", label: "Just right" },
+                    { id: "too_hard", label: "Too hard" },
+                  ] as const
+                ).map((option) => {
+                  const selected = perception === option.id;
+                  return (
+                    <Button
+                      key={option.id}
+                      type="button"
+                      variant="outline"
+                      disabled={Boolean(perception) || perceptionSaving}
+                      onClick={() => void submitPerception(option.id)}
+                      className={cn(
+                        "h-auto py-3 text-xs sm:text-sm",
+                        selected && "border-foreground bg-inset"
+                      )}
+                    >
+                      {option.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              {perception && (
+                <p className="text-muted-foreground text-xs">Thanks — this tunes tomorrow&apos;s puzzle</p>
               )}
             </div>
 

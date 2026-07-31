@@ -3,9 +3,11 @@
  */
 
 import { revalidateTag } from "next/cache";
+import { isAnswerRegistered, normalizeAnswerKey } from "@/ai/learning/answer-registry";
 import { db } from "@/db";
 import type { PuzzleVisual } from "@/db/models";
 import { logger } from "@/lib/logger";
+import { toLegacyDifficultyLabel } from "./published-puzzle";
 
 export type PersistDailyPuzzleInput = {
   dateString: string;
@@ -20,13 +22,12 @@ export type PersistDailyPuzzleInput = {
   rebusPuzzle?: string;
   visual?: PuzzleVisual;
   metadataExtra?: Record<string, unknown>;
+  /**
+   * Emergency play-path seeds only. AI generation must never set this —
+   * duplicate answers are a hard uniqueness failure.
+   */
+  allowDuplicateAnswer?: boolean;
 };
-
-function toDifficultyLabel(difficulty: number): "easy" | "medium" | "hard" {
-  if (difficulty <= 3) return "easy";
-  if (difficulty <= 7) return "medium";
-  return "hard";
-}
 
 /**
  * Upsert-ish: if today's puzzle already exists, return it.
@@ -41,15 +42,31 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
     return { id: existing.id, alreadyExisted: true };
   }
 
+  // Never persist a duplicate answer — archive (retired) puzzles still count
+  const answerCheck = await isAnswerRegistered(input.answer);
+  if (answerCheck.taken && !input.allowDuplicateAnswer) {
+    throw new Error(
+      `Refusing to persist duplicate answer (matches puzzle ${answerCheck.puzzleId}). Generate a unique answer.`
+    );
+  }
+  if (answerCheck.taken && input.allowDuplicateAnswer) {
+    logger.warn("Persisting emergency seed with duplicate answer (allowed)", {
+      answerKey: normalizeAnswerKey(input.answer),
+      conflictingPuzzleId: answerCheck.puzzleId,
+      dateString: input.dateString,
+    });
+  }
+
   const id = crypto.randomUUID();
   const publishedAt = new Date(`${input.dateString}T00:00:00.000Z`);
+  const answerKey = normalizeAnswerKey(input.answer);
 
   await db.puzzleOps.create({
     id,
     puzzle: input.puzzleDisplay,
     puzzleType: input.puzzleType,
     answer: input.answer,
-    difficulty: toDifficultyLabel(input.difficulty),
+    difficulty: toLegacyDifficultyLabel(input.difficulty),
     category: input.category || "general",
     explanation: input.explanation,
     hints: input.hints || [],
@@ -64,6 +81,11 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
       aiGenerated: input.aiGenerated,
       generatedAt: new Date().toISOString(),
       visualStyleId: input.visual?.styleId,
+      // Numeric 1–10 + canonical tier label (easy|medium|hard above is legacy UI mapping)
+      difficultyScore: input.difficulty,
+      // Permanent uniqueness key (survives soft-retire / archive)
+      answerKey,
+      archived: false,
       // Intentionally omit keyword (= answer) from metadata
       ...input.metadataExtra,
     },
