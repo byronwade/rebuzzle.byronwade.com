@@ -87,7 +87,12 @@ export async function canUsePuzzlePreview(): Promise<boolean> {
   }
 }
 
-function emptyGameData(): GameData {
+export type PublicGameData = Omit<GameData, "answer"> & {
+  /** Never populated for an active board */
+  answer?: undefined;
+};
+
+function emptyGameData(): PublicGameData {
   return {
     id: "",
     puzzle: "",
@@ -110,11 +115,6 @@ function toDifficulty(difficulty: number | string): number {
   if (difficulty === "hard") return 7;
   return Number(difficulty) || 5;
 }
-
-export type PublicGameData = Omit<GameData, "answer"> & {
-  /** Never populated for an active board */
-  answer?: undefined;
-};
 
 /**
  * Solution payload for /game-over — only after the daily lock is held.
