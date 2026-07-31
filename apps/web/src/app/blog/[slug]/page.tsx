@@ -3,9 +3,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import BlogPostContent from "@/components/BlogPostContent";
 import { FAQSection, PostNavigation, PuzzleStatsCard } from "@/components/blog";
 import Layout from "@/components/Layout";
+import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { generateBlogPostMetadata } from "@/lib/seo/metadata";
@@ -39,6 +41,7 @@ export async function generateStaticParams() {
       .filter((post) => post.slug.length <= 250)
       .map((post) => ({ slug: post.slug }));
 
+    // Cache Components requires ≥1 result for build-time validation.
     if (validSlugs.length === 0) {
       return [{ slug: "placeholder" }];
     }
@@ -56,6 +59,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   try {
     const { slug } = await params;
+    if (slug === "placeholder") {
+      return {
+        title: "Blog - Rebuzzle",
+        description: "Daily puzzle write-ups and solutions.",
+      };
+    }
     const post = await fetchBlogPost(slug);
     if (!post) {
       return {
@@ -64,13 +73,12 @@ export async function generateMetadata({
       };
     }
 
-    // Pass date as string - generateBlogPostMetadata will handle conversion
     return generateBlogPostMetadata({
       title: post.title,
       slug: post.slug,
       excerpt: post.excerpt,
       content: post.content,
-      publishedAt: post.date, // Pass as string, not new Date()
+      publishedAt: post.date,
       answer: post.answer,
       puzzleType: post.puzzleType,
     });
@@ -82,14 +90,25 @@ export async function generateMetadata({
   }
 }
 
-export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
-  // Access headers first to make this component dynamic before any Date() operations
-  await connection();
+function BlogPostSkeleton() {
+  return (
+    <Layout>
+      <ContentPageSkeleton className="py-12 md:py-16" />
+    </Layout>
+  );
+}
 
+async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
+  // Sentinel from generateStaticParams when the DB has no posts — no IO.
+  if (slug === "placeholder") {
+    notFound();
+  }
+
+  await connection();
+
   try {
-    // Fetch post with stats for richer content
     const postWithStats = await fetchBlogPostWithStats(slug);
 
     if (!postWithStats) {
@@ -98,20 +117,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
     const post = postWithStats;
 
-    // Fetch adjacent posts for navigation and related posts in parallel
     const [adjacentPosts, allPosts] = await Promise.all([
       fetchAdjacentPosts(post.date),
       fetchBlogPosts(),
     ]);
 
-    // Generate schemas - pass dates as strings, schema generator will handle conversion
     const articleSchema = generateArticleSchema({
       title: post.title,
       slug: post.slug,
       content: post.content,
       excerpt: post.excerpt,
-      publishedAt: post.date, // Pass as string
-      updatedAt: post.date, // Pass as string
+      publishedAt: post.date,
+      updatedAt: post.date,
       authorId: "rebuzzle-team",
       puzzleId: post.answer,
       answer: post.answer,
@@ -138,18 +155,15 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       ],
     });
 
-    // Generate FAQ schema if sections.faq exists
     const faqSchema =
       post.sections?.faq && post.sections.faq.length > 0
         ? generateFAQPageSchema(post.sections.faq)
         : null;
 
-    // Get related posts (only if puzzle type exists)
     const relatedPosts = post.puzzleType
       ? allPosts.filter((p) => p.puzzleType === post.puzzleType && p.slug !== post.slug).slice(0, 3)
       : [];
 
-    // Prepare stats for PuzzleStatsCard
     const puzzleStats = post.puzzleStats
       ? {
           solveRate: post.puzzleStats.solveRate ?? 0,
@@ -184,18 +198,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
           <BlogPostContent post={post} />
 
-          {/* Puzzle Statistics */}
           {puzzleStats && <PuzzleStatsCard className="mt-10" stats={puzzleStats} />}
 
-          {/* FAQ Section */}
           {post.sections?.faq && post.sections.faq.length > 0 && (
             <FAQSection className="mt-10" faqs={post.sections.faq} />
           )}
 
-          {/* Post Navigation (Prev/Next) */}
           <PostNavigation className="mt-10" next={adjacentPosts.next} prev={adjacentPosts.prev} />
 
-          {/* Related Posts */}
           {relatedPosts.length > 0 && (
             <div className="mt-14 border-border border-t pt-10">
               <p className="eyebrow flex items-center gap-2">
@@ -221,14 +231,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 ))}
               </div>
 
-              {/* View all link */}
               <Button asChild className="mt-4 w-full" variant="outline">
                 <Link href={`/puzzles/${post.puzzleType}`}>View all {puzzleTypeName} puzzles</Link>
               </Button>
             </div>
           )}
 
-          {/* Back link */}
           <div className="mt-12 text-center">
             <Link className="text-link text-sm underline-offset-4 hover:underline" href="/blog">
               ← Back to blog
@@ -245,7 +253,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             <CardContent className="px-6 py-14 text-center">
               <p className="eyebrow">Blog</p>
               <h1 className="mt-3 font-semibold text-2xl tracking-[-0.04em]">
-                We couldn't load this post.
+                We couldn&apos;t load this post.
               </h1>
               <p className="mt-2 text-muted-foreground text-sm">Something went wrong on our end.</p>
               <div className="mt-6 flex justify-center gap-2">
@@ -253,7 +261,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                   <Link href="/blog">Back to blog</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/">Play today's puzzle</Link>
+                  <Link href="/">Play today&apos;s puzzle</Link>
                 </Button>
               </div>
             </CardContent>
@@ -262,4 +270,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       </Layout>
     );
   }
+}
+
+/** Sync shell — stream post body inside Suspense (Cache Components). */
+export default function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+  return (
+    <Suspense fallback={<BlogPostSkeleton />}>
+      <BlogPostBody params={params} />
+    </Suspense>
+  );
 }
