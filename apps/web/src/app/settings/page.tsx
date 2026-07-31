@@ -14,7 +14,6 @@ import {
   Trash2,
   Trophy,
 } from "lucide-react";
-// Palette already imported for Appearance + Visual Lab link
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
