@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
 import { db } from "@/db";
 import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
+import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
 import { logger } from "@/lib/logger";
 
 /**
@@ -180,135 +181,67 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
       }
     }
 
-    // Extract puzzle data - handle both rebus and other puzzle types
-    const puzzleData: any = {
-      id: `ai-${dateString}`,
-      puzzle: puzzleDisplay, // Generic puzzle field (works for all types)
-      puzzleType: typeToUse, // Store puzzle type
+    // Persist first — clients must receive a real DB id for /api/puzzles/guess
+    const persisted = await persistDailyPuzzle({
+      dateString,
+      puzzleDisplay,
+      puzzleType: typeToUse,
+      answer: result.puzzle.answer,
+      difficulty: result.puzzle.difficulty,
+      category: result.puzzle.category || "general",
+      explanation: result.puzzle.explanation,
+      hints: result.puzzle.hints || [],
+      aiGenerated: true,
+      rebusPuzzle: typeToUse === "rebus" ? puzzleDisplay : undefined,
+      metadataExtra: {
+        qualityScore: result.metadata.qualityMetrics?.scores?.overall,
+        uniquenessScore: result.metadata.uniquenessScore,
+      },
+    });
+
+    // Best-effort embedding (non-blocking)
+    void (async () => {
+      try {
+        const { generatePuzzleEmbedding, isEmbeddingAvailable } = await import(
+          "@/ai/services/embeddings"
+        );
+        if (isEmbeddingAvailable()) {
+          const embedding = await generatePuzzleEmbedding({
+            puzzle: puzzleDisplay,
+            answer: result.puzzle.answer,
+            category: result.puzzle.category,
+            puzzleType: typeToUse,
+            explanation: result.puzzle.explanation,
+          });
+          await db.puzzleOps.updateEmbedding(persisted.id, embedding);
+        }
+      } catch (embeddingError) {
+        logger.warn("Failed to generate embedding (non-critical)", {
+          error:
+            embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
+        });
+      }
+    })();
+
+    return {
+      id: persisted.id,
+      puzzle: puzzleDisplay,
+      rebusPuzzle: typeToUse === "rebus" ? puzzleDisplay : undefined,
+      puzzleType: typeToUse,
       difficulty: result.puzzle.difficulty,
       answer: result.puzzle.answer,
       explanation: result.puzzle.explanation,
       hints: result.puzzle.hints,
       date: dateString,
       topic: result.puzzle.category,
-      keyword: result.puzzle.answer.replace(/\s+/g, ""),
       category: result.puzzle.category,
       relevanceScore: Math.round((result.metadata.qualityMetrics?.scores?.overall || 85) / 10),
-      seoMetadata: {
-        keywords: [result.puzzle.answer, `${typeToUse} puzzle`, "AI generated", "brain teaser"],
-        description: `Solve this AI-generated ${typeToUse} puzzle: ${result.puzzle.answer}`,
-        ogTitle: `Rebuzzle: ${result.puzzle.answer} Puzzle`,
-        ogDescription: `Challenge yourself with today's AI-generated ${typeToUse} puzzle. Can you solve it?`,
-      },
       aiGenerated: true,
       generationMethod: "ai-master",
       qualityScore: result.metadata.qualityMetrics?.scores?.overall || 0,
       uniquenessScore: result.metadata.uniquenessScore || 0,
+      fromDatabase: true,
     };
-
-    // Add legacy rebusPuzzle field for backward compatibility
-    if (typeToUse === "rebus" && puzzleDisplay) {
-      puzzleData.rebusPuzzle = puzzleDisplay;
-    }
-
-    // Add any other puzzle-specific fields
-    for (const key of Object.keys(result.puzzle)) {
-      if (
-        !puzzleData[key] &&
-        key !== "difficulty" &&
-        key !== "answer" &&
-        key !== "explanation" &&
-        key !== "hints" &&
-        key !== "category" &&
-        key !== puzzleDisplayField
-      ) {
-        puzzleData[key] = (result.puzzle as Record<string, any>)[key];
-      }
-    }
-
-    // STEP 3: Store in database for all future users today
-    try {
-      // Bind publishedAt to the UTC dateString so findByDate lookups match
-      const publishedAt = new Date(`${dateString}T00:00:00.000Z`);
-
-      const puzzle = {
-        id: crypto.randomUUID(),
-        puzzle: puzzleData.puzzle, // Generic puzzle field
-        puzzleType: typeToUse, // Store puzzle type
-        answer: result.puzzle.answer,
-        difficulty: (result.puzzle.difficulty <= 3
-          ? "easy"
-          : result.puzzle.difficulty <= 7
-            ? "medium"
-            : "hard") as "easy" | "medium" | "hard",
-        category: result.puzzle.category || "general",
-        explanation: result.puzzle.explanation,
-        hints: result.puzzle.hints || [],
-        publishedAt,
-        createdAt: new Date(),
-        active: true,
-        metadata: {
-          topic: result.puzzle.category,
-          keyword: result.puzzle.answer.replace(/\s+/g, ""),
-          category: result.puzzle.category,
-          puzzleType: typeToUse, // Store in metadata too
-          seoMetadata: puzzleData.seoMetadata,
-          aiGenerated: true,
-          qualityScore: result.metadata.qualityMetrics?.scores?.overall,
-          uniquenessScore: result.metadata.uniquenessScore,
-          generatedAt: new Date().toISOString(),
-        },
-        // Legacy field for backward compatibility
-        rebusPuzzle: typeToUse === "rebus" ? puzzleData.puzzle : undefined,
-      };
-
-      await db.puzzleOps.create(puzzle);
-
-      logger.info("Puzzle stored in database", {
-        puzzleId: puzzle.id,
-        futureRequestsFree: true,
-      });
-
-      // Revalidate the daily-puzzle cache so all users see the new puzzle immediately
-      revalidateTag("daily-puzzle", "max");
-      logger.info("Puzzle cache revalidated");
-
-      // Generate embedding asynchronously (non-blocking)
-      // This enables semantic search and recommendations
-      (async () => {
-        try {
-          const { generatePuzzleEmbedding, isEmbeddingAvailable } = await import(
-            "@/ai/services/embeddings"
-          );
-          if (isEmbeddingAvailable()) {
-            const embedding = await generatePuzzleEmbedding({
-              puzzle: puzzle.puzzle,
-              answer: puzzle.answer,
-              category: puzzle.category,
-              puzzleType: typeToUse,
-              explanation: puzzle.explanation,
-            });
-
-            // Update puzzle with embedding using puzzleOps
-            await db.puzzleOps.updateEmbedding(puzzle.id, embedding);
-            logger.info("Generated puzzle embedding for semantic search");
-          }
-        } catch (embeddingError) {
-          logger.warn("Failed to generate embedding (non-critical)", {
-            error:
-              embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
-          });
-        }
-      })();
-    } catch (saveError) {
-      logger.error(
-        "Failed to store puzzle - will regenerate on next request",
-        saveError instanceof Error ? saveError : new Error(String(saveError)),
-        { willUseMoreTokens: true }
-      );
-    }
-
-    return puzzleData;
   } catch (error) {
     logger.error(
       "Failed to generate puzzle with AI",
@@ -318,33 +251,44 @@ async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string)
       }
     );
 
-    // STEP 4: AI failed - use emergency fallback
-    // Use the dateString parameter to calculate day of year
-    const puzzleDate = new Date(`${dateString}T00:00:00Z`);
-    const yearStart = new Date(puzzleDate.getFullYear(), 0, 0);
-    const dayOfYear = Math.floor((puzzleDate.getTime() - yearStart.getTime()) / 86_400_000);
-    const fallbackIndex = dayOfYear % FALLBACK_PUZZLES.length;
-    const fallback = FALLBACK_PUZZLES[fallbackIndex]!;
+    // STEP 4: AI failed — persist a deterministic fallback so guessing still works
+    const [y, m, d] = dateString.split("-").map(Number);
+    const dayOfYear = Math.floor(
+      (Date.UTC(y!, (m ?? 1) - 1, d ?? 1) - Date.UTC(y!, 0, 0)) / 86_400_000
+    );
+    const fallback = FALLBACK_PUZZLES[dayOfYear % FALLBACK_PUZZLES.length]!;
 
-    logger.warn("Using emergency fallback puzzle", {
-      answer: fallback.answer,
+    logger.warn("Persisting emergency fallback puzzle", {
+      dateString,
       reason: "AI generation failed",
     });
 
+    const persisted = await persistDailyPuzzle({
+      dateString,
+      puzzleDisplay: fallback.rebusPuzzle,
+      puzzleType: "rebus",
+      answer: fallback.answer,
+      difficulty: fallback.difficulty,
+      category: fallback.category,
+      explanation: fallback.explanation,
+      hints: fallback.hints,
+      aiGenerated: false,
+      rebusPuzzle: fallback.rebusPuzzle,
+      metadataExtra: {
+        fallbackReason: error instanceof Error ? error.message : "AI generation failed",
+      },
+    });
+
     return {
-      id: `fallback-${dateString}`,
+      id: persisted.id,
       ...fallback,
+      puzzle: fallback.rebusPuzzle,
+      puzzleType: "rebus",
       date: dateString,
       topic: fallback.category,
-      keyword: fallback.answer,
       relevanceScore: 7,
-      seoMetadata: {
-        keywords: [fallback.answer, "rebus puzzle", "word game", "brain teaser"],
-        description: `Solve this rebus puzzle: ${fallback.answer}`,
-        ogTitle: `Rebuzzle: ${fallback.answer} Puzzle`,
-        ogDescription: `Challenge yourself with today's rebus puzzle.`,
-      },
       aiGenerated: false,
+      fromDatabase: true,
       fallbackReason: error instanceof Error ? error.message : "AI generation failed",
     };
   }
@@ -383,28 +327,55 @@ export async function getTodaysPuzzle(puzzleType?: string, dateString?: string) 
       error instanceof Error ? error : new Error(String(error))
     );
 
-    // Last resort fallback
+    // Last resort — still persist so /api/puzzles/guess can resolve the id
     const lastResortPuzzle = FALLBACK_PUZZLES[0]!;
-    // Use provided date string or get today's date
     const todayString = dateString || getTodayDateString();
 
-    return {
-      success: true,
-      puzzle: {
-        id: `emergency-fallback-${todayString}`,
-        ...lastResortPuzzle,
-        date: todayString,
-        topic: lastResortPuzzle.category,
-        keyword: lastResortPuzzle.answer,
-        relevanceScore: 5,
+    try {
+      const persisted = await persistDailyPuzzle({
+        dateString: todayString,
+        puzzleDisplay: lastResortPuzzle.rebusPuzzle,
+        puzzleType: "rebus",
+        answer: lastResortPuzzle.answer,
+        difficulty: lastResortPuzzle.difficulty,
+        category: lastResortPuzzle.category,
+        explanation: lastResortPuzzle.explanation,
+        hints: lastResortPuzzle.hints,
         aiGenerated: false,
-        fallbackReason: "Emergency fallback",
-      },
-      generatedAt: new Date().toISOString(),
-      cached: false,
-      fallback: true,
-      emergency: true,
-    };
+        rebusPuzzle: lastResortPuzzle.rebusPuzzle,
+        metadataExtra: { fallbackReason: "Emergency fallback" },
+      });
+
+      return {
+        success: true,
+        puzzle: {
+          id: persisted.id,
+          ...lastResortPuzzle,
+          puzzle: lastResortPuzzle.rebusPuzzle,
+          puzzleType: "rebus",
+          date: todayString,
+          topic: lastResortPuzzle.category,
+          relevanceScore: 5,
+          aiGenerated: false,
+          fromDatabase: true,
+          fallbackReason: "Emergency fallback",
+        },
+        generatedAt: new Date().toISOString(),
+        cached: false,
+        fallback: true,
+        emergency: true,
+      };
+    } catch (persistError) {
+      logger.error(
+        "Failed to persist emergency fallback",
+        persistError instanceof Error ? persistError : new Error(String(persistError))
+      );
+      return {
+        success: false,
+        error: "Unable to load today's puzzle",
+        generatedAt: new Date().toISOString(),
+      };
+    }
   }
 }
 

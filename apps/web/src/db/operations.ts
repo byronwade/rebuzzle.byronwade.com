@@ -327,10 +327,14 @@ export const puzzleOps = {
     const start = new Date(`${dateString}T00:00:00.000Z`);
     const end = new Date(`${dateString}T23:59:59.999Z`);
 
-    return await collection.findOne({
-      publishedAt: { $gte: start, $lte: end },
-      active: true,
-    });
+    // Prefer newest if duplicates ever exist
+    return await collection.findOne(
+      {
+        publishedAt: { $gte: start, $lte: end },
+        active: true,
+      },
+      { sort: { publishedAt: -1, createdAt: -1 } }
+    );
   },
 
   async findTodaysPuzzle(): Promise<Puzzle | null> {

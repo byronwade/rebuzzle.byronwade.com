@@ -174,7 +174,7 @@ export async function fetchGameData(_isPreview = false): Promise<PublicGameData>
 
     const metadata = {
       topic: puzzle.topic,
-      keyword: puzzle.keyword,
+      // Never include keyword — it was derived from the answer
       category: puzzle.category,
       relevanceScore: puzzle.relevanceScore,
       hints: puzzle.hints,
@@ -182,7 +182,7 @@ export async function fetchGameData(_isPreview = false): Promise<PublicGameData>
     } as PuzzleMetadata;
 
     return {
-      id: puzzle.id || puzzle.keyword || "",
+      id: puzzle.id || "",
       puzzle: puzzleDisplay,
       puzzleType,
       // answer omitted — never ship the solution to an active client

@@ -169,7 +169,15 @@ export async function POST(request: Request) {
     const attemptsLeft = isCorrect ? 0 : Math.max(0, maxAttempts - attemptNumber);
     const wordResults = buildWordResults(guess, puzzle.answer);
     const difficultyLevel =
-      typeof puzzle.difficulty === "number" ? puzzle.difficulty : Number(puzzle.difficulty) || 5;
+      typeof puzzle.difficulty === "number"
+        ? puzzle.difficulty
+        : puzzle.difficulty === "easy"
+          ? 3
+          : puzzle.difficulty === "hard"
+            ? 7
+            : puzzle.difficulty === "medium"
+              ? 5
+              : Number(puzzle.difficulty) || 5;
 
     const attemptData = {
       id: crypto.randomUUID(),
@@ -195,7 +203,7 @@ export async function POST(request: Request) {
       attemptData
     );
 
-    if (!write.success && isFinal) {
+    if (!write.success) {
       return NextResponse.json(
         {
           success: false,

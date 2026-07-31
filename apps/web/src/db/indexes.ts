@@ -86,6 +86,8 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { createdAt: -1 } },
       // Combined index for filtered date queries
       { spec: { active: 1, publishedAt: -1, puzzleType: 1 } },
+      // Speeds UTC-day lookups used by findByDate
+      { spec: { active: 1, publishedAt: 1 } },
     ],
   },
 

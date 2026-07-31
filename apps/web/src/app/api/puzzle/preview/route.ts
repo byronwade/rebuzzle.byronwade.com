@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 import { previewPuzzleGeneration } from "../../../actions/puzzleGenerationActions";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 
-export async function GET() {
+/**
+ * Admin-only AI generation smoke test. Returns generated content to admins only.
+ */
+export async function GET(request: Request) {
   try {
+    const admin = await verifyAdminAccess(request);
+    if (!admin) {
+      return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 });
+    }
+
     const result = await previewPuzzleGeneration();
 
     if (result.success) {
       return NextResponse.json({
         success: true,
-        puzzle: result.puzzle, // Changed from puzzles to puzzle
+        puzzle: result.puzzle,
         metadata: result.metadata,
         message: result.message,
         provider: result.provider,
