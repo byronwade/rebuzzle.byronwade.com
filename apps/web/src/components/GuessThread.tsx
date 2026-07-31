@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import {
   MessageAvatar,
@@ -27,6 +28,8 @@ export interface ThreadTurn {
 
 interface GuessThreadProps {
   turns: ThreadTurn[];
+  /** Optional footer after the last turn (e.g. solve result card). */
+  footer?: ReactNode;
   className?: string;
 }
 
@@ -46,14 +49,15 @@ const TIER_LABEL: Record<ReactionTier, string> = {
  * something. The instant line never waits on the model, so feedback is always
  * immediate; the riff types itself in underneath if it shows up.
  */
-export function GuessThread({ turns, className }: GuessThreadProps) {
+export function GuessThread({ turns, footer, className }: GuessThreadProps) {
   const endRef = useRef<HTMLLIElement>(null);
   const lastQuip = turns.at(-1)?.quip;
+  const hasFooter = Boolean(footer);
 
   // Follow the conversation the way a chat does — including as a riff grows.
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns.length, lastQuip]);
+  }, [turns.length, lastQuip, hasFooter]);
 
   if (turns.length === 0) return null;
 
@@ -96,6 +100,8 @@ export function GuessThread({ turns, className }: GuessThreadProps) {
           </li>
         );
       })}
+
+      {footer ? <li className="list-none pt-1">{footer}</li> : null}
 
       <li aria-hidden ref={endRef} />
     </ol>

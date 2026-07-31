@@ -119,20 +119,24 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               </span>
             </div>
           </div>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="cursor-pointer gap-2 bg-foreground text-background focus:bg-foreground/85 focus:text-background"
-            onClick={() => router.push("/signup")}
-          >
-            <User className="h-4 w-4" />
-            Save My Progress
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2 text-muted-foreground"
-            onClick={() => router.push("/login")}
-          >
-            Already have an account?
-          </DropdownMenuItem>
+          <div className="space-y-1.5 px-1.5 pb-1.5">
+            <Button
+              className="h-9 w-full justify-start gap-2"
+              onClick={() => router.push("/signup")}
+              size="sm"
+              variant="secondary"
+            >
+              <User className="h-4 w-4" />
+              Save my progress
+            </Button>
+            <button
+              className="flex h-8 w-full items-center justify-center rounded-md px-2 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => router.push("/login")}
+              type="button"
+            >
+              Already have an account? Sign in
+            </button>
+          </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer gap-2"
@@ -156,7 +160,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             How It Works
           </DropdownMenuItem>
           <VisualThemeMenuItems />
-          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer gap-2"
             onClick={handleThemeToggle}
@@ -202,20 +205,24 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             <p className="font-medium text-sm">Welcome</p>
             <p className="text-muted-foreground text-xs">Sign in to track your progress</p>
           </div>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="cursor-pointer gap-2 bg-foreground text-background focus:bg-foreground/85 focus:text-background"
-            onClick={() => router.push("/login")}
-          >
-            <User className="h-4 w-4" />
-            Sign In
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2 text-muted-foreground"
-            onClick={() => router.push("/signup")}
-          >
-            Create an account
-          </DropdownMenuItem>
+          <div className="space-y-1.5 px-1.5 pb-1.5">
+            <Button
+              className="h-9 w-full justify-start gap-2"
+              onClick={() => router.push("/login")}
+              size="sm"
+              variant="secondary"
+            >
+              <User className="h-4 w-4" />
+              Sign in
+            </Button>
+            <button
+              className="flex h-8 w-full items-center justify-center rounded-md px-2 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => router.push("/signup")}
+              type="button"
+            >
+              Create a free account
+            </button>
+          </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer gap-2"
@@ -232,7 +239,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             How It Works
           </DropdownMenuItem>
           <VisualThemeMenuItems />
-          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer gap-2"
             onClick={handleThemeToggle}
@@ -367,7 +373,6 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
         </DropdownMenuItem>
 
         <VisualThemeMenuItems />
-        <DropdownMenuSeparator />
 
         <DropdownMenuItem
           className="cursor-pointer gap-2"

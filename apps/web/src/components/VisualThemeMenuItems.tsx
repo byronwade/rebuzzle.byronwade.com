@@ -32,7 +32,7 @@ export function VisualThemeMenuItems() {
         return (
           <DropdownMenuItem
             key={id}
-            className="cursor-pointer gap-2"
+            className={cn("cursor-pointer gap-2", selected && "bg-muted/70 text-foreground")}
             disabled={!mounted}
             onClick={() => setVisualTheme(id)}
           >
@@ -45,6 +45,7 @@ export function VisualThemeMenuItems() {
           </DropdownMenuItem>
         );
       })}
+      <DropdownMenuSeparator />
     </>
   );
 }

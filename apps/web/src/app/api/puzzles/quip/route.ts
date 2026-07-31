@@ -18,18 +18,22 @@ import { NextResponse } from "next/server";
 import { streamAIText } from "@/ai/client";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
-import type { ReactionTier } from "@/lib/game/reactions";
+import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 
-const TIERS: ReactionTier[] = ["correct", "close", "warm", "cold", "out"];
+/** Mid-game tiers only — win/loss use the deterministic reaction line (no AI). */
+const MID_GAME_TIERS = ["close", "warm", "cold"] as const;
+type MidGameTier = (typeof MID_GAME_TIERS)[number];
 
-const TIER_BRIEF: Record<ReactionTier, string> = {
-  correct: "They just solved it. Congratulate them briefly and get out of the way.",
+const TIER_BRIEF: Record<MidGameTier, string> = {
   close: "They are one small step away. Say so without hinting at what to change.",
   warm: "Part of their thinking is on track. Acknowledge it, don't guide it.",
   cold: "They are nowhere near. Be funny about the distance, never about them.",
-  out: "They are out of attempts. Drop the teasing and land it warmly.",
 };
+
+function isMidGameTier(value: unknown): value is MidGameTier {
+  return typeof value === "string" && (MID_GAME_TIERS as readonly string[]).includes(value);
+}
 
 const SYSTEM = `You are Eve, the author of Rebuzzle's daily puzzle, reacting to a player's guess.
 
@@ -82,12 +86,21 @@ export async function POST(request: Request) {
 
     const puzzleId = typeof body.puzzleId === "string" ? body.puzzleId.trim() : "";
     const guess = typeof body.guess === "string" ? body.guess.trim().slice(0, 200) : "";
-    const tier = TIERS.includes(body.tier as ReactionTier) ? (body.tier as ReactionTier) : null;
+    const tier = isMidGameTier(body.tier) ? body.tier : null;
 
     if (!(puzzleId && guess && tier)) {
       return NextResponse.json(
-        { success: false, error: "puzzleId, guess and tier are required" },
+        { success: false, error: "puzzleId, guess and a mid-game tier are required" },
         { status: 400 }
+      );
+    }
+
+    // Day already locked — refuse further AI spend.
+    const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, getUtcPuzzleDate());
+    if (lock.hasAttempt) {
+      return NextResponse.json(
+        { success: false, error: "Puzzle already finished for today" },
+        { status: 409 }
       );
     }
 
