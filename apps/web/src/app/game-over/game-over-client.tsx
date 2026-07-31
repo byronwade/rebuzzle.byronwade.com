@@ -19,6 +19,7 @@ interface GameData {
   explanation: string;
   difficulty: number;
   puzzleType?: string;
+  locked?: boolean;
   metadata?: {
     puzzleType?: string;
   };
@@ -64,6 +65,36 @@ export default function GameOverClient({
   // Global comparison stats
   const [percentile, setPercentile] = useState<number | null>(null);
   const [todaySolves, setTodaySolves] = useState<number | null>(null);
+
+  const [solution, setSolution] = useState({
+    answer: gameData.answer || "",
+    explanation: gameData.explanation || "",
+  });
+  const [hasLocalLock, setHasLocalLock] = useState(Boolean(gameData.locked || gameData.answer));
+
+  useEffect(() => {
+    // Prefer server solution (only present after daily lock); fall back to guess reveal
+    if (gameData.answer) {
+      setSolution({ answer: gameData.answer, explanation: gameData.explanation });
+      setHasLocalLock(true);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem("lastGameSolution");
+      if (stored) {
+        const parsed = JSON.parse(stored) as { answer?: string; explanation?: string };
+        if (parsed.answer) {
+          setSolution({
+            answer: parsed.answer,
+            explanation: parsed.explanation || "",
+          });
+          setHasLocalLock(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [gameData.answer, gameData.explanation]);
 
   useEffect(() => {
     async function loadClientExtras() {
@@ -168,6 +199,23 @@ export default function GameOverClient({
     return () => clearInterval(interval);
   }, [success, loading, finalScore, animationComplete]);
 
+  // Not locked and no local reveal — send them to play (don't leak empty "results")
+  if (!gameData.locked && !hasLocalLock && !solution.answer) {
+    return (
+      <Layout>
+        <div className="mx-auto max-w-lg px-4 py-16 text-center space-y-6">
+          <h1 className="text-2xl font-bold tracking-tight">Play today&apos;s puzzle</h1>
+          <p className="text-muted-foreground text-sm">
+            Results unlock after you finish today&apos;s puzzle.
+          </p>
+          <Link href="/">
+            <Button className="w-full">Go to puzzle</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       {success && showConfetti && <Confetti />}
@@ -191,11 +239,11 @@ export default function GameOverClient({
                 The Answer
               </p>
               <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground uppercase">
-                {gameData.answer}
+                {solution.answer}
               </h2>
-              {gameData.explanation && (
+              {solution.explanation && (
                 <p className="mt-4 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  {gameData.explanation}
+                  {solution.explanation}
                 </p>
               )}
             </div>
@@ -291,7 +339,7 @@ export default function GameOverClient({
             {/* Share Button */}
             <EnhancedShareButton
               attempts={attempts}
-              answer={gameData.answer}
+              answer={solution.answer}
               className="w-full"
               difficulty={gameData.difficulty}
               maxAttempts={gameSettings.maxAttempts}
@@ -338,11 +386,11 @@ export default function GameOverClient({
                 The Answer Was
               </p>
               <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground uppercase">
-                {gameData.answer}
+                {solution.answer}
               </h2>
-              {gameData.explanation && (
+              {solution.explanation && (
                 <p className="mt-4 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  {gameData.explanation}
+                  {solution.explanation}
                 </p>
               )}
             </div>

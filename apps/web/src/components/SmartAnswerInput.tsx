@@ -1,14 +1,11 @@
 "use client";
 
-import { fuzzyMatch, validateWords } from "@rebuzzle/game-logic";
 import { Check, Redo2, Undo2 } from "lucide-react";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCharacterFeedbackConfig, getTextAreaConfig } from "@/ai/config/text-area";
 import {
   type CharacterSuggestion,
   type ContextualHint,
-  getSimpleCharacterSuggestion,
-  getSimpleWordSuggestion,
   type WordSuggestion,
 } from "@/ai/services/text-area-feedback";
 import { generateContextualHintAction, generateSuggestionsAction } from "@/app/actions/aiActions";
@@ -23,12 +20,14 @@ import {
   saveCursorPosition,
   splitWordsPreservingSpaces,
   UndoRedoManager,
-  validateCharacters,
 } from "@/lib/textAreaUtils";
 import { cn } from "@/lib/utils";
 
 interface SmartAnswerInputProps {
-  correctAnswer: string;
+  /** @deprecated Do not pass the live answer to the client. Use puzzleId. */
+  correctAnswer?: string;
+  /** Puzzle id used for server-side suggestion lookup */
+  puzzleId?: string;
   onSubmit: (answer: string) => void;
   disabled?: boolean;
   isSubmitting?: boolean;
@@ -39,7 +38,7 @@ interface SmartAnswerInputProps {
 }
 
 export function SmartAnswerInput({
-  correctAnswer,
+  puzzleId = "",
   onSubmit,
   disabled = false,
   isSubmitting = false,
@@ -85,20 +84,11 @@ export function SmartAnswerInput({
   // Validation debounce timeout
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoize validation results to avoid recalculating on every render
+  // Live word/char coloring requires the answer on the client — we no longer ship it.
+  // Feedback comes after submit via /api/puzzles/guess.
   const validationResults = useMemo(() => {
-    if (!value.trim()) {
-      return { wordValidation: [], charValidations: [] };
-    }
-
-    const wordValidation = validateWords(value, correctAnswer);
-    const charValidations =
-      characterConfig.showCorrect || characterConfig.showPartial || characterConfig.showIncorrect
-        ? validateCharacters(value, correctAnswer)
-        : [];
-
-    return { wordValidation, charValidations };
-  }, [value, correctAnswer, characterConfig]);
+    return { wordValidation: [] as boolean[], charValidations: [] as CharacterValidation[] };
+  }, []);
 
   // Debounced validation update (150ms delay for smoother typing)
   useEffect(() => {
@@ -141,7 +131,7 @@ export function SmartAnswerInput({
     }
 
     const generateSuggestionsAsync = async () => {
-      if (config.suggestionTiming === "none") {
+      if (config.suggestionTiming === "none" || !puzzleId) {
         return;
       }
 
@@ -152,7 +142,7 @@ export function SmartAnswerInput({
       try {
         const result = await generateSuggestionsAction({
           currentInput: value,
-          correctAnswer,
+          puzzleId,
           difficulty,
           puzzleType,
           puzzle,
@@ -167,24 +157,11 @@ export function SmartAnswerInput({
           setShowSuggestions(true);
         });
       } catch (error) {
-        // Prevent state update if effect was cleaned up
         if (cancelled) return;
         console.warn("[SmartAnswerInput] Failed to generate suggestions:", error);
-        const simpleChar = getSimpleCharacterSuggestion(value, correctAnswer);
-        const simpleWord = getSimpleWordSuggestion(value, correctAnswer);
+        // No client-side answer fallback — that would leak the solution
         startTransition(() => {
-          setSuggestions({
-            characters: simpleChar
-              ? [
-                  {
-                    position: value.length,
-                    suggestedChar: simpleChar,
-                    confidence: 0.5,
-                  },
-                ]
-              : [],
-            words: simpleWord ? [{ word: simpleWord, confidence: 0.5 }] : [],
-          });
+          setSuggestions({ characters: [], words: [] });
         });
       }
     };
@@ -203,13 +180,13 @@ export function SmartAnswerInput({
         clearTimeout(suggestionTimeoutRef.current);
       }
     };
-  }, [value, correctAnswer, difficulty, puzzleType, puzzle, config, showSuggestions]);
+  }, [value, puzzleId, difficulty, puzzleType, puzzle, config, showSuggestions]);
 
-  // Generate contextual hint
+  // Generate contextual hint (server loads answer via puzzleId)
   useEffect(() => {
     let cancelled = false;
 
-    if (!(config.showContextualHints && value.trim())) {
+    if (!(config.showContextualHints && value.trim() && puzzleId)) {
       setContextualHint(null);
       return;
     }
@@ -218,7 +195,7 @@ export function SmartAnswerInput({
       try {
         const hint = await generateContextualHintAction({
           currentInput: value,
-          correctAnswer,
+          puzzleId,
           difficulty,
           puzzleType,
           puzzle,
@@ -238,7 +215,7 @@ export function SmartAnswerInput({
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [value, correctAnswer, difficulty, puzzleType, puzzle, config]);
+  }, [value, puzzleId, difficulty, puzzleType, puzzle, config]);
 
   // Sync overlay metrics with textarea
   useEffect(() => {
@@ -373,8 +350,8 @@ export function SmartAnswerInput({
     cursorPositionRef.current = saveCursorPosition(textareaRef.current);
   }, []);
 
-  // Check if answer is correct (with fuzzy matching)
-  const isCorrect = fuzzyMatch(value, correctAnswer, 85);
+  // Never claim "correct" on the client — server decides via /api/puzzles/guess
+  const isCorrect = false;
 
   // Split value into words for highlighting
   const wordParts = useMemo(() => splitWordsPreservingSpaces(value), [value]);
@@ -541,7 +518,7 @@ export function SmartAnswerInput({
           {/* Default hint */}
           {value.length === 0 && !isSubmitting && (
             <p className="text-muted-foreground text-xs">
-              Words turn <span className="text-green-600">green</span> when correct
+              Type your answer, then press Enter to submit
             </p>
           )}
         </div>

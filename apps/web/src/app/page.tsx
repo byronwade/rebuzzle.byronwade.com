@@ -11,7 +11,11 @@ import {
   generateGameSchema,
   generateHowToSchema,
 } from "@/lib/seo/structured-data";
-import { fetchGameData, isPuzzleCompletedForToday } from "./actions/gameActions";
+import {
+  canUsePuzzlePreview,
+  fetchGameData,
+  isPuzzleCompletedForToday,
+} from "./actions/gameActions";
 
 /**
  * Generate dynamic metadata based on today's puzzle
@@ -200,17 +204,24 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
     // Opt into request-time rendering before Date/cookie-dependent work
     await connection();
 
-    const { preview } = params;
+    const wantsPreview = params.preview;
+    // Parallelize lock check + puzzle fetch + admin preview auth
+    const [attemptStatus, gameData, previewAllowed] = await Promise.all([
+      isPuzzleCompletedForToday(),
+      fetchGameData(false),
+      wantsPreview ? canUsePuzzlePreview() : Promise.resolve(false),
+    ]);
 
-    // Check if the puzzle has been attempted today (success or failure)
-    const attemptStatus = await isPuzzleCompletedForToday();
+    const preview = wantsPreview && previewAllowed;
 
-    // If user has already attempted today's puzzle, show appropriate message
-    if (attemptStatus.hasAttempt && !preview) {
-      return <PuzzleAlreadyAttemptedDisplay wasSuccessful={attemptStatus.wasSuccessful} />;
+    // Fail closed: lock UI if already played, or if status is unknown
+    if ((attemptStatus.hasAttempt || attemptStatus.statusUnknown) && !preview) {
+      return (
+        <PuzzleAlreadyAttemptedDisplay
+          wasSuccessful={attemptStatus.statusUnknown ? false : attemptStatus.wasSuccessful}
+        />
+      );
     }
-
-    const gameData = await fetchGameData(preview);
 
     // Handle no puzzle available - check both new and legacy fields
     const hasPuzzle = gameData.puzzle || gameData.rebusPuzzle;
@@ -218,21 +229,20 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
       return <NoPuzzleDisplay />;
     }
 
-    // Generate Game schema for JSON-LD
-    // Get publishedAt from puzzle metadata or use current date as fallback
-    // Pass as string to avoid new Date() during prerendering
+    // Generate Game schema for JSON-LD — never include the live answer
     const publishedAtStr =
-      gameData.metadata?.publishedAt || gameData.publishedAt || new Date().toISOString(); // Use current date if not available
+      gameData.metadata?.publishedAt || gameData.publishedAt || new Date().toISOString();
 
     const gameSchema = generateGameSchema({
       id: gameData.id,
       puzzle: gameData.puzzle || gameData.rebusPuzzle || "",
-      answer: gameData.answer,
+      answer: "Solve today's Rebuzzle puzzle",
       difficulty: gameData.difficulty,
       puzzleType: gameData.puzzleType,
-      explanation: gameData.explanation,
-      hints: gameData.hints,
-      publishedAt: publishedAtStr, // Pass as string - generateGameSchema will convert it
+      explanation:
+        "Daily rebus and logic puzzles. One puzzle per day — come back tomorrow for a new challenge.",
+      hints: [],
+      publishedAt: publishedAtStr,
     });
 
     // Generate FAQ schema for common puzzle questions

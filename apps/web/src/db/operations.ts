@@ -370,37 +370,61 @@ export const puzzleAttemptOps = {
   },
 
   /**
-   * Check if user has already attempted today's puzzle (either completed or failed)
-   * Used to lock puzzle after any final attempt (success or all attempts exhausted)
+   * Check if user has already finalized today's puzzle (won or out of attempts).
    */
-  async hasTodayAttempt(userId: string): Promise<{
+  async hasTodayAttempt(
+    userId: string,
+    puzzleDate?: string
+  ): Promise<{
     hasAttempt: boolean;
     wasSuccessful: boolean;
     puzzleId?: string;
+    attemptsUsed?: number;
   }> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const dateKey =
+      puzzleDate ||
+      new Date().toISOString().slice(0, 10);
 
-    // Get start of today (UTC)
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    // Prefer puzzleDate + isFinal (new lock path)
+    const finalAttempt =
+      (await collection.findOne({
+        userId,
+        puzzleDate: dateKey,
+        isFinal: true,
+      })) ||
+      // Legacy fallback: finals without puzzleDate/isFinal
+      (await collection.findOne({
+        userId,
+        attemptedAt: {
+          $gte: new Date(`${dateKey}T00:00:00.000Z`),
+          $lt: new Date(`${dateKey}T23:59:59.999Z`),
+        },
+        $or: [{ isCorrect: true }, { abandoned: true }],
+      }));
 
-    // Check for either completed (won) or abandoned (failed all attempts)
-    const attempt = await collection.findOne({
+    const attemptsUsed = await collection.countDocuments({
       userId,
-      attemptedAt: { $gte: today },
-      $or: [{ isCorrect: true }, { abandoned: true }],
+      puzzleDate: dateKey,
     });
 
     return {
-      hasAttempt: !!attempt,
-      wasSuccessful: attempt?.isCorrect ?? false,
-      puzzleId: attempt?.puzzleId,
+      hasAttempt: !!finalAttempt,
+      wasSuccessful: finalAttempt?.isCorrect ?? false,
+      puzzleId: finalAttempt?.puzzleId,
+      attemptsUsed,
     };
   },
 
+  /** How many guesses the user has already submitted for a UTC day. */
+  async countTodayGuesses(userId: string, puzzleDate: string): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    return await collection.countDocuments({ userId, puzzleDate });
+  },
+
   /**
-   * Atomic daily attempt creation to prevent race conditions
-   * Uses findOneAndUpdate to atomically check if attempt exists and create if not
+   * Record a guess. Finals use a unique partial index on {userId, puzzleDate}
+   * so concurrent completions cannot both succeed.
    */
   async createAtomicDailyAttempt(
     userId: string,
@@ -408,62 +432,43 @@ export const puzzleAttemptOps = {
     attemptData: NewPuzzleAttempt
   ): Promise<{ success: boolean; attempt: PuzzleAttempt }> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const puzzleDate =
+      attemptData.puzzleDate || todayStart.toISOString().slice(0, 10);
+    const isFinal = Boolean(
+      attemptData.isFinal ?? (attemptData.isCorrect || attemptData.abandoned)
+    );
 
-    // First, check if a final attempt already exists (atomic read)
-    const existingFinalAttempt = await collection.findOne({
+    const payload: NewPuzzleAttempt = {
+      ...attemptData,
+      puzzleDate,
+      isFinal,
+    };
+
+    const existingFinal = await collection.findOne({
       userId,
-      attemptedAt: { $gte: todayStart },
-      $or: [{ isCorrect: true }, { abandoned: true }],
+      puzzleDate,
+      isFinal: true,
     });
-
-    if (existingFinalAttempt) {
-      return { success: false, attempt: existingFinalAttempt };
+    if (existingFinal) {
+      return { success: false, attempt: existingFinal };
     }
 
-    // If this is a final attempt (correct or abandoned), use findOneAndUpdate
-    // with upsert to atomically ensure only one final attempt per day
-    if (attemptData.isCorrect || attemptData.abandoned) {
-      try {
-        // Try to insert only if no final attempt exists
-        // The query ensures atomicity - only one will succeed
-        const result = await collection.findOneAndUpdate(
-          {
-            userId,
-            attemptedAt: { $gte: todayStart },
-            $or: [{ isCorrect: true }, { abandoned: true }],
-          },
-          {
-            $setOnInsert: attemptData,
-          },
-          {
-            upsert: true,
-            returnDocument: "after",
-          }
-        );
-
-        // If the returned document has a different ID, it means an existing one was found
-        if (result && result.id !== attemptData.id) {
-          return { success: false, attempt: result };
+    try {
+      await collection.insertOne(payload);
+      return { success: true, attempt: payload as PuzzleAttempt };
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) {
+        const existing = await collection.findOne({
+          userId,
+          puzzleDate,
+          isFinal: true,
+        });
+        if (existing) {
+          return { success: false, attempt: existing };
         }
-
-        return { success: true, attempt: result as PuzzleAttempt };
-      } catch (error) {
-        // Duplicate key error means another request beat us
-        if ((error as { code?: number }).code === 11000) {
-          const existing = await collection.findOne({
-            userId,
-            attemptedAt: { $gte: todayStart },
-            $or: [{ isCorrect: true }, { abandoned: true }],
-          });
-          return { success: false, attempt: existing as PuzzleAttempt };
-        }
-        throw error;
       }
+      throw error;
     }
-
-    // For non-final attempts, just insert normally
-    await collection.insertOne(attemptData);
-    return { success: true, attempt: attemptData as PuzzleAttempt };
   },
 };
 

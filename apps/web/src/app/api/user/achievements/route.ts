@@ -116,6 +116,21 @@ export async function POST(request: NextRequest) {
 
     // Check and award achievements after game completion
     if (gameContext) {
+      // Achievements for daily play are awarded inside /api/puzzles/guess.
+      // Allow this path only once the user already has today's final lock.
+      const { puzzleAttemptOps } = await import("@/db/operations");
+      const { getUtcPuzzleDate } = await import("@/lib/game/daily-lock");
+      const lock = await puzzleAttemptOps.hasTodayAttempt(user.id, getUtcPuzzleDate());
+      if (!lock.hasAttempt) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Complete today's puzzle via /api/puzzles/guess before awarding achievements",
+          },
+          { status: 403 }
+        );
+      }
+
       // Validate required gameContext fields
       if (
         typeof gameContext.puzzleId !== "string" ||

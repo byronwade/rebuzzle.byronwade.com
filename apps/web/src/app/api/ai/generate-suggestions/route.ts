@@ -1,8 +1,8 @@
 /**
  * AI Suggestions Generation API
  *
- * Generates character and word-level suggestions for puzzle input
- * Used by desktop app and can be used by web app as REST alternative to server actions
+ * Auth + puzzleId required. Answer is loaded server-side — never trust
+ * a client-supplied correctAnswer.
  */
 
 import { NextResponse } from "next/server";
@@ -13,21 +13,36 @@ import {
   generateSuggestions,
   type WordSuggestion,
 } from "@/ai/services/text-area-feedback";
+import { db } from "@/db";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+    }
+
+    const limit = await rateLimiters.ai(req);
+    if (limit && !limit.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many requests" },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const {
       mode = "suggestions",
       currentInput,
-      correctAnswer,
+      puzzleId,
       difficulty = 5,
       puzzleType,
       puzzle,
       timeSpent,
     } = body;
 
-    // Validate required fields
     if (!currentInput && currentInput !== "") {
       return NextResponse.json(
         {
@@ -38,18 +53,22 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!correctAnswer) {
+    if (!puzzleId || typeof puzzleId !== "string") {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required field: correctAnswer",
+          error: "Missing required field: puzzleId",
         },
         { status: 400 }
       );
     }
 
-    console.log("[AI API] Generating suggestions:", { mode, currentInput, puzzleType });
+    const puzzleDoc = await db.puzzleOps.findById(puzzleId);
+    if (!puzzleDoc?.answer) {
+      return NextResponse.json({ success: false, error: "Puzzle not found" }, { status: 404 });
+    }
 
+    const correctAnswer = puzzleDoc.answer;
     const startTime = Date.now();
 
     let result: {
@@ -60,7 +79,6 @@ export async function POST(req: Request) {
 
     switch (mode) {
       case "suggestions":
-        // Generate character and word-level suggestions
         result = await generateSuggestions({
           currentInput,
           correctAnswer,
@@ -71,7 +89,6 @@ export async function POST(req: Request) {
         break;
 
       case "contextual": {
-        // Generate contextual hint based on progress
         const hint = await generateContextualHint({
           currentInput,
           correctAnswer,
@@ -85,7 +102,6 @@ export async function POST(req: Request) {
       }
 
       case "both": {
-        // Generate both suggestions and contextual hint
         const [suggestions, contextHint] = await Promise.all([
           generateSuggestions({
             currentInput,
@@ -147,54 +163,16 @@ export async function GET() {
   return NextResponse.json({
     endpoint: {
       POST: {
-        description: "Generate AI-powered suggestions for puzzle input",
-        modes: {
-          suggestions: "Generate character and word-level suggestions (default)",
-          contextual: "Generate contextual hint based on progress",
-          both: "Generate both suggestions and contextual hint",
-        },
+        description: "Generate AI-powered suggestions for puzzle input (auth + puzzleId)",
         body: {
           mode: "suggestions | contextual | both",
-          currentInput: "string (user's current typed text)",
-          correctAnswer: "string (the puzzle answer)",
-          difficulty: "number 1-10 (optional, default: 5)",
-          puzzleType: "string (optional, e.g., 'rebus', 'riddle')",
-          puzzle: "string (optional, the puzzle text/description)",
-          timeSpent: "number (optional, seconds spent - for contextual mode)",
+          currentInput: "string",
+          puzzleId: "string",
+          difficulty: "number 1-10 (optional)",
+          puzzleType: "string (optional)",
+          puzzle: "string (optional)",
+          timeSpent: "number (optional)",
         },
-        response: {
-          success: "boolean",
-          characterSuggestions: "Array<{ position, suggestedChar, confidence, reason? }>",
-          wordSuggestions: "Array<{ word, confidence, reason? }>",
-          contextualHint: "{ hint, type, urgency } | null",
-          metadata: "{ mode, generationTimeMs }",
-        },
-      },
-    },
-    examples: {
-      suggestions: {
-        mode: "suggestions",
-        currentInput: "sun",
-        correctAnswer: "sunflower",
-        difficulty: 3,
-        puzzleType: "rebus",
-        puzzle: "sun flower",
-      },
-      contextual: {
-        mode: "contextual",
-        currentInput: "sun",
-        correctAnswer: "sunflower",
-        difficulty: 3,
-        timeSpent: 45,
-      },
-      both: {
-        mode: "both",
-        currentInput: "sun",
-        correctAnswer: "sunflower",
-        difficulty: 3,
-        puzzleType: "rebus",
-        puzzle: "sun flower",
-        timeSpent: 45,
       },
     },
   });

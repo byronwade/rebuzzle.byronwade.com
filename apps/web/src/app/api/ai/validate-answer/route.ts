@@ -1,50 +1,72 @@
 /**
  * AI Answer Validation API
  *
- * Intelligent answer checking with fuzzy matching and AI assistance
+ * Deprecated for client gameplay scoring. Daily guesses must go through
+ * POST /api/puzzles/guess which owns the answer and the daily lock.
+ *
+ * This endpoint remains for authenticated tooling only: pass puzzleId + guess,
+ * never a client-supplied correctAnswer.
  */
 
 import { NextResponse } from "next/server";
 import { generateFeedback, validateAnswer } from "@/ai";
+import { db } from "@/db";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+    }
+
+    const limit = await rateLimiters.ai(req);
+    if (limit && !limit.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many requests" },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const {
       guess,
-      correctAnswer,
+      puzzleId,
       puzzleContext,
       explanation,
       useAI = true,
       attemptsLeft = 0,
     } = body;
 
-    if (!(guess && correctAnswer)) {
+    if (!(guess && puzzleId)) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required fields: guess and correctAnswer",
+          error: "Missing required fields: guess and puzzleId",
         },
         { status: 400 }
       );
     }
 
-    console.log("[AI API] Validating answer:", { guess, correctAnswer, useAI });
+    const puzzle = await db.puzzleOps.findById(String(puzzleId));
+    if (!puzzle?.answer) {
+      return NextResponse.json({ success: false, error: "Puzzle not found" }, { status: 404 });
+    }
 
+    const correctAnswer = puzzle.answer;
     const startTime = Date.now();
 
-    // Validate answer
     const result = await validateAnswer({
       guess,
       correctAnswer,
       puzzleContext,
-      explanation,
+      explanation: explanation || puzzle.explanation,
       useAI,
     });
 
     const validationTime = Date.now() - startTime;
 
-    // Generate helpful feedback if wrong
     let feedback;
     if (!result.isCorrect && attemptsLeft > 0) {
       feedback = await generateFeedback({
@@ -63,6 +85,7 @@ export async function POST(req: Request) {
       },
       metadata: {
         validationTimeMs: validationTime,
+        note: "For scoring and daily lock, use POST /api/puzzles/guess",
       },
     });
   } catch (error) {
@@ -82,23 +105,15 @@ export async function GET() {
   return NextResponse.json({
     endpoint: {
       POST: {
-        description: "Validate player's answer with AI assistance",
+        description:
+          "Validate a guess against a puzzleId (auth required). Prefer /api/puzzles/guess for gameplay.",
         body: {
-          guess: "string (player's answer)",
-          correctAnswer: "string (the correct answer)",
-          puzzleContext: "string (optional, the puzzle for context)",
-          explanation: "string (optional, how the puzzle works)",
-          useAI: "boolean (default: true, enable AI for close matches)",
-          attemptsLeft: "number (optional, for generating feedback)",
+          guess: "string",
+          puzzleId: "string",
+          useAI: "boolean (default: true)",
+          attemptsLeft: "number (optional)",
         },
       },
-    },
-    example: {
-      guess: "sunfower",
-      correctAnswer: "sunflower",
-      puzzleContext: "☀️ 🌻",
-      useAI: true,
-      attemptsLeft: 2,
     },
   });
 }

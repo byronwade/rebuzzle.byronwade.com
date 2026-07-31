@@ -1,6 +1,7 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import Layout from "@/components/Layout";
-import { fetchGameData } from "@/app/actions/gameActions";
+import { fetchGameOverSolution } from "@/app/actions/gameActions";
 import GameOverClient from "./game-over-client";
 
 function GameOverFallback() {
@@ -18,18 +19,20 @@ async function GameOverContent({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  await connection();
   const params = await searchParams;
-  const gameData = await fetchGameData();
+  const solution = await fetchGameOverSolution();
 
   return (
     <GameOverClient
       gameData={{
-        answer: gameData.answer,
-        explanation: gameData.explanation,
-        difficulty: gameData.difficulty,
-        puzzleType: gameData.puzzleType,
+        answer: solution.answer,
+        explanation: solution.explanation,
+        difficulty: solution.difficulty,
+        puzzleType: solution.puzzleType,
+        locked: solution.locked,
         metadata: {
-          puzzleType: gameData.puzzleType,
+          puzzleType: solution.puzzleType,
         },
       }}
       searchParams={params}
