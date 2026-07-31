@@ -105,10 +105,10 @@ export function EmailNotificationForm() {
     return (
       <Card className="p-6">
         <div className="mb-4 flex items-center gap-2">
-          <Mail className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+          <Mail className="h-4 w-4 text-subtle" />
           <h3 className="font-semibold text-base">Email Notifications</h3>
         </div>
-        <div className="h-20 animate-pulse rounded bg-gray-100" />
+        <div className="h-20 animate-pulse rounded-md bg-inset" />
       </Card>
     );
   }
@@ -116,7 +116,7 @@ export function EmailNotificationForm() {
   return (
     <Card className="p-6">
       <div className="mb-4 flex items-center gap-2">
-        <Mail className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
+        <Mail className="h-4 w-4 text-subtle" />
         <h3 className="font-semibold text-base">Email Notifications</h3>
       </div>
 
@@ -141,7 +141,11 @@ export function EmailNotificationForm() {
           <div className="flex gap-2">
             <Input
               autoComplete="email"
-              className={cn("flex-1", emailError && "border-red-500 focus-visible:ring-red-500")}
+              className={cn(
+                "flex-1",
+                emailError &&
+                  "border-destructive/60 focus-visible:border-destructive focus-visible:ring-destructive/15"
+              )}
               disabled={isSubmitting || isLoading}
               id="notification-email"
               inputMode="email"
@@ -156,7 +160,7 @@ export function EmailNotificationForm() {
               value={email}
             />
             {enabled && (
-              <div className="flex items-center gap-1 px-2 text-green-600">
+              <div className="flex items-center gap-1 px-2 text-success">
                 <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
                 <span className="sr-only">Subscribed</span>
               </div>
@@ -173,9 +177,9 @@ export function EmailNotificationForm() {
 
           {/* Success Message */}
           {enabled && !emailError && !error && (
-            <Alert className="border-green-200 bg-green-50 py-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800 text-sm">
+            <Alert className="py-2.5" variant="success">
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription className="text-foreground text-sm">
                 Email notifications are enabled. You'll receive daily reminders at 8 AM.
               </AlertDescription>
             </Alert>
@@ -205,7 +209,7 @@ export function EmailNotificationForm() {
             </Button>
           ) : (
             <Button
-              className="flex-1 bg-neutral-700 hover:bg-neutral-800 dark:bg-neutral-600 dark:hover:bg-neutral-500"
+              className="flex-1"
               disabled={!(email && validateEmail(email)) || isSubmitting || isLoading}
               onClick={handleSubscribe}
             >

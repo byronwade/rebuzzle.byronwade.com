@@ -64,7 +64,7 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
         <TooltipTrigger asChild>
           <Button
             aria-label="Show game instructions and information"
-            className="relative h-9 w-9 rounded-full text-muted-foreground transition-all hover:scale-105 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+            className="relative text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => setShowInfoDialog(true)}
             size="icon"
             variant="ghost"

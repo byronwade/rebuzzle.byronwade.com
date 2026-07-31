@@ -251,11 +251,7 @@ export function EnhancedShareButton({
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <Button
-                  className="w-full rounded-xl bg-neutral-800 py-6 font-semibold text-lg text-white shadow-lg transition-all hover:bg-neutral-900 hover:shadow-xl dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
-                  disabled={isSharing}
-                  size="lg"
-                >
+                <Button className="w-full" disabled={isSharing} size="lg">
                   <Share2 className="mr-2 h-5 w-5" />
                   {copied ? "Copied!" : "Share Results"}
                 </Button>

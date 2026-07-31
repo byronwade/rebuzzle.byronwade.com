@@ -83,16 +83,16 @@ export default function ForgotPasswordPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
         <div className="flex justify-center">
-          <Card className="w-full max-w-md p-8">
+          <Card className="w-full max-w-[400px] p-8" variant="float">
             {/* Header */}
-            <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-neutral-700 to-neutral-800">
-                <Mail className="h-8 w-8 text-white" />
+            <div className="mb-7 text-center">
+              <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
+                <Mail className="h-5 w-5 text-muted-foreground" />
               </div>
-              <h1 className="mb-2 font-semibold text-base md:text-lg">Forgot Password?</h1>
-              <p className="text-muted-foreground text-sm">
+              <h1 className="font-semibold text-2xl tracking-[-0.04em]">Forgot password?</h1>
+              <p className="mt-2 text-muted-foreground text-sm">
                 {success
                   ? "Check your email for reset instructions"
                   : "Enter your email and we'll send you a reset link"}
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
                     your inbox and follow the instructions.
                   </p>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="mt-7 flex flex-col gap-2">
                   <Button className="w-full" onClick={() => router.push("/login")}>
                     Back to Login
                   </Button>
@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
                     type="email"
                     value={email}
                   />
-                  {error && <p className="mt-1 text-red-600 text-sm dark:text-red-400">{error}</p>}
+                  {error && <p className="mt-1.5 text-destructive text-xs">{error}</p>}
                 </div>
 
                 <Button className="w-full" disabled={isLoading} type="submit">
@@ -155,7 +155,10 @@ export default function ForgotPasswordPage() {
             )}
 
             <div className="mt-6 text-center">
-              <Link className="text-muted-foreground text-sm hover:text-foreground" href="/login">
+              <Link
+                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+                href="/login"
+              >
                 ← Back to Login
               </Link>
             </div>

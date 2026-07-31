@@ -170,16 +170,16 @@ export default function ResetPasswordPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
         <div className="flex justify-center">
-          <Card className="w-full max-w-md p-8">
+          <Card className="w-full max-w-[400px] p-8" variant="float">
             {/* Header */}
-            <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-neutral-700 to-neutral-800">
-                <Lock className="h-8 w-8 text-white" />
+            <div className="mb-7 text-center">
+              <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
+                <Lock className="h-5 w-5 text-muted-foreground" />
               </div>
-              <h1 className="mb-2 font-semibold text-base md:text-lg">Reset Password</h1>
-              <p className="text-muted-foreground text-sm">
+              <h1 className="font-semibold text-2xl tracking-[-0.04em]">Reset password</h1>
+              <p className="mt-2 text-muted-foreground text-sm">
                 {success
                   ? "Password reset successful! Redirecting to login..."
                   : "Enter your new password"}
@@ -187,8 +187,8 @@ export default function ResetPasswordPage() {
             </div>
 
             {success ? (
-              <div className="rounded-lg bg-green-50 p-4 text-center dark:bg-green-900/20">
-                <p className="text-green-800 text-sm dark:text-green-200">
+              <div className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center">
+                <p className="text-foreground text-sm">
                   Your password has been reset successfully. Redirecting to login...
                 </p>
               </div>
@@ -212,7 +212,7 @@ export default function ResetPasswordPage() {
                     value={formData.password}
                   />
                   {errors.password && (
-                    <p className="mt-1 text-red-600 text-sm dark:text-red-400">{errors.password}</p>
+                    <p className="mt-1.5 text-destructive text-xs">{errors.password}</p>
                   )}
                 </div>
 
@@ -236,15 +236,13 @@ export default function ResetPasswordPage() {
                     value={formData.confirmPassword}
                   />
                   {errors.confirmPassword && (
-                    <p className="mt-1 text-red-600 text-sm dark:text-red-400">
-                      {errors.confirmPassword}
-                    </p>
+                    <p className="mt-1.5 text-destructive text-xs">{errors.confirmPassword}</p>
                   )}
                 </div>
 
                 {errors.form && (
-                  <div className="rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
-                    <p className="text-red-600 text-sm dark:text-red-400">{errors.form}</p>
+                  <div className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5">
+                    <p className="text-destructive text-sm">{errors.form}</p>
                   </div>
                 )}
 
@@ -255,7 +253,10 @@ export default function ResetPasswordPage() {
             )}
 
             <div className="mt-6 text-center">
-              <Link className="text-muted-foreground text-sm hover:text-foreground" href="/login">
+              <Link
+                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+                href="/login"
+              >
                 ← Back to Login
               </Link>
             </div>

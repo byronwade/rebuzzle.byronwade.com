@@ -1,8 +1,8 @@
-import { connection } from "next/server";
-import { BookOpen, Puzzle } from "lucide-react";
+import { Puzzle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import BlogPostContent from "@/components/BlogPostContent";
 import { FAQSection, PostNavigation, PuzzleStatsCard } from "@/components/blog";
 import Layout from "@/components/Layout";
@@ -181,39 +181,39 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           />
         )}
 
-        <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
+        <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
           <BlogPostContent post={post} />
 
           {/* Puzzle Statistics */}
-          {puzzleStats && <PuzzleStatsCard stats={puzzleStats} className="mt-6" />}
+          {puzzleStats && <PuzzleStatsCard className="mt-10" stats={puzzleStats} />}
 
           {/* FAQ Section */}
           {post.sections?.faq && post.sections.faq.length > 0 && (
-            <FAQSection faqs={post.sections.faq} className="mt-6" />
+            <FAQSection className="mt-10" faqs={post.sections.faq} />
           )}
 
           {/* Post Navigation (Prev/Next) */}
-          <PostNavigation prev={adjacentPosts.prev} next={adjacentPosts.next} className="mt-6" />
+          <PostNavigation className="mt-10" next={adjacentPosts.next} prev={adjacentPosts.prev} />
 
           {/* Related Posts */}
           {relatedPosts.length > 0 && (
-            <div className="mt-6 pt-6 border-t">
-              <h2 className="font-medium text-sm mb-3 flex items-center gap-2">
-                <Puzzle className="size-4 text-muted-foreground" />
-                More {puzzleTypeName} Puzzles
-              </h2>
-              <div className="space-y-2">
+            <div className="mt-14 border-border border-t pt-10">
+              <p className="eyebrow flex items-center gap-2">
+                <Puzzle className="size-3" />
+                More {puzzleTypeName} puzzles
+              </p>
+              <div className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                 {relatedPosts.map((relatedPost) => (
                   <Link
-                    key={relatedPost.slug}
+                    className="block px-4 py-3.5 transition-colors hover:bg-inset"
                     href={`/blog/${relatedPost.slug}`}
-                    className="block p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    key={relatedPost.slug}
                   >
-                    <p className="font-medium text-sm text-foreground truncate">
+                    <p className="truncate font-medium text-foreground text-sm">
                       {relatedPost.title}
                     </p>
                     {relatedPost.excerpt && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      <p className="mt-0.5 truncate text-muted-foreground text-xs">
                         {relatedPost.excerpt}
                       </p>
                     )}
@@ -222,18 +222,16 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               </div>
 
               {/* View all link */}
-              <Link href={`/puzzles/${post.puzzleType}`} className="block mt-3">
-                <Button variant="outline" size="sm" className="w-full">
-                  View All {puzzleTypeName} Puzzles
-                </Button>
-              </Link>
+              <Button asChild className="mt-4 w-full" variant="outline">
+                <Link href={`/puzzles/${post.puzzleType}`}>View all {puzzleTypeName} puzzles</Link>
+              </Button>
             </div>
           )}
 
           {/* Back link */}
-          <div className="mt-6 text-center">
-            <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Back to Blog
+          <div className="mt-12 text-center">
+            <Link className="text-link text-sm underline-offset-4 hover:underline" href="/blog">
+              ← Back to blog
             </Link>
           </div>
         </div>
@@ -242,29 +240,21 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   } catch (_error) {
     return (
       <Layout>
-        <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
-          <div className="mb-6">
-            <h1 className="font-semibold text-xl text-foreground flex items-center gap-2">
-              <BookOpen className="size-5 text-primary" />
-              Blog Post
-            </h1>
-          </div>
-
-          <Card className="border-dashed">
-            <CardContent className="p-8 text-center">
-              <p className="font-medium text-sm mb-1">Error loading post</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Something went wrong while loading this post
-              </p>
-              <div className="flex justify-center gap-2">
-                <Link href="/blog">
-                  <Button size="sm" variant="outline">
-                    Back to Blog
-                  </Button>
-                </Link>
-                <Link href="/">
-                  <Button size="sm">Play Today's Puzzle</Button>
-                </Link>
+        <div className="mx-auto max-w-3xl px-4 py-16 md:px-6 md:py-24">
+          <Card variant="inset">
+            <CardContent className="px-6 py-14 text-center">
+              <p className="eyebrow">Blog</p>
+              <h1 className="mt-3 font-semibold text-2xl tracking-[-0.04em]">
+                We couldn't load this post.
+              </h1>
+              <p className="mt-2 text-muted-foreground text-sm">Something went wrong on our end.</p>
+              <div className="mt-6 flex justify-center gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/blog">Back to blog</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/">Play today's puzzle</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

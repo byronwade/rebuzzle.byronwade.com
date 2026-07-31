@@ -62,7 +62,9 @@ export default function LeaderboardClient({
   initialSortBy = "points",
 }: LeaderboardClientProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(initialLeaderboard);
-  const [timeframe, setTimeframe] = useState<"today" | "week" | "month" | "allTime">(initialTimeframe);
+  const [timeframe, setTimeframe] = useState<"today" | "week" | "month" | "allTime">(
+    initialTimeframe
+  );
   const [sortBy, setSortBy] = useState<"points" | "streak">(initialSortBy);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [userEntry, setUserEntry] = useState<LeaderboardEntry | null>(null);
@@ -153,9 +155,9 @@ export default function LeaderboardClient({
         behavior: "smooth",
         block: "center",
       });
-      userEntryRef.current.classList.add("ring-2", "ring-amber-500", "ring-offset-2");
+      userEntryRef.current.classList.add("ring-2", "ring-warning", "ring-offset-2");
       setTimeout(() => {
-        userEntryRef.current?.classList.remove("ring-2", "ring-amber-500", "ring-offset-2");
+        userEntryRef.current?.classList.remove("ring-2", "ring-warning", "ring-offset-2");
       }, 2000);
     }
   };
@@ -192,17 +194,15 @@ export default function LeaderboardClient({
         />
       )}
 
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
-        <div className="mb-6 md:mb-8 text-center">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Trophy className="size-6 text-amber-500" />
-            <h1 className="font-bold text-2xl md:text-3xl">Leaderboard</h1>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Compete with the best puzzle solvers worldwide
+        <header className="mb-8 text-center">
+          <p className="eyebrow">Standings</p>
+          <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Leaderboard.</h1>
+          <p className="mt-3 text-muted-foreground text-sm">
+            The best puzzle solvers today, ranked.
           </p>
-        </div>
+        </header>
 
         {/* Sort By Toggle - Points vs Streaks */}
         <div className="mb-4 flex justify-center gap-2">
@@ -263,28 +263,28 @@ export default function LeaderboardClient({
 
         {/* User's Rank Highlight */}
         {userRank && userEntry && (
-          <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
+          <Card className="mb-6 border-warning/25 bg-warning/[0.06]">
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-amber-500 text-white font-bold text-lg">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-warning font-mono font-medium text-background text-sm tabular-nums">
                     #{userRank}
                   </div>
                   <div>
-                    <p className="font-semibold text-base text-foreground">Your Ranking</p>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="font-medium text-foreground text-sm">Your ranking</p>
+                    <p className="font-mono text-subtle text-xs tabular-nums">
                       {userEntry.stats.points.toLocaleString()} points
                     </p>
                     {/* XP Progress Bar */}
                     {userEntry.stats.level > 0 && (
                       <div className="mt-2 w-40">
-                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <div className="mb-1.5 flex justify-between font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
                           <span>Lvl {userEntry.stats.level}</span>
                           <span>Lvl {userEntry.stats.level + 1}</span>
                         </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-1 overflow-hidden rounded-full bg-inset">
                           <div
-                            className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                            className="h-full bg-warning rounded-full transition-all duration-500"
                             style={{
                               width: `${getLevelProgress(userEntry.stats.level, userEntry.stats.points)}%`,
                             }}
@@ -308,7 +308,7 @@ export default function LeaderboardClient({
                   )}
                   {userRank <= 25 && (
                     <Badge variant="secondary" className="gap-1.5">
-                      <Flame className="size-3.5 text-orange-500" />
+                      <Flame className="size-3.5 text-warning" />
                       Top 25
                     </Badge>
                   )}
@@ -362,12 +362,12 @@ export default function LeaderboardClient({
                 <div className="flex items-end justify-center gap-3 md:gap-6">
                   {/* 2nd Place */}
                   <div className="flex flex-col items-center w-24 md:w-32">
-                    <Avatar className="size-14 md:size-16 border-2 border-slate-400 shadow-md mb-2">
+                    <Avatar className="size-14 md:size-16 border-2 border-border-strong shadow-md mb-2">
                       <AvatarImage
                         src={getAvatarFallback(topThree[1].user.username)}
                         alt={topThree[1].user.username}
                       />
-                      <AvatarFallback className="bg-slate-200 dark:bg-slate-700 text-lg font-semibold">
+                      <AvatarFallback className="bg-inset text-lg font-semibold">
                         {topThree[1].user.username[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -377,12 +377,10 @@ export default function LeaderboardClient({
                     <p className="text-xs text-muted-foreground mb-2">
                       {topThree[1].stats.points.toLocaleString()} pts
                     </p>
-                    <div className="w-full h-16 md:h-20 bg-slate-200 dark:bg-slate-700 rounded-t-lg flex items-center justify-center">
+                    <div className="w-full h-16 md:h-20 bg-inset rounded-t-lg flex items-center justify-center">
                       <div className="flex flex-col items-center">
-                        <Medal className="size-5 text-slate-500" />
-                        <span className="text-xl font-bold text-slate-600 dark:text-slate-400">
-                          2
-                        </span>
+                        <Medal className="size-5 text-subtle" />
+                        <span className="text-xl font-semibold text-muted-foreground">2</span>
                       </div>
                     </div>
                   </div>
@@ -390,13 +388,13 @@ export default function LeaderboardClient({
                   {/* 1st Place */}
                   <div className="flex flex-col items-center w-28 md:w-36">
                     <div className="relative">
-                      <Crown className="size-6 text-amber-500 absolute -top-5 left-1/2 -translate-x-1/2" />
-                      <Avatar className="size-16 md:size-20 border-2 border-amber-500 shadow-lg mb-2">
+                      <Crown className="size-6 text-warning absolute -top-5 left-1/2 -translate-x-1/2" />
+                      <Avatar className="size-16 md:size-20 border-2 border-warning shadow-lg mb-2">
                         <AvatarImage
                           src={getAvatarFallback(topThree[0].user.username)}
                           alt={topThree[0].user.username}
                         />
-                        <AvatarFallback className="bg-amber-100 dark:bg-amber-900/30 text-xl font-semibold">
+                        <AvatarFallback className="bg-warning/10 text-xl font-semibold">
                           {topThree[0].user.username[0]?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -404,27 +402,25 @@ export default function LeaderboardClient({
                     <p className="font-semibold text-base truncate w-full text-center">
                       {topThree[0].user.username}
                     </p>
-                    <p className="text-sm text-amber-600 dark:text-amber-400 font-medium mb-2">
+                    <p className="text-sm text-warning font-medium mb-2">
                       {topThree[0].stats.points.toLocaleString()} pts
                     </p>
-                    <div className="w-full h-20 md:h-24 bg-amber-100 dark:bg-amber-900/30 rounded-t-lg flex items-center justify-center">
+                    <div className="w-full h-20 md:h-24 bg-warning/10 rounded-t-lg flex items-center justify-center">
                       <div className="flex flex-col items-center">
-                        <Trophy className="size-6 text-amber-500" />
-                        <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                          1
-                        </span>
+                        <Trophy className="size-6 text-warning" />
+                        <span className="text-2xl font-semibold text-warning">1</span>
                       </div>
                     </div>
                   </div>
 
                   {/* 3rd Place */}
                   <div className="flex flex-col items-center w-24 md:w-32">
-                    <Avatar className="size-14 md:size-16 border-2 border-amber-700 shadow-md mb-2">
+                    <Avatar className="size-14 md:size-16 border-2 border-border shadow-md mb-2">
                       <AvatarImage
                         src={getAvatarFallback(topThree[2].user.username)}
                         alt={topThree[2].user.username}
                       />
-                      <AvatarFallback className="bg-amber-100 dark:bg-amber-900/20 text-lg font-semibold">
+                      <AvatarFallback className="bg-inset text-lg font-semibold">
                         {topThree[2].user.username[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -434,12 +430,10 @@ export default function LeaderboardClient({
                     <p className="text-xs text-muted-foreground mb-2">
                       {topThree[2].stats.points.toLocaleString()} pts
                     </p>
-                    <div className="w-full h-12 md:h-16 bg-amber-100 dark:bg-amber-900/20 rounded-t-lg flex items-center justify-center">
+                    <div className="w-full h-12 md:h-16 bg-inset rounded-t-lg flex items-center justify-center">
                       <div className="flex flex-col items-center">
-                        <Award className="size-5 text-amber-700" />
-                        <span className="text-xl font-bold text-amber-700 dark:text-amber-600">
-                          3
-                        </span>
+                        <Award className="size-5 text-muted-foreground" />
+                        <span className="text-xl font-semibold text-muted-foreground">3</span>
                       </div>
                     </div>
                   </div>
@@ -460,7 +454,7 @@ export default function LeaderboardClient({
                       ref={isCurrentUser ? userEntryRef : null}
                       className={`
                         transition-colors hover:bg-accent/50
-                        ${isCurrentUser ? "bg-amber-500/5 border-l-2 border-l-amber-500" : ""}
+                        ${isCurrentUser ? "bg-warning/[0.06] border-l-2 border-l-warning" : ""}
                       `}
                     >
                       <CardContent className="p-4">
@@ -487,7 +481,7 @@ export default function LeaderboardClient({
                               <h3 className="truncate font-semibold text-sm md:text-base text-foreground">
                                 {entry.user.username}
                                 {isCurrentUser && (
-                                  <span className="ml-2 text-amber-600 dark:text-amber-400 text-xs font-normal">
+                                  <span className="ml-2 text-warning text-xs font-normal">
                                     (You)
                                   </span>
                                 )}
@@ -506,7 +500,7 @@ export default function LeaderboardClient({
                                 {entry.stats.totalGames} games
                               </span>
                               {entry.stats.streak > 0 && (
-                                <span className="flex items-center gap-1 text-orange-500">
+                                <span className="flex items-center gap-1 text-warning">
                                   <Flame className="size-3" />
                                   {entry.stats.streak} day streak
                                 </span>
@@ -533,19 +527,17 @@ export default function LeaderboardClient({
                     <div className="border-t-2 border-dashed border-border" />
                     <div
                       ref={userEntryRef}
-                      className="bg-amber-500/5 border-l-2 border-l-amber-500 transition-colors"
+                      className="bg-warning/[0.06] border-l-2 border-l-warning transition-colors"
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3 md:gap-4">
                           {/* Rank Display */}
                           <div className="flex-shrink-0 w-8 text-center">
-                            <span className="font-semibold text-base text-amber-600 dark:text-amber-400">
-                              {userRank}
-                            </span>
+                            <span className="font-semibold text-base text-warning">{userRank}</span>
                           </div>
 
                           {/* Avatar */}
-                          <Avatar className="size-10 flex-shrink-0 border border-amber-500">
+                          <Avatar className="size-10 flex-shrink-0 border border-warning">
                             <AvatarImage
                               src={getAvatarFallback(userEntry.user.username)}
                               alt={userEntry.user.username}
@@ -560,9 +552,7 @@ export default function LeaderboardClient({
                             <div className="flex items-center gap-2">
                               <h3 className="truncate font-semibold text-sm md:text-base text-foreground">
                                 {userEntry.user.username}
-                                <span className="ml-2 text-amber-600 dark:text-amber-400 text-xs font-normal">
-                                  (You)
-                                </span>
+                                <span className="ml-2 text-warning text-xs font-normal">(You)</span>
                               </h3>
                               {userEntry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-xs">
@@ -578,7 +568,7 @@ export default function LeaderboardClient({
                                 {userEntry.stats.totalGames} games
                               </span>
                               {userEntry.stats.streak > 0 && (
-                                <span className="flex items-center gap-1 text-orange-500">
+                                <span className="flex items-center gap-1 text-warning">
                                   <Flame className="size-3" />
                                   {userEntry.stats.streak} day streak
                                 </span>
@@ -614,11 +604,11 @@ export default function LeaderboardClient({
 
         {/* Achievements & Levels Link */}
         <Link href="/achievements">
-          <Card className="mt-8 border-2 border-transparent bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-yellow-500/10 hover:from-purple-500/20 hover:via-pink-500/20 hover:to-yellow-500/20 transition-all group cursor-pointer">
+          <Card className="group mt-8 cursor-pointer border-border transition-colors hover:border-border-strong/50">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30">
+                  <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[#7928ca] to-[#ff0080]">
                     <Sparkles className="size-5 text-white" />
                   </div>
                   <div>
@@ -640,7 +630,7 @@ export default function LeaderboardClient({
         <Card className="mt-4 bg-muted/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-semibold text-base">
-              <Trophy className="size-5 text-amber-500" />
+              <Trophy className="size-5 text-warning" />
               How Scoring Works
             </CardTitle>
             <CardDescription className="text-sm">Learn how points are calculated</CardDescription>
@@ -648,28 +638,28 @@ export default function LeaderboardClient({
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <Zap className="size-4 flex-shrink-0 text-amber-500 mt-0.5" />
+                <Zap className="size-4 flex-shrink-0 text-warning mt-0.5" />
                 <div>
                   <p className="font-medium text-sm text-foreground">Speed Bonus</p>
                   <p className="text-muted-foreground text-xs">Solve faster for more points</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <Target className="size-4 flex-shrink-0 text-amber-500 mt-0.5" />
+                <Target className="size-4 flex-shrink-0 text-warning mt-0.5" />
                 <div>
                   <p className="font-medium text-sm text-foreground">Accuracy Matters</p>
                   <p className="text-muted-foreground text-xs">Fewer attempts = higher score</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <Flame className="size-4 flex-shrink-0 text-orange-500 mt-0.5" />
+                <Flame className="size-4 flex-shrink-0 text-warning mt-0.5" />
                 <div>
                   <p className="font-medium text-sm text-foreground">Streak Multiplier</p>
                   <p className="text-muted-foreground text-xs">Build streaks for bonus points</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <TrendingUp className="size-4 flex-shrink-0 text-amber-500 mt-0.5" />
+                <TrendingUp className="size-4 flex-shrink-0 text-warning mt-0.5" />
                 <div>
                   <p className="font-medium text-sm text-foreground">Difficulty Bonus</p>
                   <p className="text-muted-foreground text-xs">Harder puzzles = bigger rewards</p>

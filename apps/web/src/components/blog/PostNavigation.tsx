@@ -25,30 +25,26 @@ export function PostNavigation({ prev, next, className }: PostNavigationProps) {
 
   return (
     <nav
-      className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", className)}
+      className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2", className)}
       aria-label="Post navigation"
     >
       {/* Previous post */}
       {prev ? (
         <Link
           href={`/blog/${prev.slug}`}
-          className="group flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+          className="group flex flex-col rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong/50"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <ArrowLeft className="size-4" />
-            <span>Previous Puzzle</span>
+          <div className="mb-3 flex items-center gap-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
+            <ArrowLeft className="size-3" />
+            <span>Previous puzzle</span>
           </div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="mb-1.5 flex items-center gap-2">
             {prev.puzzleType && (
-              <Badge variant="outline" className="text-xs">
-                {PUZZLE_TYPE_LABELS[prev.puzzleType] || prev.puzzleType}
-              </Badge>
+              <Badge variant="mono">{PUZZLE_TYPE_LABELS[prev.puzzleType] || prev.puzzleType}</Badge>
             )}
-            <span className="text-xs text-muted-foreground">{prev.date}</span>
+            <span className="font-mono text-subtle text-xs">{prev.date}</span>
           </div>
-          <p className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-            {prev.title}
-          </p>
+          <p className="line-clamp-2 font-medium text-foreground text-sm">{prev.title}</p>
         </Link>
       ) : (
         <div className="hidden sm:block" />
@@ -58,23 +54,19 @@ export function PostNavigation({ prev, next, className }: PostNavigationProps) {
       {next ? (
         <Link
           href={`/blog/${next.slug}`}
-          className="group flex flex-col p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors sm:text-right"
+          className="group flex flex-col rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong/50 sm:text-right"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 sm:justify-end">
-            <span>Next Puzzle</span>
-            <ArrowRight className="size-4" />
+          <div className="mb-3 flex items-center gap-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] sm:justify-end">
+            <span>Next puzzle</span>
+            <ArrowRight className="size-3" />
           </div>
-          <div className="flex items-center gap-2 mb-1 sm:justify-end">
+          <div className="mb-1.5 flex items-center gap-2 sm:justify-end">
             {next.puzzleType && (
-              <Badge variant="outline" className="text-xs">
-                {PUZZLE_TYPE_LABELS[next.puzzleType] || next.puzzleType}
-              </Badge>
+              <Badge variant="mono">{PUZZLE_TYPE_LABELS[next.puzzleType] || next.puzzleType}</Badge>
             )}
-            <span className="text-xs text-muted-foreground">{next.date}</span>
+            <span className="font-mono text-subtle text-xs">{next.date}</span>
           </div>
-          <p className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-            {next.title}
-          </p>
+          <p className="line-clamp-2 font-medium text-foreground text-sm">{next.title}</p>
         </Link>
       ) : (
         <div className="hidden sm:block" />

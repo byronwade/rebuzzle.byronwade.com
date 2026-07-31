@@ -152,8 +152,8 @@ export function NotificationBadge() {
                 className={cn(
                   "relative h-9 w-9 rounded-full transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
                   notificationsEnabled
-                    ? "text-amber-500 hover:scale-105 hover:bg-amber-100 hover:text-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
-                    : "text-muted-foreground hover:scale-105 hover:bg-amber-100 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400",
+                    ? "text-warning hover:bg-muted"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   emailLoading && "cursor-not-allowed opacity-50"
                 )}
                 disabled={emailLoading}
@@ -163,8 +163,8 @@ export function NotificationBadge() {
                 {getBellIcon()}
                 {notificationsEnabled && (
                   <span className="-top-0.5 -right-0.5 absolute flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
                   </span>
                 )}
               </Button>
@@ -253,7 +253,7 @@ export function NotificationBadge() {
                     </p>
                   )}
                   <Button
-                    className="w-full bg-neutral-800 hover:bg-neutral-900 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
+                    className="w-full"
                     disabled={emailLoading}
                     onClick={handleEnableClick}
                     size="sm"
@@ -275,7 +275,7 @@ export function NotificationBadge() {
                 // Guest - show signup CTA
                 <>
                   <Button
-                    className="mb-3 w-full bg-neutral-800 hover:bg-neutral-900 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-neutral-300"
+                    className="mb-3 w-full"
                     disabled={emailLoading}
                     onClick={handleEnableClick}
                     size="sm"

@@ -51,10 +51,7 @@ interface GameOverClientProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
-export default function GameOverClient({
-  gameData,
-  searchParams: params,
-}: GameOverClientProps) {
+export default function GameOverClient({ gameData, searchParams: params }: GameOverClientProps) {
   const { userId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -232,68 +229,72 @@ export default function GameOverClient({
     <Layout>
       {success && showConfetti && <Confetti />}
 
-      <div className="mx-auto max-w-lg px-4 py-8 md:py-12">
+      <div className="mx-auto max-w-lg px-4 py-12 md:py-16">
         {success ? (
           /* SUCCESS STATE - Minimal & Clean */
-          <div className="space-y-8 fade-in-up">
+          <div className="fade-in-up space-y-10">
             {/* Header */}
-            <div className="text-center space-y-3">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-2">
-                <Check className="h-8 w-8 text-green-600 dark:text-green-400" strokeWidth={3} />
+            <div className="space-y-3 text-center">
+              <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-success/25 bg-success/10">
+                <Check className="h-5 w-5 text-success" strokeWidth={2.5} />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">Solved</h1>
-              <p className="text-muted-foreground">You got today's puzzle</p>
+              <h1 className="font-semibold text-4xl text-foreground tracking-[-0.045em]">Solved</h1>
+              <p className="text-muted-foreground text-sm">You got today's puzzle</p>
             </div>
 
             {/* Answer */}
-            <div className="text-center py-6 border-y border-border">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-                The Answer
-              </p>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground uppercase">
+            <div className="border-border border-y py-8 text-center">
+              <p className="eyebrow mb-3">The Answer</p>
+              <h2 className="text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
                 {solution.answer}
               </h2>
               {solution.explanation && (
-                <p className="mt-4 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                <p className="mx-auto mt-5 max-w-sm text-balance text-muted-foreground text-sm leading-6">
                   {solution.explanation}
                 </p>
               )}
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-card py-5 text-center">
               <div>
-                <div className="text-3xl font-bold text-foreground tabular-nums">{attempts}</div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
+                  {attempts}
+                </div>
+                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
                   {attempts === 1 ? "Attempt" : "Attempts"}
                 </div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-foreground tabular-nums">
+                <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
                   {displayScore}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">Points</div>
+                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                  Points
+                </div>
               </div>
               <div>
-                <div className="text-3xl font-bold tabular-nums flex items-center justify-center gap-1">
+                <div className="flex items-center justify-center gap-1 font-semibold text-3xl tracking-[-0.04em] tabular-nums">
                   {streak > 0 ? (
                     <>
-                      <span className="text-orange-500">{streak}</span>
-                      <Flame className="h-5 w-5 text-orange-500" />
+                      <span className="text-warning">{streak}</span>
+                      <Flame className="h-4 w-4 text-warning" />
                     </>
                   ) : (
                     <span className="text-foreground">0</span>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">Streak</div>
+                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                  Streak
+                </div>
               </div>
             </div>
 
             {/* Global Comparison Badge - Social proof */}
             {percentile !== null && percentile > 50 && (
-              <div className="flex items-center justify-center gap-2 rounded-full bg-green-100 dark:bg-green-900/30 px-4 py-2 animate-in fade-in-50 duration-500">
-                <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-300">
+              <div className="fade-in-50 mx-auto flex w-fit animate-in items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 duration-500">
+                <TrendingUp className="h-3.5 w-3.5 text-success" />
+                <span className="font-medium text-success text-sm">
                   Faster than {percentile}% of players today
                 </span>
               </div>
@@ -302,9 +303,7 @@ export default function GameOverClient({
             {/* Guess History */}
             {completionData?.guessHistory && completionData.guessHistory.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground text-center">
-                  Your Guesses
-                </p>
+                <p className="eyebrow text-center">Your Guesses</p>
                 <div className="space-y-2">
                   {completionData.guessHistory.map((attempt, index) => {
                     const isWinning = index === completionData.guessHistory.length - 1;
@@ -312,16 +311,16 @@ export default function GameOverClient({
                       <div
                         key={index}
                         className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg transition-colors",
-                          isWinning ? "bg-green-50 dark:bg-green-950/30" : "bg-muted/50"
+                          "flex items-center gap-3 rounded-lg border p-3",
+                          isWinning
+                            ? "border-success/25 bg-success/[0.07]"
+                            : "border-border bg-card"
                         )}
                       >
                         <div
                           className={cn(
-                            "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
-                            isWinning
-                              ? "bg-green-500 text-white"
-                              : "bg-muted-foreground/20 text-muted-foreground"
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px]",
+                            isWinning ? "bg-success text-background" : "bg-inset text-subtle"
                           )}
                         >
                           {isWinning ? <Check className="h-3.5 w-3.5" /> : attempt.attemptNumber}
@@ -331,10 +330,10 @@ export default function GameOverClient({
                             <span
                               key={wordIndex}
                               className={cn(
-                                "px-2 py-0.5 rounded text-xs font-medium uppercase",
+                                "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
                                 result.correct
-                                  ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                                  : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                                  ? "bg-success/15 text-success"
+                                  : "bg-destructive/10 text-destructive"
                               )}
                             >
                               {result.word}
@@ -369,39 +368,39 @@ export default function GameOverClient({
               </Link>
               <Link className="flex-1" href="/blog">
                 <Button variant="outline" className="w-full">
-                  Tips & Tricks
+                  Tips
                 </Button>
               </Link>
             </div>
 
             {/* Countdown */}
-            <div className="text-center pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Next puzzle in</p>
+            <div className="border-border border-t pt-6 text-center">
+              <p className="eyebrow mb-2">Next puzzle in</p>
               <CountdownTimer />
             </div>
           </div>
         ) : (
           /* FAILURE STATE - Minimal & Clean */
-          <div className="space-y-8 fade-in-up">
+          <div className="fade-in-up space-y-10">
             {/* Header */}
-            <div className="text-center space-y-3">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-2">
+            <div className="space-y-3 text-center">
+              <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-inset">
                 <X className="h-8 w-8 text-muted-foreground" strokeWidth={2} />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">Not quite</h1>
-              <p className="text-muted-foreground">Better luck tomorrow</p>
+              <h1 className="font-semibold text-4xl text-foreground tracking-[-0.045em]">
+                Not quite
+              </h1>
+              <p className="text-muted-foreground text-sm">Better luck tomorrow</p>
             </div>
 
             {/* Answer */}
-            <div className="text-center py-6 border-y border-border">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-                The Answer Was
-              </p>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-foreground uppercase">
+            <div className="border-border border-y py-8 text-center">
+              <p className="eyebrow mb-3">The Answer Was</p>
+              <h2 className="text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
                 {solution.answer}
               </h2>
               {solution.explanation && (
-                <p className="mt-4 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                <p className="mx-auto mt-5 max-w-sm text-balance text-muted-foreground text-sm leading-6">
                   {solution.explanation}
                 </p>
               )}
@@ -410,13 +409,14 @@ export default function GameOverClient({
             {/* Guess History */}
             {completionData?.guessHistory && completionData.guessHistory.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground text-center">
-                  Your Attempts
-                </p>
+                <p className="eyebrow text-center">Your Attempts</p>
                 <div className="space-y-2">
                   {completionData.guessHistory.map((attempt, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-muted-foreground/20 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
+                    >
+                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-inset font-mono text-[10px] text-subtle">
                         {attempt.attemptNumber}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -424,10 +424,10 @@ export default function GameOverClient({
                           <span
                             key={wordIndex}
                             className={cn(
-                              "px-2 py-0.5 rounded text-xs font-medium uppercase",
+                              "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
                               result.correct
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                                : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                                ? "bg-success/15 text-success"
+                                : "bg-destructive/10 text-destructive"
                             )}
                           >
                             {result.word}
@@ -441,11 +441,9 @@ export default function GameOverClient({
             )}
 
             {/* Comeback Encouragement - Psychology: Positive reinforcement for return */}
-            <div className="text-center py-4 px-6 rounded-xl bg-muted/50 border border-border">
-              <p className="text-sm text-foreground font-medium mb-1">
-                Every puzzle makes you sharper
-              </p>
-              <p className="text-xs text-muted-foreground">
+            <div className="rounded-xl border border-border bg-inset px-6 py-5 text-center">
+              <p className="font-medium text-foreground text-sm">Every puzzle makes you sharper</p>
+              <p className="mt-1 text-muted-foreground text-xs">
                 {todaySolves !== null && todaySolves > 0
                   ? `${todaySolves.toLocaleString()} players solved today. Come back tomorrow for a fresh start!`
                   : "Come back tomorrow for a fresh start!"}
@@ -461,14 +459,14 @@ export default function GameOverClient({
               </Link>
               <Link className="flex-1" href="/blog">
                 <Button variant="outline" className="w-full">
-                  Tips & Tricks
+                  Tips
                 </Button>
               </Link>
             </div>
 
             {/* Countdown */}
-            <div className="text-center pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Next puzzle in</p>
+            <div className="border-border border-t pt-6 text-center">
+              <p className="eyebrow mb-2">Next puzzle in</p>
               <CountdownTimer />
             </div>
           </div>

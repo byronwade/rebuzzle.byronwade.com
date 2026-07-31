@@ -236,14 +236,14 @@ export default function ProfilePage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-4xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
         <div className="mb-6">
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 border-2 border-border sm:h-20 sm:w-20 sm:border-4">
                 <AvatarFallback
-                  className={`font-bold text-2xl sm:text-3xl ${getAvatarClassName(
+                  className={`font-semibold text-2xl tracking-[-0.04em] sm:text-3xl ${getAvatarClassName(
                     generateAvatarProps(username, avatarPreferences || undefined),
                     true
                   )}`}
@@ -303,25 +303,25 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                   <Target className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-bold text-2xl text-foreground">{stats.totalGames}</div>
+                  <div className="font-semibold text-2xl text-foreground">{stats.totalGames}</div>
                   <div className="text-muted-foreground text-xs">Games Played</div>
                 </div>
 
                 <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                   <Trophy className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-bold text-2xl text-foreground">{stats.wins}</div>
+                  <div className="font-semibold text-2xl text-foreground">{stats.wins}</div>
                   <div className="text-muted-foreground text-xs">Puzzles Solved</div>
                 </div>
 
                 <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                   <Flame className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-bold text-2xl text-foreground">{stats.streak}</div>
+                  <div className="font-semibold text-2xl text-foreground">{stats.streak}</div>
                   <div className="text-muted-foreground text-xs">Current Streak</div>
                 </div>
 
                 <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                   <TrendingUp className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-bold text-2xl text-foreground">{winRate}%</div>
+                  <div className="font-semibold text-2xl text-foreground">{winRate}%</div>
                   <div className="text-muted-foreground text-xs">Win Rate</div>
                 </div>
               </div>
@@ -390,19 +390,21 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
               <div className="mb-1 text-muted-foreground text-sm">Total Points</div>
-              <div className="font-bold text-2xl text-foreground">
+              <div className="font-semibold text-2xl text-foreground">
                 {stats.points.toLocaleString()}
               </div>
             </div>
 
             <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
               <div className="mb-1 text-muted-foreground text-sm">Current Streak</div>
-              <div className="font-bold text-2xl text-foreground">{stats.streak}</div>
+              <div className="font-semibold text-2xl text-foreground">{stats.streak}</div>
             </div>
 
             <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
               <div className="mb-1 text-muted-foreground text-sm">Daily Challenge Streak</div>
-              <div className="font-bold text-2xl text-foreground">{stats.dailyChallengeStreak}</div>
+              <div className="font-semibold text-2xl text-foreground">
+                {stats.dailyChallengeStreak}
+              </div>
             </div>
           </div>
         </Card>

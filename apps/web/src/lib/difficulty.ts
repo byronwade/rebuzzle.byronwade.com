@@ -42,30 +42,36 @@ const DESCRIPTIONS: Record<DifficultyName, string> = {
   Impossible: "Dense expert mode — still fair with the hint ladder",
 };
 
-/** Tailwind-friendly accent classes per tier (play UI) */
+/**
+ * Tailwind-friendly accent classes per tier (play UI).
+ *
+ * The four tiers walk the brand's own gradient stops in order — develop blue,
+ * ship amber, preview pink, then the polarity-flipped ink band for the top
+ * tier. No tier introduces a colour that isn't already in the system.
+ */
 export const DIFFICULTY_ACCENTS: Record<
   DifficultyName,
   { badge: string; glow: string; dot: string }
 > = {
   Hard: {
-    badge: "bg-teal-500/15 text-teal-800 border-teal-500/30 dark:text-teal-200",
-    glow: "shadow-[0_0_24px_-8px_rgba(20,184,166,0.55)]",
-    dot: "bg-teal-500",
+    badge: "border-link/25 bg-link/10 text-link",
+    glow: "shadow-[0_0_24px_-10px_rgba(0,112,243,0.5)]",
+    dot: "bg-link",
   },
   Difficult: {
-    badge: "bg-amber-500/15 text-amber-900 border-amber-500/35 dark:text-amber-100",
-    glow: "shadow-[0_0_24px_-8px_rgba(245,158,11,0.5)]",
-    dot: "bg-amber-500",
+    badge: "border-warning/30 bg-warning/10 text-[#ab570a] dark:text-warning",
+    glow: "shadow-[0_0_24px_-10px_rgba(245,166,35,0.5)]",
+    dot: "bg-warning",
   },
   Evil: {
-    badge: "bg-rose-500/15 text-rose-900 border-rose-500/35 dark:text-rose-100",
-    glow: "shadow-[0_0_24px_-8px_rgba(244,63,94,0.5)]",
-    dot: "bg-rose-500",
+    badge: "border-[#ff0080]/25 bg-[#ff0080]/10 text-[#c0005f] dark:text-[#ff4da6]",
+    glow: "shadow-[0_0_24px_-10px_rgba(255,0,128,0.5)]",
+    dot: "bg-[#ff0080]",
   },
   Impossible: {
-    badge: "bg-slate-900/90 text-cyan-100 border-cyan-400/40 dark:bg-slate-950",
-    glow: "shadow-[0_0_28px_-6px_rgba(34,211,238,0.55)]",
-    dot: "bg-cyan-400",
+    badge: "border-transparent bg-foreground text-background",
+    glow: "shadow-[0_0_28px_-8px_rgba(121,40,202,0.55)]",
+    dot: "bg-[#00dfd8]",
   },
 };
 

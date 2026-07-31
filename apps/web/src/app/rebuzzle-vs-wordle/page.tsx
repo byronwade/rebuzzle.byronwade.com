@@ -162,89 +162,79 @@ export default function RebuzzleVsWordlePage() {
         type="application/ld+json"
       />
 
-      <div className="mx-auto max-w-6xl px-4 py-3 md:px-6">
+      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
         {/* Header */}
-        <div className="mb-12 text-center">
-          <div className="mb-4 flex justify-center gap-4">
-            <Puzzle className="h-12 w-12 text-neutral-700 dark:text-neutral-300" />
-            <span className="text-4xl">vs</span>
-            <Sparkles className="h-12 w-12 text-neutral-700 dark:text-neutral-300" />
-          </div>
-          <h1 className="mb-4 font-semibold text-2xl md:text-3xl">
-            Rebuzzle vs Wordle: Which Puzzle Game is Better?
+        <header className="mx-auto max-w-3xl text-center">
+          <p className="eyebrow">Comparison</p>
+          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-[-0.045em] md:text-5xl">
+            Rebuzzle vs Wordle.
           </h1>
-          <p className="mx-auto max-w-3xl text-muted-foreground text-sm leading-relaxed md:text-base">
-            Compare Rebuzzle and Wordle side-by-side. Discover why Rebuzzle offers more variety,
-            better features, and a superior puzzle-solving experience.
+          <p className="mt-5 text-balance text-lg text-muted-foreground leading-8">
+            Same daily ritual, seven puzzle types instead of one. Here's the side-by-side.
           </p>
-        </div>
+        </header>
 
-        {/* Quick Stats */}
-        <div className="mb-12 grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Rebuzzle Wins</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-3xl text-neutral-700 dark:text-neutral-300">
-                {rebuzzleWins}
+        {/* Quick Stats — one hairline-divided row, mono numerals */}
+        <div className="mt-14 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {[
+            { label: "Rebuzzle wins", value: rebuzzleWins },
+            { label: "Tied", value: ties },
+            { label: "Wordle wins", value: wordleWins },
+          ].map((stat) => (
+            <div className="px-6 py-7 text-center" key={stat.label}>
+              <div className="font-semibold text-4xl text-foreground tracking-[-0.045em] tabular-nums">
+                {stat.value}
               </div>
-              <p className="text-muted-foreground text-sm">features</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Tied Features</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-3xl text-neutral-700 dark:text-neutral-300">
-                {ties}
-              </div>
-              <p className="text-muted-foreground text-sm">features</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Wordle Wins</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-3xl text-neutral-700 dark:text-neutral-300">
-                {wordleWins}
-              </div>
-              <p className="text-muted-foreground text-sm">features</p>
-            </CardContent>
-          </Card>
+              <p className="mt-2 font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
+                {stat.label}
+              </p>
+            </div>
+          ))}
         </div>
 
         {/* Comparison Table */}
-        <section className="mb-12">
-          <h2 className="mb-6 font-semibold text-xl md:text-2xl">Feature Comparison</h2>
-          <div className="overflow-x-auto">
+        <section className="mt-20">
+          <h2 className="font-semibold text-2xl tracking-[-0.04em] md:text-[32px]">
+            Feature comparison
+          </h2>
+          <div className="mt-6 overflow-x-auto rounded-xl border border-border">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-semibold text-sm">Feature</th>
-                  <th className="px-4 py-3 text-center font-semibold text-sm">Rebuzzle</th>
-                  <th className="px-4 py-3 text-center font-semibold text-sm">Wordle</th>
+                <tr className="border-border border-b bg-inset">
+                  <th className="px-4 py-2.5 text-left font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
+                    Feature
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
+                    Rebuzzle
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
+                    Wordle
+                  </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-card">
                 {comparisonFeatures.map((feature, index) => (
-                  <tr className="border-b" key={index}>
-                    <td className="px-4 py-3 font-medium text-sm">{feature.feature}</td>
-                    <td className="px-4 py-3 text-center text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        {feature.winner === "rebuzzle" && (
-                          <Check className="h-4 w-4 text-neutral-700 dark:text-neutral-300" />
-                        )}
+                  <tr className="border-border border-b last:border-b-0" key={index}>
+                    <td className="px-4 py-3 font-medium text-foreground text-sm">
+                      {feature.feature}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-sm">
+                      <div className="flex items-start gap-2">
+                        <Check
+                          className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                            feature.winner === "rebuzzle" ? "text-success" : "invisible"
+                          }`}
+                        />
                         <span>{feature.rebuzzle}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        {feature.winner === "wordle" && (
-                          <Check className="h-4 w-4 text-neutral-700 dark:text-neutral-300" />
-                        )}
+                    <td className="px-4 py-3 text-muted-foreground text-sm">
+                      <div className="flex items-start gap-2">
+                        <Check
+                          className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                            feature.winner === "wordle" ? "text-success" : "invisible"
+                          }`}
+                        />
                         <span>{feature.wordle}</span>
                       </div>
                     </td>
@@ -256,94 +246,69 @@ export default function RebuzzleVsWordlePage() {
         </section>
 
         {/* Why Choose Rebuzzle */}
-        <section className="mb-12">
-          <h2 className="mb-6 font-semibold text-xl md:text-2xl">Why Choose Rebuzzle?</h2>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Puzzle className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-                  More Variety
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  With 7 different puzzle types, Rebuzzle offers far more variety than Wordle's
-                  single word-guessing format. Challenge different cognitive skills every day!
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-                  AI-Generated Puzzles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Every puzzle is AI-generated and unique. No pre-selected words - each puzzle is
-                  crafted fresh daily with intelligent difficulty calibration.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-                  Progressive Hints
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Stuck on a puzzle? Rebuzzle's progressive hint system guides you toward the
-                  solution without spoiling the answer. Wordle offers no hints.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-                  Offline Play
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Play Rebuzzle anywhere, even without internet! Full offline support means you can
-                  solve puzzles on planes, trains, or anywhere else.
-                </p>
-              </CardContent>
-            </Card>
+        <section className="mt-20">
+          <h2 className="font-semibold text-2xl tracking-[-0.04em] md:text-[32px]">
+            Why choose Rebuzzle
+          </h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {[
+              {
+                icon: Puzzle,
+                title: "More variety",
+                body: "Seven puzzle types against Wordle's single word-guessing format. A different cognitive skill every day.",
+              },
+              {
+                icon: Sparkles,
+                title: "AI-generated puzzles",
+                body: "No pre-selected word list. Each puzzle is written fresh daily with difficulty calibrated against real solve data.",
+              },
+              {
+                icon: Check,
+                title: "Progressive hints",
+                body: "Stuck? The hint ladder walks you toward the solution without spoiling it. Wordle offers no hints at all.",
+              },
+              {
+                icon: Sparkles,
+                title: "Offline play",
+                body: "Installable as a PWA with full offline support — solve on planes, trains, or anywhere with no signal.",
+              },
+            ].map((item) => (
+              <Card key={item.title} variant="raised">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <item.icon className="h-4 w-4 text-subtle" />
+                    {item.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-sm leading-6">{item.body}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="mb-8 rounded-lg border bg-muted/50 p-8 text-center">
-          <h2 className="mb-4 font-semibold text-xl">Ready to Try Rebuzzle?</h2>
-          <p className="mb-6 text-muted-foreground text-sm">
-            Experience the ultimate Wordle alternative with more variety, better features, and
-            AI-generated puzzles.
+        {/* CTA — the page's one polarity-flipped band */}
+        <section className="mt-20 overflow-hidden rounded-xl bg-foreground px-6 py-14 text-center text-background">
+          <h2 className="text-balance font-semibold text-3xl tracking-[-0.04em]">
+            Ready to try Rebuzzle?
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-balance text-background/60 text-sm leading-6">
+            One puzzle a day. Free, no ads, no subscription.
           </p>
           <Link
-            className="inline-flex items-center gap-2 rounded-lg bg-neutral-800 dark:bg-neutral-200 px-6 py-3 font-semibold text-white transition-colors hover:bg-neutral-900 dark:hover:bg-neutral-300"
+            className="mt-8 inline-flex h-11 items-center gap-2 rounded-pill bg-background px-6 font-medium text-[15px] text-foreground transition-opacity hover:opacity-90"
             href="/"
           >
-            <Puzzle className="h-5 w-5" />
-            Play Today's Puzzle
+            <Puzzle className="h-4 w-4" />
+            Play today's puzzle
           </Link>
         </section>
 
         {/* Back Link */}
-        <div className="mt-8 text-center">
-          <Link
-            className="text-neutral-700 dark:text-neutral-300 text-sm hover:text-neutral-800 dark:text-neutral-200"
-            href="/"
-          >
-            ← Back to Home
+        <div className="mt-12 text-center">
+          <Link className="text-link text-sm underline-offset-4 hover:underline" href="/">
+            ← Back to today's puzzle
           </Link>
         </div>
       </div>

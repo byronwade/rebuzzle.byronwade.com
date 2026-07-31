@@ -138,12 +138,12 @@ function FullPageErrorFallback({ error, resetError }: ErrorFallbackProps) {
         <div className="space-y-6 text-center">
           <div
             aria-hidden="true"
-            className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20"
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-destructive/25 bg-destructive/10"
           >
-            <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400" />
+            <AlertTriangle className="h-5 w-5 text-destructive" />
           </div>
           <div>
-            <h1 className="mb-2 font-semibold text-2xl text-red-600 dark:text-red-400">
+            <h1 className="mb-2 font-semibold text-2xl text-foreground tracking-[-0.04em]">
               Something went wrong
             </h1>
             <p className="text-muted-foreground">
@@ -151,11 +151,11 @@ function FullPageErrorFallback({ error, resetError }: ErrorFallbackProps) {
             </p>
           </div>
           {isDev && (
-            <details className="rounded-lg border border-red-200 bg-red-50 p-4 text-left dark:border-red-800 dark:bg-red-900/20">
-              <summary className="cursor-pointer font-medium text-red-700 text-sm dark:text-red-400">
+            <details className="rounded-lg border border-border bg-inset p-4 text-left">
+              <summary className="cursor-pointer font-medium text-destructive text-sm">
                 Error Details (Development Only)
               </summary>
-              <pre className="mt-2 overflow-auto text-red-600 text-xs dark:text-red-300">
+              <pre className="mt-2 overflow-auto font-mono text-muted-foreground text-xs">
                 {error.message}
                 {error.stack && `\n\n${error.stack}`}
               </pre>
@@ -229,4 +229,3 @@ function areArraysEqual(a: unknown[], b: unknown[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((item, index) => Object.is(item, b[index]));
 }
-

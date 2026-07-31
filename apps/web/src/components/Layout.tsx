@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { DevToolsPanel } from "./DevToolsPanel";
+import { Footer } from "./Footer";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
 
@@ -24,9 +25,10 @@ interface LayoutProps {
  * Main layout component wrapping all pages
  *
  * Provides consistent structure with:
- * - Animated background
+ * - Atmospheric mesh backdrop (hero scale, top of page only)
  * - Header with navigation
  * - Main content area
+ * - Four-column footer on scrolling pages
  */
 export default function Layout({
   children,
@@ -37,40 +39,50 @@ export default function Layout({
 }: LayoutProps) {
   return (
     <GameProvider>
-      <LayoutContent nextPlayTime={nextPlayTime} puzzleType={puzzleType} className={className} isGamePage={isGamePage}>
+      <LayoutContent
+        className={className}
+        isGamePage={isGamePage}
+        nextPlayTime={nextPlayTime}
+        puzzleType={puzzleType}
+      >
         {children}
       </LayoutContent>
     </GameProvider>
   );
 }
 
-function LayoutContent({ children, nextPlayTime, puzzleType, className, isGamePage = false }: LayoutProps) {
+function LayoutContent({
+  children,
+  nextPlayTime,
+  puzzleType,
+  className,
+  isGamePage = false,
+}: LayoutProps) {
   const { gameState } = useGameContext();
 
   return (
-    <div className={cn(
-      "relative flex flex-col bg-background",
-      // Game page: fixed height, no scroll
-      isGamePage ? "h-dvh overflow-hidden" : "min-h-screen"
-    )}>
+    <div
+      className={cn(
+        "relative flex flex-col bg-background",
+        // Game page: fixed height, no scroll
+        isGamePage ? "h-dvh overflow-hidden" : "min-h-screen"
+      )}
+    >
       {/* Skip to main content link for accessibility */}
       <a
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:font-medium focus:text-background focus:text-sm"
         href="#main-content"
       >
         Skip to main content
       </a>
 
-      {/* Animated background */}
-      <BackgroundDecoration />
+      <AtmosphericBackdrop />
 
-      {/* Header - shrink-0 to keep fixed size */}
-      <Header nextPlayTime={nextPlayTime ?? null} puzzleType={puzzleType} gameState={gameState} />
+      <Header gameState={gameState} nextPlayTime={nextPlayTime ?? null} puzzleType={puzzleType} />
 
-      {/* Main content - flex-1 to fill remaining space */}
       <main
         className={cn(
-          "fade-in-up relative z-10 flex-1 animate-in duration-700",
+          "relative z-10 flex-1",
           // Game page: no overflow/scroll
           isGamePage && "overflow-hidden",
           className
@@ -80,6 +92,12 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className, isGamePa
         {children}
       </main>
 
+      {!isGamePage && (
+        <div className="relative z-10">
+          <Footer />
+        </div>
+      )}
+
       {/* Temporary Dev Mode tools — enable in Settings */}
       <DevToolsPanel />
     </div>
@@ -87,21 +105,21 @@ function LayoutContent({ children, nextPlayTime, puzzleType, className, isGamePa
 }
 
 /**
- * Play atmosphere — cool mist + soft teal wash (not flat gray).
+ * The brand mesh, used once per page at hero scale behind the top band, plus a
+ * faint engineered grid. Both sit at very low opacity so the ink stays the
+ * loudest thing on the page.
  */
-function BackgroundDecoration() {
+function AtmosphericBackdrop() {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(45,212,191,0.14),transparent_55%),radial-gradient(90%_60%_at_100%_0%,rgba(14,165,233,0.08),transparent_45%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(190_30%_97%)_100%)] dark:bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(45,212,191,0.12),transparent_55%),linear-gradient(180deg,hsl(var(--background)),hsl(200_20%_8%))]" />
-      <div
-        className="absolute inset-0 opacity-[0.35] dark:opacity-[0.2] motion-safe:animate-pulse motion-reduce:animate-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(15, 118, 110, 0.12) 1px, transparent 0)",
-          backgroundSize: "22px 22px",
-          animationDuration: "6s",
-        }}
-      />
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[520px] overflow-hidden"
+    >
+      <div className="absolute inset-0 grid-texture opacity-[0.5] [mask-image:linear-gradient(to_bottom,black,transparent_75%)] dark:opacity-[0.35]" />
+      <div className="absolute -top-56 left-1/2 h-[560px] w-[1100px] -translate-x-1/2">
+        <div className="mesh-gradient h-full w-full opacity-[0.14] blur-[80px] motion-safe:animate-mesh-drift dark:opacity-[0.22]" />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background" />
     </div>
   );
 }

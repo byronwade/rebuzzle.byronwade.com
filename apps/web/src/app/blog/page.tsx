@@ -1,7 +1,7 @@
-import { BookOpen, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import BlogPost from "@/components/BlogPost";
 import { BlogPagination, BlogSearch } from "@/components/blog";
@@ -25,10 +25,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 function BlogListSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="divide-y divide-border border-border border-t">
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="p-4 rounded-xl border">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="py-6" key={i}>
+          <div className="mb-3 flex items-center gap-2">
             <Skeleton className="h-5 w-16 rounded-full" />
             <Skeleton className="h-4 w-20" />
           </div>
@@ -55,27 +55,25 @@ export default async function BlogPage() {
     if (!blogPosts || blogPosts.length === 0) {
       return (
         <Layout>
-          <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
-            <div className="mb-6">
-              <h1 className="font-bold text-xl text-foreground flex items-center gap-2">
-                <BookOpen className="size-5 text-primary" />
-                Puzzle Blog
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Daily puzzle solutions and strategies
+          <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
+            <header className="border-border border-b pb-8">
+              <p className="eyebrow">Blog</p>
+              <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Puzzle solutions.</h1>
+              <p className="mt-3 text-muted-foreground leading-7">
+                Daily write-ups, strategies and the reasoning behind each puzzle.
               </p>
-            </div>
+            </header>
 
-            <Card className="border-dashed">
-              <CardContent className="p-8 text-center">
-                <FileText className="size-10 text-muted-foreground mx-auto mb-3" />
-                <h2 className="font-semibold text-base mb-1">No posts yet</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Check back soon for puzzle insights and tips
+            <Card className="mt-10" variant="inset">
+              <CardContent className="px-6 py-14 text-center">
+                <FileText className="mx-auto mb-4 size-8 text-subtle" />
+                <h2 className="font-semibold text-lg tracking-[-0.03em]">No posts yet</h2>
+                <p className="mx-auto mt-2 max-w-xs text-balance text-muted-foreground text-sm leading-6">
+                  Write-ups go up alongside each day's puzzle. Check back soon.
                 </p>
-                <Link href="/">
-                  <Button size="sm">Play Today's Puzzle</Button>
-                </Link>
+                <Button asChild className="mt-6" size="lg" variant="pill">
+                  <Link href="/">Play today's puzzle</Link>
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -137,20 +135,18 @@ export default async function BlogPage() {
           type="application/ld+json"
         />
 
-        <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
+        <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="font-bold text-xl text-foreground flex items-center gap-2">
-              <BookOpen className="size-5 text-primary" />
-              Puzzle Blog
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Daily puzzle solutions, strategies, and insights
+          <header className="border-border border-b pb-8">
+            <p className="eyebrow">Blog</p>
+            <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Puzzle solutions.</h1>
+            <p className="mt-3 text-muted-foreground leading-7">
+              Daily write-ups, strategies and the reasoning behind each puzzle.
             </p>
-          </div>
+          </header>
 
           {/* Search */}
-          <div className="mb-6">
+          <div className="mt-8 mb-8">
             <Suspense fallback={<Skeleton className="h-10 w-full rounded-lg" />}>
               <BlogSearch />
             </Suspense>
@@ -158,7 +154,7 @@ export default async function BlogPage() {
 
           {/* Posts list */}
           <Suspense fallback={<BlogListSkeleton />}>
-            <div className="space-y-4">
+            <div className="divide-y divide-border border-border border-t">
               {blogPosts.map((post) => (
                 <BlogPost key={post.slug} post={post} />
               ))}
@@ -173,11 +169,11 @@ export default async function BlogPage() {
           )}
 
           {/* CTA */}
-          <div className="mt-10 pt-6 border-t text-center">
-            <p className="text-sm text-muted-foreground mb-3">Ready to test your skills?</p>
-            <Link href="/">
-              <Button>Play Today's Puzzle</Button>
-            </Link>
+          <div className="mt-14 border-border border-t pt-10 text-center">
+            <p className="text-muted-foreground text-sm">Ready to test your skills?</p>
+            <Button asChild className="mt-4" size="lg" variant="pill">
+              <Link href="/">Play today's puzzle</Link>
+            </Button>
           </div>
         </div>
       </Layout>
@@ -185,27 +181,23 @@ export default async function BlogPage() {
   } catch (_error) {
     return (
       <Layout>
-        <div className="mx-auto max-w-4xl px-4 py-6 md:px-6">
-          <div className="mb-6">
-            <h1 className="font-bold text-xl text-foreground flex items-center gap-2">
-              <BookOpen className="size-5 text-primary" />
-              Puzzle Blog
-            </h1>
-          </div>
+        <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
+          <header className="border-border border-b pb-8">
+            <p className="eyebrow">Blog</p>
+            <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Puzzle solutions.</h1>
+          </header>
 
-          <Card className="border-dashed">
-            <CardContent className="p-8 text-center">
-              <p className="font-medium text-sm mb-1">Something went wrong</p>
-              <p className="text-sm text-muted-foreground mb-4">We couldn't load the blog posts</p>
-              <div className="flex justify-center gap-2">
-                <Link href="/blog">
-                  <Button variant="outline" size="sm">
-                    Try Again
-                  </Button>
-                </Link>
-                <Link href="/">
-                  <Button size="sm">Play Puzzle</Button>
-                </Link>
+          <Card className="mt-10" variant="inset">
+            <CardContent className="px-6 py-14 text-center">
+              <h2 className="font-semibold text-lg tracking-[-0.03em]">Something went wrong</h2>
+              <p className="mt-2 text-muted-foreground text-sm">We couldn't load the blog posts.</p>
+              <div className="mt-6 flex justify-center gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/blog">Try again</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/">Play today's puzzle</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

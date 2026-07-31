@@ -25,14 +25,14 @@ import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
 import { calculateScore, determineAchievements } from "./CelebrationOverlay";
-import { useGameContext } from "./GameContext";
-import { PuzzleSkeleton } from "./PuzzleSkeleton";
 import { DifficultyBadge } from "./DifficultyBadge";
+import { useGameContext } from "./GameContext";
 import { GuessTrail } from "./GuessTrail";
 import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
 import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay";
 import { PuzzleMinimal } from "./PuzzleMinimal";
+import { PuzzleSkeleton } from "./PuzzleSkeleton";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 
 const CelebrationOverlay = dynamic(
@@ -761,8 +761,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     handleKeyPress,
   ]);
 
-  // Rare: auth still resolving without a seeded session — keep puzzle-shaped shell
-  if (authLoading) {
+  // Auth still resolving — keep a puzzle-shaped shell (no spinner page)
+  if (authLoading || isCreatingGuest) {
     return <PuzzleSkeleton />;
   }
 
@@ -784,7 +784,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   />
                   {/* Show last guess attempt in collapsed view */}
                   {gameState.guessHistory.length > 0 && (
-                    <div className="text-muted-foreground text-xs mt-1 opacity-60">
+                    <div className="mt-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
                       Last: {gameState.guessHistory[gameState.guessHistory.length - 1]?.text}
                     </div>
                   )}
@@ -813,7 +813,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     )}
                   </div>
 
-                  <section aria-label="Puzzle" className="play-puzzle-panel w-full max-w-2xl text-center">
+                  <section
+                    aria-label="Puzzle"
+                    className="play-puzzle-panel w-full max-w-2xl text-center"
+                  >
                     <PuzzleContainer>
                       <PuzzleDisplay
                         puzzle={puzzleDisplay}
@@ -846,12 +849,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 role="status"
               >
                 <div
-                  className={`rounded-full border px-4 py-2 backdrop-blur-md ${
+                  className={`rounded-full border px-3.5 py-1.5 backdrop-blur-md ${
                     gameState.feedbackMessage === "Checking..."
-                      ? "border-teal-400/40 bg-teal-500/10 text-teal-900 dark:text-teal-100"
+                      ? "border-border bg-card text-muted-foreground"
                       : gameState.feedbackMessage.startsWith("So close")
-                        ? "border-amber-400/40 bg-amber-500/10 text-amber-950 dark:text-amber-100"
-                        : "border-rose-400/40 bg-rose-500/10 text-rose-950 dark:text-rose-100"
+                        ? "border-warning/30 bg-warning/10 text-foreground"
+                        : "border-destructive/25 bg-destructive/10 text-destructive"
                   }`}
                 >
                   <p className="font-medium text-sm">{gameState.feedbackMessage}</p>
@@ -865,14 +868,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 className="mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none"
                 role="alert"
               >
-                <div className="rounded-2xl border border-red-400 bg-red-100 p-4 text-center shadow-lg dark:border-red-600 dark:bg-red-900/90">
-                  <p className="font-semibold text-red-800 text-sm dark:text-red-200">
-                    {error.message}
-                  </p>
+                <div className="rounded-lg border border-destructive/25 bg-card p-4 text-center shadow-lg">
+                  <p className="font-medium text-destructive text-sm">{error.message}</p>
                   {error.details && (
-                    <p className="mt-2 text-red-700 text-xs dark:text-red-300">{error.details}</p>
+                    <p className="mt-1.5 text-muted-foreground text-xs">{error.details}</p>
                   )}
-                  <Button className="mt-3" onClick={() => setError(null)} size="sm" variant="outline">
+                  <Button
+                    className="mt-3"
+                    onClick={() => setError(null)}
+                    size="sm"
+                    variant="outline"
+                  >
                     Dismiss
                   </Button>
                 </div>

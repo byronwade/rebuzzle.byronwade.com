@@ -51,7 +51,7 @@ export function CountdownTimer() {
   }, [router]);
 
   return (
-    <div className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 text-white shadow-lg">
+    <div className="inline-flex items-center gap-3 rounded-lg border border-border bg-card px-5 py-3 shadow-sm">
       <Clock className="h-6 w-6 animate-pulse" />
       <div className="text-center">
         <div className="font-semibold text-xs uppercase tracking-wide opacity-90">

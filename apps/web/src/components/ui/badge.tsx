@@ -4,16 +4,19 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-medium text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
+        default: "border-transparent bg-foreground text-background",
+        secondary: "border-border bg-inset text-muted-foreground",
+        destructive: "border-destructive/25 bg-destructive/10 text-destructive",
+        success: "border-success/25 bg-success/10 text-success",
+        warning: "border-warning/30 bg-warning/10 text-warning",
+        info: "border-link/25 bg-link/10 text-link",
+        outline: "border-border text-foreground",
+        // Technical metadata — the mono voice, at caption scale.
+        mono: "border-border bg-inset font-mono text-[11px] text-muted-foreground uppercase tracking-[0.08em]",
       },
     },
     defaultVariants: {

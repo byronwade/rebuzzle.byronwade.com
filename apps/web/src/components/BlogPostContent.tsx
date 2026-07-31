@@ -18,7 +18,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
@@ -92,150 +91,131 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
   const canReveal = !isToday || isCompleted;
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Back Link */}
       <Link
+        className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
         href="/blog"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ArrowLeft className="size-4" />
-        Back to Blog
+        <ArrowLeft className="size-3.5" />
+        Back to blog
       </Link>
 
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
+      <header className="mt-8 border-border border-b pb-8">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="mono">{typeLabel}</Badge>
           {isToday && (
-            <Badge className="bg-amber-500 text-white gap-1">
+            <Badge variant="warning">
               <Sparkles className="size-3" />
               Today
             </Badge>
           )}
-          <Badge variant="outline">{typeLabel}</Badge>
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <span className="flex items-center gap-1.5 font-mono text-subtle text-xs">
             <Calendar className="size-3" />
             {formatDate(post.date)}
           </span>
         </div>
-        <h1 className="font-semibold text-lg text-foreground">{post.title}</h1>
-      </div>
+        <h1 className="mt-4 text-balance font-semibold text-3xl text-foreground tracking-[-0.04em] md:text-4xl">
+          {post.title}
+        </h1>
+      </header>
 
       {/* Puzzle Display */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground mb-3">The Puzzle</p>
-            <div className="py-4 px-2 rounded-lg bg-muted/30">
-              <PuzzleDisplay
-                puzzle={post.puzzle}
-                puzzleType={post.puzzleType}
-                size="large"
-                className="text-foreground"
-              />
-            </div>
+      <section className="mt-10">
+        <p className="eyebrow">The puzzle</p>
+        <div className="mt-3 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div className="rounded-lg border border-border bg-inset px-4 py-8">
+            <PuzzleDisplay puzzle={post.puzzle} puzzleType={post.puzzleType} size="large" />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Answer Section */}
-      <Card>
-        <CardContent className="p-4">
-          {isRevealed ? (
-            <div className="space-y-4">
-              {/* Answer */}
-              <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="size-4 text-green-600 dark:text-green-400" />
-                  <span className="text-xs font-medium text-green-700 dark:text-green-300">
-                    Answer
-                  </span>
-                </div>
-                <p className="font-semibold text-xl text-green-800 dark:text-green-200">
-                  {post.answer}
-                </p>
+      <section className="mt-6">
+        {isRevealed ? (
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="border-border border-b px-5 py-5">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="size-3.5 text-success" />
+                <span className="font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
+                  Answer
+                </span>
               </div>
+              <p className="mt-2 font-semibold text-2xl text-foreground tracking-[-0.04em]">
+                {post.answer}
+              </p>
+            </div>
 
-              {/* Explanation */}
-              <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb className="size-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                    Explanation
-                  </span>
-                </div>
-                <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                  {post.explanation}
-                </p>
+            <div className="px-5 py-5">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="size-3.5 text-subtle" />
+                <span className="font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
+                  Explanation
+                </span>
               </div>
+              <p className="mt-2 text-muted-foreground text-sm leading-6">{post.explanation}</p>
+            </div>
 
-              {/* Hide button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsRevealed(false)}
-                className="text-muted-foreground"
-              >
-                <EyeOff className="size-4 mr-1.5" />
-                Hide Answer
+            <div className="border-border border-t bg-inset px-5 py-3">
+              <Button onClick={() => setIsRevealed(false)} size="sm" variant="ghost">
+                <EyeOff className="size-3.5" />
+                Hide answer
               </Button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <Button
-                onClick={handleRevealClick}
-                disabled={!canReveal}
-                className={cn("w-full", !canReveal && "opacity-60")}
-              >
-                {canReveal ? (
-                  <>
-                    <Eye className="size-4 mr-1.5" />
-                    Reveal Answer
-                  </>
-                ) : (
-                  <>
-                    <Lock className="size-4 mr-1.5" />
-                    Complete Puzzle First
-                  </>
-                )}
-              </Button>
-
-              {!canReveal && (
-                <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1.5">
-                  <Clock className="size-3" />
-                  Play today's puzzle to unlock the solution
-                </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <Button
+              className={cn("w-full", !canReveal && "opacity-60")}
+              disabled={!canReveal}
+              onClick={handleRevealClick}
+              size="lg"
+            >
+              {canReveal ? (
+                <>
+                  <Eye className="size-4" />
+                  Reveal answer
+                </>
+              ) : (
+                <>
+                  <Lock className="size-4" />
+                  Complete the puzzle first
+                </>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </Button>
+
+            {!canReveal && (
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-subtle text-xs">
+                <Clock className="size-3" />
+                Play today's puzzle to unlock the solution
+              </p>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Article Content */}
       {post.content && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:text-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
-            </div>
-          </CardContent>
-        </Card>
+        <article className="prose prose-sm mt-12 max-w-none dark:prose-invert">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
+        </article>
       )}
 
-      {/* Play CTA */}
-      <Card className="bg-muted/30">
-        <CardContent className="p-4 text-center">
-          <p className="text-sm font-medium mb-1">Ready for more?</p>
-          <p className="text-xs text-muted-foreground mb-3">
-            Challenge yourself with today's puzzle
-          </p>
-          <Link href="/">
-            <Button size="sm">
-              Play Now
-              <ArrowRight className="size-4 ml-1.5" />
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      {/* Play CTA — the page's one polarity-flipped band */}
+      <section className="mt-14 rounded-xl bg-foreground px-6 py-10 text-center text-background">
+        <p className="text-balance font-semibold text-xl tracking-[-0.03em]">Ready for more?</p>
+        <p className="mt-2 text-background/60 text-sm">
+          A fresh puzzle lands every day at midnight.
+        </p>
+        <Link
+          className="mt-6 inline-flex h-10 items-center gap-1.5 rounded-pill bg-background px-5 font-medium text-foreground text-sm transition-opacity hover:opacity-90"
+          href="/"
+        >
+          Play today's puzzle
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </section>
     </div>
   );
 }

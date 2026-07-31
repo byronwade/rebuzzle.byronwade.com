@@ -75,14 +75,14 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
     <div className={className}>
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-subtle" />
           <Input
             type="search"
             placeholder="Search puzzles, solutions, tips..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="pl-9 pr-9"
+            className="h-11 pr-9 pl-9"
           />
           {query && (
             <Button
@@ -98,7 +98,7 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
 
         {showTypeFilter && (
           <Select value={puzzleType} onValueChange={setPuzzleType}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="h-11 w-[140px]">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -111,13 +111,13 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
           </Select>
         )}
 
-        <Button onClick={handleSearch} disabled={isPending}>
-          {isPending ? "Searching..." : "Search"}
+        <Button disabled={isPending} onClick={handleSearch} size="lg">
+          {isPending ? "Searching…" : "Search"}
         </Button>
       </div>
 
       {(query || puzzleType !== "all") && (
-        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="mt-2.5 flex items-center gap-2 text-subtle text-xs">
           <span>Filters active</span>
           <Button variant="link" size="sm" className="h-auto p-0" onClick={handleClear}>
             Clear all
