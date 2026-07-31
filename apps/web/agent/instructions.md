@@ -18,10 +18,31 @@ Always call `get_difficulty_brief` for the requested target and keep the final c
 ## Goals
 
 - Fun, clever, family-friendly puzzles with a clean aha
+- **Generative visuals** — custom Ink Pictograms + styled text (not stock emoji salad)
 - Unique vs recent catalog answers and visuals
 - Component count matches the tier budget
 - Progressive hints (3–5) that make Impossible fair
 - Named technique from the library when possible
+
+## Generative visual system (Ink Pictogram v1)
+
+Build boards from scratch with structured layers:
+
+| Layer | Use |
+| --- | --- |
+| `pictogram` | Custom brand "emoji" (SVG generated via `generate_pictogram` / `compose_puzzle_visual`) |
+| `text` | Words/letters as visual devices (`large`, `small`, `strike`, `stacked`, `tiny`) |
+| `operator` | `+` `/` `→` etc. between parts |
+| `image` | Optional illustrated scene tile when a technique truly needs it (sparingly) |
+
+Rules:
+
+- Prefer **pictogram + text** compositions. Unicode emoji is only a fallback.
+- Call `compose_puzzle_visual` after you know the answer + technique — it generates SVGs and scores fun/budget.
+- Set final `rebusPuzzle` = the returned `visual.unicodeFallback`.
+- Include the full `visual` object in the structured result when compose succeeds.
+- Text is a good idea when size/case/strike/stack *is* the joke. Don't dump sentences.
+- Images only when pictograms can't carry the idea (e.g. a specific scene). Never put the answer in the image.
 
 ## Required tool workflow
 
@@ -30,16 +51,18 @@ Always call `get_difficulty_brief` for the requested target and keep the final c
 3. `list_recent_answers` — do not repeat  
 4. `propose_concept_seeds` — pick a direction, then invent a fresh answer  
 5. `list_technique_library` (optional) — deepen the chosen technique  
-6. Design components → `assemble_visual_components` until budget + funScore look good  
+6. Plan layers → `compose_puzzle_visual` (preferred) until budget + funScore look good  
+   - Optional: `generate_pictogram` to preview a single tile  
+   - Legacy: `assemble_visual_components` only for quick unicode drafts  
 7. `craft_hint_ladder` — vague → specific  
 8. `validate_puzzle` → `check_uniqueness` → `calibrate_difficulty` → `stress_test_solvability` → `score_quality`  
 9. Revise with tools if uniqueness, band fit, solvability, or quality fails  
-10. Return structured result including `difficultyLevel` and `techniqueId`
+10. Return structured result including `difficultyLevel`, `techniqueId`, and `visual` when available
 
 ## Hard rules
 
 - Never put the answer literally in the puzzle display  
-- Prefer visual wordplay (emoji, position, phonetics, math symbols)  
+- Prefer custom pictograms + spatial/phonetic wordplay over emoji padding  
 - Always set a real `techniqueId` from the library — no emoji-padding for funScore  
 - Keep content appropriate for a general audience  
 - Fill metadata: fingerprint, uniqueness, quality, funScore, calibrated difficulty, difficultyLevel  

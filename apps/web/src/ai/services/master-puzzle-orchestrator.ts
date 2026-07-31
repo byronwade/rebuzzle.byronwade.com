@@ -10,6 +10,7 @@ import {
   runPuzzleAgentGeneration,
 } from "../puzzle-agent/run-generation";
 import type { PuzzleAgentResult } from "../puzzle-agent/schemas";
+import type { PuzzleVisual } from "../puzzle-agent/visual/composition";
 
 export type MasterGenerationParams = PuzzleGenerationParams;
 
@@ -23,6 +24,8 @@ export interface GeneratedPuzzleResult {
     category: string;
     hints: string[];
     techniqueId?: string;
+    /** Generative board (Ink Pictograms / text / optional images) */
+    visual?: PuzzleVisual;
   };
   metadata: {
     fingerprint: string;
@@ -65,6 +68,7 @@ function toGeneratedResult(
       category: result.puzzle.category,
       hints: result.puzzle.hints,
       techniqueId: result.puzzle.techniqueId,
+      visual: result.puzzle.visual,
     },
     metadata: {
       fingerprint: result.metadata.fingerprint,

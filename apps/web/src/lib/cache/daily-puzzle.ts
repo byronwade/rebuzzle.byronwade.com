@@ -1,6 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import type { Puzzle } from "@/db/models";
+import type { Puzzle, PuzzleVisual } from "@/db/models";
 import { logger } from "@/lib/logger";
 
 export type CachedDailyPuzzle = {
@@ -20,6 +20,8 @@ export type CachedDailyPuzzle = {
   seoMetadata: Record<string, unknown>;
   aiGenerated: boolean;
   fromDatabase: true;
+  /** Generative composed board when Eve built custom pictograms */
+  visual?: PuzzleVisual;
 };
 
 function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDailyPuzzle {
@@ -35,7 +37,7 @@ function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDailyPuzz
       (puzzle.metadata as { clues?: string[] } | undefined)?.clues &&
       Array.isArray((puzzle.metadata as { clues?: string[] }).clues)
     ) {
-      puzzleDisplay = ((puzzle.metadata as { clues: string[] }).clues).join("\n\n");
+      puzzleDisplay = (puzzle.metadata as { clues: string[] }).clues.join("\n\n");
     } else {
       puzzleDisplay = "A logic grid puzzle. Use deductive reasoning to solve the relationships.";
     }
@@ -67,6 +69,7 @@ function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDailyPuzz
     seoMetadata: (puzzle.metadata?.seoMetadata as Record<string, unknown>) || {},
     aiGenerated: true,
     fromDatabase: true,
+    visual: puzzle.visual,
   };
 }
 

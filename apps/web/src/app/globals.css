@@ -670,6 +670,17 @@
   line-height: 1.3;
 }
 
+/* Generative Ink Pictogram tiles — scale SVG to the board slot */
+.puzzle-pictogram svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.puzzle-visual-board .puzzle-image-tile {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
 /* Monospace puzzles (number-sequence, caesar-cipher) */
 .puzzle-monospace-sm {
   font-size: clamp(1rem, 3vh, 1.5rem);

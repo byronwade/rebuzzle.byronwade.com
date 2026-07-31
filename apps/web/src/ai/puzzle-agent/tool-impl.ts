@@ -15,10 +15,10 @@ import {
 } from "../services/uniqueness-tracker";
 import {
   DIFFICULTY_LEVELS,
+  type DifficultyTier,
   getDifficultyLevelByTier,
   getDifficultyLevelForScore,
   isDifficultyInBand,
-  type DifficultyTier,
   snapToDifficultyBand,
 } from "./difficulty-levels";
 import type { CandidatePuzzle } from "./schemas";
@@ -118,9 +118,7 @@ export async function listRecentAnswers(input: { lookbackDays?: number; limit?: 
       category: String(p.category ?? ""),
       difficulty: typeof p.difficulty === "number" ? p.difficulty : null,
       tier:
-        typeof p.difficulty === "number"
-          ? getDifficultyLevelForScore(p.difficulty).label
-          : null,
+        typeof p.difficulty === "number" ? getDifficultyLevelForScore(p.difficulty).label : null,
       preview: String(
         (p as { rebusPuzzle?: string; puzzle?: string }).rebusPuzzle ?? p.puzzle ?? ""
       ).slice(0, 80),
@@ -162,8 +160,9 @@ export function proposeConceptSeeds(input: {
       workingTitle: "Space means meaning",
       answerDirection: "Positional/prepositional phrase",
       category: "positional",
-      techniqueId: techniques.find((t) => t.id.includes("positional") || t.id.includes("spatial"))
-        ?.id ?? "basic_positional",
+      techniqueId:
+        techniques.find((t) => t.id.includes("positional") || t.id.includes("spatial"))?.id ??
+        "basic_positional",
       whyItFitsTier: level.blurb,
     },
   ].filter((s) => !avoid.has(s.workingTitle.toLowerCase()));
@@ -209,7 +208,7 @@ export function assembleVisualComponents(input: {
     issues.push("Answer text appears in the visual — hide it");
   }
 
-  if (emojiCount === 0 && !/[↑↓←→\/+\-×÷]/.test(input.rebusPuzzle)) {
+  if (emojiCount === 0 && !/[↑↓←→/+\-×÷]/.test(input.rebusPuzzle)) {
     tips.push("Add emoji or spatial/math symbols so it feels like a rebus");
   }
 
@@ -385,7 +384,7 @@ export async function calibratePuzzleDifficulty(
 
   let calibratedDifficulty: number;
   let method: "type_config" | "ai" = "type_config";
-  let profile: unknown = undefined;
+  let profile: unknown;
 
   if (config.difficulty?.calculate) {
     calibratedDifficulty = config.difficulty.calculate(input as never);
@@ -423,14 +422,22 @@ export async function calibratePuzzleDifficulty(
 
 /** Fast heuristic quality score (no extra model call). */
 export function scorePuzzleQuality(
-  input: CandidatePuzzle & { targetDifficulty?: number; techniqueId?: string }
+  input: CandidatePuzzle & {
+    targetDifficulty?: number;
+    techniqueId?: string;
+    visual?: {
+      mode?: string;
+      layers?: Array<{ kind: string; svg?: string; src?: string }>;
+      unicodeFallback?: string;
+    };
+  }
 ) {
   const issues: string[] = [];
   const strengths: string[] = [];
   const target = input.targetDifficulty ?? input.difficulty;
   const level = getDifficultyLevelForScore(target);
 
-  const puzzle = input.rebusPuzzle.trim();
+  const puzzle = (input.visual?.unicodeFallback || input.rebusPuzzle).trim();
   const answer = input.answer.trim();
 
   if (!puzzle) issues.push("Empty puzzle display");
@@ -469,7 +476,26 @@ export function scorePuzzleQuality(
     strengths.push(`Component budget fits ${level.label}`);
   }
 
-  if (assembly.funScore >= 70) strengths.push("High fun / visual energy");
+  const pictogramCount =
+    input.visual?.layers?.filter((l) => l.kind === "pictogram" && l.svg).length ?? 0;
+  const textLayerCount = input.visual?.layers?.filter((l) => l.kind === "text").length ?? 0;
+  const composedVisual = Boolean(input.visual && (pictogramCount > 0 || textLayerCount > 0));
+  if (composedVisual) {
+    strengths.push(
+      pictogramCount > 0
+        ? `Generative Ink Pictograms (${pictogramCount})`
+        : "Styled generative text layers"
+    );
+  }
+
+  const funScore = Math.max(
+    assembly.funScore,
+    composedVisual
+      ? Math.min(100, assembly.funScore + 8 + Math.min(16, pictogramCount * 6))
+      : assembly.funScore
+  );
+
+  if (funScore >= 70) strengths.push("High fun / visual energy");
 
   const hasEmoji = /[\p{Emoji}]/u.test(puzzle);
   if (hasEmoji) strengths.push("Uses visual emoji elements");
@@ -477,9 +503,10 @@ export function scorePuzzleQuality(
   let score = 72;
   score -= issues.length * 11;
   score += Math.min(12, strengths.length * 3);
-  score += Math.round((assembly.funScore - 50) / 10);
-  // Small visual bonus only — technique already weighted in funScore
-  if (hasEmoji && input.techniqueId) score += 2;
+  score += Math.round((funScore - 50) / 10);
+  // Prefer generative boards over emoji salad
+  if (composedVisual && input.techniqueId) score += 6;
+  else if (hasEmoji && input.techniqueId) score += 2;
   score = Math.max(0, Math.min(100, score));
 
   const verdict =
@@ -498,7 +525,7 @@ export function scorePuzzleQuality(
     verdict,
     strengths,
     issues,
-    funScore: assembly.funScore,
+    funScore,
     tier: level.label,
     publishable: score >= 70 && issues.length === 0 && Boolean(input.techniqueId),
   };
@@ -545,5 +572,9 @@ export function fingerprintCandidate(
 export function stableId(...parts: string[]) {
   return createHash("sha256").update(parts.join("::")).digest("hex").slice(0, 16);
 }
+
+export { composePuzzleVisual } from "./visual/compose-visual";
+export { generateImageTile } from "./visual/generate-image-tile";
+export { generatePictogram } from "./visual/generate-pictogram";
 
 export type { TechniqueId };

@@ -1,6 +1,8 @@
 "use client";
 
+import type { PuzzleVisual } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
+import { hasComposedVisual, PuzzleVisualBoard } from "./PuzzleVisualBoard";
 
 interface PuzzleMinimalProps {
   /**
@@ -11,6 +13,10 @@ interface PuzzleMinimalProps {
    * The type of puzzle (affects how content is displayed)
    */
   puzzleType: string;
+  /**
+   * Generative composed board when available
+   */
+  visual?: PuzzleVisual;
   /**
    * Additional CSS classes
    */
@@ -32,7 +38,7 @@ interface PuzzleMinimalProps {
  * )}
  * ```
  */
-export function PuzzleMinimal({ puzzle, puzzleType, className }: PuzzleMinimalProps) {
+export function PuzzleMinimal({ puzzle, puzzleType, visual, className }: PuzzleMinimalProps) {
   /**
    * Get the minimal content based on puzzle type.
    * - Visual puzzles (rebus, emoji): Show full puzzle in smaller size
@@ -95,21 +101,31 @@ export function PuzzleMinimal({ puzzle, puzzleType, className }: PuzzleMinimalPr
           "overflow-hidden"
         )}
       >
-        <span
-          className={cn(
-            fontSizeClass,
-            "font-medium",
-            "text-foreground/80",
-            "whitespace-pre-wrap",
-            "break-words"
-          )}
-          style={{
-            // Ensure emojis and special characters render correctly
-            fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
-          }}
-        >
-          {content}
-        </span>
+        {hasComposedVisual(visual) && visual ? (
+          <PuzzleVisualBoard
+            visual={visual}
+            fallback={content}
+            compact
+            size="small"
+            className="text-foreground/90"
+          />
+        ) : (
+          <span
+            className={cn(
+              fontSizeClass,
+              "font-medium",
+              "text-foreground/80",
+              "whitespace-pre-wrap",
+              "break-words"
+            )}
+            style={{
+              // Ensure emojis and special characters render correctly
+              fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+            }}
+          >
+            {content}
+          </span>
+        )}
       </div>
     </div>
   );

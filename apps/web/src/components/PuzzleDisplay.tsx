@@ -6,8 +6,9 @@
  */
 
 import { useMemo } from "react";
-import type { PuzzleType } from "@/lib/gameSettings";
+import type { PuzzleType, PuzzleVisual } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
+import { hasComposedVisual, PuzzleVisualBoard } from "./PuzzleVisualBoard";
 
 type DisplaySize = "small" | "medium" | "large";
 
@@ -16,6 +17,8 @@ interface PuzzleDisplayProps {
   puzzleType?: PuzzleType | string;
   className?: string;
   size?: DisplaySize;
+  /** Generative composed board (Ink Pictograms / text / images) */
+  visual?: PuzzleVisual;
 }
 
 /** Puzzle type categories for styling */
@@ -79,13 +82,36 @@ export function PuzzleDisplay({
   puzzleType = "rebus",
   className,
   size = "large",
+  visual,
 }: PuzzleDisplayProps) {
   const category = useMemo(() => getPuzzleCategory(puzzleType), [puzzleType]);
+  const composed = hasComposedVisual(visual);
 
   const isTextBased = category === "text";
   const isMonospace = category === "monospace";
   const isVisual = category === "visual";
   const isRebus = puzzleType === "rebus";
+
+  const inlineStyles = useMemo(
+    () => ({
+      fontFeatureSettings: isVisual ? '"liga" 1, "calt" 1' : undefined,
+      lineHeight: LINE_HEIGHT[category],
+      overflowWrap: "anywhere" as const,
+      wordBreak: (isRebus ? "break-all" : "break-word") as "break-all" | "break-word",
+    }),
+    [category, isVisual, isRebus]
+  );
+
+  if (composed && visual) {
+    return (
+      <PuzzleVisualBoard
+        visual={visual}
+        fallback={puzzle || visual.unicodeFallback}
+        size={size}
+        className={cn("select-text max-w-full", className)}
+      />
+    );
+  }
 
   const baseClasses = cn(
     // Base text color — the puzzle is the loudest ink on the page
@@ -114,16 +140,6 @@ export function PuzzleDisplay({
     isTextBased && "mx-auto max-w-prose",
     // Custom
     className
-  );
-
-  const inlineStyles = useMemo(
-    () => ({
-      fontFeatureSettings: isVisual ? '"liga" 1, "calt" 1' : undefined,
-      lineHeight: LINE_HEIGHT[category],
-      overflowWrap: "anywhere" as const,
-      wordBreak: (isRebus ? "break-all" : "break-word") as "break-all" | "break-word",
-    }),
-    [category, isVisual, isRebus]
   );
 
   return (

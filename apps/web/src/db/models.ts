@@ -70,6 +70,40 @@ export interface UserStats {
   lastBonusDate?: Date; // Date of last bonus
 }
 
+/** Generative board layers (Ink Pictogram v1 + text + optional images). */
+export type PuzzleVisualLayer =
+  | {
+      kind: "pictogram";
+      concept: string;
+      role?: string;
+      svg?: string;
+      emojiFallback: string;
+    }
+  | {
+      kind: "text";
+      content: string;
+      emphasis?: "normal" | "large" | "small" | "strike" | "stacked" | "tiny";
+    }
+  | {
+      kind: "operator";
+      symbol: string;
+    }
+  | {
+      kind: "image";
+      prompt: string;
+      alt: string;
+      src?: string;
+    };
+
+export interface PuzzleVisual {
+  styleId: "ink-pictogram-v1";
+  mode: "composed" | "unicode" | "hybrid";
+  layout: "row" | "stack" | "grid" | "overlay";
+  layers: PuzzleVisualLayer[];
+  unicodeFallback: string;
+  caption?: string;
+}
+
 export interface Puzzle {
   _id?: string;
   id: string;
@@ -84,6 +118,8 @@ export interface Puzzle {
   createdAt: Date;
   active: boolean;
   embedding?: number[]; // Vector embedding for semantic search
+  /** Generative composed visual (custom pictograms / text / images) */
+  visual?: PuzzleVisual;
   metadata?: {
     topic?: string;
     keyword?: string;
@@ -100,6 +136,9 @@ export interface Puzzle {
     generatedAt?: string;
     hints?: string[];
     puzzleType?: string; // Store puzzle type in metadata too
+    techniqueId?: string;
+    visualStyleId?: string;
+    funScore?: number;
   };
   // Legacy field for backward compatibility (will be populated from puzzle field)
   rebusPuzzle?: string;
@@ -373,6 +412,7 @@ export interface NewPuzzle {
   createdAt: Date;
   active: boolean;
   embedding?: number[]; // Vector embedding for semantic search
+  visual?: PuzzleVisual;
   metadata?: Record<string, unknown>;
   // Legacy field for backward compatibility
   rebusPuzzle?: string;
