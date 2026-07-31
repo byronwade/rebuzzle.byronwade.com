@@ -1,16 +1,16 @@
 "use client";
 
-import { Check, Flame, TrendingUp, X } from "lucide-react";
+import { Check, Flame, TrendingUp, UserPlus, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { calculateScore } from "@/components/CelebrationOverlay";
 import { Confetti } from "@/components/Confetti";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { gameSettings } from "@/lib/gameSettings";
+import { consumeJustSolvedSessionFlag } from "@/lib/game/game-over-href";
+import { calculateGamePoints, gameSettings } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +55,8 @@ interface GameOverClientProps {
 }
 
 export default function GameOverClient({ gameData, searchParams: params }: GameOverClientProps) {
-  const { userId } = useAuth();
+  const { userId, isGuest, isAuthenticated, isLoading: authLoading } = useAuth();
+  const showSignupCta = !authLoading && (!isAuthenticated || isGuest || !userId);
   const [loading, setLoading] = useState(false);
   const [streak, setStreak] = useState(0);
   const [displayScore, setDisplayScore] = useState(0);
@@ -236,19 +237,19 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     }
   }
 
-  // Calculate final score using unified scoring:
-  // calculateScore(attempts, timeTaken, streakDays, difficulty)
   const finalScore = success
-    ? completionData?.score || calculateScore(attempts, timeTaken, streak, difficulty)
+    ? completionData?.score || calculateGamePoints(attempts, timeTaken ?? 0, streak, difficulty)
     : 0;
 
-  // Animate score counter and trigger confetti on success
+  // Animate score counter; skip confetti/haptics if we just celebrated in-thread
   useEffect(() => {
     if (!success || loading || animationComplete) return;
 
-    // Trigger confetti immediately
-    setShowConfetti(true);
-    haptics.celebration();
+    const alreadyCelebrated = consumeJustSolvedSessionFlag();
+    if (!alreadyCelebrated) {
+      setShowConfetti(true);
+      haptics.celebration();
+    }
 
     const duration = 800;
     const steps = 30;
@@ -467,6 +468,34 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 </Button>
               </Link>
             </div>
+
+            {/* Guest → account CTA (after play, never blocks the win) */}
+            {showSignupCta && (
+              <div className="rounded-xl border border-border bg-inset px-5 py-5 text-center space-y-3">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-foreground/5">
+                  <UserPlus className="h-4 w-4 text-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground text-sm">Keep your streak going</p>
+                  <p className="text-muted-foreground text-xs leading-5">
+                    Create a free account to save progress across devices. You already played as a
+                    guest — signing up won&apos;t lose today&apos;s solve.
+                  </p>
+                </div>
+                <Link href="/signup" className="block">
+                  <Button className="w-full">Create a free account</Button>
+                </Link>
+                <p className="text-muted-foreground text-xs">
+                  Already have one?{" "}
+                  <Link
+                    className="text-foreground underline-offset-2 hover:underline"
+                    href="/login"
+                  >
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            )}
 
             {/* Countdown */}
             <div className="border-border border-t pt-6 text-center">

@@ -12,17 +12,10 @@ import {
 import { cn } from "@/lib/utils";
 
 interface SmartAnswerInputProps {
-  /** Puzzle id (reserved for future server features) */
-  puzzleId?: string;
   onSubmit: (answer: string) => void;
   disabled?: boolean;
   isSubmitting?: boolean;
   className?: string;
-  difficulty?: number;
-  puzzleType?: string;
-  puzzle?: string;
-  /** @deprecated Ignored — answers are never validated on the client */
-  correctAnswer?: string;
 }
 
 const MAX_BAR_HEIGHT = 112;
@@ -30,13 +23,6 @@ const MIN_BAR_HEIGHT = 44;
 
 /**
  * The answer bar. Correctness is decided only by /api/puzzles/guess.
- *
- * Nothing here grades what you type. The bar used to colour words and
- * characters live, which told you the answer before you pressed Enter — and it
- * forced the textarea's own text to be transparent behind a positioned overlay,
- * which is what made the caret, selection and autocorrect feel wrong on phones.
- * The textarea now renders its own text, and correctness is revealed once per
- * submitted guess in the trail, where it's earned.
  */
 export function SmartAnswerInput({
   onSubmit,
@@ -58,8 +44,6 @@ export function SmartAnswerInput({
     if (!canSubmit) return;
     haptics.tap();
     onSubmit(trimmed);
-    // Clear immediately — the submitted guess reappears as a chip in the trail,
-    // so leaving it in the bar would just be a stale duplicate to delete.
     setValue("");
     undoRedoManager.current = new UndoRedoManager();
   }, [canSubmit, onSubmit, trimmed]);
@@ -89,8 +73,6 @@ export function SmartAnswerInput({
         return;
       }
 
-      // Undo/redo keep their shortcuts; the buttons are gone. They were two
-      // permanent targets in the dock for something almost nobody reached for.
       if ((e.metaKey || e.ctrlKey) && e.key === "z") {
         e.preventDefault();
         const cursor = cursorPositionRef.current || { start: 0, end: 0 };
@@ -108,7 +90,6 @@ export function SmartAnswerInput({
     cursorPositionRef.current = saveCursorPosition(textareaRef.current);
   }, []);
 
-  // Grow with the content, then scroll.
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -137,7 +118,6 @@ export function SmartAnswerInput({
             (disabled || isSubmitting) && "cursor-not-allowed"
           )}
           disabled={disabled || isSubmitting}
-          // "go" gives phone keyboards a Go key instead of a newline key.
           enterKeyHint="go"
           inputMode="text"
           onBlur={handleBlur}
@@ -169,7 +149,6 @@ export function SmartAnswerInput({
         </button>
       </div>
 
-      {/* Meta rail — fixed height so nothing below it ever shifts. */}
       <div className="flex h-6 items-center justify-between gap-3 px-1.5 pt-1.5" id="answer-meta">
         <p aria-live="polite" className="truncate text-subtle text-xs">
           {letterCount > 0 ? (

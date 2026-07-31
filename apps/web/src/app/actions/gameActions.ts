@@ -3,12 +3,11 @@
 import { cookies } from "next/headers";
 import { db } from "@/db";
 import { isAdmin } from "@/lib/admin-auth";
+import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { verifyToken } from "@/lib/jwt";
 import type { GameData, PuzzleMetadata, PuzzleType, PuzzleVisual } from "../../lib/gameSettings";
 import { getTodaysPuzzle } from "./puzzleGenerationActions";
-
-const AUTH_COOKIE = "rebuzzle_auth";
 
 /** Shape returned by getTodaysPuzzle (cached DB hit or generated/fallback). */
 type TodaysPuzzle = {
@@ -33,7 +32,8 @@ type TodaysPuzzle = {
 async function getCurrentUserId(): Promise<string | null> {
   try {
     const cookieStore = await cookies();
-    const authToken = cookieStore.get(AUTH_COOKIE)?.value;
+    const authToken =
+      cookieStore.get(AUTH_COOKIE_NAME)?.value || cookieStore.get(LEGACY_AUTH_COOKIE_NAME)?.value;
 
     if (!authToken) {
       return null;

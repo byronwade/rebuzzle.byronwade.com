@@ -5,14 +5,13 @@ import { analyticsEventOps } from "@/db/analytics-ops";
 import type { NewEmailSubscription } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { createOrUpdateUser } from "@/lib/auth";
-import { SESSION_DURATION_DAYS } from "@/lib/cookies";
+import { setAuthCookie } from "@/lib/cookies";
 import { signToken } from "@/lib/jwt";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { sendSignupWelcomeEmail } from "@/lib/notifications/email-service";
 import { hashPassword } from "@/lib/password";
 
 const GUEST_TOKEN_COOKIE = "rebuzzle_guest_token";
-const AUTH_COOKIE = "rebuzzle_auth";
 
 export async function POST(request: Request) {
   // Rate limit signup attempts to prevent spam
@@ -246,14 +245,8 @@ export async function POST(request: Request) {
       convertedFromGuest,
     });
 
-    // Set auth cookie
-    response.cookies.set(AUTH_COOKIE, jwt, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: SESSION_DURATION_DAYS * 24 * 60 * 60, // Use shared session duration
-      path: "/",
-    });
+    // Set canonical auth cookie (also clears legacy auth_token)
+    setAuthCookie(response, jwt);
 
     // Clear guest token cookie (no longer needed)
     response.cookies.delete(GUEST_TOKEN_COOKIE);

@@ -13,7 +13,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { userOps, userStatsOps } from "@/db/operations";
-import { signToken } from "@/lib/jwt";
+import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME, setAuthCookie } from "@/lib/cookies";
+import { signToken, verifyToken } from "@/lib/jwt";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 import {
   extractClientIp,
@@ -23,7 +24,6 @@ import {
 } from "@/lib/services/guest-identification";
 
 const GUEST_TOKEN_COOKIE = "rebuzzle_guest_token";
-const AUTH_COOKIE = "rebuzzle_auth";
 
 export async function POST(request: Request) {
   try {
@@ -36,15 +36,31 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
-    const existingAuthToken = cookieStore.get(AUTH_COOKIE)?.value;
+    const existingAuthToken =
+      cookieStore.get(AUTH_COOKIE_NAME)?.value || cookieStore.get(LEGACY_AUTH_COOKIE_NAME)?.value;
 
-    // If user has an auth token, verify and return existing user
+    // Valid existing session → return the user (don't fail the client)
     if (existingAuthToken) {
-      return NextResponse.json({
-        success: false,
-        message: "User is already authenticated",
-        isAuthenticated: true,
-      });
+      const payload = await verifyToken(existingAuthToken);
+      if (payload?.userId) {
+        const existingUser = await userOps.findById(payload.userId);
+        if (existingUser) {
+          const isGuest = Boolean(
+            existingUser.isGuest || existingUser.email?.endsWith("@guest.rebuzzle.local")
+          );
+          return NextResponse.json({
+            success: true,
+            alreadyAuthenticated: true,
+            user: {
+              id: existingUser.id,
+              username: existingUser.username,
+              email: existingUser.email,
+              isGuest,
+            },
+          });
+        }
+      }
+      // Expired / invalid token — fall through and issue a fresh guest session
     }
 
     // Get identification inputs
@@ -82,11 +98,7 @@ export async function POST(request: Request) {
       // Create new guest user with IP binding
       const newGuestToken = crypto.randomUUID();
 
-      guestUser = await userOps.createGuestUserWithIp(
-        newGuestToken,
-        ipHash,
-        deviceId || undefined
-      );
+      guestUser = await userOps.createGuestUserWithIp(newGuestToken, ipHash, deviceId || undefined);
 
       // Initialize user stats for the guest
       await initializeGuestStats(guestUser.id);
@@ -121,13 +133,8 @@ export async function POST(request: Request) {
       path: "/",
     });
 
-    response.cookies.set(AUTH_COOKIE, jwt, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365, // 1 year for guests
-      path: "/",
-    });
+    // Canonical auth cookie (also clears legacy auth_token)
+    setAuthCookie(response, jwt);
 
     return response;
   } catch (error) {

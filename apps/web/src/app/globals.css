@@ -928,6 +928,16 @@
   }
 }
 
+.solve-result-card {
+  animation: message-in 420ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solve-result-card {
+    animation: none !important;
+  }
+}
+
 /* ============================================================
    KEYBOARD-AWARE LAYOUT
    ============================================================ */
