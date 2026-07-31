@@ -33,7 +33,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#8b5cf6",
+  themeColor: "#0f766e",
 };
 
 interface SearchParams {

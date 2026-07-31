@@ -315,28 +315,37 @@ Get puzzle statistics.
 
 ### AI Endpoints
 
-#### `POST /api/ai/generate-puzzle`
+Puzzle generation uses the Eve tool agent + Vercel AI Gateway
+(`generateMasterPuzzle` → `ToolLoopAgent`). Prefer difficulty targets in the
+canonical bands: Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8–9.
+See `docs/DIFFICULTY_AND_GENERATION.md`.
 
-Generate a new puzzle using AI.
+Durable Eve sessions (when mounted via `withEve`) are available at `/eve/v1/*`.
+
+#### `POST /api/ai/generate-puzzle` / admin generate routes
+
+Generate a new puzzle using the tool agent.
 
 **Request Body:**
 ```json
 {
-  "difficulty": 3,
+  "difficulty": 6,
   "category": "compound_words",
-  "theme": "nature"
+  "theme": "nature",
+  "puzzleType": "rebus"
 }
 ```
 
-**Response:**
+**Response (shape):**
 ```json
 {
   "success": true,
   "puzzle": {
-    "id": "puzzle_id",
-    "answer": "answer",
+    "rebusPuzzle": "☀️ + 🌻",
+    "answer": "sunflower",
     "hints": ["hint1", "hint2", "hint3"],
-    "difficulty": 3
+    "difficulty": 6,
+    "difficultyLevel": "Difficult"
   }
 }
 ```

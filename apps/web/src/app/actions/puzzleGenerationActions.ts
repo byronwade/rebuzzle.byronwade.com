@@ -28,7 +28,8 @@ function calculateDailyDifficulty(date?: Date): number {
   const dateToUse = date || new Date();
   const dayOfWeek = dateToUse.getUTCDay();  // Use UTC day for consistent behavior across all platforms
   // Sunday = 5 (moderate), Wednesday = 7 (hardest), balanced across week
-  const difficulties = [5, 4, 5, 7, 6, 5, 4]; // Sun-Sat
+  // Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8 — rotate across the week
+  const difficulties = [5, 4, 6, 8, 7, 5, 4]; // Sun–Sat
   return difficulties[dayOfWeek] || 5;
 }
 

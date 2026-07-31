@@ -18,9 +18,11 @@ export interface GeneratedPuzzleResult {
     rebusPuzzle: string;
     answer: string;
     difficulty: number;
+    difficultyLevel: "Hard" | "Difficult" | "Evil" | "Impossible";
     explanation: string;
     category: string;
     hints: string[];
+    techniqueId?: string;
   };
   metadata: {
     fingerprint: string;
@@ -28,10 +30,11 @@ export interface GeneratedPuzzleResult {
     difficultyProfile: {
       overall: number;
       method: string;
+      tier: string;
     };
     calibratedDifficulty: number;
     qualityMetrics: {
-      scores: { overall: number };
+      scores: { overall: number; fun?: number };
       analysis: {
         strengths: string[];
         weaknesses: string[];
@@ -53,17 +56,30 @@ function toGeneratedResult(
   generationTimeMs: number
 ): GeneratedPuzzleResult {
   return {
-    puzzle: result.puzzle,
+    puzzle: {
+      rebusPuzzle: result.puzzle.rebusPuzzle,
+      answer: result.puzzle.answer,
+      difficulty: result.puzzle.difficulty,
+      difficultyLevel: result.puzzle.difficultyLevel,
+      explanation: result.puzzle.explanation,
+      category: result.puzzle.category,
+      hints: result.puzzle.hints,
+      techniqueId: result.puzzle.techniqueId,
+    },
     metadata: {
       fingerprint: result.metadata.fingerprint,
       uniquenessScore: result.metadata.uniquenessScore,
       difficultyProfile: {
         overall: result.metadata.calibratedDifficulty,
         method: "eve-tool-agent",
+        tier: result.metadata.difficultyLevel,
       },
       calibratedDifficulty: result.metadata.calibratedDifficulty,
       qualityMetrics: {
-        scores: { overall: result.metadata.qualityScore },
+        scores: {
+          overall: result.metadata.qualityScore,
+          fun: result.metadata.funScore,
+        },
         analysis: {
           strengths: [],
           weaknesses: [],

@@ -25,9 +25,10 @@ The `global.ts` file defines shared configuration that applies to ALL puzzle typ
 
 - **Brand Voice**: Tone, style, and personality guidelines
 - **Quality Standards**: Minimum quality thresholds and scoring guidelines
-- **Difficulty Calibration**: How difficulty is measured across all types
-- **AI Model Preferences**: Which models to use for different tasks
-- **Constraints**: Common constraints (family-friendly, educational, etc.)
+- **Difficulty Calibration**: Non-overlapping tiers — Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8–9  
+  (see also `src/ai/puzzle-agent/difficulty-levels.ts` and `src/lib/difficulty.ts`)
+- **AI Model Preferences**: Gateway model ids for generation / validation / quality
+- **Constraints**: Family-friendly, educational, avoid-lists
 
 ## Puzzle Type Configs
 

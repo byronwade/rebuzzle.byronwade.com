@@ -15,6 +15,7 @@ import {
   type PuzzleAgentResult,
   PuzzleAgentResultSchema,
 } from "./schemas";
+import { getDifficultyLevelForScore } from "./difficulty-levels";
 import { fingerprintCandidate, scorePuzzleQuality } from "./tool-impl";
 import { puzzleAgentTools } from "./tools";
 
@@ -43,22 +44,25 @@ function buildUserMessage(params: PuzzleGenerationParams): string {
   const qualityThreshold =
     params.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
 
+  const level = getDifficultyLevelForScore(params.targetDifficulty);
+
   return [
     `Generate one publishable ${puzzleType} puzzle.`,
-    `Target difficulty: ${params.targetDifficulty} (1-10).`,
+    `Target difficulty: ${params.targetDifficulty}/10 → tier ${level.label} (band ${level.min}–${level.max}).`,
+    `Component budget: ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
     params.category ? `Preferred category: ${params.category}.` : null,
     params.theme ? `Theme: ${params.theme}.` : null,
     params.requireNovelty !== false
       ? "Novelty is required — avoid recent answers and similar visuals."
       : null,
-    `Quality threshold: overall >= ${qualityThreshold}.`,
+    `Quality threshold: overall >= ${qualityThreshold}; prefer funScore >= 65.`,
     "Workflow:",
-    "1) get_puzzle_type_spec",
-    "2) list_recent_answers",
-    "3) Design visual/components + answer + hints + explanation",
-    "4) validate_puzzle → check_uniqueness → calibrate_difficulty → score_quality",
-    "5) Revise with tools if uniqueness or quality fails",
-    "6) Return the final structured result",
+    "1) get_puzzle_type_spec + get_difficulty_brief",
+    "2) list_recent_answers + propose_concept_seeds",
+    "3) assemble_visual_components + craft_hint_ladder",
+    "4) validate → uniqueness → calibrate → stress_test_solvability → score_quality",
+    "5) Revise until in-band, unique, solvable, publishable",
+    "6) Return structured result with difficultyLevel + techniqueId",
   ]
     .filter(Boolean)
     .join("\n");
@@ -101,8 +105,12 @@ export async function runPuzzleAgentGeneration(
         throw new Error("Puzzle agent returned no structured output");
       }
 
-      // Harden fingerprint / quality if the model omitted them
       const puzzle = output.puzzle;
+      const calibrated =
+        output.metadata.calibratedDifficulty || puzzle.difficulty;
+      const level = getDifficultyLevelForScore(
+        params.targetDifficulty || calibrated
+      );
       const fingerprint =
         output.metadata.fingerprint ||
         fingerprintCandidate({
@@ -115,8 +123,12 @@ export async function runPuzzleAgentGeneration(
           ? {
               overall: output.metadata.qualityScore,
               verdict: output.metadata.qualityVerdict,
+              funScore: output.metadata.funScore,
             }
-          : scorePuzzleQuality(puzzle);
+          : scorePuzzleQuality({
+              ...puzzle,
+              targetDifficulty: params.targetDifficulty,
+            });
 
       if (quality.overall < qualityThreshold && attempt < maxAttempts) {
         lastError = new Error(
@@ -125,21 +137,30 @@ export async function runPuzzleAgentGeneration(
         continue;
       }
 
+      const difficultyLevel =
+        puzzle.difficultyLevel ||
+        output.metadata.difficultyLevel ||
+        level.label;
+
       return {
         ...output,
         puzzle: {
           ...puzzle,
-          difficulty: output.metadata.calibratedDifficulty || puzzle.difficulty,
+          difficulty: calibrated,
+          difficultyLevel,
         },
         metadata: {
           ...output.metadata,
           fingerprint,
+          calibratedDifficulty: calibrated,
+          difficultyLevel,
           qualityScore: quality.overall,
           qualityVerdict: quality.verdict,
+          funScore: quality.funScore ?? output.metadata.funScore,
           generationAttempts: attempt,
           thinkingSummary:
             output.metadata.thinkingSummary ??
-            `Generated via ToolLoopAgent + AI Gateway (${modelId}) in ${Date.now() - start}ms`,
+            `${difficultyLevel} puzzle via ToolLoopAgent + AI Gateway (${modelId}) in ${Date.now() - start}ms`,
         },
         status: "success",
         recommendations: output.recommendations ?? [],

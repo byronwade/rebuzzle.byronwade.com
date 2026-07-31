@@ -65,23 +65,15 @@ export const GLOBAL_CONTEXT: GlobalContext = {
     scale: { min: 1, max: 10 },
     calibrationMethod: "weighted",
     /**
-     * DIFFICULTY PHILOSOPHY:
-     * This website is designed to challenge our AI to develop mid-level puzzles that take
-     * users 1-5 hours to figure out. We NEVER use "easy" or low difficulty levels.
-     * All puzzles must be challenging mid-level difficulties that push creative boundaries
-     * while remaining solvable within a reasonable timeframe.
-     *
-     * Difficulty Levels (Scale: 1-10, Target Range: 4-8):
-     * - hard: 4-5 - Baseline challenging puzzles that require genuine thinking
-     * - difficult: 5-6 - More challenging puzzles that push creative boundaries
-     * - evil: 6-7 - Very challenging puzzles that require out-of-the-box thinking
-     * - impossible: 7-8 - Extremely challenging but still achievable puzzles
+     * Non-overlapping difficulty tiers (1–10 scale, daily targets 4–9):
+     * - Hard 4–5 | Difficult 6 | Evil 7 | Impossible 8–9
+     * No easy tier — every day should feel like a real puzzle.
      */
     ranges: {
       hard: { min: 4, max: 5 },
-      difficult: { min: 5, max: 6 },
-      evil: { min: 6, max: 7 },
-      impossible: { min: 7, max: 8 },
+      difficult: { min: 6, max: 6 },
+      evil: { min: 7, max: 7 },
+      impossible: { min: 8, max: 9 },
     },
     factors: [
       {

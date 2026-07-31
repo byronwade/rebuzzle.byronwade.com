@@ -81,7 +81,9 @@ AI_DIFFICULTY_ADJUSTMENT=true
    - Create API key
    - Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL`
 
-### 4. AI Gateway Setup
+### 4. AI Gateway + Eve puzzle agent
+
+Puzzle generation uses an Eve-aligned ToolLoopAgent (`apps/web/agent/` + `src/ai/puzzle-agent/`) routed through the Vercel AI Gateway. Requires **Node.js 24+**.
 
 1. **Vercel AI Gateway (Recommended)**
    - Go to Vercel Dashboard > AI Gateway

@@ -28,13 +28,14 @@ import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
 import { calculateScore, determineAchievements } from "./CelebrationOverlay";
 import { useGameContext } from "./GameContext";
+import { DifficultyBadge } from "./DifficultyBadge";
+import { GuessTrail } from "./GuessTrail";
 import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
-import { PersonalizedGreeting } from "./PersonalizedGreeting";
 import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay";
 import { PuzzleMinimal } from "./PuzzleMinimal";
 import { SmartAnswerInput } from "./SmartAnswerInput";
-import { SolveCounter } from "./SolveCounter";
+
 
 const CelebrationOverlay = dynamic(
   () => import("./CelebrationOverlay").then((mod) => mod.CelebrationOverlay),
@@ -947,25 +948,20 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   )}
                 </div>
               ) : (
-                /* EXPANDED VIEW - full puzzle display when keyboard is closed */
-                <div className="flex-1 flex flex-col items-center justify-center px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6 overflow-hidden">
-                  {/* Header row with greeting and hint badge */}
-                  <div className="flex items-center justify-between w-full max-w-2xl mb-[clamp(0.5rem,2vh,1rem)]">
-                    {/* Personalized greeting - psychology: personal recognition increases engagement */}
-                    <PersonalizedGreeting
-                      streak={userStats.streak}
-                      wins={userStats.wins}
-                      level={userStats.level}
+                /* EXPANDED VIEW — focused play stage */
+                <div className="play-stage flex-1 flex flex-col items-center justify-center px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6 overflow-hidden">
+                  <div className="mb-[clamp(0.75rem,2.5vh,1.25rem)] flex w-full max-w-2xl items-start justify-between gap-3">
+                    <DifficultyBadge
+                      difficulty={currentEventPuzzle?.difficulty}
+                      showDescription
+                      className="play-fade-in"
                     />
-                    {/* Hint badge - opens dialog to reveal hints */}
                     {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
                       <HintBadge
                         hints={gameData.hints}
                         gameId={gameData.id}
                         onHintReveal={(hintIndex) => {
-                          // Update game state when hint is revealed
                           dispatch({ type: "REVEAL_HINT" });
-                          // Track hint usage
                           trackEvent(analyticsEvents.HINT_USED, {
                             puzzleId: gameData.id || "unknown",
                             hintIndex,
@@ -975,91 +971,48 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     )}
                   </div>
 
-                  {/* Enhanced puzzle display - centered */}
-                  <section aria-label="Puzzle" className="w-full max-w-2xl text-center">
+                  <section aria-label="Puzzle" className="play-puzzle-panel w-full max-w-2xl text-center">
                     <PuzzleContainer>
                       <PuzzleDisplay
                         puzzle={puzzleDisplay}
                         puzzleType={puzzleType}
                         size={
-                          // Text-based puzzles use smaller size for better readability
                           puzzleType === "riddle" ||
                           puzzleType === "trivia" ||
                           puzzleType === "logic-grid" ||
                           puzzleType === "cryptic-crossword"
                             ? "small"
-                            : // Visual and code puzzles use large for better visibility
-                              puzzleType === "rebus" ||
-                                puzzleType === "pattern-recognition" ||
-                                puzzleType === "number-sequence" ||
-                                puzzleType === "caesar-cipher"
-                              ? "large"
-                              : // Default to large for other types
-                                "large"
+                            : "large"
                         }
                       />
                     </PuzzleContainer>
                     <PuzzleQuestion puzzleType={puzzleType} />
-                    {/* Live solve counter - social proof */}
-                    <SolveCounter puzzleId={gameData.id} className="mt-3" />
                   </section>
 
-                  {/* Chat-style guess history - displays below puzzle with limited height */}
-                  {gameState.guessHistory.length > 0 && (
-                    <div className="w-full max-w-2xl mt-[clamp(0.5rem,2vh,1.5rem)] space-y-2 text-center max-h-[clamp(60px,12vh,100px)] overflow-y-auto">
-                      {gameState.guessHistory.map((attempt, index) => (
-                        <div
-                          key={index}
-                          className="text-muted-foreground text-sm animate-in fade-in-50 slide-in-from-bottom-2 duration-300"
-                        >
-                          <span className="opacity-40 mr-2 text-xs">#{attempt.attemptNumber}</span>
-                          <span
-                            className={
-                              attempt.wordResults.every((w) => w.correct)
-                                ? "text-green-600 dark:text-green-400 font-medium"
-                                : attempt.wordResults.some((w) => (w.similarity ?? 0) >= 70)
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-foreground/70"
-                            }
-                          >
-                            {attempt.text}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
+                  <GuessTrail
+                    attempts={gameState.guessHistory}
+                    className="mt-[clamp(0.75rem,2.5vh,1.5rem)] max-h-[clamp(72px,14vh,120px)] overflow-y-auto"
+                  />
                 </div>
               )}
             </main>
 
-            {/* Enhanced feedback - positioned above input area */}
             {gameState.feedbackMessage && (
               <div
                 aria-live="polite"
-                className={`mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none`}
+                className="mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none"
                 role="status"
               >
                 <div
-                  className={`rounded-full px-4 py-2 shadow-lg ${
+                  className={`rounded-full border px-4 py-2 backdrop-blur-md ${
                     gameState.feedbackMessage === "Checking..."
-                      ? "border border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/90"
+                      ? "border-teal-400/40 bg-teal-500/10 text-teal-900 dark:text-teal-100"
                       : gameState.feedbackMessage.startsWith("So close")
-                        ? "border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/90"
-                        : "border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/90"
+                        ? "border-amber-400/40 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+                        : "border-rose-400/40 bg-rose-500/10 text-rose-950 dark:text-rose-100"
                   }`}
                 >
-                  <p
-                    className={`font-medium text-sm ${
-                      gameState.feedbackMessage === "Checking..."
-                        ? "text-blue-700 dark:text-blue-300"
-                        : gameState.feedbackMessage.startsWith("So close")
-                          ? "text-amber-700 dark:text-amber-300"
-                          : "text-red-700 dark:text-red-300"
-                    }`}
-                  >
-                    {gameState.feedbackMessage}
-                  </p>
+                  <p className="font-medium text-sm">{gameState.feedbackMessage}</p>
                 </div>
               </div>
             )}
@@ -1084,10 +1037,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               </div>
             )}
 
-            {/* Input area - always visible at bottom */}
             <section
               aria-label="Answer input"
-              className="shrink-0 z-30 bg-background px-4 pt-3 pb-safe-lg md:px-6 input-area input-area-keyboard-transition"
+              className="play-dock shrink-0 z-30 px-4 pt-3 pb-safe-lg md:px-6 input-area input-area-keyboard-transition"
             >
               <div className="mx-auto max-w-2xl">
                 <SmartAnswerInput
