@@ -13,6 +13,7 @@ import {
   getArchiveLockKey,
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
+import { buildGuessReaction } from "@/lib/game/reactions";
 import { calculateGamePoints } from "@/lib/gameSettings";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 
@@ -294,10 +295,20 @@ export async function POST(request: Request) {
       });
     }
 
+    const similarity = Math.round((validation.confidence ?? 0) * 100);
+
     return NextResponse.json({
       success: true,
       correct: isCorrect,
-      similarity: Math.round((validation.confidence ?? 0) * 100),
+      similarity,
+      // Eve's instant read on the guess. Derived from the similarity score, so
+      // the client learns "how close" without ever receiving the answer.
+      reaction: buildGuessReaction({
+        correct: isCorrect,
+        similarity,
+        attemptsLeft,
+        guess,
+      }),
       method: validation.method,
       attemptNumber,
       attemptsLeft,

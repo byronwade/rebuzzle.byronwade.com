@@ -1,10 +1,8 @@
 "use client";
 
-import { Redo2, Undo2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowUp, CornerDownLeft } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { haptics } from "@/lib/haptics";
 import {
   type CursorPosition,
   restoreCursorPosition,
@@ -27,8 +25,18 @@ interface SmartAnswerInputProps {
   correctAnswer?: string;
 }
 
+const MAX_BAR_HEIGHT = 112;
+const MIN_BAR_HEIGHT = 44;
+
 /**
- * Free-form answer input. Correctness is decided only by /api/puzzles/guess.
+ * The answer bar. Correctness is decided only by /api/puzzles/guess.
+ *
+ * Nothing here grades what you type. The bar used to colour words and
+ * characters live, which told you the answer before you pressed Enter — and it
+ * forced the textarea's own text to be transparent behind a positioned overlay,
+ * which is what made the caret, selection and autocorrect feel wrong on phones.
+ * The textarea now renders its own text, and correctness is revealed once per
+ * submitted guess in the trail, where it's earned.
  */
 export function SmartAnswerInput({
   onSubmit,
@@ -37,211 +45,152 @@ export function SmartAnswerInput({
   className,
 }: SmartAnswerInputProps) {
   const [value, setValue] = useState("");
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<CursorPosition | null>(null);
   const undoRedoManager = useRef(new UndoRedoManager());
 
-  const syncUndoRedoState = useCallback(() => {
-    setCanUndo(undoRedoManager.current.canUndo());
-    setCanRedo(undoRedoManager.current.canRedo());
+  const trimmed = value.trim();
+  const canSubmit = trimmed.length > 0 && !(disabled || isSubmitting);
+  const letterCount = useMemo(() => trimmed.replace(/[^\p{L}\p{N}]/gu, "").length, [trimmed]);
+
+  const submit = useCallback(() => {
+    if (!canSubmit) return;
+    haptics.tap();
+    onSubmit(trimmed);
+    // Clear immediately — the submitted guess reappears as a chip in the trail,
+    // so leaving it in the bar would just be a stale duplicate to delete.
+    setValue("");
+    undoRedoManager.current = new UndoRedoManager();
+  }, [canSubmit, onSubmit, trimmed]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const cursor = { start: e.target.selectionStart, end: e.target.selectionEnd };
+    undoRedoManager.current.saveState(e.target.value, cursor);
+    cursorPositionRef.current = cursor;
+    setValue(e.target.value);
   }, []);
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newValue = e.target.value;
-      const currentCursor = {
-        start: e.target.selectionStart,
-        end: e.target.selectionEnd,
-      };
-      undoRedoManager.current.saveState(value, currentCursor);
-      cursorPositionRef.current = currentCursor;
-      setValue(newValue);
-      syncUndoRedoState();
+  const applyHistoryEntry = useCallback(
+    (entry: { text: string; cursorPosition: CursorPosition } | null) => {
+      if (!entry) return;
+      setValue(entry.text);
+      cursorPositionRef.current = entry.cursorPosition;
+      setTimeout(() => restoreCursorPosition(textareaRef.current, entry.cursorPosition), 0);
     },
-    [value, syncUndoRedoState]
+    []
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (!disabled && !isSubmitting && value.trim()) {
-          onSubmit(value);
-        }
+        submit();
         return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+      // Undo/redo keep their shortcuts; the buttons are gone. They were two
+      // permanent targets in the dock for something almost nobody reached for.
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
         e.preventDefault();
-        const entry = undoRedoManager.current.undo(
-          value,
-          cursorPositionRef.current || { start: 0, end: 0 }
+        const cursor = cursorPositionRef.current || { start: 0, end: 0 };
+        applyHistoryEntry(
+          e.shiftKey
+            ? undoRedoManager.current.redo(value, cursor)
+            : undoRedoManager.current.undo(value, cursor)
         );
-        if (entry) {
-          setValue(entry.text);
-          cursorPositionRef.current = entry.cursorPosition;
-          syncUndoRedoState();
-          setTimeout(() => {
-            restoreCursorPosition(textareaRef.current, entry.cursorPosition);
-          }, 0);
-        }
-        return;
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
-        e.preventDefault();
-        const entry = undoRedoManager.current.redo(
-          value,
-          cursorPositionRef.current || { start: 0, end: 0 }
-        );
-        if (entry) {
-          setValue(entry.text);
-          cursorPositionRef.current = entry.cursorPosition;
-          syncUndoRedoState();
-          setTimeout(() => {
-            restoreCursorPosition(textareaRef.current, entry.cursorPosition);
-          }, 0);
-        }
       }
     },
-    [value, onSubmit, disabled, isSubmitting, syncUndoRedoState]
+    [value, submit, applyHistoryEntry]
   );
-
-  const handleFocus = useCallback(() => {
-    if (textareaRef.current) {
-      textareaRef.current.setSelectionRange(
-        textareaRef.current.selectionStart,
-        textareaRef.current.selectionEnd
-      );
-    }
-  }, []);
 
   const handleBlur = useCallback(() => {
     cursorPositionRef.current = saveCursorPosition(textareaRef.current);
   }, []);
 
+  // Grow with the content, then scroll.
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = "auto";
-    const newHeight = Math.min(textarea.scrollHeight, 120);
-    textarea.style.height = `${Math.max(44, newHeight)}px`;
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, MIN_BAR_HEIGHT), MAX_BAR_HEIGHT)}px`;
   }, [value]);
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="rounded-2xl border border-border bg-background px-4 py-3 shadow-sm transition-colors duration-200">
-        <Textarea
-          aria-describedby="answer-feedback"
-          aria-label="Puzzle answer input"
+      <div
+        className={cn(
+          "answer-bar flex items-end gap-2 rounded-2xl border border-border bg-card py-1.5 pr-1.5 pl-4",
+          (disabled || isSubmitting) && "opacity-60"
+        )}
+      >
+        <textarea
+          aria-describedby="answer-meta"
+          aria-label="Your answer"
           autoCapitalize="off"
           autoComplete="off"
           autoCorrect="off"
           className={cn(
-            "min-h-[44px] max-h-[120px] resize-none border-0 bg-transparent py-3 px-0 text-base shadow-none",
-            "relative z-10",
-            "transition-colors duration-200",
-            isSubmitting && "opacity-75 cursor-wait",
-            "text-base sm:text-base",
-            "touch-manipulation",
-            "focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-0",
-            (disabled || isSubmitting) && "opacity-60 cursor-not-allowed"
+            "max-h-[112px] min-h-[44px] flex-1 resize-none border-0 bg-transparent py-3 text-base text-foreground outline-none",
+            "placeholder:text-subtle focus-visible:shadow-none",
+            "touch-manipulation [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            (disabled || isSubmitting) && "cursor-not-allowed"
           )}
           disabled={disabled || isSubmitting}
+          // "go" gives phone keyboards a Go key instead of a newline key.
+          enterKeyHint="go"
+          inputMode="text"
           onBlur={handleBlur}
           onChange={handleChange}
-          onFocus={handleFocus}
           onKeyDown={handleKeyDown}
-          placeholder="Type your answer..."
+          placeholder="Type your answer…"
           ref={textareaRef}
           rows={1}
           spellCheck={false}
           value={value}
-          inputMode="text"
         />
+
+        <button
+          aria-label="Submit answer"
+          className={cn(
+            "answer-send mb-0.5 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full",
+            "bg-foreground text-background focus-ring",
+            "hover:bg-foreground/85 disabled:pointer-events-none"
+          )}
+          disabled={!canSubmit}
+          onClick={submit}
+          type="button"
+        >
+          {isSubmitting ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : (
+            <ArrowUp className="h-5 w-5" strokeWidth={2.25} />
+          )}
+        </button>
       </div>
 
-      <div className="flex items-center justify-between px-2 pt-2 min-h-[24px]">
-        <div className="flex-1">
-          {value.length === 0 && !isSubmitting && (
-            <p className="text-muted-foreground text-xs" id="answer-feedback">
-              Type your answer, then press Enter to submit
-            </p>
+      {/* Meta rail — fixed height so nothing below it ever shifts. */}
+      <div className="flex h-6 items-center justify-between gap-3 px-1.5 pt-1.5" id="answer-meta">
+        <p aria-live="polite" className="truncate text-subtle text-xs">
+          {letterCount > 0 ? (
+            <span className="font-mono tabular-nums">
+              {letterCount} letter{letterCount === 1 ? "" : "s"}
+            </span>
+          ) : (
+            "One guess at a time. Make it count."
           )}
-          {value.length > 0 && !isSubmitting && (
-            <p className="text-muted-foreground text-xs" id="answer-feedback">
-              Press Enter to submit
-            </p>
-          )}
-        </div>
+        </p>
 
-        {value.length > 0 && (
-          <TooltipProvider delayDuration={300}>
-            <div className="flex items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label="Undo"
-                    className="h-9 w-9 p-0 sm:h-8 sm:w-8"
-                    disabled={!canUndo || isSubmitting}
-                    onClick={() => {
-                      const entry = undoRedoManager.current.undo(
-                        value,
-                        cursorPositionRef.current || { start: 0, end: 0 }
-                      );
-                      if (entry) {
-                        setValue(entry.text);
-                        cursorPositionRef.current = entry.cursorPosition;
-                        syncUndoRedoState();
-                        setTimeout(() => {
-                          restoreCursorPosition(textareaRef.current, entry.cursorPosition);
-                        }, 0);
-                      }
-                    }}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Undo (Cmd+Z)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label="Redo"
-                    className="h-9 w-9 p-0 sm:h-8 sm:w-8"
-                    disabled={!canRedo || isSubmitting}
-                    onClick={() => {
-                      const entry = undoRedoManager.current.redo(
-                        value,
-                        cursorPositionRef.current || { start: 0, end: 0 }
-                      );
-                      if (entry) {
-                        setValue(entry.text);
-                        cursorPositionRef.current = entry.cursorPosition;
-                        syncUndoRedoState();
-                        setTimeout(() => {
-                          restoreCursorPosition(textareaRef.current, entry.cursorPosition);
-                        }, 0);
-                      }
-                    }}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Redo2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Redo (Cmd+Shift+Z)</TooltipContent>
-              </Tooltip>
-            </div>
-          </TooltipProvider>
-        )}
+        <span
+          aria-hidden
+          className={cn(
+            "hidden shrink-0 items-center gap-1 font-mono text-[11px] text-subtle transition-opacity duration-200 sm:flex",
+            canSubmit ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <CornerDownLeft className="h-3 w-3" />
+          Enter
+        </span>
       </div>
     </div>
   );

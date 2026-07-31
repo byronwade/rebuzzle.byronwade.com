@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -12,10 +12,13 @@ import {
   trackPuzzleCompletion,
   trackPuzzleStart,
 } from "@/lib/analytics";
+import { determineAchievements } from "@/lib/game/celebration-achievements";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
+  calculateGamePoints as calculateScore,
   engagementConfig,
   gameSettings,
   getDailyBonusMultiplier,
@@ -23,16 +26,16 @@ import {
 } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
+import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
-import { determineAchievements } from "@/lib/game/celebration-achievements";
-import { calculateGamePoints as calculateScore } from "@/lib/gameSettings";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { useGameContext } from "./GameContext";
-import { GuessTrail } from "./GuessTrail";
+import { GuessThread, type ThreadTurn } from "./GuessThread";
 import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
-import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay";
+import { getPuzzleQuestion } from "./PuzzleDisplay";
 import { PuzzleMinimal } from "./PuzzleMinimal";
+import { PuzzleStage } from "./PuzzleStage";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 
 const CelebrationOverlay = dynamic(
@@ -223,6 +226,64 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     message: string;
     details?: string;
   } | null>(null);
+
+  /**
+   * The conversation. Kept out of the reducer because it's presentation only —
+   * the persisted `guessHistory` still drives scoring and the game-over page.
+   */
+  const [turns, setTurns] = useState<ThreadTurn[]>([]);
+  const turnSeq = useRef(0);
+  const hasThread = turns.length > 0;
+
+  const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
+    setTurns((prev) => prev.map((turn) => (turn.id === id ? { ...turn, ...patch } : turn)));
+  }, []);
+
+  /**
+   * Ask Eve for a riff on a guess and type it into a second bubble.
+   *
+   * Never blocks feedback: the instant line is already on screen by the time
+   * this is called, and if the stream fails the riff bubble simply never
+   * appears. The route is not given the answer, so it can't leak one.
+   */
+  const streamQuip = useCallback(
+    async (id: number, guess: string, tier: ReactionTier) => {
+      patchTurn(id, { quipPending: true });
+      try {
+        const response = await fetch("/api/puzzles/quip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ puzzleId: gameData.id, guess, tier }),
+        });
+
+        if (!(response.ok && response.body)) {
+          patchTurn(id, { quipPending: false });
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let text = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          text += decoder.decode(value, { stream: true });
+          if (text.trim()) {
+            patchTurn(id, { quip: text.trim(), quipPending: false });
+          }
+        }
+
+        if (!text.trim()) {
+          patchTurn(id, { quipPending: false });
+        }
+      } catch (_error) {
+        // A missing riff is not worth surfacing — the instant line stands.
+        patchTurn(id, { quipPending: false });
+      }
+    },
+    [gameData.id, patchTurn]
+  );
   const router = useRouter();
   const { userId, isLoading: authLoading } = useAuth();
   const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
@@ -455,6 +516,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           answer?: string;
           explanation?: string;
           pointsEarned?: number;
+          reaction?: GuessReaction;
           error?: string;
         };
 
@@ -476,7 +538,25 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         }
 
         const wordResults: WordResult[] = result.wordResults || [];
-        const attemptNumber = result.attemptNumber ?? gameSettings.maxAttempts - previousAttemptsLeft + 1;
+        const attemptNumber =
+          result.attemptNumber ?? gameSettings.maxAttempts - previousAttemptsLeft + 1;
+
+        // Post the turn the moment the server answers. The reaction is derived
+        // from the similarity score server-side, so this is instant.
+        const reaction = result.reaction;
+        const turnId = ++turnSeq.current;
+        if (reaction) {
+          setTurns((prev) => [
+            ...prev,
+            {
+              id: turnId,
+              text: guessToCheck,
+              attemptNumber,
+              tier: reaction.tier,
+              line: reaction.line,
+            },
+          ]);
+        }
 
         if (result.correct) {
           const attempts = attemptNumber;
@@ -651,6 +731,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
         handleIncorrectGuess(newAttemptsLeft, overallSimilarity);
         dispatch({ type: "RESET_GUESS" });
+
+        // Eve's riff arrives behind the instant line, in its own bubble.
+        if (reaction) {
+          void streamQuip(turnId, guessToCheck, reaction.tier);
+        }
       } catch (error) {
         console.error("Error processing guess:", error);
         dispatch({ type: "SET_ATTEMPTS_LEFT", payload: previousAttemptsLeft });
@@ -682,6 +767,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       gameData.difficulty,
       router,
       handleIncorrectGuess,
+      streamQuip,
     ]
   );
 
@@ -789,12 +875,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 </div>
               ) : (
                 /* EXPANDED VIEW — focused play stage */
-                <div className="play-stage flex-1 flex flex-col items-center justify-center px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6 overflow-hidden">
-                  <div className="mb-[clamp(0.75rem,2.5vh,1.25rem)] flex w-full max-w-2xl items-start justify-between gap-3">
+                <div
+                  className={cn(
+                    "play-stage flex flex-1 flex-col items-center overflow-hidden px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6",
+                    hasThread ? "justify-start" : "justify-center"
+                  )}
+                >
+                  <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
                     <DifficultyBadge
-                      difficulty={currentEventPuzzle?.difficulty}
-                      showDescription
                       className="play-fade-in"
+                      difficulty={currentEventPuzzle?.difficulty}
+                      showDescription={!hasThread}
                     />
                     {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
                       <HintBadge
@@ -811,55 +902,25 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     )}
                   </div>
 
-                  <section
-                    aria-label="Puzzle"
-                    className="play-puzzle-panel w-full max-w-2xl text-center"
-                  >
-                    <PuzzleContainer>
-                      <PuzzleDisplay
-                        puzzle={puzzleDisplay}
-                        puzzleType={puzzleType}
-                        visual={gameData.visual}
-                        size={
-                          puzzleType === "riddle" ||
-                          puzzleType === "trivia" ||
-                          puzzleType === "logic-grid" ||
-                          puzzleType === "cryptic-crossword"
-                            ? "small"
-                            : "large"
-                        }
-                      />
-                    </PuzzleContainer>
-                    <PuzzleQuestion puzzleType={puzzleType} />
+                  <section aria-label="Puzzle" className="w-full max-w-2xl">
+                    <PuzzleStage
+                      puzzle={puzzleDisplay}
+                      puzzleType={puzzleType}
+                      question={getPuzzleQuestion(puzzleType)}
+                      state={hasThread ? "docked" : "hero"}
+                      visual={gameData.visual}
+                    />
                   </section>
 
-                  <GuessTrail
-                    attempts={gameState.guessHistory}
-                    className="mt-[clamp(0.75rem,2.5vh,1.5rem)] max-h-[clamp(72px,14vh,120px)] overflow-y-auto"
-                  />
+                  {hasThread && (
+                    <GuessThread
+                      className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl flex-1 px-0.5 pb-2"
+                      turns={turns}
+                    />
+                  )}
                 </div>
               )}
             </main>
-
-            {gameState.feedbackMessage && (
-              <div
-                aria-live="polite"
-                className="mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none"
-                role="status"
-              >
-                <div
-                  className={`rounded-full border px-3.5 py-1.5 backdrop-blur-md ${
-                    gameState.feedbackMessage === "Checking..."
-                      ? "border-border bg-card text-muted-foreground"
-                      : gameState.feedbackMessage.startsWith("So close")
-                        ? "border-warning/30 bg-warning/10 text-foreground"
-                        : "border-destructive/25 bg-destructive/10 text-destructive"
-                  }`}
-                >
-                  <p className="font-medium text-sm">{gameState.feedbackMessage}</p>
-                </div>
-              </div>
-            )}
 
             {/* Error display - positioned above input area */}
             {error && (
@@ -886,16 +947,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
             <section
               aria-label="Answer input"
-              className="play-dock shrink-0 z-30 px-4 pt-3 pb-safe-lg md:px-6 input-area input-area-keyboard-transition"
+              className="input-area input-area-keyboard-transition play-dock z-30 shrink-0 px-4 pt-5 pb-safe-lg md:px-6"
             >
               <div className="mx-auto max-w-2xl">
                 <SmartAnswerInput
                   puzzleId={gameData.id}
                   difficulty={currentEventPuzzle?.difficulty || 5}
                   disabled={
-                    gameState.gameOver ||
-                    gameState.isSubmitting ||
-                    (!userId && isCreatingGuest)
+                    gameState.gameOver || gameState.isSubmitting || (!userId && isCreatingGuest)
                   }
                   isSubmitting={gameState.isSubmitting || isCreatingGuest}
                   onSubmit={handleGuess}
