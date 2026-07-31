@@ -24,7 +24,11 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.com
 NODE_ENV=production
 
 # Database
+# Prefer the Vercel MongoDB marketplace variable when present:
+REBUZZLE_MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/rebuzzle
+# Or the legacy name:
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/rebuzzle
+MONGODB_DB=rebuzzle
 
 # AI Configuration
 AI_PROVIDER=gateway
@@ -216,7 +220,7 @@ Puzzle generation uses an Eve-aligned ToolLoopAgent (`apps/web/agent/` + `src/ai
 
 ### Database Connection Issues
 
-- Verify `MONGODB_URI` is correct
+- Verify `REBUZZLE_MONGODB_URI` or `MONGODB_URI` is correct
 - Check MongoDB Atlas IP whitelist
 - Verify database user permissions
 - Check connection string format

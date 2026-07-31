@@ -22,18 +22,27 @@ describe("Environment Validation", () => {
   });
 
   describe("getDatabaseUrl", () => {
+    it("should prefer REBUZZLE_MONGODB_URI", () => {
+      process.env.REBUZZLE_MONGODB_URI = "mongodb://localhost:27017/rebuzzle";
+      process.env.MONGODB_URI = "mongodb://localhost:27017/test";
+      expect(getDatabaseUrl()).toBe("mongodb://localhost:27017/rebuzzle");
+    });
+
     it("should return MONGODB_URI if set", () => {
+      process.env.REBUZZLE_MONGODB_URI = undefined;
       process.env.MONGODB_URI = "mongodb://localhost:27017/test";
       expect(getDatabaseUrl()).toBe("mongodb://localhost:27017/test");
     });
 
     it("should return DATABASE_URL if MONGODB_URI not set", () => {
+      process.env.REBUZZLE_MONGODB_URI = undefined;
       process.env.MONGODB_URI = undefined;
       process.env.DATABASE_URL = "mongodb://localhost:27017/test2";
       expect(getDatabaseUrl()).toBe("mongodb://localhost:27017/test2");
     });
 
-    it("should throw if neither is set", () => {
+    it("should throw if none are set", () => {
+      process.env.REBUZZLE_MONGODB_URI = undefined;
       process.env.MONGODB_URI = undefined;
       process.env.DATABASE_URL = undefined;
       expect(() => getDatabaseUrl()).toThrow();
@@ -74,6 +83,7 @@ describe("Environment Validation", () => {
     });
 
     it("should fail without database URL", () => {
+      process.env.REBUZZLE_MONGODB_URI = undefined;
       process.env.MONGODB_URI = undefined;
       process.env.DATABASE_URL = undefined;
       process.env.NEXT_PUBLIC_APP_URL = "https://example.com";

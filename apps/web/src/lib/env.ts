@@ -11,9 +11,11 @@ interface EnvConfig {
   NEXT_PUBLIC_APP_URL: string;
   NODE_ENV: "development" | "production" | "test";
 
-  // Database
+  // Database (Vercel MongoDB marketplace sets REBUZZLE_MONGODB_URI)
+  REBUZZLE_MONGODB_URI?: string;
   MONGODB_URI?: string;
   DATABASE_URL?: string;
+  MONGODB_DB?: string;
 
   // AI
   AI_PROVIDER: "google" | "groq" | "xai" | "openai" | "gateway";
@@ -42,16 +44,25 @@ interface ValidationResult {
 }
 
 /**
- * Get database URL (checks both MONGODB_URI and DATABASE_URL)
+ * Get database URL.
+ * Prefers Vercel marketplace `REBUZZLE_MONGODB_URI`, then `MONGODB_URI`, then `DATABASE_URL`.
  */
 export function getDatabaseUrl(): string {
-  const url = process.env.MONGODB_URI || process.env.DATABASE_URL;
+  const url =
+    process.env.REBUZZLE_MONGODB_URI ||
+    process.env.MONGODB_URI ||
+    process.env.DATABASE_URL;
   if (!url) {
     throw new Error(
-      "Database URL not found. Please set MONGODB_URI or DATABASE_URL environment variable."
+      "Database URL not found. Please set REBUZZLE_MONGODB_URI, MONGODB_URI, or DATABASE_URL."
     );
   }
   return url;
+}
+
+/** Default MongoDB database name when the URI has no path segment. */
+export function getMongoDatabaseName(): string {
+  return process.env.MONGODB_DB || "rebuzzle";
 }
 
 /**
@@ -94,7 +105,9 @@ export function validateEnv(): ValidationResult {
   try {
     getDatabaseUrl();
   } catch (_error) {
-    errors.push("Database URL (MONGODB_URI or DATABASE_URL) is required");
+    errors.push(
+      "Database URL (REBUZZLE_MONGODB_URI, MONGODB_URI, or DATABASE_URL) is required"
+    );
   }
 
   // Required in production

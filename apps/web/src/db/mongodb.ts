@@ -10,6 +10,7 @@
 
 import { config } from "dotenv";
 import { type Collection, type Db, MongoClient, type MongoClientOptions } from "mongodb";
+import { getDatabaseUrl, getMongoDatabaseName } from "@/lib/env";
 
 // Load environment variables
 config({ path: ".env.local" });
@@ -20,21 +21,6 @@ export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "er
 /** Connection state tracking */
 let connectionStatus: ConnectionStatus = "disconnected";
 let lastError: Error | null = null;
-
-/**
- * Get database URL from environment
- */
-const getDatabaseUrl = (): string => {
-  const url = process.env.MONGODB_URI || process.env.DATABASE_URL;
-
-  if (!url) {
-    throw new Error(
-      "Database URL not found. Please set MONGODB_URI or DATABASE_URL environment variable."
-    );
-  }
-
-  return url;
-};
 
 /**
  * MongoDB connection options optimized for serverless environments
@@ -159,7 +145,10 @@ export const ensureConnection = async (): Promise<void> => {
 export const getDatabase = (): Db => {
   if (!globalForDb.db) {
     const client = getConnection();
-    globalForDb.db = client.db();
+    // Prefer URI path DB; otherwise use MONGODB_DB / "rebuzzle"
+    // (Atlas marketplace URIs often omit a database path and would default to "test")
+    const uriHasDbPath = /mongodb(?:\+srv)?:\/\/[^/]+\/[^/?]+/.test(getDatabaseUrl());
+    globalForDb.db = uriHasDbPath ? client.db() : client.db(getMongoDatabaseName());
 
     // Pre-warm connection in background (non-blocking)
     // This helps in serverless environments where cold starts need faster connections
