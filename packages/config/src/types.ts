@@ -41,6 +41,43 @@ export interface PuzzleMetadata {
     keywords?: string[];
   };
   qualityScore?: number;
+  techniqueId?: string;
+  visualStyleId?: string;
+  funScore?: number;
+}
+
+/** Generative board (custom pictograms / text / optional images). */
+export type PuzzleVisualLayer =
+  | {
+      kind: "pictogram";
+      concept: string;
+      role?: string;
+      svg?: string;
+      emojiFallback: string;
+    }
+  | {
+      kind: "text";
+      content: string;
+      emphasis?: "normal" | "large" | "small" | "strike" | "stacked" | "tiny";
+    }
+  | {
+      kind: "operator";
+      symbol: string;
+    }
+  | {
+      kind: "image";
+      prompt: string;
+      alt: string;
+      src?: string;
+    };
+
+export interface PuzzleVisual {
+  styleId: "ink-pictogram-v1";
+  mode: "composed" | "unicode" | "hybrid";
+  layout: "row" | "stack" | "grid" | "overlay";
+  layers: PuzzleVisualLayer[];
+  unicodeFallback: string;
+  caption?: string;
 }
 
 export interface BlogPostReference {
@@ -69,6 +106,8 @@ export interface GameData {
   leaderboard: LeaderboardEntry[];
   /** Progressive hints */
   hints?: string[];
+  /** Generative composed visual when Eve built a custom board */
+  visual?: PuzzleVisual;
   /** Additional puzzle metadata */
   metadata?: PuzzleMetadata & {
     publishedAt?: string;

@@ -12,6 +12,8 @@ export type {
   LeaderboardEntry,
   PuzzleMetadata,
   PuzzleType,
+  PuzzleVisual,
+  PuzzleVisualLayer,
 } from "@rebuzzle/config";
 // Re-export all types and constants from shared config
 export {

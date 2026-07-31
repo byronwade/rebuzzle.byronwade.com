@@ -4,6 +4,7 @@
 
 import { revalidateTag } from "next/cache";
 import { db } from "@/db";
+import type { PuzzleVisual } from "@/db/models";
 import { logger } from "@/lib/logger";
 
 export type PersistDailyPuzzleInput = {
@@ -17,6 +18,7 @@ export type PersistDailyPuzzleInput = {
   hints: string[];
   aiGenerated: boolean;
   rebusPuzzle?: string;
+  visual?: PuzzleVisual;
   metadataExtra?: Record<string, unknown>;
 };
 
@@ -54,18 +56,19 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
     publishedAt,
     createdAt: new Date(),
     active: true,
+    visual: input.visual,
     metadata: {
       topic: input.category,
       category: input.category,
       puzzleType: input.puzzleType,
       aiGenerated: input.aiGenerated,
       generatedAt: new Date().toISOString(),
+      visualStyleId: input.visual?.styleId,
       // Intentionally omit keyword (= answer) from metadata
       ...input.metadataExtra,
     },
     rebusPuzzle:
-      input.rebusPuzzle ??
-      (input.puzzleType === "rebus" ? input.puzzleDisplay : undefined),
+      input.rebusPuzzle ?? (input.puzzleType === "rebus" ? input.puzzleDisplay : undefined),
   });
 
   revalidateTag("daily-puzzle", "max");

@@ -2,14 +2,16 @@
  * AI SDK tools for the in-process puzzle ToolLoopAgent.
  */
 
-import { tool, type ToolSet } from "ai";
+import { type ToolSet, tool } from "ai";
 import { z } from "zod";
 import { CandidatePuzzleSchema } from "./schemas";
 import {
   assembleVisualComponents,
   calibratePuzzleDifficulty,
   checkUniqueness,
+  composePuzzleVisual,
   craftHintLadder,
+  generatePictogram,
   getDifficultyBrief,
   getPuzzleTypeSpec,
   listRecentAnswers,
@@ -19,6 +21,7 @@ import {
   stressTestSolvability,
   validatePuzzleCandidate,
 } from "./tool-impl";
+import { VisualLayerSchema } from "./visual/composition";
 
 const withType = CandidatePuzzleSchema.extend({
   puzzleType: z.string().optional(),
@@ -28,8 +31,7 @@ const withType = CandidatePuzzleSchema.extend({
 
 export const puzzleAgentTools: ToolSet = {
   get_puzzle_type_spec: tool({
-    description:
-      "Load generation rules and the target difficulty tier for a puzzle type.",
+    description: "Load generation rules and the target difficulty tier for a puzzle type.",
     inputSchema: z.object({
       puzzleType: z.string(),
       targetDifficulty: z.number().optional(),
@@ -79,7 +81,7 @@ export const puzzleAgentTools: ToolSet = {
 
   assemble_visual_components: tool({
     description:
-      "Analyze a candidate visual: component count vs tier budget, technique tips, fun score.",
+      "Legacy analyzer for a unicode rebus string. Prefer compose_puzzle_visual for generative boards.",
     inputSchema: z.object({
       answer: z.string(),
       rebusPuzzle: z.string(),
@@ -87,6 +89,33 @@ export const puzzleAgentTools: ToolSet = {
       targetDifficulty: z.number(),
     }),
     execute: async (input) => assembleVisualComponents(input),
+  }),
+
+  generate_pictogram: tool({
+    description:
+      "Generate one Rebuzzle Ink Pictogram v1 SVG (custom emoji) for a concept. Consistent brand style.",
+    inputSchema: z.object({
+      concept: z.string(),
+      role: z.string().optional(),
+      emojiFallback: z.string().optional(),
+    }),
+    execute: async (input) => generatePictogram(input),
+  }),
+
+  compose_puzzle_visual: tool({
+    description:
+      "Build a generative puzzle board from layers (pictogram / text / operator / optional image). Generates custom SVGs, scores budget + fun. Set rebusPuzzle = unicodeFallback in the final result.",
+    inputSchema: z.object({
+      answer: z.string(),
+      targetDifficulty: z.number(),
+      techniqueId: z.string().optional(),
+      layout: z.enum(["row", "stack", "grid", "overlay"]).optional(),
+      layers: z.array(VisualLayerSchema).min(1).max(12),
+      unicodeFallback: z.string().optional(),
+      caption: z.string().optional(),
+      renderImages: z.boolean().optional(),
+    }),
+    execute: async (input) => composePuzzleVisual(input),
   }),
 
   craft_hint_ladder: tool({
@@ -103,8 +132,7 @@ export const puzzleAgentTools: ToolSet = {
   }),
 
   stress_test_solvability: tool({
-    description:
-      "Fairness check: would a clever player solve this with the hint ladder?",
+    description: "Fairness check: would a clever player solve this with the hint ladder?",
     inputSchema: withType,
     execute: async (input) => stressTestSolvability(input),
   }),
@@ -129,8 +157,7 @@ export const puzzleAgentTools: ToolSet = {
   }),
 
   score_quality: tool({
-    description:
-      "Score quality + fun. Aim for overall ≥ 70, publishable, correct tier fit.",
+    description: "Score quality + fun. Aim for overall ≥ 70, publishable, correct tier fit.",
     inputSchema: withType,
     execute: async (input) => scorePuzzleQuality(input),
   }),

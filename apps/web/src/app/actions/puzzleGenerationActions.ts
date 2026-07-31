@@ -27,7 +27,7 @@ function getTodayDateString(date?: Date): string {
  */
 function calculateDailyDifficulty(date?: Date): number {
   const dateToUse = date || new Date();
-  const dayOfWeek = dateToUse.getUTCDay();  // Use UTC day for consistent behavior across all platforms
+  const dayOfWeek = dateToUse.getUTCDay(); // Use UTC day for consistent behavior across all platforms
   // Sunday = 5 (moderate), Wednesday = 7 (hardest), balanced across week
   // Hard 4–5 · Difficult 6 · Evil 7 · Impossible 8 — rotate across the week
   const difficulties = [5, 4, 6, 8, 7, 5, 4]; // Sun–Sat
@@ -221,6 +221,11 @@ async function getOrGenerateDailyPuzzle(
       }
     }
 
+    const visual = result.puzzle.visual;
+    if (visual?.unicodeFallback) {
+      puzzleDisplay = visual.unicodeFallback;
+    }
+
     // Persist first — clients must receive a real DB id for /api/puzzles/guess
     const persisted = await persistDailyPuzzle({
       dateString,
@@ -233,9 +238,13 @@ async function getOrGenerateDailyPuzzle(
       hints: result.puzzle.hints || [],
       aiGenerated: true,
       rebusPuzzle: typeToUse === "rebus" ? puzzleDisplay : undefined,
+      visual,
       metadataExtra: {
         qualityScore: result.metadata.qualityMetrics?.scores?.overall,
         uniquenessScore: result.metadata.uniquenessScore,
+        funScore: result.metadata.qualityMetrics?.scores?.fun,
+        techniqueId: result.puzzle.techniqueId,
+        visualStyleId: visual?.styleId,
       },
     });
 
@@ -257,8 +266,7 @@ async function getOrGenerateDailyPuzzle(
         }
       } catch (embeddingError) {
         logger.warn("Failed to generate embedding (non-critical)", {
-          error:
-            embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
+          error: embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
         });
       }
     })();
@@ -272,6 +280,7 @@ async function getOrGenerateDailyPuzzle(
       answer: result.puzzle.answer,
       explanation: result.puzzle.explanation,
       hints: result.puzzle.hints,
+      visual,
       date: dateString,
       topic: result.puzzle.category,
       category: result.puzzle.category,

@@ -12,11 +12,8 @@ import { Output, stepCountIs, ToolLoopAgent } from "ai";
 import { ensureGatewayKey, getGatewayModelChain } from "../client";
 import { AI_CONFIG } from "../config";
 import { enforceQuota } from "../quota-manager";
-import {
-  type PuzzleAgentResult,
-  PuzzleAgentResultSchema,
-} from "./schemas";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
+import { type PuzzleAgentResult, PuzzleAgentResultSchema } from "./schemas";
 import { fingerprintCandidate, scorePuzzleQuality } from "./tool-impl";
 import { puzzleAgentTools } from "./tools";
 
@@ -44,23 +41,20 @@ function loadInstructions(): string {
 
   let skill = "";
   try {
-    skill = readFileSync(
-      join(process.cwd(), "agent/skills/generate-daily-puzzle.md"),
-      "utf8"
-    );
+    skill = readFileSync(join(process.cwd(), "agent/skills/generate-daily-puzzle.md"), "utf8");
   } catch {
     // optional
   }
 
   return [
     instructions,
-    skill
-      ? `\n\n## Skill: generate-daily-puzzle\n${skill}`
-      : "",
+    skill ? `\n\n## Skill: generate-daily-puzzle\n${skill}` : "",
     "",
     "## Hard publish rules (non-negotiable)",
     "- techniqueId is required — pick a real technique from the library; no emoji salad.",
+    "- Prefer compose_puzzle_visual so the board uses Ink Pictogram SVGs + text layers.",
     "- funScore must come from technique fit + clever wordplay, NOT emoji count padding.",
+    "- rebusPuzzle must equal visual.unicodeFallback when visual is present.",
     "- rebusPuzzle must be non-empty and must NOT equal or contain the answer.",
     "- Require overall quality ≥ threshold, funScore ≥ 65, unique, solvable, in-band difficulty.",
     "- If validation fails, redesign the visual — do not bump scores or ship placeholders.",
@@ -69,8 +63,7 @@ function loadInstructions(): string {
 
 function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string): string {
   const puzzleType = params.puzzleType ?? "rebus";
-  const qualityThreshold =
-    params.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
+  const qualityThreshold = params.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
   const minFun = AI_CONFIG.puzzleAgent.minFunScore;
 
   const level = getDifficultyLevelForScore(params.targetDifficulty);
@@ -89,10 +82,10 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
     "Workflow:",
     "1) get_puzzle_type_spec + get_difficulty_brief",
     "2) list_recent_answers + propose_concept_seeds",
-    "3) list_technique_library → pick techniqueId, then assemble_visual_components + craft_hint_ladder",
+    "3) list_technique_library → pick techniqueId, then compose_puzzle_visual + craft_hint_ladder",
     "4) validate → uniqueness → calibrate → stress_test_solvability → score_quality",
-    "5) Revise until in-band, unique, solvable, publishable",
-    "6) Return structured result with difficultyLevel + techniqueId",
+    "5) Revise until in-band, unique, solvable, publishable (prefer a composed visual with ≥1 pictogram SVG)",
+    "6) Return structured result with difficultyLevel + techniqueId + visual",
   ]
     .filter(Boolean)
     .join("\n");
@@ -103,11 +96,17 @@ function passesPublishGates(
     rebusPuzzle: string;
     answer: string;
     techniqueId?: string;
+    visual?: {
+      unicodeFallback?: string;
+      layers?: Array<{ kind: string; svg?: string }>;
+      mode?: string;
+    };
   },
   quality: { overall: number; funScore?: number; publishable?: boolean; issues?: string[] },
   qualityThreshold: number
 ): { ok: true } | { ok: false; reason: string } {
-  const display = (puzzle.rebusPuzzle || "").trim();
+  const visualFallback = puzzle.visual?.unicodeFallback?.trim();
+  const display = (visualFallback || puzzle.rebusPuzzle || "").trim();
   const answer = (puzzle.answer || "").trim();
   const minFun = AI_CONFIG.puzzleAgent.minFunScore;
 
@@ -121,6 +120,17 @@ function passesPublishGates(
   }
   if (!puzzle.techniqueId) {
     return { ok: false, reason: "Missing techniqueId" };
+  }
+  if (
+    puzzle.visual &&
+    visualFallback &&
+    puzzle.rebusPuzzle.trim() &&
+    puzzle.rebusPuzzle.trim() !== visualFallback
+  ) {
+    return {
+      ok: false,
+      reason: "rebusPuzzle must equal visual.unicodeFallback",
+    };
   }
   if (quality.overall < qualityThreshold) {
     return {
@@ -153,10 +163,8 @@ export async function runPuzzleAgentGeneration(
   await enforceQuota();
 
   const start = Date.now();
-  const maxAttempts =
-    params.maxAttempts ?? AI_CONFIG.puzzleAgent.maxAttempts ?? 3;
-  const qualityThreshold =
-    params.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
+  const maxAttempts = params.maxAttempts ?? AI_CONFIG.puzzleAgent.maxAttempts ?? 3;
+  const qualityThreshold = params.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
 
   // Primary Eve model, then creative-tier fallbacks
   const modelChain = Array.from(
@@ -189,11 +197,8 @@ export async function runPuzzleAgentGeneration(
         }
 
         const puzzle = output.puzzle;
-        const calibrated =
-          output.metadata.calibratedDifficulty || puzzle.difficulty;
-        const level = getDifficultyLevelForScore(
-          params.targetDifficulty || calibrated
-        );
+        const calibrated = output.metadata.calibratedDifficulty || puzzle.difficulty;
+        const level = getDifficultyLevelForScore(params.targetDifficulty || calibrated);
         const fingerprint =
           output.metadata.fingerprint ||
           fingerprintCandidate({
@@ -202,10 +207,16 @@ export async function runPuzzleAgentGeneration(
             category: puzzle.category,
           });
 
+        // Keep share string aligned with generative board
+        if (puzzle.visual?.unicodeFallback) {
+          puzzle.rebusPuzzle = puzzle.visual.unicodeFallback;
+        }
+
         const quality = scorePuzzleQuality({
           ...puzzle,
           targetDifficulty: params.targetDifficulty,
           techniqueId: puzzle.techniqueId,
+          visual: puzzle.visual,
         });
 
         const gate = passesPublishGates(
@@ -213,6 +224,7 @@ export async function runPuzzleAgentGeneration(
             rebusPuzzle: puzzle.rebusPuzzle,
             answer: puzzle.answer,
             techniqueId: puzzle.techniqueId,
+            visual: puzzle.visual,
           },
           {
             overall: quality.overall,
@@ -230,9 +242,7 @@ export async function runPuzzleAgentGeneration(
         }
 
         const difficultyLevel =
-          puzzle.difficultyLevel ||
-          output.metadata.difficultyLevel ||
-          level.label;
+          puzzle.difficultyLevel || output.metadata.difficultyLevel || level.label;
 
         return {
           ...output,
@@ -250,6 +260,7 @@ export async function runPuzzleAgentGeneration(
             qualityScore: quality.overall,
             qualityVerdict: quality.verdict,
             funScore: quality.funScore ?? output.metadata.funScore,
+            visualStyleId: puzzle.visual?.styleId ?? output.metadata.visualStyleId,
             generationAttempts: attempt,
             thinkingSummary:
               output.metadata.thinkingSummary ??

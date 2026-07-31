@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { isAdmin } from "@/lib/admin-auth";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { verifyToken } from "@/lib/jwt";
-import type { GameData, PuzzleMetadata, PuzzleType } from "../../lib/gameSettings";
+import type { GameData, PuzzleMetadata, PuzzleType, PuzzleVisual } from "../../lib/gameSettings";
 import { getTodaysPuzzle } from "./puzzleGenerationActions";
 
 const AUTH_COOKIE = "rebuzzle_auth";
@@ -24,6 +24,7 @@ type TodaysPuzzle = {
   keyword?: string;
   category?: string;
   relevanceScore?: number;
+  visual?: PuzzleVisual;
 };
 
 /**
@@ -127,10 +128,7 @@ export async function fetchGameOverSolution(): Promise<{
   locked: boolean;
 }> {
   try {
-    const [userId, puzzleResult] = await Promise.all([
-      getCurrentUserId(),
-      getTodaysPuzzle(),
-    ]);
+    const [userId, puzzleResult] = await Promise.all([getCurrentUserId(), getTodaysPuzzle()]);
     const puzzle = (puzzleResult.success ? puzzleResult.puzzle : null) as TodaysPuzzle | null;
 
     if (!puzzle) {
@@ -190,9 +188,13 @@ export async function fetchGameData(_isPreview = false): Promise<PublicGameData>
       explanation: "", // revealed after lock via /api/puzzles/guess
       difficulty: toDifficulty(puzzle.difficulty),
       hints: puzzle.hints || [],
+      visual: puzzle.visual,
       leaderboard: [],
       isCompleted: false,
-      metadata,
+      metadata: {
+        ...metadata,
+        visualStyleId: puzzle.visual?.styleId,
+      },
       blogPost: null,
     };
   } catch (error) {

@@ -781,6 +781,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   <PuzzleMinimal
                     puzzle={puzzleDisplay}
                     puzzleType={puzzleType}
+                    visual={gameData.visual}
                     className="w-full max-w-2xl"
                   />
                   {/* Show last guess attempt in collapsed view */}
@@ -822,6 +823,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       <PuzzleDisplay
                         puzzle={puzzleDisplay}
                         puzzleType={puzzleType}
+                        visual={gameData.visual}
                         size={
                           puzzleType === "riddle" ||
                           puzzleType === "trivia" ||
