@@ -76,6 +76,25 @@ export function parseAIError(error: unknown): AIError {
   // Extract error message for quota detection
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorObj = error && typeof error === "object" ? (error as Record<string, unknown>) : null;
+  const errorName = error instanceof Error ? error.name : "";
+
+  // AI Gateway auth — surface actionable remediation (production wraps this as GatewayError)
+  if (
+    errorName === "GatewayAuthenticationError" ||
+    errorName === "GatewayError" ||
+    /unauthenticated/i.test(errorMessage) ||
+    /ai_gateway_api_key/i.test(errorMessage)
+  ) {
+    const onVercel = Boolean(process.env.VERCEL);
+    const remediation = onVercel
+      ? "Add AI_GATEWAY_API_KEY (vck_…) in Vercel → Project Settings → Environment Variables for Production and Preview, or enable Settings → Security → OIDC Federation."
+      : "Set AI_GATEWAY_API_KEY (vck_…) in apps/web/.env.local and restart the dev server.";
+    return new AIError(
+      `AI Gateway Unauthenticated. ${remediation} Learn more: https://ai-sdk.dev/unauthenticated-ai-gateway`,
+      "AUTH_ERROR",
+      401
+    );
+  }
 
   // Check for model not found errors (should trigger fallback to next model)
   if (

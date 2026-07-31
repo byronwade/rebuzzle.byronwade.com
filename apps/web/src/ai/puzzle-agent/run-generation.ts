@@ -8,7 +8,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Output, stepCountIs, ToolLoopAgent } from "ai";
-import { ensureGatewayKey, getAiGateway, getGatewayModelChain } from "../client";
+import {
+  assertGatewayAuthConfigured,
+  ensureGatewayKey,
+  getAiGateway,
+  getGatewayModelChain,
+} from "../client";
 import { AI_CONFIG } from "../config";
 import { enforceQuota } from "../quota-manager";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
@@ -159,6 +164,7 @@ export async function runPuzzleAgentGeneration(
   params: PuzzleGenerationParams
 ): Promise<PuzzleAgentResult> {
   ensureGatewayKey();
+  assertGatewayAuthConfigured();
   await enforceQuota();
 
   const start = Date.now();

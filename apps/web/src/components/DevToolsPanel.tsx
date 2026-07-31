@@ -37,6 +37,7 @@ export function DevToolsPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("");
   const [lockInfo, setLockInfo] = useState<string>("");
+  const [gatewayInfo, setGatewayInfo] = useState<string>("");
 
   useEffect(() => {
     const sync = () => setEnabled(isDevModeEnabled());
@@ -61,10 +62,17 @@ export function DevToolsPanel() {
         lock?: { hasAttempt?: boolean; wasSuccessful?: boolean };
         puzzle?: { id?: string; puzzle?: string };
         puzzleDate?: string;
+        gateway?: {
+          authPath?: string;
+          apiKeyPresent?: boolean;
+          onVercel?: boolean;
+          likelyConfigured?: boolean;
+        };
       };
       if (!res.ok || !data.allowed) {
         setAllowed(false);
         setLockInfo("Sign in as guest or account to use Dev Mode actions");
+        setGatewayInfo("");
         return;
       }
       setAllowed(true);
@@ -78,9 +86,20 @@ export function DevToolsPanel() {
           data.puzzle?.id ? ` · ${data.puzzle.id.slice(0, 8)}…` : " · no puzzle"
         }`
       );
+      if (data.gateway) {
+        const g = data.gateway;
+        setGatewayInfo(
+          g.likelyConfigured
+            ? `AI Gateway · ${g.authPath ?? "?"}${g.apiKeyPresent ? " · key" : ""}${
+                g.onVercel ? " · vercel" : ""
+              }`
+            : "AI Gateway · NOT CONFIGURED — set AI_GATEWAY_API_KEY on Vercel"
+        );
+      }
     } catch {
       setAllowed(false);
       setLockInfo("Could not reach Dev API");
+      setGatewayInfo("");
     }
   }, []);
 
@@ -165,6 +184,18 @@ export function DevToolsPanel() {
           <p className="rounded-md bg-muted/80 px-2 py-1.5 font-mono text-[10px] text-foreground/80">
             {lockInfo || (allowed === null ? "Checking access…" : "—")}
           </p>
+          {gatewayInfo && (
+            <p
+              className={cn(
+                "rounded-md px-2 py-1.5 font-mono text-[10px]",
+                gatewayInfo.includes("NOT CONFIGURED")
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-muted/60 text-foreground/70"
+              )}
+            >
+              {gatewayInfo}
+            </p>
+          )}
 
           {allowed === false && (
             <p className="text-destructive text-[11px]">

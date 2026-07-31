@@ -79,10 +79,11 @@ const FALLBACK_PUZZLES = [
 async function getOrGenerateDailyPuzzle(
   dateString: string,
   puzzleType?: string,
-  options?: { allowAiGenerate?: boolean }
+  options?: { allowAiGenerate?: boolean; failOnAiError?: boolean }
 ) {
   const allowAiGenerate = options?.allowAiGenerate !== false;
-  logger.info("Getting puzzle for date", { dateString, allowAiGenerate });
+  const failOnAiError = options?.failOnAiError === true;
+  logger.info("Getting puzzle for date", { dateString, allowAiGenerate, failOnAiError });
 
   // STEP 1: Cross-request cached DB read via Cache Components ("use cache")
   try {
@@ -300,6 +301,11 @@ async function getOrGenerateDailyPuzzle(
       }
     );
 
+    // Admin / Dev regenerate: surface the real failure instead of seeding a fallback.
+    if (failOnAiError) {
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+
     // STEP 4: AI failed — persist a deterministic fallback so guessing still works
     const [y, m, d] = dateString.split("-").map(Number);
     const dayOfYear = Math.floor(
@@ -358,7 +364,7 @@ async function getOrGenerateDailyPuzzle(
 export async function getTodaysPuzzle(
   puzzleType?: string,
   dateString?: string,
-  options?: { allowAiGenerate?: boolean }
+  options?: { allowAiGenerate?: boolean; failOnAiError?: boolean }
 ) {
   try {
     // Use provided date string or get today's date
@@ -379,6 +385,11 @@ export async function getTodaysPuzzle(
       "Error in getTodaysPuzzle",
       error instanceof Error ? error : new Error(String(error))
     );
+
+    // Dev/admin regenerate must not paper over AI Gateway auth failures.
+    if (options?.failOnAiError) {
+      throw error instanceof Error ? error : new Error(String(error));
+    }
 
     // Last resort — still persist so /api/puzzles/guess can resolve the id
     const lastResortPuzzle = FALLBACK_PUZZLES[0]!;
