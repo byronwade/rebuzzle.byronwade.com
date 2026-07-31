@@ -1,18 +1,40 @@
 import { NextResponse } from "next/server";
-import type { BlogPost, User } from "@/db/models";
+import type { BlogPost } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { userOps } from "@/db/operations";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { authorizeCron } from "@/lib/cron/auth";
 import { getAppUrl } from "@/lib/env";
 import { sendBlogPostEmail } from "@/lib/notifications/email-service";
+import { getActiveEmailRecipients } from "@/lib/notifications/subscribers";
 
+/**
+ * POST /api/blog/send-notification
+ * Manual/admin or cron-triggered blog blast. Requires cron auth or admin user.
+ */
 export async function POST(request: Request) {
   try {
+    const cronAuth = authorizeCron(request);
+    let authorized = cronAuth.ok;
+
+    if (!authorized) {
+      const authUser = await getAuthenticatedUser(request);
+      if (authUser) {
+        const user = await userOps.findById(authUser.userId);
+        authorized = Boolean(user?.isAdmin);
+      }
+    }
+
+    if (!authorized) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const { postId, sendToAllUsers = false } = await request.json();
 
     if (!postId) {
       return NextResponse.json({ error: "Post ID is required" }, { status: 400 });
     }
 
-    // Get blog post
     const blogPostsCollection = getCollection<BlogPost>("blogPosts");
     const post = await blogPostsCollection.findOne({ id: postId });
 
@@ -22,47 +44,10 @@ export async function POST(request: Request) {
 
     const baseUrl = getAppUrl();
     const postUrl = `${baseUrl}/blog/${post.slug}`;
-
-    // Get recipients
-    let recipients: Array<{ email: string; username?: string }> = [];
-
-    if (sendToAllUsers) {
-      // Send to all registered users
-      const usersCollection = getCollection<User>("users");
-      const allUsers = await usersCollection.find({}).toArray();
-      recipients = allUsers.map((user) => ({
-        email: user.email,
-        username: user.username,
-      }));
-    } else {
-      // Send only to email subscribers
-      const emailSubscriptionsCollection = getCollection("emailSubscriptions");
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30); // Use UTC for consistent behavior
-
-      const subscriptions = await emailSubscriptionsCollection
-        .find({
-          enabled: true,
-          updatedAt: { $gte: thirtyDaysAgo },
-        })
-        .toArray();
-
-      // Get user info for personalization
-      const usersCollection = getCollection<User>("users");
-      const userIds = subscriptions.map((s) => s.userId).filter((id): id is string => Boolean(id));
-      const users = await usersCollection.find({ id: { $in: userIds } }).toArray();
-
-      const userMap = new Map(users.map((u) => [u.id, u]));
-
-      recipients = subscriptions.map((sub) => ({
-        email: sub.email,
-        username: sub.userId ? userMap.get(sub.userId)?.username : undefined,
-      }));
-    }
+    const recipients = await getActiveEmailRecipients({ sendToAllUsers });
 
     console.log(`[Blog] Sending blog post notification to ${recipients.length} recipients`);
 
-    // Send emails in batches
     const emailResults = {
       sent: 0,
       failed: 0,
@@ -78,13 +63,13 @@ export async function POST(request: Request) {
       const batchPromises = batch.map(async (recipient) => {
         try {
           const unsubscribeUrl = `${baseUrl}/unsubscribe?email=${encodeURIComponent(recipient.email)}`;
-
           const result = await sendBlogPostEmail(recipient.email, {
             username: recipient.username,
             postTitle: post.title,
             postExcerpt: post.excerpt || "",
             postUrl,
-            authorName: post.authorId === "ai-system" ? "Rebuzzle AI" : undefined,
+            authorName:
+              post.authorId === "eve-ai" || post.authorId === "ai-system" ? "Eve" : undefined,
             unsubscribeUrl,
           });
 
@@ -117,6 +102,11 @@ export async function POST(request: Request) {
         await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
       }
     }
+
+    await blogPostsCollection.updateOne(
+      { id: post.id },
+      { $set: { lastEmailedAt: new Date(), updatedAt: new Date() } }
+    );
 
     return NextResponse.json({
       success: true,

@@ -216,6 +216,8 @@ export interface BlogPost {
   archiveDate?: BlogArchiveDate;
   // NEW: Puzzle type for filtering (denormalized from puzzle)
   puzzleType?: string;
+  /** When the morning Resend blast last emailed this post */
+  lastEmailedAt?: Date;
 }
 
 export interface Achievement {
@@ -266,6 +268,8 @@ export interface EmailSubscription {
   email: string;
   enabled: boolean;
   lastSentAt?: Date;
+  /** Last streak-at-risk Reminder send (UTC day dedupe) */
+  lastStreakReminderAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

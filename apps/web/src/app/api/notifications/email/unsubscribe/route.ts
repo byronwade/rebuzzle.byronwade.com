@@ -72,8 +72,17 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email");
     const userId = searchParams.get("userId");
+    const wantsJson =
+      searchParams.get("format") === "json" ||
+      (req.headers.get("accept") || "").includes("application/json");
 
     if (!(email || userId)) {
+      if (wantsJson) {
+        return NextResponse.json(
+          { success: false, error: "Email or user ID is required" },
+          { status: 400 }
+        );
+      }
       return NextResponse.redirect(new URL("/unsubscribe?error=missing-params", req.url));
     }
 
@@ -82,30 +91,37 @@ export async function GET(req: Request) {
     // Build query - only one identifier at a time to prevent bulk operations
     const query: { email?: string; userId?: string } = {};
     if (userId) {
-      // Prefer userId as it's more specific
       query.userId = userId;
     } else if (email) {
       query.email = email.toLowerCase().trim();
     }
 
-    // Use updateOne to only affect a single subscription (security fix)
-    const result = await subscriptionsCollection.updateOne(query, {
+    await subscriptionsCollection.updateOne(query, {
       $set: {
         enabled: false,
         updatedAt: new Date(),
       },
     });
 
-    // Always redirect to success page to prevent email enumeration
-    // Don't reveal whether email exists or not
-    if (result.modifiedCount > 0) {
-      // Actually unsubscribed
-      return NextResponse.redirect(new URL("/unsubscribe?success=true", req.url));
+    // Always succeed outwardly to prevent email enumeration
+    if (wantsJson) {
+      return NextResponse.json({
+        success: true,
+        message: "Email notifications disabled",
+      });
     }
-    // No subscription found or already unsubscribed - still show success to prevent enumeration
     return NextResponse.redirect(new URL("/unsubscribe?success=true", req.url));
   } catch (error) {
     console.error("[Notifications] Unsubscribe error:", error);
+    const wantsJson =
+      new URL(req.url).searchParams.get("format") === "json" ||
+      (req.headers.get("accept") || "").includes("application/json");
+    if (wantsJson) {
+      return NextResponse.json(
+        { success: false, error: "Failed to disable email notifications" },
+        { status: 500 }
+      );
+    }
     return NextResponse.redirect(new URL("/unsubscribe?error=server-error", req.url));
   }
 }

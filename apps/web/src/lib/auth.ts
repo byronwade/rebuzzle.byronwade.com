@@ -199,7 +199,7 @@ function calculateNewStats(
   const newLevel = calculateLevel(newPoints);
 
   // Achievement tracking calculations
-  const maxAttempts = gameResult.maxAttempts || 5;
+  const maxAttempts = gameResult.maxAttempts ?? 3;
   const isPerfectSolve = gameResult.won && gameResult.attempts === 1;
   const isClutchSolve = gameResult.won && gameResult.attempts === maxAttempts;
   const isSpeedSolve =
@@ -294,6 +294,8 @@ export async function updateUserStats(
     attempts: number;
     timeSpent?: number;
     difficulty?: number;
+    maxAttempts?: number;
+    hintsUsed?: number;
     pointsMultiplier?: number;
     affectsStreak?: boolean;
   }

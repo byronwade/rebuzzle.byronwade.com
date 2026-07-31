@@ -7,18 +7,14 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { userAchievementOps, userOps } from "@/db/operations";
-import {
-  ALL_ACHIEVEMENTS,
-  awardAchievement,
-  getUserAchievementProgress,
-} from "@/lib/achievements";
+import { ALL_ACHIEVEMENTS, awardAchievement, getUserAchievementProgress } from "@/lib/achievements";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { sendAchievementUnlockedEmail } from "@/lib/notifications/email-service";
 
 /** Achievements that may be claimed from the client (everything else is server-only). */
-const CLIENT_AWARDABLE = new Set(["share_result"]);
+const CLIENT_AWARDABLE = new Set(["share_first"]);
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,18 +85,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!manualAward) {
-      return NextResponse.json(
-        { success: false, error: "Missing manualAward" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Missing manualAward" }, { status: 400 });
     }
 
     const { achievementId } = manualAward;
     if (!achievementId || typeof achievementId !== "string") {
-      return NextResponse.json(
-        { success: false, error: "Invalid achievementId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Invalid achievementId" }, { status: 400 });
     }
 
     if (!CLIENT_AWARDABLE.has(achievementId)) {
@@ -118,8 +108,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // share_result: require today's puzzle to be finished first
-    if (achievementId === "share_result") {
+    // share_first: require today's puzzle to be finished first
+    if (achievementId === "share_first") {
       const { puzzleAttemptOps } = await import("@/db/operations");
       const lock = await puzzleAttemptOps.hasTodayAttempt(user.id, getUtcPuzzleDate());
       if (!lock.hasAttempt) {

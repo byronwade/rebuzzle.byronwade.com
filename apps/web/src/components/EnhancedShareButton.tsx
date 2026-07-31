@@ -56,12 +56,12 @@ export function EnhancedShareButton({
     hasTrackedShare.current = true;
 
     try {
-      // Award share_result achievement
+      // Award Social Butterfly (catalog id: share_first)
       await fetch("/api/user/achievements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          manualAward: { achievementId: "share_result" },
+          manualAward: { achievementId: "share_first" },
         }),
       });
 

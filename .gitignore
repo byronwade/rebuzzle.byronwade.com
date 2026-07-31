@@ -45,3 +45,8 @@ yarn-error.log*
 .env*.local
 node_modules/.pnpm
 pnpm-lock.yaml
+
+# Playwright
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/blob-report/

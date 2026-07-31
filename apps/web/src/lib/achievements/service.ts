@@ -133,9 +133,10 @@ export async function checkAndAwardAchievements(
 }
 
 /**
- * Check if a specific achievement criteria is met
+ * Check if a specific achievement criteria is met.
+ * Exported for unit/e2e harnesses — production callers use checkAndAwardAchievements.
  */
-async function checkAchievementCriteria(
+export async function checkAchievementCriteria(
   criteria: AchievementCriteria,
   user: User,
   stats: UserStats,
@@ -157,15 +158,9 @@ async function checkAchievementCriteria(
       return noHintWins >= criteria.count;
     }
 
-    case "perfect_solves": {
-      // Use stats tracking for perfect solves
-      let perfectCount = stats.perfectSolves || 0;
-      // Include current game if it's a perfect solve (for immediate feedback)
-      if (gameContext.attempts === 1 && gameContext.isCorrect) {
-        perfectCount += 1;
-      }
-      return perfectCount >= criteria.count;
-    }
+    case "perfect_solves":
+      // Stats are updated before this checker runs — do not double-count.
+      return (stats.perfectSolves || 0) >= criteria.count;
 
     case "streak_days":
       return stats.streak >= criteria.count;
@@ -194,18 +189,13 @@ async function checkAchievementCriteria(
     case "level_reached":
       return stats.level >= criteria.level;
 
-    case "clutch_solves": {
-      // Use stats tracking for clutch solves
-      let clutchCount = stats.clutchSolves || 0;
-      // Include current game if it's a clutch solve (for immediate feedback)
-      if (gameContext.isCorrect && gameContext.attempts === gameContext.maxAttempts) {
-        clutchCount += 1;
-      }
-      return clutchCount >= criteria.count;
-    }
+    case "clutch_solves":
+      // Stats are updated before this checker runs — do not double-count.
+      return (stats.clutchSolves || 0) >= criteria.count;
 
     case "daily_challenges":
-      return stats.dailyChallengeStreak >= criteria.count || stats.totalGames >= criteria.count;
+      // Total successful daily solves (wins), not total games / losses.
+      return (stats.wins || 0) >= criteria.count;
 
     case "weekly_puzzles": {
       const oneWeekAgo = new Date();
@@ -225,32 +215,14 @@ async function checkAchievementCriteria(
       return winRate >= criteria.percentage;
     }
 
-    case "difficulty_easy": {
-      let easyCount = stats.easyPuzzlesSolved || 0;
-      // Include current game if applicable
-      if (gameContext.difficulty === "easy" && gameContext.isCorrect) {
-        easyCount += 1;
-      }
-      return easyCount >= criteria.count;
-    }
+    case "difficulty_easy":
+      return (stats.easyPuzzlesSolved || 0) >= criteria.count;
 
-    case "difficulty_medium": {
-      let mediumCount = stats.mediumPuzzlesSolved || 0;
-      // Include current game if applicable
-      if (gameContext.difficulty === "medium" && gameContext.isCorrect) {
-        mediumCount += 1;
-      }
-      return mediumCount >= criteria.count;
-    }
+    case "difficulty_medium":
+      return (stats.mediumPuzzlesSolved || 0) >= criteria.count;
 
-    case "difficulty_hard": {
-      let hardCount = stats.hardPuzzlesSolved || 0;
-      // Include current game if applicable
-      if (gameContext.difficulty === "hard" && gameContext.isCorrect) {
-        hardCount += 1;
-      }
-      return hardCount >= criteria.count;
-    }
+    case "difficulty_hard":
+      return (stats.hardPuzzlesSolved || 0) >= criteria.count;
 
     case "all_difficulties_in_day": {
       const today = new Date();
@@ -306,8 +278,14 @@ async function checkAchievementCriteria(
       return totalTime >= criteria.minutes * 60;
     }
 
-    case "categories_completed":
-      return false; // Needs category tracking
+    case "categories_completed": {
+      // Difficulty tiers act as categories until per-type tracking exists.
+      let completed = 0;
+      if ((stats.easyPuzzlesSolved || 0) > 0) completed += 1;
+      if ((stats.mediumPuzzlesSolved || 0) > 0) completed += 1;
+      if ((stats.hardPuzzlesSolved || 0) > 0) completed += 1;
+      return completed >= criteria.count;
+    }
 
     case "hints_used_total": {
       const totalHints = recentAttempts.reduce((sum, a) => sum + (a.hintsUsed || 0), 0);
@@ -396,14 +374,15 @@ function checkCustomAchievement(
         gameContext.timeTaken < 30
       );
 
+    // Meta badges may unlock as the Nth achievement (count is pre-award).
     case "achievements_unlocked_75":
-      return currentAchievementCount >= 75;
+      return currentAchievementCount >= 74;
 
     case "achievements_unlocked_90":
-      return currentAchievementCount >= 90;
+      return currentAchievementCount >= 89;
 
     case "achievements_unlocked_100":
-      return currentAchievementCount >= 100;
+      return currentAchievementCount >= 99;
 
     case "puzzle_god":
       return (

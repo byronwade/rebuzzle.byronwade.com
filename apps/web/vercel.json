@@ -5,12 +5,16 @@
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/cron/generate-blog",
-      "schedule": "0 20 * * *"
+      "path": "/api/cron/send-blog-emails",
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/send-notifications",
-      "schedule": "0 8 * * *"
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/generate-blog",
+      "schedule": "0 20 * * *"
     },
     {
       "path": "/api/cron/streak-reminder",
@@ -22,6 +26,9 @@
       "maxDuration": 300
     },
     "src/app/api/cron/generate-blog/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cron/send-blog-emails/route.ts": {
       "maxDuration": 300
     },
     "src/app/api/cron/send-notifications/route.ts": {

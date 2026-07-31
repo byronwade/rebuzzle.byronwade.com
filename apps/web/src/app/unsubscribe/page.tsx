@@ -1,106 +1,70 @@
-"use client";
-
 import { CheckCircle2, Mail, XCircle } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { connection } from "next/server";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { getCollection } from "@/db/mongodb";
 
-export default function UnsubscribePage() {
-  const searchParams = useSearchParams();
-  const { toast } = useToast();
-  const [status, setStatus] = useState<"loading" | "success" | "error" | "not-found">("loading");
-  const [email, setEmail] = useState<string | null>(null);
+type SearchParams = Promise<{
+  email?: string;
+  userId?: string;
+  error?: string;
+  success?: string;
+}>;
 
-  useEffect(() => {
-    const emailParam = searchParams.get("email");
-    const errorParam = searchParams.get("error");
-
-    // Handle error cases from API redirects
-    if (errorParam) {
-      setStatus("error");
-      if (errorParam === "not-found") {
-        toast({
-          title: "Not Found",
-          description: "No active subscription found for this email.",
-          variant: "destructive",
-        });
-      } else if (errorParam === "server-error") {
-        toast({
-          title: "Server Error",
-          description: "An error occurred while processing your request.",
-          variant: "destructive",
-        });
-      }
-      return;
+async function disableSubscription(opts: {
+  email?: string;
+  userId?: string;
+}): Promise<"ok" | "error"> {
+  try {
+    const subscriptionsCollection = getCollection("emailSubscriptions");
+    const query: { email?: string; userId?: string } = {};
+    if (opts.userId) {
+      query.userId = opts.userId;
+    } else if (opts.email) {
+      query.email = opts.email.toLowerCase().trim();
+    } else {
+      return "error";
     }
 
-    if (!emailParam) {
-      setStatus("not-found");
-      return;
-    }
+    await subscriptionsCollection.updateOne(query, {
+      $set: {
+        enabled: false,
+        updatedAt: new Date(),
+      },
+    });
+    return "ok";
+  } catch (error) {
+    console.error("[Unsubscribe] Failed:", error);
+    return "error";
+  }
+}
 
-    setEmail(emailParam);
+export default async function UnsubscribePage({ searchParams }: { searchParams: SearchParams }) {
+  await connection();
+  const params = await searchParams;
 
-    // Unsubscribe via API
-    const unsubscribe = async () => {
-      try {
-        const response = await fetch("/api/notifications/email/unsubscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: emailParam }),
-        });
+  let status: "success" | "error" | "not-found" = "not-found";
+  const email: string | null = params.email ?? null;
 
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          setStatus("success");
-          toast({
-            title: "Unsubscribed",
-            description: "You've been unsubscribed from email notifications.",
-          });
-        } else {
-          setStatus("error");
-          toast({
-            title: "Error",
-            description: data.error || "Failed to unsubscribe. Please try again.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Unsubscribe error:", error);
-        setStatus("error");
-        toast({
-          title: "Error",
-          description: "Failed to unsubscribe. Please try again.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    unsubscribe();
-  }, [searchParams, toast]);
+  if (params.error) {
+    status = "error";
+  } else if (params.success === "true") {
+    status = "success";
+  } else if (params.email || params.userId) {
+    const result = await disableSubscription({
+      email: params.email,
+      userId: params.userId,
+    });
+    status = result === "ok" ? "success" : "error";
+  }
 
   return (
     <Layout>
       <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
         <div className="flex justify-center">
           <Card className="w-full max-w-[400px] p-8" variant="float">
-            {status === "loading" && (
-              <div className="text-center">
-                <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <h1 className="font-semibold text-2xl tracking-[-0.04em]">Unsubscribing…</h1>
-                <p className="text-muted-foreground text-sm">
-                  Please wait while we process your request.
-                </p>
-              </div>
-            )}
-
             {status === "success" && (
               <div className="text-center">
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
@@ -108,17 +72,18 @@ export default function UnsubscribePage() {
                 </div>
                 <h1 className="font-semibold text-2xl tracking-[-0.04em]">Unsubscribed</h1>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  {email && (
+                  {email ? (
                     <>
-                      You've been unsubscribed from email notifications for <strong>{email}</strong>
-                      .
+                      You&apos;ve been unsubscribed from email notifications for{" "}
+                      <strong>{email}</strong>.
                     </>
+                  ) : (
+                    "You've been unsubscribed from email notifications."
                   )}
-                  {!email && "You've been unsubscribed from email notifications."}
                 </p>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  You won't receive any more email notifications from Rebuzzle. You can resubscribe
-                  at any time from your account settings.
+                  You won&apos;t receive any more email notifications from Rebuzzle. You can
+                  resubscribe at any time from your account settings.
                 </p>
                 <div className="mt-7 flex flex-col gap-2">
                   <Button asChild className="w-full">
@@ -137,11 +102,11 @@ export default function UnsubscribePage() {
                   <XCircle className="h-5 w-5 text-destructive" />
                 </div>
                 <h1 className="font-semibold text-2xl tracking-[-0.04em]">
-                  Unsubscribe didn't go through
+                  Unsubscribe didn&apos;t go through
                 </h1>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  We couldn't process your unsubscribe request. This might be because the link has
-                  expired or is invalid.
+                  We couldn&apos;t process your unsubscribe request. This might be because the link
+                  has expired or is invalid.
                 </p>
                 <div className="mt-7 flex flex-col gap-2">
                   <Button asChild className="w-full">
@@ -159,18 +124,14 @@ export default function UnsubscribePage() {
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <h1 className="font-semibold text-2xl tracking-[-0.04em]">Invalid Link</h1>
+                <h1 className="font-semibold text-2xl tracking-[-0.04em]">Missing email</h1>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  This unsubscribe link is invalid or missing required information. Please use the
-                  unsubscribe link from your email, or manage your preferences in your account
-                  settings.
+                  This unsubscribe link is missing an email address. Open the link from your
+                  notification email, or manage preferences in settings.
                 </p>
-                <div className="mt-7 flex flex-col gap-2">
+                <div className="mt-7">
                   <Button asChild className="w-full">
                     <Link href="/settings">Manage settings</Link>
-                  </Button>
-                  <Button asChild className="w-full" variant="outline">
-                    <Link href="/">Back to the puzzle</Link>
                   </Button>
                 </div>
               </div>
