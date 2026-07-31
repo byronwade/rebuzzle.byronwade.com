@@ -71,6 +71,10 @@
 
     --radius: 0.5rem; /* marketing radius 8px; sm 4px / md 6px derive from it */
     --header-height: 56px;
+
+    /* Semantic font stacks — skins rebind these; next/font fills --font-geist-* */
+    --font-sans: var(--font-geist-sans), Inter, system-ui, -apple-system, sans-serif;
+    --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 
   .dark {
@@ -111,6 +115,130 @@
     --shadow-lg: 0 2px 2px rgb(0 0 0 / 0.28), 0 8px 16px -4px rgb(0 0 0 / 0.32);
     --shadow-menu: 0 1px 1px rgb(0 0 0 / 0.24), 0 8px 16px -4px rgb(0 0 0 / 0.32),
       0 24px 32px -8px rgb(0 0 0 / 0.4);
+  }
+
+  /* ============================================================
+     8-BIT SKIN — inspired by 8bitcn/ui
+     Composes with .dark. Sharp corners, pixel font, chunky borders.
+     https://www.8bitcn.com/docs
+     ============================================================ */
+  html[data-skin="8bit"] {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+    --inset: 0 0% 97%;
+
+    --primary: 0 0% 21%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 21%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 45%;
+    --subtle-foreground: 0 0% 55%;
+    --accent: 0 0% 97%;
+    --accent-foreground: 0 0% 21%;
+
+    --border: 0 0% 70%;
+    --border-strong: 0 0% 20%;
+    --input: 0 0% 70%;
+    --ring: 0 0% 40%;
+
+    --link: 212 100% 42%;
+    --link-deep: 212 100% 36%;
+    --success: 131 45% 38%;
+    --warning: 40 95% 48%;
+    --destructive: 12 85% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --chart-1: 28 90% 52%;
+    --chart-2: 184 55% 42%;
+    --chart-3: 220 35% 40%;
+    --chart-4: 84 70% 55%;
+    --chart-5: 50 85% 52%;
+
+    --shadow-border: inset 0 0 0 2px hsl(0 0% 15%);
+    --shadow-sm: 2px 2px 0 0 hsl(0 0% 15%);
+    --shadow-md: 3px 3px 0 0 hsl(0 0% 15%);
+    --shadow-lg: 4px 4px 0 0 hsl(0 0% 15%);
+    --shadow-menu: 4px 4px 0 0 hsl(0 0% 15%);
+
+    --radius: 0rem;
+    --font-sans: var(--font-pixel), "Press Start 2P", ui-monospace, monospace;
+    --font-mono: var(--font-pixel), "Press Start 2P", ui-monospace, monospace;
+    /* Press Start 2P is oversized at 16px — dial the root down */
+    font-size: 12px;
+  }
+
+  html[data-skin="8bit"].dark {
+    --background: 0 0% 15%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 21%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 21%;
+    --popover-foreground: 0 0% 98%;
+    --inset: 0 0% 18%;
+
+    --primary: 0 0% 92%;
+    --primary-foreground: 0 0% 21%;
+
+    --secondary: 0 0% 27%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 27%;
+    --muted-foreground: 0 0% 70%;
+    --subtle-foreground: 0 0% 60%;
+    --accent: 0 0% 27%;
+    --accent-foreground: 0 0% 98%;
+
+    --border: 0 0% 45%;
+    --border-strong: 0 0% 80%;
+    --input: 0 0% 45%;
+    --ring: 0 0% 70%;
+
+    --link: 212 100% 65%;
+    --link-deep: 212 100% 72%;
+    --success: 131 45% 52%;
+    --warning: 40 95% 55%;
+    --destructive: 12 80% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --chart-1: 264 70% 55%;
+    --chart-2: 162 55% 48%;
+    --chart-3: 50 85% 55%;
+    --chart-4: 303 65% 55%;
+    --chart-5: 16 80% 55%;
+
+    --shadow-border: inset 0 0 0 2px hsl(0 0% 92%);
+    --shadow-sm: 2px 2px 0 0 hsl(0 0% 92%);
+    --shadow-md: 3px 3px 0 0 hsl(0 0% 92%);
+    --shadow-lg: 4px 4px 0 0 hsl(0 0% 92%);
+    --shadow-menu: 4px 4px 0 0 hsl(0 0% 92%);
+  }
+
+  html[data-skin="8bit"] body {
+    font-feature-settings: normal;
+    /* Pixel fonts read better slightly smaller with more line height */
+    letter-spacing: 0;
+    line-height: 1.6;
+    image-rendering: pixelated;
+  }
+
+  html[data-skin="8bit"] h1,
+  html[data-skin="8bit"] h2,
+  html[data-skin="8bit"] h3,
+  html[data-skin="8bit"] h4 {
+    letter-spacing: 0;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  html[data-skin="8bit"] :focus-visible {
+    outline-width: 3px;
+    outline-offset: 2px;
+    border-radius: 0;
   }
 }
 
