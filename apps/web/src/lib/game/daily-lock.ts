@@ -14,6 +14,19 @@ export function getUtcDayBounds(puzzleDate: string): { start: Date; end: Date } 
   };
 }
 
+/** Next UTC midnight — when the daily puzzle rolls over. */
+export function getNextUtcMidnight(date: Date = new Date()): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + 1);
+  next.setUTCHours(0, 0, 0, 0);
+  return next;
+}
+
+/** Milliseconds until next UTC midnight (0 if already past). */
+export function msUntilNextUtcMidnight(date: Date = new Date()): number {
+  return Math.max(0, getNextUtcMidnight(date).getTime() - date.getTime());
+}
+
 export function clampAttempts(value: unknown, maxAttempts: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 1;
   return Math.min(Math.max(Math.floor(value), 1), maxAttempts);

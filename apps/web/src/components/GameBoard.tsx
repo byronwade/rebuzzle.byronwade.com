@@ -12,6 +12,7 @@ import {
   trackPuzzleCompletion,
   trackPuzzleStart,
 } from "@/lib/analytics";
+import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
@@ -304,10 +305,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
   const setCompletionState = useCallback(
     (success: boolean, finalGuess: string, attempts: number, serverScore?: number) => {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
+      // Daily rollover is UTC midnight — matches server puzzle day + lock
+      const tomorrow = getNextUtcMidnight();
 
       const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
       const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
