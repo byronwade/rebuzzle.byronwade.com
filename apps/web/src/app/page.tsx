@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
+import { PrefetchGuestClient } from "@/components/prefetch-guest-client";
 import { PuzzleSkeleton } from "@/components/PuzzleSkeleton";
 import { generatePuzzleMetadata } from "@/lib/seo/metadata";
 import {
@@ -200,14 +201,10 @@ function PuzzleAlreadyAttemptedDisplay({ wasSuccessful }: { wasSuccessful: boole
  */
 async function PuzzleContent({ params }: { params: { preview: boolean; test: boolean } }) {
   try {
-    // Access headers to ensure this component is dynamic before any operations
-    // This is required in Next.js 16 Cache Components mode
-    const headersList = await headers();
-    headersList.get("x-forwarded-proto");
+    // Opt into request-time rendering before Date/cookie-dependent work
+    await connection();
 
-    // params makes this component dynamic, but we need to ensure it's accessed
-    // before any operations that might use new Date()
-    const { preview, test } = params;
+    const { preview } = params;
 
     // Check if the puzzle has been attempted today (success or failure)
     const attemptStatus = await isPuzzleCompletedForToday();
@@ -345,6 +342,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
           }}
           type="application/ld+json"
         />
+        <PrefetchGuestClient />
         <GameBoard gameData={gameData} />
       </Layout>
     );

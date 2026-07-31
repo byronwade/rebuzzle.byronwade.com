@@ -1,12 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  // Cache Components (PPR + "use cache" / cacheLife / cacheTag)
   cacheComponents: true,
 
-  // Enable React Compiler for automatic memoization
-  // Disable in development to avoid HMR issues with compiler runtime
+  // React Compiler — automatic memoization (prod only to keep HMR snappy)
   reactCompiler: process.env.NODE_ENV === "production",
 
+  // Client router cache stale times
   experimental: {
     staleTimes: {
       dynamic: 30,
@@ -31,6 +33,8 @@ const nextConfig = {
       "@radix-ui/react-tooltip",
       "lucide-react",
       "date-fns",
+      "recharts",
+      "@rebuzzle/game-logic",
     ],
   },
 

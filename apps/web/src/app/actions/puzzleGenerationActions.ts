@@ -1,10 +1,9 @@
 "use server";
 
-import { cache } from "react";
 import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
 import { db } from "@/db";
-import type { Puzzle } from "@/db/models";
+import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
 import { logger } from "@/lib/logger";
 
 /**
@@ -67,124 +66,48 @@ const FALLBACK_PUZZLES = [
  * Get or generate today's puzzle
  *
  * SMART TOKEN USAGE:
- * 1. Check database first (puzzle already generated for today)
+ * 1. Check Data Cache / database first (puzzle already generated for today)
  * 2. If not found, generate with AI (ONE TIME per day)
- * 3. Store in database for all users
- * 4. All subsequent requests use database (NO TOKENS!)
+ * 3. Store in database + revalidateTag("daily-puzzle")
+ * 4. All subsequent requests hit "use cache" (NO TOKENS!)
  *
  * @param dateString - Date string in YYYY-MM-DD format
  * @param puzzleType - Optional puzzle type (e.g., "rebus", "word-puzzle")
  */
-const getCachedDailyPuzzle = cache(async (dateString: string, puzzleType?: string) => {
+async function getOrGenerateDailyPuzzle(dateString: string, puzzleType?: string) {
   logger.info("Getting puzzle for date", { dateString });
 
-  // Helper function to format puzzle from database
-  const formatPuzzleFromDb = (puzzle: Puzzle) => {
-    let puzzleDisplay = puzzle.puzzle || puzzle.rebusPuzzle || "";
-
-    // Safety check: If puzzle text matches answer, it's likely corrupted data
-    if (puzzleDisplay === puzzle.answer || puzzleDisplay.trim() === puzzle.answer.trim()) {
-      logger.warn("Puzzle data may be corrupted - text matches answer", {
-        puzzleDisplay,
-        answer: puzzle.answer,
-      });
-      // Try to reconstruct from metadata or use fallback
-      if ((puzzle.metadata as any)?.clues && Array.isArray((puzzle.metadata as any).clues)) {
-        puzzleDisplay = (puzzle.metadata as any).clues.join("\n\n");
-      } else {
-        puzzleDisplay = "A logic grid puzzle. Use deductive reasoning to solve the relationships.";
-      }
+  // STEP 1: Cross-request cached DB read via Cache Components ("use cache")
+  try {
+    const cached = await getCachedDailyPuzzleFromDb(dateString);
+    if (cached) {
+      return cached;
     }
-
-    const puzzleType = puzzle.puzzleType || puzzle.metadata?.puzzleType || "rebus";
-
-    return {
-      id: puzzle.id,
-      puzzle: puzzleDisplay,
-      puzzleType,
-      rebusPuzzle: puzzleType === "rebus" ? puzzleDisplay : undefined,
-      difficulty:
-        typeof puzzle.difficulty === "number"
-          ? puzzle.difficulty
-          : puzzle.difficulty === "easy"
-            ? 3
-            : puzzle.difficulty === "medium"
-              ? 5
-              : 7,
-      answer: puzzle.answer,
-      explanation: puzzle.explanation || "",
-      hints: puzzle.metadata?.hints || puzzle.hints || ["No hints available"],
-      date: dateString,
-      topic: puzzle.metadata?.topic || "General",
-      keyword: puzzle.answer.replace(/\s+/g, ""),
-      category: puzzle.metadata?.category || puzzle.category || "general",
-      relevanceScore: 8,
-      seoMetadata: puzzle.metadata?.seoMetadata || {},
-      aiGenerated: true,
-      fromDatabase: true,
-    };
-  };
-
-  // STEP 1: Check if puzzle already exists in database for today
-  // Try multiple times to handle transient database errors
-  let existingPuzzle: Puzzle | null = null;
-  const maxRetries = 3;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      existingPuzzle = await db.puzzleOps.findTodaysPuzzle();
-
-      if (existingPuzzle) {
-        logger.info("Found existing puzzle in database", {
-          answer: existingPuzzle.answer,
-          tokensSaved: true,
-          attempt,
-        });
-        return formatPuzzleFromDb(existingPuzzle);
-      }
-
-      // No puzzle found, but database query succeeded
-      // Break out of retry loop to proceed with generation
-      break;
-    } catch (dbError) {
-      const isLastAttempt = attempt === maxRetries;
-      logger.warn(`Database query failed (attempt ${attempt}/${maxRetries})`, {
-        error: dbError instanceof Error ? dbError.message : String(dbError),
-      });
-
-      if (isLastAttempt) {
-        // On final failure, refuse to generate to prevent duplicates
-        logger.error(
-          "All database query attempts failed. Refusing to generate puzzle to prevent duplicates.",
-          dbError instanceof Error ? dbError : new Error(String(dbError))
-        );
-        throw new Error(
-          "Cannot verify puzzle existence in database. Refusing to generate new puzzle to prevent duplicates. Please check database connection."
-        );
-      }
-
-      // Wait a bit before retrying (exponential backoff)
-      await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
-    }
+  } catch (dbError) {
+    logger.error(
+      "Cached daily puzzle lookup failed. Refusing to generate to prevent duplicates.",
+      dbError instanceof Error ? dbError : new Error(String(dbError))
+    );
+    throw new Error(
+      "Cannot verify puzzle existence in database. Refusing to generate new puzzle to prevent duplicates. Please check database connection."
+    );
   }
 
-  // Double-check one more time right before generating
-  // This prevents race conditions where another request created the puzzle
+  // Double-check once more before generating (race with concurrent requests)
   try {
-    existingPuzzle = await db.puzzleOps.findTodaysPuzzle();
-    if (existingPuzzle) {
-      logger.info("Found puzzle on final pre-generation check - another request created it", {
-        answer: existingPuzzle.answer,
-      });
-      return formatPuzzleFromDb(existingPuzzle);
+    const raceCheck = await db.puzzleOps.findTodaysPuzzle();
+    if (raceCheck) {
+      revalidateTag("daily-puzzle", "max");
+      const cached = await getCachedDailyPuzzleFromDb(dateString);
+      if (cached) {
+        return cached;
+      }
     }
   } catch (finalCheckError) {
     logger.error(
       "Final pre-generation check failed",
       finalCheckError instanceof Error ? finalCheckError : new Error(String(finalCheckError))
     );
-    // Still proceed with generation since we've already verified no puzzle exists
-    // This is a last-ditch check, so failure here is less critical
   }
 
   // STEP 2: No puzzle in database - generate with Google AI (ONE TIME!)
@@ -423,7 +346,7 @@ const getCachedDailyPuzzle = cache(async (dateString: string, puzzleType?: strin
       fallbackReason: error instanceof Error ? error.message : "AI generation failed",
     };
   }
-});
+}
 
 /**
  * Server action to get today's puzzle (PUBLIC API)
@@ -443,7 +366,7 @@ export async function getTodaysPuzzle(puzzleType?: string, dateString?: string) 
     // NOTE: If called from generateMetadata, dateString should be provided
     // after accessing headers/cookies to satisfy Next.js 16 requirements
     const todayString = dateString || getTodayDateString();
-    const puzzle = await getCachedDailyPuzzle(todayString, puzzleType);
+    const puzzle = await getOrGenerateDailyPuzzle(todayString, puzzleType);
 
     return {
       success: true,
@@ -492,7 +415,7 @@ export async function getPuzzleForDate(dateString: string) {
       throw new Error("Invalid date format. Use YYYY-MM-DD");
     }
 
-    const puzzle = await getCachedDailyPuzzle(dateString);
+    const puzzle = await getOrGenerateDailyPuzzle(dateString);
 
     return {
       success: true,

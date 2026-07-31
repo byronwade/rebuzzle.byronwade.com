@@ -1,19 +1,30 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { trackUserSession } from "@/lib/analytics";
+import type { ServerSession } from "@/lib/auth/get-server-session";
 import { setupSessionTracking } from "@/lib/session-tracker";
+
+interface AuthUser {
+  id: string;
+  username: string;
+  email: string;
+  isGuest?: boolean;
+}
 
 interface AuthState {
   isAuthenticated: boolean;
   userId: string | null;
-  user: {
-    id: string;
-    username: string;
-    email: string;
-    isGuest?: boolean;
-  } | null;
+  user: AuthUser | null;
   isLoading: boolean;
   isGuest: boolean;
   error?: string;
@@ -33,39 +44,67 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [authState, setAuthState] = useState<AuthState>({
+function sessionToState(session: ServerSession | null | undefined): Pick<
+  AuthState,
+  "isAuthenticated" | "userId" | "user" | "isGuest" | "isLoading" | "error"
+> {
+  if (session?.authenticated && session.user) {
+    return {
+      isAuthenticated: true,
+      userId: session.user.id,
+      user: {
+        id: session.user.id,
+        username: session.user.username,
+        email: session.user.email,
+        isGuest: session.user.isGuest,
+      },
+      isGuest: session.user.isGuest,
+      isLoading: false,
+      error: undefined,
+    };
+  }
+
+  return {
     isAuthenticated: false,
     userId: null,
     user: null,
-    isLoading: true,
     isGuest: false,
+    isLoading: false,
+    error: undefined,
+  };
+}
+
+export function AuthProvider({
+  children,
+  initialSession,
+}: {
+  children: React.ReactNode;
+  /** Server-seeded session to avoid a client waterfall on first paint */
+  initialSession?: ServerSession | null;
+}) {
+  const pathname = usePathname();
+  const seeded = sessionToState(initialSession);
+  const [authState, setAuthState] = useState<AuthState>({
+    ...seeded,
+    // If we didn't get a server session, still show a brief loading state
+    isLoading: initialSession === undefined,
     refreshAuth: async () => {},
   });
+  const [, startTransition] = useTransition();
 
-  // NOTE: Guest session creation has been moved to lazy creation
-  // Guests are now created only when viewing a puzzle via useLazyGuest hook
-  // This reduces spam and keeps statistics clean
-
-  // Check for authentication state from server
   const checkAuth = useCallback(async () => {
     try {
-      // Fetch authentication state from server (reads JWT from cookie)
       const response = await fetch("/api/auth/session", {
         method: "GET",
-        credentials: "include", // Include cookies in request
-        cache: "no-store", // Always fetch fresh auth state
+        credentials: "include",
+        cache: "no-store",
       });
 
       if (response.ok) {
         const data = await response.json();
 
         if (data.authenticated && data.user) {
-          // Update session with user ID
           setupSessionTracking(data.user.id);
-
-          // Check if this is a guest user (email ends with @guest.rebuzzle.local)
           const isGuestUser = data.user.email?.endsWith("@guest.rebuzzle.local") || false;
 
           setAuthState((prev) => ({
@@ -85,13 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       } else {
-        // Log error for debugging
         const errorData = await response.json().catch(() => ({}));
         console.warn("[Auth] Session check failed:", response.status, errorData);
       }
 
-      // No authentication found - DON'T create guest here
-      // Guest will be created lazily when puzzle is viewed via useLazyGuest hook
       setAuthState((prev) => ({
         ...prev,
         isAuthenticated: false,
@@ -103,7 +139,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }));
     } catch (error) {
       console.error("Auth check failed:", error);
-      // No guest creation - user can still browse, guest created on puzzle view
       setAuthState((prev) => ({
         ...prev,
         isAuthenticated: false,
@@ -116,56 +151,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    // Initialize session tracking
-    setupSessionTracking();
-    trackUserSession();
-
-    // Initial auth check
-    void checkAuth().finally(() => {
-      initialCheckComplete.current = true;
-    });
-  }, [checkAuth]);
-
-  // Re-check auth state when pathname changes (e.g., after login redirect)
-  // Only re-check when navigating away from auth pages to avoid unnecessary calls
-  // Using a ref to track if initial auth check is complete to avoid double-checking
   const initialCheckComplete = useRef(false);
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    // Skip if initial check isn't complete yet
+    setupSessionTracking();
+    trackUserSession();
+
+    // When server already seeded a session, skip the initial client fetch
+    if (initialSession !== undefined) {
+      if (initialSession?.authenticated && initialSession.user) {
+        setupSessionTracking(initialSession.user.id);
+      }
+      initialCheckComplete.current = true;
+      return;
+    }
+
+    void checkAuth().finally(() => {
+      initialCheckComplete.current = true;
+    });
+  }, [checkAuth, initialSession]);
+
+  useEffect(() => {
     if (!initialCheckComplete.current) {
       return;
     }
 
-    // Only re-check if pathname actually changed (not just a re-render)
     if (previousPathname.current === pathname) {
       return;
     }
+
+    const previous = previousPathname.current;
     previousPathname.current = pathname;
 
-    // Skip if we're on auth pages
+    // Only re-check after leaving auth pages (login/signup) — not on every navigation
+    const wasAuthPage = previous === "/login" || previous === "/signup";
     const isAuthPage = pathname === "/login" || pathname === "/signup";
-    if (isAuthPage) {
+    if (!wasAuthPage || isAuthPage) {
       return;
     }
 
-    // Skip if we're already loading
     if (authState.isLoading) {
       return;
     }
 
-    void checkAuth();
+    startTransition(() => {
+      void checkAuth();
+    });
   }, [pathname, checkAuth, authState.isLoading]);
 
-  // Create refresh function that can be called manually
   const refreshAuth = useCallback(async () => {
     setAuthState((prev) => ({ ...prev, isLoading: true }));
     await checkAuth();
   }, [checkAuth]);
 
-  // Update context value with refresh function
   useEffect(() => {
     setAuthState((prev) => ({ ...prev, refreshAuth }));
   }, [refreshAuth]);

@@ -1,4 +1,4 @@
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
 import { Toaster } from "@/components/ui/toaster";
+import { getServerSession } from "@/lib/auth/get-server-session";
 import {
   generateAccessibilitySchema,
   generateEducationalUseSchema,
@@ -15,13 +16,14 @@ import {
   generateWebSiteSchema,
 } from "@/lib/seo/structured-data";
 
-// Optimize font loading
-const inter = Inter({
+// Distinctive, highly-legible UI font (self-hosted via next/font)
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   display: "swap",
   preload: true,
   fallback: ["system-ui", "arial"],
-  adjustFontFallback: true, // Enable font fallback to reduce preload warnings
+  adjustFontFallback: true,
+  variable: "--font-sans",
 });
 
 // Enhanced viewport configuration for mobile
@@ -192,14 +194,21 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Dynamic auth shell — reads cookies and seeds AuthProvider.
+ * Wrapped in Suspense so the static document shell can still prerender.
+ */
+async function AuthShell({ children }: { children: React.ReactNode }) {
+  const initialSession = await getServerSession();
+  return <AuthProvider initialSession={initialSession}>{children}</AuthProvider>;
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Generate JSON-LD structured data
+  // Generate JSON-LD structured data (static — safe to prerender)
   const organizationSchema = generateOrganizationSchema();
   const websiteSchema = generateWebSiteSchema();
   const softwareApplicationSchema = generateSoftwareApplicationSchema();
 
-  // Use a static date for SEO structured data (doesn't need to be dynamic)
-  // This avoids blocking the route with dynamic APIs
   const reviewSchema = generateReviewSchema({
     ratingValue: 4.8,
     ratingCount: 500,
@@ -210,7 +219,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       "2": 7,
       "1": 3,
     },
-    // Site launch date for aggregate rating schema
     datePublished: "2024-11-01T00:00:00.000Z",
   });
   const educationalUseSchema = generateEducationalUseSchema();
@@ -265,13 +273,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/rss+xml"
         />
 
-        {/* Preconnect to external resources */}
-        <link crossOrigin="anonymous" href="https://fonts.googleapis.com" rel="preconnect" />
-        <link crossOrigin="anonymous" href="https://fonts.gstatic.com" rel="preconnect" />
-        {/* DNS prefetch for performance */}
-        <link href="https://fonts.googleapis.com" rel="dns-prefetch" />
-        <link href="https://fonts.gstatic.com" rel="dns-prefetch" />
-
         {/* Mobile-optimized icons */}
         <link href="/icon.svg" rel="icon" type="image/svg+xml" />
         <link href="/icon-192x192.png" rel="icon" sizes="192x192" type="image/png" />
@@ -296,13 +297,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* Notification permission hint for mobile */}
         <meta content="granted" name="notification-permission" />
-
-        {/* Google Search Console Verification */}
-        {/* Add your verification meta tag here when you set up Google Search Console */}
-        {/* Example: <meta name="google-site-verification" content="your-verification-code" /> */}
       </head>
       <body
-        className={`${inter.className} min-h-screen overflow-x-hidden bg-background font-sans antialiased`}
+        className={`${jakarta.variable} ${jakarta.className} min-h-screen overflow-x-hidden bg-background font-sans antialiased`}
       >
         {/* Skip to content link for keyboard navigation */}
         <a
@@ -318,10 +315,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             disableTransitionOnChange
             enableSystem
           >
-            <AuthProvider>
-              <Suspense fallback={null}>{children}</Suspense>
-              <Toaster />
-            </AuthProvider>
+            <Suspense
+              fallback={
+                <AuthProvider initialSession={null}>
+                  {children}
+                  <Toaster />
+                </AuthProvider>
+              }
+            >
+              <AuthShell>
+                {children}
+                <Toaster />
+              </AuthShell>
+            </Suspense>
           </ThemeProviderWrapper>
         </ErrorBoundary>
       </body>

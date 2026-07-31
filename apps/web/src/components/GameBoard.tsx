@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
@@ -25,7 +26,7 @@ import {
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useAuth } from "./AuthProvider";
-import { CelebrationOverlay, calculateScore, determineAchievements } from "./CelebrationOverlay";
+import { calculateScore, determineAchievements } from "./CelebrationOverlay";
 import { useGameContext } from "./GameContext";
 import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
@@ -34,6 +35,11 @@ import { PuzzleContainer, PuzzleDisplay, PuzzleQuestion } from "./PuzzleDisplay"
 import { PuzzleMinimal } from "./PuzzleMinimal";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 import { SolveCounter } from "./SolveCounter";
+
+const CelebrationOverlay = dynamic(
+  () => import("./CelebrationOverlay").then((mod) => mod.CelebrationOverlay),
+  { ssr: false }
+);
 
 // Simple local implementations to replace deleted dependencies
 interface UserStats {
