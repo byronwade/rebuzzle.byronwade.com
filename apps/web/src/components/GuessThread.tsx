@@ -45,9 +45,9 @@ const TIER_LABEL: Record<ReactionTier, string> = {
  * The conversation.
  *
  * Each guess is a turn: what you said, Eve's instant read on it, and — if the
- * model gets there in time — a second bubble where she can't help adding
+ * model gets there in time — an extra riff where she can't help adding
  * something. The instant line never waits on the model, so feedback is always
- * immediate; the riff types itself in underneath if it shows up.
+ * immediate; the riff types itself into the same reply if it shows up.
  */
 export function GuessThread({ turns, footer, className }: GuessThreadProps) {
   const endRef = useRef<HTMLLIElement>(null);
@@ -56,7 +56,8 @@ export function GuessThread({ turns, footer, className }: GuessThreadProps) {
 
   // Follow the conversation the way a chat does — including as a riff grows.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    endRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
   }, [turns.length, lastQuip, hasFooter]);
 
   if (turns.length === 0) return null;
@@ -74,27 +75,26 @@ export function GuessThread({ turns, footer, className }: GuessThreadProps) {
         const showRiff = Boolean(turn.quipPending || turn.quip);
 
         return (
-          <li className="flex flex-col gap-2" key={turn.id}>
+          <li className="flex flex-col gap-3" key={turn.id}>
             <MessageRow from="user">
               <MessageBubble from="user">{turn.text}</MessageBubble>
             </MessageRow>
 
             <MessageRow from="agent">
               <MessageAvatar />
-              <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-                <MessageBubble from="agent" tone={tone}>
-                  {turn.line}
-                </MessageBubble>
-
-                {showRiff ? (
-                  <MessageBubble from="agent">
-                    {turn.quip ? turn.quip : <MessageTyping />}
-                  </MessageBubble>
-                ) : null}
-
+              <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
                 <MessageMeta tone={tone}>
-                  {TIER_LABEL[turn.tier]} · Guess {turn.attemptNumber}
+                  Eve · {TIER_LABEL[turn.tier]} · Guess {turn.attemptNumber}
                 </MessageMeta>
+
+                <MessageBubble className="min-w-0" from="agent" tone={tone}>
+                  <p>{turn.line}</p>
+                  {showRiff ? (
+                    <div className="mt-2 border-border/70 border-t pt-2 text-muted-foreground">
+                      {turn.quip ? turn.quip : <MessageTyping />}
+                    </div>
+                  ) : null}
+                </MessageBubble>
               </div>
             </MessageRow>
           </li>
