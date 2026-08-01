@@ -23,6 +23,7 @@ import { applyPlayerSimHeuristics, simulatePlayerSolve } from "./player-sim";
 import { candidateNeedsVisualPolish } from "./polish-gates";
 import { polishCandidateVisuals } from "./polish-visuals";
 import { scoreRubric } from "./rubric";
+import { pickDiverseTechniqueFocuses } from "../workflow/technique-gates";
 import { pickWinner } from "./tournament";
 import type { ApexCandidate, ApexEngineResult, GenerationBrief } from "./types";
 
@@ -226,12 +227,16 @@ export async function runApexGeneration(
   const candidates: ApexCandidate[] = [];
   const failures: string[] = [];
 
-  // Sequential slots — safer for gateway quota; each slot gets a distinct brief nudge
+  const diverseFocuses = pickDiverseTechniqueFocuses(
+    brief.preferredTechniques,
+    brief.candidateCount,
+    brief.targetDifficulty
+  );
+
+  // Sequential slots — safer for gateway quota; each slot gets a distinct family focus
   for (let slot = 1; slot <= brief.candidateCount; slot++) {
     try {
-      // Rotate preferred technique focus per slot
-      const focusTechnique =
-        brief.preferredTechniques[(slot - 1) % Math.max(1, brief.preferredTechniques.length)];
+      const focusTechnique = diverseFocuses[slot - 1];
       const phraseSlice = brief.phraseSuggestions
         .filter((_, i) => i % brief.candidateCount === (slot - 1) % brief.candidateCount)
         .map((p) => p.answer);
@@ -302,26 +307,8 @@ export async function runApexGeneration(
   const selectMs = Date.now() - selectStarted;
 
   if (!winner) {
-    // Soft fallback: best rubric even if under threshold, if still publishable
-    const fallback = ranked.find((c) => c.publishable && c.isUnique && c.solvable);
-    if (!fallback) {
-      throw new Error(
-        `Apex tournament found no publishable winner. Failures: ${failures.join(" | ") || "gates/rubric"}`
-      );
-    }
-    return await finalizeWinner(
-      fallback,
-      ranked,
-      brief,
-      {
-        briefMs,
-        generateMs,
-        critiqueMs,
-        selectMs,
-        totalMs: Date.now() - started,
-      },
-      failures,
-      simCalibration
+    throw new Error(
+      `Apex tournament found no publishable winner (hard rubric floor ${brief.minRubricOverall}). Failures: ${failures.join(" | ") || "gates/rubric"}`
     );
   }
 

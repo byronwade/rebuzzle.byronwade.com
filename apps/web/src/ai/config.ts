@@ -86,6 +86,18 @@ export const AI_CONFIG = {
       critiqueEnabled: process.env.EVE_APEX_CRITIQUE !== "0",
       playerSimEnabled: process.env.EVE_APEX_PLAYER_SIM !== "0",
     },
+    /**
+     * Durable Workflow DevKit pipeline (invent DAG, multi-solve, hard gates).
+     * Default on. Disable with EVE_WORKFLOW=0 to use Apex/classic Eve only.
+     * EVE_WORKFLOW_SYNC=1 runs the same smart pipeline in-process (no start()).
+     */
+    workflow: {
+      enabled: process.env.EVE_WORKFLOW !== "0" && process.env.EVE_WORKFLOW !== "false",
+      syncOnly:
+        process.env.EVE_WORKFLOW_SYNC === "1" ||
+        process.env.EVE_WORKFLOW_SYNC === "true" ||
+        process.env.NODE_ENV === "test",
+    },
   },
 
   generation: {

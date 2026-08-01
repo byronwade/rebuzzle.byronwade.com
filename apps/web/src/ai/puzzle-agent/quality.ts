@@ -4,6 +4,7 @@
  */
 
 import {
+  DIFFICULTY_LEVELS,
   getDifficultyLevelForScore,
   isDifficultyInBand,
   type DifficultyTierLabel,
@@ -17,16 +18,23 @@ export function isKnownTechniqueId(id: string | undefined | null): id is Techniq
   return Boolean(id && id in TECHNIQUE_LIBRARY);
 }
 
+/**
+ * Hard technique gating: tier's techniques, or one tier down.
+ * Impossible may use Evil techniques; Hard-only techniques cannot ship at 8+.
+ */
 export function isTechniqueAllowedForTarget(
   techniqueId: string | undefined | null,
   targetDifficulty: number
 ): boolean {
   if (!isKnownTechniqueId(techniqueId)) return false;
   const level = getDifficultyLevelForScore(targetDifficulty);
-  // Prefer tier techniques, but allow adjacent known techniques as soft OK
   if (level.techniques.includes(techniqueId)) return true;
-  // Hard/Difficult can use each other's simpler techniques; Evil/Impossible more open
-  return isKnownTechniqueId(techniqueId);
+  const idx = DIFFICULTY_LEVELS.findIndex((t) => t.tier === level.tier);
+  if (idx > 0) {
+    const lower = DIFFICULTY_LEVELS[idx - 1];
+    if (lower?.techniques.includes(techniqueId)) return true;
+  }
+  return false;
 }
 
 /** Escape a string for use inside a RegExp. */

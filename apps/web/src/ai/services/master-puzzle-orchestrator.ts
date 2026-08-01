@@ -13,6 +13,7 @@ import {
 } from "../puzzle-agent/run-generation";
 import type { PuzzleAgentResult } from "../puzzle-agent/schemas";
 import type { PuzzleVisual } from "../puzzle-agent/visual/composition";
+import { runSmartEvePipeline } from "../puzzle-agent/workflow";
 
 export type MasterGenerationParams = PuzzleGenerationParams;
 
@@ -51,7 +52,7 @@ export interface GeneratedPuzzleResult {
     generationAttempts: number;
     generationTimeMs: number;
     aiThinking: { summary?: string };
-    engine?: "apex" | "eve";
+    engine?: "apex" | "eve" | "eve-workflow";
     estimatedSolveRate?: number;
     simCalibrationBias?: number;
   };
@@ -62,7 +63,7 @@ export interface GeneratedPuzzleResult {
 function toGeneratedResult(
   result: PuzzleAgentResult,
   generationTimeMs: number,
-  engine: "apex" | "eve"
+  engine: "apex" | "eve" | "eve-workflow"
 ): GeneratedPuzzleResult {
   return {
     puzzle: {
@@ -81,7 +82,12 @@ function toGeneratedResult(
       uniquenessScore: result.metadata.uniquenessScore,
       difficultyProfile: {
         overall: result.metadata.calibratedDifficulty,
-        method: engine === "apex" ? "apex-tournament" : "eve-tool-agent",
+        method:
+          engine === "eve-workflow"
+            ? "eve-durable-workflow"
+            : engine === "apex"
+              ? "apex-tournament"
+              : "eve-tool-agent",
         tier: result.metadata.difficultyLevel,
       },
       calibratedDifficulty: result.metadata.calibratedDifficulty,
@@ -116,21 +122,55 @@ function apexEnabled(params: MasterGenerationParams): boolean {
 }
 
 /**
- * Generate a high-quality unique puzzle via Apex tournament (default)
- * or classic Eve tool agent.
+ * Generate a high-quality unique puzzle.
+ * Prefer durable Eve workflow / smart pipeline, then Apex, then classic Eve.
  */
 export async function generateMasterPuzzle(
   params: MasterGenerationParams
 ): Promise<GeneratedPuzzleResult> {
   const start = Date.now();
+  const useWorkflow = AI_CONFIG.puzzleAgent.workflow.enabled;
   const useApex = apexEnabled(params);
 
   console.log("[Master Generator] starting", {
-    engine: useApex ? "apex" : "eve",
+    engine: useWorkflow ? "eve-workflow" : useApex ? "apex" : "eve",
     difficulty: params.targetDifficulty,
     puzzleType: params.puzzleType ?? "rebus",
-    candidates: useApex ? AI_CONFIG.puzzleAgent.apex.candidateCount : 1,
+    candidates: useWorkflow || useApex ? AI_CONFIG.puzzleAgent.apex.candidateCount : 1,
+    workflowSync: AI_CONFIG.puzzleAgent.workflow.syncOnly,
   });
+
+  if (useWorkflow) {
+    try {
+      if (AI_CONFIG.puzzleAgent.workflow.syncOnly) {
+        const result = await runSmartEvePipeline({
+          ...params,
+          useLearningFeedback: params.useLearningFeedback !== false,
+        });
+        return toGeneratedResult(result, Date.now() - start, "eve-workflow");
+      }
+
+      const { start: startWorkflow } = await import("workflow/api");
+      const { generateEvePuzzleWorkflow } = await import(
+        "@/workflows/eve-puzzle-generation"
+      );
+      const run = await startWorkflow(generateEvePuzzleWorkflow, [
+        {
+          ...params,
+          useLearningFeedback: params.useLearningFeedback !== false,
+        },
+      ]);
+      const result = await run.returnValue;
+      return toGeneratedResult(result, Date.now() - start, "eve-workflow");
+    } catch (workflowError) {
+      console.warn("[Master Generator] Eve workflow failed — falling back to Apex/Eve", {
+        error:
+          workflowError instanceof Error
+            ? workflowError.message
+            : String(workflowError),
+      });
+    }
+  }
 
   try {
     if (useApex) {

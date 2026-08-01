@@ -64,6 +64,7 @@
     "@tanstack/react-virtual": "^3.13.12",
     "@types/web-push": "^3.6.4",
     "@vercel/analytics": "^1.4.1",
+    "@workflow/ai": "^4.2.0",
     "ai": "^7.0.44",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.3",
@@ -90,6 +91,7 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "web-push": "^3.6.7",
+    "workflow": "^4.8.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

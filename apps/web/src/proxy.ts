@@ -31,12 +31,10 @@ export function proxy(_request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Match all request paths except:
+     * - _next/static, _next/image, favicon
+     * - .well-known/workflow (Workflow DevKit internal routes)
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.well-known/workflow/).*)",
   ],
 };

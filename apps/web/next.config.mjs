@@ -1,3 +1,5 @@
+import { withWorkflow } from "workflow/next";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -136,8 +138,7 @@ const nextConfig = {
   },
 };
 
-// Puzzle generation uses Eve/ToolLoopAgent in-process (see src/ai/puzzle-agent).
-// Do not wrap with withEve() here — that registers a Vercel Build Output service
-// at `.eve/vercel-services/eve` which is not produced by `next build` in this
-// monorepo and fails production deploys.
-export default nextConfig;
+// Puzzle generation: Eve ToolLoopAgent + durable Workflow DevKit
+// (`src/workflows/eve-puzzle-generation.ts`). withWorkflow enables
+// "use workflow" / "use step" compilation.
+export default withWorkflow(nextConfig);
