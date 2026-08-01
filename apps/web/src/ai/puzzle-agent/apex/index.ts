@@ -9,6 +9,8 @@ export { runApexGeneration } from "./engine";
 export { loadLearningDigest } from "./learning-context";
 export { phraseBankSize, samplePhraseBank } from "./phrase-bank";
 export { applyPlayerSimHeuristics, simulatePlayerSolve } from "./player-sim";
+export { candidateNeedsVisualPolish } from "./polish-gates";
+export { polishCandidateVisuals } from "./polish-visuals";
 export { scoreRubric, tournamentScore } from "./rubric";
 export { pickWinner, rankCandidates } from "./tournament";
 export type {

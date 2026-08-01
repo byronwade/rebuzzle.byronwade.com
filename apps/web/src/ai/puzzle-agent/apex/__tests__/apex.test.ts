@@ -1,3 +1,4 @@
+import { candidateNeedsVisualPolish } from "../polish-gates";
 import { phraseBankSize, samplePhraseBank } from "../phrase-bank";
 import { scoreRubric, tournamentScore } from "../rubric";
 import { pickWinner, rankCandidates } from "../tournament";
@@ -128,5 +129,89 @@ describe("rubric + tournament", () => {
     expect(tournamentScore(bad, 70)).toBeLessThan(0);
     const { winner } = pickWinner([bad, good], 70);
     expect(winner?.id).toBe("good");
+  });
+
+  it("prefers high icon recognizability in tournament ranking", () => {
+    const crisp = fakeCandidate({
+      id: "crisp",
+      critique: {
+        verdict: "ship",
+        summary: "clear",
+        strengths: [],
+        flaws: [],
+        reviseInstructions: [],
+        falseLeadQuality: 40,
+        ahaPredicted: 80,
+        creativityScore: 74,
+        iconRecognizability: 90,
+        overusedTrope: false,
+      },
+    });
+    const muddy = fakeCandidate({
+      id: "muddy",
+      critique: {
+        verdict: "ship",
+        summary: "ok",
+        strengths: [],
+        flaws: [],
+        reviseInstructions: [],
+        falseLeadQuality: 40,
+        ahaPredicted: 80,
+        creativityScore: 74,
+        iconRecognizability: 40,
+        overusedTrope: false,
+      },
+    });
+    const ranked = rankCandidates([muddy, crisp], 70);
+    expect(ranked[0]?.id).toBe("crisp");
+    expect(tournamentScore({ ...crisp, rubric: scoreRubric(crisp) }, 70)).toBeGreaterThan(
+      tournamentScore({ ...muddy, rubric: scoreRubric(muddy) }, 70)
+    );
+  });
+});
+
+describe("visual polish gates", () => {
+  it("flags missing or unreadable pictogram SVGs for polish", () => {
+    const missing = fakeCandidate({
+      visual: {
+        styleId: "ink-pictogram-v1",
+        mode: "composed",
+        layout: "row",
+        unicodeFallback: "🔑",
+        layers: [{ kind: "pictogram", concept: "key", emojiFallback: "🔑" }],
+      },
+      critique: {
+        verdict: "ship",
+        summary: "ok",
+        strengths: [],
+        flaws: [],
+        reviseInstructions: [],
+        falseLeadQuality: 40,
+        ahaPredicted: 70,
+        creativityScore: 70,
+        iconRecognizability: 80,
+        overusedTrope: false,
+      },
+    });
+    expect(candidateNeedsVisualPolish(missing)).toBe(true);
+    expect(candidateNeedsVisualPolish(fakeCandidate())).toBe(false);
+  });
+
+  it("flags revise verdicts for a polish pass", () => {
+    const revise = fakeCandidate({
+      critique: {
+        verdict: "revise",
+        summary: "icons muddy",
+        strengths: [],
+        flaws: ["unclear key"],
+        reviseInstructions: ["Redraw the key with teeth and a bow"],
+        falseLeadQuality: 40,
+        ahaPredicted: 70,
+        creativityScore: 68,
+        iconRecognizability: 48,
+        overusedTrope: false,
+      },
+    });
+    expect(candidateNeedsVisualPolish(revise)).toBe(true);
   });
 });

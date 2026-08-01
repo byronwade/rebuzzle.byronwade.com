@@ -93,6 +93,20 @@ describe("evaluateVisualForPublish", () => {
     ).toBe(false);
   });
 
+  it("rejects planned pictograms that only have emoji fallbacks", () => {
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [
+          { kind: "pictogram", concept: "bee", emojiFallback: "🐝" },
+          { kind: "operator", symbol: "+" },
+          { kind: "pictogram", svg: INK_PICTOGRAM_EXAMPLE_EYE },
+        ],
+        unicodeFallback: "🐝 + 👁️",
+      }).ok
+    ).toBe(false);
+  });
+
   it("accepts styled text when typography is the joke", () => {
     expect(
       evaluateVisualForPublish({

@@ -25,11 +25,12 @@ const IconRecognitionSchema = z.object({
 export type IconRecognitionResult = z.infer<typeof IconRecognitionSchema> & {
   matchesConcept: boolean;
   ok: boolean;
+  /** True when the recognition model call failed (caller may fall back to clarity-only) */
+  skipped?: boolean;
 };
 
 /**
  * Ask a fast model to name the icon without knowing the intended concept.
- * Soft-fails open (ok:true) if the critique model is unavailable.
  */
 export async function recognizePictogramIcon(input: {
   svg: string;
@@ -38,13 +39,13 @@ export async function recognizePictogramIcon(input: {
   try {
     const result = await generateAIObject({
       modelType: "fast",
-      temperature: 0.2,
+      temperature: 0.15,
       schema: IconRecognitionSchema,
       system: `You are a player looking at a tiny 64×64 rebus puzzle icon (SVG markup).
-Name the SINGLE concrete object you see. Be literal.
-If it is a vague blob or unreadable, set seenLabel to "unclear" and isAmbiguous=true.
+Name the SINGLE concrete object you see. Be literal and picky.
+If it is a vague blob, scribble, or unreadable, set seenLabel to "unclear" and isAmbiguous=true.
 Do not invent details that are not in the drawing.
-Return short redrawAdvice for making a clearer icon.`,
+Return short redrawAdvice for making a clearer icon of a real object.`,
       prompt: [
         "What object is this SVG icon?",
         "SVG:",
@@ -55,24 +56,25 @@ Return short redrawAdvice for making a clearer icon.`,
     const matchesConcept =
       result.seenLabel.toLowerCase() !== "unclear" &&
       !result.isAmbiguous &&
-      result.confidence >= 0.45 &&
+      result.confidence >= 0.5 &&
       conceptMatchesSeen(input.concept, result.seenLabel);
 
     return {
       ...result,
       matchesConcept,
       ok: matchesConcept,
+      skipped: false,
     };
   } catch {
-    // Don't block generation if recognition model fails
     return {
       seenLabel: "unknown",
       confidence: 0,
       alternateReadings: [],
       isAmbiguous: true,
       redrawAdvice: "Recognition unavailable — keep silhouette chunky and iconic",
-      matchesConcept: true,
-      ok: true,
+      matchesConcept: false,
+      ok: false,
+      skipped: true,
     };
   }
 }

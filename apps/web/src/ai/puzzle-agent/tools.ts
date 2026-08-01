@@ -203,6 +203,8 @@ export const puzzleAgentTools: ToolSet = {
       tierLabel: z.enum(["Hard", "Difficult", "Evil", "Impossible"]),
       unicodeFallback: z.string().optional(),
       pictogramConcepts: z.array(z.string()).optional(),
+      pictogramSvgs: z.array(z.string()).optional(),
+      iconRecognitionNotes: z.array(z.string()).optional(),
     }),
     execute: async (input) => critiqueCandidate(input),
   }),
@@ -217,6 +219,9 @@ export const puzzleAgentTools: ToolSet = {
       hints: z.array(z.string()),
       techniqueId: z.string(),
       tierLabel: z.enum(["Hard", "Difficult", "Evil", "Impossible"]),
+      layout: z.string().optional(),
+      pictogramConcepts: z.array(z.string()).optional(),
+      textLayers: z.array(z.string()).optional(),
     }),
     execute: async (input) => {
       const sim = await simulatePlayerSolve(input);

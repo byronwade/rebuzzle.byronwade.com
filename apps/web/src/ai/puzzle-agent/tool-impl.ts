@@ -32,6 +32,7 @@ import {
 } from "./quality";
 import type { CandidatePuzzle } from "./schemas";
 import { getTechniques, listAllTechniques, type TechniqueId } from "./technique-library";
+import { scorePictogramClarity } from "./visual/pictogram-clarity";
 
 function resolvePrompt(
   value: string | ((params: Record<string, unknown>) => string) | undefined,
@@ -733,6 +734,14 @@ export function scorePuzzleQuality(
     )
   );
 
+  const pictogramSvgs = (input.visual?.layers ?? []).flatMap((layer) =>
+    layer.kind === "pictogram" && layer.svg ? [layer.svg] : []
+  );
+  const clarityScores = pictogramSvgs.map((svg) => scorePictogramClarity(svg).score);
+  const avgPictogramClarity = clarityScores.length
+    ? clarityScores.reduce((a, b) => a + b, 0) / clarityScores.length
+    : null;
+
   const funScore = computeFunScore({
     techniqueId: input.techniqueId,
     knownTechnique: isKnownTechniqueId(input.techniqueId),
@@ -744,9 +753,13 @@ export function scorePuzzleQuality(
       assembly.components.arrows.length > 0 || /[/+\-×÷]/.test(puzzle),
     hasStyledText: styledText,
     explanationMapsWell: explanationMapsAnswer(input.explanation ?? "", answer),
+    avgPictogramClarity,
   });
 
   if (funScore >= 70) strengths.push("High craft / fun score");
+  if (avgPictogramClarity !== null && avgPictogramClarity >= 72) {
+    strengths.push("Clear pictogram craft");
+  }
 
   let score = 68;
   score -= issues.length * 12;
@@ -778,7 +791,7 @@ export function scorePuzzleQuality(
       issues.length === 0 &&
       isKnownTechniqueId(input.techniqueId) &&
       visualCheck.ok &&
-      funScore >= 65,
+      funScore >= 68,
   };
 }
 

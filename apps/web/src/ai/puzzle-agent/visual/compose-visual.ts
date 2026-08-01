@@ -67,6 +67,8 @@ export async function composePuzzleVisual(
 
   let claritySum = 0;
   let clarityCount = 0;
+  let recognitionSum = 0;
+  let recognitionCount = 0;
 
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
@@ -78,15 +80,42 @@ export async function composePuzzleVisual(
           claritySum += clarity.score;
           clarityCount += 1;
         } else {
-          generated.failedPictograms += 1;
-          filledLayers.push({
-            ...layer,
-            svg: undefined,
+          // Try a fresh draw before falling back to emoji
+          const pic = await generatePictogram({
+            concept: layer.concept,
+            role: layer.role,
             emojiFallback: layer.emojiFallback,
+            maxRetries: 2,
           });
-          issues.push(
-            `Unreadable pictogram for "${layer.concept}" (${clarity.reasons.join(", ") || "low clarity"}) — regenerate with a clearer silhouette`
-          );
+          if (pic.svg && ((pic.ok && pic.clarityScore) || (pic.clarityScore ?? 0) >= 62)) {
+            filledLayers.push({
+              ...layer,
+              svg: pic.svg,
+              emojiFallback: pic.emojiFallback || layer.emojiFallback,
+            });
+            generated.pictograms += 1;
+            claritySum += pic.clarityScore ?? clarity.score;
+            clarityCount += 1;
+            if (typeof pic.recognitionConfidence === "number") {
+              recognitionSum += pic.recognitionConfidence;
+              recognitionCount += 1;
+            }
+            if (!pic.ok) {
+              tips.push(
+                `Pictogram "${layer.concept}" kept on clarity but recognition was weak (seen as ${pic.seenAs ?? "unclear"})`
+              );
+            }
+          } else {
+            generated.failedPictograms += 1;
+            filledLayers.push({
+              ...layer,
+              svg: undefined,
+              emojiFallback: layer.emojiFallback,
+            });
+            issues.push(
+              `Unreadable pictogram for "${layer.concept}" (${clarity.reasons.join(", ") || "low clarity"}) — pick a more concrete noun`
+            );
+          }
         }
         continue;
       }
@@ -96,7 +125,7 @@ export async function composePuzzleVisual(
         emojiFallback: layer.emojiFallback,
         maxRetries: 2,
       });
-      if (pic.ok && pic.svg) {
+      if (pic.svg && (pic.ok || (pic.clarityScore ?? 0) >= 62)) {
         filledLayers.push({
           ...layer,
           svg: pic.svg,
@@ -107,6 +136,15 @@ export async function composePuzzleVisual(
           claritySum += pic.clarityScore;
           clarityCount += 1;
         }
+        if (typeof pic.recognitionConfidence === "number") {
+          recognitionSum += pic.recognitionConfidence;
+          recognitionCount += 1;
+        }
+        if (!pic.ok) {
+          tips.push(
+            `Pictogram "${layer.concept}" clarity-ok but recognition weak (seen as ${pic.seenAs ?? "unclear"})`
+          );
+        }
       } else {
         generated.failedPictograms += 1;
         filledLayers.push({
@@ -115,7 +153,7 @@ export async function composePuzzleVisual(
           emojiFallback: pic.emojiFallback || layer.emojiFallback,
         });
         issues.push(
-          `Pictogram "${layer.concept}" failed clarity/generation — use a more concrete noun or redraw`
+          `Pictogram "${layer.concept}" failed clarity/recognition — use a concrete drawable noun and redraw`
         );
         tips.push(`Pictogram fallback used for "${layer.concept}" — unicode emoji only`);
       }
@@ -151,9 +189,19 @@ export async function composePuzzleVisual(
   }
 
   const avgPictogramClarity = clarityCount > 0 ? claritySum / clarityCount : null;
+  const avgRecognitionConfidence =
+    recognitionCount > 0 ? recognitionSum / recognitionCount : null;
 
   if (filledLayers.length === 0) {
     issues.push("No renderable layers after generation");
+  }
+  if (generated.failedPictograms > 0) {
+    issues.push(
+      `${generated.failedPictograms} pictogram(s) fell back to emoji — board is not fully generative`
+    );
+  }
+  if (avgRecognitionConfidence !== null && avgRecognitionConfidence < 0.45) {
+    tips.push("Icon recognition confidence is low — exaggerate identifying features");
   }
 
   const unicodeFallback =

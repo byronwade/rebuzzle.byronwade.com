@@ -135,8 +135,10 @@ export function evaluateVisualForPublish(visual?: {
   }
 
   const layers = visual.layers ?? [];
-  const pictogramLayers = layers.filter((l) => l.kind === "pictogram" && l.svg);
-  const pictogramSvgCount = pictogramLayers.length;
+  const pictogramLayers = layers.filter((l) => l.kind === "pictogram");
+  const pictogramWithSvg = pictogramLayers.filter((l) => Boolean(l.svg));
+  const pictogramSvgCount = pictogramWithSvg.length;
+  const pictogramEmojiOnly = pictogramLayers.length - pictogramSvgCount;
   const textLayerCount = layers.filter((l) => l.kind === "text").length;
   const styledText = layers.some(
     (l) =>
@@ -145,7 +147,7 @@ export function evaluateVisualForPublish(visual?: {
       ["large", "small", "strike", "stacked", "tiny"].includes(l.emphasis)
   );
 
-  for (const layer of pictogramLayers) {
+  for (const layer of pictogramWithSvg) {
     const clarity = scorePictogramClarity(layer.svg);
     if (!clarity.ok) {
       return {
@@ -156,6 +158,17 @@ export function evaluateVisualForPublish(visual?: {
         textLayerCount,
       };
     }
+  }
+
+  // Mixed boards: planned pictograms that fell back to emoji are not publishable
+  if (pictogramEmojiOnly > 0 && pictogramLayers.length > 0) {
+    return {
+      ok: false,
+      reason: `${pictogramEmojiOnly} pictogram layer(s) missing SVG — redraw concrete icons before publish`,
+      mode: visual.mode,
+      pictogramSvgCount,
+      textLayerCount,
+    };
   }
 
   if (visual.mode === "unicode" && pictogramSvgCount === 0 && !styledText) {

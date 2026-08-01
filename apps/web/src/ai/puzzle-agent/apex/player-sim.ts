@@ -13,6 +13,9 @@ export async function simulatePlayerSolve(input: {
   hints: string[];
   techniqueId: string;
   tierLabel: string;
+  layout?: string;
+  pictogramConcepts?: string[];
+  textLayers?: string[];
 }): Promise<PlayerSimResult> {
   try {
     return await generateAIObject({
@@ -20,19 +23,30 @@ export async function simulatePlayerSolve(input: {
       temperature: AI_CONFIG.generation.temperature.balanced,
       schema: PlayerSimSchema,
       system: `You simulate clever-but-not-expert rebus players.
-List tempting wrong parses a smart player might try first.
+List tempting wrong parses a smart player might try first — including icon misreads
+(e.g. mistaking a key for a spoon, or a clock for a compass).
 Judge whether the hint ladder unlocks the mechanism fairly.
 estimatedSolveRate is 0–1 for the target audience of this tier.`,
       prompt: [
         `Simulate players for a ${input.tierLabel} rebus.`,
         `Board: ${input.rebusPuzzle}`,
+        input.layout ? `Layout: ${input.layout}` : null,
+        input.pictogramConcepts?.length
+          ? `Pictogram concepts: ${input.pictogramConcepts.join(", ")}`
+          : null,
+        input.textLayers?.length
+          ? `Text layers: ${input.textLayers.join(" | ")}`
+          : null,
         `Answer: ${input.answer}`,
         `Technique: ${input.techniqueId}`,
         `Explanation: ${input.explanation}`,
         `Hints: ${input.hints.map((h, i) => `${i + 1}. ${h}`).join(" | ")}`,
         "",
         "Return firstWrongParses (up to 5), likelySolvePath, fairness flags, estimatedSolveRate, confidence.",
-      ].join("\n"),
+        "If icons could be misread, include those misreads in firstWrongParses / unfairReasons.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     });
   } catch {
     return {

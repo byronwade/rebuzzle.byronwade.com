@@ -130,6 +130,8 @@ export function tournamentScore(candidate: ApexCandidate, minRubric: number): nu
   if ((candidate.playerSim?.estimatedSolveRate ?? 0) > 0.2) score += 2;
   score += Math.min(5, (candidate.funScore - 65) / 5);
   if ((candidate.critique?.creativityScore ?? 0) >= 70) score += 4;
+  if ((candidate.critique?.iconRecognizability ?? 0) >= 75) score += 3;
+  if ((candidate.critique?.iconRecognizability ?? 100) < 50) score -= 6;
   if (candidate.critique?.overusedTrope) score -= 8;
   return score;
 }

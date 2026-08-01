@@ -20,6 +20,8 @@ import type { TechniqueId } from "../technique-library";
 import { buildGenerationBrief } from "./curriculum";
 import { critiqueCandidate } from "./critique";
 import { applyPlayerSimHeuristics, simulatePlayerSolve } from "./player-sim";
+import { candidateNeedsVisualPolish } from "./polish-gates";
+import { polishCandidateVisuals } from "./polish-visuals";
 import { scoreRubric } from "./rubric";
 import { pickWinner } from "./tournament";
 import type { ApexCandidate, ApexEngineResult, GenerationBrief } from "./types";
@@ -67,8 +69,14 @@ async function enrichCandidate(
   let next = { ...candidate };
 
   if (apex.critiqueEnabled) {
-    const pictogramConcepts = (candidate.visual.layers ?? []).flatMap((layer) =>
-      layer.kind === "pictogram" && layer.concept ? [layer.concept] : []
+    const pictogramLayers = (candidate.visual.layers ?? []).filter(
+      (layer) => layer.kind === "pictogram"
+    );
+    const pictogramConcepts = pictogramLayers.flatMap((layer) =>
+      layer.concept ? [layer.concept] : []
+    );
+    const pictogramSvgs = pictogramLayers.flatMap((layer) =>
+      layer.svg ? [layer.svg] : []
     );
     const critique = await critiqueCandidate({
       rebusPuzzle: candidate.rebusPuzzle,
@@ -80,6 +88,11 @@ async function enrichCandidate(
       tierLabel: brief.tierLabel,
       unicodeFallback: candidate.visual.unicodeFallback,
       pictogramConcepts,
+      pictogramSvgs,
+      iconRecognitionNotes: pictogramConcepts.map(
+        (concept, i) =>
+          `${concept}: ${pictogramSvgs[i] ? "svg present" : "MISSING svg / emoji fallback"}`
+      ),
     });
     const creativityScore = critique.creativityScore ?? 60;
     const iconRecognizability = critique.iconRecognizability ?? 70;
@@ -107,9 +120,10 @@ async function enrichCandidate(
           `Overused trope with low creativity (${creativityScore}) — invent a fresher mechanism`,
         ],
       };
-    } else if (iconRecognizability < 45) {
+    } else if (iconRecognizability < 50) {
       next = {
         ...next,
+        publishable: iconRecognizability >= 40 ? next.publishable : false,
         rejectReasons: [
           ...next.rejectReasons,
           `Icons look unrecognizable (score ${iconRecognizability}) — redraw concrete silhouettes`,
@@ -134,6 +148,15 @@ async function enrichCandidate(
       hints: candidate.hints,
       techniqueId: candidate.techniqueId,
       tierLabel: brief.tierLabel,
+      layout: candidate.visual.layout,
+      pictogramConcepts: (candidate.visual.layers ?? []).flatMap((layer) =>
+        layer.kind === "pictogram" && layer.concept ? [layer.concept] : []
+      ),
+      textLayers: (candidate.visual.layers ?? []).flatMap((layer) =>
+        layer.kind === "text" && layer.content
+          ? [`${layer.content}${layer.emphasis ? ` (${layer.emphasis})` : ""}`]
+          : []
+      ),
     });
     let playerSim = applyPlayerSimHeuristics(rawSim, {
       answer: candidate.answer,
@@ -253,10 +276,21 @@ export async function runApexGeneration(
   const enriched = await Promise.all(
     candidates.map((c) => enrichCandidate(c, brief, simCalibration))
   );
+
+  // One polish pass: regenerate weak/missing pictograms using critique notes
+  const polished = await Promise.all(
+    enriched.map(async (candidate) => {
+      if (!candidateNeedsVisualPolish(candidate)) return candidate;
+      const notes = candidate.critique?.reviseInstructions ?? [];
+      const next = await polishCandidateVisuals(candidate, notes);
+      const rubric = scoreRubric(next);
+      return { ...next, rubric };
+    })
+  );
   const critiqueMs = Date.now() - critiqueStarted;
 
   const selectStarted = Date.now();
-  const { winner, ranked } = pickWinner(enriched, brief.minRubricOverall);
+  const { winner, ranked } = pickWinner(polished, brief.minRubricOverall);
   const selectMs = Date.now() - selectStarted;
 
   if (!winner) {
