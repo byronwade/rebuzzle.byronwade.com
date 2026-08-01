@@ -3,6 +3,7 @@
  * Eve must follow this plan rather than freestyle tool-skipping.
  */
 
+import type { CulturalPulse } from "../external/cultural-pulse";
 import { expandWordplay, formatWordplayForPrompt } from "../external/datamuse";
 import { suggestBrandSeeds } from "../external/svgl";
 import type { TechniqueId } from "../technique-library";
@@ -20,6 +21,7 @@ export type InventPlan = {
   wordplayBlock: string;
   brandOptions: string[];
   wrongGuessBlock: string;
+  culturalBlock: string;
   mechanismOneLiner: string;
   requiredTools: string[];
   briefNudge: string;
@@ -53,6 +55,7 @@ function mechanismForTechnique(techniqueId: TechniqueId): string {
 export async function buildInventPlans(input: {
   brief: GenerationBrief;
   wrongGuesses: WrongGuessDigest;
+  culturalPulse?: CulturalPulse;
   theme?: string;
   category?: string;
 }): Promise<InventPlan[]> {
@@ -74,6 +77,10 @@ export async function buildInventPlans(input: {
   ]);
   const wordplayBlock = formatWordplayForPrompt(wordplay);
   const brandTitles = brands.map((b) => b.title);
+  const culturalBlock =
+    input.culturalPulse?.promptBlock ||
+    "Cultural pulse unavailable — invent timeless idioms, not news headlines.";
+  const culturalSeeds = input.culturalPulse?.phraseSeeds ?? [];
 
   return focuses.map((techniqueId, index) => {
     const allowed = isTechniqueAllowedForTier(
@@ -86,7 +93,10 @@ export async function buildInventPlans(input: {
         ) ?? techniqueId);
 
     const preferBrand = allowed.includes("brand");
-    const phrase = input.brief.phraseSuggestions[index]?.answer;
+    const culturalSeed = culturalSeeds[index % Math.max(1, culturalSeeds.length || 1)];
+    const phrase =
+      input.brief.phraseSuggestions[index]?.answer ||
+      (culturalSeed && culturalSeed.split(/\s+/).length <= 5 ? culturalSeed : undefined);
     const pictogramNouns = preferBrand
       ? [brandTitles[index % Math.max(1, brandTitles.length)] || "spotify", "fire"]
       : phrase
@@ -100,6 +110,7 @@ export async function buildInventPlans(input: {
     const mechanismOneLiner = mechanismForTechnique(allowed);
     const requiredTools = [
       "get_generation_brief",
+      "research_cultural_pulse",
       "expand_wordplay",
       preferBrand ? "lookup_brand_logo" : "propose_concept_seeds",
       "compose_puzzle_visual",
@@ -117,7 +128,9 @@ export async function buildInventPlans(input: {
         ? "- use lookup_brand_logo / generate_pictogram(preferBrand) for the brand layer"
         : "- use generate_pictogram / icon packs for concrete nouns",
       "- You MUST call compose_puzzle_visual before finishing",
+      "- Prefer answers that feel culturally current but universally solvable (no niche fandom required)",
       wordplayBlock,
+      culturalBlock,
       input.wrongGuesses.promptBlock,
     ]
       .filter(Boolean)
@@ -133,6 +146,7 @@ export async function buildInventPlans(input: {
       wordplayBlock,
       brandOptions: brandTitles,
       wrongGuessBlock: input.wrongGuesses.promptBlock,
+      culturalBlock,
       mechanismOneLiner,
       requiredTools,
       briefNudge,

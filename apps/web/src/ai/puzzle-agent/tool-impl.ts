@@ -22,6 +22,9 @@ import {
   isDifficultyInBand,
   snapToDifficultyBand,
 } from "./difficulty-levels";
+import {
+  researchCulturalPulse,
+} from "./external/cultural-pulse";
 import { expandWordplay, formatWordplayForPrompt } from "./external/datamuse";
 import { lookupSvglBrandLogo, suggestBrandSeeds } from "./external/svgl";
 import {
@@ -289,9 +292,10 @@ export async function proposeConceptSeeds(input: {
     const { mechanismTemplateBrief, rebusCraftBrief } = await import("./rebus-craft");
 
     const lexicalSeed = (input.theme || input.category || "puzzle").split(/\s+/)[0] || "puzzle";
-    const [wordplay, brandSeeds] = await Promise.all([
+    const [wordplay, brandSeeds, culturalPulse] = await Promise.all([
       expandWordplay(lexicalSeed, 6),
       suggestBrandSeeds({ theme: input.theme, limit: 5 }),
+      researchCulturalPulse({ theme: input.theme, category: input.category }),
     ]);
     const wordplayBlock = formatWordplayForPrompt(wordplay);
     const brandBlock = brandSeeds.length
@@ -299,6 +303,7 @@ export async function proposeConceptSeeds(input: {
           .map((b) => b.title)
           .join(", ")}`
       : "";
+    const culturalBlock = culturalPulse.promptBlock;
 
     const SeedSchema = z.object({
       seeds: z
@@ -342,11 +347,13 @@ ${mechanismTemplateBrief()}`,
         input.category ? `Preferred category: ${input.category}` : "",
         wordplayBlock,
         brandBlock,
+        culturalBlock,
         avoidKeys.size
           ? `Avoid these answer keys: ${[...avoidKeys].slice(0, 25).join(", ")}`
           : "",
         "Each seed needs a specific answerDirection (name a plausible phrase), ONE mechanismOneLiner, and 1–3 pictogramNouns with unmistakable silhouettes.",
         "At most one seed may use brand_logo_wordplay; brands must be globally recognizable.",
+        "If cultural pulse phraseSeeds exist, invent cousins — never paste headlines or niche fandom slang.",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -925,6 +932,18 @@ export async function expandWordplayNeighbors(input: { seed: string; limit?: num
     ...expansion,
     promptBlock: formatWordplayForPrompt(expansion),
     tip: "Use homophones/sounds-like for phonetic leaps; means-like/triggers for compound partners. Prefer ONE leap.",
+  };
+}
+
+export async function researchCulturalPulseTool(input: {
+  theme?: string;
+  category?: string;
+  query?: string;
+}) {
+  const pulse = await researchCulturalPulse(input);
+  return {
+    ...pulse,
+    tip: "Invent cousins of phraseSeeds — never paste headlines. Prefer universally known idioms over niche fandom slang.",
   };
 }
 

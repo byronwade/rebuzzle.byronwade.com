@@ -8,6 +8,7 @@
 import type { PuzzleGenerationParams } from "@/ai/puzzle-agent/run-generation";
 import type { PuzzleAgentResult } from "@/ai/puzzle-agent/schemas";
 import type { ApexCandidate, GenerationBrief } from "@/ai/puzzle-agent/apex/types";
+import type { CulturalPulse } from "@/ai/puzzle-agent/external/cultural-pulse";
 import type { InventPlan } from "@/ai/puzzle-agent/workflow/invent-plan";
 import type { WrongGuessDigest } from "@/ai/puzzle-agent/workflow/wrong-guesses";
 import {
@@ -17,6 +18,7 @@ import {
   phaseJudgeCandidate,
   phaseLoadWrongGuesses,
   phasePolishAndRevalidate,
+  phaseResearchCulturalPulse,
   phaseSelectWinner,
 } from "@/ai/puzzle-agent/workflow/smart-pipeline";
 import { FatalError } from "workflow";
@@ -36,9 +38,18 @@ async function stepLoadWrongGuesses(): Promise<WrongGuessDigest> {
   return phaseLoadWrongGuesses();
 }
 
+async function stepResearchCulturalPulse(input: {
+  theme?: string;
+  category?: string;
+}): Promise<CulturalPulse> {
+  "use step";
+  return phaseResearchCulturalPulse(input);
+}
+
 async function stepBuildInventPlans(input: {
   brief: GenerationBrief;
   wrongGuesses: WrongGuessDigest;
+  culturalPulse?: CulturalPulse;
   theme?: string;
   category?: string;
 }): Promise<InventPlan[]> {
@@ -101,9 +112,14 @@ export async function generateEvePuzzleWorkflow(
 
   const brief = await stepBuildBrief(params);
   const wrongGuesses = await stepLoadWrongGuesses();
+  const culturalPulse = await stepResearchCulturalPulse({
+    theme: params.theme,
+    category: params.category,
+  });
   const plans = await stepBuildInventPlans({
     brief,
     wrongGuesses,
+    culturalPulse,
     theme: params.theme,
     category: params.category,
   });

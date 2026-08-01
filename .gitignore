@@ -46,6 +46,10 @@ yarn-error.log*
 node_modules/.pnpm
 pnpm-lock.yaml
 
+# Agent Skills (optional last30days etc. — install locally, don't commit)
+.agents/
+.skills/
+
 # Playwright
 apps/web/playwright-report/
 apps/web/test-results/

@@ -25,6 +25,7 @@ import {
   listTechniqueLibrary,
   lookupBrandLogo,
   proposeConceptSeeds,
+  researchCulturalPulseTool,
   scorePuzzleQuality,
   stressTestSolvability,
   validatePuzzleCandidate,
@@ -136,6 +137,17 @@ export const puzzleAgentTools: ToolSet = {
       limit: z.number().optional(),
     }),
     execute: async (input) => expandWordplayNeighbors(input),
+  }),
+
+  research_cultural_pulse: tool({
+    description:
+      "People-scored cultural research (last30days-inspired): Reddit/HN/Polymarket engagement for fresh invent inspiration. Use phraseSeeds as cousins, not copy-paste headlines.",
+    inputSchema: z.object({
+      theme: z.string().optional(),
+      category: z.string().optional(),
+      query: z.string().optional(),
+    }),
+    execute: async (input) => researchCulturalPulseTool(input),
   }),
 
   compose_puzzle_visual: tool({

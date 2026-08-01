@@ -23,6 +23,10 @@ import {
 import type { PuzzleAgentResult } from "../schemas";
 import { stableId } from "../tool-impl";
 import type { TechniqueId } from "../technique-library";
+import {
+  researchCulturalPulse,
+  type CulturalPulse,
+} from "../external/cultural-pulse";
 import { buildInventPlans, type InventPlan } from "./invent-plan";
 import { runMultiAgentSolve } from "./multi-solve";
 import { revalidateCandidateAfterPolish } from "./revalidate";
@@ -86,9 +90,20 @@ export async function phaseLoadWrongGuesses(): Promise<WrongGuessDigest> {
   return loadWrongGuessDigest({ lookbackDays: 14, limit: 12 });
 }
 
+export async function phaseResearchCulturalPulse(input?: {
+  theme?: string;
+  category?: string;
+}): Promise<CulturalPulse> {
+  return researchCulturalPulse({
+    theme: input?.theme,
+    category: input?.category,
+  });
+}
+
 export async function phaseBuildInventPlans(input: {
   brief: GenerationBrief;
   wrongGuesses: WrongGuessDigest;
+  culturalPulse?: CulturalPulse;
   theme?: string;
   category?: string;
 }): Promise<InventPlan[]> {
@@ -422,10 +437,17 @@ export async function runSmartEvePipeline(
   const started = Date.now();
   const briefStarted = Date.now();
   const brief = await phaseBuildBrief(params);
-  const wrongGuesses = await phaseLoadWrongGuesses();
+  const [wrongGuesses, culturalPulse] = await Promise.all([
+    phaseLoadWrongGuesses(),
+    phaseResearchCulturalPulse({
+      theme: params.theme,
+      category: params.category,
+    }),
+  ]);
   const plans = await phaseBuildInventPlans({
     brief,
     wrongGuesses,
+    culturalPulse,
     theme: params.theme,
     category: params.category,
   });

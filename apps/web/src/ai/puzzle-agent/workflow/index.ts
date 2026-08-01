@@ -15,6 +15,7 @@ export {
   phaseJudgeCandidate,
   phaseLoadWrongGuesses,
   phasePolishAndRevalidate,
+  phaseResearchCulturalPulse,
   phaseSelectWinner,
 } from "./smart-pipeline";
 export {

@@ -98,6 +98,18 @@ export const AI_CONFIG = {
         process.env.EVE_WORKFLOW_SYNC === "true" ||
         process.env.NODE_ENV === "test",
     },
+    /**
+     * Cultural pulse (last30days-inspired people signals).
+     * Builtin HN/Reddit RSS/Polymarket always on.
+     * Optional last30days CLI when EVE_LAST30DAYS_SKILL_DIR or script path is set.
+     */
+    culturalPulse: {
+      enabled:
+        process.env.EVE_CULTURAL_PULSE !== "0" &&
+        process.env.EVE_CULTURAL_PULSE !== "false",
+      last30Days:
+        process.env.EVE_LAST30DAYS !== "0" && process.env.EVE_LAST30DAYS !== "false",
+    },
   },
 
   generation: {
