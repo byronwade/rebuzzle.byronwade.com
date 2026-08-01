@@ -4,6 +4,12 @@
 
 import { AI_CONFIG } from "../../config";
 import { loadAllAnswerKeys } from "../../learning/answer-registry";
+import { sampleAnswerFirstSeeds } from "../craft/answer-first";
+import {
+  corpusSize,
+  listThemePacks,
+  sampleAnswerCorpus,
+} from "../craft/corpus/sample";
 import { sampleFairIdioms } from "../craft/idiom-frequency";
 import {
   mechanismWinnersBrief,
@@ -11,11 +17,12 @@ import {
 } from "../craft/mechanism-winners";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
 import { mechanismTemplateBrief, rebusCraftBrief } from "../rebus-craft";
+import { isKnownTechniqueId } from "../quality";
 import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
 import { loadLearningDigest } from "./learning-context";
 import { samplePhraseBank } from "./phrase-bank";
-import type { GenerationBrief } from "./types";
+import type { GenerationBrief, PhraseBankEntry } from "./types";
 
 /** Clamp learning difficulty nudges into a sane band. */
 export function applyDifficultyDelta(
@@ -128,18 +135,70 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     sampleMechanismWinners({ preferredTechniques, limit: 3 })
   );
 
+  const corpusSeeds = sampleAnswerCorpus({
+    targetDifficulty,
+    preferredTechniques,
+    bannedAnswerKeys: banned,
+    theme: input.theme,
+    category: input.category,
+    limit: 6,
+    preferMultiWord: targetDifficulty >= 7,
+  });
+  const answerFirst = sampleAnswerFirstSeeds({
+    targetDifficulty,
+    preferredTechniques,
+    bannedAnswerKeys: banned,
+    theme: input.theme,
+    category: input.category,
+    limit: 6,
+  });
+  const themePacks = listThemePacks().slice(0, 8);
+
+  // Prefer multi-word corpus answers in phraseSuggestions when available
+  const corpusAsPhrases: PhraseBankEntry[] = corpusSeeds.slice(0, 4).map((s) => ({
+    answer: s.answer,
+    category: s.themes[0] || input.category || "visual_wordplay",
+    difficultyHint: targetDifficulty,
+    techniqueAffinity: s.techniques.filter((t): t is TechniqueId => isKnownTechniqueId(t)).slice(
+      0,
+      2
+    ),
+    notes: "answer-corpus",
+  }));
+  const mergedPhrases: PhraseBankEntry[] = [...corpusAsPhrases, ...phraseSuggestions]
+    .filter(
+      (p, i, arr) =>
+        arr.findIndex(
+          (x) =>
+            x.answer.toLowerCase().replace(/[^a-z0-9]+/g, "") ===
+            p.answer.toLowerCase().replace(/[^a-z0-9]+/g, "")
+        ) === i
+    )
+    .slice(0, 10);
+
   const briefSummary = [
     `Tier ${level.label} (${level.min}–${level.max}), budget ${level.componentBudget.min}–${level.componentBudget.max}.`,
-    `Prefer techniques: ${preferredTechniques.slice(0, 4).join(", ")}.`,
+    `ANSWER-FIRST DEFAULT: scored corpus has ${corpusSize()} answers — pick a seed, backform the board; never freestyle a recycled trope.`,
+    targetDifficulty >= 7
+      ? "Prefer MULTI-WORD answers (2–5 words) for uniqueness headroom."
+      : null,
+    `Prefer techniques: ${preferredTechniques.slice(0, 5).join(", ")}.`,
     likedInTier.length
       ? `Player-liked techniques (hard prefer): ${likedInTier.slice(0, 3).join(", ")}.`
       : null,
     avoidTechniques.length
       ? `Avoid overused/disliked/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`
       : "Technique diversity looks healthy.",
-    `Ban ${banned.size} archived+recent answers (never reuse).`,
-    phraseSuggestions.length
-      ? `Phrase tropes/seeds to avoid copying (invent a fresher mechanism): ${phraseSuggestions
+    `Ban ${banned.size} archived+recent answers (never reuse answer keys).`,
+    `Theme packs: ${themePacks.join(", ")}.`,
+    answerFirst.length
+      ? `Answer-first seeds: ${answerFirst
+          .slice(0, 4)
+          .map((s) => s.answer)
+          .join("; ")}.`
+      : null,
+    mergedPhrases.length
+      ? `Corpus/phrase seeds (build from these; do not copy boards): ${mergedPhrases
           .slice(0, 4)
           .map((p) => p.answer)
           .join("; ")}.`
@@ -175,7 +234,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     componentBudget: level.componentBudget,
     preferredTechniques,
     avoidTechniques,
-    phraseSuggestions,
+    phraseSuggestions: mergedPhrases,
     diversity,
     learning,
     qualityThreshold,

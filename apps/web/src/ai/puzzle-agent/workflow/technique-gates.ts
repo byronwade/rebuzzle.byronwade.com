@@ -7,17 +7,30 @@ import type { TechniqueId } from "../technique-library";
 
 /** Mechanism families for diverse Apex/workflow slots */
 export const TECHNIQUE_FAMILIES = {
-  compound: ["simple_compound", "multi_emoji_compound", "obvious_emoji_sum"],
-  positional: ["basic_positional", "positional_phrase", "spatial_preposition_play"],
+  compound: [
+    "simple_compound",
+    "multi_emoji_compound",
+    "obvious_emoji_sum",
+    "hyphen_compound",
+  ],
+  positional: [
+    "basic_positional",
+    "positional_phrase",
+    "spatial_preposition_play",
+    "container_phrase",
+    "direction_wordplay",
+  ],
   phonetic: ["single_homophone", "nested_homophone", "multi_layer_phonetic"],
   idiom: ["idiom_as_picture", "rare_but_fair_idiom"],
-  typography: ["size_or_case_semantics"],
+  typography: ["size_or_case_semantics", "letter_play"],
   brand: ["brand_logo_wordplay", "cultural_common_knowledge_plus_twist"],
   advanced: [
     "false_lead_visual",
     "triple_layer_composition",
     "recursive_visual_pun",
     "math_symbol_wordplay",
+    "letter_play",
+    "container_phrase",
   ],
 } as const;
 

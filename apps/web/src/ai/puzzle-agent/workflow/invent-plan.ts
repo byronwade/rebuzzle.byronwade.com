@@ -166,6 +166,7 @@ export async function buildInventPlans(input: {
 
     const requiredTools = [
       "get_generation_brief",
+      "sample_answer_corpus",
       "research_cultural_pulse",
       "expand_wordplay",
       phoneticTechnique ? "lookup_phonetic_cues" : null,
@@ -183,15 +184,27 @@ export async function buildInventPlans(input: {
       `LOCKED invent plan for slot ${index + 1}:`,
       `- techniqueId MUST be ${allowed}`,
       `- mechanism: ${mechanismOneLiner}`,
-      phrase ? `- answer seed (cousin OK, do not copy): ${phrase}` : null,
+      `- ANSWER-FIRST REQUIRED: use seed "${phrase || "from answer-first list"}" as the answer (or a banned-safe cousin only if that exact key is banned)`,
+      answerSeedRow?.wordCount && answerSeedRow.wordCount >= 2
+        ? "- Prefer keeping this MULTI-WORD answer intact — do not collapse to a single compound"
+        : null,
       answerSeedRow?.layerPlan ? `- layer plan hint: ${answerSeedRow.layerPlan}` : null,
       `- pictogram nouns to try: ${pictogramNouns.join(", ")}`,
       preferBrand
         ? "- use lookup_brand_logo / generate_pictogram(preferBrand) for the brand layer + one non-brand beat"
         : "- use generate_pictogram / icon packs for concrete nouns (check lookup_word_senses)",
       phoneticTechnique ? `- ${phoneticBlock}` : null,
+      allowed.includes("letter")
+        ? "- letter_play: show deletion/insertion clearly (strike / minus glyph)"
+        : null,
+      allowed.includes("container")
+        ? "- container_phrase: one icon must be visually inside/outside another"
+        : null,
+      allowed.includes("direction")
+        ? "- direction_wordplay: arrows/compass are semantic, not decoration"
+        : null,
       "- You MUST call compose_puzzle_visual before finishing",
-      "- After hints: call score_hint_fairness + score_shareability; reject if either fails",
+      "- After hints: call score_hint_fairness + score_shareability + check_anti_clone; reject if any fails",
       "- Prefer answers that feel culturally current but universally solvable (no niche fandom required)",
       answerFirstBlock,
       mechanismWinnersBlock,

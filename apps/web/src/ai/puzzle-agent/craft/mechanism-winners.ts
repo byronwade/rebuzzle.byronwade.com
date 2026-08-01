@@ -94,6 +94,38 @@ export const MECHANISM_WINNERS: readonly MechanismWinner[] = [
     whyItWorks: "Operator is semantic, not decorative",
     pictogramNouns: ["arrow", "clock"],
   },
+  {
+    id: "letter-chair-hair",
+    techniqueId: "letter_play",
+    answer: "hair",
+    layerPlan: "CHAIR text with C struck out / minus C",
+    whyItWorks: "One clear letter deletion with a common leftover word",
+    pictogramNouns: ["chair", "comb"],
+  },
+  {
+    id: "container-cat-bag",
+    techniqueId: "container_phrase",
+    answer: "cat in the bag",
+    layerPlan: "cat pictogram visually inside bag pictogram",
+    whyItWorks: "Containment encodes the preposition; multi-word uniqueness",
+    pictogramNouns: ["cat", "bag"],
+  },
+  {
+    id: "direction-wrong-way",
+    techniqueId: "direction_wordplay",
+    answer: "wrong way",
+    layerPlan: "one-way arrow operator reversed / crossed",
+    whyItWorks: "Direction glyph is the joke, not decoration",
+    pictogramNouns: ["arrow", "sign"],
+  },
+  {
+    id: "hyphen-eye-opening",
+    techniqueId: "hyphen_compound",
+    answer: "eye-opening",
+    layerPlan: "eye pictogram + OPENING / door pictogram",
+    whyItWorks: "Hyphenated everyday compound expands beyond closed compounds",
+    pictogramNouns: ["eye", "door"],
+  },
 ] as const;
 
 export function sampleMechanismWinners(input: {

@@ -30,6 +30,7 @@ import {
   lookupWordSensesTool,
   proposeConceptSeeds,
   researchCulturalPulseTool,
+  sampleAnswerCorpusTool,
   scoreHintFairnessTool,
   scorePuzzleQuality,
   scoreShareabilityTool,
@@ -101,6 +102,21 @@ export const puzzleAgentTools: ToolSet = {
       avoidAnswers: z.array(z.string()).optional(),
     }),
     execute: async (input) => proposeConceptSeeds(input),
+  }),
+
+  sample_answer_corpus: tool({
+    description:
+      "ANSWER-FIRST: sample from the large scored answer corpus (thousands of fair phrases). Lock one unused answer, then backform the board.",
+    inputSchema: z.object({
+      targetDifficulty: z.number(),
+      preferredTechniques: z.array(z.string()).optional(),
+      avoidAnswers: z.array(z.string()).optional(),
+      theme: z.string().optional(),
+      category: z.string().optional(),
+      limit: z.number().optional(),
+      preferMultiWord: z.boolean().optional(),
+    }),
+    execute: async (input) => sampleAnswerCorpusTool(input),
   }),
 
   assemble_visual_components: tool({
@@ -201,13 +217,14 @@ export const puzzleAgentTools: ToolSet = {
 
   check_anti_clone: tool({
     description:
-      "Near-duplicate check vs recent puzzles (lexical + optional embeddings).",
+      "Near-duplicate check vs recent puzzles (answer-key ban + mechanism fingerprint + optional embeddings).",
     inputSchema: z.object({
       rebusPuzzle: z.string(),
       answer: z.string(),
       explanation: z.string().optional(),
       category: z.string().optional(),
       techniqueId: z.string().optional(),
+      visual: PuzzleVisualSchema.optional(),
     }),
     execute: async (input) => checkAntiCloneTool(input),
   }),

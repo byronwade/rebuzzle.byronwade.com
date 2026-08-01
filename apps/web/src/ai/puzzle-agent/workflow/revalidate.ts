@@ -148,6 +148,7 @@ export async function revalidateCandidateAfterPolish(
       explanation: candidate.explanation,
       category: candidate.category,
       techniqueId: candidate.techniqueId,
+      visual: candidate.visual,
     });
     if (!antiClone.ok) {
       publishable = false;

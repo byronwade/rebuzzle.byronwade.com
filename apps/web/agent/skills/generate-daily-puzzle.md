@@ -7,8 +7,8 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with gen
 
 1. `get_puzzle_type_spec` + `get_difficulty_brief` + `get_generation_brief` for the target score.
 2. `list_recent_answers` (lookback 60 days) — ban those answers (exact reuse fails publish).
-3. `propose_concept_seeds` → choose one seed, invent a **new** answer (phrase-bank classics are tropes to avoid, not templates).
-4. Pick a technique from the brief; optionally `list_technique_library`.
+3. **ANSWER-FIRST:** `sample_answer_corpus` → lock one unused answer (prefer multi-word at Evil+). Do not freestyle recycled tropes.
+4. Pick a technique that fits the answer shape (`letter_play`, `container_phrase`, `direction_wordplay`, `hyphen_compound` OK); optionally `list_technique_library`.
 5. **Compose a generative visual** (required path):
    - Plan layers: pictogram concepts + text emphasis + operators (+ rare image).
    - Pictogram concepts must be **concrete nouns** a human can sketch (key, umbrella, lighthouse) — never abstract words (love/time/success).

@@ -21,7 +21,11 @@ export type TechniqueId =
   | "rare_but_fair_idiom"
   | "recursive_visual_pun"
   | "cultural_common_knowledge_plus_twist"
-  | "brand_logo_wordplay";
+  | "brand_logo_wordplay"
+  | "letter_play"
+  | "container_phrase"
+  | "direction_wordplay"
+  | "hyphen_compound";
 
 export interface TechniqueSpec {
   id: TechniqueId;
@@ -247,6 +251,60 @@ export const TECHNIQUE_LIBRARY: Record<TechniqueId, TechniqueSpec> = {
       "Hints may name “a familiar brand mark” early; never require obscure startups",
     ],
     funFactor: "Modern, shareable, instantly visual — when the brand is household-name.",
+  },
+  letter_play: {
+    id: "letter_play",
+    name: "Letter play",
+    summary:
+      "Delete, insert, or replace a letter/glyph so the remaining reading is the answer.",
+    examplePattern: "CHAIR − C → HAIR (strike the C on CHAIR text, or C crossed out beside chair icon)",
+    howToAssemble: [
+      "Show the source word as text or a clear pictogram+label",
+      "Make the deleted/added letter unmistakable (strike, minus, or crossed glyph)",
+      "Answer must be a common word/phrase — not a random leftover string",
+      "Hints: name letter-ops early; never dump the full scaffold before the end",
+    ],
+    funFactor: "Classic rebus craft that unlocks a huge answer neighborhood.",
+  },
+  container_phrase: {
+    id: "container_phrase",
+    name: "Container phrase",
+    summary:
+      "One word/icon is visually inside, outside, or wrapping another — encoding in/out/into/inside.",
+    examplePattern: "CAT inside BAG → cat in the bag / let the cat out of the bag (commit to one)",
+    howToAssemble: [
+      "Use overlay/stack layout so containment is obvious",
+      "Pick a widely known in/out/into phrase",
+      "Avoid ambiguous nesting — one container reading only",
+      "Concrete nouns for both container and content",
+    ],
+    funFactor: "Spatial aha with a huge multi-word phrase space.",
+  },
+  direction_wordplay: {
+    id: "direction_wordplay",
+    name: "Direction wordplay",
+    summary: "Arrows, compass points, or one-way cues encode north/south/east/west/wrong-way phrases.",
+    examplePattern: "↑ star → true north / ←← one-way reversed → wrong way",
+    howToAssemble: [
+      "Use arrow operators or compass pictograms as semantic beats",
+      "Answer should be a common directional phrase, not trivia geography",
+      "Keep one primary direction device",
+      "Pair with one concrete noun when the phrase needs it",
+    ],
+    funFactor: "Clean visual grammar and fresh answer shapes.",
+  },
+  hyphen_compound: {
+    id: "hyphen_compound",
+    name: "Hyphen compound",
+    summary: "Two beats join into a hyphenated everyday compound (self-made, long-term, eye-opening).",
+    examplePattern: "EYE + opening door pictogram → eye-opening",
+    howToAssemble: [
+      "Prefer common hyphenated adjectives/nouns players say aloud",
+      "Map each half to a pictogram or short text beat",
+      "Hints may say “hyphenated phrase” mid-ladder",
+      "Avoid obscure jargon compounds",
+    ],
+    funFactor: "Expands beyond closed compounds into everyday hyphen territory.",
   },
 };
 

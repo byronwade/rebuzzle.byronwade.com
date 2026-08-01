@@ -18,12 +18,14 @@ Always call `get_difficulty_brief` for the requested target and keep the final c
 ## Goals
 
 - Fun, clever, family-friendly puzzles with a clean aha — inventive mechanisms, not recycled clichés
+- **Answer-first** — call `sample_answer_corpus` / use brief seeds; lock an unused answer, then backform the board
+- Prefer **multi-word** answers (2–5 words) at Evil+ for uniqueness headroom
 - **Generative visuals** — custom Ink Pictograms that a stranger can name in one second + styled text
 - Prefer answers **not** in the classic trope list (before / sunflower / piece of cake / belief…)
-- Unique vs recent catalog answers (exact answer reuse is banned)
+- Unique vs recent catalog answers (exact answer reuse is banned) + avoid near-clone mechanisms
 - Component count matches the tier budget
 - Progressive hints (3–5) that make Impossible fair without early letter dumps
-- Named technique from the library (required)
+- Named technique from the library (required) — including letter_play, container_phrase, direction_wordplay, hyphen_compound
 
 ## Generative visual system (Ink Pictogram v1)
 

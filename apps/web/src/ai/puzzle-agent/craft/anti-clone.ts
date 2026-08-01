@@ -1,16 +1,18 @@
 /**
- * Anti-clone checks — embedding similarity when available, else lexical near-dupe.
+ * Anti-clone checks — answer-key ban + mechanism near-dupe + optional embeddings.
  */
 
 import { generatePuzzleEmbedding, isEmbeddingAvailable } from "../../services/embeddings";
 import { calculateSimilarity } from "../../services/uniqueness-tracker";
 import { getCollection } from "@/db/mongodb";
 import { normalizeAnswerKey } from "../quality";
+import type { PuzzleVisual } from "../visual/composition";
+import { mechanismSimilarity } from "./mechanism-fingerprint";
 
 export type AntiCloneResult = {
   ok: boolean;
   score: number;
-  method: "embedding" | "lexical" | "skipped";
+  method: "embedding" | "lexical" | "mechanism" | "skipped";
   nearestAnswer?: string;
   problems: string[];
 };
@@ -40,11 +42,15 @@ export async function checkAntiClone(input: {
   explanation?: string;
   category?: string;
   techniqueId?: string;
+  visual?: PuzzleVisual;
   lookback?: number;
   /** Cosine / similarity threshold above which we reject (default 0.92) */
   maxSimilarity?: number;
+  /** Mechanism similarity threshold (default 0.88) */
+  maxMechanismSimilarity?: number;
 }): Promise<AntiCloneResult> {
   const maxSimilarity = input.maxSimilarity ?? 0.92;
+  const maxMechanismSimilarity = input.maxMechanismSimilarity ?? 0.88;
   const lookback = Math.max(20, Math.min(200, input.lookback ?? 80));
   const problems: string[] = [];
 
@@ -61,6 +67,7 @@ export async function checkAntiClone(input: {
         category: 1,
         "metadata.techniqueId": 1,
         "metadata.embedding": 1,
+        "metadata.visual": 1,
       })
       .sort({ createdAt: -1 })
       .limit(lookback)
@@ -70,11 +77,28 @@ export async function checkAntiClone(input: {
       puzzle?: string;
       explanation?: string;
       category?: string;
-      metadata?: { techniqueId?: string; embedding?: number[] };
+      metadata?: {
+        techniqueId?: string;
+        embedding?: number[];
+        visual?: PuzzleVisual;
+      };
     }>;
 
     if (!recent.length) {
       return { ok: true, score: 0, method: "skipped", problems: [] };
+    }
+
+    // Same normalized answer is always a clone (hard uniqueness)
+    const answerKey = normalizeAnswerKey(input.answer);
+    if (recent.some((r) => normalizeAnswerKey(r.answer || "") === answerKey)) {
+      problems.push(`Answer already used recently: ${input.answer}`);
+      return {
+        ok: false,
+        score: 1,
+        method: "lexical",
+        nearestAnswer: input.answer,
+        problems,
+      };
     }
 
     // Fast lexical path always
@@ -107,15 +131,38 @@ export async function checkAntiClone(input: {
       };
     }
 
-    // Same normalized answer is always a clone
-    const answerKey = normalizeAnswerKey(input.answer);
-    if (recent.some((r) => normalizeAnswerKey(r.answer || "") === answerKey)) {
-      problems.push(`Answer already used recently: ${input.answer}`);
+    // Mechanism near-dupe: same technique + nearly same pictogram concepts/layout
+    let bestMechanism = 0;
+    for (const row of recent) {
+      const sim = mechanismSimilarity(
+        {
+          answer: input.answer,
+          techniqueId: input.techniqueId,
+          rebusPuzzle: input.rebusPuzzle,
+          visual: input.visual,
+        },
+        {
+          answer: row.answer || "",
+          techniqueId: row.metadata?.techniqueId,
+          rebusPuzzle: row.rebusPuzzle || row.puzzle || "",
+          visual: row.metadata?.visual,
+        }
+      );
+      if (sim > bestMechanism) {
+        bestMechanism = sim;
+        nearestAnswer = row.answer;
+      }
+    }
+
+    if (bestMechanism >= maxMechanismSimilarity) {
+      problems.push(
+        `Near-clone mechanism vs "${nearestAnswer}" (mechanism ${bestMechanism.toFixed(2)})`
+      );
       return {
         ok: false,
-        score: 1,
-        method: "lexical",
-        nearestAnswer: input.answer,
+        score: bestMechanism,
+        method: "mechanism",
+        nearestAnswer,
         problems,
       };
     }

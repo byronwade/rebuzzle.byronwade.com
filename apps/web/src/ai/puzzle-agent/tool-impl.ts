@@ -25,6 +25,13 @@ import {
 import { sampleAnswerFirstSeeds } from "./craft/answer-first";
 import { checkAntiClone } from "./craft/anti-clone";
 import { validateBrandLogoWordplay } from "./craft/brand-constraints";
+import {
+  corpusSize,
+  corpusStats,
+  formatCorpusSeedsForPrompt,
+  listThemePacks,
+  sampleAnswerCorpus,
+} from "./craft/corpus/sample";
 import { scoreHintFairness } from "./craft/hint-fairness";
 import { isIdiomFairForDaily, sampleFairIdioms } from "./craft/idiom-frequency";
 import {
@@ -1065,8 +1072,40 @@ export async function checkAntiCloneTool(input: {
   explanation?: string;
   category?: string;
   techniqueId?: string;
+  visual?: Parameters<typeof checkAntiClone>[0]["visual"];
 }) {
   return checkAntiClone(input);
+}
+
+export function sampleAnswerCorpusTool(input: {
+  targetDifficulty: number;
+  preferredTechniques?: string[];
+  avoidAnswers?: string[];
+  theme?: string;
+  category?: string;
+  limit?: number;
+  preferMultiWord?: boolean;
+}) {
+  const level = getDifficultyLevelForScore(input.targetDifficulty);
+  const seeds = sampleAnswerCorpus({
+    targetDifficulty: input.targetDifficulty,
+    preferredTechniques: input.preferredTechniques?.length
+      ? input.preferredTechniques
+      : level.techniques,
+    bannedAnswerKeys: input.avoidAnswers ?? [],
+    theme: input.theme,
+    category: input.category,
+    limit: input.limit ?? 8,
+    preferMultiWord: input.preferMultiWord ?? input.targetDifficulty >= 7,
+  });
+  return {
+    corpusSize: corpusSize(),
+    stats: corpusStats(),
+    themePacks: listThemePacks(),
+    seeds,
+    promptBlock: formatCorpusSeedsForPrompt(seeds),
+    tip: "ANSWER-FIRST: lock one seed answer, then compose the board. Multi-word preferred at Evil+.",
+  };
 }
 
 export async function validateBrandConstraintsTool(input: {
