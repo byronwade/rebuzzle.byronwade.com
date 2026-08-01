@@ -34,6 +34,13 @@ describe("adaptive difficulty", () => {
     expect(baselineDifficultyForDate(wed)).toBe(WEEKLY_DIFFICULTY_SPINE[3]);
   });
 
+  it("averages near 80% difficulty (~8/10) across the week", () => {
+    const avg =
+      WEEKLY_DIFFICULTY_SPINE.reduce((sum, n) => sum + n, 0) / WEEKLY_DIFFICULTY_SPINE.length;
+    expect(avg).toBeGreaterThanOrEqual(7.5);
+    expect(avg).toBeLessThanOrEqual(8.5);
+  });
+
   it("raises difficulty when players finish too quickly", () => {
     const wed = new Date("2026-07-29T12:00:00.000Z"); // baseline 8
     const result = computeAdaptiveDifficulty({
@@ -52,9 +59,9 @@ describe("adaptive difficulty", () => {
   });
 
   it("eases difficulty when solve rate collapses", () => {
-    const sun = new Date("2026-07-26T12:00:00.000Z"); // baseline 5
+    const mon = new Date("2026-07-27T12:00:00.000Z"); // baseline 7
     const result = computeAdaptiveDifficulty({
-      date: sun,
+      date: mon,
       performance: perf({
         tooHard: true,
         difficultyDelta: -1,
@@ -63,7 +70,8 @@ describe("adaptive difficulty", () => {
         notes: ["too hard"],
       }),
     });
-    expect(result.target).toBe(4);
+    expect(result.baseline).toBe(7);
+    expect(result.target).toBe(6);
   });
 
   it("clamps into the Hard–Impossible generation band", () => {

@@ -3,7 +3,19 @@
  * Strips scripts, event handlers, and external references.
  */
 
-export function sanitizePictogramSvg(raw: string): string | null {
+export type SanitizePictogramOptions = {
+  /** Max serialized SVG length (default 12KB; brand logos may need more) */
+  maxBytes?: number;
+};
+
+/**
+ * Minimal SVG sanitizer for LLM-generated pictograms.
+ * Strips scripts, event handlers, and external references.
+ */
+export function sanitizePictogramSvg(
+  raw: string,
+  options: SanitizePictogramOptions = {}
+): string | null {
   if (!raw || typeof raw !== "string") return null;
 
   let svg = raw.trim();
@@ -41,6 +53,7 @@ export function sanitizePictogramSvg(raw: string): string | null {
     svg = svg.replace("<svg", '<svg width="64" height="64"');
   }
 
-  if (svg.length > 12_000) return null;
+  const maxBytes = options.maxBytes ?? 12_000;
+  if (svg.length > maxBytes) return null;
   return svg;
 }

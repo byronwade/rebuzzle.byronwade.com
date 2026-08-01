@@ -580,7 +580,7 @@ export async function previewPuzzleGeneration() {
     logger.info("Testing AI puzzle generation");
 
     const result = await generateMasterPuzzle({
-      targetDifficulty: 5,
+      targetDifficulty: 8,
       requireNovelty: true,
       qualityThreshold: 70,
       maxAttempts: 2,

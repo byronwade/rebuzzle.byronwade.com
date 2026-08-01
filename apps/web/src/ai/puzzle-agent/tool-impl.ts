@@ -4,6 +4,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { AI_CONFIG } from "@/ai/config";
 import { getCollection } from "@/db/mongodb";
 import { getPuzzleTypeConfig, listPuzzleTypes } from "../config/puzzle-types";
 import { calibrateDifficulty } from "../services/difficulty-calibrator";
@@ -21,6 +22,8 @@ import {
   isDifficultyInBand,
   snapToDifficultyBand,
 } from "./difficulty-levels";
+import { expandWordplay, formatWordplayForPrompt } from "./external/datamuse";
+import { lookupSvglBrandLogo, suggestBrandSeeds } from "./external/svgl";
 import {
   computeFunScore,
   displayLeaksAnswer,
@@ -34,6 +37,8 @@ import type { CandidatePuzzle } from "./schemas";
 import { getTechniques, listAllTechniques, type TechniqueId } from "./technique-library";
 import { scorePictogramClarity } from "./visual/pictogram-clarity";
 
+const DEFAULT_TARGET_DIFFICULTY = AI_CONFIG.puzzleAgent.defaultTargetDifficulty;
+
 function resolvePrompt(
   value: string | ((params: Record<string, unknown>) => string) | undefined,
   params: Record<string, unknown> = {}
@@ -44,7 +49,7 @@ function resolvePrompt(
 
 export async function getPuzzleTypeSpec(input: { puzzleType: string; targetDifficulty?: number }) {
   const config = getPuzzleTypeConfig(input.puzzleType);
-  const targetDifficulty = input.targetDifficulty ?? 6;
+  const targetDifficulty = input.targetDifficulty ?? DEFAULT_TARGET_DIFFICULTY;
   const level = getDifficultyLevelForScore(targetDifficulty);
   const promptParams = { targetDifficulty, puzzleType: input.puzzleType };
   return {
@@ -72,7 +77,7 @@ export async function getDifficultyBrief(input: {
 }) {
   const level = input.tier
     ? getDifficultyLevelByTier(input.tier)
-    : getDifficultyLevelForScore(input.targetDifficulty ?? 6);
+    : getDifficultyLevelForScore(input.targetDifficulty ?? DEFAULT_TARGET_DIFFICULTY);
 
   const techniques = getTechniques(level.techniques);
 
@@ -230,6 +235,21 @@ function proposeConceptSeedsFallback(input: {
       pictogramNouns: ["crown"],
       mechanismOneLiner: "Text styling is half the joke; icon supports it",
     },
+    {
+      workingTitle: theme ? `${theme} brand pivot` : "Brand mark + twist",
+      answerDirection: theme
+        ? `Household-name brand related to "${theme}" plus one drawable beat into a common phrase`
+        : "Household-name brand logo + one concrete icon/text beat → common phrase (not niche startups)",
+      category: "brand",
+      techniqueId: pick(
+        techniques.find((t) => t.id.includes("brand") || t.id.includes("cultural"))?.id,
+        "brand_logo_wordplay"
+      ),
+      layerPlan: "brand logo pictogram (SVGL) + pictogram or styled text",
+      whyItFitsTier: "Modern cultural recognition that still needs a clever second beat",
+      pictogramNouns: ["spotify", "fire"],
+      mechanismOneLiner: "Brand mark is one syllable; partner icon completes the phrase",
+    },
   ].filter((s) => {
     const key = normalizeAnswerKey(s.answerDirection);
     return !avoidKeys.has(key) && !avoidKeys.has(normalizeAnswerKey(s.workingTitle));
@@ -268,6 +288,18 @@ export async function proposeConceptSeeds(input: {
     const { OVERUSED_REBUS_TROPES } = await import("./visual/icon-features");
     const { mechanismTemplateBrief, rebusCraftBrief } = await import("./rebus-craft");
 
+    const lexicalSeed = (input.theme || input.category || "puzzle").split(/\s+/)[0] || "puzzle";
+    const [wordplay, brandSeeds] = await Promise.all([
+      expandWordplay(lexicalSeed, 6),
+      suggestBrandSeeds({ theme: input.theme, limit: 5 }),
+    ]);
+    const wordplayBlock = formatWordplayForPrompt(wordplay);
+    const brandBlock = brandSeeds.length
+      ? `Household brand logo options (use as pictogramNoun when doing brand_logo_wordplay): ${brandSeeds
+          .map((b) => b.title)
+          .join(", ")}`
+      : "";
+
     const SeedSchema = z.object({
       seeds: z
         .array(
@@ -297,9 +329,10 @@ export async function proposeConceptSeeds(input: {
       system: `You invent fresh rebus puzzle directions for Rebuzzle.
 Each seed must be clever but fair, with concrete drawable pictogram nouns.
 Never suggest overused tropes: ${OVERUSED_REBUS_TROPES.join(", ")}.
-Backform from a specific answer; use ONE primary mechanism (compound/position/size/equation/literal).
+Backform from a specific answer; use ONE primary mechanism (compound/position/size/equation/literal/brand).
 techniqueId MUST be one of: ${techIds.join(", ")}.
-pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, lighthouse) — never abstract words.
+pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, lighthouse) — OR a household brand title when using brand_logo_wordplay.
+Default difficulty target is ~80% (Impossible band) — prefer dense but fair mechanisms.
 ${rebusCraftBrief()}
 ${mechanismTemplateBrief()}`,
       prompt: [
@@ -307,10 +340,13 @@ ${mechanismTemplateBrief()}`,
         `Band ${level.min}–${level.max}. Budget ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
         input.theme ? `Theme: ${input.theme}` : "No fixed theme — surprise us.",
         input.category ? `Preferred category: ${input.category}` : "",
+        wordplayBlock,
+        brandBlock,
         avoidKeys.size
           ? `Avoid these answer keys: ${[...avoidKeys].slice(0, 25).join(", ")}`
           : "",
         "Each seed needs a specific answerDirection (name a plausible phrase), ONE mechanismOneLiner, and 1–3 pictogramNouns with unmistakable silhouettes.",
+        "At most one seed may use brand_logo_wordplay; brands must be globally recognizable.",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -861,5 +897,35 @@ export function stableId(...parts: string[]) {
 export { composePuzzleVisual } from "./visual/compose-visual";
 export { generateImageTile } from "./visual/generate-image-tile";
 export { generatePictogram } from "./visual/generate-pictogram";
+
+export async function lookupBrandLogo(input: { concept: string }) {
+  const hit = await lookupSvglBrandLogo(input.concept);
+  if (!hit) {
+    return {
+      found: false as const,
+      concept: input.concept,
+      tip: "No SVGL brand match — use a household brand name (spotify, discord, github) or a concrete noun pictogram.",
+    };
+  }
+  return {
+    found: true as const,
+    concept: input.concept,
+    title: hit.title,
+    file: hit.file,
+    category: hit.category,
+    libraryIconId: hit.iconId,
+    svg: hit.svg,
+    tip: "Use this SVG as a pictogram layer (brand colors preserved). Pair with another icon/text beat — logo alone is not a puzzle.",
+  };
+}
+
+export async function expandWordplayNeighbors(input: { seed: string; limit?: number }) {
+  const expansion = await expandWordplay(input.seed, input.limit ?? 6);
+  return {
+    ...expansion,
+    promptBlock: formatWordplayForPrompt(expansion),
+    tip: "Use homophones/sounds-like for phonetic leaps; means-like/triggers for compound partners. Prefer ONE leap.",
+  };
+}
 
 export type { TechniqueId };

@@ -20,7 +20,8 @@ export type TechniqueId =
   | "triple_layer_composition"
   | "rare_but_fair_idiom"
   | "recursive_visual_pun"
-  | "cultural_common_knowledge_plus_twist";
+  | "cultural_common_knowledge_plus_twist"
+  | "brand_logo_wordplay";
 
 export interface TechniqueSpec {
   id: TechniqueId;
@@ -231,6 +232,21 @@ export const TECHNIQUE_LIBRARY: Record<TechniqueId, TechniqueSpec> = {
       "Twist should still feel fair with hints",
     ],
     funFactor: "Memorable daily share.",
+  },
+  brand_logo_wordplay: {
+    id: "brand_logo_wordplay",
+    name: "Brand logo wordplay",
+    summary:
+      "A globally recognized company/product logo is one rebus part — paired with icons/text for a fair phrase.",
+    examplePattern: "Spotify logo + 🔥 → Spotify on fire (or a fresher invented cousin)",
+    howToAssemble: [
+      "Use lookup_brand_logo / generate_pictogram for the brand concept (SVGL)",
+      "Keep the brand mark recognizable (brand colors OK)",
+      "Pair with 1–2 concrete icons or styled text — logo alone is not enough",
+      "Answer must be a common phrase players know without niche fandom lore",
+      "Hints may name “a familiar brand mark” early; never require obscure startups",
+    ],
+    funFactor: "Modern, shareable, instantly visual — when the brand is household-name.",
   },
 };
 

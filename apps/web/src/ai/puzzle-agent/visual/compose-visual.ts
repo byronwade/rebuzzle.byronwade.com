@@ -198,6 +198,8 @@ export async function composePuzzleVisual(
           issues.push(
             `Pictogram "${layer.concept}" failed blind recognition (seen as ${pic.seenAs ?? "unclear"}) — redraw or pick a clearer noun`
           );
+        } else if (pic.libraryIconId?.startsWith("svgl:") || pic.librarySource === "brand") {
+          tips.push(`Used SVGL brand logo ${pic.libraryIconId} for "${layer.concept}"`);
         } else if (pic.libraryIconId) {
           tips.push(`Used open icon pack ${pic.libraryIconId} for "${layer.concept}"`);
         }

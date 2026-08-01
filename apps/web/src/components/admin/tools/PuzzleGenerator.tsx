@@ -29,7 +29,7 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
   const [generatedPuzzle, setGeneratedPuzzle] = useState<any>(null);
   const [formData, setFormData] = useState({
     puzzleType: "rebus",
-    difficulty: 7,
+    difficulty: 8,
     category: "",
     theme: "",
     targetDate: "",
@@ -113,7 +113,7 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
       setGeneratedPuzzle(null);
       setFormData({
         puzzleType: "rebus",
-        difficulty: 7,
+        difficulty: 8,
         category: "",
         theme: "",
         targetDate: "",

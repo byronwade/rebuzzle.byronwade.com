@@ -31,7 +31,7 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
   const [formData, setFormData] = useState({
     count: 5,
     puzzleType: "rebus",
-    difficultyMin: 5,
+    difficultyMin: 7,
     difficultyMax: 10,
     category: "",
     theme: "",

@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       mode = "single",
-      targetDifficulty = 7,
+      targetDifficulty = 8,
       category,
       theme,
       requireNovelty = true,
@@ -133,7 +133,7 @@ export async function GET() {
       POST: {
         body: {
           mode: "'single' | 'batch'",
-          targetDifficulty: "1-10 (default: 7)",
+          targetDifficulty: "1-10 (default: 8)",
           category: "string (optional)",
           theme: "string (optional)",
           requireNovelty: "boolean (default: true)",

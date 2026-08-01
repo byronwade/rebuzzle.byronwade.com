@@ -4,8 +4,9 @@
  */
 
 import { generateAIText } from "@/ai/client";
+import { lookupSvglBrandLogo } from "../external/svgl";
 import { recognizePictogramIcon } from "./critique-pictogram";
-import { getIconFeatureHints } from "./icon-features";
+import { getIconFeatureHints, lookupIconFeatures } from "./icon-features";
 import { lookupLibraryIconsForConcept } from "./icon-library";
 import {
   buildConcreteDrawingBrief,
@@ -30,6 +31,11 @@ export type GeneratePictogramInput = {
   preferLibrary?: boolean;
   /** Allow Iconify online search when local packs miss (default true) */
   allowOnlineLibrary?: boolean;
+  /**
+   * Prefer SVGL company logos when the concept matches a brand.
+   * Default: auto — skip brands that collide with concrete nouns (e.g. apple fruit).
+   */
+  preferBrand?: boolean;
 };
 
 export type GeneratePictogramResult = {
@@ -45,9 +51,9 @@ export type GeneratePictogramResult = {
   recognitionConfidence?: number;
   attempts?: number;
   error?: string;
-  /** When SVG came from an open icon pack / Iconify */
+  /** When SVG came from an open icon pack / Iconify / SVGL brand */
   libraryIconId?: string;
-  librarySource?: "local" | "api";
+  librarySource?: "local" | "api" | "brand";
 };
 
 type ScoredAttempt = {
@@ -324,12 +330,43 @@ export async function generatePictogram(
   }
 
   let best: ScoredAttempt | null = null;
-  let bestLibraryMeta: { iconId: string; source: "local" | "api" } | null = null;
+  let bestLibraryMeta: { iconId: string; source: "local" | "api" | "brand" } | null =
+    null;
   let lastReasons: string[] = [];
   let lastError = "invalid_svg";
   let lastSeenAs: string | undefined;
   let lastRedrawAdvice: string | undefined;
   let attempts = 0;
+
+  // ── SVGL brand logos (company marks keep brand colors) ──
+  const forceBrand =
+    input.preferBrand === true ||
+    /brand|logo|company|product|wordmark/i.test(input.role ?? "");
+  const concreteNoun = Boolean(lookupIconFeatures(concept));
+  const tryBrand = input.preferBrand !== false && (forceBrand || !concreteNoun);
+
+  if (tryBrand) {
+    attempts += 1;
+    const brand = await lookupSvglBrandLogo(concept);
+    if (brand?.svg) {
+      // Brand marks are authoritative — skip blind recognition (logo IS the concept)
+      return {
+        styleId: INK_PICTOGRAM_STYLE_ID,
+        concept,
+        role: input.role,
+        svg: brand.svg,
+        emojiFallback,
+        ok: true,
+        clarityScore: 88,
+        clarityReasons: [`svgl_brand:${brand.file}`, "brand_colors_preserved"],
+        seenAs: brand.title,
+        recognitionConfidence: 0.95,
+        attempts,
+        libraryIconId: brand.iconId,
+        librarySource: "brand",
+      };
+    }
+  }
 
   // ── Open icon packs first (Lucide / Phosphor / Tabler / MDI + Iconify API) ──
   if (preferLibrary) {

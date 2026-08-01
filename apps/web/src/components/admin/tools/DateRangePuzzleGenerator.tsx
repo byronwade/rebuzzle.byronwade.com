@@ -32,7 +32,7 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
     startDate: format(new Date(), "yyyy-MM-dd"),
     endDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
     puzzleType: "rebus",
-    difficulty: 7,
+    difficulty: 8,
     category: "",
     theme: "",
   });

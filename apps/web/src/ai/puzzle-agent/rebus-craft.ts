@@ -60,6 +60,12 @@ export const MECHANISM_TEMPLATES = [
     summary: "Board tempts a wrong compound; placement or operator reveals the real phrase",
     example: "Looks like cat+box until UNDER placement yields 'under the weather'",
   },
+  {
+    id: "brand_logo_pivot",
+    summary:
+      "Household-name brand logo (SVGL) plus one concrete icon/text beat for a fair phrase",
+    example: "Discord logo + bee → discordant buzz (invent fresher cousins; keep brands iconic)",
+  },
 ] as const;
 
 export function mechanismTemplateBrief(): string {

@@ -17,11 +17,13 @@ import {
   checkUniqueness,
   composePuzzleVisual,
   craftHintLadder,
+  expandWordplayNeighbors,
   generatePictogram,
   getDifficultyBrief,
   getPuzzleTypeSpec,
   listRecentAnswers,
   listTechniqueLibrary,
+  lookupBrandLogo,
   proposeConceptSeeds,
   scorePuzzleQuality,
   stressTestSolvability,
@@ -107,13 +109,33 @@ export const puzzleAgentTools: ToolSet = {
 
   generate_pictogram: tool({
     description:
-      "Generate one Rebuzzle Ink Pictogram v1 SVG (custom emoji) for a concept. Consistent brand style.",
+      "Generate one Rebuzzle Ink Pictogram v1 SVG (custom emoji) for a concept. Uses SVGL brand logos when the concept is a household brand, else open icon packs, else LLM draw.",
     inputSchema: z.object({
       concept: z.string(),
       role: z.string().optional(),
       emojiFallback: z.string().optional(),
+      preferBrand: z.boolean().optional(),
     }),
     execute: async (input) => generatePictogram(input),
+  }),
+
+  lookup_brand_logo: tool({
+    description:
+      "Look up a company/product logo via SVGL (cached catalog). Use for brand_logo_wordplay pictogram layers.",
+    inputSchema: z.object({
+      concept: z.string(),
+    }),
+    execute: async (input) => lookupBrandLogo(input),
+  }),
+
+  expand_wordplay: tool({
+    description:
+      "Expand a seed with Datamuse lexical neighbors (homophones, rhymes, means-like, associations) for smarter rebus invention.",
+    inputSchema: z.object({
+      seed: z.string(),
+      limit: z.number().optional(),
+    }),
+    execute: async (input) => expandWordplayNeighbors(input),
   }),
 
   compose_puzzle_visual: tool({

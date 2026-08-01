@@ -61,7 +61,7 @@ AVOID:
 - Unclear visual representations
 - Offensive content`;
 
-  const difficultyLevel = params?.difficulty ?? 5;
+  const difficultyLevel = params?.difficulty ?? 8;
   const category = params?.category ?? "any";
   const theme = params?.theme ?? "general";
   const avoid = params?.avoidWords?.join(", ") || "none";
@@ -110,7 +110,7 @@ Ensure variety in the puzzles - don't repeat similar patterns.`;
   });
 
   const prompt = `Generate ${params.count} unique rebus puzzles:
-- Difficulty range: ${params.difficulty ?? 5}/10
+- Difficulty range: ${params.difficulty ?? 8}/10
 - Category: ${params.category ?? "mixed"}
 - Theme: ${params.theme ?? "general"}
 
@@ -146,7 +146,7 @@ Use emojis, symbols, text positioning, and wordplay.`;
   const prompt = `Create a rebus puzzle for the answer: "${params.answer}"
 
 Requirements:
-- Difficulty: ${params.difficulty ?? 5}/10
+- Difficulty: ${params.difficulty ?? 8}/10
 - Style: ${params.style ?? "mixed"}
 - Make it creative and fun
 - Include clear explanation
@@ -183,7 +183,7 @@ Current: "${params.currentPuzzle}"
 Answer: "${params.currentAnswer}"
 ${params.currentExplanation ? `Explanation: "${params.currentExplanation}"` : ""}
 
-Target difficulty: ${params.targetDifficulty ?? 5}/10
+Target difficulty: ${params.targetDifficulty ?? 8}/10
 
 Create an improved version that is more creative, clear, or appropriately difficult.
 Keep the same answer but enhance the visual representation.`;
@@ -222,7 +222,7 @@ Requirements:
 - Variety in difficulty and style
 - Appropriate for general audience
 - Creative and fun
-- Difficulty around ${params.difficulty ?? 5}/10
+- Difficulty around ${params.difficulty ?? 8}/10
 
 Examples for theme inspiration:
 - Holidays: seasonal words and celebrations

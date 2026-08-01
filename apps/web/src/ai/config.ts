@@ -58,6 +58,14 @@ export const AI_CONFIG = {
     // Prefer creative-tier models for wordplay; override with EVE_PUZZLE_MODEL
     model: process.env.EVE_PUZZLE_MODEL || "openai/gpt-5.6-luna",
     maxSteps: 24,
+    /**
+     * Default daily target on the 1–10 scale ≈ 80% difficulty
+     * (Impossible band 8–9). Override with EVE_DEFAULT_DIFFICULTY.
+     */
+    defaultTargetDifficulty: Math.max(
+      1,
+      Math.min(10, Number(process.env.EVE_DEFAULT_DIFFICULTY || 8) || 8)
+    ),
     qualityThreshold: 74,
     minFunScore: 68,
     maxAttempts: 4,

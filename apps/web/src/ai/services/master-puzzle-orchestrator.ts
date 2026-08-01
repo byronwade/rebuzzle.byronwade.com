@@ -196,7 +196,7 @@ export async function selectOptimalPuzzle(params: {
   avoidCategories?: string[];
   preferNovelty?: boolean;
 }): Promise<GeneratedPuzzleResult> {
-  const optimalDifficulty = params.playerSkillLevel ?? 5;
+  const optimalDifficulty = params.playerSkillLevel ?? 8;
   let adjustedDifficulty = optimalDifficulty;
 
   if (params.recentDifficulties && params.recentDifficulties.length >= 3) {

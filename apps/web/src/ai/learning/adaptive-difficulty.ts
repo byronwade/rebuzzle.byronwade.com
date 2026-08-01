@@ -5,8 +5,11 @@
 import { getDifficultyLevelForScore } from "../puzzle-agent/difficulty-levels";
 import type { WindowPerformance } from "./performance-monitor";
 
-/** Canonical weekly spine (UTC day index). Hard→Impossible vocabulary. */
-export const WEEKLY_DIFFICULTY_SPINE = [5, 4, 6, 8, 7, 5, 4] as const;
+/**
+ * Canonical weekly spine (UTC day index). Hard→Impossible vocabulary.
+ * Averages ~8/10 (~80% difficulty) while still varying the week.
+ */
+export const WEEKLY_DIFFICULTY_SPINE = [8, 7, 8, 8, 9, 8, 7] as const;
 
 export function baselineDifficultyForDate(date: Date = new Date()): number {
   const dayOfWeek = date.getUTCDay();
