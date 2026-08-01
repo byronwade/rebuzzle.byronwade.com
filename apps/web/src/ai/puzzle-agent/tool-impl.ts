@@ -266,6 +266,7 @@ export async function proposeConceptSeeds(input: {
     const { z } = await import("zod");
     const { generateAIObject } = await import("@/ai/client");
     const { OVERUSED_REBUS_TROPES } = await import("./visual/icon-features");
+    const { mechanismTemplateBrief, rebusCraftBrief } = await import("./rebus-craft");
 
     const SeedSchema = z.object({
       seeds: z
@@ -296,9 +297,11 @@ export async function proposeConceptSeeds(input: {
       system: `You invent fresh rebus puzzle directions for Rebuzzle.
 Each seed must be clever but fair, with concrete drawable pictogram nouns.
 Never suggest overused tropes: ${OVERUSED_REBUS_TROPES.join(", ")}.
-Prefer idioms/compounds/positional plays with a clean aha.
+Backform from a specific answer; use ONE primary mechanism (compound/position/size/equation/literal).
 techniqueId MUST be one of: ${techIds.join(", ")}.
-pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, lighthouse) — never abstract words.`,
+pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, lighthouse) — never abstract words.
+${rebusCraftBrief()}
+${mechanismTemplateBrief()}`,
       prompt: [
         `Invent 5 distinct puzzle seeds for tier ${level.label} (difficulty ${input.targetDifficulty}/10).`,
         `Band ${level.min}–${level.max}. Budget ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
@@ -307,7 +310,7 @@ pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, li
         avoidKeys.size
           ? `Avoid these answer keys: ${[...avoidKeys].slice(0, 25).join(", ")}`
           : "",
-        "Each seed needs a specific answerDirection (name a plausible phrase family), mechanismOneLiner, and 1–3 pictogramNouns.",
+        "Each seed needs a specific answerDirection (name a plausible phrase), ONE mechanismOneLiner, and 1–3 pictogramNouns with unmistakable silhouettes.",
       ]
         .filter(Boolean)
         .join("\n"),
