@@ -33,12 +33,12 @@ export function MessageRow({ className, from, ...props }: MessageRowProps) {
 }
 
 const bubbleVariants = cva(
-  "w-fit max-w-[min(85%,34rem)] text-pretty text-[15px] leading-6 [overflow-wrap:anywhere]",
+  "w-fit max-w-[min(88%,34rem)] text-pretty text-[15px] leading-6 shadow-[0_1px_2px_hsl(var(--foreground)/0.04)] [overflow-wrap:anywhere]",
   {
     variants: {
       from: {
-        user: "rounded-2xl rounded-br-md bg-foreground px-3.5 py-2 font-medium text-background",
-        agent: "rounded-2xl rounded-bl-md border border-border bg-card px-3.5 py-2 text-foreground",
+        user: "rounded-2xl rounded-br-md bg-foreground px-4 py-2 font-medium text-background shadow-[0_3px_10px_hsl(var(--foreground)/0.12)]",
+        agent: "rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 text-foreground",
       },
       tone: {
         neutral: "",
@@ -85,9 +85,9 @@ export function MessageAvatar({ className }: { className?: string }) {
     <div
       aria-hidden
       className={cn(
-        "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm ring-1 ring-white/20",
         "bg-gradient-to-br from-[#007cf0] to-[#7928ca]",
-        "font-medium text-[10px] text-white",
+        "font-semibold text-[10px] text-white",
         className
       )}
     >
@@ -108,7 +108,7 @@ export function MessageMeta({
   return (
     <p
       className={cn(
-        "flex items-center gap-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]",
+        "flex min-h-5 items-center gap-1.5 font-medium text-[11px] text-muted-foreground tracking-[0.01em]",
         className
       )}
     >
