@@ -48,6 +48,13 @@ export {
   lookupIconFeatures,
 } from "./icon-features";
 export {
+  listMappedConcepts,
+  lookupLibraryIconsForConcept,
+  lookupLocalLibraryIcons,
+  restylePackSvgToInk,
+  type LibraryIconHit,
+} from "./icon-library";
+export {
   buildConcreteDrawingBrief,
   isAbstractPictogramConcept,
   passesPictogramClarity,

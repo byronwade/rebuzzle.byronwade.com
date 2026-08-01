@@ -16,6 +16,8 @@ export const PictogramLayerSchema = z.object({
   recognitionOk: z.boolean().optional(),
   /** What a blind viewer named the icon */
   seenAs: z.string().max(48).optional(),
+  /** Open icon pack id when SVG came from Lucide/Phosphor/Tabler/MDI/Iconify */
+  libraryIconId: z.string().max(80).optional(),
 });
 
 /** Styled text used as a visual device (size, case, strike, stack). */

@@ -79,6 +79,7 @@ function loadInstructions(): string {
     "- ALWAYS call compose_puzzle_visual — unicode-only boards are rejected at publish.",
     "- Prefer ≥1 pictogram SVG; styled text (large/strike/stacked) is OK when typography is the joke.",
     "- Pictogram concepts must be concrete drawable nouns a stranger can sketch (key, umbrella, lighthouse) — never abstract (love, time, success).",
+    "- Icons prefer open packs (Lucide/Phosphor/Tabler/MDI via Iconify) restyled to Ink Pictogram, then LLM redraw if needed.",
     "- Icons must pass blind recognition (silhouette-first) — if compose reports recognition failure, redraw or change the noun.",
     "- Invent ONE clean mechanism (compound, position, size, equation, literal idiom) — avoid overused tropes (before, sunflower, piece of cake) unless the twist is genuinely new.",
     "- Backform from the answer; fair discovery path in hints; one intended reading once seen.",

@@ -18,11 +18,22 @@ function clampScore(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+export type PictogramClarityOptions = {
+  /**
+   * Open icon packs (Lucide/Phosphor/etc.) are often 2–4 clean shapes.
+   * Soften sparse-shape penalties so curated packs aren't rejected.
+   */
+  librarySource?: boolean;
+};
+
 /**
  * Heuristic readability score for a sanitized pictogram SVG.
  * Not perfect — but blocks the worst unreadable blobs before publish.
  */
-export function scorePictogramClarity(svg: string | null | undefined): PictogramClarityResult {
+export function scorePictogramClarity(
+  svg: string | null | undefined,
+  options: PictogramClarityOptions = {}
+): PictogramClarityResult {
   const reasons: string[] = [];
   if (!svg || !svg.includes("<svg")) {
     return { score: 0, ok: false, reasons: ["missing_svg"] };
@@ -42,11 +53,15 @@ export function scorePictogramClarity(svg: string | null | undefined): Pictogram
     score -= 45;
     reasons.push("no_shapes");
   } else if (shapeTags === 1) {
-    score -= 30;
+    score -= options.librarySource ? 12 : 30;
     reasons.push("too_few_shapes");
   } else if (shapeTags === 2) {
-    score -= 8;
-    reasons.push("sparse_shapes");
+    // Curated packs often ship as path+circle — still readable
+    if (options.librarySource) score += 10;
+    else {
+      score -= 8;
+      reasons.push("sparse_shapes");
+    }
   } else if (shapeTags >= 3 && shapeTags <= 10) {
     // Research: small icons excel with few perceptual shapes + bold silhouette
     score += 24;
@@ -58,6 +73,11 @@ export function scorePictogramClarity(svg: string | null | undefined): Pictogram
   } else {
     score -= 20;
     reasons.push("overly_complex");
+  }
+
+  if (options.librarySource) {
+    score += 8;
+    reasons.push("library_pack");
   }
 
   const onlyCircle =

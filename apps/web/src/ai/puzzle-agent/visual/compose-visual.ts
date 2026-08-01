@@ -45,6 +45,7 @@ function applyGeneratedPictogram(
         emojiFallback: pic.emojiFallback || layer.emojiFallback,
         recognitionOk: true,
         seenAs: pic.seenAs,
+        libraryIconId: pic.libraryIconId,
       },
       accepted: true,
       recognitionWeak: false,
@@ -59,6 +60,7 @@ function applyGeneratedPictogram(
         emojiFallback: pic.emojiFallback || layer.emojiFallback,
         recognitionOk: false,
         seenAs: pic.seenAs ?? "unclear",
+        libraryIconId: pic.libraryIconId,
       },
       accepted: true,
       recognitionWeak: true,
@@ -72,6 +74,7 @@ function applyGeneratedPictogram(
       emojiFallback: pic.emojiFallback || layer.emojiFallback,
       recognitionOk: false,
       seenAs: pic.seenAs,
+      libraryIconId: pic.libraryIconId,
     },
     accepted: false,
     recognitionWeak: true,
@@ -195,6 +198,8 @@ export async function composePuzzleVisual(
           issues.push(
             `Pictogram "${layer.concept}" failed blind recognition (seen as ${pic.seenAs ?? "unclear"}) — redraw or pick a clearer noun`
           );
+        } else if (pic.libraryIconId) {
+          tips.push(`Used open icon pack ${pic.libraryIconId} for "${layer.concept}"`);
         }
       } else {
         generated.failedPictograms += 1;

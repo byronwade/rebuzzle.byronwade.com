@@ -93,6 +93,7 @@ export async function polishCandidateVisuals(
         emojiFallback: pic.emojiFallback || layer.emojiFallback,
         recognitionOk: true,
         seenAs: pic.seenAs,
+        libraryIconId: pic.libraryIconId,
       });
       changed = true;
     } else if (pic.svg && (pic.clarityScore ?? 0) >= 62) {
@@ -102,6 +103,7 @@ export async function polishCandidateVisuals(
         emojiFallback: pic.emojiFallback || layer.emojiFallback,
         recognitionOk: false,
         seenAs: pic.seenAs ?? "unclear",
+        libraryIconId: pic.libraryIconId,
       });
       changed = true;
     } else {

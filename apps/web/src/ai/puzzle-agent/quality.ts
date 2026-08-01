@@ -126,6 +126,7 @@ export function evaluateVisualForPublish(visual?: {
     recognitionOk?: boolean;
     seenAs?: string;
     concept?: string;
+    libraryIconId?: string;
   }>;
 }): VisualPublishCheck {
   if (!visual) {
@@ -151,7 +152,9 @@ export function evaluateVisualForPublish(visual?: {
   );
 
   for (const layer of pictogramWithSvg) {
-    const clarity = scorePictogramClarity(layer.svg);
+    const clarity = scorePictogramClarity(layer.svg, {
+      librarySource: Boolean(layer.libraryIconId),
+    });
     if (!clarity.ok) {
       return {
         ok: false,

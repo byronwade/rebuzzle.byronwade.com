@@ -6,6 +6,7 @@
 import { generateAIText } from "@/ai/client";
 import { recognizePictogramIcon } from "./critique-pictogram";
 import { getIconFeatureHints } from "./icon-features";
+import { lookupLibraryIconsForConcept } from "./icon-library";
 import {
   buildConcreteDrawingBrief,
   scorePictogramClarity,
@@ -25,6 +26,10 @@ export type GeneratePictogramInput = {
   maxRetries?: number;
   /** Skip blind recognition (tests / offline) */
   skipRecognition?: boolean;
+  /** Prefer open icon packs (Lucide/Phosphor/Tabler/MDI + Iconify API) before LLM draw */
+  preferLibrary?: boolean;
+  /** Allow Iconify online search when local packs miss (default true) */
+  allowOnlineLibrary?: boolean;
 };
 
 export type GeneratePictogramResult = {
@@ -40,6 +45,9 @@ export type GeneratePictogramResult = {
   recognitionConfidence?: number;
   attempts?: number;
   error?: string;
+  /** When SVG came from an open icon pack / Iconify */
+  libraryIconId?: string;
+  librarySource?: "local" | "api";
 };
 
 type ScoredAttempt = {
@@ -246,8 +254,11 @@ async function scoreDrawnSvg(input: {
   svg: string;
   concept: string;
   skipRecognition?: boolean;
+  librarySource?: boolean;
 }): Promise<ScoredAttempt | null> {
-  const clarity = scorePictogramClarity(input.svg);
+  const clarity = scorePictogramClarity(input.svg, {
+    librarySource: input.librarySource,
+  });
   if (!clarity.ok) return null;
 
   if (input.skipRecognition) {
@@ -298,6 +309,7 @@ export async function generatePictogram(
   const concept = input.concept.trim().slice(0, 48);
   const emojiFallback = input.emojiFallback?.trim() || guessEmojiFallback(concept);
   const maxWaves = Math.max(1, Math.min(4, (input.maxRetries ?? 2) + 1));
+  const preferLibrary = input.preferLibrary !== false;
 
   if (!concept) {
     return {
@@ -312,11 +324,90 @@ export async function generatePictogram(
   }
 
   let best: ScoredAttempt | null = null;
+  let bestLibraryMeta: { iconId: string; source: "local" | "api" } | null = null;
   let lastReasons: string[] = [];
   let lastError = "invalid_svg";
   let lastSeenAs: string | undefined;
   let lastRedrawAdvice: string | undefined;
   let attempts = 0;
+
+  // ── Open icon packs first (Lucide / Phosphor / Tabler / MDI + Iconify API) ──
+  if (preferLibrary) {
+    const libraryHits = await lookupLibraryIconsForConcept(concept, {
+      allowOnline: input.allowOnlineLibrary !== false,
+      limit: 5,
+    });
+    attempts += libraryHits.length;
+
+    for (const hit of libraryHits) {
+      const scored = await scoreDrawnSvg({
+        svg: hit.svg,
+        concept,
+        skipRecognition: input.skipRecognition,
+        librarySource: true,
+      });
+      if (!scored) {
+        lastError = `library_low_clarity:${hit.iconId}`;
+        continue;
+      }
+
+      lastSeenAs = scored.seenAs;
+      lastReasons = [...scored.clarityReasons, `library:${hit.iconId}`];
+
+      // Library icons get a small rank boost — humans designed the silhouette
+      const libraryRank = scored.rank + 120;
+      const ranked = { ...scored, rank: libraryRank };
+
+      if (!best || ranked.rank > best.rank) {
+        best = ranked;
+        bestLibraryMeta = { iconId: hit.iconId, source: hit.source };
+      }
+
+      if (ranked.recognized && ranked.clarityScore >= 54) {
+        return {
+          styleId: INK_PICTOGRAM_STYLE_ID,
+          concept,
+          role: input.role,
+          svg: ranked.svg,
+          emojiFallback,
+          ok: true,
+          clarityScore: ranked.clarityScore,
+          clarityReasons: lastReasons,
+          seenAs: ranked.seenAs,
+          recognitionConfidence: ranked.recognitionConfidence,
+          attempts,
+          libraryIconId: hit.iconId,
+          librarySource: hit.source,
+        };
+      }
+
+      if (!ranked.recognized) {
+        lastError = `library_recognition_mismatch:${hit.iconId}:seen=${ranked.seenAs ?? "unclear"}`;
+        lastRedrawAdvice =
+          ranked.redrawAdvice ||
+          `Library icon ${hit.iconId} misread as ${ranked.seenAs ?? "unclear"} — try another pack or LLM redraw.`;
+      }
+    }
+
+    // Strong library hit even if recognition soft-skipped / weak — still prefer over emoji
+    if (best && bestLibraryMeta && best.clarityScore >= 62 && best.recognized) {
+      return {
+        styleId: INK_PICTOGRAM_STYLE_ID,
+        concept,
+        role: input.role,
+        svg: best.svg,
+        emojiFallback,
+        ok: true,
+        clarityScore: best.clarityScore,
+        clarityReasons: best.clarityReasons,
+        seenAs: best.seenAs,
+        recognitionConfidence: best.recognitionConfidence,
+        attempts,
+        libraryIconId: bestLibraryMeta.iconId,
+        librarySource: bestLibraryMeta.source,
+      };
+    }
+  }
 
   for (let wave = 0; wave < maxWaves; wave += 1) {
     const variants =
@@ -412,6 +503,8 @@ export async function generatePictogram(
       recognitionConfidence: best.recognitionConfidence,
       attempts,
       error: best.recognized ? undefined : lastError,
+      libraryIconId: bestLibraryMeta?.iconId,
+      librarySource: bestLibraryMeta?.source,
     };
   }
 
@@ -428,5 +521,7 @@ export async function generatePictogram(
     recognitionConfidence: best?.recognitionConfidence,
     attempts,
     error: lastError,
+    libraryIconId: bestLibraryMeta?.iconId,
+    librarySource: bestLibraryMeta?.source,
   };
 }
