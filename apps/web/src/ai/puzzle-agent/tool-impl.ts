@@ -297,7 +297,8 @@ Each seed must be clever but fair, with concrete drawable pictogram nouns.
 Never suggest overused tropes: ${OVERUSED_REBUS_TROPES.join(", ")}.
 Prefer idioms/compounds/positional plays with a clean aha.
 techniqueId MUST be one of: ${techIds.join(", ")}.
-pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, lighthouse) — never abstract words.`,
+pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, lighthouse) — never abstract words.
+Default difficulty follows the weekly spine (Difficult band, Evil/Impossible peaks) — prefer fair mechanisms.`,
       prompt: [
         `Invent 5 distinct puzzle seeds for tier ${level.label} (difficulty ${input.targetDifficulty}/10).`,
         `Band ${level.min}–${level.max}. Budget ${level.componentBudget.min}–${level.componentBudget.max} parts.`,

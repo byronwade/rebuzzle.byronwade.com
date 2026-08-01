@@ -153,7 +153,7 @@ import { formatVisualLibraryForPrompt } from "./utils/rebus-visual-library";
 // Constants
 const HINTS_MIN = 3;
 const HINTS_MAX = 5;
-const DEFAULT_TARGET_DIFFICULTY = 7; // Default to "difficult" level for rebus - more complex puzzles
+const DEFAULT_TARGET_DIFFICULTY = 6; // Difficult-band default; spine peaks to Evil/Impossible
 const ANSWER_MAX_LENGTH = 50;
 const EXPLANATION_MIN_LENGTH = 20;
 const EXPLANATION_MAX_LENGTH = 200;

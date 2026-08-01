@@ -133,12 +133,13 @@ function NoPuzzleDisplay() {
   return (
     <Layout>
       <StatusPanel
-        eyebrow="No puzzle yet"
+        action={{ href: "/", label: "Refresh" }}
+        eyebrow="Almost ready"
         headingId="no-puzzle-title"
         secondaryAction={{ href: "/blog", label: "Read the blog while you wait" }}
-        title="Today's puzzle isn't live."
+        title="Today's puzzle is finishing up."
       >
-        A new puzzle lands every day at midnight. Check back shortly.
+        We keep a backup ready every day — refresh in a moment if you still don&apos;t see the board.
       </StatusPanel>
     </Layout>
   );

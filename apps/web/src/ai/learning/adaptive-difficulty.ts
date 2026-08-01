@@ -5,8 +5,12 @@
 import { getDifficultyLevelForScore } from "../puzzle-agent/difficulty-levels";
 import type { WindowPerformance } from "./performance-monitor";
 
-/** Canonical weekly spine (UTC day index). Hard→Impossible vocabulary. */
-export const WEEKLY_DIFFICULTY_SPINE = [5, 4, 6, 8, 7, 5, 4] as const;
+/**
+ * Canonical weekly spine (UTC day index: Sun…Sat). Hard→Impossible vocabulary.
+ * Habit-friendly cadence: soft weekends, midweek Evil, Friday Impossible peak.
+ * Averages ~6.3/10 (Difficult band) so most days stay solvable without hints.
+ */
+export const WEEKLY_DIFFICULTY_SPINE = [5, 6, 7, 6, 7, 8, 5] as const;
 
 export function baselineDifficultyForDate(date: Date = new Date()): number {
   const dayOfWeek = date.getUTCDay();

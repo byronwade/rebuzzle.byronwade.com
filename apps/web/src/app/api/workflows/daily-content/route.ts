@@ -78,6 +78,26 @@ export async function POST(request: Request) {
       logger.error("Puzzle generation failed", new Error(errMsg));
     }
 
+    // Never leave the day blank — seed a fair fallback if Eve produced nothing.
+    let guarantee: { id?: string; seeded?: boolean } = {};
+    try {
+      const { ensureDailyPuzzleSeeded } = await import("@/lib/game/ensure-daily-puzzle");
+      const dateKey = new Date().toISOString().slice(0, 10);
+      const ensured = await ensureDailyPuzzleSeeded(dateKey);
+      guarantee = { id: ensured.id, seeded: ensured.seeded };
+      if (ensured.seeded) {
+        logger.warn("Daily guarantee seed persisted after empty/failed generation", {
+          dateKey,
+          puzzleId: ensured.id,
+        });
+      }
+    } catch (ensureError) {
+      logger.error(
+        "Daily guarantee seed failed",
+        ensureError instanceof Error ? ensureError : new Error(String(ensureError))
+      );
+    }
+
     logger.info("Revalidating puzzle cache");
     revalidateTag("daily-puzzle", "max");
 
@@ -94,7 +114,8 @@ export async function POST(request: Request) {
         puzzleId:
           puzzleResult.success && puzzleResult.puzzle
             ? (puzzleResult.puzzle as { id?: string }).id
-            : undefined,
+            : guarantee.id,
+        guaranteeSeeded: guarantee.seeded === true,
       },
       blog: blogResult,
       completedAt: new Date().toISOString(),

@@ -1,15 +1,12 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
 import { formatGatewayAuthError, isGatewayAuthError, probeGatewayAuth } from "@/ai/client";
 import { resolveAdaptiveDifficultyForDate } from "@/ai/learning";
 import { normalizeAnswerKey } from "@/ai/learning/answer-registry";
 import { generateMasterPuzzle } from "@/ai/services/master-puzzle-orchestrator";
-import type { Puzzle } from "@/db/models";
-import { getCollection } from "@/db/mongodb";
+import { archiveTodaysPuzzle as archiveTodaysPuzzleLib } from "@/lib/game/archive-daily-puzzle";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
-import { logger } from "@/lib/logger";
 
 /**
  * Soft-retire today's puzzle into the archive instead of hard-deleting.
@@ -20,58 +17,7 @@ export async function archiveTodaysPuzzle(): Promise<{
   message: string;
   archivedIds: string[];
 }> {
-  try {
-    const collection = getCollection<Puzzle>("puzzles");
-    const dateKey = getUtcPuzzleDate();
-    const start = new Date(`${dateKey}T00:00:00.000Z`);
-    const end = new Date(`${dateKey}T23:59:59.999Z`);
-
-    const existing = await collection
-      .find({ publishedAt: { $gte: start, $lte: end }, active: true })
-      .project({ id: 1 })
-      .toArray();
-
-    const archivedIds = existing.map((p) => String(p.id));
-
-    if (archivedIds.length) {
-      await collection.updateMany(
-        { id: { $in: archivedIds } },
-        {
-          $set: {
-            active: false,
-            "metadata.archived": true,
-            "metadata.retiredAt": new Date().toISOString(),
-            "metadata.retiredReason": "regenerate",
-            "metadata.retiredDateKey": dateKey,
-          },
-        }
-      );
-    }
-
-    revalidateTag("daily-puzzle", "max");
-    revalidateTag(`daily-puzzle-${dateKey}`, "max");
-
-    logger.info("Archived today's puzzle(s) before regenerate", {
-      dateKey,
-      count: archivedIds.length,
-      archivedIds,
-    });
-
-    return {
-      success: true,
-      message: archivedIds.length
-        ? `Archived ${archivedIds.length} puzzle(s) for ${dateKey}`
-        : `No active puzzle for ${dateKey} to archive`,
-      archivedIds,
-    };
-  } catch (error) {
-    console.error("Error archiving today's puzzle:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown error",
-      archivedIds: [],
-    };
-  }
+  return archiveTodaysPuzzleLib("regenerate");
 }
 
 /** @deprecated Prefer archiveTodaysPuzzle — hard delete destroys uniqueness history */

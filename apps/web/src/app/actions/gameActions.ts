@@ -163,8 +163,21 @@ export async function fetchGameOverSolution(): Promise<{
 export async function fetchGameData(_isPreview = false): Promise<PublicGameData> {
   try {
     // Never run Eve/AI on the interactive board path — cron owns generation.
-    const result = await getTodaysPuzzle(undefined, undefined, { allowAiGenerate: false });
-    const puzzle = (result.success ? result.puzzle : null) as TodaysPuzzle | null;
+    // Still guarantee a seed so the day is never blank if cron is late/fails.
+    let result = await getTodaysPuzzle(undefined, undefined, { allowAiGenerate: false });
+    let puzzle = (result.success ? result.puzzle : null) as TodaysPuzzle | null;
+
+    if (!puzzle || !(puzzle.puzzle || puzzle.rebusPuzzle)) {
+      try {
+        const { ensureDailyPuzzleSeeded } = await import("@/lib/game/ensure-daily-puzzle");
+        const { getUtcPuzzleDate } = await import("@/lib/game/daily-lock");
+        await ensureDailyPuzzleSeeded(getUtcPuzzleDate());
+        result = await getTodaysPuzzle(undefined, undefined, { allowAiGenerate: false });
+        puzzle = (result.success ? result.puzzle : null) as TodaysPuzzle | null;
+      } catch {
+        // fall through to empty
+      }
+    }
 
     if (!puzzle) {
       return emptyGameData();

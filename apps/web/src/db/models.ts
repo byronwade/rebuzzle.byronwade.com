@@ -131,6 +131,9 @@ export interface Puzzle {
       ogDescription: string;
     };
     aiGenerated?: boolean;
+    /** Present when the row is an emergency / play-path seed Eve may upgrade */
+    fallbackReason?: string;
+    seedKind?: "daily_guarantee" | "play_path" | "ai_failure" | "emergency";
     qualityScore?: number;
     uniquenessScore?: number;
     generatedAt?: string;

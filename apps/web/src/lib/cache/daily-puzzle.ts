@@ -22,6 +22,9 @@ export type CachedDailyPuzzle = {
   fromDatabase: true;
   /** Generative composed board when Eve built custom pictograms */
   visual?: PuzzleVisual;
+  /** Set when this row is a deterministic seed (upgradeable by cron) */
+  fallbackReason?: string;
+  seedKind?: string;
 };
 
 function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDailyPuzzle {
@@ -67,9 +70,12 @@ function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDailyPuzz
     category: puzzle.metadata?.category || puzzle.category || "general",
     relevanceScore: 8,
     seoMetadata: (puzzle.metadata?.seoMetadata as Record<string, unknown>) || {},
-    aiGenerated: true,
+    aiGenerated: puzzle.metadata?.aiGenerated !== false,
     fromDatabase: true,
     visual: puzzle.visual,
+    fallbackReason: puzzle.metadata?.fallbackReason,
+    seedKind:
+      typeof puzzle.metadata?.seedKind === "string" ? puzzle.metadata.seedKind : undefined,
   };
 }
 

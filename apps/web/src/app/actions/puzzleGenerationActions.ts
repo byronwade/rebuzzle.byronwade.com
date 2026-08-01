@@ -10,6 +10,9 @@ import {
 } from "@/ai/learning";
 import { db } from "@/db";
 import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
+import { archivePuzzleForDate } from "@/lib/game/archive-daily-puzzle";
+import { canUpgradeTodaysSeed, ensureDailyPuzzleSeeded } from "@/lib/game/ensure-daily-puzzle";
+import { pickFallbackPuzzle } from "@/lib/game/fallback-puzzles";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
 import { logger } from "@/lib/logger";
 
@@ -55,43 +58,13 @@ async function calculateDailyDifficulty(date?: Date): Promise<{
 }
 
 /**
- * Hardcoded fallback puzzles (only used if AI fails AND database fails)
- */
-const FALLBACK_PUZZLES = [
-  {
-    rebusPuzzle: "☀️ 🌻",
-    answer: "sunflower",
-    difficulty: 3,
-    explanation: "Sun (☀️) + Flower (🌻) = Sunflower",
-    category: "compound_words",
-    hints: ["Think about nature", "Combine two elements", "A yellow flower"],
-  },
-  {
-    rebusPuzzle: "🐝 4️⃣",
-    answer: "before",
-    difficulty: 4,
-    explanation: "Bee (🐝) sounds like 'be' + Four (4️⃣) = Before",
-    category: "phonetic",
-    hints: ["Think about sounds", "Phonetic wordplay", "Relates to time"],
-  },
-  {
-    rebusPuzzle: "🌙 💡",
-    answer: "moonlight",
-    difficulty: 5,
-    explanation: "Moon (🌙) + Light (💡) = Moonlight",
-    category: "compound_words",
-    hints: ["Think about nighttime", "Two elements combine", "Natural illumination"],
-  },
-];
-
-/**
  * Get or generate today's puzzle
  *
  * SMART TOKEN USAGE:
  * 1. Check Data Cache / database first (puzzle already generated for today)
- * 2. If not found, generate with AI (ONE TIME per day)
- * 3. Store in database + revalidateTag("daily-puzzle")
- * 4. All subsequent requests hit "use cache" (NO TOKENS!)
+ * 2. If seed-only and cron allows AI, upgrade before anyone finishes the day
+ * 3. If not found, generate with AI (ONE TIME per day) or seed a guarantee fallback
+ * 4. Store in database + revalidateTag("daily-puzzle")
  *
  * @param dateString - Date string in YYYY-MM-DD format
  * @param puzzleType - Optional puzzle type (e.g., "rebus", "word-puzzle")
@@ -105,11 +78,26 @@ async function getOrGenerateDailyPuzzle(
   const failOnAiError = options?.failOnAiError === true;
   logger.info("Getting puzzle for date", { dateString, allowAiGenerate, failOnAiError });
 
+  let upgradingSeed = false;
+
   // STEP 1: Cross-request cached DB read via Cache Components ("use cache")
   try {
     const cached = await getCachedDailyPuzzleFromDb(dateString);
     if (cached) {
-      return cached;
+      if (allowAiGenerate) {
+        const upgrade = await canUpgradeTodaysSeed(dateString);
+        if (upgrade.canUpgrade && upgrade.reason === "upgradeable_seed") {
+          upgradingSeed = true;
+          logger.info("Upgrading deterministic seed with Eve", {
+            dateString,
+            seedPuzzleId: cached.id,
+          });
+        } else {
+          return cached;
+        }
+      } else {
+        return cached;
+      }
     }
   } catch (dbError) {
     logger.error(
@@ -122,30 +110,28 @@ async function getOrGenerateDailyPuzzle(
   }
 
   // Double-check once more before generating (race with concurrent requests)
-  try {
-    const raceCheck = await db.puzzleOps.findByDate(dateString);
-    if (raceCheck) {
-      revalidateTag("daily-puzzle", "max");
-      const cached = await getCachedDailyPuzzleFromDb(dateString);
-      if (cached) {
-        return cached;
+  if (!upgradingSeed) {
+    try {
+      const raceCheck = await db.puzzleOps.findByDate(dateString);
+      if (raceCheck) {
+        revalidateTag("daily-puzzle", "max");
+        const cached = await getCachedDailyPuzzleFromDb(dateString);
+        if (cached) {
+          return cached;
+        }
       }
+    } catch (finalCheckError) {
+      logger.error(
+        "Final pre-generation check failed",
+        finalCheckError instanceof Error ? finalCheckError : new Error(String(finalCheckError))
+      );
     }
-  } catch (finalCheckError) {
-    logger.error(
-      "Final pre-generation check failed",
-      finalCheckError instanceof Error ? finalCheckError : new Error(String(finalCheckError))
-    );
   }
 
   // Interactive play path: never block TTFB on Eve — persist a fast fallback.
-  // Cron / regenerate / admin regenerate should call with allowAiGenerate: true.
+  // Cron / workflow / admin regenerate should call with allowAiGenerate: true.
   if (!allowAiGenerate) {
-    const [y, m, d] = dateString.split("-").map(Number);
-    const dayOfYear = Math.floor(
-      (Date.UTC(y!, (m ?? 1) - 1, d ?? 1) - Date.UTC(y!, 0, 0)) / 86_400_000
-    );
-    const fallback = FALLBACK_PUZZLES[dayOfYear % FALLBACK_PUZZLES.length]!;
+    const fallback = pickFallbackPuzzle(dateString);
     const persisted = await persistDailyPuzzle({
       dateString,
       puzzleDisplay: fallback.rebusPuzzle,
@@ -158,7 +144,10 @@ async function getOrGenerateDailyPuzzle(
       aiGenerated: false,
       rebusPuzzle: fallback.rebusPuzzle,
       allowDuplicateAnswer: true,
-      metadataExtra: { fallbackReason: "Play-path fast seed (AI deferred to cron)" },
+      metadataExtra: {
+        fallbackReason: "Play-path fast seed (AI deferred to cron)",
+        seedKind: "play_path",
+      },
     });
     return {
       id: persisted.id,
@@ -267,6 +256,14 @@ async function getOrGenerateDailyPuzzle(
       puzzleDisplay = visual.unicodeFallback;
     }
 
+    // If cron is replacing a play-path/guarantee seed, archive it only after Eve succeeds.
+    if (upgradingSeed) {
+      const archived = await archivePuzzleForDate(dateString, "seed_upgrade");
+      if (!archived.success) {
+        throw new Error(`Failed to archive seed before upgrade: ${archived.message}`);
+      }
+    }
+
     // Persist first — clients must receive a real DB id for /api/puzzles/guess
     const persisted = await persistDailyPuzzle({
       dateString,
@@ -298,6 +295,7 @@ async function getOrGenerateDailyPuzzle(
         selfLearning: true,
         estimatedSolveRate: result.metadata.estimatedSolveRate,
         simCalibrationBias: result.metadata.simCalibrationBias,
+        upgradedFromSeed: upgradingSeed,
       },
     });
 
@@ -379,12 +377,38 @@ async function getOrGenerateDailyPuzzle(
       throw error instanceof Error ? error : new Error(String(error));
     }
 
-    // STEP 4: AI failed — persist a deterministic fallback so guessing still works
-    const [y, m, d] = dateString.split("-").map(Number);
-    const dayOfYear = Math.floor(
-      (Date.UTC(y!, (m ?? 1) - 1, d ?? 1) - Date.UTC(y!, 0, 0)) / 86_400_000
-    );
-    const fallback = FALLBACK_PUZZLES[dayOfYear % FALLBACK_PUZZLES.length]!;
+    // STEP 4: AI failed — keep an existing seed, otherwise persist a guarantee fallback
+    if (upgradingSeed) {
+      const existing = await db.puzzleOps.findByDate(dateString);
+      if (existing) {
+        logger.warn("Eve upgrade failed — keeping live seed puzzle", {
+          dateString,
+          puzzleId: existing.id,
+        });
+        return {
+          id: existing.id,
+          puzzle: existing.puzzle || existing.rebusPuzzle || "",
+          rebusPuzzle: existing.rebusPuzzle,
+          puzzleType: existing.puzzleType || "rebus",
+          difficulty:
+            typeof existing.metadata?.difficultyScore === "number"
+              ? existing.metadata.difficultyScore
+              : 5,
+          answer: existing.answer,
+          explanation: existing.explanation,
+          hints: existing.hints || [],
+          date: dateString,
+          topic: existing.category,
+          category: existing.category,
+          relevanceScore: 7,
+          aiGenerated: false,
+          fromDatabase: true,
+          fallbackReason: existing.metadata?.fallbackReason || "Kept seed after Eve failure",
+        };
+      }
+    }
+
+    const fallback = pickFallbackPuzzle(dateString);
 
     logger.warn("Persisting emergency fallback puzzle", {
       dateString,
@@ -405,6 +429,7 @@ async function getOrGenerateDailyPuzzle(
       allowDuplicateAnswer: true,
       metadataExtra: {
         fallbackReason: error instanceof Error ? error.message : "AI generation failed",
+        seedKind: "ai_failure",
       },
     });
 
@@ -480,10 +505,11 @@ export async function getTodaysPuzzle(
     }
 
     // Last resort — still persist so /api/puzzles/guess can resolve the id
-    const lastResortPuzzle = FALLBACK_PUZZLES[0]!;
     const todayString = dateString || getTodayDateString();
+    const lastResortPuzzle = pickFallbackPuzzle(todayString);
 
     try {
+      await ensureDailyPuzzleSeeded(todayString);
       const persisted = await persistDailyPuzzle({
         dateString: todayString,
         puzzleDisplay: lastResortPuzzle.rebusPuzzle,
@@ -496,7 +522,10 @@ export async function getTodaysPuzzle(
         aiGenerated: false,
         rebusPuzzle: lastResortPuzzle.rebusPuzzle,
         allowDuplicateAnswer: true,
-        metadataExtra: { fallbackReason: "Emergency fallback" },
+        metadataExtra: {
+          fallbackReason: "Emergency fallback",
+          seedKind: "emergency",
+        },
       });
 
       return {
@@ -580,7 +609,7 @@ export async function previewPuzzleGeneration() {
     logger.info("Testing AI puzzle generation");
 
     const result = await generateMasterPuzzle({
-      targetDifficulty: 5,
+      targetDifficulty: baselineDifficultyForDate(),
       requireNovelty: true,
       qualityThreshold: 70,
       maxAttempts: 2,

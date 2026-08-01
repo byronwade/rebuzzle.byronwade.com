@@ -29,13 +29,27 @@ function perf(overrides: Partial<WindowPerformance> = {}): WindowPerformance {
 
 describe("adaptive difficulty", () => {
   it("uses the weekly spine as baseline", () => {
-    // UTC Wednesday = 3 → spine 8
+    // UTC Wednesday = 3 → spine 6 (Difficult)
     const wed = new Date("2026-07-29T12:00:00.000Z");
     expect(baselineDifficultyForDate(wed)).toBe(WEEKLY_DIFFICULTY_SPINE[3]);
+    expect(baselineDifficultyForDate(wed)).toBe(6);
+  });
+
+  it("averages in the Difficult band (~6/10) across the week", () => {
+    const avg =
+      WEEKLY_DIFFICULTY_SPINE.reduce((sum, n) => sum + n, 0) / WEEKLY_DIFFICULTY_SPINE.length;
+    expect(avg).toBeGreaterThanOrEqual(5.5);
+    expect(avg).toBeLessThanOrEqual(7);
+  });
+
+  it("keeps soft weekend days and a Friday Impossible peak", () => {
+    expect(WEEKLY_DIFFICULTY_SPINE[0]).toBe(5); // Sun Hard
+    expect(WEEKLY_DIFFICULTY_SPINE[5]).toBe(8); // Fri Impossible
+    expect(WEEKLY_DIFFICULTY_SPINE[6]).toBe(5); // Sat Hard
   });
 
   it("raises difficulty when players finish too quickly", () => {
-    const wed = new Date("2026-07-29T12:00:00.000Z"); // baseline 8
+    const wed = new Date("2026-07-29T12:00:00.000Z"); // baseline 6
     const result = computeAdaptiveDifficulty({
       date: wed,
       performance: perf({
@@ -46,15 +60,15 @@ describe("adaptive difficulty", () => {
         notes: ["too fast"],
       }),
     });
-    expect(result.baseline).toBe(8);
-    expect(result.target).toBe(9);
+    expect(result.baseline).toBe(6);
+    expect(result.target).toBe(7);
     expect(result.delta).toBe(1);
   });
 
   it("eases difficulty when solve rate collapses", () => {
-    const sun = new Date("2026-07-26T12:00:00.000Z"); // baseline 5
+    const mon = new Date("2026-07-27T12:00:00.000Z"); // baseline 6
     const result = computeAdaptiveDifficulty({
-      date: sun,
+      date: mon,
       performance: perf({
         tooHard: true,
         difficultyDelta: -1,
@@ -63,7 +77,8 @@ describe("adaptive difficulty", () => {
         notes: ["too hard"],
       }),
     });
-    expect(result.target).toBe(4);
+    expect(result.baseline).toBe(6);
+    expect(result.target).toBe(5);
   });
 
   it("clamps into the Hard–Impossible generation band", () => {
