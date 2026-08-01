@@ -47,9 +47,10 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
   }
   if (candidate.visual.mode === "unicode") visualCraft -= 30;
 
-  const pictogramClarities = (candidate.visual.layers ?? [])
-    .filter((l) => l.kind === "pictogram" && l.svg)
-    .map((l) => scorePictogramClarity(l.svg).score);
+  const pictogramClarities = (candidate.visual.layers ?? []).flatMap((layer) => {
+    if (layer.kind !== "pictogram" || !layer.svg) return [];
+    return [scorePictogramClarity(layer.svg).score];
+  });
   if (pictogramClarities.length) {
     const avg =
       pictogramClarities.reduce((a, b) => a + b, 0) / pictogramClarities.length;
