@@ -123,6 +123,9 @@ export function evaluateVisualForPublish(visual?: {
     svg?: string;
     content?: string;
     emphasis?: string;
+    recognitionOk?: boolean;
+    seenAs?: string;
+    concept?: string;
   }>;
 }): VisualPublishCheck {
   if (!visual) {
@@ -153,6 +156,16 @@ export function evaluateVisualForPublish(visual?: {
       return {
         ok: false,
         reason: `Unreadable pictogram SVG (${clarity.reasons.join(", ") || "low clarity"}) — redraw with a clearer silhouette`,
+        mode: visual.mode,
+        pictogramSvgCount,
+        textLayerCount,
+      };
+    }
+    // Hard recognition gate when compose recorded a blind-name failure
+    if (layer.recognitionOk === false) {
+      return {
+        ok: false,
+        reason: `Pictogram "${layer.concept ?? "icon"}" failed recognition (seen as ${layer.seenAs ?? "unclear"}) — redraw silhouette`,
         mode: visual.mode,
         pictogramSvgCount,
         textLayerCount,

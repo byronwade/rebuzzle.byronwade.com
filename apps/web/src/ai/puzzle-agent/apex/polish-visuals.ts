@@ -27,6 +27,7 @@ function layerNeedsRedraw(
   forceWeakRedraw: boolean
 ): boolean {
   if (!layer.svg) return true;
+  if (layer.recognitionOk === false) return true;
   const clarity = scorePictogramClarity(layer.svg);
   if (!clarity.ok || clarity.score < 62) return true;
   // Only force redraw of mediocre icons when critique asked for revise / low icons
@@ -37,11 +38,15 @@ function layerNeedsRedraw(
   return Boolean(concept && haystack.includes(concept));
 }
 
+/** Conservative icon score — never inflate past recognition failures. */
 function estimateIconScore(layers: VisualLayer[]): number {
   const scores = layers.flatMap((layer) => {
     if (layer.kind !== "pictogram") return [];
     if (!layer.svg) return [28];
-    return [scorePictogramClarity(layer.svg).score];
+    if (layer.recognitionOk === false) return [32];
+    const clarity = scorePictogramClarity(layer.svg).score;
+    if (layer.recognitionOk === true) return [Math.min(88, clarity + 8)];
+    return [Math.min(70, clarity)];
   });
   if (!scores.length) return 55;
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -81,11 +86,22 @@ export async function polishCandidateVisuals(
       maxRetries: 2,
     });
 
-    if (pic.svg && (pic.ok || (pic.clarityScore ?? 0) >= 62)) {
+    if (pic.svg && pic.ok) {
       nextLayers.push({
         ...layer,
         svg: pic.svg,
         emojiFallback: pic.emojiFallback || layer.emojiFallback,
+        recognitionOk: true,
+        seenAs: pic.seenAs,
+      });
+      changed = true;
+    } else if (pic.svg && (pic.clarityScore ?? 0) >= 62) {
+      nextLayers.push({
+        ...layer,
+        svg: pic.svg,
+        emojiFallback: pic.emojiFallback || layer.emojiFallback,
+        recognitionOk: false,
+        seenAs: pic.seenAs ?? "unclear",
       });
       changed = true;
     } else {

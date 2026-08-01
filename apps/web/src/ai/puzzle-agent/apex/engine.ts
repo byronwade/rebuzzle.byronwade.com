@@ -89,10 +89,16 @@ async function enrichCandidate(
       unicodeFallback: candidate.visual.unicodeFallback,
       pictogramConcepts,
       pictogramSvgs,
-      iconRecognitionNotes: pictogramConcepts.map(
-        (concept, i) =>
-          `${concept}: ${pictogramSvgs[i] ? "svg present" : "MISSING svg / emoji fallback"}`
-      ),
+      iconRecognitionNotes: pictogramLayers.map((layer) => {
+        if (!layer.svg) return `${layer.concept}: MISSING svg / emoji fallback`;
+        if (layer.recognitionOk === false) {
+          return `${layer.concept}: FAILED recognition (seen as ${layer.seenAs ?? "unclear"})`;
+        }
+        if (layer.recognitionOk === true) {
+          return `${layer.concept}: recognized${layer.seenAs ? ` as ${layer.seenAs}` : ""}`;
+        }
+        return `${layer.concept}: svg present (recognition untested)`;
+      }),
     });
     const creativityScore = critique.creativityScore ?? 60;
     const iconRecognizability = critique.iconRecognizability ?? 70;
@@ -120,10 +126,10 @@ async function enrichCandidate(
           `Overused trope with low creativity (${creativityScore}) — invent a fresher mechanism`,
         ],
       };
-    } else if (iconRecognizability < 50) {
+    } else if (iconRecognizability < 55) {
       next = {
         ...next,
-        publishable: iconRecognizability >= 40 ? next.publishable : false,
+        publishable: iconRecognizability >= 45 ? next.publishable : false,
         rejectReasons: [
           ...next.rejectReasons,
           `Icons look unrecognizable (score ${iconRecognizability}) — redraw concrete silhouettes`,
@@ -232,6 +238,8 @@ export async function runApexGeneration(
 
       const result = await runPuzzleAgentGeneration({
         ...params,
+        // Use curriculum-adjusted difficulty (learning delta applied)
+        targetDifficulty: brief.targetDifficulty,
         maxAttempts: Math.min(params.maxAttempts ?? 2, 2),
         qualityThreshold: brief.qualityThreshold,
         briefSummary: brief.briefSummary,

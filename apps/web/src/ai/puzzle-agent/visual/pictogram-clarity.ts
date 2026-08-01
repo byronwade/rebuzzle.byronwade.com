@@ -47,12 +47,16 @@ export function scorePictogramClarity(svg: string | null | undefined): Pictogram
   } else if (shapeTags === 2) {
     score -= 8;
     reasons.push("sparse_shapes");
-  } else if (shapeTags >= 3 && shapeTags <= 14) {
-    score += 22;
+  } else if (shapeTags >= 3 && shapeTags <= 10) {
+    // Research: small icons excel with few perceptual shapes + bold silhouette
+    score += 24;
+  } else if (shapeTags <= 14) {
+    score += 14;
   } else if (shapeTags <= 20) {
-    score += 8;
+    score += 4;
+    reasons.push("busy_icon");
   } else {
-    score -= 18;
+    score -= 20;
     reasons.push("overly_complex");
   }
 
@@ -77,6 +81,25 @@ export function scorePictogramClarity(svg: string | null | undefined): Pictogram
     score -= 12;
     reasons.push("missing_stroke");
   }
+
+  // Hairline strokes collapse at 48–64px (iconography research)
+  const strokeWidths = [...svg.matchAll(/stroke-width\s*[:=]\s*["']?(\d+(?:\.\d+)?)/gi)].map(
+    (m) => Number(m[1])
+  );
+  if (strokeWidths.length) {
+    const minStroke = Math.min(...strokeWidths);
+    const avgStroke =
+      strokeWidths.reduce((a, b) => a + b, 0) / strokeWidths.length;
+    if (minStroke > 0 && minStroke < 1.5) {
+      score -= 14;
+      reasons.push("hairline_stroke");
+    } else if (avgStroke >= 2) {
+      score += 6;
+    }
+  }
+
+  if (/stroke-linecap\s*=\s*["']round["']/i.test(svg)) score += 3;
+  if (/stroke-linejoin\s*=\s*["']round["']/i.test(svg)) score += 2;
 
   const hasFill = /\bfill\s*=/i.test(svg) || /fill\s*:/i.test(svg);
   if (hasFill) score += 4;

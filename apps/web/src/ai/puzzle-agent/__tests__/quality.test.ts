@@ -107,6 +107,24 @@ describe("evaluateVisualForPublish", () => {
     ).toBe(false);
   });
 
+  it("rejects pictograms that failed blind recognition", () => {
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "key",
+            svg: INK_PICTOGRAM_EXAMPLE_EYE,
+            recognitionOk: false,
+            seenAs: "spoon",
+          },
+        ],
+        unicodeFallback: "🔑",
+      }).ok
+    ).toBe(false);
+  });
+
   it("accepts styled text when typography is the joke", () => {
     expect(
       evaluateVisualForPublish({

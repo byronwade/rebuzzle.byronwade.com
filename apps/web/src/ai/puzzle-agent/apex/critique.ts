@@ -33,8 +33,10 @@ export async function critiqueCandidate(input: {
       schema: CritiqueSchema,
       system: `You are an adversarial rebus editor for a national daily (Rebuzzle).
 Reject lazy emoji salad, unreadable/vague icons, answer leaks, unfair obscurity, weak aha moments, and overused tropes (${OVERUSED_REBUS_TROPES.slice(0, 6).join(", ")}) unless the twist is genuinely new.
-Demand: one clean clever mechanism, concrete pictogram nouns a human can sketch, fair progressive hints, family-friendly.
+Craft standards (research-backed): backform from the answer; ONE primary device (compound/position/size/phonetic/equation/literal); a fair board has one intended reading once seen; hard rubrics need kinder hints.
+Demand: concrete pictogram nouns with unmistakable silhouettes, fair progressive hints, family-friendly.
 Score creativityScore (mechanism inventiveness, not just uniqueness) and iconRecognizability (0–100).
+If Prior icon recognition notes say FAILED, iconRecognizability must be ≤40 and verdict cannot be ship.
 Ship only if you'd be proud to publish nationally AND creativityScore ≥ 65 AND icons would be recognizable.
 Be specific and ruthless but fair.`,
       prompt: [

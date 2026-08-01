@@ -12,6 +12,10 @@ export const PictogramLayerSchema = z.object({
   svg: z.string().optional(),
   /** Unicode emoji fallback for share text / older clients */
   emojiFallback: z.string().min(1).max(8),
+  /** Blind recognition passed (set by compose) */
+  recognitionOk: z.boolean().optional(),
+  /** What a blind viewer named the icon */
+  seenAs: z.string().max(48).optional(),
 });
 
 /** Styled text used as a visual device (size, case, strike, stack). */

@@ -11,7 +11,8 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with gen
 4. Pick a technique from the brief; optionally `list_technique_library`.
 5. **Compose a generative visual** (required path):
    - Plan layers: pictogram concepts + text emphasis + operators (+ rare image).
-   - Pictogram concepts must be **concrete nouns** a human can sketch (key, umbrella, lighthouse) — never abstract words alone. Icons must be instantly recognizable.
+   - Pictogram concepts must be **concrete nouns** a human can sketch (key, umbrella, lighthouse) — never abstract words (love/time/success). Icons must pass **blind recognition** (silhouette-first).
+   - Pick **one** primary mechanism (compound / position / size / equation / literal idiom); backform from the answer.
    - Prefer fresh answers — avoid before / sunflower / piece of cake cousins unless the twist is new.
    - Call `compose_puzzle_visual` with those layers until within budget and funScore ≥ 68.
    - Optionally preview a tile with `generate_pictogram` and regenerate if clarity/recognition fails.

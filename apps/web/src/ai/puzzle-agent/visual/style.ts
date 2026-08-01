@@ -39,31 +39,32 @@ export const INK_PICTOGRAM_EXAMPLE_CLOCK = `<svg xmlns="http://www.w3.org/2000/s
 export const INK_PICTOGRAM_STYLE_GUIDE = `
 You are a senior icon designer drawing Rebuzzle Ink Pictogram v1 tiles for rebus puzzles.
 
-GOAL: Instant recognition at 48–96px. If a stranger cannot name the object in one second, you failed.
-Draw like a human sketching a clear emoji — bold silhouette first, then 2–4 identifying marks.
+GOAL: Instant recognition at 48–64px. If a stranger cannot name the object in one second, you failed.
+Research rule: the brain reads silhouette first — exaggerate the outer shape, then add 2–4 identifying marks.
 
 LOCKED STYLE (non-negotiable):
 - Flat, crisp, editorial pictograms — modern rebus board icons, not clipart or doodles
 - ViewBox 0 0 64 64, single SVG root, no external fonts or images
-- Stroke-first: 2.25px rounded strokes in ${INK_PICTOGRAM_PALETTE.ink}
+- Stroke-first: 2.25–2.75px rounded strokes (stroke-linecap/linejoin=round) in ${INK_PICTOGRAM_PALETTE.ink}
 - Optional soft fill ${INK_PICTOGRAM_PALETTE.canvas}; accent ${INK_PICTOGRAM_PALETTE.accent} only for ONE focal detail
 - No gradients, filters, drop shadows, 3D, photorealism, purple, glow, or noise textures
-- Centered subject, ~6–8px padding from edges
+- Centered subject, ~6–8px padding from edges; subject fills most of the safe area
 - Family-friendly; no letters inside the SVG unless the concept IS a letter
-- Use 3–12 simple shapes/paths with a bold silhouette
-- Prefer closed outlines + a few distinctive interior marks (stripes, pupil, handle, etc.)
+- Prefer 3–8 primitive shapes (circle/ellipse/rect/path) — cap complexity; ≤12 absolute max
+- Prefer native shapes over dense path spaghetti; round coordinates
 
-CRAFT RULES:
-- Draw ONE concrete object (or one classic symbol like a heart / lightbulb)
-- Include the iconic features that make it unmistakable
-- Keep geometry chunky — avoid hairline details that vanish at small size
+CRAFT RULES (silhouette-first):
+- Draw ONE concrete object (or one classic symbol like a heart / lightbulb) — single focal element
+- Exaggerate the distinguishing feature (key teeth, bee stripes, umbrella J-handle) — clarity is controlled emphasis
+- Keep geometry chunky — no hairline strokes under 2px; details that vanish at 48px must be removed
 - Canonical views: animals side/¾; tools ¾ with handle; clocks face-on; containers with opening visible
 - Never substitute a related object (honeycomb for bee) unless the rebus role requires that exact noun
 - Do not draw abstract blobs, random squiggles, decorative swirls, or multi-scene collages
 
 RECOGNITION TEST (before finishing):
-Ask: "Would a stranger name this exact object in one second?"
-If no, enlarge the silhouette and add the missing identifying marks — do not add decoration.
+1) Squint test: would the outer silhouette alone suggest the object?
+2) Name test: would a stranger say the exact noun in one second?
+If either fails, enlarge the silhouette and strengthen identifying marks — do not add decoration.
 
 GOOD EXAMPLE (bee — stripes + wings + antennae):
 ${INK_PICTOGRAM_EXAMPLE_BEE}

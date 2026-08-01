@@ -12,6 +12,7 @@ export function candidateNeedsVisualPolish(candidate: ApexCandidate): boolean {
   return candidate.visual.layers.some((layer) => {
     if (layer.kind !== "pictogram") return false;
     if (!layer.svg) return true;
+    if (layer.recognitionOk === false) return true;
     return !scorePictogramClarity(layer.svg).ok;
   });
 }

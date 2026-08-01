@@ -288,6 +288,112 @@ export const ICON_FEATURES: Record<string, IconFeatureEntry> = {
     features: ["jigsaw piece with tabs and blanks"],
     view: "front",
   },
+  // High-frequency rebus nouns (phonetic / equation devices)
+  bed: {
+    aliases: ["bed"],
+    features: ["mattress rectangle", "headboard", "legs or frame"],
+    view: "side",
+  },
+  tea: {
+    aliases: ["tea", "teacup", "cup of tea"],
+    features: ["cup body", "handle", "optional saucer/steam"],
+    view: "side",
+  },
+  pear: {
+    aliases: ["pear"],
+    features: ["bulbous bottom", "narrow neck", "stem", "leaf"],
+    view: "front",
+  },
+  door: {
+    aliases: ["door"],
+    features: ["rectangle panel", "doorknob", "optional frame"],
+    view: "front",
+  },
+  saw: {
+    aliases: ["saw", "handsaw"],
+    features: ["toothed blade", "handle"],
+    view: "side",
+  },
+  knot: {
+    aliases: ["knot"],
+    features: ["looped rope crossing", "rope ends"],
+    view: "front",
+  },
+  can: {
+    aliases: ["can", "tin can"],
+    features: ["cylinder body", "ridged top rim", "optional label band"],
+    view: "three-quarter",
+  },
+  sheep: {
+    aliases: ["sheep", "ewe", "lamb"],
+    features: ["fluffy oval body", "legs", "head with ears"],
+    view: "side",
+  },
+  hair: {
+    aliases: ["hair", "hairstyle"],
+    features: ["head silhouette", "distinctive locks or bangs"],
+    view: "side or front",
+  },
+  store: {
+    aliases: ["store", "shop"],
+    features: ["building front", "door", "awning or signboard shape"],
+    view: "front",
+  },
+  sea: {
+    aliases: ["sea", "ocean"],
+    features: ["wave crests", "horizon line"],
+    view: "front",
+  },
+  hole: {
+    aliases: ["hole"],
+    features: ["dark oval/circle opening", "rim"],
+    view: "front",
+  },
+  ladder: {
+    aliases: ["ladder"],
+    features: ["two long rails", "3+ rungs"],
+    view: "front upright",
+  },
+  needle: {
+    aliases: ["needle"],
+    features: ["long thin shaft", "eye hole", "pointed tip"],
+    view: "diagonal",
+  },
+  bowl: {
+    aliases: ["bowl"],
+    features: ["open hemisphere", "thick rim"],
+    view: "three-quarter",
+  },
+  pan: {
+    aliases: ["pan", "frying pan"],
+    features: ["round pan body", "long handle"],
+    view: "top/side",
+  },
+  fork: {
+    aliases: ["fork"],
+    features: ["handle", "3–4 tines"],
+    view: "front",
+  },
+  spoon: {
+    aliases: ["spoon"],
+    features: ["handle", "oval bowl"],
+    view: "front/side",
+  },
+  raindrop: {
+    aliases: ["raindrop", "drop", "droplet"],
+    features: ["teardrop silhouette", "pointed top"],
+    view: "front",
+  },
+  lighthouse: {
+    aliases: ["lighthouse"],
+    features: ["tall tower", "lantern room top", "optional beams"],
+    view: "front",
+  },
+  butterfly: {
+    aliases: ["butterfly"],
+    features: ["two wing pairs", "body", "antennae"],
+    view: "top/front",
+  },
 };
 
 /** Overused rebus answers — treat as tropes to avoid copying. */
@@ -300,6 +406,12 @@ export const OVERUSED_REBUS_TROPES = [
   "big deal",
   "once in a blue moon",
   "man overboard",
+  "head over heels",
+  "crossroads",
+  "forgive and forget",
+  "no u turn",
+  "i understand",
+  "long time no see",
 ] as const;
 
 function normalizeLabel(value: string): string {

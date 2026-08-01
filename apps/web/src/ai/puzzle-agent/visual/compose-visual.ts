@@ -18,9 +18,65 @@ import {
   type VisualLayer,
 } from "./composition";
 import { generateImageTile } from "./generate-image-tile";
-import { generatePictogram } from "./generate-pictogram";
-import { scorePictogramClarity } from "./pictogram-clarity";
+import { generatePictogram, type GeneratePictogramResult } from "./generate-pictogram";
+import {
+  isAbstractPictogramConcept,
+  scorePictogramClarity,
+} from "./pictogram-clarity";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
+
+type PictogramLayer = Extract<VisualLayer, { kind: "pictogram" }>;
+
+function applyGeneratedPictogram(
+  layer: PictogramLayer,
+  pic: GeneratePictogramResult
+): {
+  layer: PictogramLayer;
+  accepted: boolean;
+  recognitionWeak: boolean;
+} {
+  // Hard recognition gate: only ship icons a blind viewer can name (ok=true).
+  // Clarity-only keep is rejected for publish via recognitionOk=false.
+  if (pic.svg && pic.ok) {
+    return {
+      layer: {
+        ...layer,
+        svg: pic.svg,
+        emojiFallback: pic.emojiFallback || layer.emojiFallback,
+        recognitionOk: true,
+        seenAs: pic.seenAs,
+      },
+      accepted: true,
+      recognitionWeak: false,
+    };
+  }
+
+  if (pic.svg && (pic.clarityScore ?? 0) >= 62) {
+    return {
+      layer: {
+        ...layer,
+        svg: pic.svg,
+        emojiFallback: pic.emojiFallback || layer.emojiFallback,
+        recognitionOk: false,
+        seenAs: pic.seenAs ?? "unclear",
+      },
+      accepted: true,
+      recognitionWeak: true,
+    };
+  }
+
+  return {
+    layer: {
+      ...layer,
+      svg: undefined,
+      emojiFallback: pic.emojiFallback || layer.emojiFallback,
+      recognitionOk: false,
+      seenAs: pic.seenAs,
+    },
+    accepted: false,
+    recognitionWeak: true,
+  };
+}
 
 export type ComposePuzzleVisualInput = {
   answer: string;
@@ -72,9 +128,15 @@ export async function composePuzzleVisual(
 
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
+      if (isAbstractPictogramConcept(layer.concept)) {
+        issues.push(
+          `Abstract pictogram concept "${layer.concept}" — replace with a concrete drawable noun (clock, key, umbrella)`
+        );
+      }
+
       if (layer.svg && layer.svg.includes("<svg")) {
         const clarity = scorePictogramClarity(layer.svg);
-        if (clarity.ok) {
+        if (clarity.ok && layer.recognitionOk !== false) {
           filledLayers.push(layer);
           generated.pictograms += 1;
           claritySum += clarity.score;
@@ -87,12 +149,9 @@ export async function composePuzzleVisual(
             emojiFallback: layer.emojiFallback,
             maxRetries: 2,
           });
-          if (pic.svg && ((pic.ok && pic.clarityScore) || (pic.clarityScore ?? 0) >= 62)) {
-            filledLayers.push({
-              ...layer,
-              svg: pic.svg,
-              emojiFallback: pic.emojiFallback || layer.emojiFallback,
-            });
+          const applied = applyGeneratedPictogram(layer, pic);
+          filledLayers.push(applied.layer);
+          if (applied.accepted && applied.layer.svg) {
             generated.pictograms += 1;
             claritySum += pic.clarityScore ?? clarity.score;
             clarityCount += 1;
@@ -100,18 +159,13 @@ export async function composePuzzleVisual(
               recognitionSum += pic.recognitionConfidence;
               recognitionCount += 1;
             }
-            if (!pic.ok) {
-              tips.push(
-                `Pictogram "${layer.concept}" kept on clarity but recognition was weak (seen as ${pic.seenAs ?? "unclear"})`
+            if (applied.recognitionWeak) {
+              issues.push(
+                `Pictogram "${layer.concept}" failed blind recognition (seen as ${pic.seenAs ?? "unclear"}) — redraw or pick a clearer noun`
               );
             }
           } else {
             generated.failedPictograms += 1;
-            filledLayers.push({
-              ...layer,
-              svg: undefined,
-              emojiFallback: layer.emojiFallback,
-            });
             issues.push(
               `Unreadable pictogram for "${layer.concept}" (${clarity.reasons.join(", ") || "low clarity"}) — pick a more concrete noun`
             );
@@ -125,12 +179,9 @@ export async function composePuzzleVisual(
         emojiFallback: layer.emojiFallback,
         maxRetries: 2,
       });
-      if (pic.svg && (pic.ok || (pic.clarityScore ?? 0) >= 62)) {
-        filledLayers.push({
-          ...layer,
-          svg: pic.svg,
-          emojiFallback: pic.emojiFallback,
-        });
+      const applied = applyGeneratedPictogram(layer, pic);
+      filledLayers.push(applied.layer);
+      if (applied.accepted && applied.layer.svg) {
         generated.pictograms += 1;
         if (typeof pic.clarityScore === "number") {
           claritySum += pic.clarityScore;
@@ -140,18 +191,13 @@ export async function composePuzzleVisual(
           recognitionSum += pic.recognitionConfidence;
           recognitionCount += 1;
         }
-        if (!pic.ok) {
-          tips.push(
-            `Pictogram "${layer.concept}" clarity-ok but recognition weak (seen as ${pic.seenAs ?? "unclear"})`
+        if (applied.recognitionWeak) {
+          issues.push(
+            `Pictogram "${layer.concept}" failed blind recognition (seen as ${pic.seenAs ?? "unclear"}) — redraw or pick a clearer noun`
           );
         }
       } else {
         generated.failedPictograms += 1;
-        filledLayers.push({
-          ...layer,
-          svg: undefined,
-          emojiFallback: pic.emojiFallback || layer.emojiFallback,
-        });
         issues.push(
           `Pictogram "${layer.concept}" failed clarity/recognition — use a concrete drawable noun and redraw`
         );

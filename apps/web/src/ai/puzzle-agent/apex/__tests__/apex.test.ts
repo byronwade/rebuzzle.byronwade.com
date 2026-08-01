@@ -214,4 +214,38 @@ describe("visual polish gates", () => {
     });
     expect(candidateNeedsVisualPolish(revise)).toBe(true);
   });
+
+  it("flags recognition failures for polish even when SVG exists", () => {
+    const misread = fakeCandidate({
+      visual: {
+        styleId: "ink-pictogram-v1",
+        mode: "composed",
+        layout: "row",
+        unicodeFallback: "🔑",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "key",
+            emojiFallback: "🔑",
+            svg: INK_PICTOGRAM_EXAMPLE_KEY,
+            recognitionOk: false,
+            seenAs: "spoon",
+          },
+        ],
+      },
+      critique: {
+        verdict: "ship",
+        summary: "ok",
+        strengths: [],
+        flaws: [],
+        reviseInstructions: [],
+        falseLeadQuality: 40,
+        ahaPredicted: 70,
+        creativityScore: 70,
+        iconRecognizability: 80,
+        overusedTrope: false,
+      },
+    });
+    expect(candidateNeedsVisualPolish(misread)).toBe(true);
+  });
 });

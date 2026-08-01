@@ -5,11 +5,20 @@
 import { AI_CONFIG } from "../../config";
 import { loadAllAnswerKeys } from "../../learning/answer-registry";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
+import { mechanismTemplateBrief, rebusCraftBrief } from "../rebus-craft";
 import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
 import { loadLearningDigest } from "./learning-context";
 import { samplePhraseBank } from "./phrase-bank";
 import type { GenerationBrief } from "./types";
+
+/** Clamp learning difficulty nudges into a sane band. */
+export function applyDifficultyDelta(
+  targetDifficulty: number,
+  delta: number
+): number {
+  return Math.max(1, Math.min(10, Math.round(targetDifficulty + delta)));
+}
 
 export type CurriculumInput = {
   targetDifficulty: number;
@@ -26,7 +35,6 @@ export type CurriculumInput = {
  * Assemble everything Eve needs before inventing: tier, diversity, phrases, learning.
  */
 export async function buildGenerationBrief(input: CurriculumInput): Promise<GenerationBrief> {
-  const level = getDifficultyLevelForScore(input.targetDifficulty);
   const qualityThreshold = input.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
   const minFunScore = AI_CONFIG.puzzleAgent.minFunScore;
   const candidateCount = input.candidateCount ?? AI_CONFIG.puzzleAgent.apex?.candidateCount ?? 3;
@@ -49,6 +57,13 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       : loadLearningDigest(),
     loadAllAnswerKeys(500),
   ]);
+
+  // Actually apply self-learning difficulty nudges (was previously text-only)
+  const targetDifficulty = applyDifficultyDelta(
+    input.targetDifficulty,
+    learning.targetDifficultyDelta
+  );
+  const level = getDifficultyLevelForScore(targetDifficulty);
 
   // Ban recent + full archive answers so retired puzzles still block reuse
   const banned = new Set([...diversity.bannedAnswerKeys, ...archiveKeys]);
@@ -79,7 +94,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   ];
 
   const phraseSuggestions = samplePhraseBank({
-    targetDifficulty: input.targetDifficulty,
+    targetDifficulty,
     preferredTechniques,
     bannedAnswerKeys: banned,
     theme: input.theme,
@@ -110,14 +125,16 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       ? `Learning prefer: ${learning.preferPatterns.slice(0, 2).join("; ")}.`
       : null,
     learning.targetDifficultyDelta !== 0
-      ? `Applied difficulty delta: ${learning.targetDifficultyDelta > 0 ? "+" : ""}${learning.targetDifficultyDelta}.`
+      ? `Applied difficulty delta: ${learning.targetDifficultyDelta > 0 ? "+" : ""}${learning.targetDifficultyDelta} → target ${targetDifficulty}/10.`
       : null,
+    rebusCraftBrief(),
+    mechanismTemplateBrief(),
   ]
     .filter(Boolean)
     .join(" ");
 
   return {
-    targetDifficulty: input.targetDifficulty,
+    targetDifficulty,
     tierLabel: level.label,
     puzzleType: input.puzzleType ?? "rebus",
     theme: input.theme,
