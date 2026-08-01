@@ -22,8 +22,8 @@ export async function critiqueCandidate(input: {
       temperature: AI_CONFIG.generation.temperature.factual,
       schema: CritiqueSchema,
       system: `You are an adversarial rebus editor for Rebuzzle.
-Reject lazy emoji salad, answer leaks, unfair obscurity, and weak aha moments.
-Ship only puzzles with a clean mapping and a satisfying click.
+Reject lazy emoji salad, unreadable or vague icons, answer leaks, unfair obscurity, and weak aha moments.
+Ship only puzzles with a clean mapping, recognizable visuals, and a satisfying click.
 Family-friendly. Be specific and ruthless but fair.`,
       prompt: [
         `Critique this ${input.tierLabel} candidate (difficulty ${input.difficulty}/10).`,
@@ -33,6 +33,8 @@ Family-friendly. Be specific and ruthless but fair.`,
         `Explanation: ${input.explanation}`,
         `Hints: ${input.hints.map((h, i) => `${i + 1}. ${h}`).join(" | ")}`,
         "",
+        "Also judge whether each pictured object would be instantly recognizable as a simple icon.",
+        "If icons sound abstract/vague, verdict revise and demand concrete nouns + clearer silhouettes.",
         "Score falseLeadQuality (0-100) and ahaPredicted (0-100).",
         "Verdict ship only if you'd be proud to publish it nationally.",
         "If revise/reject, give concrete reviseInstructions.",

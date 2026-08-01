@@ -37,6 +37,13 @@ export {
 export { inventLabBrief, type LabBrief } from "./invent-lab-brief";
 export { type RunVisualLabInput, type RunVisualLabResult, runVisualLab } from "./run-visual-lab";
 export {
+  buildConcreteDrawingBrief,
+  isAbstractPictogramConcept,
+  passesPictogramClarity,
+  scorePictogramClarity,
+  type PictogramClarityResult,
+} from "./pictogram-clarity";
+export {
   IMAGE_TILE_STYLE_GUIDE,
   INK_PICTOGRAM_PALETTE,
   INK_PICTOGRAM_STYLE_GUIDE,

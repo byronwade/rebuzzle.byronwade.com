@@ -43,6 +43,9 @@ type LabResult = {
     concept: string;
     svg: string | null;
     emojiFallback: string;
+    clarityScore?: number;
+    clarityReasons?: string[];
+    attempts?: number;
     error?: string;
   };
   image?: {
@@ -446,7 +449,14 @@ export function DevVisualLab() {
                 title="Pictogram"
                 lines={[
                   `${result.pictogram.ok ? "ok" : "failed"} · ${result.pictogram.concept}`,
-                  `fallback ${result.pictogram.emojiFallback}`,
+                  typeof result.pictogram.clarityScore === "number"
+                    ? `clarity ${result.pictogram.clarityScore}${
+                        result.pictogram.attempts ? ` · tries ${result.pictogram.attempts}` : ""
+                      }`
+                    : "clarity n/a",
+                  result.pictogram.clarityReasons?.length
+                    ? `reasons: ${result.pictogram.clarityReasons.join(", ")}`
+                    : `fallback ${result.pictogram.emojiFallback}`,
                   result.pictogram.error || (result.pictogram.svg ? "svg ready" : "no svg"),
                 ]}
               />

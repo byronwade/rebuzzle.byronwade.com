@@ -44,6 +44,9 @@ export type RunVisualLabResult = {
     concept: string;
     svg: string | null;
     emojiFallback: string;
+    clarityScore?: number;
+    clarityReasons?: string[];
+    attempts?: number;
     error?: string;
   };
   /** Single image tile probe */
@@ -216,6 +219,9 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
         concept: pictogram.concept,
         svg: pictogram.svg,
         emojiFallback: pictogram.emojiFallback,
+        clarityScore: pictogram.clarityScore,
+        clarityReasons: pictogram.clarityReasons,
+        attempts: pictogram.attempts,
         error: pictogram.error,
       },
       visual: {

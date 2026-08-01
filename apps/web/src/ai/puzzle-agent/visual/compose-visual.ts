@@ -19,6 +19,7 @@ import {
 } from "./composition";
 import { generateImageTile } from "./generate-image-tile";
 import { generatePictogram } from "./generate-pictogram";
+import { scorePictogramClarity } from "./pictogram-clarity";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
 
 export type ComposePuzzleVisualInput = {
@@ -64,17 +65,36 @@ export async function composePuzzleVisual(
 
   const filledLayers: VisualLayer[] = [];
 
+  let claritySum = 0;
+  let clarityCount = 0;
+
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
       if (layer.svg && layer.svg.includes("<svg")) {
-        filledLayers.push(layer);
-        generated.pictograms += 1;
+        const clarity = scorePictogramClarity(layer.svg);
+        if (clarity.ok) {
+          filledLayers.push(layer);
+          generated.pictograms += 1;
+          claritySum += clarity.score;
+          clarityCount += 1;
+        } else {
+          generated.failedPictograms += 1;
+          filledLayers.push({
+            ...layer,
+            svg: undefined,
+            emojiFallback: layer.emojiFallback,
+          });
+          issues.push(
+            `Unreadable pictogram for "${layer.concept}" (${clarity.reasons.join(", ") || "low clarity"}) — regenerate with a clearer silhouette`
+          );
+        }
         continue;
       }
       const pic = await generatePictogram({
         concept: layer.concept,
         role: layer.role,
         emojiFallback: layer.emojiFallback,
+        maxRetries: 1,
       });
       if (pic.ok && pic.svg) {
         filledLayers.push({
@@ -83,12 +103,20 @@ export async function composePuzzleVisual(
           emojiFallback: pic.emojiFallback,
         });
         generated.pictograms += 1;
+        if (typeof pic.clarityScore === "number") {
+          claritySum += pic.clarityScore;
+          clarityCount += 1;
+        }
       } else {
         generated.failedPictograms += 1;
         filledLayers.push({
           ...layer,
+          svg: undefined,
           emojiFallback: pic.emojiFallback || layer.emojiFallback,
         });
+        issues.push(
+          `Pictogram "${layer.concept}" failed clarity/generation — use a more concrete noun or redraw`
+        );
         tips.push(`Pictogram fallback used for "${layer.concept}" — unicode emoji only`);
       }
       continue;
@@ -121,6 +149,8 @@ export async function composePuzzleVisual(
 
     filledLayers.push(layer);
   }
+
+  const avgPictogramClarity = clarityCount > 0 ? claritySum / clarityCount : null;
 
   if (filledLayers.length === 0) {
     issues.push("No renderable layers after generation");
@@ -219,10 +249,16 @@ export async function composePuzzleVisual(
     hasSpatialOrOperator: hasOperator || visual.layout === "stack" || visual.layout === "overlay",
     hasStyledText: styledText,
     explanationMapsWell: false,
+    avgPictogramClarity,
   });
 
   if (generated.pictograms === 0 && textLayers === 0) {
     tips.push("Prefer at least one custom pictogram or styled text layer for a generative board");
+  }
+  if (generated.failedPictograms > 0) {
+    tips.push(
+      "Failed pictograms usually mean the concept was too abstract — pick a concrete noun (bee, clock, key)"
+    );
   }
   if (visual.mode === "unicode") {
     issues.push("Compose fell back to unicode mode — regenerate pictogram SVGs before publishing");

@@ -220,7 +220,7 @@ export function proposeConceptSeeds(input: {
     recommendedTechniques: techniques.map((t) => t.id),
     bannedAnswerKeys: [...avoidKeys].slice(0, 40),
     seeds: seedIdeas,
-    note: "Seeds are starting points — invent a fresh answer not in bannedAnswerKeys / recent answers. Then call compose_puzzle_visual.",
+    note: "Seeds are starting points — invent a fresh answer not in bannedAnswerKeys / recent answers. Pictogram concepts must be concrete nouns (bee, clock, key) — never abstract words alone. Then call compose_puzzle_visual.",
   };
 }
 

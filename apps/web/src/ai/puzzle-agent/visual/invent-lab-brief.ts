@@ -82,11 +82,16 @@ export async function inventLabBrief(input?: {
       temperature: 0.9,
       schema: LabBriefSchema,
       system: `You invent fresh rebus Visual Lab seeds.
-Return one concrete imageable concept (noun), one playful answer phrase, and a difficulty 4–9.
-Avoid overused seeds like "bee" / "before". Prefer idioms and compounds.`,
+Return:
+1) concept — a CONCRETE imageable noun an icon designer can draw in 1 second (bee, clock, key, umbrella, lighthouse). Never abstract words like love/time/success/energy alone.
+2) answer — a playful idiom/compound/phrase the rebus could encode
+3) difficulty 4–9
+Avoid overused seeds like "bee"/"before" when you can. Prefer idioms and compounds with clear visual nouns.`,
       prompt: [
         `Invent a Visual Lab seed around difficulty ${difficulty} (${adaptive.tierLabel}).`,
-        hasConcept ? `Concept hint: ${input!.concept}` : "Choose the concept yourself.",
+        hasConcept
+          ? `Concept hint: ${input!.concept}`
+          : "Choose a concrete noun yourself (object/animal/tool — not an abstract idea).",
         hasAnswer ? `Answer hint: ${input!.answer}` : "Choose the answer yourself.",
       ].join("\n"),
     });

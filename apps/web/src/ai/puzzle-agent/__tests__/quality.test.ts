@@ -8,6 +8,7 @@ import {
   isKnownTechniqueId,
   normalizeAnswerKey,
 } from "../quality";
+import { INK_PICTOGRAM_EXAMPLE_EYE } from "../visual/style";
 
 describe("displayLeaksAnswer", () => {
   it("detects full answer in display", () => {
@@ -67,14 +68,29 @@ describe("evaluateVisualForPublish", () => {
     ).toBe(false);
   });
 
-  it("accepts composed pictogram SVG boards", () => {
+  it("accepts composed pictogram SVG boards with readable geometry", () => {
     expect(
       evaluateVisualForPublish({
         mode: "composed",
-        layers: [{ kind: "pictogram", svg: "<svg></svg>" }],
-        unicodeFallback: "🐝",
+        layers: [{ kind: "pictogram", svg: INK_PICTOGRAM_EXAMPLE_EYE }],
+        unicodeFallback: "👁️",
       }).ok
     ).toBe(true);
+  });
+
+  it("rejects unreadable blob pictograms", () => {
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [
+          {
+            kind: "pictogram",
+            svg: '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="20"/></svg>',
+          },
+        ],
+        unicodeFallback: "◆",
+      }).ok
+    ).toBe(false);
   });
 
   it("accepts styled text when typography is the joke", () => {
@@ -144,7 +160,7 @@ describe("evaluatePublishGates", () => {
     publishable: true,
     visual: {
       mode: "composed" as const,
-      layers: [{ kind: "pictogram", svg: "<svg/>" }],
+      layers: [{ kind: "pictogram", svg: INK_PICTOGRAM_EXAMPLE_EYE }],
       unicodeFallback: "☀️ + 🌻",
     },
   };

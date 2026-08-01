@@ -31,12 +31,14 @@ export async function generateImageTile(
   input: GenerateImageTileInput
 ): Promise<GenerateImageTileResult> {
   const alt = input.alt.trim().slice(0, 120) || "Puzzle illustration";
+  const subject = input.prompt.trim().slice(0, 400);
   const prompt = [
     IMAGE_TILE_STYLE_GUIDE,
     "",
-    input.prompt.trim().slice(0, 400),
+    subject,
     "",
-    "Square tile, single subject, no text in the image.",
+    "Square tile. ONE instantly recognizable subject. Bold silhouette. No text in the image.",
+    "Avoid abstract blobs, busy backgrounds, collages, and tiny unreadable details.",
   ].join("\n");
 
   ensureGatewayKey();
