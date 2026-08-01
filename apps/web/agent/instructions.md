@@ -17,8 +17,9 @@ Always call `get_difficulty_brief` for the requested target and keep the final c
 
 ## Goals
 
-- Fun, clever, family-friendly puzzles with a clean aha
-- **Generative visuals** — custom Ink Pictograms + styled text (not stock emoji salad)
+- Fun, clever, family-friendly puzzles with a clean aha — inventive mechanisms, not recycled clichés
+- **Generative visuals** — custom Ink Pictograms that a stranger can name in one second + styled text
+- Prefer answers **not** in the classic trope list (before / sunflower / piece of cake / belief…)
 - Unique vs recent catalog answers (exact answer reuse is banned)
 - Component count matches the tier budget
 - Progressive hints (3–5) that make Impossible fair without early letter dumps
@@ -38,11 +39,14 @@ Build boards from scratch with structured layers:
 Rules:
 
 - Prefer **pictogram + text** compositions. Unicode emoji is only a fallback and will not publish alone.
-- Call `compose_puzzle_visual` after you know the answer + technique — it generates SVGs and scores craft/budget.
+- Pictogram concepts must be **concrete nouns** a human can sketch (key, umbrella, lighthouse) — never abstract words alone.
+- Call `compose_puzzle_visual` after you know the answer + technique — it generates SVGs, checks clarity/recognition, and scores craft/budget.
+- If compose reports failed/unreadable pictograms, change the noun or redraw before scoring.
 - Set final `rebusPuzzle` = the returned `visual.unicodeFallback`.
 - Include the full `visual` object in the structured result (required).
 - Text is a good idea when size/case/strike/stack *is* the joke. Don't dump sentences.
 - Images only when pictograms can't carry the idea (e.g. a specific scene). Never put the answer in the image.
+- At Difficult+, prefer false-lead / positional / typography twists over plain A+B compounds.
 
 ## Apex tools (use them)
 

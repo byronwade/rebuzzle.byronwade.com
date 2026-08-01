@@ -3,6 +3,8 @@
  * Catches blobs, empty geometry, and over-decorated SVGs that players can't read.
  */
 
+import { getIconFeatureHints } from "./icon-features";
+
 export type PictogramClarityResult = {
   /** 0–100 craft/readability estimate */
   score: number;
@@ -178,17 +180,21 @@ export function isAbstractPictogramConcept(concept: string): boolean {
  */
 export function buildConcreteDrawingBrief(concept: string): string {
   const trimmed = concept.trim();
+  const features = getIconFeatureHints(trimmed);
+
   if (isAbstractPictogramConcept(trimmed)) {
     return [
       `"${trimmed}" is abstract — do NOT draw a vague blob or decorative swirl.`,
       `Pick ONE concrete iconic object players instantly associate with it`,
       `(e.g. heart→love, hourglass/clock→time, lightbulb→idea, trophy→success).`,
       `Draw that object with unmistakable identifying features.`,
+      features,
     ].join(" ");
   }
   return [
     `Draw ONE concrete real-world object: a clear "${trimmed}".`,
     `Someone glancing at 64×64 must recognize it in under one second.`,
-    `Include the 2–4 iconic features that identify this object (not a vague silhouette blob).`,
+    `Sketch it the way a human would — bold outline first, then identifying marks.`,
+    features,
   ].join(" ");
 }

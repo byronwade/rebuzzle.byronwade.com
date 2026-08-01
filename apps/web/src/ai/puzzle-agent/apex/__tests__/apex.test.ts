@@ -2,42 +2,43 @@ import { phraseBankSize, samplePhraseBank } from "../phrase-bank";
 import { scoreRubric, tournamentScore } from "../rubric";
 import { pickWinner, rankCandidates } from "../tournament";
 import type { ApexCandidate } from "../types";
+import { INK_PICTOGRAM_EXAMPLE_EYE, INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
 
 function fakeCandidate(overrides: Partial<ApexCandidate> = {}): ApexCandidate {
   return {
     id: overrides.id ?? "c1",
-    rebusPuzzle: "☀️ + 🌻",
-    answer: "sunflower",
+    rebusPuzzle: "🔑 + 👁️",
+    answer: "keyhole",
     difficulty: 5,
     difficultyLevel: "Hard",
     explanation:
-      "Sun pictogram plus flower pictogram map to the compound sunflower because each half is literal.",
+      "Key pictogram plus eye pictogram map to the compound keyhole because each half is literal.",
     category: "compound",
     hints: [
-      "Think garden compounds.",
+      "Think household compounds.",
       "Two pictures join into one word.",
       "Single word.",
-      'Final nudge: it starts with "S".',
+      'Final nudge: it starts with "K".',
     ],
     techniqueId: "simple_compound",
     visual: {
       styleId: "ink-pictogram-v1",
       mode: "composed",
       layout: "row",
-      unicodeFallback: "☀️ + 🌻",
+      unicodeFallback: "🔑 + 👁️",
       layers: [
         {
           kind: "pictogram",
-          concept: "sun",
-          emojiFallback: "☀️",
-          svg: "<svg></svg>",
+          concept: "key",
+          emojiFallback: "🔑",
+          svg: INK_PICTOGRAM_EXAMPLE_KEY,
         },
         { kind: "operator", symbol: "+" },
         {
           kind: "pictogram",
-          concept: "flower",
-          emojiFallback: "🌻",
-          svg: "<svg></svg>",
+          concept: "eye",
+          emojiFallback: "👁️",
+          svg: INK_PICTOGRAM_EXAMPLE_EYE,
         },
       ],
     },
@@ -58,6 +59,9 @@ function fakeCandidate(overrides: Partial<ApexCandidate> = {}): ApexCandidate {
       reviseInstructions: [],
       falseLeadQuality: 40,
       ahaPredicted: 82,
+      creativityScore: 74,
+      iconRecognizability: 80,
+      overusedTrope: false,
     },
     playerSim: {
       firstWrongParses: ["sunshine"],
@@ -114,6 +118,9 @@ describe("rubric + tournament", () => {
         reviseInstructions: ["redesign"],
         falseLeadQuality: 10,
         ahaPredicted: 20,
+        creativityScore: 15,
+        iconRecognizability: 20,
+        overusedTrope: true,
       },
     });
     const ranked = rankCandidates([bad, good], 70);

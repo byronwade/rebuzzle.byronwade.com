@@ -78,6 +78,9 @@ function loadInstructions(): string {
     "- techniqueId is required and must be a real library id for the target tier.",
     "- ALWAYS call compose_puzzle_visual — unicode-only boards are rejected at publish.",
     "- Prefer ≥1 pictogram SVG; styled text (large/strike/stacked) is OK when typography is the joke.",
+    "- Pictogram concepts must be concrete drawable nouns a stranger can sketch (key, umbrella, lighthouse).",
+    "- Icons must be instantly recognizable — if compose reports clarity/recognition failure, redraw or change the noun.",
+    "- Invent clever fair mechanisms — avoid overused tropes (before, sunflower, piece of cake) unless the twist is genuinely new.",
     "- funScore comes from technique fit + mapping clarity, NOT emoji/pictogram padding.",
     "- rebusPuzzle must equal visual.unicodeFallback when visual is present.",
     "- rebusPuzzle must be non-empty and must NOT equal or contain the answer.",
@@ -113,7 +116,7 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
     params.category ? `Preferred category: ${params.category}.` : null,
     params.theme ? `Theme: ${params.theme}.` : null,
     params.phraseSeeds?.length
-      ? `Phrase-bank inspiration (do NOT copy if recently used; invent a cousin idea): ${params.phraseSeeds.join("; ")}.`
+      ? `Phrase-bank tropes/seeds to avoid copying (invent a different mechanism/answer; cousins of bee/before/sunflower/piece-of-cake are discouraged): ${params.phraseSeeds.join("; ")}.`
       : null,
     params.bannedAnswerKeys?.length
       ? `Banned answer keys (normalized): ${params.bannedAnswerKeys.slice(0, 30).join(", ")}.`

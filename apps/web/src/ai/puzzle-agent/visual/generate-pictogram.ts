@@ -1,9 +1,11 @@
 /**
  * Generate a single Ink Pictogram v1 SVG ("our emoji") for a concept.
- * Retries when the SVG fails the deterministic clarity gate.
+ * Retries when SVG fails clarity gate or blind recognition mismatch.
  */
 
 import { generateAIText } from "@/ai/client";
+import { recognizePictogramIcon } from "./critique-pictogram";
+import { getIconFeatureHints } from "./icon-features";
 import {
   buildConcreteDrawingBrief,
   scorePictogramClarity,
@@ -19,8 +21,10 @@ export type GeneratePictogramInput = {
   concept: string;
   role?: string;
   emojiFallback?: string;
-  /** Extra retries after the first attempt (default 1 → up to 2 draws) */
+  /** Extra retries after the first attempt (default 2 → up to 3 draws) */
   maxRetries?: number;
+  /** Skip blind recognition (tests / offline) */
+  skipRecognition?: boolean;
 };
 
 export type GeneratePictogramResult = {
@@ -32,6 +36,8 @@ export type GeneratePictogramResult = {
   ok: boolean;
   clarityScore?: number;
   clarityReasons?: string[];
+  seenAs?: string;
+  recognitionConfidence?: number;
   attempts?: number;
   error?: string;
 };
@@ -116,15 +122,19 @@ function buildPrompt(input: {
   role?: string;
   attempt: number;
   previousReasons?: string[];
+  seenAs?: string;
+  redrawAdvice?: string;
 }): string {
+  const featureHints = getIconFeatureHints(input.concept);
   const lines = [
     `Subject to draw: "${input.concept}"`,
     input.role ? `Role in the rebus: ${input.role}` : "",
     buildConcreteDrawingBrief(input.concept),
+    featureHints,
     "",
     "REQUIREMENTS:",
     "- Exactly one recognizable object (or classic symbol)",
-    "- 3–12 simple shapes/paths with a bold silhouette",
+    "- 3–12 simple shapes/paths with a bold human-sketch silhouette",
     "- Distinctive identifying features (not a vague oval)",
     "- Centered in 64×64 with ~6–8px padding",
     `- Stroke ${INK_PICTOGRAM_PALETTE.ink} width 2.25; optional fill ${INK_PICTOGRAM_PALETTE.canvas}`,
@@ -137,10 +147,16 @@ function buildPrompt(input: {
   if (input.attempt > 0) {
     lines.push(
       "",
-      "PREVIOUS ATTEMPT FAILED the clarity gate — redraw cleaner and more iconic.",
+      "PREVIOUS ATTEMPT FAILED — redraw clearer and more iconic.",
       input.previousReasons?.length
         ? `Failure reasons: ${input.previousReasons.join(", ")}`
-        : "Make the silhouette unmistakable."
+        : "Make the silhouette unmistakable.",
+      input.seenAs
+        ? `A player named it "${input.seenAs}" — it MUST read as "${input.concept}".`
+        : "",
+      input.redrawAdvice ? `Redraw advice: ${input.redrawAdvice}` : "",
+      `Emphasize these features: ${featureHints}`,
+      "Larger silhouette, fewer flourishes, chunkier strokes."
     );
   }
 
@@ -152,12 +168,13 @@ async function drawOnce(input: {
   role?: string;
   attempt: number;
   previousReasons?: string[];
+  seenAs?: string;
+  redrawAdvice?: string;
 }): Promise<{ svg: string | null; rawError?: string }> {
   try {
     const response = await generateAIText({
       modelType: "creative",
-      // Slightly higher on retry to escape a stuck bad composition
-      temperature: input.attempt === 0 ? 0.35 : 0.55,
+      temperature: input.attempt === 0 ? 0.45 : 0.7,
       system: [
         INK_PICTOGRAM_STYLE_GUIDE,
         "",
@@ -181,7 +198,7 @@ export async function generatePictogram(
 ): Promise<GeneratePictogramResult> {
   const concept = input.concept.trim().slice(0, 48);
   const emojiFallback = input.emojiFallback?.trim() || guessEmojiFallback(concept);
-  const maxAttempts = Math.max(1, Math.min(3, (input.maxRetries ?? 1) + 1));
+  const maxAttempts = Math.max(1, Math.min(4, (input.maxRetries ?? 2) + 1));
 
   if (!concept) {
     return {
@@ -198,6 +215,9 @@ export async function generatePictogram(
   let lastReasons: string[] = [];
   let lastScore = 0;
   let lastError = "invalid_svg";
+  let lastSeenAs: string | undefined;
+  let lastRedrawAdvice: string | undefined;
+  let lastRecognitionConfidence: number | undefined;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const drawn = await drawOnce({
@@ -205,6 +225,8 @@ export async function generatePictogram(
       role: input.role,
       attempt,
       previousReasons: lastReasons,
+      seenAs: lastSeenAs,
+      redrawAdvice: lastRedrawAdvice,
     });
 
     if (!drawn.svg) {
@@ -217,7 +239,30 @@ export async function generatePictogram(
     lastScore = clarity.score;
     lastReasons = clarity.reasons;
 
-    if (clarity.ok) {
+    if (!clarity.ok) {
+      lastError = `low_clarity:${clarity.score}:${clarity.reasons.join(",") || "unreadable"}`;
+      continue;
+    }
+
+    if (!input.skipRecognition) {
+      const recognition = await recognizePictogramIcon({
+        svg: drawn.svg,
+        concept,
+      });
+      lastSeenAs = recognition.seenLabel;
+      lastRecognitionConfidence = recognition.confidence;
+      lastRedrawAdvice = recognition.redrawAdvice;
+
+      if (!recognition.ok) {
+        lastReasons = [
+          ...clarity.reasons,
+          `seen_as:${recognition.seenLabel}`,
+          recognition.isAmbiguous ? "ambiguous_icon" : "wrong_object",
+        ];
+        lastError = `recognition_mismatch:seen=${recognition.seenLabel}`;
+        continue;
+      }
+
       return {
         styleId: INK_PICTOGRAM_STYLE_ID,
         concept,
@@ -227,11 +272,23 @@ export async function generatePictogram(
         ok: true,
         clarityScore: clarity.score,
         clarityReasons: clarity.reasons,
+        seenAs: recognition.seenLabel,
+        recognitionConfidence: recognition.confidence,
         attempts: attempt + 1,
       };
     }
 
-    lastError = `low_clarity:${clarity.score}:${clarity.reasons.join(",") || "unreadable"}`;
+    return {
+      styleId: INK_PICTOGRAM_STYLE_ID,
+      concept,
+      role: input.role,
+      svg: drawn.svg,
+      emojiFallback,
+      ok: true,
+      clarityScore: clarity.score,
+      clarityReasons: clarity.reasons,
+      attempts: attempt + 1,
+    };
   }
 
   return {
@@ -243,6 +300,8 @@ export async function generatePictogram(
     ok: false,
     clarityScore: lastScore,
     clarityReasons: lastReasons,
+    seenAs: lastSeenAs,
+    recognitionConfidence: lastRecognitionConfidence,
     attempts: maxAttempts,
     error: lastError,
   };

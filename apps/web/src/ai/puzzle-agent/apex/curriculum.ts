@@ -95,7 +95,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       : "Technique diversity looks healthy.",
     `Ban ${banned.size} archived+recent answers (never reuse).`,
     phraseSuggestions.length
-      ? `Phrase seeds (inspire, don't copy if banned): ${phraseSuggestions
+      ? `Phrase tropes/seeds to avoid copying (invent a fresher mechanism): ${phraseSuggestions
           .slice(0, 4)
           .map((p) => p.answer)
           .join("; ")}.`

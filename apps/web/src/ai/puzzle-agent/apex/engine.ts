@@ -67,6 +67,9 @@ async function enrichCandidate(
   let next = { ...candidate };
 
   if (apex.critiqueEnabled) {
+    const pictogramConcepts = (candidate.visual.layers ?? []).flatMap((layer) =>
+      layer.kind === "pictogram" && layer.concept ? [layer.concept] : []
+    );
     const critique = await critiqueCandidate({
       rebusPuzzle: candidate.rebusPuzzle,
       answer: candidate.answer,
@@ -76,13 +79,49 @@ async function enrichCandidate(
       difficulty: candidate.difficulty,
       tierLabel: brief.tierLabel,
       unicodeFallback: candidate.visual.unicodeFallback,
+      pictogramConcepts,
     });
-    next = { ...next, critique };
+    const creativityScore = critique.creativityScore ?? 60;
+    const iconRecognizability = critique.iconRecognizability ?? 70;
+    next = {
+      ...next,
+      critique: {
+        ...critique,
+        creativityScore,
+        iconRecognizability,
+        overusedTrope: critique.overusedTrope ?? false,
+      },
+    };
     if (critique.verdict === "reject") {
       next = {
         ...next,
         publishable: false,
         rejectReasons: [...next.rejectReasons, `Critique reject: ${critique.summary}`],
+      };
+    } else if (critique.overusedTrope && creativityScore < 55) {
+      next = {
+        ...next,
+        publishable: false,
+        rejectReasons: [
+          ...next.rejectReasons,
+          `Overused trope with low creativity (${creativityScore}) — invent a fresher mechanism`,
+        ],
+      };
+    } else if (iconRecognizability < 45) {
+      next = {
+        ...next,
+        rejectReasons: [
+          ...next.rejectReasons,
+          `Icons look unrecognizable (score ${iconRecognizability}) — redraw concrete silhouettes`,
+        ],
+      };
+    } else if (critique.verdict === "revise" && critique.reviseInstructions.length) {
+      next = {
+        ...next,
+        rejectReasons: [
+          ...next.rejectReasons,
+          `Critique revise: ${critique.reviseInstructions.slice(0, 2).join("; ")}`,
+        ],
       };
     }
   }

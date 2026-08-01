@@ -45,6 +45,8 @@ type LabResult = {
     emojiFallback: string;
     clarityScore?: number;
     clarityReasons?: string[];
+    seenAs?: string;
+    recognitionConfidence?: number;
     attempts?: number;
     error?: string;
   };
@@ -454,11 +456,18 @@ export function DevVisualLab() {
                         result.pictogram.attempts ? ` · tries ${result.pictogram.attempts}` : ""
                       }`
                     : "clarity n/a",
+                  result.pictogram.seenAs
+                    ? `seen as “${result.pictogram.seenAs}”${
+                        typeof result.pictogram.recognitionConfidence === "number"
+                          ? ` (${Math.round(result.pictogram.recognitionConfidence * 100)}%)`
+                          : ""
+                      }`
+                    : null,
                   result.pictogram.clarityReasons?.length
                     ? `reasons: ${result.pictogram.clarityReasons.join(", ")}`
                     : `fallback ${result.pictogram.emojiFallback}`,
                   result.pictogram.error || (result.pictogram.svg ? "svg ready" : "no svg"),
-                ]}
+                ].filter(Boolean) as string[]}
               />
             )}
             {result.image && (

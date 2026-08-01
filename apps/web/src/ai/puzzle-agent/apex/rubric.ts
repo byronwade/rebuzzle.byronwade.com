@@ -19,9 +19,11 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
   const sim = candidate.playerSim;
 
   const ahaMoment = clamp(
-    (critique?.ahaPredicted ?? 60) * 0.7 +
-      (candidate.funScore ?? 50) * 0.3 +
-      (critique?.verdict === "ship" ? 8 : 0)
+    (critique?.ahaPredicted ?? 60) * 0.55 +
+      (critique?.creativityScore ?? 55) * 0.2 +
+      (candidate.funScore ?? 50) * 0.25 +
+      (critique?.verdict === "ship" ? 6 : 0) -
+      (critique?.overusedTrope ? 12 : 0)
   );
 
   let fairness = 70;
@@ -37,6 +39,11 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
   let novelty = candidate.uniquenessScore || (candidate.isUnique ? 72 : 30);
   if (candidate.isUnique) novelty = Math.max(novelty, 70);
   else novelty = Math.min(novelty, 40);
+  // Blend catalog uniqueness with mechanism inventiveness
+  if (typeof critique?.creativityScore === "number") {
+    novelty = novelty * 0.55 + critique.creativityScore * 0.45;
+  }
+  if (critique?.overusedTrope) novelty -= 18;
   novelty = clamp(novelty);
 
   let visualCraft = visual.ok ? 68 : 35;
@@ -57,6 +64,10 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
     if (avg >= 72) visualCraft += 14;
     else if (avg >= 58) visualCraft += 6;
     else visualCraft -= 28;
+  }
+  if (typeof critique?.iconRecognizability === "number") {
+    if (critique.iconRecognizability >= 75) visualCraft += 10;
+    else if (critique.iconRecognizability < 50) visualCraft -= 18;
   }
 
   visualCraft = clamp(visualCraft);
@@ -118,5 +129,7 @@ export function tournamentScore(candidate: ApexCandidate, minRubric: number): nu
   if (candidate.playerSim?.hintUnlockOrderLooksFair) score += 3;
   if ((candidate.playerSim?.estimatedSolveRate ?? 0) > 0.2) score += 2;
   score += Math.min(5, (candidate.funScore - 65) / 5);
+  if ((candidate.critique?.creativityScore ?? 0) >= 70) score += 4;
+  if (candidate.critique?.overusedTrope) score -= 8;
   return score;
 }

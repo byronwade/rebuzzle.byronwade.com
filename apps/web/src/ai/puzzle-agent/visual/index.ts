@@ -37,6 +37,17 @@ export {
 export { inventLabBrief, type LabBrief } from "./invent-lab-brief";
 export { type RunVisualLabInput, type RunVisualLabResult, runVisualLab } from "./run-visual-lab";
 export {
+  recognizePictogramIcon,
+  type IconRecognitionResult,
+} from "./critique-pictogram";
+export {
+  conceptMatchesSeen,
+  getIconFeatureHints,
+  ICON_FEATURES,
+  OVERUSED_REBUS_TROPES,
+  lookupIconFeatures,
+} from "./icon-features";
+export {
   buildConcreteDrawingBrief,
   isAbstractPictogramConcept,
   passesPictogramClarity,
@@ -45,6 +56,11 @@ export {
 } from "./pictogram-clarity";
 export {
   IMAGE_TILE_STYLE_GUIDE,
+  INK_PICTOGRAM_EXAMPLE_BEE,
+  INK_PICTOGRAM_EXAMPLE_CLOCK,
+  INK_PICTOGRAM_EXAMPLE_EYE,
+  INK_PICTOGRAM_EXAMPLE_KEY,
+  INK_PICTOGRAM_EXAMPLE_UMBRELLA,
   INK_PICTOGRAM_PALETTE,
   INK_PICTOGRAM_STYLE_GUIDE,
   INK_PICTOGRAM_STYLE_ID,

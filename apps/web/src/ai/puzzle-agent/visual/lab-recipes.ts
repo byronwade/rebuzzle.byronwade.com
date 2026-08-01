@@ -96,8 +96,8 @@ export function buildLabLayers(
   mode: Exclude<VisualLabMode, "full-puzzle" | "pictogram" | "image">,
   opts: { concept: string; answer: string }
 ): { layers: VisualLayer[]; layout: "row" | "stack" | "grid"; caption?: string } {
-  const concept = opts.concept.trim() || "bee";
-  const answer = opts.answer.trim() || "before";
+  const concept = opts.concept.trim() || "umbrella";
+  const answer = opts.answer.trim() || "under the weather";
 
   if (mode === "text") {
     return {
@@ -168,9 +168,9 @@ export function buildLabLayers(
       { kind: "operator", symbol: "+" },
       {
         kind: "pictogram",
-        concept: "clock",
+        concept: "key",
         role: "secondary",
-        emojiFallback: "🕐",
+        emojiFallback: "🔑",
       },
       { kind: "operator", symbol: "/" },
       { kind: "text", content: answer.slice(0, 6).toUpperCase() || "WORD", emphasis: "tiny" },

@@ -94,7 +94,7 @@ export async function composePuzzleVisual(
         concept: layer.concept,
         role: layer.role,
         emojiFallback: layer.emojiFallback,
-        maxRetries: 1,
+        maxRetries: 2,
       });
       if (pic.ok && pic.svg) {
         filledLayers.push({
