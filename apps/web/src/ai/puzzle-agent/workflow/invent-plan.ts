@@ -3,6 +3,18 @@
  * Eve must follow this plan rather than freestyle tool-skipping.
  */
 
+import {
+  formatAnswerFirstForPrompt,
+  sampleAnswerFirstSeeds,
+} from "../craft/answer-first";
+import {
+  mechanismWinnersBrief,
+  sampleMechanismWinners,
+} from "../craft/mechanism-winners";
+import {
+  formatPhoneticGraphForPrompt,
+  lookupPhoneticCues,
+} from "../craft/phonetic-graph";
 import type { CulturalPulse } from "../external/cultural-pulse";
 import { expandWordplay, formatWordplayForPrompt } from "../external/datamuse";
 import { suggestBrandSeeds } from "../external/svgl";
@@ -22,6 +34,9 @@ export type InventPlan = {
   brandOptions: string[];
   wrongGuessBlock: string;
   culturalBlock: string;
+  phoneticBlock: string;
+  answerFirstBlock: string;
+  mechanismWinnersBlock: string;
   mechanismOneLiner: string;
   requiredTools: string[];
   briefNudge: string;
@@ -71,6 +86,21 @@ export async function buildInventPlans(input: {
       .split(/\s+/)[0]
       ?.slice(0, 32) || "puzzle";
 
+  const answerSeeds = sampleAnswerFirstSeeds({
+    targetDifficulty: input.brief.targetDifficulty,
+    preferredTechniques: input.brief.preferredTechniques,
+    bannedAnswerKeys: input.brief.diversity.bannedAnswerKeys,
+    theme: input.theme,
+    category: input.category,
+    limit: Math.max(slotCount + 2, 5),
+  });
+
+  const winners = sampleMechanismWinners({
+    preferredTechniques: input.brief.preferredTechniques,
+    limit: 4,
+  });
+  const mechanismWinnersBlock = mechanismWinnersBrief(winners);
+
   const [wordplay, brands] = await Promise.all([
     expandWordplay(lexicalSeed, 6),
     suggestBrandSeeds({ theme: input.theme, limit: 6 }),
@@ -81,6 +111,9 @@ export async function buildInventPlans(input: {
     input.culturalPulse?.promptBlock ||
     "Cultural pulse unavailable — invent timeless idioms, not news headlines.";
   const culturalSeeds = input.culturalPulse?.phraseSeeds ?? [];
+  const phoneticSuggestions = lookupPhoneticCues(lexicalSeed, 6);
+  const phoneticBlock = formatPhoneticGraphForPrompt(phoneticSuggestions);
+  const answerFirstBlock = formatAnswerFirstForPrompt(answerSeeds);
 
   return focuses.map((techniqueId, index) => {
     const allowed = isTechniqueAllowedForTier(
@@ -93,42 +126,75 @@ export async function buildInventPlans(input: {
         ) ?? techniqueId);
 
     const preferBrand = allowed.includes("brand");
+    const phoneticTechnique =
+      allowed.includes("homophone") || allowed.includes("phonetic");
+    const idiomTechnique = allowed.includes("idiom");
     const culturalSeed = culturalSeeds[index % Math.max(1, culturalSeeds.length || 1)];
+    const answerSeedRow = answerSeeds[index % Math.max(1, answerSeeds.length || 1)];
+    const winnerForTech =
+      winners.find((w) => w.techniqueId === allowed) ?? winners[index % winners.length];
+
     const phrase =
+      answerSeedRow?.answer ||
       input.brief.phraseSuggestions[index]?.answer ||
       (culturalSeed && culturalSeed.split(/\s+/).length <= 5 ? culturalSeed : undefined);
+
     const pictogramNouns = preferBrand
       ? [brandTitles[index % Math.max(1, brandTitles.length)] || "spotify", "fire"]
-      : phrase
-        ? phrase
-            .toLowerCase()
-            .split(/[^a-z]+/)
-            .filter((w) => w.length >= 3)
-            .slice(0, 2)
-        : ["key", "bridge"];
+      : answerSeedRow?.pictogramNouns?.length
+        ? answerSeedRow.pictogramNouns
+        : phoneticTechnique && phoneticSuggestions[0]
+          ? [
+              phoneticSuggestions[0].cue,
+              phrase
+                ?.toLowerCase()
+                .split(/[^a-z]+/)
+                .filter((w) => w.length >= 3)[0] || "bridge",
+            ]
+          : phrase
+            ? phrase
+                .toLowerCase()
+                .split(/[^a-z]+/)
+                .filter((w) => w.length >= 3)
+                .slice(0, 2)
+            : winnerForTech?.pictogramNouns ?? ["key", "bridge"];
 
-    const mechanismOneLiner = mechanismForTechnique(allowed);
+    const mechanismOneLiner =
+      winnerForTech && winnerForTech.techniqueId === allowed
+        ? `Cousin of "${winnerForTech.id}": ${winnerForTech.whyItWorks}`
+        : mechanismForTechnique(allowed);
+
     const requiredTools = [
       "get_generation_brief",
       "research_cultural_pulse",
       "expand_wordplay",
+      phoneticTechnique ? "lookup_phonetic_cues" : null,
+      idiomTechnique || phoneticTechnique ? "lookup_word_senses" : null,
       preferBrand ? "lookup_brand_logo" : "propose_concept_seeds",
       "compose_puzzle_visual",
       "craft_hint_ladder",
+      "score_hint_fairness",
+      "score_shareability",
+      "check_anti_clone",
       "score_quality",
-    ];
+    ].filter(Boolean) as string[];
 
     const briefNudge = [
       `LOCKED invent plan for slot ${index + 1}:`,
       `- techniqueId MUST be ${allowed}`,
       `- mechanism: ${mechanismOneLiner}`,
       phrase ? `- answer seed (cousin OK, do not copy): ${phrase}` : null,
+      answerSeedRow?.layerPlan ? `- layer plan hint: ${answerSeedRow.layerPlan}` : null,
       `- pictogram nouns to try: ${pictogramNouns.join(", ")}`,
       preferBrand
-        ? "- use lookup_brand_logo / generate_pictogram(preferBrand) for the brand layer"
-        : "- use generate_pictogram / icon packs for concrete nouns",
+        ? "- use lookup_brand_logo / generate_pictogram(preferBrand) for the brand layer + one non-brand beat"
+        : "- use generate_pictogram / icon packs for concrete nouns (check lookup_word_senses)",
+      phoneticTechnique ? `- ${phoneticBlock}` : null,
       "- You MUST call compose_puzzle_visual before finishing",
+      "- After hints: call score_hint_fairness + score_shareability; reject if either fails",
       "- Prefer answers that feel culturally current but universally solvable (no niche fandom required)",
+      answerFirstBlock,
+      mechanismWinnersBlock,
       wordplayBlock,
       culturalBlock,
       input.wrongGuesses.promptBlock,
@@ -147,6 +213,9 @@ export async function buildInventPlans(input: {
       brandOptions: brandTitles,
       wrongGuessBlock: input.wrongGuesses.promptBlock,
       culturalBlock,
+      phoneticBlock,
+      answerFirstBlock,
+      mechanismWinnersBlock,
       mechanismOneLiner,
       requiredTools,
       briefNudge,

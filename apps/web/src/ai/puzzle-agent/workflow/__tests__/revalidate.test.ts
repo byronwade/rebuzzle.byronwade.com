@@ -57,9 +57,12 @@ function baseCandidate(overrides: Partial<ApexCandidate> = {}): ApexCandidate {
   };
 }
 
+const syncOpts = { skipAsyncCraftGates: true as const };
+
 describe("revalidateCandidateAfterPolish", () => {
-  it("rejects when multi-solve fails", () => {
-    const result = revalidateCandidateAfterPolish(baseCandidate(), 8, {
+  it("rejects when multi-solve fails", async () => {
+    const result = await revalidateCandidateAfterPolish(baseCandidate(), 8, {
+      ...syncOpts,
       multiSolveOk: false,
       multiSolveReasons: ["No solver found answer"],
     });
@@ -68,30 +71,59 @@ describe("revalidateCandidateAfterPolish", () => {
     expect(result.candidate.solvable).toBe(false);
   });
 
-  it("rejects Hard-only technique at Impossible target", () => {
-    const result = revalidateCandidateAfterPolish(
+  it("rejects Hard-only technique at Impossible target", async () => {
+    const result = await revalidateCandidateAfterPolish(
       baseCandidate({ techniqueId: "simple_compound" }),
       8,
-      { multiSolveOk: true }
+      { ...syncOpts, multiSolveOk: true }
     );
     expect(result.ok).toBe(false);
     expect(result.candidate.rejectReasons.join(" ")).toMatch(/not allowed/i);
   });
 
-  it("rejects provisional critique", () => {
-    const result = revalidateCandidateAfterPolish(baseCandidate(), 8, {
+  it("rejects provisional critique", async () => {
+    const result = await revalidateCandidateAfterPolish(baseCandidate(), 8, {
+      ...syncOpts,
       multiSolveOk: true,
       critiqueProvisional: true,
     });
     expect(result.ok).toBe(false);
   });
 
-  it("passes a clean Impossible candidate", () => {
-    const result = revalidateCandidateAfterPolish(baseCandidate(), 8, {
+  it("passes a clean Impossible candidate", async () => {
+    const result = await revalidateCandidateAfterPolish(baseCandidate(), 8, {
+      ...syncOpts,
       multiSolveOk: true,
       critiqueProvisional: false,
     });
     expect(result.ok).toBe(true);
     expect(result.candidate.publishable).toBe(true);
+  });
+
+  it("rejects weak hint ladders", async () => {
+    const result = await revalidateCandidateAfterPolish(
+      baseCandidate({
+        hints: ["Something fun", "Keep going", "Almost"],
+      }),
+      8,
+      { ...syncOpts, multiSolveOk: true }
+    );
+    expect(result.ok).toBe(false);
+    expect(result.candidate.rejectReasons.join(" ")).toMatch(/Hint fairness/i);
+  });
+
+  it("rejects share text that leaks the answer", async () => {
+    const result = await revalidateCandidateAfterPolish(
+      baseCandidate({
+        visual: {
+          ...baseCandidate().visual,
+          unicodeFallback: "key eye = solved",
+        },
+      }),
+      8,
+      { ...syncOpts, multiSolveOk: true }
+    );
+    expect(result.ok).toBe(false);
+    expect(result.candidate.rejectReasons.join(" ")).toMatch(/Shareability/i);
   });
 });

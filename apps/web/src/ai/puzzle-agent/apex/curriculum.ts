@@ -4,6 +4,11 @@
 
 import { AI_CONFIG } from "../../config";
 import { loadAllAnswerKeys } from "../../learning/answer-registry";
+import { sampleFairIdioms } from "../craft/idiom-frequency";
+import {
+  mechanismWinnersBrief,
+  sampleMechanismWinners,
+} from "../craft/mechanism-winners";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
 import { mechanismTemplateBrief, rebusCraftBrief } from "../rebus-craft";
 import type { TechniqueId } from "../technique-library";
@@ -53,6 +58,8 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
           tooHard: false,
           medianSolveSeconds: null as number | null,
           solveRate: null as number | null,
+          likedTechniques: [] as string[],
+          dislikedTechniques: [] as string[],
         })
       : loadLearningDigest(),
     loadAllAnswerKeys(500),
@@ -68,30 +75,40 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   // Ban recent + full archive answers so retired puzzles still block reuse
   const banned = new Set([...diversity.bannedAnswerKeys, ...archiveKeys]);
   const overused = new Set(diversity.overusedTechniques);
+  const disliked = new Set(learning.dislikedTechniques);
+  const likedInTier = learning.likedTechniques.filter((t) =>
+    level.techniques.includes(t)
+  ) as TechniqueId[];
 
   // Prefer underused techniques from this tier; avoid overused ones.
   // When players are finishing too quickly, bias toward harder techniques in-band.
+  // Like/dislike votes are HARD weights (not prompt-only).
   const harderBias = learning.tooEasy
     ? (["false_lead_visual", "nested_homophone", "multi_layer_phonetic", "triple_layer_composition", "rare_but_fair_idiom"] as TechniqueId[])
     : [];
 
   const preferredTechniques = (
     [
-      ...harderBias.filter((t) => level.techniques.includes(t)),
-      ...diversity.underusedTechniques.filter((t) => level.techniques.includes(t)),
-      ...level.techniques.filter((t) => !overused.has(t)),
+      ...likedInTier,
+      ...harderBias.filter((t) => level.techniques.includes(t) && !disliked.has(t)),
+      ...diversity.underusedTechniques.filter(
+        (t) => level.techniques.includes(t) && !disliked.has(t)
+      ),
+      ...level.techniques.filter((t) => !overused.has(t) && !disliked.has(t)),
+      ...level.techniques.filter((t) => !disliked.has(t)),
       ...level.techniques,
     ] as TechniqueId[]
   ).filter((t, i, arr) => arr.indexOf(t) === i) as TechniqueId[];
 
   const avoidTechniques = [
+    ...learning.dislikedTechniques.filter((t) => level.techniques.includes(t)),
     ...diversity.overusedTechniques.filter((t) => level.techniques.includes(t)),
     ...(learning.tooEasy
       ? (["simple_compound", "obvious_emoji_sum"] as string[]).filter((t) =>
           level.techniques.includes(t)
         )
       : []),
-  ];
+  ].filter((t, i, arr) => arr.indexOf(t) === i);
 
   const phraseSuggestions = samplePhraseBank({
     targetDifficulty,
@@ -102,11 +119,23 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     limit: 8,
   });
 
+  const fairIdioms = sampleFairIdioms({
+    minFreq: targetDifficulty >= 8 ? 3 : 4,
+    limit: 5,
+    excludeOverused: true,
+  });
+  const winnersBrief = mechanismWinnersBrief(
+    sampleMechanismWinners({ preferredTechniques, limit: 3 })
+  );
+
   const briefSummary = [
     `Tier ${level.label} (${level.min}–${level.max}), budget ${level.componentBudget.min}–${level.componentBudget.max}.`,
     `Prefer techniques: ${preferredTechniques.slice(0, 4).join(", ")}.`,
+    likedInTier.length
+      ? `Player-liked techniques (hard prefer): ${likedInTier.slice(0, 3).join(", ")}.`
+      : null,
     avoidTechniques.length
-      ? `Avoid overused/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`
+      ? `Avoid overused/disliked/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`
       : "Technique diversity looks healthy.",
     `Ban ${banned.size} archived+recent answers (never reuse).`,
     phraseSuggestions.length
@@ -115,6 +144,10 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
           .map((p) => p.answer)
           .join("; ")}.`
       : "Invent a fresh answer outside the ban list.",
+    fairIdioms.length
+      ? `Fair-frequency idiom seeds: ${fairIdioms.slice(0, 3).join("; ")}.`
+      : null,
+    winnersBrief || null,
     learning.enabled && learning.difficultyDriftNotes.length
       ? `Self-learning: ${learning.difficultyDriftNotes.slice(0, 2).join("; ")}.`
       : null,

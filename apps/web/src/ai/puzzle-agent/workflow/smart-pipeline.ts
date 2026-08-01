@@ -321,7 +321,7 @@ export async function phasePolishAndRevalidate(input: {
     next = { ...next, rubric: scoreRubric(next) };
   }
 
-  const revalidated = revalidateCandidateAfterPolish(
+  const revalidated = await revalidateCandidateAfterPolish(
     next,
     input.brief.targetDifficulty,
     {

@@ -14,6 +14,8 @@ import { CandidatePuzzleSchema } from "./schemas";
 import {
   assembleVisualComponents,
   calibratePuzzleDifficulty,
+  checkAntiCloneTool,
+  checkIdiomFairnessTool,
   checkUniqueness,
   composePuzzleVisual,
   craftHintLadder,
@@ -24,10 +26,15 @@ import {
   listRecentAnswers,
   listTechniqueLibrary,
   lookupBrandLogo,
+  lookupPhoneticCuesTool,
+  lookupWordSensesTool,
   proposeConceptSeeds,
   researchCulturalPulseTool,
+  scoreHintFairnessTool,
   scorePuzzleQuality,
+  scoreShareabilityTool,
   stressTestSolvability,
+  validateBrandConstraintsTool,
   validatePuzzleCandidate,
 } from "./tool-impl";
 import { PuzzleVisualSchema, VisualLayerSchema } from "./visual/composition";
@@ -148,6 +155,82 @@ export const puzzleAgentTools: ToolSet = {
       query: z.string().optional(),
     }),
     execute: async (input) => researchCulturalPulseTool(input),
+  }),
+
+  lookup_phonetic_cues: tool({
+    description:
+      "Local phonetic graph: drawable pictogram cues → spoken syllables for ONE fair sound leap.",
+    inputSchema: z.object({
+      seed: z.string(),
+      limit: z.number().optional(),
+    }),
+    execute: async (input) => lookupPhoneticCuesTool(input),
+  }),
+
+  lookup_word_senses: tool({
+    description:
+      "Free Dictionary sense check — confirm a pictogram noun has a concrete drawable reading.",
+    inputSchema: z.object({
+      word: z.string(),
+    }),
+    execute: async (input) => lookupWordSensesTool(input),
+  }),
+
+  score_hint_fairness: tool({
+    description:
+      "Score whether the hint ladder unlocks fairly (device → structure → fragment → letter).",
+    inputSchema: z.object({
+      hints: z.array(z.string()),
+      answer: z.string(),
+      tierLabel: z.string().optional(),
+    }),
+    execute: async (input) => scoreHintFairnessTool(input),
+  }),
+
+  score_shareability: tool({
+    description:
+      "Score unicodeFallback share text — reject emoji salad and answer leaks.",
+    inputSchema: z.object({
+      unicodeFallback: z.string(),
+      answer: z.string(),
+      pictogramCount: z.number().optional(),
+      hasStyledText: z.boolean().optional(),
+    }),
+    execute: async (input) => scoreShareabilityTool(input),
+  }),
+
+  check_anti_clone: tool({
+    description:
+      "Near-duplicate check vs recent puzzles (lexical + optional embeddings).",
+    inputSchema: z.object({
+      rebusPuzzle: z.string(),
+      answer: z.string(),
+      explanation: z.string().optional(),
+      category: z.string().optional(),
+      techniqueId: z.string().optional(),
+    }),
+    execute: async (input) => checkAntiCloneTool(input),
+  }),
+
+  validate_brand_constraints: tool({
+    description:
+      "Hard gates for brand_logo_wordplay: SVGL mark + non-brand beat required.",
+    inputSchema: z.object({
+      techniqueId: z.string().optional(),
+      answer: z.string(),
+      visual: PuzzleVisualSchema.optional(),
+    }),
+    execute: async (input) => validateBrandConstraintsTool(input),
+  }),
+
+  check_idiom_fairness: tool({
+    description:
+      "Idiom recognition-frequency gate — prefer well-known phrases for daily puzzles.",
+    inputSchema: z.object({
+      phrase: z.string(),
+      minFreq: z.number().optional(),
+    }),
+    execute: async (input) => checkIdiomFairnessTool(input),
   }),
 
   compose_puzzle_visual: tool({

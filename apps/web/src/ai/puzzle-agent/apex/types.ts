@@ -81,6 +81,9 @@ export type LearningDigest = {
   tooHard: boolean;
   medianSolveSeconds: number | null;
   solveRate: number | null;
+  /** Hard technique weights from like/dislike votes */
+  likedTechniques: string[];
+  dislikedTechniques: string[];
 };
 
 export type GenerationBrief = {

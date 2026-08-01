@@ -22,10 +22,25 @@ import {
   isDifficultyInBand,
   snapToDifficultyBand,
 } from "./difficulty-levels";
+import { sampleAnswerFirstSeeds } from "./craft/answer-first";
+import { checkAntiClone } from "./craft/anti-clone";
+import { validateBrandLogoWordplay } from "./craft/brand-constraints";
+import { scoreHintFairness } from "./craft/hint-fairness";
+import { isIdiomFairForDaily, sampleFairIdioms } from "./craft/idiom-frequency";
+import {
+  mechanismWinnersBrief,
+  sampleMechanismWinners,
+} from "./craft/mechanism-winners";
+import {
+  formatPhoneticGraphForPrompt,
+  lookupPhoneticCues,
+} from "./craft/phonetic-graph";
+import { scoreShareability } from "./craft/shareability";
 import {
   researchCulturalPulse,
 } from "./external/cultural-pulse";
 import { expandWordplay, formatWordplayForPrompt } from "./external/datamuse";
+import { lookupWordSenses } from "./external/free-dictionary";
 import { lookupSvglBrandLogo, suggestBrandSeeds } from "./external/svgl";
 import {
   computeFunScore,
@@ -258,12 +273,60 @@ function proposeConceptSeedsFallback(input: {
     return !avoidKeys.has(key) && !avoidKeys.has(normalizeAnswerKey(s.workingTitle));
   });
 
+  const winners = sampleMechanismWinners({
+    preferredTechniques: techniques.map((t) => t.id),
+    limit: 3,
+  });
+  for (const w of winners) {
+    if (avoidKeys.has(normalizeAnswerKey(w.answer))) continue;
+    seedIdeas.push({
+      workingTitle: `Cousin of ${w.id}`,
+      answerDirection: `Invent a cousin of "${w.answer}" — same mechanism family, fresher answer`,
+      category: w.techniqueId.includes("idiom")
+        ? "idiom"
+        : w.techniqueId.includes("brand")
+          ? "brand"
+          : "visual_wordplay",
+      techniqueId: pick(w.techniqueId, w.techniqueId),
+      layerPlan: w.layerPlan,
+      whyItFitsTier: w.whyItWorks,
+      pictogramNouns: w.pictogramNouns,
+      mechanismOneLiner: w.whyItWorks,
+    });
+  }
+
+  const answerFirst = sampleAnswerFirstSeeds({
+    targetDifficulty: input.targetDifficulty,
+    preferredTechniques: techniques.map((t) => t.id),
+    bannedAnswerKeys: avoidKeys,
+    theme: input.theme,
+    category: input.category,
+    limit: 3,
+  });
+  for (const seed of answerFirst) {
+    seedIdeas.push({
+      workingTitle: `Answer-first: ${seed.answer}`,
+      answerDirection: `Backform ONE mechanism from "${seed.answer}" (${seed.note})`,
+      category: seed.source === "idiom-corpus" ? "idiom" : category,
+      techniqueId: pick(seed.techniqueHint, "simple_compound"),
+      layerPlan: seed.layerPlan || "pictogram + pictogram with clear order",
+      whyItFitsTier: level.playerPromise,
+      pictogramNouns: seed.pictogramNouns,
+      mechanismOneLiner: seed.note,
+    });
+  }
+
   return {
     tier: level.label,
     band: { min: level.min, max: level.max },
     componentBudget: level.componentBudget,
     recommendedTechniques: techniques.map((t) => t.id),
     bannedAnswerKeys: [...avoidKeys].slice(0, 40),
+    mechanismWinners: mechanismWinnersBrief(winners),
+    fairIdioms: sampleFairIdioms({
+      minFreq: input.targetDifficulty >= 8 ? 3 : 4,
+      limit: 4,
+    }),
     seeds: seedIdeas,
     source: "fallback" as const,
     note: "Seeds are starting points — invent a fresh answer not in bannedAnswerKeys / recent answers / overused tropes (before, sunflower, piece of cake). Pictogram concepts must be concrete nouns. Then call compose_puzzle_visual.",
@@ -479,22 +542,28 @@ export function craftHintLadder(input: {
   const firstLetter = answer[0]?.toUpperCase() ?? "?";
   const mechanism =
     /sound|phonetic|homophone/i.test(input.explanation)
-      ? "Say the pieces out loud — a sound-alike may be hiding."
-      : /over|under|between|position|above|below/i.test(input.explanation)
-        ? "Placement matters as much as the pictures."
-        : "Look for how the pieces combine into a familiar phrase.";
+      ? "This is a homophone / sounds-like rebus — say the pieces out loud."
+      : /over|under|between|position|above|below|stack/i.test(input.explanation)
+        ? "This is a positional layout rebus — placement matters as much as the pictures."
+        : /brand|logo/i.test(input.explanation)
+          ? "This is brand-logo wordplay — the mark is one beat, not the whole joke."
+          : /idiom|literal/i.test(input.explanation)
+            ? "This is a literal idiom picture — figurative phrase, concrete icons."
+            : /size|scale|case|tiny|big/i.test(input.explanation)
+              ? "Size or scale semantics carry half the meaning."
+              : "This is a compound / join rebus — look for how the pieces combine into a familiar phrase.";
 
   const spoilerSafeExplain = input.explanation
     .replace(new RegExp(escapeRegExpSafe(answer), "ig"), "the answer")
     .slice(0, 72);
 
   const ladder = [
-    `Think about the ${words.length > 1 ? "phrase" : "word"} category — not the literal picture alone.`,
     mechanism,
+    `Read the two (or three) icons/layers left-to-right or top-to-bottom — how they join is the device.`,
     `Notice the relationship between parts (${spoilerSafeExplain}${spoilerSafeExplain.length >= 72 ? "…" : ""}).`,
     words.length > 1
-      ? `The answer has ${words.length} words.`
-      : `The answer is a single word.`,
+      ? `The answer has ${words.length} words; category/theme starts with thinking about the first word.`
+      : `The answer is a single word; first letter category nudge comes last.`,
     // Final hint only: one first-letter nudge — never a full letter scaffold
     `Final nudge: it starts with "${firstLetter}".`,
   ].slice(0, Math.max(3, Math.min(5, level.componentBudget.max + 1)));
@@ -510,14 +579,20 @@ export function craftHintLadder(input: {
   );
 
   const leakIssues = hintLeaksAnswerEarly(safe, answer);
+  const fairness = scoreHintFairness({
+    hints: safe,
+    answer,
+    tierLabel: level.label,
+  });
 
   return {
     tier: level.label,
     hintStyle: level.hintStyle,
     hints: safe,
-    issues: leakIssues,
+    issues: [...leakIssues, ...fairness.problems],
+    fairness,
     guidance:
-      "Hints must progress vague → specific. Never dump the full answer or a letter scaffold before the final hint.",
+      "Hints must progress device family → structure → fragment → letter. Never dump the full answer or a letter scaffold before the final hint.",
   };
 }
 
@@ -944,6 +1019,74 @@ export async function researchCulturalPulseTool(input: {
   return {
     ...pulse,
     tip: "Invent cousins of phraseSeeds — never paste headlines. Prefer universally known idioms over niche fandom slang.",
+  };
+}
+
+export function lookupPhoneticCuesTool(input: { seed: string; limit?: number }) {
+  const suggestions = lookupPhoneticCues(input.seed, input.limit ?? 6);
+  return {
+    seed: input.seed,
+    suggestions,
+    promptBlock: formatPhoneticGraphForPrompt(suggestions),
+    tip: "Prefer ONE phonetic leap. Pair the cue pictogram with a literal partner.",
+  };
+}
+
+export async function lookupWordSensesTool(input: { word: string }) {
+  const senses = await lookupWordSenses(input.word);
+  return {
+    ...senses,
+    tip: senses.concreteNoun
+      ? "Concrete noun reading found — good pictogram candidate."
+      : "Weak/abstract for a pictogram — pick a more drawable object.",
+  };
+}
+
+export function scoreHintFairnessTool(input: {
+  hints: string[];
+  answer: string;
+  tierLabel?: string;
+}) {
+  return scoreHintFairness(input);
+}
+
+export function scoreShareabilityTool(input: {
+  unicodeFallback: string;
+  answer: string;
+  pictogramCount?: number;
+  hasStyledText?: boolean;
+}) {
+  return scoreShareability(input);
+}
+
+export async function checkAntiCloneTool(input: {
+  rebusPuzzle: string;
+  answer: string;
+  explanation?: string;
+  category?: string;
+  techniqueId?: string;
+}) {
+  return checkAntiClone(input);
+}
+
+export async function validateBrandConstraintsTool(input: {
+  techniqueId?: string;
+  answer: string;
+  visual?: Parameters<typeof validateBrandLogoWordplay>[0]["visual"];
+}) {
+  return validateBrandLogoWordplay(input);
+}
+
+export function checkIdiomFairnessTool(input: {
+  phrase: string;
+  minFreq?: number;
+}) {
+  const result = isIdiomFairForDaily(input.phrase, input.minFreq ?? 3);
+  return {
+    ...result,
+    fairAlternatives: result.ok
+      ? []
+      : sampleFairIdioms({ minFreq: input.minFreq ?? 3, limit: 5 }),
   };
 }
 

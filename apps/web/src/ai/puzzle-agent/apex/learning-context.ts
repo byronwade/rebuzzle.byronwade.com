@@ -29,6 +29,8 @@ export async function loadLearningDigest(input?: {
       tooHard: false,
       medianSolveSeconds: null,
       solveRate: null,
+      likedTechniques: [],
+      dislikedTechniques: [],
     };
   }
 
@@ -97,6 +99,8 @@ export async function loadLearningDigest(input?: {
       tooHard: window.tooHard,
       medianSolveSeconds: window.medianSolveSeconds,
       solveRate: window.solveRate,
+      likedTechniques: qualityVotes.likedTechniques,
+      dislikedTechniques: qualityVotes.dislikedTechniques,
     };
   } catch {
     return {
@@ -110,6 +114,8 @@ export async function loadLearningDigest(input?: {
       tooHard: false,
       medianSolveSeconds: null,
       solveRate: null,
+      likedTechniques: [],
+      dislikedTechniques: [],
     };
   }
 }
