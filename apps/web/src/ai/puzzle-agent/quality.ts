@@ -9,6 +9,7 @@ import {
   type DifficultyTierLabel,
 } from "./difficulty-levels";
 import { TECHNIQUE_LIBRARY, type TechniqueId } from "./technique-library";
+import { scorePictogramClarity } from "./visual/pictogram-clarity";
 
 export const TECHNIQUE_IDS = Object.keys(TECHNIQUE_LIBRARY) as TechniqueId[];
 
@@ -68,6 +69,8 @@ export type FunScoreSignals = {
   hasSpatialOrOperator: boolean;
   hasStyledText: boolean;
   explanationMapsWell: boolean;
+  /** Average pictogram clarity 0–100 when SVGs were scored */
+  avgPictogramClarity?: number | null;
 };
 
 /**
@@ -92,6 +95,12 @@ export function computeFunScore(signals: FunScoreSignals): number {
   if (signals.hasSpatialOrOperator) score += 8;
   if (signals.hasStyledText) score += 6;
   if (signals.explanationMapsWell) score += 8;
+
+  if (typeof signals.avgPictogramClarity === "number") {
+    if (signals.avgPictogramClarity >= 72) score += 8;
+    else if (signals.avgPictogramClarity >= 58) score += 3;
+    else score -= 16;
+  }
 
   score -= signals.issueCount * 12;
 
@@ -126,7 +135,8 @@ export function evaluateVisualForPublish(visual?: {
   }
 
   const layers = visual.layers ?? [];
-  const pictogramSvgCount = layers.filter((l) => l.kind === "pictogram" && l.svg).length;
+  const pictogramLayers = layers.filter((l) => l.kind === "pictogram" && l.svg);
+  const pictogramSvgCount = pictogramLayers.length;
   const textLayerCount = layers.filter((l) => l.kind === "text").length;
   const styledText = layers.some(
     (l) =>
@@ -134,6 +144,19 @@ export function evaluateVisualForPublish(visual?: {
       l.emphasis &&
       ["large", "small", "strike", "stacked", "tiny"].includes(l.emphasis)
   );
+
+  for (const layer of pictogramLayers) {
+    const clarity = scorePictogramClarity(layer.svg);
+    if (!clarity.ok) {
+      return {
+        ok: false,
+        reason: `Unreadable pictogram SVG (${clarity.reasons.join(", ") || "low clarity"}) — redraw with a clearer silhouette`,
+        mode: visual.mode,
+        pictogramSvgCount,
+        textLayerCount,
+      };
+    }
+  }
 
   if (visual.mode === "unicode" && pictogramSvgCount === 0 && !styledText) {
     return {

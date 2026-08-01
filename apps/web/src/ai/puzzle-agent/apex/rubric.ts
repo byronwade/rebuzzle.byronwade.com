@@ -3,6 +3,7 @@
  */
 
 import { evaluateVisualForPublish, isKnownTechniqueId } from "../quality";
+import { scorePictogramClarity } from "../visual/pictogram-clarity";
 import type { ApexCandidate, RubricScores } from "./types";
 
 function clamp(n: number): number {
@@ -38,13 +39,25 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
   else novelty = Math.min(novelty, 40);
   novelty = clamp(novelty);
 
-  let visualCraft = visual.ok ? 72 : 35;
-  visualCraft += Math.min(18, visual.pictogramSvgCount * 8);
+  let visualCraft = visual.ok ? 68 : 35;
+  visualCraft += Math.min(14, visual.pictogramSvgCount * 6);
   visualCraft += Math.min(10, visual.textLayerCount * 4);
   if (candidate.visual.mode === "composed" || candidate.visual.mode === "hybrid") {
     visualCraft += 6;
   }
   if (candidate.visual.mode === "unicode") visualCraft -= 30;
+
+  const pictogramClarities = (candidate.visual.layers ?? [])
+    .filter((l) => l.kind === "pictogram" && l.svg)
+    .map((l) => scorePictogramClarity(l.svg).score);
+  if (pictogramClarities.length) {
+    const avg =
+      pictogramClarities.reduce((a, b) => a + b, 0) / pictogramClarities.length;
+    if (avg >= 72) visualCraft += 14;
+    else if (avg >= 58) visualCraft += 6;
+    else visualCraft -= 28;
+  }
+
   visualCraft = clamp(visualCraft);
 
   // Shareability: short punchy answer + clean fallback
