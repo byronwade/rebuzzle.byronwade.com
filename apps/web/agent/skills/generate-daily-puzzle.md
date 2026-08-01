@@ -7,13 +7,14 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with gen
 
 1. `get_puzzle_type_spec` + `get_difficulty_brief` + `get_generation_brief` for the target score.
 2. `list_recent_answers` (lookback 60 days) — ban those answers (exact reuse fails publish).
-3. `propose_concept_seeds` → choose one seed, invent a **new** answer (phrase-bank is inspiration only).
+3. `propose_concept_seeds` → choose one seed, invent a **new** answer (phrase-bank classics are tropes to avoid, not templates).
 4. Pick a technique from the brief; optionally `list_technique_library`.
 5. **Compose a generative visual** (required path):
    - Plan layers: pictogram concepts + text emphasis + operators (+ rare image).
-   - Pictogram concepts must be **concrete nouns** (bee, clock, key, umbrella) — never abstract words alone (love/time/success). Icons must be instantly recognizable.
+   - Pictogram concepts must be **concrete nouns** a human can sketch (key, umbrella, lighthouse) — never abstract words alone. Icons must be instantly recognizable.
+   - Prefer fresh answers — avoid before / sunflower / piece of cake cousins unless the twist is new.
    - Call `compose_puzzle_visual` with those layers until within budget and funScore ≥ 68.
-   - Optionally preview a tile with `generate_pictogram` and regenerate if clarity fails.
+   - Optionally preview a tile with `generate_pictogram` and regenerate if clarity/recognition fails.
    - Set `rebusPuzzle` = returned `unicodeFallback`; keep the full `visual` for persist/UI.
    - Unicode-only / unreadable blob SVGs are rejected — ensure ≥1 clear pictogram SVG or styled text layers.
 6. Write an explanation that maps each visual part → answer token; `craft_hint_ladder` for 3–5 hints.

@@ -135,7 +135,18 @@ export async function listRecentAnswers(input: { lookbackDays?: number; limit?: 
   };
 }
 
-export function proposeConceptSeeds(input: {
+type ConceptSeedIdea = {
+  workingTitle: string;
+  answerDirection: string;
+  category: string;
+  techniqueId: TechniqueId;
+  layerPlan: string;
+  whyItFitsTier: string;
+  pictogramNouns?: string[];
+  mechanismOneLiner?: string;
+};
+
+function proposeConceptSeedsFallback(input: {
   targetDifficulty: number;
   theme?: string;
   category?: string;
@@ -153,20 +164,22 @@ export function proposeConceptSeeds(input: {
     return (techniques[0]?.id as TechniqueId) ?? fallback;
   };
 
-  const seedIdeas = [
+  const seedIdeas: ConceptSeedIdea[] = [
     {
-      workingTitle: theme ? `${theme} compound` : `${level.label} everyday compound`,
+      workingTitle: theme ? `${theme} twist` : `${level.label} fresh compound`,
       answerDirection: theme
-        ? `Invent a fresh common phrase/compound tied to "${theme}" — not a banned answer`
-        : "Familiar 1–2 word compound with a clean visual split",
+        ? `Invent a fresh common phrase/compound tied to "${theme}" — not a banned or overused trope`
+        : "Invent a familiar compound/phrase with drawable nouns — avoid sunflower/before/piece-of-cake cousins",
       category,
       techniqueId: pick(techniques[0]?.id, "simple_compound"),
       layerPlan: "pictogram + pictogram (or pictogram + text) with clear order",
       whyItFitsTier: level.playerPromise,
+      pictogramNouns: ["key", "bridge"],
+      mechanismOneLiner: "Two concrete icons join into a familiar phrase",
     },
     {
       workingTitle: "Sound-alike pivot",
-      answerDirection: "One clear homophone leap; say the board out loud to verify",
+      answerDirection: "One clear homophone leap with a drawable sound cue; say the board out loud",
       category: "phonetic",
       techniqueId: pick(
         techniques.find((t) => t.id.includes("homophone") || t.id.includes("phonetic"))?.id,
@@ -174,6 +187,8 @@ export function proposeConceptSeeds(input: {
       ),
       layerPlan: "pictogram for the sound cue + literal partner",
       whyItFitsTier: "Phonetic leaps scale with difficulty when layered carefully",
+      pictogramNouns: ["bee", "eye"],
+      mechanismOneLiner: "Icon sounds like a syllable in the answer",
     },
     {
       workingTitle: "Space means meaning",
@@ -185,10 +200,12 @@ export function proposeConceptSeeds(input: {
       ),
       layerPlan: "stack/overlay layout; avoid ambiguous prepositions",
       whyItFitsTier: level.blurb,
+      pictogramNouns: ["house", "cloud"],
+      mechanismOneLiner: "Placement of icons encodes the preposition",
     },
     {
       workingTitle: "Idiom as picture",
-      answerDirection: "Widely known idiom rendered literally (no niche slang)",
+      answerDirection: "Widely known idiom rendered literally (no niche slang, no overused tropes)",
       category: "idiom",
       techniqueId: pick(
         techniques.find((t) => t.id.includes("idiom"))?.id,
@@ -196,6 +213,8 @@ export function proposeConceptSeeds(input: {
       ),
       layerPlan: "pictogram for the punch image + text for the rest of the idiom",
       whyItFitsTier: "Share-worthy aha that still fits the tier budget",
+      pictogramNouns: ["boat", "fish"],
+      mechanismOneLiner: "Literal picture of a figurative phrase",
     },
     {
       workingTitle: "Typography game",
@@ -207,6 +226,8 @@ export function proposeConceptSeeds(input: {
       ),
       layerPlan: "styled text layer (large/strike/stacked) + one supporting pictogram",
       whyItFitsTier: "Typography-as-gameplay feels premium and generative",
+      pictogramNouns: ["crown"],
+      mechanismOneLiner: "Text styling is half the joke; icon supports it",
     },
   ].filter((s) => {
     const key = normalizeAnswerKey(s.answerDirection);
@@ -220,8 +241,107 @@ export function proposeConceptSeeds(input: {
     recommendedTechniques: techniques.map((t) => t.id),
     bannedAnswerKeys: [...avoidKeys].slice(0, 40),
     seeds: seedIdeas,
-    note: "Seeds are starting points — invent a fresh answer not in bannedAnswerKeys / recent answers. Pictogram concepts must be concrete nouns (bee, clock, key) — never abstract words alone. Then call compose_puzzle_visual.",
+    source: "fallback" as const,
+    note: "Seeds are starting points — invent a fresh answer not in bannedAnswerKeys / recent answers / overused tropes (before, sunflower, piece of cake). Pictogram concepts must be concrete nouns. Then call compose_puzzle_visual.",
   };
+}
+
+/**
+ * Brainstorm creative concept seeds (LLM) with deterministic fallback.
+ */
+export async function proposeConceptSeeds(input: {
+  targetDifficulty: number;
+  theme?: string;
+  category?: string;
+  avoidAnswers?: string[];
+}) {
+  const level = getDifficultyLevelForScore(input.targetDifficulty);
+  const techniques = getTechniques(level.techniques);
+  const techIds = techniques.map((t) => t.id);
+  const avoidKeys = new Set((input.avoidAnswers ?? []).map((a) => normalizeAnswerKey(a)));
+  const fallback = proposeConceptSeedsFallback(input);
+
+  try {
+    const { z } = await import("zod");
+    const { generateAIObject } = await import("@/ai/client");
+    const { OVERUSED_REBUS_TROPES } = await import("./visual/icon-features");
+
+    const SeedSchema = z.object({
+      seeds: z
+        .array(
+          z.object({
+            workingTitle: z.string().min(3).max(64),
+            answerDirection: z
+              .string()
+              .min(8)
+              .max(160)
+              .describe("Specific inventable answer direction, not a vague instruction"),
+            category: z.string().min(2).max(40),
+            techniqueId: z.string(),
+            layerPlan: z.string().min(8).max(160),
+            whyItFitsTier: z.string().min(8).max(160),
+            pictogramNouns: z.array(z.string().min(2).max(24)).min(1).max(4),
+            mechanismOneLiner: z.string().min(8).max(120),
+          })
+        )
+        .min(3)
+        .max(5),
+    });
+
+    const invented = await generateAIObject({
+      modelType: "creative",
+      temperature: 0.92,
+      schema: SeedSchema,
+      system: `You invent fresh rebus puzzle directions for Rebuzzle.
+Each seed must be clever but fair, with concrete drawable pictogram nouns.
+Never suggest overused tropes: ${OVERUSED_REBUS_TROPES.join(", ")}.
+Prefer idioms/compounds/positional plays with a clean aha.
+techniqueId MUST be one of: ${techIds.join(", ")}.
+pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, lighthouse) — never abstract words.`,
+      prompt: [
+        `Invent 5 distinct puzzle seeds for tier ${level.label} (difficulty ${input.targetDifficulty}/10).`,
+        `Band ${level.min}–${level.max}. Budget ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
+        input.theme ? `Theme: ${input.theme}` : "No fixed theme — surprise us.",
+        input.category ? `Preferred category: ${input.category}` : "",
+        avoidKeys.size
+          ? `Avoid these answer keys: ${[...avoidKeys].slice(0, 25).join(", ")}`
+          : "",
+        "Each seed needs a specific answerDirection (name a plausible phrase family), mechanismOneLiner, and 1–3 pictogramNouns.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+
+    const allowed = new Set<string>(techIds);
+    const seeds: ConceptSeedIdea[] = invented.seeds
+      .map((seed) => {
+        const techniqueId = (
+          allowed.has(seed.techniqueId) ? seed.techniqueId : techIds[0] || "simple_compound"
+        ) as TechniqueId;
+        return {
+          workingTitle: seed.workingTitle,
+          answerDirection: seed.answerDirection,
+          category: seed.category,
+          techniqueId,
+          layerPlan: seed.layerPlan,
+          whyItFitsTier: seed.whyItFitsTier,
+          pictogramNouns: seed.pictogramNouns,
+          mechanismOneLiner: seed.mechanismOneLiner,
+        };
+      })
+      .filter((seed) => !avoidKeys.has(normalizeAnswerKey(seed.answerDirection)));
+
+    if (seeds.length < 3) return fallback;
+
+    return {
+      ...fallback,
+      seeds,
+      source: "ai" as const,
+      note: "AI seeds — invent a concrete answer outside banned/overused tropes. Use pictogramNouns as drawable icons. Then compose_puzzle_visual.",
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 export function assembleVisualComponents(input: {

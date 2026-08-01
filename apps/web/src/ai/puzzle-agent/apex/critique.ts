@@ -4,6 +4,7 @@
 
 import { generateAIObject } from "../../client";
 import { AI_CONFIG } from "../../config";
+import { OVERUSED_REBUS_TROPES } from "../visual/icon-features";
 import { CritiqueSchema, type CritiqueResult } from "./types";
 
 export async function critiqueCandidate(input: {
@@ -15,31 +16,45 @@ export async function critiqueCandidate(input: {
   difficulty: number;
   tierLabel: string;
   unicodeFallback?: string;
+  pictogramConcepts?: string[];
 }): Promise<CritiqueResult> {
   try {
-    return await generateAIObject({
+    const raw = await generateAIObject({
       modelType: "smart",
-      temperature: AI_CONFIG.generation.temperature.factual,
+      temperature: AI_CONFIG.generation.temperature.balanced,
       schema: CritiqueSchema,
-      system: `You are an adversarial rebus editor for Rebuzzle.
-Reject lazy emoji salad, unreadable or vague icons, answer leaks, unfair obscurity, and weak aha moments.
-Ship only puzzles with a clean mapping, recognizable visuals, and a satisfying click.
-Family-friendly. Be specific and ruthless but fair.`,
+      system: `You are an adversarial rebus editor for a national daily (Rebuzzle).
+Reject lazy emoji salad, unreadable/vague icons, answer leaks, unfair obscurity, weak aha moments, and overused tropes (${OVERUSED_REBUS_TROPES.slice(0, 6).join(", ")}) unless the twist is genuinely new.
+Demand: one clean clever mechanism, concrete pictogram nouns a human can sketch, fair progressive hints, family-friendly.
+Score creativityScore (mechanism inventiveness, not just uniqueness) and iconRecognizability (0–100).
+Ship only if you'd be proud to publish nationally AND creativityScore ≥ 62 AND icons would be recognizable.
+Be specific and ruthless but fair.`,
       prompt: [
         `Critique this ${input.tierLabel} candidate (difficulty ${input.difficulty}/10).`,
         `Display: ${input.unicodeFallback || input.rebusPuzzle}`,
         `Answer: ${input.answer}`,
         `Technique: ${input.techniqueId}`,
+        input.pictogramConcepts?.length
+          ? `Pictogram concepts: ${input.pictogramConcepts.join(", ")}`
+          : null,
         `Explanation: ${input.explanation}`,
         `Hints: ${input.hints.map((h, i) => `${i + 1}. ${h}`).join(" | ")}`,
         "",
-        "Also judge whether each pictured object would be instantly recognizable as a simple icon.",
-        "If icons sound abstract/vague, verdict revise and demand concrete nouns + clearer silhouettes.",
-        "Score falseLeadQuality (0-100) and ahaPredicted (0-100).",
-        "Verdict ship only if you'd be proud to publish it nationally.",
-        "If revise/reject, give concrete reviseInstructions.",
-      ].join("\n"),
+        "Judge whether each pictured object would be instantly recognizable as a simple icon.",
+        "Set overusedTrope=true if the answer/mechanism is a classic rebus cliché without a fresh twist.",
+        "Score falseLeadQuality, ahaPredicted, creativityScore, iconRecognizability (0-100).",
+        "Verdict ship only if proud to publish. If revise/reject, give concrete reviseInstructions.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     });
+
+    return {
+      ...raw,
+      creativityScore: raw.creativityScore ?? 60,
+      iconRecognizability: raw.iconRecognizability ?? 70,
+      overusedTrope: raw.overusedTrope ?? false,
+    };
   } catch {
     // Soft fallback — don't block the pipeline if critique model fails
     return {
@@ -47,9 +62,14 @@ Family-friendly. Be specific and ruthless but fair.`,
       summary: "Critique unavailable — treat as provisional",
       strengths: [],
       flaws: ["Automated critique failed; rely on deterministic gates"],
-      reviseInstructions: ["Re-check answer leak, technique fit, and hint progression"],
+      reviseInstructions: [
+        "Re-check answer leak, technique fit, icon recognizability, and hint progression",
+      ],
       falseLeadQuality: 50,
       ahaPredicted: 55,
+      creativityScore: 55,
+      iconRecognizability: 55,
+      overusedTrope: false,
     };
   }
 }

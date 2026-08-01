@@ -13,6 +13,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "compound",
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    overused: true,
   },
   {
     answer: "moonlight",
@@ -76,6 +77,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["obvious_emoji_sum", "single_homophone"],
     notes: "bee + four",
+    overused: true,
   },
   {
     answer: "belief",
@@ -83,6 +85,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 6,
     techniqueAffinity: ["nested_homophone", "multi_layer_phonetic"],
     notes: "bee + leaf",
+    overused: true,
   },
   {
     answer: "season",
@@ -118,6 +121,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "positional",
     difficultyHint: 6,
     techniqueAffinity: ["positional_phrase", "spatial_preposition_play"],
+    overused: true,
   },
   {
     answer: "mind over matter",
@@ -174,6 +178,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "idiom",
     difficultyHint: 4,
     techniqueAffinity: ["idiom_as_picture", "simple_compound"],
+    overused: true,
   },
   {
     answer: "spill the beans",
@@ -204,6 +209,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture", "multi_emoji_compound"],
+    overused: true,
   },
   {
     answer: "cost an arm and a leg",
@@ -248,6 +254,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "typography",
     difficultyHint: 5,
     techniqueAffinity: ["size_or_case_semantics"],
+    overused: true,
   },
   {
     answer: "small talk",
@@ -424,6 +431,9 @@ export function samplePhraseBank(input: {
 
     if (category && entry.category === category) score += 2;
     if (theme && (entry.answer.includes(theme) || entry.notes?.includes(theme))) score += 2;
+
+    // Prefer fresher answers — overused tropes are anti-inspiration
+    if (entry.overused) score -= 5;
 
     // Mild randomness so dailies don't always pick the same top seeds
     score += Math.random() * 1.5;

@@ -26,11 +26,21 @@ export const INK_PICTOGRAM_EXAMPLE_BEE = `<svg xmlns="http://www.w3.org/2000/svg
 /** Tiny few-shot: a readable eye. */
 export const INK_PICTOGRAM_EXAMPLE_EYE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><path d="M8 32c8-14 20-20 24-20s16 6 24 20c-8 14-20 20-24 20S16 46 8 32z" fill="${INK_PICTOGRAM_PALETTE.canvas}" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25" stroke-linejoin="round"/><circle cx="32" cy="32" r="9" fill="none" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25"/><circle cx="32" cy="32" r="4" fill="${INK_PICTOGRAM_PALETTE.ink}"/></svg>`;
 
+/** Tiny few-shot: a readable key. */
+export const INK_PICTOGRAM_EXAMPLE_KEY = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><circle cx="20" cy="32" r="10" fill="${INK_PICTOGRAM_PALETTE.canvas}" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25"/><circle cx="20" cy="32" r="3.5" fill="none" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2"/><path d="M30 32h22" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.5" stroke-linecap="round"/><path d="M46 32v6M52 32v8" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25" stroke-linecap="round"/></svg>`;
+
+/** Tiny few-shot: a readable umbrella. */
+export const INK_PICTOGRAM_EXAMPLE_UMBRELLA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><path d="M10 34c0-14 10-22 22-22s22 8 22 22H10z" fill="${INK_PICTOGRAM_PALETTE.canvas}" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25" stroke-linejoin="round"/><path d="M32 34v14c0 4 6 4 6 0" fill="none" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25" stroke-linecap="round"/><path d="M18 34c4-6 9-8 14-8s10 2 14 8" fill="none" stroke="${INK_PICTOGRAM_PALETTE.mist}" stroke-width="1.75"/></svg>`;
+
+/** Tiny few-shot: a readable clock. */
+export const INK_PICTOGRAM_EXAMPLE_CLOCK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><circle cx="32" cy="34" r="18" fill="${INK_PICTOGRAM_PALETTE.canvas}" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25"/><circle cx="32" cy="34" r="2" fill="${INK_PICTOGRAM_PALETTE.ink}"/><path d="M32 34V22M32 34l10 6" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25" stroke-linecap="round"/><path d="M32 14v4M32 50v4M14 34h4M46 34h4" stroke="${INK_PICTOGRAM_PALETTE.mist}" stroke-width="2" stroke-linecap="round"/></svg>`;
+
 /** System prompt fragment injected into pictogram generators. */
 export const INK_PICTOGRAM_STYLE_GUIDE = `
 You are a senior icon designer drawing Rebuzzle Ink Pictogram v1 tiles for rebus puzzles.
 
-GOAL: Instant recognition at 48–96px. If a player cannot name the object in one second, you failed.
+GOAL: Instant recognition at 48–96px. If a stranger cannot name the object in one second, you failed.
+Draw like a human sketching a clear emoji — bold silhouette first, then 2–4 identifying marks.
 
 LOCKED STYLE (non-negotiable):
 - Flat, crisp, editorial pictograms — modern rebus board icons, not clipart or doodles
@@ -47,14 +57,28 @@ CRAFT RULES:
 - Draw ONE concrete object (or one classic symbol like a heart / lightbulb)
 - Include the iconic features that make it unmistakable
 - Keep geometry chunky — avoid hairline details that vanish at small size
+- Canonical views: animals side/¾; tools ¾ with handle; clocks face-on; containers with opening visible
+- Never substitute a related object (honeycomb for bee) unless the rebus role requires that exact noun
 - Do not draw abstract blobs, random squiggles, decorative swirls, or multi-scene collages
-- Do not invent unreadable "vibes" — invent a readable object
+
+RECOGNITION TEST (before finishing):
+Ask: "Would a stranger name this exact object in one second?"
+If no, enlarge the silhouette and add the missing identifying marks — do not add decoration.
 
 GOOD EXAMPLE (bee — stripes + wings + antennae):
 ${INK_PICTOGRAM_EXAMPLE_BEE}
 
 GOOD EXAMPLE (eye — lid almond + iris + pupil):
 ${INK_PICTOGRAM_EXAMPLE_EYE}
+
+GOOD EXAMPLE (key — bow + shaft + teeth):
+${INK_PICTOGRAM_EXAMPLE_KEY}
+
+GOOD EXAMPLE (umbrella — canopy + shaft + J handle):
+${INK_PICTOGRAM_EXAMPLE_UMBRELLA}
+
+GOOD EXAMPLE (clock — face + hands + ticks):
+${INK_PICTOGRAM_EXAMPLE_CLOCK}
 `.trim();
 
 export const IMAGE_TILE_STYLE_GUIDE = `
@@ -63,8 +87,8 @@ Rebuzzle hybrid image tile style:
 - ONE clear, instantly recognizable real-world subject — bold silhouette, high contrast
 - Not abstract, not collage, no watermark, no text overlays, no purple glow
 - Square composition, centered, generous padding
-- Looks like a premium rebus icon, not photoreal stock photography
-- If the subject would be unclear, simplify to the most iconic view (side profile of a bee, front of a clock, etc.)
+- Looks like a premium rebus icon a human could sketch from memory
+- Prefer the most iconic camera angle (side bee, face-on clock, side key)
 `.trim();
 
 export type PictogramConcept = {

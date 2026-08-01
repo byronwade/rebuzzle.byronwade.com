@@ -46,6 +46,8 @@ export type RunVisualLabResult = {
     emojiFallback: string;
     clarityScore?: number;
     clarityReasons?: string[];
+    seenAs?: string;
+    recognitionConfidence?: number;
     attempts?: number;
     error?: string;
   };
@@ -221,6 +223,8 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
         emojiFallback: pictogram.emojiFallback,
         clarityScore: pictogram.clarityScore,
         clarityReasons: pictogram.clarityReasons,
+        seenAs: pictogram.seenAs,
+        recognitionConfidence: pictogram.recognitionConfidence,
         attempts: pictogram.attempts,
         error: pictogram.error,
       },

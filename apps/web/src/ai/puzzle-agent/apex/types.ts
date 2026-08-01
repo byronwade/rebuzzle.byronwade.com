@@ -28,6 +28,12 @@ export const CritiqueSchema = z.object({
   reviseInstructions: z.array(z.string()).max(6),
   falseLeadQuality: z.number().min(0).max(100),
   ahaPredicted: z.number().min(0).max(100),
+  /** Mechanism inventiveness — not catalog uniqueness */
+  creativityScore: z.number().min(0).max(100).optional(),
+  /** Would a stranger recognize the icons? */
+  iconRecognizability: z.number().min(0).max(100).optional(),
+  /** Classic rebus cliché without a fresh twist */
+  overusedTrope: z.boolean().optional(),
 });
 
 export type CritiqueResult = z.infer<typeof CritiqueSchema>;
@@ -49,6 +55,8 @@ export type PhraseBankEntry = {
   difficultyHint: number;
   techniqueAffinity: TechniqueId[];
   notes?: string;
+  /** Classic trope — fine as anti-inspiration, bad to copy */
+  overused?: boolean;
 };
 
 export type DiversitySnapshot = {

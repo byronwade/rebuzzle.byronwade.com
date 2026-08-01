@@ -192,7 +192,7 @@ export const puzzleAgentTools: ToolSet = {
 
   critique_candidate: tool({
     description:
-      "Adversarial editor critique — ship/revise/reject with aha + false-lead scores.",
+      "Adversarial editor critique — ship/revise/reject with aha, creativity, and icon recognizability scores.",
     inputSchema: z.object({
       rebusPuzzle: z.string(),
       answer: z.string(),
@@ -202,6 +202,7 @@ export const puzzleAgentTools: ToolSet = {
       difficulty: z.number(),
       tierLabel: z.enum(["Hard", "Difficult", "Evil", "Impossible"]),
       unicodeFallback: z.string().optional(),
+      pictogramConcepts: z.array(z.string()).optional(),
     }),
     execute: async (input) => critiqueCandidate(input),
   }),
