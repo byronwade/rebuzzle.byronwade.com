@@ -11,10 +11,11 @@ description: End-to-end workflow for assembling a daily Rebuzzle puzzle with gen
 4. Pick a technique from the brief; optionally `list_technique_library`.
 5. **Compose a generative visual** (required path):
    - Plan layers: pictogram concepts + text emphasis + operators (+ rare image).
+   - Pictogram concepts must be **concrete nouns** (bee, clock, key, umbrella) — never abstract words alone (love/time/success). Icons must be instantly recognizable.
    - Call `compose_puzzle_visual` with those layers until within budget and funScore ≥ 68.
-   - Optionally preview a tile with `generate_pictogram`.
+   - Optionally preview a tile with `generate_pictogram` and regenerate if clarity fails.
    - Set `rebusPuzzle` = returned `unicodeFallback`; keep the full `visual` for persist/UI.
-   - Unicode-only mode is rejected — ensure ≥1 pictogram SVG or styled text layers.
+   - Unicode-only / unreadable blob SVGs are rejected — ensure ≥1 clear pictogram SVG or styled text layers.
 6. Write an explanation that maps each visual part → answer token; `craft_hint_ladder` for 3–5 hints.
 7. Pipeline: `validate_puzzle` → `check_uniqueness` → `calibrate_difficulty` → `stress_test_solvability` → `score_quality`.
 8. `critique_candidate` + `simulate_player_solve` + `score_rubric` — revise if not ship-worthy.
