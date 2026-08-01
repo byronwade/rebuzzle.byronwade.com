@@ -5,14 +5,39 @@ import {
 import { sampleAnswerFirstSeeds } from "../../answer-first";
 import {
   corpusSize,
+  corpusStats,
+  corpusTier,
   listThemePacks,
   sampleAnswerCorpus,
 } from "../sample";
 
 describe("answer corpus", () => {
-  it("loads thousands of scored answers", () => {
+  it("loads thousands of scored answers with a gold tier", () => {
     expect(corpusSize()).toBeGreaterThan(5000);
     expect(listThemePacks().length).toBeGreaterThan(5);
+    const stats = corpusStats();
+    expect(stats.gold).toBeGreaterThan(50);
+    expect(stats.bronze).toBeGreaterThan(0);
+  });
+
+  it("prefers gold / non-template when sampling", () => {
+    const seeds = sampleAnswerCorpus({
+      targetDifficulty: 8,
+      preferredTechniques: ["idiom_as_picture", "container_phrase", "letter_play"],
+      bannedAnswerKeys: ["pieceofcake", "sunflower"],
+      preferMultiWord: true,
+      preferGold: true,
+      preferAnswerPatterns: ["multi_word_2", "multi_word_3plus"],
+      limit: 8,
+    });
+    expect(seeds.length).toBeGreaterThan(0);
+    expect(seeds.every((s) => s.answer.toLowerCase() !== "piece of cake")).toBe(
+      true
+    );
+    expect(seeds.some((s) => s.wordCount >= 2)).toBe(true);
+    expect(seeds.every((s) => corpusTier(s) !== "bronze" || s.kind !== "template")).toBe(
+      true
+    );
   });
 
   it("samples non-banned multi-word answers for hard tiers", () => {

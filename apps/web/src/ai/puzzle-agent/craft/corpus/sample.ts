@@ -95,6 +95,26 @@ function seededOrder(entries: CorpusEntry[], salt: string): CorpusEntry[] {
   return scored.sort((a, b) => a.r - b.r).map((s) => s.e);
 }
 
+/** Gold = curated + recognizable; silver = solid; bronze = template noise */
+export function corpusTier(e: CorpusEntry): "gold" | "silver" | "bronze" {
+  if (e.overused) return "bronze";
+  if (e.kind === "template") return "bronze";
+  if (
+    e.frequency >= 4 &&
+    (e.kind === "phrase" ||
+      e.kind === "phrasal" ||
+      e.kind === "idiom" ||
+      e.kind === "compound" ||
+      e.kind === "hyphen" ||
+      e.kind === "direction")
+  ) {
+    return "gold";
+  }
+  if (e.frequency >= 3 && e.kind !== "template") return "silver";
+  if (e.kind === "letter" || e.kind === "phonetic") return "silver";
+  return "bronze";
+}
+
 function scoreEntry(
   e: CorpusEntry,
   input: {
@@ -103,10 +123,18 @@ function scoreEntry(
     theme?: string;
     category?: string;
     preferMultiWord: boolean;
+    preferAnswerPatterns?: string[];
+    avoidAnswerPatterns?: string[];
+    goldOnly?: boolean;
   }
 ): number {
+  const tier = corpusTier(e);
   let score = e.frequency * 10;
   if (e.overused) score -= 40;
+  if (tier === "gold") score += 28;
+  else if (tier === "silver") score += 10;
+  else score -= 22; // bronze / templates
+
   if (e.kind === "template") score -= 18;
   if (e.kind === "phrase" || e.kind === "phrasal" || e.kind === "idiom") score += 8;
   if (e.kind === "compound") score += 4;
@@ -118,6 +146,18 @@ function scoreEntry(
   } else if (e.wordCount === 1) {
     score += 4;
   }
+
+  // Outcome-driven answer shape weights
+  const shape =
+    e.answer.includes("-")
+      ? "hyphen"
+      : e.wordCount >= 3
+        ? "multi_word_3plus"
+        : e.wordCount === 2
+          ? "multi_word_2"
+          : "single_word";
+  if (input.preferAnswerPatterns?.includes(shape)) score += 14;
+  if (input.avoidAnswerPatterns?.includes(shape)) score -= 16;
 
   const techSet = new Set(input.preferredTechniques);
   if (e.techniques.some((t) => techSet.has(t))) score += 12;
@@ -134,6 +174,8 @@ function scoreEntry(
     if (e.frequency >= 4) score += 6;
   }
 
+  if (input.goldOnly && tier !== "gold") score -= 40;
+
   return score;
 }
 
@@ -148,15 +190,25 @@ export function corpusSize(): number {
 export function corpusStats(): {
   total: number;
   multiWord: number;
+  gold: number;
+  silver: number;
+  bronze: number;
   byKind: Record<string, number>;
 } {
   const byKind: Record<string, number> = {};
   let multiWord = 0;
+  let gold = 0;
+  let silver = 0;
+  let bronze = 0;
   for (const e of loadCorpus().entries) {
     byKind[e.kind] = (byKind[e.kind] ?? 0) + 1;
     if (e.wordCount >= 2) multiWord += 1;
+    const tier = corpusTier(e);
+    if (tier === "gold") gold += 1;
+    else if (tier === "silver") silver += 1;
+    else bronze += 1;
   }
-  return { total: loadCorpus().entries.length, multiWord, byKind };
+  return { total: loadCorpus().entries.length, multiWord, gold, silver, bronze, byKind };
 }
 
 /**
@@ -172,6 +224,10 @@ export function sampleAnswerCorpus(input: {
   preferMultiWord?: boolean;
   minFrequency?: number;
   allowTemplates?: boolean;
+  /** Prefer gold-tier curated answers (default true) */
+  preferGold?: boolean;
+  preferAnswerPatterns?: string[];
+  avoidAnswerPatterns?: string[];
 }): SampledCorpusAnswer[] {
   const corpus = loadCorpus();
   const limit = Math.max(1, Math.min(20, input.limit ?? 8));
@@ -182,14 +238,24 @@ export function sampleAnswerCorpus(input: {
     input.minFrequency ?? (input.targetDifficulty >= 8 ? 2 : 3);
   const preferMultiWord =
     input.preferMultiWord ?? input.targetDifficulty >= 7;
+  const preferGold = input.preferGold !== false;
 
   let pool = corpus.entries.filter((e) => {
     if (e.overused) return false;
     if (e.frequency < minFrequency) return false;
     if (banned.has(normalizeKey(e.answer))) return false;
     if (!input.allowTemplates && e.kind === "template") return false;
+    if (preferGold && corpusTier(e) === "bronze" && e.kind === "template") return false;
     return true;
   });
+
+  // Prefer gold-only when enough exist
+  if (preferGold) {
+    const goldPool = pool.filter((e) => corpusTier(e) === "gold");
+    const silverPool = pool.filter((e) => corpusTier(e) !== "bronze");
+    if (goldPool.length >= limit * 2) pool = goldPool;
+    else if (silverPool.length >= limit * 2) pool = silverPool;
+  }
 
   if (pool.length < limit * 3) {
     pool = corpus.entries.filter((e) => {
@@ -217,7 +283,16 @@ export function sampleAnswerCorpus(input: {
   ].join("|");
 
   const ranked = seededOrder(pool, salt)
-    .map((e) => ({ e, s: scoreEntry(e, { ...input, preferMultiWord }) }))
+    .map((e) => ({
+      e,
+      s: scoreEntry(e, {
+        ...input,
+        preferMultiWord,
+        preferAnswerPatterns: input.preferAnswerPatterns,
+        avoidAnswerPatterns: input.avoidAnswerPatterns,
+        goldOnly: preferGold,
+      }),
+    }))
     .sort((a, b) => b.s - a.s);
 
   const out: SampledCorpusAnswer[] = [];

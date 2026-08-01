@@ -1,6 +1,7 @@
 export {
   corpusSize,
   corpusStats,
+  corpusTier,
   formatCorpusSeedsForPrompt,
   listThemePacks,
   resetCorpusCache,

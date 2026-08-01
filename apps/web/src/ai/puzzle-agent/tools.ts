@@ -30,6 +30,8 @@ import {
   lookupWordSensesTool,
   proposeConceptSeeds,
   researchCulturalPulseTool,
+  getDailyPostmortemTool,
+  getOutcomeWeightsTool,
   sampleAnswerCorpusTool,
   scoreHintFairnessTool,
   scorePuzzleQuality,
@@ -106,7 +108,7 @@ export const puzzleAgentTools: ToolSet = {
 
   sample_answer_corpus: tool({
     description:
-      "ANSWER-FIRST: sample from the large scored answer corpus (thousands of fair phrases). Lock one unused answer, then backform the board.",
+      "ANSWER-FIRST: sample from the large scored answer corpus (prefer GOLD tier). Lock one unused answer, then backform the board.",
     inputSchema: z.object({
       targetDifficulty: z.number(),
       preferredTechniques: z.array(z.string()).optional(),
@@ -115,8 +117,26 @@ export const puzzleAgentTools: ToolSet = {
       category: z.string().optional(),
       limit: z.number().optional(),
       preferMultiWord: z.boolean().optional(),
+      preferAnswerPatterns: z.array(z.string()).optional(),
+      avoidAnswerPatterns: z.array(z.string()).optional(),
     }),
     execute: async (input) => sampleAnswerCorpusTool(input),
+  }),
+
+  get_daily_postmortem: tool({
+    description:
+      "Load yesterday's daily postmortem rules (solve rate, traps, prefer/avoid) — apply as hard invent constraints.",
+    inputSchema: z.object({}),
+    execute: async () => getDailyPostmortemTool(),
+  }),
+
+  get_outcome_weights: tool({
+    description:
+      "Outcome-weighted technique/answer-shape prefer/avoid from live play + likes.",
+    inputSchema: z.object({
+      lookbackDays: z.number().optional(),
+    }),
+    execute: async (input) => getOutcomeWeightsTool(input),
   }),
 
   assemble_visual_components: tool({

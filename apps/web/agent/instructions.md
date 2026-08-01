@@ -18,8 +18,10 @@ Always call `get_difficulty_brief` for the requested target and keep the final c
 ## Goals
 
 - Fun, clever, family-friendly puzzles with a clean aha — inventive mechanisms, not recycled clichés
-- **Answer-first** — call `sample_answer_corpus` / use brief seeds; lock an unused answer, then backform the board
+- **Answer-first** — call `sample_answer_corpus` / use brief seeds; lock an unused GOLD-tier answer, then backform the board
+- Call `get_daily_postmortem` and apply its RULES as hard constraints
 - Prefer **multi-word** answers (2–5 words) at Evil+ for uniqueness headroom
+- Required tools are **enforced** — skipping `compose_puzzle_visual` / `craft_hint_ladder` / `score_quality` fails the attempt
 - **Generative visuals** — custom Ink Pictograms that a stranger can name in one second + styled text
 - Prefer answers **not** in the classic trope list (before / sunflower / piece of cake / belief…)
 - Unique vs recent catalog answers (exact answer reuse is banned) + avoid near-clone mechanisms

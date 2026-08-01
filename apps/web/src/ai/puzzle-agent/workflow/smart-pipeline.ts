@@ -38,9 +38,14 @@ function toCandidate(
   plan: InventPlan
 ): ApexCandidate {
   const p = result.puzzle;
-  const techniqueId = (
-    isKnownTechniqueId(p.techniqueId) ? p.techniqueId : plan.techniqueId
-  ) as TechniqueId;
+  // Invent plan locks technique — agent output must match (enforced upstream too)
+  const techniqueId = plan.techniqueId;
+  const rejectReasons: string[] = [];
+  if (isKnownTechniqueId(p.techniqueId) && p.techniqueId !== plan.techniqueId) {
+    rejectReasons.push(
+      `Technique lock violated: expected ${plan.techniqueId}, got ${p.techniqueId}`
+    );
+  }
 
   const inBand = isDifficultyInBand(
     result.metadata.calibratedDifficulty || p.difficulty,
@@ -66,8 +71,9 @@ function toCandidate(
     solvable: result.metadata.qualityVerdict !== "reject",
     qualityOverall: result.metadata.qualityScore,
     funScore: result.metadata.funScore ?? 0,
-    publishable: result.metadata.qualityVerdict !== "reject",
-    rejectReasons: [],
+    publishable:
+      result.metadata.qualityVerdict !== "reject" && rejectReasons.length === 0,
+    rejectReasons,
   };
 }
 
@@ -125,7 +131,13 @@ export async function phaseGenerateSlot(input: {
     targetDifficulty: brief.targetDifficulty,
     maxAttempts: Math.min(params.maxAttempts ?? 2, 2),
     qualityThreshold: brief.qualityThreshold,
-    briefSummary: [brief.briefSummary, plan.briefNudge].filter(Boolean).join("\n\n"),
+    briefSummary: [
+      brief.briefSummary,
+      brief.learning.postmortemPromptBlock,
+      plan.briefNudge,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
     preferredTechniques: [
       plan.techniqueId,
       ...brief.preferredTechniques.filter((t) => t !== plan.techniqueId),
@@ -138,6 +150,9 @@ export async function phaseGenerateSlot(input: {
     candidateIndex: plan.slot,
     candidateCount: brief.candidateCount,
     useLearningFeedback: params.useLearningFeedback,
+    requiredTools: plan.requiredTools,
+    lockedTechniqueId: plan.techniqueId,
+    answerSeed: plan.answerSeed,
   });
 
   return toCandidate(result, brief, plan);

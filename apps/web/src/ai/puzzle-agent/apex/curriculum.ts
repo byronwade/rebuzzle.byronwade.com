@@ -67,6 +67,12 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
           solveRate: null as number | null,
           likedTechniques: [] as string[],
           dislikedTechniques: [] as string[],
+          preferAnswerPatterns: ["multi_word_2", "multi_word_3plus"] as string[],
+          avoidAnswerPatterns: [] as string[],
+          preferThemes: [] as string[],
+          avoidThemes: [] as string[],
+          postmortemRules: [] as string[],
+          postmortemPromptBlock: "",
         })
       : loadLearningDigest(),
     loadAllAnswerKeys(500),
@@ -135,22 +141,35 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     sampleMechanismWinners({ preferredTechniques, limit: 3 })
   );
 
+  // Theme preference from outcomes when caller didn't specify one
+  const effectiveTheme =
+    input.theme ||
+    learning.preferThemes.find((t) => !learning.avoidThemes.includes(t)) ||
+    input.category;
+
   const corpusSeeds = sampleAnswerCorpus({
     targetDifficulty,
     preferredTechniques,
     bannedAnswerKeys: banned,
-    theme: input.theme,
+    theme: effectiveTheme,
     category: input.category,
     limit: 6,
-    preferMultiWord: targetDifficulty >= 7,
+    preferMultiWord:
+      targetDifficulty >= 7 ||
+      learning.preferAnswerPatterns.some((p) => p.startsWith("multi_word")),
+    preferGold: true,
+    preferAnswerPatterns: learning.preferAnswerPatterns,
+    avoidAnswerPatterns: learning.avoidAnswerPatterns,
   });
   const answerFirst = sampleAnswerFirstSeeds({
     targetDifficulty,
     preferredTechniques,
     bannedAnswerKeys: banned,
-    theme: input.theme,
+    theme: effectiveTheme,
     category: input.category,
     limit: 6,
+    preferAnswerPatterns: learning.preferAnswerPatterns,
+    avoidAnswerPatterns: learning.avoidAnswerPatterns,
   });
   const themePacks = listThemePacks().slice(0, 8);
 
@@ -178,19 +197,29 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
 
   const briefSummary = [
     `Tier ${level.label} (${level.min}–${level.max}), budget ${level.componentBudget.min}–${level.componentBudget.max}.`,
-    `ANSWER-FIRST DEFAULT: scored corpus has ${corpusSize()} answers — pick a seed, backform the board; never freestyle a recycled trope.`,
-    targetDifficulty >= 7
+    `ANSWER-FIRST DEFAULT: scored corpus has ${corpusSize()} answers (prefer GOLD tier) — pick a seed, backform the board; never freestyle a recycled trope.`,
+    targetDifficulty >= 7 || learning.preferAnswerPatterns.some((p) => p.startsWith("multi_word"))
       ? "Prefer MULTI-WORD answers (2–5 words) for uniqueness headroom."
+      : null,
+    learning.preferAnswerPatterns.length
+      ? `Hard prefer answer shapes: ${learning.preferAnswerPatterns.join(", ")}.`
+      : null,
+    learning.avoidAnswerPatterns.length
+      ? `Hard avoid answer shapes: ${learning.avoidAnswerPatterns.join(", ")}.`
       : null,
     `Prefer techniques: ${preferredTechniques.slice(0, 5).join(", ")}.`,
     likedInTier.length
-      ? `Player-liked techniques (hard prefer): ${likedInTier.slice(0, 3).join(", ")}.`
+      ? `Outcome/liked techniques (hard prefer): ${likedInTier.slice(0, 3).join(", ")}.`
       : null,
     avoidTechniques.length
       ? `Avoid overused/disliked/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`
       : "Technique diversity looks healthy.",
     `Ban ${banned.size} archived+recent answers (never reuse answer keys).`,
     `Theme packs: ${themePacks.join(", ")}.`,
+    learning.postmortemRules.length
+      ? `Postmortem rules: ${learning.postmortemRules.slice(0, 3).join(" | ")}.`
+      : null,
+    learning.postmortemPromptBlock || null,
     answerFirst.length
       ? `Answer-first seeds: ${answerFirst
           .slice(0, 4)

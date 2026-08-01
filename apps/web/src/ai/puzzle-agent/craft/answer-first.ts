@@ -38,6 +38,8 @@ export function sampleAnswerFirstSeeds(input: {
   theme?: string;
   category?: string;
   limit?: number;
+  preferAnswerPatterns?: string[];
+  avoidAnswerPatterns?: string[];
 }): AnswerFirstSeed[] {
   const limit = Math.max(1, Math.min(12, input.limit ?? 8));
   const banned = new Set(
@@ -51,7 +53,12 @@ export function sampleAnswerFirstSeeds(input: {
     theme: input.theme,
     category: input.category,
     limit: limit + 4,
-    preferMultiWord: input.targetDifficulty >= 7,
+    preferMultiWord:
+      input.targetDifficulty >= 7 ||
+      (input.preferAnswerPatterns ?? []).some((p) => p.startsWith("multi_word")),
+    preferGold: true,
+    preferAnswerPatterns: input.preferAnswerPatterns,
+    avoidAnswerPatterns: input.avoidAnswerPatterns,
   });
 
   const phrases = samplePhraseBank({

@@ -27,6 +27,11 @@ import {
   stressTestSolvability,
 } from "./tool-impl";
 import { puzzleAgentTools } from "./tools";
+import {
+  enforceRequiredTools,
+  extractCalledTools,
+  formatToolEnforcementFailure,
+} from "./workflow/tool-enforcement";
 
 export interface PuzzleGenerationParams {
   targetDifficulty: number;
@@ -51,6 +56,12 @@ export interface PuzzleGenerationParams {
   /** Tournament candidate slot (1-based) — encourages diversity across slots */
   candidateIndex?: number;
   candidateCount?: number;
+  /** Hard invent-DAG tools that must be called */
+  requiredTools?: string[];
+  /** Locked technique from invent plan */
+  lockedTechniqueId?: string;
+  /** Answer seed from invent plan (preferred exact answer) */
+  answerSeed?: string;
 }
 
 function loadInstructions(): string {
@@ -127,6 +138,15 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
       ? `Banned answer keys (normalized): ${params.bannedAnswerKeys.slice(0, 30).join(", ")}.`
       : null,
     params.briefSummary ? `Curriculum brief: ${params.briefSummary}` : null,
+    params.lockedTechniqueId
+      ? `LOCKED techniqueId MUST be ${params.lockedTechniqueId}.`
+      : null,
+    params.answerSeed
+      ? `ANSWER-FIRST lock: prefer answer "${params.answerSeed}" (cousin only if that key is banned).`
+      : null,
+    params.requiredTools?.length
+      ? `REQUIRED tools (hard fail if skipped): ${params.requiredTools.join(", ")}.`
+      : null,
     slot,
     params.requireNovelty !== false
       ? "Novelty is required — avoid recent answers and similar visuals."
@@ -191,11 +211,34 @@ export async function runPuzzleAgentGeneration(
           throw new Error("Puzzle agent returned no structured output");
         }
 
+        // Hard invent-DAG: required tools must have been called
+        const calledTools = extractCalledTools(result);
+        const toolGate = enforceRequiredTools({
+          calledTools,
+          requiredTools: params.requiredTools,
+          strictInvent: true,
+        });
+        if (!toolGate.ok) {
+          priorFailure = formatToolEnforcementFailure(toolGate);
+          lastError = new Error(priorFailure);
+          continue;
+        }
+
         const puzzle = output.puzzle;
 
         // Keep share string aligned with generative board
         if (puzzle.visual?.unicodeFallback) {
           puzzle.rebusPuzzle = puzzle.visual.unicodeFallback;
+        }
+
+        // Locked technique from invent plan
+        if (
+          params.lockedTechniqueId &&
+          puzzle.techniqueId !== params.lockedTechniqueId
+        ) {
+          priorFailure = `techniqueId must be ${params.lockedTechniqueId} (got ${puzzle.techniqueId})`;
+          lastError = new Error(priorFailure);
+          continue;
         }
 
         const targetDifficulty = params.targetDifficulty || puzzle.difficulty;

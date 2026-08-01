@@ -164,6 +164,26 @@ export async function runLearningCalibration(input?: {
     // non-blocking
   }
 
+  // Daily postmortem → hard brief rules for tomorrow's invent
+  try {
+    const { runDailyPostmortemPipeline } = await import("./daily-postmortem");
+    const { postmortem, eventId: postmortemEventId } =
+      await runDailyPostmortemPipeline();
+    logger.info("Daily postmortem applied", {
+      date: postmortem.date,
+      verdict: postmortem.verdict,
+      rules: postmortem.rules.length,
+      eventId: postmortemEventId,
+    });
+  } catch (postmortemError) {
+    logger.warn("Daily postmortem skipped", {
+      error:
+        postmortemError instanceof Error
+          ? postmortemError.message
+          : String(postmortemError),
+    });
+  }
+
   // Keep legacy rows uniqueness-ready
   try {
     const { backfillAnswerKeys } = await import("./backfill-answer-keys");

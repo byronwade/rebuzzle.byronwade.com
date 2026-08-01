@@ -28,6 +28,18 @@ export {
   type LearningPolicySnapshot,
 } from "./learning-loop";
 export {
+  buildDailyPostmortem,
+  loadLatestPostmortem,
+  persistDailyPostmortem,
+  runDailyPostmortemPipeline,
+  type DailyPostmortem,
+} from "./daily-postmortem";
+export {
+  loadOutcomeWeights,
+  type OutcomeWeights,
+  type TechniqueOutcome,
+} from "./outcome-weights";
+export {
   measurePuzzlePerformance,
   measureWindowPerformance,
   type WindowPerformance,

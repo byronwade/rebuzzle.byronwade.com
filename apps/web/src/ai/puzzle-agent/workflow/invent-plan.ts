@@ -166,6 +166,7 @@ export async function buildInventPlans(input: {
 
     const requiredTools = [
       "get_generation_brief",
+      "get_daily_postmortem",
       "sample_answer_corpus",
       "research_cultural_pulse",
       "expand_wordplay",

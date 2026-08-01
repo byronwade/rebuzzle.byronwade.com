@@ -26,6 +26,13 @@ export {
   type TechniqueFamily,
 } from "./technique-gates";
 export {
+  HARD_REQUIRED_TOOLS,
+  enforceRequiredTools,
+  extractCalledTools,
+  formatToolEnforcementFailure,
+  type ToolEnforcementResult,
+} from "./tool-enforcement";
+export {
   loadWrongGuessDigest,
   type WrongGuessDigest,
   type WrongGuessInsight,

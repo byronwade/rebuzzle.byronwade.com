@@ -84,6 +84,14 @@ export type LearningDigest = {
   /** Hard technique weights from like/dislike votes */
   likedTechniques: string[];
   dislikedTechniques: string[];
+  /** Outcome-weighted hard lists (solve/time/hints/likes) */
+  preferAnswerPatterns: string[];
+  avoidAnswerPatterns: string[];
+  preferThemes: string[];
+  avoidThemes: string[];
+  /** Daily postmortem rules for tomorrow's invent */
+  postmortemRules: string[];
+  postmortemPromptBlock: string;
 };
 
 export type GenerationBrief = {

@@ -1085,6 +1085,8 @@ export function sampleAnswerCorpusTool(input: {
   category?: string;
   limit?: number;
   preferMultiWord?: boolean;
+  preferAnswerPatterns?: string[];
+  avoidAnswerPatterns?: string[];
 }) {
   const level = getDifficultyLevelForScore(input.targetDifficulty);
   const seeds = sampleAnswerCorpus({
@@ -1097,6 +1099,9 @@ export function sampleAnswerCorpusTool(input: {
     category: input.category,
     limit: input.limit ?? 8,
     preferMultiWord: input.preferMultiWord ?? input.targetDifficulty >= 7,
+    preferGold: true,
+    preferAnswerPatterns: input.preferAnswerPatterns,
+    avoidAnswerPatterns: input.avoidAnswerPatterns,
   });
   return {
     corpusSize: corpusSize(),
@@ -1104,7 +1109,25 @@ export function sampleAnswerCorpusTool(input: {
     themePacks: listThemePacks(),
     seeds,
     promptBlock: formatCorpusSeedsForPrompt(seeds),
-    tip: "ANSWER-FIRST: lock one seed answer, then compose the board. Multi-word preferred at Evil+.",
+    tip: "ANSWER-FIRST: lock one GOLD-tier seed answer, then compose the board. Multi-word preferred at Evil+.",
+  };
+}
+
+export async function getDailyPostmortemTool() {
+  const { loadLatestPostmortem } = await import("../learning/daily-postmortem");
+  const postmortem = await loadLatestPostmortem();
+  return {
+    ...postmortem,
+    tip: "Apply RULES as hard invent constraints for today's puzzle. Design against traps.",
+  };
+}
+
+export async function getOutcomeWeightsTool(input?: { lookbackDays?: number }) {
+  const { loadOutcomeWeights } = await import("../learning/outcome-weights");
+  const weights = await loadOutcomeWeights(input);
+  return {
+    ...weights,
+    tip: "Hard prefer/avoid techniques and answer shapes from live solve/like outcomes.",
   };
 }
 

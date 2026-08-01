@@ -3,6 +3,8 @@
  */
 
 import { isFeatureEnabled } from "../../config/feature-flags";
+import { loadLatestPostmortem } from "../../learning/daily-postmortem";
+import { loadOutcomeWeights } from "../../learning/outcome-weights";
 import { measureWindowPerformance } from "../../learning/performance-monitor";
 import {
   loadQualityVoteAggregate,
@@ -10,44 +12,57 @@ import {
 } from "../../learning/puzzle-quality-vote";
 import type { LearningDigest } from "./types";
 
+function emptyDigest(partial?: Partial<LearningDigest>): LearningDigest {
+  return {
+    enabled: false,
+    avoidPatterns: [],
+    preferPatterns: [],
+    difficultyDriftNotes: [],
+    sampleSize: 0,
+    targetDifficultyDelta: 0,
+    tooEasy: false,
+    tooHard: false,
+    medianSolveSeconds: null,
+    solveRate: null,
+    likedTechniques: [],
+    dislikedTechniques: [],
+    preferAnswerPatterns: ["multi_word_2", "multi_word_3plus"],
+    avoidAnswerPatterns: [],
+    preferThemes: [],
+    avoidThemes: [],
+    postmortemRules: [],
+    postmortemPromptBlock: "",
+    ...partial,
+  };
+}
+
 /**
- * Aggregate recent finals + like/dislike quality votes into generation guidance.
+ * Aggregate finals + quality votes + outcome weights + postmortem into generation guidance.
  */
 export async function loadLearningDigest(input?: {
   lookbackDays?: number;
 }): Promise<LearningDigest> {
   const enabled = isFeatureEnabled("learning");
   if (!enabled) {
-    return {
-      enabled: false,
-      avoidPatterns: [],
-      preferPatterns: [],
-      difficultyDriftNotes: [],
-      sampleSize: 0,
-      targetDifficultyDelta: 0,
-      tooEasy: false,
-      tooHard: false,
-      medianSolveSeconds: null,
-      solveRate: null,
-      likedTechniques: [],
-      dislikedTechniques: [],
-    };
+    return emptyDigest({ enabled: false });
   }
 
   const lookbackDays = input?.lookbackDays ?? 7;
 
   try {
-    const [window, qualityVotes] = await Promise.all([
+    const [window, qualityVotes, outcomes, postmortem] = await Promise.all([
       measureWindowPerformance({
         lookbackDays,
         minFinals: 8,
       }),
       loadQualityVoteAggregate({ lookbackDays: Math.max(lookbackDays, 14) }),
+      loadOutcomeWeights({ lookbackDays: Math.max(lookbackDays, 21) }),
+      loadLatestPostmortem(),
     ]);
 
     const avoidPatterns: string[] = [];
     const preferPatterns: string[] = [];
-    const difficultyDriftNotes = [...window.notes];
+    const difficultyDriftNotes = [...window.notes, ...outcomes.notes];
 
     if (window.tooEasy) {
       avoidPatterns.push("Simple one-step compounds that resolve in under a minute");
@@ -88,34 +103,60 @@ export async function loadLearningDigest(input?: {
     avoidPatterns.push(...qualityGuidance.avoidPatterns);
     difficultyDriftNotes.push(...qualityGuidance.notes);
 
+    // Merge postmortem into hard technique lists
+    const likedTechniques = [
+      ...postmortem.preferTechniques,
+      ...outcomes.preferTechniques,
+      ...qualityVotes.likedTechniques,
+    ].filter((t, i, arr) => arr.indexOf(t) === i);
+
+    const dislikedTechniques = [
+      ...postmortem.avoidTechniques,
+      ...outcomes.avoidTechniques,
+      ...qualityVotes.dislikedTechniques,
+    ].filter((t, i, arr) => arr.indexOf(t) === i);
+
+    const preferAnswerPatterns = [
+      ...postmortem.preferAnswerPatterns,
+      ...outcomes.preferAnswerPatterns,
+    ].filter((t, i, arr) => arr.indexOf(t) === i);
+
+    const avoidAnswerPatterns = [
+      ...postmortem.avoidAnswerPatterns,
+      ...outcomes.avoidAnswerPatterns,
+    ].filter((t, i, arr) => arr.indexOf(t) === i);
+
+    if (postmortem.rules.length) {
+      difficultyDriftNotes.push(`Postmortem ${postmortem.date}: ${postmortem.verdict}`);
+      preferPatterns.push(...postmortem.rules.slice(0, 3));
+    }
+
     return {
       enabled: true,
       avoidPatterns,
       preferPatterns,
       difficultyDriftNotes,
-      sampleSize: window.finalPlays + qualityVotes.total,
+      sampleSize: window.finalPlays + qualityVotes.total + outcomes.sampleFinals,
       targetDifficultyDelta: window.difficultyDelta,
       tooEasy: window.tooEasy,
       tooHard: window.tooHard,
       medianSolveSeconds: window.medianSolveSeconds,
       solveRate: window.solveRate,
-      likedTechniques: qualityVotes.likedTechniques,
-      dislikedTechniques: qualityVotes.dislikedTechniques,
+      likedTechniques,
+      dislikedTechniques,
+      preferAnswerPatterns,
+      avoidAnswerPatterns,
+      preferThemes: outcomes.preferThemes,
+      avoidThemes: outcomes.avoidThemes,
+      postmortemRules: postmortem.rules,
+      postmortemPromptBlock: postmortem.promptBlock,
     };
   } catch {
-    return {
+    return emptyDigest({
       enabled: true,
-      avoidPatterns: [],
-      preferPatterns: [],
-      difficultyDriftNotes: ["Learning digest unavailable — continue with diversity memory only"],
-      sampleSize: 0,
-      targetDifficultyDelta: 0,
-      tooEasy: false,
-      tooHard: false,
-      medianSolveSeconds: null,
-      solveRate: null,
-      likedTechniques: [],
-      dislikedTechniques: [],
-    };
+      difficultyDriftNotes: [
+        "Learning digest unavailable — continue with diversity memory only",
+      ],
+    });
   }
 }

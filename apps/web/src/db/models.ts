@@ -1014,7 +1014,8 @@ export interface AILearningEvent {
     | "prompt_optimization"
     | "model_selection"
     | "difficulty_calibration"
-    | "pattern_learned";
+    | "pattern_learned"
+    | "daily_postmortem";
 
   // Source
   feedbackIds: string[]; // Feedback that triggered this
