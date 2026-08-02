@@ -7,7 +7,7 @@
  * auth and causes "Unauthenticated" on production.
  */
 
-import { createGateway, gateway } from "@ai-sdk/gateway";
+import { createGateway, type GatewayProviderOptions, gateway } from "@ai-sdk/gateway";
 import { generateText, type LanguageModel, Output, streamText } from "ai";
 import type { z } from "zod";
 import { AI_CONFIG, validateApiKeys } from "./config";
@@ -51,6 +51,19 @@ export function getGatewayModelChain(tier: ModelTier = "smart"): string[] {
   return Array.from(new Set([primary, ...fallbacks]));
 }
 
+function gatewayProviderOptions(operation: string) {
+  const safeOperation = operation
+    .toLowerCase()
+    .replace(/[^a-z0-9:_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  return {
+    gateway: {
+      tags: ["rebuzzle", `operation:${safeOperation || "unknown"}`],
+    } satisfies GatewayProviderOptions,
+  };
+}
+
 function usageFromResult(usage: {
   inputTokens?: number;
   outputTokens?: number;
@@ -90,6 +103,7 @@ export async function generateAIText(params: {
   temperature?: number;
   maxTokens?: number;
   modelType?: ModelTier;
+  operation?: string;
 }): Promise<{
   text: string;
   usage?: {
@@ -119,6 +133,8 @@ export async function generateAIText(params: {
         system: params.system,
         temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
         maxOutputTokens: params.maxTokens,
+        maxRetries: 0,
+        providerOptions: gatewayProviderOptions(params.operation ?? "text"),
         abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.default),
       });
 
@@ -149,6 +165,7 @@ export async function generateAIObject<T>(params: {
   schema: z.ZodType<T>;
   temperature?: number;
   modelType?: ModelTier;
+  operation?: string;
 }): Promise<T> {
   await enforceQuota();
   ensureGatewayKey();
@@ -169,6 +186,8 @@ export async function generateAIObject<T>(params: {
         system: params.system,
         temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
         output: Output.object({ schema: params.schema }),
+        maxRetries: 0,
+        providerOptions: gatewayProviderOptions(params.operation ?? "structured"),
         abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.default),
       });
 
@@ -202,6 +221,7 @@ export async function generateAIObjectFromImage<T>(params: {
   mediaType: string;
   modelId: string;
   temperature?: number;
+  operation?: string;
 }): Promise<T> {
   await enforceQuota();
   ensureGatewayKey();
@@ -221,6 +241,8 @@ export async function generateAIObjectFromImage<T>(params: {
     ],
     temperature: params.temperature ?? AI_CONFIG.generation.temperature.factual,
     output: Output.object({ schema: params.schema }),
+    maxRetries: 0,
+    providerOptions: gatewayProviderOptions(params.operation ?? "vision"),
     abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.default),
   });
 
@@ -240,6 +262,7 @@ export async function streamAIText(params: {
   temperature?: number;
   maxTokens?: number;
   modelType?: ModelTier;
+  operation?: string;
 }): Promise<ReturnType<typeof streamText>> {
   await enforceQuota();
   ensureGatewayKey();
@@ -251,6 +274,8 @@ export async function streamAIText(params: {
       system: params.system,
       temperature: params.temperature ?? AI_CONFIG.generation.temperature.balanced,
       maxOutputTokens: params.maxTokens,
+      maxRetries: 0,
+      providerOptions: gatewayProviderOptions(params.operation ?? "stream"),
       abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.streaming),
     });
   } catch (error) {

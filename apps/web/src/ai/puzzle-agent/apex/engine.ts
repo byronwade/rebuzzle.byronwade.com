@@ -18,13 +18,9 @@ import { stableId } from "../tool-impl";
 import { toPlayabilityEvidence } from "./blind-solve-consensus";
 import { critiqueCandidate } from "./critique";
 import { buildGenerationBrief } from "./curriculum";
-import {
-  applyPlayerSimHeuristics,
-  playerSimPublishBlockers,
-  simulatePlayerSolve,
-} from "./player-sim";
+import { selectQualifiedFinalist } from "./finalist-selection";
+import { qualifyRenderedCandidate } from "./rendered-qualification";
 import { scoreRubric } from "./rubric";
-import { pickWinner } from "./tournament";
 import type { ApexCandidate, ApexEngineResult, GenerationBrief } from "./types";
 
 function toCandidate(
@@ -100,8 +96,7 @@ function toCandidate(
 
 async function enrichCandidate(
   candidate: ApexCandidate,
-  brief: GenerationBrief,
-  simCalibration?: { adjustment: number; sampleSize: number }
+  brief: GenerationBrief
 ): Promise<ApexCandidate> {
   const apex = AI_CONFIG.puzzleAgent.apex;
   let next = { ...candidate };
@@ -168,46 +163,6 @@ async function enrichCandidate(
     }
   }
 
-  if (apex.playerSimEnabled) {
-    let playerSim = next.playerSim;
-    if (!playerSim) {
-      const rawSim = await simulatePlayerSolve({
-        rebusPuzzle: candidate.rebusPuzzle,
-        answer: candidate.answer,
-        explanation: candidate.explanation,
-        hints: candidate.hints,
-        techniqueId: candidate.techniqueId,
-        tierLabel: brief.tierLabel,
-        visual: candidate.visual,
-      });
-      playerSim = applyPlayerSimHeuristics(rawSim, {
-        answer: candidate.answer,
-        hints: candidate.hints,
-        tierLabel: brief.tierLabel,
-      });
-    }
-    if (
-      simCalibration &&
-      simCalibration.sampleSize >= 6 &&
-      Math.abs(simCalibration.adjustment) >= 0.02
-    ) {
-      const { applySimCalibration } = await import("../../learning/sim-calibration");
-      playerSim = {
-        ...playerSim,
-        estimatedSolveRate: applySimCalibration(playerSim.estimatedSolveRate, simCalibration),
-      };
-    }
-    next = { ...next, playerSim };
-    const screenshotBlockers = playerSimPublishBlockers(playerSim);
-    if (screenshotBlockers.length) {
-      next = {
-        ...next,
-        publishable: false,
-        rejectReasons: [...next.rejectReasons, ...screenshotBlockers],
-      };
-    }
-  }
-
   const rubric = scoreRubric(next);
   return { ...next, rubric };
 }
@@ -265,6 +220,7 @@ export async function runApexGeneration(
         candidateIndex: slot,
         candidateCount: brief.candidateCount,
         useLearningFeedback: params.useLearningFeedback,
+        deferRenderedEvaluation: true,
       });
 
       candidates.push(toCandidate(result, brief, slot));
@@ -295,13 +251,40 @@ export async function runApexGeneration(
   } catch {
     simCalibration = undefined;
   }
-  const enriched = await Promise.all(
-    candidates.map((c) => enrichCandidate(c, brief, simCalibration))
-  );
+  const enriched = await Promise.all(candidates.map((c) => enrichCandidate(c, brief)));
   const critiqueMs = Date.now() - critiqueStarted;
 
   const selectStarted = Date.now();
-  const { winner, ranked } = pickWinner(enriched, brief.minRubricOverall);
+  const configuredRuntimeBudgetMs = Number(process.env.REBUZZLE_APEX_RUNTIME_BUDGET_MS);
+  const runtimeBudgetMs = Math.max(
+    120_000,
+    Math.min(
+      280_000,
+      Number.isFinite(configuredRuntimeBudgetMs) && configuredRuntimeBudgetMs > 0
+        ? configuredRuntimeBudgetMs
+        : 260_000
+    )
+  );
+  let lastEvaluationMs = 0;
+  const selection = await selectQualifiedFinalist({
+    candidates: enriched,
+    minRubricOverall: brief.minRubricOverall,
+    canStartEvaluation: () => {
+      const remaining = runtimeBudgetMs - (Date.now() - started);
+      const required = lastEvaluationMs > 0 ? lastEvaluationMs + 10_000 : 65_000;
+      return remaining >= required;
+    },
+    evaluate: async (candidate) => {
+      const evaluationStarted = Date.now();
+      try {
+        return await qualifyRenderedCandidate(candidate, simCalibration);
+      } finally {
+        lastEvaluationMs = Date.now() - evaluationStarted;
+      }
+    },
+  });
+  const { winner, ranked } = selection;
+  failures.push(...selection.failures);
   const selectMs = Date.now() - selectStarted;
 
   if (!winner) {
@@ -339,7 +322,14 @@ async function finalizeWinner(
   let chosen = winner;
   const archiveHit = await isAnswerRegistered(chosen.answer);
   if (archiveHit.taken) {
-    const alternate = ranked.find((c) => c.id !== chosen.id && (c.tournamentScore ?? -1) >= 0);
+    const alternate = ranked.find(
+      (candidate) =>
+        candidate.id !== chosen.id &&
+        candidate.publishable &&
+        candidate.playerSim !== undefined &&
+        (candidate.boardRecognitionProfiles?.length ?? 0) > 0 &&
+        (candidate.tournamentScore ?? -1) >= 0
+    );
     if (!alternate) {
       throw new Error(
         `Apex winner answer already archived (${archiveHit.puzzleId}). No alternate candidate.`

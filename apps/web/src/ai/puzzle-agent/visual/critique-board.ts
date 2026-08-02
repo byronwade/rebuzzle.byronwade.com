@@ -47,6 +47,7 @@ async function judgeRenderedProfile(
         image: rendered.pixels,
         mediaType: "image/png",
         temperature: 0.1,
+        operation: "vision-board",
         schema: BoardPerceptionSchema,
         system: `You are inspecting a rendered rebus board exactly as a player sees it.
 Report only visible evidence. Do not infer hidden creator intent or solve from metadata.

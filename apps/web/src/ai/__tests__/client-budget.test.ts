@@ -55,4 +55,25 @@ describe("AI client hard budget behavior", () => {
     });
     expect(operation).toHaveBeenCalledTimes(1);
   });
+
+  it("disables SDK retries and tags Gateway spend by operation", async () => {
+    generateText.mockResolvedValue({
+      text: "ok",
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      finishReason: "stop",
+    });
+
+    await generateAIText({ prompt: "test", operation: "puzzle-critique" });
+
+    expect(generateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxRetries: 0,
+        providerOptions: {
+          gateway: {
+            tags: ["rebuzzle", "operation:puzzle-critique"],
+          },
+        },
+      })
+    );
+  });
 });

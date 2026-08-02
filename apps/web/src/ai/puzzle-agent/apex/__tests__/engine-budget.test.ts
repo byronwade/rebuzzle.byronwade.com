@@ -5,6 +5,7 @@ jest.mock("../../run-generation", () => ({ runPuzzleAgentGeneration }));
 jest.mock("../../tool-impl", () => ({ stableId: jest.fn(() => "candidate-id") }));
 jest.mock("../curriculum", () => ({ buildGenerationBrief }));
 jest.mock("../critique", () => ({ critiqueCandidate: jest.fn() }));
+jest.mock("../rendered-qualification", () => ({ qualifyRenderedCandidate: jest.fn() }));
 jest.mock("../player-sim", () => ({
   applyPlayerSimHeuristics: jest.fn(),
   playerSimPublishBlockers: jest.fn(() => []),

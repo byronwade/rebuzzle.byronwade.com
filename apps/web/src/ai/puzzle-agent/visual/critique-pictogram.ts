@@ -37,6 +37,7 @@ async function recognizeAtSize(input: {
   const settled = await Promise.allSettled(
     AI_CONFIG.visualRecognition.models.map(async (modelId) => ({
       ...(await generateAIObjectFromImage({
+        operation: "vision-pictogram",
         modelId,
         image: pixels,
         mediaType: "image/png",
