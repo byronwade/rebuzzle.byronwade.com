@@ -120,7 +120,7 @@ function layerCueToken(layer: VisualLayer): string {
     case "operator":
       return `op:${layer.symbol.trim()}`;
     case "image":
-      return `image:${normalize(layer.alt) || "scene"}`;
+      return `image:${normalize(layer.concept ?? layer.alt) || "scene"}`;
   }
 }
 

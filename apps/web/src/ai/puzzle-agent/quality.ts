@@ -126,6 +126,7 @@ export function evaluateVisualForPublish(visual?: {
     assetId?: string;
     source?: "catalog" | "generated" | "approved-cache";
     recognitionProfiles?: Array<{ tileSize: number; seenAs: string; confidence: number }>;
+    src?: string;
     content?: string;
     emphasis?: string;
   }>;
@@ -143,12 +144,34 @@ export function evaluateVisualForPublish(visual?: {
   const pictogramLayers = layers.filter((l) => l.kind === "pictogram" && l.svg);
   const pictogramSvgCount = pictogramLayers.length;
   const textLayerCount = layers.filter((l) => l.kind === "text").length;
+  const imageLayers = layers.filter((l) => l.kind === "image");
   const styledText = layers.some(
     (l) =>
       l.kind === "text" &&
       l.emphasis &&
       ["large", "small", "strike", "stacked", "tiny"].includes(l.emphasis)
   );
+
+  for (const layer of imageLayers) {
+    if (!layer.concept?.trim()) {
+      return {
+        ok: false,
+        reason: "Image layer has no concrete concept for blind recognition",
+        mode: visual.mode,
+        pictogramSvgCount,
+        textLayerCount,
+      };
+    }
+    if (!layer.src?.startsWith("data:image/")) {
+      return {
+        ok: false,
+        reason: `Image concept "${layer.concept}" has no immutable embedded asset`,
+        mode: visual.mode,
+        pictogramSvgCount,
+        textLayerCount,
+      };
+    }
+  }
 
   for (const layer of pictogramLayers) {
     if (

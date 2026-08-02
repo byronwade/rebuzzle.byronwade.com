@@ -1,6 +1,7 @@
 import type { PuzzleVisual } from "../../visual/composition";
 import {
   countCompleteBoardCueProfiles,
+  countDeclaredBoardCues,
   hasCompleteBoardCueEvidence,
   type LiveGeneratorCanaryObservation,
   scoreLiveGeneratorCanary,
@@ -161,6 +162,49 @@ describe("hasCompleteBoardCueEvidence", () => {
         },
       })
     ).toBe(false);
+  });
+
+  it("requires persisted concept votes for generated image subjects", () => {
+    const imageVisual: PuzzleVisual = {
+      ...visual,
+      mode: "hybrid",
+      layers: [
+        {
+          kind: "image",
+          concept: "car",
+          prompt: "one red car on a plain background",
+          alt: "red car",
+          src: "data:image/png;base64,AAAA",
+        },
+      ],
+      unicodeFallback: "🖼️",
+    };
+
+    expect(hasCompleteBoardCueEvidence({ visual: imageVisual, profile: completeProfile })).toBe(
+      true
+    );
+    expect(countDeclaredBoardCues(imageVisual)).toBe(1);
+    expect(
+      hasCompleteBoardCueEvidence({
+        visual: imageVisual,
+        profile: { ...completeProfile, conceptVotes: {} },
+      })
+    ).toBe(false);
+    const legacyImageVisual: PuzzleVisual = {
+      ...imageVisual,
+      layers: [
+        {
+          kind: "image",
+          prompt: "one red car on a plain background",
+          alt: "red car",
+          src: "data:image/png;base64,AAAA",
+        },
+      ],
+    };
+    expect(
+      hasCompleteBoardCueEvidence({ visual: legacyImageVisual, profile: completeProfile })
+    ).toBe(false);
+    expect(countDeclaredBoardCues(legacyImageVisual)).toBe(1);
   });
 
   it("counts each exact production profile once and rejects duplicate substitutes", () => {

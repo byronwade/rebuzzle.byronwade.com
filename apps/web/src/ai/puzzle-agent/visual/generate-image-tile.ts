@@ -8,6 +8,7 @@ import { ensureGatewayKey, getAiGateway } from "@/ai/client";
 import { IMAGE_TILE_STYLE_GUIDE } from "./style";
 
 export type GenerateImageTileInput = {
+  concept: string;
   prompt: string;
   alt: string;
 };
@@ -31,10 +32,13 @@ export async function generateImageTile(
   input: GenerateImageTileInput
 ): Promise<GenerateImageTileResult> {
   const alt = input.alt.trim().slice(0, 120) || "Puzzle illustration";
+  const concept = input.concept.trim().slice(0, 48);
+  if (!concept) return { ok: false, alt, error: "missing_recognition_concept" };
   const subject = input.prompt.trim().slice(0, 400);
   const prompt = [
     IMAGE_TILE_STYLE_GUIDE,
     "",
+    `Required recognizable subject: ${concept}.`,
     subject,
     "",
     "Square tile. ONE instantly recognizable subject. Bold silhouette. No text in the image.",

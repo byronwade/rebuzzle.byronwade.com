@@ -80,8 +80,7 @@ export const VISUAL_LAB_MODE_META: Record<VisualLabMode, VisualLabModeMeta> = {
   "apex-tournament": {
     id: "apex-tournament",
     label: "Apex tournament",
-    description:
-      "Multi-candidate generation with critique, player sim, and rubric — preview only.",
+    description: "Multi-candidate generation with critique, player sim, and rubric — preview only.",
     usesAi: true,
     estimatedCost: "high",
   },
@@ -147,6 +146,7 @@ export function buildLabLayers(
         { kind: "operator", symbol: "→" },
         {
           kind: "image",
+          concept,
           prompt: `A single clear ${concept} as a soft ink illustration for a rebus puzzle`,
           alt: `${concept} illustration`,
         },

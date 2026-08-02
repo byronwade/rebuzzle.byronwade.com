@@ -1,10 +1,12 @@
 import { BLIND_SOLVE_REQUIRED_VOTES } from "../quality-contract";
+import { countDeclaredBoardCues, getDeclaredBoardCues } from "../visual/board-cues";
 import type { PuzzleVisual } from "../visual/composition";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
 import { PUZZLE_GENERATOR_BENCHMARK_VERSION } from "./types";
 
 export const LIVE_GENERATOR_CANARY_MIN_ATTEMPTS = 8;
 export const LIVE_GENERATOR_CANARY_REQUIRED_PROFILES = PUZZLE_BOARD_RECOGNITION_PROFILES.length;
+export { countDeclaredBoardCues };
 
 export type LiveGeneratorCanaryObservation = {
   id: string;
@@ -114,15 +116,11 @@ export function hasCompleteBoardCueEvidence(input: {
   const requiredVotes = input.requiredVotes ?? BLIND_SOLVE_REQUIRED_VOTES;
   if (distinctNonEmpty(input.profile.models).length < requiredVotes) return false;
 
-  const concepts = new Set(
-    input.visual.layers.flatMap((layer) => (layer.kind === "pictogram" ? [layer.concept] : []))
-  );
-  const text = new Set(
-    input.visual.layers.flatMap((layer) => (layer.kind === "text" ? [layer.content] : []))
-  );
-  const operators = new Set(
-    input.visual.layers.flatMap((layer) => (layer.kind === "operator" ? [layer.symbol] : []))
-  );
+  const declaredCues = getDeclaredBoardCues(input.visual);
+  if (declaredCues.unverifiableImageCount > 0) return false;
+  const concepts = new Set(declaredCues.concepts);
+  const text = new Set(declaredCues.text);
+  const operators = new Set(declaredCues.operators);
 
   return (
     Array.from(concepts).every(

@@ -66,6 +66,7 @@ const StrictOperatorLayerSchema = z.object({
 
 const StrictImageLayerSchema = z.object({
   kind: z.literal("image"),
+  concept: z.string().trim().min(1).max(48),
   prompt: z.string().min(8).max(400),
   alt: z.string().min(1).max(120),
   src: z.string().nullable(),
@@ -237,6 +238,7 @@ export function normalizePuzzleAgentDraft(draft: PuzzleAgentDraft): {
     if (layer.kind === "image") {
       return {
         kind: layer.kind,
+        concept: layer.concept,
         prompt: layer.prompt,
         alt: layer.alt,
         ...(layer.src === null ? {} : { src: layer.src }),

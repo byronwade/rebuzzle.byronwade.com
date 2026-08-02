@@ -99,6 +99,8 @@ export type PuzzleVisualLayer =
     }
   | {
       kind: "image";
+      /** Concrete subject required by blind board recognition for new puzzles. */
+      concept?: string;
       prompt: string;
       alt: string;
       src?: string;
