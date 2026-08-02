@@ -1,6 +1,16 @@
 "use client";
 
-import { Check, Flame, ThumbsDown, ThumbsUp, TrendingUp, UserPlus, X } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Flame,
+  FlaskConical,
+  ThumbsDown,
+  ThumbsUp,
+  TrendingUp,
+  UserPlus,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -82,6 +92,31 @@ function QualityReasonPicker({
   );
 }
 
+function PlaytestInvitation() {
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/[0.04] px-5 py-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <FlaskConical className="h-4 w-4 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="font-medium text-foreground text-sm">Help us catch unclear puzzles</p>
+          <p className="text-muted-foreground text-xs leading-5">
+            Try one unlabeled test board. Your first answer helps measure whether the artwork and
+            wordplay are genuinely recognizable.
+          </p>
+        </div>
+      </div>
+      <Button asChild className="mt-4 w-full" variant="outline">
+        <Link href="/playtest?from=game-over">
+          Review a test puzzle
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
 interface WordResult {
   word: string;
   correct: boolean;
@@ -125,6 +160,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   const [qualityVote, setQualityVote] = useState<QualityVote | null>(null);
   const [qualityVoteSaving, setQualityVoteSaving] = useState(false);
   const [qualityReasons, setQualityReasons] = useState<QualityReason[]>([]);
+  const [playtestEligible, setPlaytestEligible] = useState(false);
 
   const [solution, setSolution] = useState({
     answer: gameData.answer || "",
@@ -164,6 +200,25 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       // ignore
     }
   }, [gameData.answer, gameData.explanation, gameData.locked]);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || isGuest || !userId) {
+      setPlaytestEligible(false);
+      return;
+    }
+    const controller = new AbortController();
+    void fetch("/api/puzzle-playtests?mode=eligibility", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!controller.signal.aborted) setPlaytestEligible(response.ok);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPlaytestEligible(false);
+      });
+    return () => controller.abort();
+  }, [authLoading, isAuthenticated, isGuest, userId]);
 
   useEffect(() => {
     async function loadClientExtras() {
@@ -625,6 +680,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               </Link>
             </div>
 
+            {playtestEligible && <PlaytestInvitation />}
+
             {/* Guest → account CTA (after play, never blocks the win) */}
             {showSignupCta && (
               <div className="rounded-xl border border-border bg-inset px-5 py-5 text-center space-y-3">
@@ -824,6 +881,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 </Button>
               </Link>
             </div>
+
+            {playtestEligible && <PlaytestInvitation />}
 
             {/* Countdown */}
             <div className="border-border border-t pt-6 text-center">
