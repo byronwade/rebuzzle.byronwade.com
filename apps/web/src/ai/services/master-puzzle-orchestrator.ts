@@ -65,6 +65,8 @@ export interface GeneratedPuzzleResult {
     boardRecognitionConfidence?: number;
     boardRecognitionModels?: string[];
     boardConceptVotes?: Record<string, number>;
+    boardTextVotes?: Record<string, number>;
+    boardOperatorVotes?: Record<string, number>;
     boardRecognitionProfiles?: Array<{
       profileId: string;
       viewportWidth: number;
@@ -72,6 +74,8 @@ export interface GeneratedPuzzleResult {
       confidence: number;
       models: string[];
       conceptVotes: Record<string, number>;
+      textVotes: Record<string, number>;
+      operatorVotes: Record<string, number>;
       wrappedRows: number;
     }>;
   };
@@ -129,6 +133,8 @@ function toGeneratedResult(
       boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
       boardRecognitionModels: result.metadata.boardRecognitionModels,
       boardConceptVotes: result.metadata.boardConceptVotes,
+      boardTextVotes: result.metadata.boardTextVotes,
+      boardOperatorVotes: result.metadata.boardOperatorVotes,
       boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
     },
     status: result.status,

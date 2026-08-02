@@ -164,6 +164,8 @@ export type ApexCandidate = {
   boardRecognitionConfidence?: number;
   boardRecognitionModels?: string[];
   boardConceptVotes?: Record<string, number>;
+  boardTextVotes?: Record<string, number>;
+  boardOperatorVotes?: Record<string, number>;
   boardRecognitionProfiles?: Array<{
     profileId: string;
     viewportWidth: number;
@@ -171,6 +173,8 @@ export type ApexCandidate = {
     confidence: number;
     models: string[];
     conceptVotes: Record<string, number>;
+    textVotes: Record<string, number>;
+    operatorVotes: Record<string, number>;
     wrappedRows: number;
   }>;
   publishable: boolean;

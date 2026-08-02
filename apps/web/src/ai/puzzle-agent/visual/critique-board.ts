@@ -19,8 +19,16 @@ const BoardPerceptionSchema = z.object({
         confidence: z.number().min(0).max(1),
       })
     )
-    .max(20),
-  visibleText: z.array(z.string().max(80)).max(20),
+    .max(20)
+    .describe("One entry per visible object occurrence; preserve repeated objects"),
+  visibleText: z
+    .array(z.string().max(80))
+    .max(20)
+    .describe("Visible text with repeated occurrences preserved rather than deduplicated"),
+  visibleOperators: z
+    .array(z.string().min(1).max(20))
+    .max(20)
+    .describe("Every visible operator or relation symbol, transcribed separately"),
   relationships: z.array(z.string().max(160)).max(10),
   hasClipping: z.boolean(),
   hasAccidentalOverlap: z.boolean(),
@@ -42,11 +50,12 @@ async function judgeRenderedProfile(
         schema: BoardPerceptionSchema,
         system: `You are inspecting a rendered rebus board exactly as a player sees it.
 Report only visible evidence. Do not infer hidden creator intent or solve from metadata.
-Name each concrete object literally, transcribe visible text, and describe spatial or typographic relationships.
+Name each concrete object literally, transcribe visible text, list every visible operator symbol separately, and describe spatial or typographic relationships.
+Preserve multiplicity: if an object, word, or operator appears more than once, report every visible occurrence rather than deduplicating it.
 When multiple marks form one familiar icon, name the whole symbol semantically (for example, a cloud with falling lines is a rain cloud) instead of splitting it into unrelated strokes.
 Flag clipping, accidental overlap, broken wrapping, or anything unreadable.`,
         prompt: [
-          "Inventory the visible objects, text, and relationships in this rebus board.",
+          "Inventory every visible object, text occurrence, operator occurrence, and relationship in this rebus board.",
           `This is the ${rendered.profileId} presentation: ${rendered.viewportWidth}px viewport and ${rendered.tileSize}px icon tiles.`,
         ].join("\n"),
       })),
@@ -76,7 +85,14 @@ Flag clipping, accidental overlap, broken wrapping, or anything unreadable.`,
 /** Blindly inspect every materially different production presentation. */
 export async function recognizePuzzleBoard(visual: PuzzleVisual): Promise<BoardRecognitionResult> {
   if (!AI_CONFIG.visualRecognition.boardEnabled) {
-    return { ok: true, perceptions: [], conceptVotes: {}, profileResults: [] };
+    return {
+      ok: true,
+      perceptions: [],
+      conceptVotes: {},
+      textVotes: {},
+      operatorVotes: {},
+      profileResults: [],
+    };
   }
 
   try {
@@ -95,6 +111,8 @@ export async function recognizePuzzleBoard(visual: PuzzleVisual): Promise<BoardR
       reason: error instanceof Error ? error.message : "Rendered board recognition failed",
       perceptions: [],
       conceptVotes: {},
+      textVotes: {},
+      operatorVotes: {},
       profileResults: [],
     };
   }
