@@ -23,6 +23,8 @@ export type RubricScores = z.infer<typeof RubricScoresSchema>;
 
 export const CritiqueSchema = z.object({
   verdict: z.enum(["ship", "revise", "reject"]),
+  /** Whether the critique came from the model or the fail-closed fallback. */
+  source: z.enum(["model", "fallback"]).optional(),
   summary: z.string(),
   strengths: z.array(z.string()).max(6),
   flaws: z.array(z.string()).max(8),

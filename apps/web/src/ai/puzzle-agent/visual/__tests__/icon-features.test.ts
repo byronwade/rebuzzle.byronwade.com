@@ -19,4 +19,10 @@ describe("icon features", () => {
     expect(conceptMatchesSeen("wristwatch", "watch")).toBe(true);
     expect(conceptMatchesSeen("computer mouse", "mouse device")).toBe(true);
   });
+
+  it("does not grant recognition from an accidental substring", () => {
+    expect(conceptMatchesSeen("car", "carpet")).toBe(false);
+    expect(conceptMatchesSeen("car", "cartoon")).toBe(false);
+    expect(conceptMatchesSeen("bus", "business")).toBe(false);
+  });
 });

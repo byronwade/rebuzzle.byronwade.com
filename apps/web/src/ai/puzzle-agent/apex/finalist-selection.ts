@@ -9,9 +9,11 @@ export type FinalistSelectionResult = {
   winner: ApexCandidate | null;
   ranked: ApexCandidate[];
   failures: string[];
+  revisionAttempts: number;
 };
 
 type FinalistPreparation = (candidate: ApexCandidate) => Promise<ApexCandidate>;
+type FinalistRevision = (candidate: ApexCandidate) => Promise<ApexCandidate | null>;
 
 function isEligibleForRenderedEvaluation(candidate: ApexCandidate): boolean {
   return (
@@ -20,6 +22,14 @@ function isEligibleForRenderedEvaluation(candidate: ApexCandidate): boolean {
     candidate.solvable &&
     candidate.inBand &&
     candidate.critique?.verdict !== "reject"
+  );
+}
+
+function canAttemptCritiqueRevision(candidate: ApexCandidate): boolean {
+  return (
+    candidate.critique?.source === "model" &&
+    candidate.critique.verdict === "revise" &&
+    candidate.critique.reviseInstructions.length > 0
   );
 }
 
@@ -63,11 +73,16 @@ export async function selectQualifiedFinalist(input: {
   canStartEvaluation: () => boolean;
   evaluate: (candidate: ApexCandidate) => Promise<ApexCandidate>;
   prepare?: FinalistPreparation;
+  canStartRevision?: () => boolean;
+  revise?: FinalistRevision;
+  maxRevisions?: number;
 }): Promise<FinalistSelectionResult> {
   const preRanked = rankCandidates(input.candidates, input.minRubricOverall);
   const preparedById = new Map<string, ApexCandidate>();
   const evaluatedById = new Map<string, ApexCandidate>();
   const failures: string[] = [];
+  const maxRevisions = Math.min(1, Math.max(0, input.maxRevisions ?? 1));
+  let revisionAttempts = 0;
 
   for (const draft of preRanked) {
     if (!isEligibleForRenderedEvaluation(draft)) {
@@ -76,7 +91,7 @@ export async function selectQualifiedFinalist(input: {
     }
 
     const candidate = input.prepare ? await input.prepare(draft) : draft;
-    const prepared = rankCandidates([candidate], input.minRubricOverall)[0];
+    let prepared = rankCandidates([candidate], input.minRubricOverall)[0];
     if (!prepared) {
       failures.push(`${draft.id}: finalist preparation returned no candidate`);
       continue;
@@ -84,8 +99,44 @@ export async function selectQualifiedFinalist(input: {
     preparedById.set(prepared.id, prepared);
 
     if (!isEligibleForRenderedEvaluation(prepared)) {
-      failures.push(preRankingFailure(prepared, input.minRubricOverall));
-      continue;
+      const canRevise =
+        Boolean(input.revise) &&
+        revisionAttempts < maxRevisions &&
+        canAttemptCritiqueRevision(prepared);
+
+      if (!canRevise) {
+        failures.push(preRankingFailure(prepared, input.minRubricOverall));
+        continue;
+      }
+
+      if (input.canStartRevision && !input.canStartRevision()) {
+        failures.push(
+          `${preRankingFailure(prepared, input.minRubricOverall)}; critique-guided revision skipped by runtime guard`
+        );
+        continue;
+      }
+
+      revisionAttempts += 1;
+      const revised = await input.revise!(prepared);
+      if (!revised) {
+        failures.push(
+          `${preRankingFailure(prepared, input.minRubricOverall)}; critique-guided revision returned no candidate`
+        );
+        continue;
+      }
+
+      const revisedCandidate = input.prepare ? await input.prepare(revised) : revised;
+      prepared = rankCandidates([revisedCandidate], input.minRubricOverall)[0];
+      if (!prepared) {
+        failures.push(`${revised.id}: finalist revision returned no candidate`);
+        continue;
+      }
+      preparedById.set(prepared.id, prepared);
+
+      if (!isEligibleForRenderedEvaluation(prepared)) {
+        failures.push(preRankingFailure(prepared, input.minRubricOverall));
+        continue;
+      }
     }
 
     if (!input.canStartEvaluation()) {
@@ -105,7 +156,12 @@ export async function selectQualifiedFinalist(input: {
       const ranked = preRanked.map(
         (value) => evaluatedById.get(value.id) ?? preparedById.get(value.id) ?? value
       );
-      return { winner: rescored, ranked, failures };
+      const withoutReplacedDraft = ranked.filter((value) => value.id !== draft.id);
+      const outputRanked = [rescored, ...withoutReplacedDraft].filter(
+        (value, index, values) =>
+          values.findIndex((candidate) => candidate.id === value.id) === index
+      );
+      return { winner: rescored, ranked: outputRanked, failures, revisionAttempts };
     }
 
     failures.push(...rescored.rejectReasons);
@@ -117,5 +173,6 @@ export async function selectQualifiedFinalist(input: {
       (value) => evaluatedById.get(value.id) ?? preparedById.get(value.id) ?? value
     ),
     failures,
+    revisionAttempts,
   };
 }

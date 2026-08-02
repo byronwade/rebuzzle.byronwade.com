@@ -124,6 +124,81 @@ describe("Apex rendered finalist selection", () => {
     expect(prepared).toEqual(["top", "runner-up"]);
   });
 
+  it("uses one actionable critique revision before falling back to the runner-up", async () => {
+    const prepared: string[] = [];
+    const evaluated: string[] = [];
+    const revisions: string[] = [];
+    const top = candidate("top", 92);
+    const runnerUp = candidate("runner-up", 84);
+    const revised = candidate("top-revision", 91);
+
+    const result = await selectQualifiedFinalist({
+      candidates: [top, runnerUp],
+      minRubricOverall: 78,
+      canStartEvaluation: () => true,
+      canStartRevision: () => true,
+      prepare: async (value: ApexCandidate) => {
+        prepared.push(value.id);
+        if (value.id !== "top") return value;
+        return {
+          ...value,
+          publishable: false,
+          critique: {
+            ...value.critique!,
+            source: "model" as const,
+            verdict: "revise" as const,
+            summary: "The icon needs a more concrete silhouette",
+            reviseInstructions: ["Replace the abstract icon with a concrete silhouette"],
+          },
+          rejectReasons: ["Critique revise: Replace the abstract icon with a concrete silhouette"],
+        };
+      },
+      revise: async (value: ApexCandidate) => {
+        revisions.push(value.id);
+        return revised;
+      },
+      evaluate: async (value) => {
+        evaluated.push(value.id);
+        return value;
+      },
+    });
+
+    expect(result.winner?.id).toBe("top-revision");
+    expect(result.ranked.map((value) => value.id)).toEqual(["top-revision", "runner-up"]);
+    expect(prepared).toEqual(["top", "top-revision"]);
+    expect(revisions).toEqual(["top"]);
+    expect(evaluated).toEqual(["top-revision"]);
+  });
+
+  it("does not spend a revision when critique is only a fallback", async () => {
+    const revise = jest.fn(async () => candidate("revision", 90));
+    const fallback = {
+      ...candidate("fallback", 92),
+      publishable: false,
+      critique: {
+        ...candidate("fallback", 92).critique!,
+        source: "fallback" as const,
+        verdict: "revise" as const,
+        summary: "Critique unavailable — treat as provisional",
+        reviseInstructions: ["Retry later"],
+      },
+      rejectReasons: ["Critique unavailable — treat as provisional"],
+    };
+
+    const result = await selectQualifiedFinalist({
+      candidates: [fallback],
+      minRubricOverall: 78,
+      canStartEvaluation: () => true,
+      canStartRevision: () => true,
+      revise,
+      evaluate: async (value) => value,
+    });
+
+    expect(result.winner).toBeNull();
+    expect(revise).not.toHaveBeenCalled();
+    expect(result.failures).toContain("fallback: Critique unavailable — treat as provisional");
+  });
+
   it("evaluates a hard-gate-passing draft before requiring the final rubric", async () => {
     const draft = candidate("draft", 74);
 

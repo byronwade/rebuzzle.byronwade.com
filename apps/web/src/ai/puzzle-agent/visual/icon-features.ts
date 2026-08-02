@@ -319,6 +319,25 @@ function normalizeLabel(value: string): string {
     .trim();
 }
 
+function tokenizeLabel(value: string): string[] {
+  return normalizeLabel(value).split(/\s+/).filter(Boolean);
+}
+
+function containsTokenSequence(haystack: string[], needle: string[]): boolean {
+  if (!haystack.length || !needle.length || needle.length > haystack.length) return false;
+  return Array.from({ length: haystack.length - needle.length + 1 }).some((_, start) =>
+    needle.every((token, offset) => haystack[start + offset] === token)
+  );
+}
+
+function labelsMatchByTokens(left: string, right: string): boolean {
+  const leftTokens = tokenizeLabel(left);
+  const rightTokens = tokenizeLabel(right);
+  return (
+    containsTokenSequence(leftTokens, rightTokens) || containsTokenSequence(rightTokens, leftTokens)
+  );
+}
+
 export function lookupIconFeatures(concept: string): IconFeatureEntry | null {
   const key = normalizeLabel(concept).replace(/\s+/g, "");
   if (ICON_FEATURES[key]) return ICON_FEATURES[key]!;
@@ -350,28 +369,11 @@ export function conceptMatchesSeen(concept: string, seenLabel: string): boolean 
   const intended = normalizeLabel(concept);
   const seen = normalizeLabel(seenLabel);
   if (!intended || !seen) return false;
-  if (seen === intended) return true;
-  if (seen.includes(intended) || intended.includes(seen)) return true;
+  if (labelsMatchByTokens(intended, seen)) return true;
 
   const curatedAliases = getCuratedPictogramAliases(concept);
-  if (
-    curatedAliases.some((alias) => {
-      const normalized = normalizeLabel(alias);
-      return seen === normalized || seen.includes(normalized) || normalized.includes(seen);
-    })
-  ) {
-    return true;
-  }
+  if (curatedAliases.some((alias) => labelsMatchByTokens(alias, seen))) return true;
 
   const entry = lookupIconFeatures(concept);
-  if (entry) {
-    return entry.aliases.some((alias) => {
-      const a = normalizeLabel(alias);
-      return seen === a || seen.includes(a) || a.includes(seen);
-    });
-  }
-
-  const intendedTokens = new Set(intended.split(" ").filter((t) => t.length > 2));
-  const seenTokens = seen.split(" ").filter((t) => t.length > 2);
-  return seenTokens.some((t) => intendedTokens.has(t));
+  return Boolean(entry?.aliases.some((alias) => labelsMatchByTokens(alias, seen)));
 }

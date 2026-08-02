@@ -82,6 +82,10 @@ export interface PuzzleGenerationParams {
   candidateCount?: number;
   /** Apex pre-ranking can defer costly rendered recognition and play simulation. */
   deferRenderedEvaluation?: boolean;
+  /** Specific model-backed critique instructions for one bounded repair pass. */
+  revisionInstructions?: string[];
+  /** Keep a repair pass from silently multiplying spend through model fallbacks. */
+  modelChainLimit?: number;
 }
 
 export class PuzzleCandidateRejectedError extends Error {
@@ -166,6 +170,13 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
       ? `Banned answer keys (normalized): ${params.bannedAnswerKeys.slice(0, 30).join(", ")}.`
       : null,
     params.briefSummary ? `Curriculum brief: ${params.briefSummary}` : null,
+    params.revisionInstructions?.length
+      ? [
+          "Bounded repair pass: address every critique instruction below with a new, cleaner board.",
+          "Do not defend or copy the previous mechanism; use a concrete catalog-backed pictogram and preserve a fair hint ladder.",
+          `Critique instructions: ${params.revisionInstructions.slice(0, 4).join("; ")}`,
+        ].join("\n")
+      : null,
     slot,
     params.requireNovelty !== false
       ? "Novelty is required — avoid recent answers and similar visuals."
@@ -226,7 +237,10 @@ export async function runPuzzleAgentGeneration(
     1,
     // A model fallback repeats the complete agent loop. Default to one model so
     // a single daily puzzle cannot silently multiply premium-model spend.
-    Math.min(3, Number(process.env.REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT || 1) || 1)
+    Math.min(
+      3,
+      params.modelChainLimit ?? (Number(process.env.REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT || 1) || 1)
+    )
   );
   const modelChain = Array.from(
     new Set([AI_CONFIG.puzzleAgent.model, ...getGatewayModelChain("creative")])

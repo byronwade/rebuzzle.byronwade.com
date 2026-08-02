@@ -52,6 +52,7 @@ Be specific and ruthless but fair.`,
 
     return {
       ...raw,
+      source: "model",
       creativityScore: raw.creativityScore ?? 60,
       iconRecognizability: raw.iconRecognizability ?? 70,
       overusedTrope: raw.overusedTrope ?? false,
@@ -60,6 +61,7 @@ Be specific and ruthless but fair.`,
     // Soft fallback — don't block the pipeline if critique model fails
     return {
       verdict: "revise",
+      source: "fallback",
       summary: "Critique unavailable — treat as provisional",
       strengths: [],
       flaws: ["Automated critique failed; rely on deterministic gates"],
