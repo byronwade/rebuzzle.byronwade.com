@@ -1,6 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
-import { generateNextPuzzle } from "@/app/actions/puzzleGenerationActions";
+import { generateNextPuzzle, getTodaysPuzzle } from "@/app/actions/puzzleGenerationActions";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { proposeBlogForPuzzle } from "@/lib/blog/propose-puzzle-blog";
@@ -11,7 +11,8 @@ import { logger } from "@/lib/logger";
  *
  * Midnight (via cron):
  * 1. Eve generates today's puzzle → Mongo `puzzles`
- * 2. Eve generates yesterday's blog → draft GitHub pull request
+ * 2. Eve pre-generates tomorrow's puzzle → blind playtest queue
+ * 3. Eve generates yesterday's blog → draft GitHub pull request
  */
 function authorizeWorkflow(request: Request): boolean {
   const authHeader = request.headers.get("authorization");
@@ -29,6 +30,12 @@ function authorizeWorkflow(request: Request): boolean {
 
   if (!(vercelCronSecretEnv || cronSecret)) return true;
   return vercelOk || bearerOk;
+}
+
+export function nextUtcDateKey(now = new Date()): string {
+  const next = new Date(now);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
 }
 
 export async function POST(request: Request) {
@@ -78,6 +85,48 @@ export async function POST(request: Request) {
       logger.error("Puzzle generation failed", new Error(errMsg));
     }
 
+    const nextDate = nextUtcDateKey();
+    let nextPuzzle: {
+      success: boolean;
+      date: string;
+      cached?: boolean;
+      fallback?: boolean;
+      aiGenerated?: boolean;
+      puzzleId?: string;
+      error?: string;
+    };
+    try {
+      logger.info("Pre-generating next-day puzzle for blind playtesting", { nextDate });
+      const result = await getTodaysPuzzle("rebus", nextDate, {
+        allowAiGenerate: true,
+        failOnAiError: true,
+      });
+      nextPuzzle = {
+        success: result.success,
+        date: nextDate,
+        cached: "cached" in result ? result.cached : undefined,
+        fallback: "fallback" in result ? result.fallback : undefined,
+        aiGenerated: "aiGenerated" in result ? result.aiGenerated : undefined,
+        puzzleId:
+          result.success && result.puzzle ? (result.puzzle as { id?: string }).id : undefined,
+        error:
+          !result.success && "error" in result && typeof result.error === "string"
+            ? result.error
+            : undefined,
+      };
+    } catch (error) {
+      nextPuzzle = {
+        success: false,
+        date: nextDate,
+        error: error instanceof Error ? error.message : "Next-day generation failed",
+      };
+      logger.error(
+        "Next-day puzzle pre-generation failed",
+        error instanceof Error ? error : new Error(String(error)),
+        { nextDate }
+      );
+    }
+
     logger.info("Revalidating puzzle cache");
     revalidateTag("daily-puzzle", "max");
 
@@ -96,6 +145,7 @@ export async function POST(request: Request) {
             ? (puzzleResult.puzzle as { id?: string }).id
             : undefined,
       },
+      nextPuzzle,
       blog: blogResult,
       completedAt: new Date().toISOString(),
     });
