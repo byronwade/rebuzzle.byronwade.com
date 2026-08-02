@@ -154,7 +154,7 @@ The first implementation slice now includes:
 - an independent answer-aware screenshot rejection lane for missing cues, answer leakage, wrong objects, unreadability, broken layout, and stronger alternate answers;
 - fail-closed behavior for unavailable recognition/solve judges;
 - fail-closed master generation: Apex rejection can no longer fall through to a less-verified Eve result, and explicitly selected Eve generation must pass the same screenshot playability gates;
-- hard rejection of low-recognition, revise, unfair-hint, and below-rubric Apex candidates;
+- hard rejection of low-recognition, unfair-hint, and below-rubric Apex candidates, with at most one bounded model-backed repair for an actionable `revise` critique before rejection;
 - persisted per-size and per-profile model, confidence, vote, and wrapping evidence;
 - a frozen 196-specimen publication icon evaluator corpus producing 392 required decisions, plus an opt-in diagnostic lane for quarantined candidates;
 - an admin-only blind human naming panel for all 196 publication catalog/size specimens, with opaque fixture IDs and browser payloads that contain no concept, alias, asset ID, or correctness signal;

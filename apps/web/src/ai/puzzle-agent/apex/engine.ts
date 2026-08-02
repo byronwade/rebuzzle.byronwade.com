@@ -10,7 +10,7 @@
 
 import { AI_CONFIG } from "../../config";
 import { isHardAIBudgetError, parseAIError } from "../../errors";
-import { isKnownTechniqueId } from "../quality";
+import { isKnownTechniqueId, normalizeAnswerKey } from "../quality";
 import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-generation";
 import type { PuzzleAgentResult } from "../schemas";
 import type { TechniqueId } from "../technique-library";
@@ -264,6 +264,16 @@ export async function runApexGeneration(
     )
   );
   let lastEvaluationMs = 0;
+  const configuredRevisionReserveMs = Number(process.env.REBUZZLE_APEX_REVISION_RESERVE_MS);
+  const revisionReserveMs = Math.max(
+    120_000,
+    Math.min(
+      210_000,
+      Number.isFinite(configuredRevisionReserveMs) && configuredRevisionReserveMs > 0
+        ? configuredRevisionReserveMs
+        : 155_000
+    )
+  );
   const selection = await selectQualifiedFinalist({
     candidates,
     minRubricOverall: brief.minRubricOverall,
@@ -279,6 +289,36 @@ export async function runApexGeneration(
       const remaining = runtimeBudgetMs - (Date.now() - started);
       const required = lastEvaluationMs > 0 ? lastEvaluationMs + 10_000 : 65_000;
       return remaining >= required;
+    },
+    canStartRevision: () => runtimeBudgetMs - (Date.now() - started) >= revisionReserveMs,
+    maxRevisions: 1,
+    revise: async (candidate) => {
+      try {
+        const result = await runPuzzleAgentGeneration({
+          ...params,
+          maxAttempts: 1,
+          modelChainLimit: 1,
+          qualityThreshold: brief.qualityThreshold,
+          briefSummary: brief.briefSummary,
+          preferredTechniques: [
+            candidate.techniqueId,
+            ...brief.preferredTechniques.filter((technique) => technique !== candidate.techniqueId),
+          ],
+          avoidTechniques: brief.avoidTechniques,
+          phraseSeeds: brief.phraseSuggestions.slice(0, 3).map((phrase) => phrase.answer),
+          bannedAnswerKeys: Array.from(
+            new Set([...brief.diversity.bannedAnswerKeys, normalizeAnswerKey(candidate.answer)])
+          ),
+          candidateIndex: undefined,
+          candidateCount: undefined,
+          deferRenderedEvaluation: true,
+          revisionInstructions: candidate.critique?.reviseInstructions,
+        });
+        return toCandidate(result, brief, brief.candidateCount + 1);
+      } catch (error) {
+        if (isHardAIBudgetError(error)) throw parseAIError(error);
+        return null;
+      }
     },
     evaluate: async (candidate) => {
       const evaluationStarted = Date.now();
@@ -311,7 +351,8 @@ export async function runApexGeneration(
       totalMs: Date.now() - started,
     },
     failures,
-    simCalibration
+    simCalibration,
+    selection.revisionAttempts
   );
 }
 
@@ -321,7 +362,8 @@ async function finalizeWinner(
   brief: GenerationBrief,
   phases: ApexEngineResult["phases"],
   failures: string[],
-  simCalibration?: { adjustment: number; sampleSize: number }
+  simCalibration?: { adjustment: number; sampleSize: number },
+  revisionAttempts = 0
 ): Promise<PuzzleAgentResult> {
   // Final archive uniqueness gate — never ship a recycled answer
   const { isAnswerRegistered } = await import("../../learning/answer-registry");
@@ -354,6 +396,7 @@ async function finalizeWinner(
     `rubric ${chosen.rubric?.overall ?? "?"}/100`,
     `technique ${chosen.techniqueId}`,
     `candidates ${ranked.length}`,
+    revisionAttempts ? `critique revisions ${revisionAttempts}` : null,
     failures.length ? `slot failures ${failures.length}` : null,
     learningNote(brief),
     `${phases.totalMs}ms`,
