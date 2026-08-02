@@ -29,7 +29,10 @@ import {
   validatePuzzleCandidate,
 } from "./tool-impl";
 import { PuzzleVisualSchema, VisualLayerSchema } from "./visual/composition";
-import { listCuratedPictogramIds } from "./visual/curated-pictograms";
+import {
+  CURATED_PICTOGRAM_CATALOG_VERSION,
+  listCuratedPictogramIds,
+} from "./visual/curated-pictograms";
 
 const withType = CandidatePuzzleSchema.extend({
   puzzleType: z.string().optional(),
@@ -122,7 +125,7 @@ export const puzzleAgentTools: ToolSet = {
       "List exact, reviewed pictogram concept IDs that are immediately eligible for publication. Use these exact nouns in compose_puzzle_visual.",
     inputSchema: z.object({}),
     execute: async () => ({
-      version: "lucide-v1",
+      version: CURATED_PICTOGRAM_CATALOG_VERSION,
       concepts: listCuratedPictogramIds(),
       rule: "Publication compositions must use these exact concept IDs or an existing approved-cache asset.",
     }),

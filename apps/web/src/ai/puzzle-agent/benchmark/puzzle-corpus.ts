@@ -100,7 +100,7 @@ export function buildPuzzleSolveBenchmarkCorpus(): PuzzleSolveBenchmarkCase[] {
       answer: "raindrop",
       techniqueId: "simple_compound",
       tierLabel: "Hard",
-      visual: visual("row", "🌧️ + 💧", [pictogram("rain", "🌧️"), plus(), pictogram("water", "💧")]),
+      visual: visual("row", "🌧️ + DROP", [pictogram("rain", "🌧️"), plus(), text("DROP")]),
       critical: false,
     },
     {

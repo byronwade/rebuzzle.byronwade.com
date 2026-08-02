@@ -3,8 +3,6 @@ import path from "node:path";
 import { config } from "dotenv";
 import type { PuzzleQualityBenchmarkReport } from "../src/ai/puzzle-agent/benchmark/types";
 
-config({ path: ".env.local", quiet: true });
-
 function numberArg(name: string, fallback: number): number {
   const raw = process.argv.find((arg) => arg.startsWith(`--${name}=`))?.split("=")[1];
   const value = Number(raw);
@@ -14,6 +12,13 @@ function numberArg(name: string, fallback: number): number {
 function stringArg(name: string, fallback: string): string {
   return process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) || fallback;
 }
+
+const explicitEnvFile = process.argv.some((arg) => arg.startsWith("--env-file="));
+config({
+  path: stringArg("env-file", ".env.local"),
+  quiet: true,
+  override: explicitEnvFile,
+});
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -37,6 +42,14 @@ async function main(): Promise<void> {
   if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
     throw new Error(
       "Live solve benchmark requires AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN. Pull the linked Vercel environment first."
+    );
+  }
+
+  const { probeGatewayAuth } = await import("../src/ai/client");
+  const auth = await probeGatewayAuth();
+  if (!auth.ok) {
+    throw new Error(
+      `${auth.error} Pass --env-file=.vercel/.env.development.local after pulling the linked development environment.`
     );
   }
 

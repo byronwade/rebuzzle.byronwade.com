@@ -22,10 +22,10 @@ describe("puzzle generator benchmark", () => {
     const positives = corpus.filter((entry) => entry.expected === "accept");
     const negatives = corpus.filter((entry) => entry.expected === "reject");
 
-    expect(corpus).toHaveLength(236);
-    expect(positives).toHaveLength(118);
-    expect(negatives).toHaveLength(118);
-    expect(corpus.length * ICON_BENCHMARK_TILE_SIZES.length).toBe(472);
+    expect(corpus).toHaveLength(196);
+    expect(positives).toHaveLength(98);
+    expect(negatives).toHaveLength(98);
+    expect(corpus.length * ICON_BENCHMARK_TILE_SIZES.length).toBe(392);
     expect(negatives.every((entry) => entry.intendedConcept !== entry.renderedConcept)).toBe(true);
     expect(new Set(corpus.map((entry) => entry.id)).size).toBe(corpus.length);
   });
@@ -34,7 +34,7 @@ describe("puzzle generator benchmark", () => {
     const corpus = buildIconBenchmarkCorpus();
     const report = scoreIconBenchmark({ cases: corpus, observations: perfectObservations() });
 
-    expect(report.expectedObservations).toBe(472);
+    expect(report.expectedObservations).toBe(392);
     expect(report.coverage).toBe(1);
     expect(report.positiveRecall).toBe(1);
     expect(report.negativeRecall).toBe(1);

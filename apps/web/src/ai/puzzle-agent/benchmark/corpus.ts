@@ -24,11 +24,13 @@ const CRITICAL_COMMON_OBJECTS = new Set([
  * Each specimen is evaluated at 36px and 72px, producing more than 200
  * recognition decisions without storing duplicate vector payloads.
  */
-export function buildIconBenchmarkCorpus(): IconBenchmarkCase[] {
-  const ids = listCuratedPictogramIds();
+export function buildIconBenchmarkCorpus(
+  options: { includeQuarantined?: boolean } = {}
+): IconBenchmarkCase[] {
+  const ids = listCuratedPictogramIds(options);
   const offset = Math.max(1, Math.floor(ids.length / 3));
   const positives = ids.map((concept) => {
-    const asset = resolveCuratedPictogram(concept);
+    const asset = resolveCuratedPictogram(concept, options);
     if (!asset) throw new Error(`Missing curated benchmark asset: ${concept}`);
     return {
       id: `catalog-positive:${concept}`,
@@ -42,7 +44,7 @@ export function buildIconBenchmarkCorpus(): IconBenchmarkCase[] {
   });
   const negatives = ids.map((concept, index) => {
     const renderedConcept = ids[(index + offset) % ids.length]!;
-    const asset = resolveCuratedPictogram(renderedConcept);
+    const asset = resolveCuratedPictogram(renderedConcept, options);
     if (!asset) throw new Error(`Missing negative benchmark asset: ${renderedConcept}`);
     return {
       id: `semantic-negative:${concept}:shown-${renderedConcept}`,
