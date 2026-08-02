@@ -42,6 +42,8 @@ export async function POST(request: Request) {
       slug: generatedPost.slug,
       content: generatedPost.content,
       excerpt: generatedPost.excerpt,
+      sections: generatedPost.sections,
+      seoMetadata: generatedPost.seoMetadata,
       puzzleId,
       publishedAt: new Date().toISOString(),
     };

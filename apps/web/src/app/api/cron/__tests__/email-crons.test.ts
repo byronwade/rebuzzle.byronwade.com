@@ -8,6 +8,11 @@ const updateOne = jest.fn();
 const insertOne = jest.fn();
 const toArray = jest.fn();
 const find = jest.fn(() => ({ toArray }));
+const fetchBlogPosts = jest.fn();
+
+jest.mock("@/app/actions/blogActions", () => ({
+  fetchBlogPosts,
+}));
 
 jest.mock("@/db/mongodb", () => ({
   getCollection: jest.fn(() => ({
@@ -86,12 +91,15 @@ describe("email cron routes", () => {
   });
 
   it("GET /api/cron/send-blog-emails sends the latest Eve post", async () => {
+    fetchBlogPosts.mockResolvedValue([
+      {
+        title: "Yesterday's Rebus",
+        slug: "yesterdays-rebus",
+        excerpt: "A clever aha",
+      },
+    ]);
     findOne.mockResolvedValue({
-      id: "blog-1",
-      title: "Yesterday's Rebus",
-      slug: "yesterdays-rebus",
-      excerpt: "A clever aha",
-      authorId: "eve-ai",
+      slug: "different-post",
     });
     toArray
       .mockResolvedValueOnce([{ id: "sub-1", email: "reader@example.com", enabled: true }])

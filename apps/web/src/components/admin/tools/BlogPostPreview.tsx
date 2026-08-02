@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit2, Eye, Save } from "lucide-react";
+import { Edit2, Eye, GitPullRequest } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,16 +11,20 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
+export interface BlogPostDraft {
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  puzzleId?: string;
+  publishedAt?: string;
+  sections?: Record<string, unknown>;
+  seoMetadata?: Record<string, unknown>;
+}
+
 interface BlogPostPreviewProps {
-  blogPost: {
-    title: string;
-    slug: string;
-    content: string;
-    excerpt: string;
-    puzzleId?: string;
-    publishedAt?: string;
-  };
-  onSave: (blogPost: any) => void;
+  blogPost: BlogPostDraft;
+  onSave: (blogPost: BlogPostDraft) => void;
   onCancel?: () => void;
 }
 
@@ -46,7 +50,9 @@ export function BlogPostPreview({ blogPost, onSave, onCancel }: BlogPostPreviewP
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Blog Post Preview</CardTitle>
-            <CardDescription>Review and edit the generated blog post before saving</CardDescription>
+            <CardDescription>
+              Review the generated post before opening its editorial pull request
+            </CardDescription>
           </div>
           <div className="flex gap-2">
             <Button
@@ -200,8 +206,8 @@ export function BlogPostPreview({ blogPost, onSave, onCancel }: BlogPostPreviewP
 
         <div className="mt-6 flex justify-end gap-2 border-t pt-4">
           <Button className="w-full md:w-auto" onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" />
-            Save to Database
+            <GitPullRequest className="mr-2 h-4 w-4" />
+            Open Draft PR
           </Button>
         </div>
       </CardContent>

@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { BlogPostPreview } from "./BlogPostPreview";
+import { type BlogPostDraft, BlogPostPreview } from "./BlogPostPreview";
 
 interface BlogPostGeneratorProps {
   onBlogPostSaved?: () => void;
@@ -24,7 +24,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [generatedPost, setGeneratedPost] = useState<any>(null);
+  const [generatedPost, setGeneratedPost] = useState<BlogPostDraft | null>(null);
   const [puzzleId, setPuzzleId] = useState("");
   const [puzzleSearch, setPuzzleSearch] = useState("");
   const [puzzles, setPuzzles] = useState<any[]>([]);
@@ -81,7 +81,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       setGeneratedPost(data.blogPost);
       toast({
         title: "Blog Post Generated",
-        description: "Review the blog post below and save when ready.",
+        description: "Review the blog post below and open a draft PR when ready.",
       });
     } catch (error) {
       console.error("Generation error:", error);
@@ -95,19 +95,19 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
     }
   };
 
-  const handleSave = async (blogPost: any) => {
+  const handleSave = async (blogPost: BlogPostDraft) => {
     try {
       const blogPostData = {
         title: blogPost.title,
         slug: blogPost.slug,
         content: blogPost.content,
         excerpt: blogPost.excerpt || "",
-        authorId: "ai-system",
         puzzleId: blogPost.puzzleId || "",
-        publishedAt: blogPost.publishedAt || new Date().toISOString(),
+        sections: blogPost.sections,
+        seoMetadata: blogPost.seoMetadata,
       };
 
-      const response = await fetch("/api/admin/blogs", {
+      const response = await fetch("/api/admin/blogs/propose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(blogPostData),
@@ -116,13 +116,24 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Failed to save blog post");
+        throw new Error(data.details || data.error || "Failed to open blog pull request");
       }
 
+      const proposal = data.proposal as {
+        pullRequestNumber?: number;
+        pullRequestUrl?: string;
+      };
+
       toast({
-        title: "Blog Post Saved",
-        description: "The blog post has been saved to the database.",
+        title: proposal.pullRequestNumber ? "Draft PR Opened" : "Proposal Already Exists",
+        description: proposal.pullRequestNumber
+          ? `Pull request #${proposal.pullRequestNumber} is ready for editorial review.`
+          : "This puzzle already has a blog proposal.",
       });
+
+      if (proposal.pullRequestUrl) {
+        window.open(proposal.pullRequestUrl, "_blank", "noopener,noreferrer");
+      }
 
       setGeneratedPost(null);
       setPuzzleId("");
@@ -135,7 +146,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
     } catch (error) {
       console.error("Save error:", error);
       toast({
-        title: "Save Failed",
+        title: "Pull Request Failed",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });

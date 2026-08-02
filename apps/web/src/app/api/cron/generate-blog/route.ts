@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
-import { persistBlogForPuzzle } from "@/lib/blog/persist-puzzle-blog";
+import { proposeBlogForPuzzle } from "@/lib/blog/propose-puzzle-blog";
 import { logger } from "@/lib/logger";
 
 /**
  * GET /api/cron/generate-blog
  *
- * Cron (~20:00 UTC): Eve writes the archive blog for yesterday's puzzle
- * (full sections + SEO) into MongoDB. Backfills recent puzzles if needed.
+ * Cron (~20:00 UTC): Eve writes the archive blog for yesterday's puzzle and
+ * opens a draft GitHub pull request. Backfills recent puzzles if needed.
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -99,18 +99,16 @@ async function generateBlogForPreviousPuzzle() {
         .toArray();
 
       for (const candidate of recent) {
-        const result = await persistBlogForPuzzle(candidate);
-        if (result.success && !("skipped" in result && result.skipped === "already_exists")) {
+        const result = await proposeBlogForPuzzle(candidate);
+        if (result.success && !("skipped" in result)) {
           return result;
-        }
-        if (result.success && "skipped" in result) {
         }
       }
 
       return { success: true, skipped: "all_puzzles_have_blogs" };
     }
 
-    return await persistBlogForPuzzle(puzzle);
+    return await proposeBlogForPuzzle(puzzle);
   } catch (error) {
     logger.error(
       "Error in generateBlogForPreviousPuzzle",

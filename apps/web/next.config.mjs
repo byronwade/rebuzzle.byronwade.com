@@ -54,6 +54,11 @@ const nextConfig = {
 
   transpilePackages: ["@rebuzzle/game-logic", "@rebuzzle/config"],
 
+  // Blog JSON merged through Eve PRs must ship with every server function.
+  outputFileTracingIncludes: {
+    "/*": ["./content/blog-posts/**/*.json"],
+  },
+
   async headers() {
     const isProduction = process.env.NODE_ENV === "production";
 

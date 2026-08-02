@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBaseUrl } from "@/lib/seo/utils";
-import { fetchBlogPosts } from "../actions/blogActions";
+import { fetchAllBlogPosts } from "../actions/blogActions";
 
 /**
  * RSS Feed Generator
@@ -10,7 +10,7 @@ import { fetchBlogPosts } from "../actions/blogActions";
 export async function GET() {
   try {
     const baseUrl = getBaseUrl();
-    const blogPosts = await fetchBlogPosts();
+    const blogPosts = await fetchAllBlogPosts();
 
     // Generate RSS XML
     const rssItems = blogPosts
