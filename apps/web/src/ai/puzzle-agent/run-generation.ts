@@ -80,6 +80,8 @@ export interface PuzzleGenerationParams {
   /** Tournament candidate slot (1-based) — encourages diversity across slots */
   candidateIndex?: number;
   candidateCount?: number;
+  /** Apex pre-ranking can defer costly rendered recognition and play simulation. */
+  deferRenderedEvaluation?: boolean;
 }
 
 export class PuzzleCandidateRejectedError extends Error {
@@ -247,6 +249,10 @@ export async function runPuzzleAgentGeneration(
           activeTools: [...PUBLICATION_AGENT_TOOLS],
           temperature: AI_CONFIG.generation.temperature.creative,
           maxOutputTokens: AI_CONFIG.generation.maxTokens.blog,
+          maxRetries: 0,
+          providerOptions: {
+            gateway: { tags: ["rebuzzle", "operation:puzzle-agent"] },
+          },
           stopWhen: stepCountIs(AI_CONFIG.puzzleAgent.maxSteps),
           output: Output.object({ schema: PuzzleAgentDraftSchema }),
           onStepEnd: ({ toolCalls }) => {
@@ -353,22 +359,6 @@ export async function runPuzzleAgentGeneration(
           continue;
         }
 
-        const boardRecognition = await recognizePuzzleBoard(puzzle.visual);
-        if (!boardRecognition.ok) {
-          priorFailure = boardRecognition.reason ?? "Rendered board recognition failed";
-          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
-          lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
-            console.warn("[Puzzle Agent] candidate rejected", {
-              modelId,
-              attempt,
-              stage: "board-recognition",
-              reason: priorFailure,
-            });
-          }
-          continue;
-        }
-
         const gate = evaluatePublishGates({
           rebusPuzzle: puzzle.rebusPuzzle,
           answer: puzzle.answer,
@@ -408,6 +398,63 @@ export async function runPuzzleAgentGeneration(
           continue;
         }
 
+        const level = getDifficultyLevelForScore(targetDifficulty);
+        const fingerprint =
+          uniqueness.fingerprint ||
+          fingerprintCandidate({
+            rebusPuzzle: puzzle.rebusPuzzle,
+            answer: puzzle.answer,
+            category: puzzle.category,
+            visual: puzzle.visual,
+          });
+        const difficultyLevel = puzzle.difficultyLevel || level.label;
+        // Prefer measured in-band calibration; fall back to tier target only if already gated in-band.
+        const calibrated = calibration.inBand ? calibration.calibratedDifficulty : level.target;
+
+        if (params.deferRenderedEvaluation) {
+          return {
+            puzzle: {
+              ...puzzle,
+              difficulty: calibrated,
+              difficultyLevel,
+              techniqueId: puzzle.techniqueId,
+            },
+            metadata: {
+              fingerprint,
+              uniquenessScore: uniqueness.uniquenessScore,
+              noveltyEvidence: uniqueness.noveltyEvidence,
+              calibratedDifficulty: calibrated,
+              difficultyLevel,
+              qualityScore: quality.overall,
+              qualityVerdict: quality.verdict,
+              funScore: quality.funScore,
+              visualStyleId: puzzle.visual?.styleId,
+              generationAttempts: attempt,
+              thinkingSummary:
+                output.thinkingSummary ??
+                `${difficultyLevel} puzzle draft via Eve ToolLoopAgent + AI Gateway (${modelId}) in ${Date.now() - start}ms`,
+            },
+            status: "success",
+            recommendations: output.recommendations,
+          };
+        }
+
+        const boardRecognition = await recognizePuzzleBoard(puzzle.visual);
+        if (!boardRecognition.ok) {
+          priorFailure = boardRecognition.reason ?? "Rendered board recognition failed";
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+            console.warn("[Puzzle Agent] candidate rejected", {
+              modelId,
+              attempt,
+              stage: "board-recognition",
+              reason: priorFailure,
+            });
+          }
+          continue;
+        }
+
         const rawSim = await simulatePlayerSolve({
           rebusPuzzle: puzzle.rebusPuzzle,
           answer: puzzle.answer,
@@ -437,21 +484,6 @@ export async function runPuzzleAgentGeneration(
           }
           continue;
         }
-
-        const level = getDifficultyLevelForScore(targetDifficulty);
-        const fingerprint =
-          uniqueness.fingerprint ||
-          fingerprintCandidate({
-            rebusPuzzle: puzzle.rebusPuzzle,
-            answer: puzzle.answer,
-            category: puzzle.category,
-            visual: puzzle.visual,
-          });
-
-        const difficultyLevel = puzzle.difficultyLevel || level.label;
-
-        // Prefer measured in-band calibration; fall back to tier target only if already gated in-band
-        const calibrated = calibration.inBand ? calibration.calibratedDifficulty : level.target;
 
         return {
           puzzle: {

@@ -30,6 +30,7 @@ export async function runPuzzleEditorialTournament(input: {
     renderedProfiles.flatMap((rendered) =>
       AI_CONFIG.visualRecognition.models.map(async (modelId) => {
         const review = await generateAIObjectFromImage({
+          operation: "vision-editorial",
           modelId,
           image: rendered.pixels,
           mediaType: "image/png",

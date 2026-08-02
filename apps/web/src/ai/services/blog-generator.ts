@@ -206,6 +206,7 @@ export async function generateBlogPost(
 
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const parsedResponse: AIBlogResponse = await generateAIObject({
+        operation: "blog",
         system,
         prompt: [
           BLOG_CONFIG.prompts.generatePost(puzzleData),

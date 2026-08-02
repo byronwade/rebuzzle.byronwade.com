@@ -57,6 +57,7 @@ export async function runBlindSolveImageTournament(input: {
         image: input.image,
         mediaType: input.mediaType,
         temperature: 0.35,
+        operation: "vision-blind-solve",
         schema: BlindSolveSchema,
         system: `You are a clever but non-expert player seeing a rebus puzzle for the first time.
 You do not know the intended answer, icon labels, technique, explanation, or hints.

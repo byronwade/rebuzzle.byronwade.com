@@ -3,6 +3,7 @@
  * Uses Vercel AI Gateway image models with a locked Rebuzzle illustration style.
  */
 
+import type { GatewayProviderOptions } from "@ai-sdk/gateway";
 import { generateImage } from "ai";
 import { ensureGatewayKey, getAiGateway } from "@/ai/client";
 import { IMAGE_TILE_STYLE_GUIDE } from "./style";
@@ -54,6 +55,12 @@ export async function generateImageTile(
         model: getAiGateway().image(modelId),
         prompt,
         aspectRatio: "1:1",
+        maxRetries: 0,
+        providerOptions: {
+          gateway: {
+            tags: ["rebuzzle", "operation:puzzle-image"],
+          } satisfies GatewayProviderOptions,
+        },
       });
 
       const file = result.image;

@@ -20,6 +20,7 @@ export async function critiqueCandidate(input: {
 }): Promise<CritiqueResult> {
   try {
     const raw = await generateAIObject({
+      operation: "puzzle-critique",
       modelType: "smart",
       temperature: AI_CONFIG.generation.temperature.balanced,
       schema: CritiqueProviderSchema,

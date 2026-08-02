@@ -279,6 +279,7 @@ async function drawOnce(input: {
 }): Promise<{ svg: string | null; rawError?: string }> {
   try {
     const response = await generateAIText({
+      operation: "puzzle-pictogram",
       modelType: "creative",
       temperature: input.attempt === 0 ? 0.45 : 0.7,
       system: [
