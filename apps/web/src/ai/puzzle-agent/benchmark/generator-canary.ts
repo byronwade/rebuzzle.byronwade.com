@@ -1,7 +1,10 @@
+import { BLIND_SOLVE_REQUIRED_VOTES } from "../quality-contract";
+import type { PuzzleVisual } from "../visual/composition";
+import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
 import { PUZZLE_GENERATOR_BENCHMARK_VERSION } from "./types";
 
 export const LIVE_GENERATOR_CANARY_MIN_ATTEMPTS = 8;
-export const LIVE_GENERATOR_CANARY_REQUIRED_PROFILES = 3;
+export const LIVE_GENERATOR_CANARY_REQUIRED_PROFILES = PUZZLE_BOARD_RECOGNITION_PROFILES.length;
 
 export type LiveGeneratorCanaryObservation = {
   id: string;
@@ -17,7 +20,9 @@ export type LiveGeneratorCanaryObservation = {
   funScore?: number;
   uniquenessScore?: number;
   assetSources: string[];
+  boardDeclaredCueCount: number;
   boardProfileCount: number;
+  boardCompleteProfileCount: number;
   boardDistinctModels: number;
   blindProfileCount: number;
   blindCompleteProfileCount: number;
@@ -25,6 +30,14 @@ export type LiveGeneratorCanaryObservation = {
   editorialAcceptedProfiles: number;
   renderedProfileCount: number;
   error?: string;
+};
+
+export type BoardCueEvidenceProfile = {
+  profileId: string;
+  models: string[];
+  conceptVotes?: Record<string, number>;
+  textVotes?: Record<string, number>;
+  operatorVotes?: Record<string, number>;
 };
 
 export type LiveGeneratorCanaryReport = {
@@ -83,9 +96,71 @@ function rejectionKind(message?: string): string {
   return "other";
 }
 
+function distinctNonEmpty(values: string[]): string[] {
+  return Array.from(
+    new Set(values.map((value) => value.trim().toLocaleLowerCase("en-US")).filter(Boolean))
+  );
+}
+
+/**
+ * Re-check persisted board evidence instead of trusting profile presence alone.
+ * A vote means that judge saw the cue at its full declared multiplicity.
+ */
+export function hasCompleteBoardCueEvidence(input: {
+  visual: PuzzleVisual;
+  profile: BoardCueEvidenceProfile;
+  requiredVotes?: number;
+}): boolean {
+  const requiredVotes = input.requiredVotes ?? BLIND_SOLVE_REQUIRED_VOTES;
+  if (distinctNonEmpty(input.profile.models).length < requiredVotes) return false;
+
+  const concepts = new Set(
+    input.visual.layers.flatMap((layer) => (layer.kind === "pictogram" ? [layer.concept] : []))
+  );
+  const text = new Set(
+    input.visual.layers.flatMap((layer) => (layer.kind === "text" ? [layer.content] : []))
+  );
+  const operators = new Set(
+    input.visual.layers.flatMap((layer) => (layer.kind === "operator" ? [layer.symbol] : []))
+  );
+
+  return (
+    Array.from(concepts).every(
+      (concept) => (input.profile.conceptVotes?.[concept] ?? 0) >= requiredVotes
+    ) &&
+    Array.from(text).every(
+      (content) => (input.profile.textVotes?.[content] ?? 0) >= requiredVotes
+    ) &&
+    Array.from(operators).every(
+      (symbol) => (input.profile.operatorVotes?.[symbol] ?? 0) >= requiredVotes
+    )
+  );
+}
+
+/** Count only the exact production profiles, exactly once each. */
+export function countCompleteBoardCueProfiles(input: {
+  visual: PuzzleVisual;
+  profiles: BoardCueEvidenceProfile[];
+  requiredVotes?: number;
+}): number {
+  return PUZZLE_BOARD_RECOGNITION_PROFILES.filter((expected) => {
+    const matches = input.profiles.filter((profile) => profile.profileId === expected.id);
+    return (
+      matches.length === 1 &&
+      hasCompleteBoardCueEvidence({
+        visual: input.visual,
+        profile: matches[0]!,
+        requiredVotes: input.requiredVotes,
+      })
+    );
+  }).length;
+}
+
 function completeEvidence(observation: LiveGeneratorCanaryObservation): boolean {
   return (
+    observation.boardDeclaredCueCount > 0 &&
     observation.boardProfileCount === LIVE_GENERATOR_CANARY_REQUIRED_PROFILES &&
+    observation.boardCompleteProfileCount === LIVE_GENERATOR_CANARY_REQUIRED_PROFILES &&
     observation.boardDistinctModels >= 2 &&
     observation.blindProfileCount === LIVE_GENERATOR_CANARY_REQUIRED_PROFILES &&
     observation.blindCompleteProfileCount === LIVE_GENERATOR_CANARY_REQUIRED_PROFILES &&
