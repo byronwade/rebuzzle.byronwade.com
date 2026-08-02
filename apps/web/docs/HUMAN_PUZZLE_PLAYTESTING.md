@@ -34,6 +34,15 @@ qualified decisions here are therefore a product release heuristic, not a claim
 of statistical significance; a formal comparative study must perform its own
 power and reliability analysis.
 
+Readiness calculations use `puzzle-playtest-readiness-v2`. Raw rates remain
+visible for diagnosis, but acceptance uses one-sided 95% Wilson score bounds.
+The lower bound must clear every success floor; the upper bound must stay below
+every harm ceiling. Wilson's score method avoids the unstable coverage of the
+ordinary Wald interval, particularly near zero or one ([NIST Engineering
+Statistics Handbook](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm),
+[Brown, Cai, and DasGupta
+2001](https://www.stat.purdue.edu/~dasgupta/publications/tr99-19.pdf)).
+
 ## Blind reviewer experience
 
 - Registered players review at `/playtest`.
@@ -64,6 +73,13 @@ can never review two profiles of the same puzzle. Control candidates never
 complete and never contribute to generated candidate, profile, difficulty,
 technique, solve-rate, failure-rate, calibration, or readiness metrics.
 
+A candidate meets its difficulty-adjusted solve floor only when the one-sided
+95% lower Wilson bound from its 15 decisions clears that floor. For example, a
+raw 10/15 result is 66.7%, but its lower bound does not prove a 65% floor; 13/15
+does. The corpus-level candidate-floor pass rate is then bounded again before a
+release or market-leading claim. This intentionally prevents a chain of
+borderline point estimates from becoming a confident aggregate claim.
+
 ## Representative evidence gates
 
 | Evidence | Release | Market-leading |
@@ -82,6 +98,11 @@ high-confidence-wrong-answer, responsive parity, and automated-calibration
 limits. Missing strata fail closed. Unknown technique IDs do not count toward
 technique breadth.
 
+The 95% lower bound is used for candidate-floor success and automated-estimate
+coverage. The 95% upper bound is used for failed-control reviewers,
+multiple-answer reports, visual failures, and high-confidence wrong answers.
+Responsive gaps and calibration error remain deterministic magnitude limits.
+
 The admin report separately exposes pending, qualified, and excluded reviewer
 counts, control decisions, and generated decisions held out from scoring. A high
 control-failure rate fails readiness rather than silently shrinking the panel,
@@ -97,6 +118,12 @@ formal external study should additionally document recruitment, language,
 device, locale, age range, and accessibility needs before making broad
 population claims.
 
+Wilson bounds still assume binomial observations more strongly than this
+repeated-review design can guarantee. Reviewer-share limits reduce dependence
+and domination, but a formal external claim should use a preregistered power
+analysis and reviewer-clustered or hierarchical model in addition to this
+product readiness gate.
+
 The controls are frozen from the repository's critical, easiest compound-rebus
 benchmark slice. They are objective attention checks, not evidence that the
 generator is recognizable. Before a formal external study, independent humans
@@ -106,6 +133,7 @@ must audit the control set for language, cultural, and accessibility bias.
 
 ```powershell
 pnpm.cmd exec jest `
+  src/ai/statistics/__tests__/binomial.test.ts `
   src/ai/puzzle-agent/review/__tests__/puzzle-playtest-service.test.ts `
   src/app/api/puzzle-playtests/__tests__/route.test.ts `
   src/app/api/admin/ai/puzzle-playtests/__tests__/route.test.ts `

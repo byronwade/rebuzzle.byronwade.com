@@ -4,7 +4,9 @@ import type { PuzzleBoardRecognitionProfileId } from "../../visual/presentation"
 import {
   createPuzzlePlaytestService,
   expectedHumanSolveFloor,
+  humanSolveFloorEvidence,
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
+  PUZZLE_PLAYTEST_READINESS_VERSION,
   type PuzzlePlaytestRepository,
 } from "../puzzle-playtest-service";
 
@@ -510,6 +512,17 @@ describe("blind human generated-puzzle playtesting", () => {
     ]);
   });
 
+  it("requires the one-sided 95% solve bound to clear each candidate floor", () => {
+    const rawPassOnly = humanSolveFloorEvidence(10, 15, 5);
+    expect(rawPassOnly.rate).toBeGreaterThan(0.65);
+    expect(rawPassOnly.lower).toBeLessThan(0.65);
+    expect(rawPassOnly.passes).toBe(false);
+
+    const supportedPass = humanSolveFloorEvidence(13, 15, 5);
+    expect(supportedPass.lower).toBeGreaterThan(0.65);
+    expect(supportedPass.passes).toBe(true);
+  });
+
   it("computes market-leading status only from 100 fully covered generated puzzles", async () => {
     const { repository, store } = inMemoryRepository();
     const service = createPuzzlePlaytestService(repository, renderer);
@@ -561,11 +574,18 @@ describe("blind human generated-puzzle playtesting", () => {
 
     const report = await service.getReport("outside-reviewer");
     expect(report.completedDecisionCount).toBe(1500);
+    expect(report.readinessVersion).toBe(PUZZLE_PLAYTEST_READINESS_VERSION);
     expect(report.reviewerCount).toBe(50);
     expect(report.reviewerCoverage.maximumDecisionShare).toBe(0.02);
     expect(report.difficultyTierScores.map((score) => score.candidates)).toEqual([25, 25, 25, 25]);
     expect(report.techniqueScores).toHaveLength(10);
     expect(report.candidateFloorPassRate).toBe(1);
+    expect(report.statisticalEvidence).toMatchObject({
+      method: "one-sided-wilson-score",
+      confidenceLevel: 0.95,
+    });
+    expect(report.statisticalEvidence.candidateFloorPass.lower).toBeGreaterThan(0.97);
+    expect(report.statisticalEvidence.visualFailure.upper).toBeLessThan(0.02);
     expect(report.releaseReady).toBe(true);
     expect(report.marketLeadingReady).toBe(true);
 

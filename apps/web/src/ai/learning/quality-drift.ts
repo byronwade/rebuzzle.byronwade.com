@@ -1,3 +1,7 @@
+import { type BinomialInterval, wilsonScoreInterval } from "@/ai/statistics/binomial";
+
+export type { BinomialInterval } from "@/ai/statistics/binomial";
+
 export const QUALITY_DRIFT_CONTRACT_VERSION = "quality-slo-v1";
 
 export type QualityDriftWindow = {
@@ -19,14 +23,6 @@ export type QualityDriftMetricStatus =
   | "watch"
   | "degraded"
   | "critical";
-
-export type BinomialInterval = {
-  rate: number;
-  lower: number;
-  upper: number;
-  events: number;
-  total: number;
-};
 
 export type QualityDriftMetric = {
   id: "unrecognizable" | "ambiguous_or_unfair" | "dislike" | "generation_failure";
@@ -120,32 +116,9 @@ const METRICS: MetricDefinition[] = [
   },
 ];
 
-function clampCount(events: number, total: number): { events: number; total: number } {
-  const safeTotal = Math.max(0, Math.floor(Number.isFinite(total) ? total : 0));
-  const safeEvents = Math.max(
-    0,
-    Math.min(safeTotal, Math.floor(Number.isFinite(events) ? events : 0))
-  );
-  return { events: safeEvents, total: safeTotal };
-}
-
 /** Wilson score interval avoids the pathological confidence of the naive Wald interval. */
 export function wilsonInterval(events: number, total: number, z = 1.96): BinomialInterval {
-  const safe = clampCount(events, total);
-  if (!safe.total) return { rate: 0, lower: 0, upper: 1, ...safe };
-  const rate = safe.events / safe.total;
-  const zSquared = z * z;
-  const denominator = 1 + zSquared / safe.total;
-  const center = (rate + zSquared / (2 * safe.total)) / denominator;
-  const margin =
-    (z / denominator) *
-    Math.sqrt((rate * (1 - rate)) / safe.total + zSquared / (4 * safe.total ** 2));
-  return {
-    rate,
-    lower: Math.max(0, center - margin),
-    upper: Math.min(1, center + margin),
-    ...safe,
-  };
+  return wilsonScoreInterval(events, total, z);
 }
 
 function evaluateMetric(

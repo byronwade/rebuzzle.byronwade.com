@@ -143,7 +143,9 @@ export default function PlaytestPage() {
             <CardTitle>Join the blind puzzle panel</CardTitle>
             <CardDescription>
               An account at least 24 hours old with three completed puzzles keeps the panel tied to
-              experienced players. Guest and fresh accounts are excluded from quality evidence.
+              experienced players. Guest and fresh accounts are excluded from quality evidence. A
+              small set of known-answer calibration boards is mixed into early assignments;
+              individual calibration boards are never labeled.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex gap-3">
