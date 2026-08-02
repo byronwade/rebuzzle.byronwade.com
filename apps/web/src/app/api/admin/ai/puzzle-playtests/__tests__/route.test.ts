@@ -94,7 +94,7 @@ describe("puzzle playtest admin route", () => {
 
   it("loads aggregate results only in explicit report mode", async () => {
     verifyAdminAccess.mockResolvedValue({ id: "admin-1" });
-    getReport.mockResolvedValue({ contractVersion: "puzzle-playtest-v1" });
+    getReport.mockResolvedValue({ contractVersion: "puzzle-playtest-v2" });
     const response = await GET(
       new Request("https://rebuzzle.test/api/admin/ai/puzzle-playtests?mode=report")
     );

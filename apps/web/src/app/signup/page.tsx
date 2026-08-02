@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { safeInternalRedirect } from "@/lib/safe-internal-redirect";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -155,9 +156,11 @@ export default function SignupPage() {
         // Store user data temporarily
         localStorage.setItem("username", formData.username.trim());
 
-        // Redirect to login
+        const nextPath = safeInternalRedirect(
+          new URLSearchParams(window.location.search).get("next")
+        );
         setTimeout(() => {
-          router.push("/login");
+          router.push(`/login?next=${encodeURIComponent(nextPath)}`);
         }, 1500);
       } else {
         const errorMessage = data.error || "Something went wrong. Please try again.";

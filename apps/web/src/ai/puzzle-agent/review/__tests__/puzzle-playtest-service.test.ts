@@ -8,6 +8,20 @@ import {
   type PuzzlePlaytestRepository,
 } from "../puzzle-playtest-service";
 
+const REPRESENTATIVE_TECHNIQUES = [
+  "simple_compound",
+  "obvious_emoji_sum",
+  "single_homophone",
+  "basic_positional",
+  "multi_emoji_compound",
+  "positional_phrase",
+  "math_symbol_wordplay",
+  "nested_homophone",
+  "idiom_as_picture",
+  "size_or_case_semantics",
+] as const;
+const PROFILE_IDS = ["compact-320", "mobile-375", "desktop-768"] as const;
+
 function inMemoryRepository() {
   const store = {
     candidates: [] as PuzzlePlaytestCandidate[],
@@ -200,12 +214,12 @@ describe("blind human generated-puzzle playtesting", () => {
     );
   });
 
-  it("completes a candidate only after three reviewers cover every profile", async () => {
+  it("completes a candidate only after five reviewers cover every profile", async () => {
     const { repository, store } = inMemoryRepository();
     const service = createPuzzlePlaytestService(repository, renderer);
     await service.submitCandidate(candidateInput());
 
-    for (let index = 0; index < 8; index++) {
+    for (let index = 0; index < 14; index++) {
       const reviewerId = `reviewer-${index}`;
       const next = await service.getNext(reviewerId);
       await service.submitReview({
@@ -218,10 +232,10 @@ describe("blind human generated-puzzle playtesting", () => {
     }
     expect(store.candidates[0]?.status).toBe("open");
 
-    const ninth = await service.getNext("reviewer-8");
+    const fifteenth = await service.getNext("reviewer-14");
     await service.submitReview({
-      reviewerId: "reviewer-8",
-      fixtureId: ninth.specimen!.fixtureId,
+      reviewerId: "reviewer-14",
+      fixtureId: fifteenth.specimen!.fixtureId,
       guess: "sunflower",
       confidence: 5,
       elapsedMs: 12_000,
@@ -229,12 +243,12 @@ describe("blind human generated-puzzle playtesting", () => {
     expect(store.candidates[0]?.status).toBe("complete");
     expect(
       Object.fromEntries(
-        ["compact-320", "mobile-375", "desktop-768"].map((profileId) => [
+        PROFILE_IDS.map((profileId) => [
           profileId,
           store.reviews.filter((review) => review.profileId === profileId).length,
         ])
       )
-    ).toEqual({ "compact-320": 3, "mobile-375": 3, "desktop-768": 3 });
+    ).toEqual({ "compact-320": 5, "mobile-375": 5, "desktop-768": 5 });
   });
 
   it("does not reveal a candidate answer until that reviewer has judged it", async () => {
@@ -288,22 +302,24 @@ describe("blind human generated-puzzle playtesting", () => {
         answer: "sunflower",
         answerKey: "sunflower",
         visual,
-        difficultyScore: 5,
+        techniqueId: REPRESENTATIVE_TECHNIQUES[candidateIndex % REPRESENTATIVE_TECHNIQUES.length],
+        difficultyScore: [5, 6, 7, 8][candidateIndex % 4]!,
         automatedEstimatedSolveRate: 1,
         status: "complete",
         statusVersion: 1,
         createdAt: new Date(0),
         updatedAt: new Date(0),
       });
-      for (const profileId of ["compact-320", "mobile-375", "desktop-768"]) {
-        for (let reviewerIndex = 0; reviewerIndex < 3; reviewerIndex++) {
+      for (const [profileIndex, profileId] of PROFILE_IDS.entries()) {
+        for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
+          const reviewerId = `reviewer-${(candidateIndex * 15 + profileIndex * 5 + reviewerIndex) % 50}`;
           store.reviews.push({
             id: `${candidateId}:${profileId}:${reviewerIndex}`,
             contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
             candidateId,
             fixtureId: "opaque",
             profileId,
-            reviewerId: `${profileId}-reviewer-${reviewerIndex}`,
+            reviewerId,
             rawGuess: "sunflower",
             normalizedGuess: "sunflower",
             correct: true,
@@ -317,9 +333,163 @@ describe("blind human generated-puzzle playtesting", () => {
     }
 
     const report = await service.getReport("outside-reviewer");
-    expect(report.completedDecisionCount).toBe(900);
+    expect(report.completedDecisionCount).toBe(1500);
+    expect(report.reviewerCount).toBe(50);
+    expect(report.reviewerCoverage.maximumDecisionShare).toBe(0.02);
+    expect(report.difficultyTierScores.map((score) => score.candidates)).toEqual([25, 25, 25, 25]);
+    expect(report.techniqueScores).toHaveLength(10);
     expect(report.candidateFloorPassRate).toBe(1);
     expect(report.releaseReady).toBe(true);
     expect(report.marketLeadingReady).toBe(true);
+  });
+
+  it("rejects a large but homogeneous human sample", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const visual = buildPuzzleSolveBenchmarkCorpus()[0]!.visual;
+    for (let candidateIndex = 0; candidateIndex < 100; candidateIndex++) {
+      const candidateId = `homogeneous-${candidateIndex}`;
+      store.candidates.push({
+        id: candidateId,
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        puzzleId: `homogeneous-puzzle-${candidateIndex}`,
+        answer: "sunflower",
+        answerKey: "sunflower",
+        visual,
+        techniqueId: "simple_compound",
+        difficultyScore: 5,
+        automatedEstimatedSolveRate: 1,
+        status: "complete",
+        statusVersion: 1,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      });
+      for (const [profileIndex, profileId] of PROFILE_IDS.entries()) {
+        for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
+          store.reviews.push({
+            id: `${candidateId}:${profileId}:${reviewerIndex}`,
+            contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+            candidateId,
+            fixtureId: "opaque",
+            profileId,
+            reviewerId: `reviewer-${(candidateIndex * 15 + profileIndex * 5 + reviewerIndex) % 50}`,
+            rawGuess: "sunflower",
+            normalizedGuess: "sunflower",
+            correct: true,
+            gaveUp: false,
+            confidence: 5,
+            elapsedMs: 10_000,
+            createdAt: new Date(0),
+          });
+        }
+      }
+    }
+
+    const report = await service.getReport("outside-reviewer");
+    expect(report.marketLeadingReady).toBe(false);
+    expect(report.marketLeadingFailures.join(" ")).toContain("Difficulty-tier coverage incomplete");
+    expect(report.marketLeadingFailures.join(" ")).toContain("Technique breadth 1/10");
+    expect(report.marketLeadingFailures.join(" ")).toContain("Technique concentration");
+  });
+
+  it("rejects concentrated reviewers even when puzzle strata are representative", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const visual = buildPuzzleSolveBenchmarkCorpus()[0]!.visual;
+    for (let candidateIndex = 0; candidateIndex < 100; candidateIndex++) {
+      const candidateId = `concentrated-${candidateIndex}`;
+      store.candidates.push({
+        id: candidateId,
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        puzzleId: `concentrated-puzzle-${candidateIndex}`,
+        answer: "sunflower",
+        answerKey: "sunflower",
+        visual,
+        techniqueId: REPRESENTATIVE_TECHNIQUES[candidateIndex % REPRESENTATIVE_TECHNIQUES.length],
+        difficultyScore: [5, 6, 7, 8][candidateIndex % 4]!,
+        automatedEstimatedSolveRate: 1,
+        status: "complete",
+        statusVersion: 1,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      });
+      for (const [profileIndex, profileId] of PROFILE_IDS.entries()) {
+        for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
+          const reviewerId = `reviewer-${profileIndex * 5 + reviewerIndex}`;
+          store.reviews.push({
+            id: `${candidateId}:${profileId}:${reviewerIndex}`,
+            contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+            candidateId,
+            fixtureId: "opaque",
+            profileId,
+            reviewerId,
+            rawGuess: "sunflower",
+            normalizedGuess: "sunflower",
+            correct: true,
+            gaveUp: false,
+            confidence: 5,
+            elapsedMs: 10_000,
+            createdAt: new Date(0),
+          });
+        }
+      }
+    }
+
+    const report = await service.getReport("outside-reviewer");
+    expect(report.reviewerCount).toBe(15);
+    expect(report.reviewerCoverage.maximumDecisionShare).toBeCloseTo(1 / 15);
+    expect(report.marketLeadingReady).toBe(false);
+    expect(report.marketLeadingFailures.join(" ")).toContain("Independent reviewer breadth 15/50");
+    expect(report.marketLeadingFailures.join(" ")).toContain("One-reviewer decision share");
+  });
+
+  it("rejects unclassified techniques from an otherwise representative sample", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const visual = buildPuzzleSolveBenchmarkCorpus()[0]!.visual;
+    for (let candidateIndex = 0; candidateIndex < 100; candidateIndex++) {
+      const candidateId = `classified-${candidateIndex}`;
+      store.candidates.push({
+        id: candidateId,
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        puzzleId: `classified-puzzle-${candidateIndex}`,
+        answer: "sunflower",
+        answerKey: "sunflower",
+        visual,
+        techniqueId:
+          candidateIndex === 0
+            ? "invented-technique"
+            : REPRESENTATIVE_TECHNIQUES[candidateIndex % REPRESENTATIVE_TECHNIQUES.length],
+        difficultyScore: [5, 6, 7, 8][candidateIndex % 4]!,
+        automatedEstimatedSolveRate: 1,
+        status: "complete",
+        statusVersion: 1,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      });
+      for (const [profileIndex, profileId] of PROFILE_IDS.entries()) {
+        for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
+          store.reviews.push({
+            id: `${candidateId}:${profileId}:${reviewerIndex}`,
+            contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+            candidateId,
+            fixtureId: "opaque",
+            profileId,
+            reviewerId: `reviewer-${(candidateIndex * 15 + profileIndex * 5 + reviewerIndex) % 50}`,
+            rawGuess: "sunflower",
+            normalizedGuess: "sunflower",
+            correct: true,
+            gaveUp: false,
+            confidence: 5,
+            elapsedMs: 10_000,
+            createdAt: new Date(0),
+          });
+        }
+      }
+    }
+
+    const report = await service.getReport("outside-reviewer");
+    expect(report.marketLeadingReady).toBe(false);
+    expect(report.marketLeadingFailures.join(" ")).toContain("Named-technique coverage 99/100");
   });
 });

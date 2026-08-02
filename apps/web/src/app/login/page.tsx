@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { safeInternalRedirect } from "@/lib/safe-internal-redirect";
 import { safeJsonParse } from "@/lib/utils";
 
 export default function LoginPage() {
@@ -117,9 +118,11 @@ export default function LoginPage() {
           description: "You've successfully logged in.",
         });
 
-        // Redirect to home
+        const nextPath = safeInternalRedirect(
+          new URLSearchParams(window.location.search).get("next")
+        );
         setTimeout(() => {
-          router.push("/");
+          router.push(nextPath);
         }, 1000);
       } else {
         const errorMessage = data?.error || "Invalid credentials. Please try again.";
