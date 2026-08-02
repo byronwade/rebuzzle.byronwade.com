@@ -118,6 +118,7 @@ import {
   Wrench,
   Zap,
 } from "lucide";
+import { resolveMaterialSymbolCandidate } from "./material-symbol-candidates";
 import { sanitizePictogramSvg } from "./sanitize-svg";
 import { INK_PICTOGRAM_PALETTE } from "./style";
 
@@ -343,6 +344,10 @@ export function resolveCuratedPictogram(
     candidate.aliases.some((alias) => normalizeConcept(alias) === normalized)
   );
   if (!entry || (!options.includeQuarantined && QUARANTINED_IDS.has(entry.id))) return null;
+  if (options.includeQuarantined && QUARANTINED_IDS.has(entry.id)) {
+    const replacement = resolveMaterialSymbolCandidate(entry.id);
+    if (replacement) return replacement;
+  }
 
   const raw = serializeIconNode(entry.icon, {
     width: 64,

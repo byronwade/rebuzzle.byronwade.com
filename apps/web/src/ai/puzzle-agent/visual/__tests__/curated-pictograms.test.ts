@@ -55,6 +55,7 @@ describe("curated pictogram catalog", () => {
     expect(resolveCuratedPictogram("computer mouse")).toBeNull();
     const diagnostic = resolveCuratedPictogram("computer mouse", { includeQuarantined: true });
     expect(diagnostic?.canonicalConcept).toBe("computer-mouse");
+    expect(diagnostic?.assetId).toMatch(/^material-symbols:mouse:fill1-opsz20@/);
     expect(
       isAuthenticCuratedPictogram({
         concept: "computer mouse",
@@ -63,5 +64,12 @@ describe("curated pictogram catalog", () => {
       })
     ).toBe(false);
     expect(listCuratedPictogramIds()).not.toContain("computer-mouse");
+  });
+
+  it("retains the previous diagnostic fallback when no replacement exists", () => {
+    const diagnostic = resolveCuratedPictogram("rainbow", { includeQuarantined: true });
+
+    expect(diagnostic?.assetId).toBe("lucide:rainbow:v2");
+    expect(diagnostic?.canonicalConcept).toBe("rainbow");
   });
 });

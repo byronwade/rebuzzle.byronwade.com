@@ -19,13 +19,14 @@ function escapeXml(value: string): string {
 }
 
 async function main(): Promise<void> {
-  const ids = listCuratedPictogramIds();
+  const includeQuarantined = process.argv.includes("--include-quarantined");
+  const ids = listCuratedPictogramIds({ includeQuarantined });
   const rows = Math.ceil(ids.length / COLUMNS);
   const width = CELL_WIDTH * COLUMNS;
   const height = CELL_HEIGHT * rows;
   const cells = ids
     .map((id, index) => {
-      const asset = resolveCuratedPictogram(id);
+      const asset = resolveCuratedPictogram(id, { includeQuarantined });
       if (!asset) throw new Error(`Catalog asset did not resolve: ${id}`);
       const column = index % COLUMNS;
       const row = Math.floor(index / COLUMNS);
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
     .join("");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#f2f4f1"/>${cells}</svg>`;
   const output = path.resolve(
-    "../../artifacts/puzzle-generator/catalog/curated-pictograms.png"
+    `../../artifacts/puzzle-generator/catalog/curated-pictograms${includeQuarantined ? "-diagnostic" : ""}.png`
   );
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, await sharp(Buffer.from(svg)).png().toBuffer());
