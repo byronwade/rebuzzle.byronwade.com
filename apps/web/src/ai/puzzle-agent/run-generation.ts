@@ -480,6 +480,12 @@ export async function runPuzzleAgentGeneration(
             boardConceptVotes: boardRecognition.perceptions.length
               ? boardRecognition.conceptVotes
               : undefined,
+            boardTextVotes: boardRecognition.perceptions.length
+              ? boardRecognition.textVotes
+              : undefined,
+            boardOperatorVotes: boardRecognition.perceptions.length
+              ? boardRecognition.operatorVotes
+              : undefined,
             boardRecognitionProfiles: boardRecognition.profileResults?.length
               ? boardRecognition.profileResults.map((profile) => ({
                   profileId: profile.profileId,
@@ -494,6 +500,8 @@ export async function runPuzzleAgentGeneration(
                     : 0,
                   models: profile.perceptions.map((perception) => perception.model),
                   conceptVotes: profile.conceptVotes,
+                  textVotes: profile.textVotes,
+                  operatorVotes: profile.operatorVotes,
                   wrappedRows: profile.wrappedRows,
                 }))
               : undefined,

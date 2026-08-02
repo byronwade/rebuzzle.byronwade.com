@@ -88,6 +88,8 @@ function toCandidate(
     boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
     boardRecognitionModels: result.metadata.boardRecognitionModels,
     boardConceptVotes: result.metadata.boardConceptVotes,
+    boardTextVotes: result.metadata.boardTextVotes,
+    boardOperatorVotes: result.metadata.boardOperatorVotes,
     boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
     playerSim,
     publishable: result.metadata.qualityVerdict !== "reject",
@@ -391,6 +393,8 @@ async function finalizeWinner(
       boardRecognitionConfidence: chosen.boardRecognitionConfidence,
       boardRecognitionModels: chosen.boardRecognitionModels,
       boardConceptVotes: chosen.boardConceptVotes,
+      boardTextVotes: chosen.boardTextVotes,
+      boardOperatorVotes: chosen.boardOperatorVotes,
       boardRecognitionProfiles: chosen.boardRecognitionProfiles,
       simCalibrationBias:
         simCalibration && simCalibration.sampleSize >= 6 ? simCalibration.adjustment : undefined,

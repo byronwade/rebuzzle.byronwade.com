@@ -236,6 +236,10 @@ export interface Puzzle {
     boardRecognitionModels?: string[];
     /** Number of independent judges that saw each declared concept. */
     boardConceptVotes?: Record<string, number>;
+    /** Number of independent judges that transcribed each text cue. */
+    boardTextVotes?: Record<string, number>;
+    /** Number of independent judges that transcribed each operator cue. */
+    boardOperatorVotes?: Record<string, number>;
     boardRecognitionProfiles?: Array<{
       profileId: string;
       viewportWidth: number;
@@ -243,6 +247,8 @@ export interface Puzzle {
       confidence: number;
       models: string[];
       conceptVotes: Record<string, number>;
+      textVotes: Record<string, number>;
+      operatorVotes: Record<string, number>;
       wrappedRows: number;
     }>;
     /** Dev Visual Lab preview (inactive) */

@@ -81,7 +81,7 @@ The pixel thresholds are deliberately wider than the measured publication catalo
 
 ## Whole-board gate
 
-Object recognition alone is insufficient. Render the same component used by the game at 375px, 768px, and 1280px widths and evaluate screenshots for:
+Object recognition alone is insufficient. Render the same component used by the game at compact 320px, mobile 375px, and desktop 768px widths and evaluate screenshots for:
 
 - clipped, overlapping, or tiny cues;
 - spatial relationships surviving flex wrapping;
@@ -92,6 +92,8 @@ Object recognition alone is insufficient. Render the same component used by the 
 - accessibility fallback matching the visual meaning without exposing the answer.
 
 The current `flex-wrap` row renderer can change visual topology across widths, so generation must either lock a composition grid or validate each responsive state.
+
+Every board-perception judge must independently inventory pictograms, visible text, and operator symbols. Consensus requires every declared cue in every responsive profile; repeated cues retain their multiplicity, because one visible `GO` cannot prove a board intended to show `GO GO GO`. Text matching normalizes case, spacing, and stacked letters without granting short-substring credit, while operator matching accepts only explicit symbol equivalents such as `plus` for `+`. Per-profile concept, text, and operator vote maps are persisted with the generated puzzle.
 
 ## Blind solve tournament
 
@@ -144,6 +146,7 @@ The first implementation slice now includes:
 - two independent blind vision judges at every icon size;
 - one shared presentation specification used by the React player and server renderer;
 - independent board perception at compact 320px, mobile 375px, and desktop 768px;
+- two-judge visibility consensus for every pictogram, text cue, and operator at its declared multiplicity in every responsive profile;
 - screenshot-only solve tournaments across every production profile, separated from answer-aware hint review;
 - rank-aware two-judge solve consensus that requires the intended answer to be top-ranked and dominant for every judge in every profile;
 - an independent answer-aware screenshot rejection lane for missing cues, answer leakage, wrong objects, unreadability, broken layout, and stronger alternate answers;
@@ -269,7 +272,7 @@ The evaluator commands write versioned JSON evidence under `artifacts/puzzle-gen
 
 Live vision preflight fails before scoring when any configured independent judge is unavailable. The failure now identifies the player size, model ID, and a sanitized provider error for every missing judge; benchmark artifacts retain the same diagnostics. This keeps publication fail-closed while distinguishing revoked credentials, unavailable model IDs, provider limits, and unsupported requests from an ordinary recognition miss.
 
-The solve report distinguishes answer presence from actual playability. A profile counts as detected only when both independent judges agree; one-of-two agreement is a failure, not half credit. Promotion currently requires at least 80% answer presence, 75% top-answer detection, 70% dominant-answer detection, 70% compact top-answer detection, mean reciprocal rank of at least 0.75, and no more than 10% ambiguous observations. These are provisional automated screening thresholds; human calibration remains authoritative. Benchmark contract `2026-08-02.8` also binds live-generator evidence to the deterministic player-pixel gate; reports from earlier contracts cannot promote this generator.
+The solve report distinguishes answer presence from actual playability. A profile counts as detected only when both independent judges agree; one-of-two agreement is a failure, not half credit. Promotion currently requires at least 80% answer presence, 75% top-answer detection, 70% dominant-answer detection, 70% compact top-answer detection, mean reciprocal rank of at least 0.75, and no more than 10% ambiguous observations. These are provisional automated screening thresholds; human calibration remains authoritative. Benchmark contract `2026-08-02.9` binds live-generator evidence to both deterministic player-pixel integrity and complete multiplicity-aware board-cue consensus; reports from earlier contracts cannot promote this generator.
 
 The editorial report prevents trivial evaluators from winning: known-good acceptance must remain at least 95%, known-failure detection at least 99%, two-judge failure consensus at least 90%, compact failure detection at least 99%, and all critical fixtures must pass. Market-readiness remains false until the corpus contains at least 150 vetted positives, 100 vetted failures, complete technique coverage, and at least 10 failures per failure class. The current 24-positive/12-failure seed is executable infrastructure, not market-leading evidence.
 

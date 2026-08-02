@@ -147,6 +147,8 @@ export const PuzzleAgentResultSchema = z.object({
     boardRecognitionConfidence: z.number().min(0).max(1).optional(),
     boardRecognitionModels: z.array(z.string()).optional(),
     boardConceptVotes: z.record(z.string(), z.number().int().nonnegative()).optional(),
+    boardTextVotes: z.record(z.string(), z.number().int().nonnegative()).optional(),
+    boardOperatorVotes: z.record(z.string(), z.number().int().nonnegative()).optional(),
     boardRecognitionProfiles: z
       .array(
         z.object({
@@ -156,6 +158,8 @@ export const PuzzleAgentResultSchema = z.object({
           confidence: z.number().min(0).max(1),
           models: z.array(z.string()),
           conceptVotes: z.record(z.string(), z.number().int().nonnegative()),
+          textVotes: z.record(z.string(), z.number().int().nonnegative()),
+          operatorVotes: z.record(z.string(), z.number().int().nonnegative()),
           wrappedRows: z.number().int().nonnegative(),
         })
       )

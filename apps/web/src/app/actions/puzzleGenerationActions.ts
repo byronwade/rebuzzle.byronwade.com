@@ -328,6 +328,8 @@ async function getOrGenerateDailyPuzzle(
         boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
         boardRecognitionModels: result.metadata.boardRecognitionModels,
         boardConceptVotes: result.metadata.boardConceptVotes,
+        boardTextVotes: result.metadata.boardTextVotes,
+        boardOperatorVotes: result.metadata.boardOperatorVotes,
         boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
       },
     });
