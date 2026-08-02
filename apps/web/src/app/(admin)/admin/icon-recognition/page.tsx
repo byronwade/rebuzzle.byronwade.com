@@ -7,6 +7,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type {
   BlindIconRecognitionSpecimen,
   IconRecognitionCalibrationReport,
+  IconRecognitionPanelId,
   IconRecognitionProgress,
 } from "@/ai/puzzle-agent/review/icon-recognition-service";
 import { useAuth } from "@/components/AuthProvider";
@@ -41,6 +42,7 @@ export default function IconRecognitionPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [panelId, setPanelId] = useState<IconRecognitionPanelId>("publication");
   const [specimen, setSpecimen] = useState<BlindIconRecognitionSpecimen | null>(null);
   const [progress, setProgress] = useState<IconRecognitionProgress | null>(null);
   const [report, setReport] = useState<IconRecognitionCalibrationReport | null>(null);
@@ -50,7 +52,7 @@ export default function IconRecognitionPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = useCallback(async () => {
-    const response = await fetch("/api/admin/ai/icon-recognition?mode=report", {
+    const response = await fetch(`/api/admin/ai/icon-recognition?mode=report&panel=${panelId}`, {
       cache: "no-store",
     });
     if (response.status === 401) {
@@ -63,13 +65,16 @@ export default function IconRecognitionPage() {
     }
     setReport(data.report);
     if (data.reviewerProgress) setProgress(data.reviewerProgress);
-  }, [router]);
+  }, [panelId, router]);
 
   const loadNext = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setReport(null);
     try {
-      const response = await fetch("/api/admin/ai/icon-recognition", { cache: "no-store" });
+      const response = await fetch(`/api/admin/ai/icon-recognition?panel=${panelId}`, {
+        cache: "no-store",
+      });
       if (response.status === 401) {
         router.push("/login");
         return;
@@ -86,7 +91,7 @@ export default function IconRecognitionPage() {
     } finally {
       setLoading(false);
     }
-  }, [loadReport, router]);
+  }, [loadReport, panelId, router]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -109,6 +114,7 @@ export default function IconRecognitionPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          panelId,
           fixtureId: specimen.fixtureId,
           guess: input.uncertain ? "" : guess,
           uncertain: input.uncertain,
@@ -134,6 +140,15 @@ export default function IconRecognitionPage() {
     void submit({ uncertain: false });
   };
 
+  const selectPanel = (nextPanelId: IconRecognitionPanelId) => {
+    if (nextPanelId === panelId) return;
+    setSpecimen(null);
+    setProgress(null);
+    setReport(null);
+    setGuess("");
+    setPanelId(nextPanelId);
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -156,6 +171,39 @@ export default function IconRecognitionPage() {
           your full panel is complete so later answers cannot be coached.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Review cohort</CardTitle>
+          <CardDescription>
+            Cohorts are scored independently so experimental assets cannot inherit evidence from the
+            production catalog.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <Button
+            aria-pressed={panelId === "publication"}
+            onClick={() => selectPanel("publication")}
+            type="button"
+            variant={panelId === "publication" ? "default" : "outline"}
+          >
+            Publication catalog
+          </Button>
+          <Button
+            aria-pressed={panelId === "candidates"}
+            onClick={() => selectPanel("candidates")}
+            type="button"
+            variant={panelId === "candidates" ? "default" : "outline"}
+          >
+            Replacement candidates
+          </Button>
+          <p className="text-muted-foreground text-xs sm:col-span-2">
+            {panelId === "publication"
+              ? "Qualifies every icon currently allowed in generated puzzles."
+              : "Blindly mixes quarantined replacements with known controls. Candidate answers count only after a reviewer completes the panel and passes the hidden control screen."}
+          </p>
+        </CardContent>
+      </Card>
 
       {progress && (
         <Card>
@@ -237,7 +285,7 @@ export default function IconRecognitionPage() {
             <AlertTitle>Blind panel complete</AlertTitle>
             <AlertDescription>
               Aggregate status: {report.status}. This report includes all independent reviewer
-              decisions for catalog {report.catalogVersion}.
+              decisions for the {report.panelId} cohort ({report.catalogVersion}).
             </AlertDescription>
           </Alert>
 
@@ -269,8 +317,8 @@ export default function IconRecognitionPage() {
             <CardHeader>
               <CardTitle>Readiness gates</CardTitle>
               <CardDescription>
-                Both sizes require complete three-reviewer coverage. Release is 90%; market-leading
-                is 97%.
+                Both sizes require complete {report.requiredReviewersPerFixture}-reviewer coverage.
+                Release is 90%; market-leading is 97%.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
@@ -282,8 +330,56 @@ export default function IconRecognitionPage() {
               </Badge>
               <Badge variant="outline">{report.reviewerCount} reviewers</Badge>
               <Badge variant="outline">{report.decisionCount} decisions</Badge>
+              {report.panelId === "candidates" && (
+                <>
+                  <Badge variant={report.controlGatePassed ? "default" : "destructive"}>
+                    Controls {report.controlGatePassed ? "passed" : "not proven"}
+                  </Badge>
+                  <Badge variant="outline">
+                    {report.qualifiedReviewerCount}/{report.submittedReviewerCount} qualified
+                  </Badge>
+                </>
+              )}
             </CardContent>
           </Card>
+
+          {report.panelId === "candidates" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Candidate promotion evidence</CardTitle>
+                <CardDescription>
+                  Each eligible concept has complete evidence, at least 90% aggregate naming, at
+                  least {percent(report.specimenAccuracyFloor)} at each player size, and a passing
+                  hidden-control cohort.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="default">
+                    {report.promotionEligibleConceptIds.length} eligible
+                  </Badge>
+                  <Badge variant="secondary">
+                    {report.blockedCandidateConceptIds.length} blocked
+                  </Badge>
+                  {report.excludedReviewerCount > 0 && (
+                    <Badge variant="destructive">
+                      {report.excludedReviewerCount} reviewer(s) excluded by controls
+                    </Badge>
+                  )}
+                </div>
+                {report.promotionEligibleConceptIds.length > 0 && (
+                  <p className="text-sm">
+                    Eligible: {report.promotionEligibleConceptIds.join(", ")}
+                  </p>
+                )}
+                {report.blockedCandidateConceptIds.length > 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    Still quarantined: {report.blockedCandidateConceptIds.join(", ")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {report.weakFixtures.length > 0 && (
             <Card>

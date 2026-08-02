@@ -17,4 +17,5 @@ only wraps it in a sanitized 64px SVG using the product ink color.
 Only path data required for the quarantined replacement candidates is included.
 These symbols are not publication eligible merely because they are vendored.
 Each candidate must pass Rebuzzle's blind multi-model tests at 36px and 72px,
-then the blind human naming panel, before its quarantine entry can be removed.
+then the [blind human naming panel](HUMAN_ICON_RECOGNITION.md), before its
+quarantine entry can be removed.
