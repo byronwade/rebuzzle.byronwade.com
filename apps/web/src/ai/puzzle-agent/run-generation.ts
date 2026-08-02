@@ -313,6 +313,25 @@ export async function runPuzzleAgentGeneration(
         }
         const puzzle = applyAuthoritativeComposition(output.puzzle, capturedComposition);
 
+        // Asset provenance is a cheap, fail-closed gate. Run it before novelty
+        // and difficulty evaluation so an unapproved/generated pictogram cannot
+        // consume additional database or model budget.
+        const assetApproval = await verifyPublicationAssets(puzzle.visual);
+        if (!assetApproval.ok) {
+          priorFailure = assetApproval.reason;
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+            console.warn("[Puzzle Agent] candidate rejected", {
+              modelId,
+              attempt,
+              stage: "asset-approval",
+              reason: priorFailure,
+            });
+          }
+          continue;
+        }
+
         const targetDifficulty = params.targetDifficulty || puzzle.difficulty;
 
         const [uniqueness, calibration] = await Promise.all([
@@ -356,22 +375,6 @@ export async function runPuzzleAgentGeneration(
           techniqueId: puzzle.techniqueId,
           visual: puzzle.visual,
         });
-
-        const assetApproval = await verifyPublicationAssets(puzzle.visual);
-        if (!assetApproval.ok) {
-          priorFailure = assetApproval.reason;
-          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
-          lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
-            console.warn("[Puzzle Agent] candidate rejected", {
-              modelId,
-              attempt,
-              stage: "asset-approval",
-              reason: priorFailure,
-            });
-          }
-          continue;
-        }
 
         const gate = evaluatePublishGates({
           rebusPuzzle: puzzle.rebusPuzzle,

@@ -204,7 +204,7 @@ Per-puzzle gates prevent an individual bad candidate from publishing; the longit
 
 ### Operational AI cost envelope
 
-Production defaults bound the expensive portion of a daily generation to two Apex candidates, one complete agent attempt per candidate, and one generator model per attempt. The independent multi-model, multi-viewport recognition gates remain mandatory for every candidate that reaches them. Operators may deliberately widen the search with `EVE_APEX_CANDIDATES`, `REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT`, or an explicit `maxAttempts`, but those changes are cost decisions and must be benchmarked before production use.
+Production defaults bound the expensive portion of a daily generation to two Apex candidates, one complete agent attempt per candidate, and one generator model per attempt. Authoritative asset provenance is checked immediately after composition, before novelty, difficulty, or quality evaluation, so unapproved artwork cannot consume the rest of the candidate budget. The independent multi-model, multi-viewport recognition gates remain mandatory for every candidate that reaches them. Operators may deliberately widen the search with `EVE_APEX_CANDIDATES`, `REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT`, or an explicit `maxAttempts`, but those changes are cost decisions and must be benchmarked before production use.
 
 Gateway account/project budget exhaustion is terminal, not a transient quota. The client must stop model fallback immediately, the puzzle agent must stop its attempt loop, Apex must stop remaining candidate slots, and the daily workflow must skip the downstream blog call. Public workflow responses use the sanitized `AI_BUDGET_EXCEEDED` code and never expose spend or limit details.
 
