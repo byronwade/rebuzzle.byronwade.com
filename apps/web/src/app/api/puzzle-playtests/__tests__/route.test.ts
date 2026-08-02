@@ -74,6 +74,25 @@ describe("registered-player blind puzzle playtest route", () => {
     expect(JSON.stringify(body)).not.toContain("profileId");
   });
 
+  it("checks eligibility without rendering or revealing a specimen", async () => {
+    getAuthenticatedUser.mockResolvedValue({ userId: "player-1" });
+    findUserById.mockResolvedValue({
+      id: "player-1",
+      email: "player@example.com",
+      createdAt: new Date(0),
+    });
+
+    const response = await GET(
+      new Request("https://rebuzzle.test/api/puzzle-playtests?mode=eligibility")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(body).toEqual({ success: true, eligible: true });
+    expect(getNext).not.toHaveBeenCalled();
+  });
+
   it("rejects fresh or inexperienced accounts as panel evidence", async () => {
     getAuthenticatedUser.mockResolvedValue({ userId: "player-1" });
     findUserById.mockResolvedValue({

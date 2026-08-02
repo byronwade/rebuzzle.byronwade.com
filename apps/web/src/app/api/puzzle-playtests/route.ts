@@ -54,6 +54,9 @@ export async function GET(request: Request) {
         { status: access.status, headers: PRIVATE_NO_STORE }
       );
     }
+    if (new URL(request.url).searchParams.get("mode") === "eligibility") {
+      return NextResponse.json({ success: true, eligible: true }, { headers: PRIVATE_NO_STORE });
+    }
     const result = await puzzlePlaytestService.getNext(access.reviewer.id);
     return NextResponse.json({ success: true, ...result }, { headers: PRIVATE_NO_STORE });
   } catch (error) {
