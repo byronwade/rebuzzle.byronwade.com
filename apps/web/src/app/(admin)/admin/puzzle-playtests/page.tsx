@@ -10,6 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
@@ -218,6 +219,9 @@ export default function PuzzlePlaytestsPage() {
           Solve only what the rendered board communicates. Every reviewer sees one responsive
           profile per generated puzzle, and the answer remains hidden until that review is final.
         </p>
+        <Button asChild className="mt-3" size="sm" variant="outline">
+          <Link href="/playtest">Open registered-player panel</Link>
+        </Button>
       </div>
 
       {progress && (
@@ -393,7 +397,8 @@ export default function PuzzlePlaytestsPage() {
               </CardTitle>
               <CardDescription>
                 Release requires 30 fully covered generated puzzles; market-leading evidence
-                requires 100, with three reviewers on every responsive profile.
+                requires 100, with five reviewers on every responsive profile plus representative
+                reviewer, difficulty, and technique coverage.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -419,6 +424,20 @@ export default function PuzzlePlaytestsPage() {
                   {percent(report.solveCalibrationMeanAbsoluteError)}
                 </div>
               </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Independent reviewers</div>
+                <div className="font-semibold text-xl">{report.reviewerCoverage.reviewers}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Largest reviewer share</div>
+                <div className="font-semibold text-xl">
+                  {percent(report.reviewerCoverage.maximumDecisionShare)}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Techniques represented</div>
+                <div className="font-semibold text-xl">{report.techniqueScores.length}</div>
+              </div>
             </CardContent>
           </Card>
 
@@ -438,8 +457,9 @@ export default function PuzzlePlaytestsPage() {
                 <Badge variant="outline">{report.decisionCount} decisions</Badge>
               </div>
               {!report.releaseReady && (
-                <div className="text-muted-foreground text-sm">
-                  {report.releaseFailures.slice(0, 5).join(" · ")}
+                <div className="space-y-1 text-muted-foreground text-sm">
+                  <div>Release: {report.releaseFailures.slice(0, 7).join(" · ")}</div>
+                  <div>Market: {report.marketLeadingFailures.slice(0, 7).join(" · ")}</div>
                 </div>
               )}
             </CardContent>
@@ -460,6 +480,48 @@ export default function PuzzlePlaytestsPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Difficulty strata</CardTitle>
+                <CardDescription>
+                  Completed current-contract puzzles by canonical tier
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {report.difficultyTierScores.map((score) => (
+                  <div className="flex items-center justify-between text-sm" key={score.id}>
+                    <span className="capitalize">{score.id}</span>
+                    <span>
+                      {score.candidates} puzzles · {percent(score.solveRate)} solved
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Technique coverage</CardTitle>
+                <CardDescription>Dominant techniques appear first</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {report.techniqueScores.slice(0, 12).map((score) => (
+                  <div className="flex items-center justify-between gap-3 text-sm" key={score.id}>
+                    <span className="truncate">{score.id}</span>
+                    <span className="shrink-0">
+                      {score.candidates} · {percent(score.share)}
+                    </span>
+                  </div>
+                ))}
+                {report.techniqueScores.length === 0 && (
+                  <div className="text-muted-foreground text-sm">
+                    No completed technique evidence
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {report.visibleCandidates.length > 0 && (

@@ -5,6 +5,8 @@ import type {
   PuzzlePlaytestFailureReason,
   PuzzlePlaytestReview,
 } from "@/db/models";
+import { type DifficultyTier, getDifficultyLevelForScore } from "../difficulty-levels";
+import { isKnownTechniqueId } from "../quality";
 import { PuzzleVisualSchema } from "../visual/composition";
 import {
   PUZZLE_BOARD_RECOGNITION_PROFILES,
@@ -12,10 +14,20 @@ import {
 } from "../visual/presentation";
 import { renderPuzzleVisualProfile } from "../visual/render-board";
 
-export const PUZZLE_PLAYTEST_CONTRACT_VERSION = "puzzle-playtest-v1";
-export const PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE = 3;
+export const PUZZLE_PLAYTEST_CONTRACT_VERSION = "puzzle-playtest-v2";
+export const PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE = 5;
 export const PUZZLE_PLAYTEST_RELEASE_SAMPLE = 30;
 export const PUZZLE_PLAYTEST_MARKET_SAMPLE = 100;
+export const PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS = 20;
+export const PUZZLE_PLAYTEST_MARKET_MIN_REVIEWERS = 50;
+export const PUZZLE_PLAYTEST_RELEASE_MAX_REVIEWER_SHARE = 0.075;
+export const PUZZLE_PLAYTEST_MARKET_MAX_REVIEWER_SHARE = 0.035;
+export const PUZZLE_PLAYTEST_RELEASE_MIN_TECHNIQUES = 6;
+export const PUZZLE_PLAYTEST_MARKET_MIN_TECHNIQUES = 10;
+export const PUZZLE_PLAYTEST_RELEASE_MAX_TECHNIQUE_SHARE = 0.35;
+export const PUZZLE_PLAYTEST_MARKET_MAX_TECHNIQUE_SHARE = 0.2;
+export const PUZZLE_PLAYTEST_RELEASE_MIN_PER_DIFFICULTY_TIER = 3;
+export const PUZZLE_PLAYTEST_MARKET_MIN_PER_DIFFICULTY_TIER = 15;
 
 export const PUZZLE_PLAYTEST_FAILURE_REASONS = [
   "unrecognizable-artwork",
@@ -64,6 +76,21 @@ export type PuzzlePlaytestCandidateReport = {
   ambiguityRate: number | null;
 };
 
+export type PuzzlePlaytestStratumScore = {
+  id: string;
+  candidates: number;
+  share: number | null;
+  decisions: number;
+  correct: number;
+  solveRate: number | null;
+};
+
+export type PuzzlePlaytestReviewerCoverage = {
+  reviewers: number;
+  maximumDecisionsByOneReviewer: number;
+  maximumDecisionShare: number | null;
+};
+
 export type PuzzlePlaytestReport = {
   contractVersion: typeof PUZZLE_PLAYTEST_CONTRACT_VERSION;
   requiredReviewersPerProfile: number;
@@ -71,6 +98,7 @@ export type PuzzlePlaytestReport = {
   openCandidates: number;
   completedCandidates: number;
   reviewerCount: number;
+  reviewerCoverage: PuzzlePlaytestReviewerCoverage;
   decisionCount: number;
   completedDecisionCount: number;
   overallSolveRate: number | null;
@@ -83,6 +111,8 @@ export type PuzzlePlaytestReport = {
   solveCalibrationMeanAbsoluteError: number | null;
   solveCalibrationBias: number | null;
   profileScores: PuzzlePlaytestProfileScore[];
+  difficultyTierScores: PuzzlePlaytestStratumScore[];
+  techniqueScores: PuzzlePlaytestStratumScore[];
   failureReasons: Record<PuzzlePlaytestFailureReason, number>;
   visibleCandidates: PuzzlePlaytestCandidateReport[];
   releaseReady: boolean;
@@ -198,6 +228,16 @@ function uniqueReviews(reviews: PuzzlePlaytestReview[]): PuzzlePlaytestReview[] 
 function reportFailures(input: {
   completedCandidates: number;
   minimumCandidates: number;
+  reviewerCount: number;
+  minimumReviewers: number;
+  maximumReviewerDecisionShare: number | null;
+  maximumAllowedReviewerDecisionShare: number;
+  difficultyTierScores: PuzzlePlaytestStratumScore[];
+  minimumCandidatesPerDifficultyTier: number;
+  techniqueScores: PuzzlePlaytestStratumScore[];
+  classifiedTechniqueCandidates: number;
+  minimumTechniques: number;
+  maximumTechniqueShare: number;
   candidateFloorPassRate: number | null;
   minimumFloorPassRate: number;
   ambiguityRate: number | null;
@@ -219,6 +259,37 @@ function reportFailures(input: {
   if (input.completedCandidates < input.minimumCandidates) {
     failures.push(
       `Completed generated-puzzle sample ${input.completedCandidates}/${input.minimumCandidates}`
+    );
+  }
+  if (input.reviewerCount < input.minimumReviewers) {
+    failures.push(`Independent reviewer breadth ${input.reviewerCount}/${input.minimumReviewers}`);
+  }
+  if (
+    input.maximumReviewerDecisionShare === null ||
+    input.maximumReviewerDecisionShare > input.maximumAllowedReviewerDecisionShare
+  ) {
+    failures.push(`One-reviewer decision share above ${input.maximumAllowedReviewerDecisionShare}`);
+  }
+  const undercoveredDifficultyTiers = input.difficultyTierScores
+    .filter((score) => score.candidates < input.minimumCandidatesPerDifficultyTier)
+    .map((score) => `${score.id} ${score.candidates}/${input.minimumCandidatesPerDifficultyTier}`);
+  if (undercoveredDifficultyTiers.length) {
+    failures.push(`Difficulty-tier coverage incomplete: ${undercoveredDifficultyTiers.join(", ")}`);
+  }
+  if (input.techniqueScores.length < input.minimumTechniques) {
+    failures.push(`Technique breadth ${input.techniqueScores.length}/${input.minimumTechniques}`);
+  }
+  if (input.classifiedTechniqueCandidates < input.completedCandidates) {
+    failures.push(
+      `Named-technique coverage ${input.classifiedTechniqueCandidates}/${input.completedCandidates}`
+    );
+  }
+  const dominantTechnique = input.techniqueScores.find(
+    (score) => score.share !== null && score.share > input.maximumTechniqueShare
+  );
+  if (dominantTechnique) {
+    failures.push(
+      `Technique concentration ${dominantTechnique.id} ${dominantTechnique.share!.toFixed(3)} above ${input.maximumTechniqueShare}`
     );
   }
   if (
@@ -513,6 +584,63 @@ export function createPuzzlePlaytestService(
         ? Math.max(...solveRates) - Math.min(...solveRates)
         : null;
       const completeCandidates = candidates.filter((candidate) => completeIds.has(candidate.id));
+      const reviewerDecisionCounts = new Map<string, number>();
+      for (const review of completedReviews) {
+        reviewerDecisionCounts.set(
+          review.reviewerId,
+          (reviewerDecisionCounts.get(review.reviewerId) ?? 0) + 1
+        );
+      }
+      const maximumDecisionsByOneReviewer = Math.max(0, ...reviewerDecisionCounts.values());
+      const reviewerCoverage: PuzzlePlaytestReviewerCoverage = {
+        reviewers: reviewerDecisionCounts.size,
+        maximumDecisionsByOneReviewer,
+        maximumDecisionShare: ratio(maximumDecisionsByOneReviewer, completedReviews.length),
+      };
+
+      function stratumScore(
+        id: string,
+        rows: PuzzlePlaytestCandidate[]
+      ): PuzzlePlaytestStratumScore {
+        const rowIds = new Set(rows.map((candidate) => candidate.id));
+        const decisions = completedReviews.filter((review) => rowIds.has(review.candidateId));
+        const correct = decisions.filter((review) => review.correct).length;
+        return {
+          id,
+          candidates: rows.length,
+          share: ratio(rows.length, completeCandidates.length),
+          decisions: decisions.length,
+          correct,
+          solveRate: ratio(correct, decisions.length),
+        };
+      }
+
+      const difficultyTierScores = (["hard", "difficult", "evil", "impossible"] as const).map(
+        (tier: DifficultyTier) =>
+          stratumScore(
+            tier,
+            completeCandidates.filter(
+              (candidate) => getDifficultyLevelForScore(candidate.difficultyScore).tier === tier
+            )
+          )
+      );
+      const techniqueScores = [
+        ...new Set(
+          completeCandidates
+            .map((candidate) => candidate.techniqueId)
+            .filter((techniqueId): techniqueId is string => isKnownTechniqueId(techniqueId))
+        ),
+      ]
+        .sort()
+        .map((techniqueId) =>
+          stratumScore(
+            techniqueId,
+            completeCandidates.filter((candidate) => candidate.techniqueId === techniqueId)
+          )
+        )
+        .sort(
+          (left, right) => right.candidates - left.candidates || left.id.localeCompare(right.id)
+        );
       const candidatePasses = completeCandidates.filter((candidate) => {
         const rows = completedReviews.filter((review) => review.candidateId === candidate.id);
         const solveRate = ratio(rows.filter((review) => review.correct).length, rows.length) ?? 0;
@@ -558,6 +686,19 @@ export function createPuzzlePlaytestService(
       const releaseFailures = reportFailures({
         completedCandidates: completeCandidates.length,
         minimumCandidates: PUZZLE_PLAYTEST_RELEASE_SAMPLE,
+        reviewerCount: reviewerCoverage.reviewers,
+        minimumReviewers: PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS,
+        maximumReviewerDecisionShare: reviewerCoverage.maximumDecisionShare,
+        maximumAllowedReviewerDecisionShare: PUZZLE_PLAYTEST_RELEASE_MAX_REVIEWER_SHARE,
+        difficultyTierScores,
+        minimumCandidatesPerDifficultyTier: PUZZLE_PLAYTEST_RELEASE_MIN_PER_DIFFICULTY_TIER,
+        techniqueScores,
+        classifiedTechniqueCandidates: techniqueScores.reduce(
+          (sum, score) => sum + score.candidates,
+          0
+        ),
+        minimumTechniques: PUZZLE_PLAYTEST_RELEASE_MIN_TECHNIQUES,
+        maximumTechniqueShare: PUZZLE_PLAYTEST_RELEASE_MAX_TECHNIQUE_SHARE,
         candidateFloorPassRate,
         minimumFloorPassRate: 0.9,
         ambiguityRate,
@@ -578,6 +719,19 @@ export function createPuzzlePlaytestService(
       const marketLeadingFailures = reportFailures({
         completedCandidates: completeCandidates.length,
         minimumCandidates: PUZZLE_PLAYTEST_MARKET_SAMPLE,
+        reviewerCount: reviewerCoverage.reviewers,
+        minimumReviewers: PUZZLE_PLAYTEST_MARKET_MIN_REVIEWERS,
+        maximumReviewerDecisionShare: reviewerCoverage.maximumDecisionShare,
+        maximumAllowedReviewerDecisionShare: PUZZLE_PLAYTEST_MARKET_MAX_REVIEWER_SHARE,
+        difficultyTierScores,
+        minimumCandidatesPerDifficultyTier: PUZZLE_PLAYTEST_MARKET_MIN_PER_DIFFICULTY_TIER,
+        techniqueScores,
+        classifiedTechniqueCandidates: techniqueScores.reduce(
+          (sum, score) => sum + score.candidates,
+          0
+        ),
+        minimumTechniques: PUZZLE_PLAYTEST_MARKET_MIN_TECHNIQUES,
+        maximumTechniqueShare: PUZZLE_PLAYTEST_MARKET_MAX_TECHNIQUE_SHARE,
         candidateFloorPassRate,
         minimumFloorPassRate: 0.97,
         ambiguityRate,
@@ -630,7 +784,8 @@ export function createPuzzlePlaytestService(
         candidateCount: candidates.length,
         openCandidates: candidates.filter((candidate) => candidate.status === "open").length,
         completedCandidates: completeCandidates.length,
-        reviewerCount: new Set(reviews.map((review) => review.reviewerId)).size,
+        reviewerCount: reviewerCoverage.reviewers,
+        reviewerCoverage,
         decisionCount: reviews.length,
         completedDecisionCount: completedReviews.length,
         overallSolveRate: ratio(
@@ -646,6 +801,8 @@ export function createPuzzlePlaytestService(
         solveCalibrationMeanAbsoluteError,
         solveCalibrationBias,
         profileScores,
+        difficultyTierScores,
+        techniqueScores,
         failureReasons,
         visibleCandidates,
         releaseReady: releaseFailures.length === 0,
