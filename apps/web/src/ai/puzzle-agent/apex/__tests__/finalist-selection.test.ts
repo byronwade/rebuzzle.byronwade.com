@@ -153,4 +153,30 @@ describe("Apex rendered finalist selection", () => {
       "Rendered finalist evaluation stopped before runner-up to preserve the runtime deadline",
     ]);
   });
+
+  it("reports why every draft was excluded before rendered evaluation", async () => {
+    const rejected = {
+      ...candidate("rejected", 90),
+      publishable: false,
+      critique: {
+        ...candidate("rejected", 90).critique!,
+        verdict: "revise" as const,
+        summary: "The visual metaphor is ambiguous",
+        reviseInstructions: ["Replace the abstract icon with a concrete silhouette"],
+      },
+      rejectReasons: ["Critique revise: Replace the abstract icon with a concrete silhouette"],
+    };
+
+    const result = await selectQualifiedFinalist({
+      candidates: [rejected],
+      minRubricOverall: 78,
+      canStartEvaluation: () => true,
+      evaluate: async (value) => value,
+    });
+
+    expect(result.winner).toBeNull();
+    expect(result.failures).toContain(
+      "rejected: Critique revise: Replace the abstract icon with a concrete silhouette"
+    );
+  });
 });
