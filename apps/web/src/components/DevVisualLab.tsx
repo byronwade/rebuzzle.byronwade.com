@@ -45,6 +45,16 @@ type LabResult = {
     emojiFallback: string;
     clarityScore?: number;
     clarityReasons?: string[];
+    pixelIntegrity?: {
+      ok: boolean;
+      reasons: string[];
+      profiles: Array<{
+        tileSize: number;
+        foregroundRatio: number;
+        boundsWidthRatio: number;
+        boundsHeightRatio: number;
+      }>;
+    };
     seenAs?: string;
     recognitionConfidence?: number;
     attempts?: number;
@@ -141,8 +151,7 @@ const FALLBACK_MODES: ModeMeta[] = [
   {
     id: "apex-tournament",
     label: "Apex tournament",
-    description:
-      "Multi-candidate generation with critique, player sim, and rubric — preview only.",
+    description: "Multi-candidate generation with critique, player sim, and rubric — preview only.",
     usesAi: true,
     estimatedCost: "high",
   },
@@ -265,11 +274,9 @@ export function DevVisualLab() {
   }
 
   const previewVisual = result?.visual || result?.puzzle?.visual;
-  const previewFallback =
-    result?.puzzle?.rebusPuzzle || result?.visual?.unicodeFallback || "◆";
+  const previewFallback = result?.puzzle?.rebusPuzzle || result?.visual?.unicodeFallback || "◆";
   const revealedAnswer = result?.puzzle?.answer || result?.seed?.answer || "";
-  const revealedDifficulty =
-    result?.puzzle?.difficulty ?? result?.seed?.difficulty ?? null;
+  const revealedDifficulty = result?.puzzle?.difficulty ?? result?.seed?.difficulty ?? null;
   const revealedConcept = result?.seed?.concept || result?.pictogram?.concept || "";
 
   return (
@@ -284,8 +291,8 @@ export function DevVisualLab() {
         </div>
         <p className="text-muted-foreground text-sm">
           Exercise every generative path — custom pictograms, text devices, unicode emoji, image
-          tiles, hybrid boards, composed rebuses, or a full Eve / Apex puzzle. The AI picks
-          concept, answer, and difficulty. Nothing here replaces today&apos;s published puzzle.
+          tiles, hybrid boards, composed rebuses, or a full Eve / Apex puzzle. The AI picks concept,
+          answer, and difficulty. Nothing here replaces today&apos;s published puzzle.
         </p>
       </div>
 
@@ -366,9 +373,13 @@ export function DevVisualLab() {
               </p>
               <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
                 {revealedConcept ? <span>Concept: {revealedConcept}</span> : null}
-                {revealedDifficulty != null ? <span>Difficulty {revealedDifficulty}/10</span> : null}
+                {revealedDifficulty != null ? (
+                  <span>Difficulty {revealedDifficulty}/10</span>
+                ) : null}
                 {puzzleId ? (
-                  <span className="font-mono text-[10px] text-subtle">saved · {puzzleId.slice(0, 8)}</span>
+                  <span className="font-mono text-[10px] text-subtle">
+                    saved · {puzzleId.slice(0, 8)}
+                  </span>
                 ) : (
                   <span className="text-subtle">not saved</span>
                 )}
@@ -449,25 +460,35 @@ export function DevVisualLab() {
             {result.pictogram && (
               <MetaCard
                 title="Pictogram"
-                lines={[
-                  `${result.pictogram.ok ? "ok" : "failed"} · ${result.pictogram.concept}`,
-                  typeof result.pictogram.clarityScore === "number"
-                    ? `clarity ${result.pictogram.clarityScore}${
-                        result.pictogram.attempts ? ` · tries ${result.pictogram.attempts}` : ""
-                      }`
-                    : "clarity n/a",
-                  result.pictogram.seenAs
-                    ? `seen as “${result.pictogram.seenAs}”${
-                        typeof result.pictogram.recognitionConfidence === "number"
-                          ? ` (${Math.round(result.pictogram.recognitionConfidence * 100)}%)`
-                          : ""
-                      }`
-                    : null,
-                  result.pictogram.clarityReasons?.length
-                    ? `reasons: ${result.pictogram.clarityReasons.join(", ")}`
-                    : `fallback ${result.pictogram.emojiFallback}`,
-                  result.pictogram.error || (result.pictogram.svg ? "svg ready" : "no svg"),
-                ].filter(Boolean) as string[]}
+                lines={
+                  [
+                    `${result.pictogram.ok ? "ok" : "failed"} · ${result.pictogram.concept}`,
+                    typeof result.pictogram.clarityScore === "number"
+                      ? `clarity ${result.pictogram.clarityScore}${
+                          result.pictogram.attempts ? ` · tries ${result.pictogram.attempts}` : ""
+                        }`
+                      : "clarity n/a",
+                    result.pictogram.seenAs
+                      ? `seen as “${result.pictogram.seenAs}”${
+                          typeof result.pictogram.recognitionConfidence === "number"
+                            ? ` (${Math.round(result.pictogram.recognitionConfidence * 100)}%)`
+                            : ""
+                        }`
+                      : null,
+                    result.pictogram.pixelIntegrity
+                      ? `pixels ${result.pictogram.pixelIntegrity.ok ? "ok" : "failed"} · ${result.pictogram.pixelIntegrity.profiles
+                          .map(
+                            (profile) =>
+                              `${profile.tileSize}px ${Math.round(profile.foregroundRatio * 100)}% ink, ${Math.round(profile.boundsWidthRatio * 100)}×${Math.round(profile.boundsHeightRatio * 100)}% bounds`
+                          )
+                          .join(" · ")}`
+                      : "pixels n/a",
+                    result.pictogram.clarityReasons?.length
+                      ? `reasons: ${result.pictogram.clarityReasons.join(", ")}`
+                      : `fallback ${result.pictogram.emojiFallback}`,
+                    result.pictogram.error || (result.pictogram.svg ? "svg ready" : "no svg"),
+                  ].filter(Boolean) as string[]
+                }
               />
             )}
             {result.image && (

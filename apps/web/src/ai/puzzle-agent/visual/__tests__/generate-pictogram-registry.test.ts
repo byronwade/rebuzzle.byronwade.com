@@ -86,6 +86,23 @@ describe("generated pictogram registry integration", () => {
     });
   });
 
+  it("rejects a source-valid drawing that disappears at player size before vision calls", async () => {
+    generateAIText.mockResolvedValueOnce({
+      text: '<svg viewBox="0 0 64 64"><path d="M 96 96 L 110 96 L 110 110 L 96 110 Z" fill="#1a1f1c" stroke="#1a1f1c"/><path d="M 112 96 L 126 96 L 126 110 L 112 110 Z" fill="#1a1f1c" stroke="#1a1f1c"/><path d="M 96 112 L 110 112 L 110 126 L 96 126 Z" fill="#1a1f1c" stroke="#1a1f1c"/></svg>',
+    });
+
+    const result = await generatePictogram({
+      concept: "lighthouse",
+      maxRetries: 0,
+      usage: "review",
+    });
+
+    expect(result).toMatchObject({ ok: false });
+    expect(result.error).toContain("pixel_integrity");
+    expect(recognizePictogramIcon).not.toHaveBeenCalled();
+    expect(submitCandidate).not.toHaveBeenCalled();
+  });
+
   it("reuses a human-approved exact asset but still reruns current recognition", async () => {
     findApproved.mockResolvedValue({ id: "generated-pictogram:approved", svg });
 

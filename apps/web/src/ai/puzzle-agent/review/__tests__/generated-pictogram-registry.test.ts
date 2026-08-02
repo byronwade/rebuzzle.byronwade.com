@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "@jest/globals";
 import type { GeneratedPictogramCandidate, GeneratedPictogramReview } from "@/db/models";
 import { resolveCuratedPictogram } from "../../visual/curated-pictograms";
@@ -118,6 +119,9 @@ function automatedInput(concept = "lighthouse") {
   };
 }
 
+const OFF_CANVAS_SVG =
+  '<svg viewBox="0 0 64 64"><path d="M 96 96 L 110 96 L 110 110 L 96 110 Z" fill="#1a1f1c" stroke="#1a1f1c"/><path d="M 112 96 L 126 96 L 126 110 L 112 110 Z" fill="#1a1f1c" stroke="#1a1f1c"/><path d="M 96 112 L 110 112 L 110 126 L 96 126 Z" fill="#1a1f1c" stroke="#1a1f1c"/></svg>';
+
 async function completeReviewer(
   registry: ReturnType<typeof createGeneratedPictogramRegistry>,
   reviewerId: string,
@@ -148,6 +152,19 @@ describe("human-governed generated pictogram registry", () => {
     await expect(
       registry.submitCandidate({ ...automatedInput(), recognitionProfiles: [] })
     ).rejects.toThrow("both player-size");
+    expect(store.candidates).toHaveLength(0);
+  });
+
+  it("rejects source-valid candidates that disappear at player size", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+
+    await expect(
+      registry.submitCandidate({
+        ...automatedInput(),
+        svg: OFF_CANVAS_SVG,
+      })
+    ).rejects.toThrow("player-pixel integrity");
     expect(store.candidates).toHaveLength(0);
   });
 
@@ -260,6 +277,21 @@ describe("human-governed generated pictogram registry", () => {
     await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
     expect(store.candidates[0]?.status).toBe("quarantined");
     expect(store.candidates[0]?.auditHistory.at(-1)?.actor).toBe("runtime-gate");
+  });
+
+  it("quarantines a hash-valid approved asset whose player raster regresses", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+    await registry.submitCandidate(automatedInput());
+    await completeReviewer(registry, "reviewer-1", "lighthouse");
+    await completeReviewer(registry, "reviewer-2", "lighthouse");
+    await completeReviewer(registry, "reviewer-3", "lighthouse");
+    store.candidates[0]!.svg = OFF_CANVAS_SVG;
+    store.candidates[0]!.assetSha256 = createHash("sha256").update(OFF_CANVAS_SVG).digest("hex");
+
+    await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+    expect(store.candidates[0]?.status).toBe("quarantined");
+    expect(store.candidates[0]?.auditHistory.at(-1)?.reason).toContain("integrity validation");
   });
 
   it("ignores stale registry versions", async () => {

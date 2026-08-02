@@ -15,6 +15,7 @@ import {
   VISUAL_LAB_MODE_META,
   type VisualLabMode,
 } from "./lab-recipes";
+import type { PictogramPixelIntegrityResult } from "./pictogram-pixel-integrity";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
 
 export type RunVisualLabInput = {
@@ -46,6 +47,7 @@ export type RunVisualLabResult = {
     emojiFallback: string;
     clarityScore?: number;
     clarityReasons?: string[];
+    pixelIntegrity?: PictogramPixelIntegrityResult;
     seenAs?: string;
     recognitionConfidence?: number;
     attempts?: number;
@@ -221,6 +223,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
         emojiFallback: pictogram.emojiFallback,
         clarityScore: pictogram.clarityScore,
         clarityReasons: pictogram.clarityReasons,
+        pixelIntegrity: pictogram.pixelIntegrity,
         seenAs: pictogram.seenAs,
         recognitionConfidence: pictogram.recognitionConfidence,
         attempts: pictogram.attempts,
