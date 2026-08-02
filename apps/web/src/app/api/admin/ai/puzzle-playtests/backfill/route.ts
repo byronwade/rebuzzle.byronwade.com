@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { puzzlePlaytestBackfillService } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill-server";
 import { verifyAdminAccess } from "@/lib/admin-auth";
+import { authorizeCron } from "@/lib/cron/auth";
 
 const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" };
 
@@ -10,8 +11,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export async function POST(request: Request) {
   try {
-    const admin = await verifyAdminAccess(request);
-    if (!admin) return NextResponse.json({ error: "Admin access required" }, { status: 401 });
+    const cronAuthorization = authorizeCron(request);
+    const admin = cronAuthorization.ok ? null : await verifyAdminAccess(request);
+    if (!(cronAuthorization.ok || admin)) {
+      return NextResponse.json({ error: "Admin or machine access required" }, { status: 401 });
+    }
     const body: unknown = await request.json();
     if (!isRecord(body)) {
       return NextResponse.json(
