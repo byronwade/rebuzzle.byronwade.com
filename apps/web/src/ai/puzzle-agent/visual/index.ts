@@ -16,6 +16,10 @@ export {
   VisualLayerSchema,
 } from "./composition";
 export {
+  type IconRecognitionResult,
+  recognizePictogramIcon,
+} from "./critique-pictogram";
+export {
   type GenerateImageTileInput,
   type GenerateImageTileResult,
   generateImageTile,
@@ -26,6 +30,14 @@ export {
   generatePictogram,
 } from "./generate-pictogram";
 export {
+  conceptMatchesSeen,
+  getIconFeatureHints,
+  ICON_FEATURES,
+  lookupIconFeatures,
+  OVERUSED_REBUS_TROPES,
+} from "./icon-features";
+export { inventLabBrief, type LabBrief } from "./invent-lab-brief";
+export {
   buildLabLayers,
   guessEmoji,
   isVisualLabMode,
@@ -34,26 +46,21 @@ export {
   type VisualLabMode,
   type VisualLabModeMeta,
 } from "./lab-recipes";
-export { inventLabBrief, type LabBrief } from "./invent-lab-brief";
-export { type RunVisualLabInput, type RunVisualLabResult, runVisualLab } from "./run-visual-lab";
-export {
-  recognizePictogramIcon,
-  type IconRecognitionResult,
-} from "./critique-pictogram";
-export {
-  conceptMatchesSeen,
-  getIconFeatureHints,
-  ICON_FEATURES,
-  OVERUSED_REBUS_TROPES,
-  lookupIconFeatures,
-} from "./icon-features";
 export {
   buildConcreteDrawingBrief,
   isAbstractPictogramConcept,
+  type PictogramClarityResult,
   passesPictogramClarity,
   scorePictogramClarity,
-  type PictogramClarityResult,
 } from "./pictogram-clarity";
+export {
+  evaluatePictogramPixelIntegrity,
+  PICTOGRAM_PIXEL_INTEGRITY_SIZES,
+  PICTOGRAM_PIXEL_INTEGRITY_VERSION,
+  type PictogramPixelIntegrityProfile,
+  type PictogramPixelIntegrityResult,
+} from "./pictogram-pixel-integrity";
+export { type RunVisualLabInput, type RunVisualLabResult, runVisualLab } from "./run-visual-lab";
 export {
   IMAGE_TILE_STYLE_GUIDE,
   INK_PICTOGRAM_EXAMPLE_BEE,

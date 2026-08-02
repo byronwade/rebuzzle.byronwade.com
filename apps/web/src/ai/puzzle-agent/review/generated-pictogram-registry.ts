@@ -6,6 +6,7 @@ import type {
   GeneratedPictogramStatus,
 } from "@/db/models";
 import { scorePictogramClarity } from "../visual/pictogram-clarity";
+import { evaluatePictogramPixelIntegrity } from "../visual/pictogram-pixel-integrity";
 import { sanitizePictogramSvg } from "../visual/sanitize-svg";
 import { INK_PICTOGRAM_STYLE_ID } from "../visual/style";
 import { normalizeIconNamingGuess, resolveIconNamingGuess } from "./icon-recognition-service";
@@ -255,6 +256,12 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
       if (!svg) throw new Error("Generated pictogram candidate SVG is invalid");
       const clarity = scorePictogramClarity(svg);
       if (!clarity.ok) throw new Error("Generated pictogram candidate failed structural clarity");
+      const pixelIntegrity = await evaluatePictogramPixelIntegrity(svg);
+      if (!pixelIntegrity.ok) {
+        throw new Error(
+          `Generated pictogram candidate failed player-pixel integrity: ${pixelIntegrity.reasons.join(", ")}`
+        );
+      }
       const profileSizes = new Set((input.recognitionProfiles ?? []).map((row) => row.tileSize));
       if (!profileSizes.has(36) || !profileSizes.has(72)) {
         throw new Error(
@@ -291,7 +298,8 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
           event({
             action: "submitted",
             actor: "generator",
-            reason: "Passed current structural and two-size automated recognition gates",
+            reason:
+              "Passed current structural, player-pixel, and two-size automated recognition gates",
             now,
           }),
         ],
@@ -311,11 +319,13 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
         conceptKey,
       });
       if (!candidate) return null;
+      const pixelIntegrity = await evaluatePictogramPixelIntegrity(candidate.svg);
       const valid =
         candidate.status === "approved" &&
         candidate.assetSha256 === sha256(candidate.svg) &&
         sanitizePictogramSvg(candidate.svg) === candidate.svg &&
-        scorePictogramClarity(candidate.svg).ok;
+        scorePictogramClarity(candidate.svg).ok &&
+        pixelIntegrity.ok;
       if (valid) return candidate;
       await this.quarantine(candidate.id, "Approved registry asset failed integrity validation");
       return null;

@@ -6,9 +6,9 @@ Generate daily rebus puzzles that are recognizable, fair, novel, and delightful 
 
 ## Audit finding
 
-The current Apex/Eve pipeline already has strong conceptual machinery: multiple candidates, named techniques, uniqueness checks, difficulty calibration, adversarial critique, simulated players, and a tournament rubric. Its critical blind spot is visual evidence.
+The Apex/Eve pipeline began with strong conceptual machinery—multiple candidates, named techniques, uniqueness checks, difficulty calibration, adversarial critique, simulated players, and a tournament rubric—but weak visual evidence.
 
-Generated SVGs are currently checked mainly through markup heuristics such as shape count, strokes, and palette. Blind recognition receives SVG source text rather than rendered pixels. Apex critique receives the declared pictogram concepts and Unicode fallback rather than the visual shown to the player. As a result, a structurally valid SVG can be scored as a recognizable “car” even when its rendered silhouette does not resemble one.
+That original blind spot is now guarded by deterministic player-pixel checks, blind multi-model icon naming, responsive board perception, screenshot-only solving, answer-aware rejection, and human calibration workflows. The remaining market-readiness gap is empirical: the implemented gates still need sufficient qualified-player evidence and credentialed frozen-benchmark results. A green automated pipeline remains screening evidence, not proof that every intended “car” looks like a car to players.
 
 ## Non-negotiable publish contract
 
@@ -71,12 +71,13 @@ For each object:
 
 1. Sanitize the SVG.
 2. Render it at the real 72px player size; test the compact 36px presentation as well.
-3. Enlarge those pixels without adding detail for evaluator compatibility.
-4. Ask at least two independent vision models to name the object without revealing its intended concept.
-5. Require semantic agreement, sufficient confidence, and no high-probability conflicting reading.
-6. On failure, select a vetted asset, redraw from specific feedback, substitute a more concrete cue, or reject the candidate.
+3. Reject the exact player rasters when meaningful 3:1-contrast ink occupies less than 6% or more than 55% of the tile, the visible bounding area is below 18%, content touches the canvas edge, or rasterization fails.
+4. Enlarge those pixels without adding detail for evaluator compatibility.
+5. Ask at least two independent vision models to name the object without revealing its intended concept.
+6. Require semantic agreement, sufficient confidence, and no high-probability conflicting reading.
+7. On failure, select a vetted asset, redraw from specific feedback, substitute a more concrete cue, or reject the candidate.
 
-Structural SVG heuristics remain useful for security and craft, but they are not semantic-recognition evidence.
+The pixel thresholds are deliberately wider than the measured publication catalog envelope: its 36px high-contrast occupancy is approximately 11–33%, with every current asset occupying at least half the width and 58% of the height. Structural and pixel checks catch broken rendering; neither is semantic-recognition evidence, so blind naming and human calibration remain mandatory.
 
 ## Whole-board gate
 
@@ -139,6 +140,7 @@ The first implementation slice now includes:
 - a 98-concept publication catalog selected from 118 local Lucide-backed candidates, with 20 benchmark-failing assets quarantined behind exact provenance checks until replacements pass;
 - catalog-first resolution before long-tail SVG generation;
 - 36px and 72px rasterization so evaluators see compact and large player-level detail;
+- a deterministic 36px/72px pixel-integrity gate for contrast, visible-ink occupancy, subject bounds, canvas-edge contact, and rasterization failures, enforced before model calls and on approved-cache reuse;
 - two independent blind vision judges at every icon size;
 - one shared presentation specification used by the React player and server renderer;
 - independent board perception at compact 320px, mobile 375px, and desktop 768px;
@@ -213,13 +215,13 @@ The workflow and gates are implemented, but no human decisions have been fabrica
 
 ### Human-governed generated asset registry
 
-The curated Lucide-backed catalog remains the first and preferred visual source. When a genuinely long-tail concept requires generated SVG artwork, the asset may support only the puzzle generation attempt that produced it after passing the live structural and two-model recognition gates. It is not silently promoted into a reusable cache.
+The curated Lucide-backed catalog remains the first and preferred visual source. When a genuinely long-tail concept requires generated SVG artwork, the asset may support only the puzzle generation attempt that produced it after passing the structural, exact player-pixel, and live two-model recognition gates. It is not silently promoted into a reusable cache.
 
 Every newly accepted long-tail SVG is submitted to `generated-pictogram-registry-v1` with its exact SHA-256, normalized concept, style version, clarity evidence, 36px and 72px recognition evidence, and append-only audit event. The registry accepts at most one pending candidate per concept so reviewers are not flooded with competing variants. Guesses receive only exact normalized concept or simple singular/plural credit; fuzzy category matches do not turn an ambiguous symbol into an approval.
 
 Administrators review the queue at `/admin/generated-assets`. Each browser payload contains only an opaque fixture ID, exact player-size sanitized SVG, and size. A response is immutable for that reviewer/specimen, “I don't know” is a failure, and no correctness is returned. The concept and aggregate status become visible to that reviewer only after they have judged both sizes of that candidate, preventing the 36px result from coaching the 72px decision or vice versa.
 
-Reusable approval is deliberately strict: three independent reviewers must name the intended object correctly at 36px and all three must do so again at 72px. One completed size with any miss rejects the candidate. An approved lookup still verifies the stored hash, exact sanitization, structural clarity, and current automated recognition at both sizes. A corrupted or regressed asset is atomically quarantined and fresh generation resumes through the full gate; it is never served merely because it passed an older model version.
+Reusable approval is deliberately strict: three independent reviewers must name the intended object correctly at 36px and all three must do so again at 72px. One completed size with any miss rejects the candidate. An approved lookup still verifies the stored hash, exact sanitization, structural clarity, player-pixel integrity, and current automated recognition at both sizes. A corrupted or regressed asset is atomically quarantined and fresh generation resumes through the full gate; it is never served merely because it passed an older model version.
 
 This registry converts generation into a governed asset-sourcing lane rather than an unlimited source of production icons. The code, storage locks, panel, and runtime quarantine are implemented, but no approvals have been fabricated. Market readiness for long-tail artwork remains unproven until real independent reviewers complete candidates and those assets survive live credentialed recognition plus player telemetry.
 
@@ -267,7 +269,7 @@ The evaluator commands write versioned JSON evidence under `artifacts/puzzle-gen
 
 Live vision preflight fails before scoring when any configured independent judge is unavailable. The failure now identifies the player size, model ID, and a sanitized provider error for every missing judge; benchmark artifacts retain the same diagnostics. This keeps publication fail-closed while distinguishing revoked credentials, unavailable model IDs, provider limits, and unsupported requests from an ordinary recognition miss.
 
-The solve report distinguishes answer presence from actual playability. A profile counts as detected only when both independent judges agree; one-of-two agreement is a failure, not half credit. Promotion currently requires at least 80% answer presence, 75% top-answer detection, 70% dominant-answer detection, 70% compact top-answer detection, mean reciprocal rank of at least 0.75, and no more than 10% ambiguous observations. These are provisional automated screening thresholds; human calibration remains authoritative. Benchmark contract `2026-08-02.7` invalidates both reports produced under the older any-one-judge scoring semantics and pre-quarantine catalog reports.
+The solve report distinguishes answer presence from actual playability. A profile counts as detected only when both independent judges agree; one-of-two agreement is a failure, not half credit. Promotion currently requires at least 80% answer presence, 75% top-answer detection, 70% dominant-answer detection, 70% compact top-answer detection, mean reciprocal rank of at least 0.75, and no more than 10% ambiguous observations. These are provisional automated screening thresholds; human calibration remains authoritative. Benchmark contract `2026-08-02.8` also binds live-generator evidence to the deterministic player-pixel gate; reports from earlier contracts cannot promote this generator.
 
 The editorial report prevents trivial evaluators from winning: known-good acceptance must remain at least 95%, known-failure detection at least 99%, two-judge failure consensus at least 90%, compact failure detection at least 99%, and all critical fixtures must pass. Market-readiness remains false until the corpus contains at least 150 vetted positives, 100 vetted failures, complete technique coverage, and at least 10 failures per failure class. The current 24-positive/12-failure seed is executable infrastructure, not market-leading evidence.
 
@@ -304,6 +306,7 @@ An external run can promote only with at least 100 human-approved originals, bot
 ### Stage 1 — stop unrecognizable publication
 
 - Rasterize SVGs at player size.
+- Reject invisible, off-canvas, low-contrast, tiny, edge-clipped, and overfilled player rasters deterministically.
 - Replace SVG-source recognition with blind pixel recognition.
 - Require independent model consensus and fail closed.
 - Make low icon-recognition scores a hard Apex rejection.
@@ -332,6 +335,7 @@ An external run can promote only with at least 100 human-approved originals, bot
 
 - [ISO 9186-1](https://www.iso.org/standard/59226.html) defines comprehension testing for graphical symbols without explanatory text.
 - [ISO 9186-2](https://www.iso.org/standard/43484.html) covers perceptual-quality testing so symbol elements are identifiable to the eventual user population.
+- [WCAG 2.2 non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast) requires meaningful graphical objects to reach 3:1 contrast against adjacent colors and warns that thin antialiased shapes can be materially fainter in practice.
 - [REBUS benchmark](https://arxiv.org/abs/2401.05604) reports that strong multimodal models still perform poorly on difficult rebus solving, supporting human calibration rather than trusting model self-scores.
 - [Puzzled by Puzzles](https://aclanthology.org/2025.emnlp-main.1101/) finds persistent VLM difficulty with abstraction, visual metaphor, and lateral reasoning.
 - [RE-BUS](https://rebus-dataset.github.io/) provides a larger 1,333-puzzle benchmark and structured visual-reasoning evaluation ideas.
