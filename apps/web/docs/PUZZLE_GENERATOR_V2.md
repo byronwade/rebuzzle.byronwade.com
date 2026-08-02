@@ -119,6 +119,8 @@ The solver should receive only a screenshot first. Run independent attempts that
 
 Only after that first pass should hints be introduced one at a time. Do not reveal declared pictogram concepts, answer, explanation, or technique ID to the solver. A candidate fails when judges can “solve” only after seeing generator metadata.
 
+Blind solve credit uses exact normalized phrase matching rather than the game's typo-tolerant answer matcher. Case, Unicode normalization, punctuation, and whitespace variants are harmless; a different word, plural, article, synonym, or near-spelling remains a wrong parse. The tournament also fails closed unless the exact compact, mobile, and desktop production profiles are all represented.
+
 VLM solve rate is a screening signal, not ground truth. Published research shows that current models still struggle sharply on difficult rebuses, so final difficulty and fairness must be calibrated against player telemetry and periodic human panels.
 
 ## Human benchmark and metrics

@@ -97,4 +97,16 @@ describe("blind solve publication gate", () => {
     });
     expect(blockers.join(" ")).toContain("missing per-profile consensus evidence");
   });
+
+  it("fails closed when the profile count is correct but an expected profile is absent", () => {
+    const blockers = blindSolvePublishBlockers({
+      ...passingSim(),
+      blindProfileResults: passingSim().blindProfileResults!.map((profile, index) =>
+        index === 0 ? { ...profile, profileId: "unknown-profile" } : profile
+      ),
+    });
+
+    expect(blockers.join(" ")).toContain("missing: compact-320");
+    expect(blockers.join(" ")).toContain("unexpected: unknown-profile");
+  });
 });
