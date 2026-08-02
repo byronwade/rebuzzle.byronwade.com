@@ -19,10 +19,19 @@ import {
   type PuzzleBoardRecognitionProfileId,
 } from "../visual/presentation";
 import { renderPuzzleVisualProfile } from "../visual/render-board";
+import {
+  absoluteBootstrapBound,
+  estimatePuzzlePlaytestClusterEvidence,
+  type PuzzlePlaytestClusterEvidence,
+  responsiveSolveGapUpperBound,
+} from "./puzzle-playtest-cluster-evidence";
 import { buildPuzzlePlaytestControlCorpus } from "./puzzle-playtest-controls";
+import { expectedHumanSolveFloor, humanSolveFloorEvidence } from "./puzzle-playtest-solve-floor";
+
+export { expectedHumanSolveFloor, humanSolveFloorEvidence } from "./puzzle-playtest-solve-floor";
 
 export const PUZZLE_PLAYTEST_CONTRACT_VERSION = "puzzle-playtest-v3";
-export const PUZZLE_PLAYTEST_READINESS_VERSION = "puzzle-playtest-readiness-v2";
+export const PUZZLE_PLAYTEST_READINESS_VERSION = "puzzle-playtest-readiness-v3";
 export const PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE = 5;
 export const PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER = 4;
 export const PUZZLE_PLAYTEST_MINIMUM_CORRECT_CONTROLS = 3;
@@ -125,6 +134,18 @@ export type PuzzlePlaytestStatisticalEvidence = {
   solveCalibrationCoverage: BinomialInterval;
 };
 
+export type PuzzlePlaytestConservativeEvidence = {
+  method: "wilson-envelope-with-pigeonhole-bootstrap";
+  confidenceLevel: 0.95;
+  candidateFloorPassLowerBound: number | null;
+  ambiguityUpperBound: number | null;
+  visualFailureUpperBound: number | null;
+  highConfidenceWrongUpperBound: number | null;
+  responsiveSolveGapUpperBound: number | null;
+  solveCalibrationMeanAbsoluteErrorUpperBound: number | null;
+  solveCalibrationAbsoluteBiasUpperBound: number | null;
+};
+
 export type PuzzlePlaytestReport = {
   contractVersion: typeof PUZZLE_PLAYTEST_CONTRACT_VERSION;
   readinessVersion: typeof PUZZLE_PLAYTEST_READINESS_VERSION;
@@ -136,6 +157,8 @@ export type PuzzlePlaytestReport = {
   reviewerCoverage: PuzzlePlaytestReviewerCoverage;
   reviewerQuality: PuzzlePlaytestReviewerQuality;
   statisticalEvidence: PuzzlePlaytestStatisticalEvidence;
+  clusteredEvidence: PuzzlePlaytestClusterEvidence;
+  conservativeEvidence: PuzzlePlaytestConservativeEvidence;
   controlCandidateCount: number;
   decisionCount: number;
   completedDecisionCount: number;
@@ -233,27 +256,6 @@ function isVisualFailure(review: PuzzlePlaytestReview): boolean {
   );
 }
 
-export function expectedHumanSolveFloor(difficultyScore: number): number {
-  if (difficultyScore <= 5) return 0.65;
-  if (difficultyScore <= 6) return 0.5;
-  if (difficultyScore <= 7) return 0.35;
-  return 0.2;
-}
-
-export function humanSolveFloorEvidence(
-  correct: number,
-  decisions: number,
-  difficultyScore: number
-): BinomialInterval & { expectedFloor: number; passes: boolean } {
-  const evidence = wilsonScoreInterval(correct, decisions, ONE_SIDED_95_Z);
-  const expectedFloor = expectedHumanSolveFloor(difficultyScore);
-  return {
-    ...evidence,
-    expectedFloor,
-    passes: evidence.lower >= expectedFloor,
-  };
-}
-
 function progress(available: number, completed: number): PuzzlePlaytestProgress {
   const safe = Math.max(0, Math.min(available, completed));
   return { completed: safe, available, remaining: available - safe, complete: safe === available };
@@ -338,20 +340,21 @@ function reportFailures(input: {
   minimumTechniques: number;
   maximumTechniqueShare: number;
   candidateFloorPassEvidence: BinomialInterval;
+  candidateFloorPassLowerBound: number | null;
   minimumFloorPassRate: number;
-  ambiguityEvidence: BinomialInterval;
+  ambiguityUpperBound: number | null;
   maximumAmbiguityRate: number;
-  visualFailureEvidence: BinomialInterval;
+  visualFailureUpperBound: number | null;
   maximumVisualFailureRate: number;
-  highConfidenceWrongEvidence: BinomialInterval;
+  highConfidenceWrongUpperBound: number | null;
   maximumHighConfidenceWrongRate: number;
-  responsiveSolveGap: number | null;
+  responsiveSolveGapUpperBound: number | null;
   maximumResponsiveSolveGap: number;
   solveCalibrationCoverageEvidence: BinomialInterval;
   minimumSolveCalibrationCoverage: number;
-  solveCalibrationMeanAbsoluteError: number | null;
+  solveCalibrationMeanAbsoluteErrorUpperBound: number | null;
   maximumSolveCalibrationMeanAbsoluteError: number;
-  solveCalibrationBias: number | null;
+  solveCalibrationAbsoluteBiasUpperBound: number | null;
   maximumAbsoluteSolveCalibrationBias: number;
 }): string[] {
   const failures: string[] = [];
@@ -398,31 +401,55 @@ function reportFailures(input: {
       `Technique concentration ${dominantTechnique.id} ${dominantTechnique.share!.toFixed(3)} above ${input.maximumTechniqueShare}`
     );
   }
-  if (input.candidateFloorPassEvidence.lower < input.minimumFloorPassRate) {
+  if (
+    input.candidateFloorPassLowerBound === null ||
+    input.candidateFloorPassLowerBound < input.minimumFloorPassRate
+  ) {
     failures.push(
-      `Difficulty-adjusted candidate-floor 95% lower bound ${input.candidateFloorPassEvidence.lower.toFixed(3)} below ${input.minimumFloorPassRate} (observed ${observed(input.candidateFloorPassEvidence)})`
-    );
-  }
-  if (input.ambiguityEvidence.upper > input.maximumAmbiguityRate) {
-    failures.push(
-      `Multiple-answer 95% upper bound ${input.ambiguityEvidence.upper.toFixed(3)} above ${input.maximumAmbiguityRate} (observed ${observed(input.ambiguityEvidence)})`
-    );
-  }
-  if (input.visualFailureEvidence.upper > input.maximumVisualFailureRate) {
-    failures.push(
-      `Visual-playability failure 95% upper bound ${input.visualFailureEvidence.upper.toFixed(3)} above ${input.maximumVisualFailureRate} (observed ${observed(input.visualFailureEvidence)})`
-    );
-  }
-  if (input.highConfidenceWrongEvidence.upper > input.maximumHighConfidenceWrongRate) {
-    failures.push(
-      `High-confidence wrong-answer 95% upper bound ${input.highConfidenceWrongEvidence.upper.toFixed(3)} above ${input.maximumHighConfidenceWrongRate} (observed ${observed(input.highConfidenceWrongEvidence)})`
+      input.candidateFloorPassLowerBound === null
+        ? "Cluster-aware candidate-floor uncertainty unavailable"
+        : `Difficulty-adjusted candidate-floor conservative 95% lower bound ${input.candidateFloorPassLowerBound.toFixed(3)} below ${input.minimumFloorPassRate} (observed ${observed(input.candidateFloorPassEvidence)})`
     );
   }
   if (
-    input.responsiveSolveGap === null ||
-    input.responsiveSolveGap > input.maximumResponsiveSolveGap
+    input.ambiguityUpperBound === null ||
+    input.ambiguityUpperBound > input.maximumAmbiguityRate
   ) {
-    failures.push(`Responsive solve-rate gap above ${input.maximumResponsiveSolveGap}`);
+    failures.push(
+      input.ambiguityUpperBound === null
+        ? "Cluster-aware multiple-answer uncertainty unavailable"
+        : `Multiple-answer conservative 95% upper bound ${input.ambiguityUpperBound.toFixed(3)} above ${input.maximumAmbiguityRate}`
+    );
+  }
+  if (
+    input.visualFailureUpperBound === null ||
+    input.visualFailureUpperBound > input.maximumVisualFailureRate
+  ) {
+    failures.push(
+      input.visualFailureUpperBound === null
+        ? "Cluster-aware visual-playability uncertainty unavailable"
+        : `Visual-playability conservative 95% upper bound ${input.visualFailureUpperBound.toFixed(3)} above ${input.maximumVisualFailureRate}`
+    );
+  }
+  if (
+    input.highConfidenceWrongUpperBound === null ||
+    input.highConfidenceWrongUpperBound > input.maximumHighConfidenceWrongRate
+  ) {
+    failures.push(
+      input.highConfidenceWrongUpperBound === null
+        ? "Cluster-aware high-confidence-wrong uncertainty unavailable"
+        : `High-confidence wrong-answer conservative 95% upper bound ${input.highConfidenceWrongUpperBound.toFixed(3)} above ${input.maximumHighConfidenceWrongRate}`
+    );
+  }
+  if (
+    input.responsiveSolveGapUpperBound === null ||
+    input.responsiveSolveGapUpperBound > input.maximumResponsiveSolveGap
+  ) {
+    failures.push(
+      input.responsiveSolveGapUpperBound === null
+        ? "Cluster-aware responsive solve-rate uncertainty unavailable"
+        : `Responsive solve-rate conservative 95% upper bound ${input.responsiveSolveGapUpperBound.toFixed(3)} above ${input.maximumResponsiveSolveGap}`
+    );
   }
   if (input.solveCalibrationCoverageEvidence.lower < input.minimumSolveCalibrationCoverage) {
     failures.push(
@@ -430,19 +457,24 @@ function reportFailures(input: {
     );
   }
   if (
-    input.solveCalibrationMeanAbsoluteError === null ||
-    input.solveCalibrationMeanAbsoluteError > input.maximumSolveCalibrationMeanAbsoluteError
+    input.solveCalibrationMeanAbsoluteErrorUpperBound === null ||
+    input.solveCalibrationMeanAbsoluteErrorUpperBound >
+      input.maximumSolveCalibrationMeanAbsoluteError
   ) {
     failures.push(
-      `Automated solve-rate mean absolute error above ${input.maximumSolveCalibrationMeanAbsoluteError}`
+      input.solveCalibrationMeanAbsoluteErrorUpperBound === null
+        ? "Cluster-aware solve-rate mean absolute error uncertainty unavailable"
+        : `Automated solve-rate mean absolute error conservative 95% upper bound ${input.solveCalibrationMeanAbsoluteErrorUpperBound.toFixed(3)} above ${input.maximumSolveCalibrationMeanAbsoluteError}`
     );
   }
   if (
-    input.solveCalibrationBias === null ||
-    Math.abs(input.solveCalibrationBias) > input.maximumAbsoluteSolveCalibrationBias
+    input.solveCalibrationAbsoluteBiasUpperBound === null ||
+    input.solveCalibrationAbsoluteBiasUpperBound > input.maximumAbsoluteSolveCalibrationBias
   ) {
     failures.push(
-      `Automated solve-rate absolute bias above ${input.maximumAbsoluteSolveCalibrationBias}`
+      input.solveCalibrationAbsoluteBiasUpperBound === null
+        ? "Cluster-aware solve-rate bias uncertainty unavailable"
+        : `Automated solve-rate absolute bias conservative 95% upper bound ${input.solveCalibrationAbsoluteBiasUpperBound.toFixed(3)} above ${input.maximumAbsoluteSolveCalibrationBias}`
     );
   }
   return failures;
@@ -959,6 +991,49 @@ export function createPuzzlePlaytestService(
           ONE_SIDED_95_Z
         ),
       };
+      const clusteredEvidence = estimatePuzzlePlaytestClusterEvidence({
+        reviews: completedReviews,
+        candidates: completeCandidates,
+      });
+      const conservativeUpperBound = (
+        analyticUpper: number,
+        clusteredUpper: number | undefined
+      ): number | null =>
+        typeof clusteredUpper === "number" ? Math.max(analyticUpper, clusteredUpper) : null;
+      const conservativeEvidence: PuzzlePlaytestConservativeEvidence = {
+        method: "wilson-envelope-with-pigeonhole-bootstrap",
+        confidenceLevel: 0.95,
+        candidateFloorPassLowerBound:
+          typeof clusteredEvidence.metrics.candidateFloorPassRate?.lower === "number"
+            ? Math.min(
+                statisticalEvidence.candidateFloorPass.lower,
+                clusteredEvidence.metrics.candidateFloorPassRate.lower
+              )
+            : null,
+        ambiguityUpperBound: conservativeUpperBound(
+          statisticalEvidence.ambiguity.upper,
+          clusteredEvidence.metrics.ambiguityRate?.upper
+        ),
+        visualFailureUpperBound: conservativeUpperBound(
+          statisticalEvidence.visualFailure.upper,
+          clusteredEvidence.metrics.visualFailureRate?.upper
+        ),
+        highConfidenceWrongUpperBound: conservativeUpperBound(
+          statisticalEvidence.highConfidenceWrong.upper,
+          clusteredEvidence.metrics.highConfidenceWrongRate?.upper
+        ),
+        responsiveSolveGapUpperBound: responsiveSolveGapUpperBound(clusteredEvidence),
+        solveCalibrationMeanAbsoluteErrorUpperBound:
+          clusteredEvidence.metrics.solveCalibrationMeanAbsoluteError === undefined
+            ? null
+            : Math.max(
+                clusteredEvidence.metrics.solveCalibrationMeanAbsoluteError.observed,
+                clusteredEvidence.metrics.solveCalibrationMeanAbsoluteError.upper
+              ),
+        solveCalibrationAbsoluteBiasUpperBound: absoluteBootstrapBound(
+          clusteredEvidence.metrics.solveCalibrationBias
+        ),
+      };
       const releaseFailures = reportFailures({
         completedCandidates: completeCandidates.length,
         minimumCandidates: PUZZLE_PLAYTEST_RELEASE_SAMPLE,
@@ -978,20 +1053,23 @@ export function createPuzzlePlaytestService(
         minimumTechniques: PUZZLE_PLAYTEST_RELEASE_MIN_TECHNIQUES,
         maximumTechniqueShare: PUZZLE_PLAYTEST_RELEASE_MAX_TECHNIQUE_SHARE,
         candidateFloorPassEvidence: statisticalEvidence.candidateFloorPass,
+        candidateFloorPassLowerBound: conservativeEvidence.candidateFloorPassLowerBound,
         minimumFloorPassRate: 0.9,
-        ambiguityEvidence: statisticalEvidence.ambiguity,
+        ambiguityUpperBound: conservativeEvidence.ambiguityUpperBound,
         maximumAmbiguityRate: 0.12,
-        visualFailureEvidence: statisticalEvidence.visualFailure,
+        visualFailureUpperBound: conservativeEvidence.visualFailureUpperBound,
         maximumVisualFailureRate: 0.05,
-        highConfidenceWrongEvidence: statisticalEvidence.highConfidenceWrong,
+        highConfidenceWrongUpperBound: conservativeEvidence.highConfidenceWrongUpperBound,
         maximumHighConfidenceWrongRate: 0.08,
-        responsiveSolveGap,
+        responsiveSolveGapUpperBound: conservativeEvidence.responsiveSolveGapUpperBound,
         maximumResponsiveSolveGap: 0.12,
         solveCalibrationCoverageEvidence: statisticalEvidence.solveCalibrationCoverage,
         minimumSolveCalibrationCoverage: 0.8,
-        solveCalibrationMeanAbsoluteError,
+        solveCalibrationMeanAbsoluteErrorUpperBound:
+          conservativeEvidence.solveCalibrationMeanAbsoluteErrorUpperBound,
         maximumSolveCalibrationMeanAbsoluteError: 0.15,
-        solveCalibrationBias,
+        solveCalibrationAbsoluteBiasUpperBound:
+          conservativeEvidence.solveCalibrationAbsoluteBiasUpperBound,
         maximumAbsoluteSolveCalibrationBias: 0.1,
       });
       const marketLeadingFailures = reportFailures({
@@ -1013,20 +1091,23 @@ export function createPuzzlePlaytestService(
         minimumTechniques: PUZZLE_PLAYTEST_MARKET_MIN_TECHNIQUES,
         maximumTechniqueShare: PUZZLE_PLAYTEST_MARKET_MAX_TECHNIQUE_SHARE,
         candidateFloorPassEvidence: statisticalEvidence.candidateFloorPass,
+        candidateFloorPassLowerBound: conservativeEvidence.candidateFloorPassLowerBound,
         minimumFloorPassRate: 0.97,
-        ambiguityEvidence: statisticalEvidence.ambiguity,
+        ambiguityUpperBound: conservativeEvidence.ambiguityUpperBound,
         maximumAmbiguityRate: 0.05,
-        visualFailureEvidence: statisticalEvidence.visualFailure,
+        visualFailureUpperBound: conservativeEvidence.visualFailureUpperBound,
         maximumVisualFailureRate: 0.02,
-        highConfidenceWrongEvidence: statisticalEvidence.highConfidenceWrong,
+        highConfidenceWrongUpperBound: conservativeEvidence.highConfidenceWrongUpperBound,
         maximumHighConfidenceWrongRate: 0.03,
-        responsiveSolveGap,
+        responsiveSolveGapUpperBound: conservativeEvidence.responsiveSolveGapUpperBound,
         maximumResponsiveSolveGap: 0.05,
         solveCalibrationCoverageEvidence: statisticalEvidence.solveCalibrationCoverage,
         minimumSolveCalibrationCoverage: 0.95,
-        solveCalibrationMeanAbsoluteError,
+        solveCalibrationMeanAbsoluteErrorUpperBound:
+          conservativeEvidence.solveCalibrationMeanAbsoluteErrorUpperBound,
         maximumSolveCalibrationMeanAbsoluteError: 0.1,
-        solveCalibrationBias,
+        solveCalibrationAbsoluteBiasUpperBound:
+          conservativeEvidence.solveCalibrationAbsoluteBiasUpperBound,
         maximumAbsoluteSolveCalibrationBias: 0.05,
       });
       const failureReasons = Object.fromEntries(
@@ -1078,6 +1159,8 @@ export function createPuzzlePlaytestService(
         reviewerCoverage,
         reviewerQuality,
         statisticalEvidence,
+        clusteredEvidence,
+        conservativeEvidence,
         controlCandidateCount: controlCandidates.length,
         decisionCount: generatedReviews.length,
         completedDecisionCount: completedReviews.length,

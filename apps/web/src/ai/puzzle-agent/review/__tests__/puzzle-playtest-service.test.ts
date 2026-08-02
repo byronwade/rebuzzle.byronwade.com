@@ -586,6 +586,27 @@ describe("blind human generated-puzzle playtesting", () => {
     });
     expect(report.statisticalEvidence.candidateFloorPass.lower).toBeGreaterThan(0.97);
     expect(report.statisticalEvidence.visualFailure.upper).toBeLessThan(0.02);
+    expect(report.clusteredEvidence).toMatchObject({
+      method: "pigeonhole-bootstrap",
+      confidenceLevel: 0.95,
+      replicates: 1000,
+      rowClusters: 50,
+      columnClusters: 100,
+      sufficient: true,
+    });
+    expect(report.conservativeEvidence).toMatchObject({
+      method: "wilson-envelope-with-pigeonhole-bootstrap",
+      confidenceLevel: 0.95,
+      responsiveSolveGapUpperBound: 0,
+      solveCalibrationMeanAbsoluteErrorUpperBound: 0,
+      solveCalibrationAbsoluteBiasUpperBound: 0,
+    });
+    expect(report.conservativeEvidence.visualFailureUpperBound).toBe(
+      report.statisticalEvidence.visualFailure.upper
+    );
+    expect(report.conservativeEvidence.candidateFloorPassLowerBound).toBe(
+      report.statisticalEvidence.candidateFloorPass.lower
+    );
     expect(report.releaseReady).toBe(true);
     expect(report.marketLeadingReady).toBe(true);
 
