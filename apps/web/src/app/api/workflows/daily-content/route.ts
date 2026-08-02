@@ -1,5 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { isHardAIBudgetError, parseAIError } from "@/ai/errors";
 import { generateNextPuzzle, getTodaysPuzzle } from "@/app/actions/puzzleGenerationActions";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
@@ -76,13 +77,16 @@ export async function POST(request: Request) {
 
     logger.info("Generating daily puzzle via Apex/Eve");
     const puzzleResult = await generateNextPuzzle();
+    let aiBudgetExhausted = false;
 
     if (!puzzleResult.success) {
       const errMsg =
         "error" in puzzleResult && typeof puzzleResult.error === "string"
           ? puzzleResult.error
           : "Unknown error";
-      logger.error("Puzzle generation failed", new Error(errMsg));
+      const parsed = parseAIError(new Error(errMsg));
+      aiBudgetExhausted = isHardAIBudgetError(parsed);
+      logger.error("Puzzle generation failed", parsed);
     }
 
     const nextDate = nextUtcDateKey();
@@ -94,44 +98,64 @@ export async function POST(request: Request) {
       aiGenerated?: boolean;
       puzzleId?: string;
       error?: string;
+      errorCode?: string;
+      skipped?: string;
     };
-    try {
-      logger.info("Pre-generating next-day puzzle for blind playtesting", { nextDate });
-      const result = await getTodaysPuzzle("rebus", nextDate, {
-        allowAiGenerate: true,
-        failOnAiError: true,
-      });
-      nextPuzzle = {
-        success: result.success,
-        date: nextDate,
-        cached: "cached" in result ? result.cached : undefined,
-        fallback: "fallback" in result ? result.fallback : undefined,
-        aiGenerated: "aiGenerated" in result ? result.aiGenerated : undefined,
-        puzzleId:
-          result.success && result.puzzle ? (result.puzzle as { id?: string }).id : undefined,
-        error:
-          !result.success && "error" in result && typeof result.error === "string"
-            ? result.error
-            : undefined,
-      };
-    } catch (error) {
+    if (aiBudgetExhausted) {
       nextPuzzle = {
         success: false,
         date: nextDate,
-        error: error instanceof Error ? error.message : "Next-day generation failed",
+        error: "AI Gateway budget exhausted",
+        errorCode: "AI_BUDGET_EXCEEDED",
+        skipped: "ai_budget_exceeded",
       };
-      logger.error(
-        "Next-day puzzle pre-generation failed",
-        error instanceof Error ? error : new Error(String(error)),
-        { nextDate }
-      );
+    } else {
+      try {
+        logger.info("Pre-generating next-day puzzle for blind playtesting", { nextDate });
+        const result = await getTodaysPuzzle("rebus", nextDate, {
+          allowAiGenerate: true,
+          failOnAiError: true,
+        });
+        nextPuzzle = {
+          success: result.success,
+          date: nextDate,
+          cached: "cached" in result ? result.cached : undefined,
+          fallback: "fallback" in result ? result.fallback : undefined,
+          aiGenerated: "aiGenerated" in result ? result.aiGenerated : undefined,
+          puzzleId:
+            result.success && result.puzzle ? (result.puzzle as { id?: string }).id : undefined,
+          error:
+            !result.success && "error" in result && typeof result.error === "string"
+              ? result.error
+              : undefined,
+        };
+      } catch (error) {
+        const parsed = parseAIError(error);
+        aiBudgetExhausted = isHardAIBudgetError(parsed);
+        nextPuzzle = {
+          success: false,
+          date: nextDate,
+          error: parsed.message || "Next-day generation failed",
+          errorCode: aiBudgetExhausted ? parsed.code : undefined,
+        };
+        logger.error("Next-day puzzle pre-generation failed", parsed, { nextDate });
+      }
     }
 
     logger.info("Revalidating puzzle cache");
     revalidateTag("daily-puzzle", "max");
 
-    logger.info("Generating Eve blog for yesterday's puzzle");
-    const blogResult = await generateBlogForYesterday();
+    let blogResult;
+    if (aiBudgetExhausted) {
+      blogResult = {
+        success: false,
+        skipped: "ai_budget_exceeded",
+        error: "AI Gateway budget exhausted",
+      };
+    } else {
+      logger.info("Generating Eve blog for yesterday's puzzle");
+      blogResult = await generateBlogForYesterday();
+    }
 
     return NextResponse.json({
       success: true,

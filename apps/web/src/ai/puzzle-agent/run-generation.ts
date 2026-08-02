@@ -15,6 +15,7 @@ import {
   getGatewayModelChain,
 } from "../client";
 import { AI_CONFIG } from "../config";
+import { isHardAIBudgetError, parseAIError } from "../errors";
 import { enforceQuota } from "../quota-manager";
 import { toPlayabilityEvidence } from "./apex/blind-solve-consensus";
 import {
@@ -221,7 +222,9 @@ export async function runPuzzleAgentGeneration(
   // Primary Eve model, then creative-tier fallbacks
   const modelChainLimit = Math.max(
     1,
-    Math.min(3, Number(process.env.REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT || 3) || 3)
+    // A model fallback repeats the complete agent loop. Default to one model so
+    // a single daily puzzle cannot silently multiply premium-model spend.
+    Math.min(3, Number(process.env.REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT || 1) || 1)
   );
   const modelChain = Array.from(
     new Set([AI_CONFIG.puzzleAgent.model, ...getGatewayModelChain("creative")])
@@ -516,6 +519,9 @@ export async function runPuzzleAgentGeneration(
           recommendations: output.recommendations,
         };
       } catch (error) {
+        if (isHardAIBudgetError(error)) {
+          throw parseAIError(error);
+        }
         const detail = safeGenerationError(error) || "Unknown puzzle generation error";
         lastError = new Error(
           `${detail} [model=${modelId}; attempt=${attempt}; completedSteps=${completedSteps}; tools=${Array.from(new Set(completedTools)).join(",") || "none"}]`,

@@ -73,7 +73,9 @@ export const AI_CONFIG = {
      */
     apex: {
       enabled: process.env.EVE_APEX_ENGINE !== "0" && process.env.EVE_APEX_ENGINE !== "false",
-      candidateCount: Math.max(2, Math.min(5, Number(process.env.EVE_APEX_CANDIDATES || 3) || 3)),
+      // Two candidates preserve a real tournament while bounding the expensive
+      // screenshot consensus fan-out. Operators can explicitly raise this to 5.
+      candidateCount: Math.max(2, Math.min(5, Number(process.env.EVE_APEX_CANDIDATES || 2) || 2)),
       minRubricOverall: Math.max(
         70,
         Math.min(95, Number(process.env.EVE_APEX_MIN_RUBRIC || 78) || 78)
