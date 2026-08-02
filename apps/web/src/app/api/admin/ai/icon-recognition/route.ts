@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { iconRecognitionService } from "@/ai/puzzle-agent/review/icon-recognition-server";
-import { IconRecognitionConflictError } from "@/ai/puzzle-agent/review/icon-recognition-service";
+import {
+  IconRecognitionConflictError,
+  normalizeIconRecognitionPanelId,
+} from "@/ai/puzzle-agent/review/icon-recognition-service";
 import { verifyAdminAccess } from "@/lib/admin-auth";
 
 const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" };
@@ -13,12 +16,14 @@ export async function GET(request: Request) {
   try {
     const admin = await verifyAdminAccess(request);
     if (!admin) return NextResponse.json({ error: "Admin access required" }, { status: 401 });
-    const mode = new URL(request.url).searchParams.get("mode");
+    const searchParams = new URL(request.url).searchParams;
+    const mode = searchParams.get("mode");
+    const panelId = normalizeIconRecognitionPanelId(searchParams.get("panel"));
     if (mode === "report") {
-      const result = await iconRecognitionService.getReport(admin.id);
+      const result = await iconRecognitionService.getReport(admin.id, panelId);
       return NextResponse.json({ success: true, ...result }, { headers: PRIVATE_NO_STORE });
     }
-    const result = await iconRecognitionService.getNext(admin.id);
+    const result = await iconRecognitionService.getNext(admin.id, panelId);
     return NextResponse.json({ success: true, ...result }, { headers: PRIVATE_NO_STORE });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load recognition panel";
@@ -39,6 +44,7 @@ export async function POST(request: Request) {
     }
     const progress = await iconRecognitionService.submit({
       reviewerId: admin.id,
+      panelId: normalizeIconRecognitionPanelId(body.panelId),
       fixtureId: typeof body.fixtureId === "string" ? body.fixtureId : "",
       guess: typeof body.guess === "string" ? body.guess : undefined,
       uncertain: body.uncertain === true,
