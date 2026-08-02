@@ -399,8 +399,9 @@ export default function PuzzlePlaytestsPage() {
                 Release requires 30 fully covered generated puzzles; market-leading evidence
                 requires 100, with five reviewers on every responsive profile plus representative
                 reviewer, difficulty, and technique coverage. Only reviewers who pass the blinded
-                known-answer controls contribute generated-puzzle evidence. Readiness uses one-sided
-                95% Wilson bounds rather than raw sample rates.
+                known-answer controls contribute generated-puzzle evidence. Readiness combines
+                one-sided 95% Wilson bounds with a deterministic reviewer-by-puzzle crossed-cluster
+                bootstrap, so repeated ratings do not masquerade as independent evidence.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -420,7 +421,7 @@ export default function PuzzlePlaytestsPage() {
                 <div className="text-muted-foreground text-xs">Visual failures</div>
                 <div className="font-semibold text-xl">{percent(report.visualFailureRate)}</div>
                 <div className="text-muted-foreground text-xs">
-                  {percent(report.statisticalEvidence.visualFailure.upper)} 95% upper
+                  {percent(report.conservativeEvidence.visualFailureUpperBound)} conservative upper
                 </div>
               </div>
               <div>
@@ -429,27 +430,50 @@ export default function PuzzlePlaytestsPage() {
                   {percent(report.candidateFloorPassRate)}
                 </div>
                 <div className="text-muted-foreground text-xs">
-                  {percent(report.statisticalEvidence.candidateFloorPass.lower)} 95% lower
+                  {percent(report.conservativeEvidence.candidateFloorPassLowerBound)} conservative
+                  lower
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">Ambiguity safety bound</div>
                 <div className="font-semibold text-xl">
-                  {percent(report.statisticalEvidence.ambiguity.upper)}
+                  {percent(report.conservativeEvidence.ambiguityUpperBound)}
                 </div>
-                <div className="text-muted-foreground text-xs">One-sided 95% upper</div>
+                <div className="text-muted-foreground text-xs">Conservative 95% upper</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">High-confidence wrong bound</div>
                 <div className="font-semibold text-xl">
-                  {percent(report.statisticalEvidence.highConfidenceWrong.upper)}
+                  {percent(report.conservativeEvidence.highConfidenceWrongUpperBound)}
                 </div>
-                <div className="text-muted-foreground text-xs">One-sided 95% upper</div>
+                <div className="text-muted-foreground text-xs">Conservative 95% upper</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">Solve estimate MAE</div>
                 <div className="font-semibold text-xl">
                   {percent(report.solveCalibrationMeanAbsoluteError)}
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  {percent(report.conservativeEvidence.solveCalibrationMeanAbsoluteErrorUpperBound)}{" "}
+                  cluster upper
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Responsive solve gap</div>
+                <div className="font-semibold text-xl">{percent(report.responsiveSolveGap)}</div>
+                <div className="text-muted-foreground text-xs">
+                  {percent(report.conservativeEvidence.responsiveSolveGapUpperBound)} cluster upper
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Crossed bootstrap</div>
+                <div className="font-semibold text-xl">
+                  {report.clusteredEvidence.sufficient ? "Ready" : "Insufficient"}
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  {report.clusteredEvidence.rowClusters} reviewers ×{" "}
+                  {report.clusteredEvidence.columnClusters} puzzles ·{" "}
+                  {report.clusteredEvidence.replicates} resamples
                 </div>
               </div>
               <div>

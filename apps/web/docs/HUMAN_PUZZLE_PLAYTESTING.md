@@ -34,14 +34,25 @@ qualified decisions here are therefore a product release heuristic, not a claim
 of statistical significance; a formal comparative study must perform its own
 power and reliability analysis.
 
-Readiness calculations use `puzzle-playtest-readiness-v2`. Raw rates remain
-visible for diagnosis, but acceptance uses one-sided 95% Wilson score bounds.
-The lower bound must clear every success floor; the upper bound must stay below
-every harm ceiling. Wilson's score method avoids the unstable coverage of the
-ordinary Wald interval, particularly near zero or one ([NIST Engineering
+Readiness calculations use `puzzle-playtest-readiness-v3`. Raw rates remain
+visible for diagnosis, but acceptance combines one-sided 95% Wilson score bounds
+with a deterministic crossed-cluster bootstrap. The lower Wilson bound must
+clear every binomial success floor. Harm ceilings use the larger of the Wilson
+upper bound and the reviewer-by-puzzle bootstrap upper bound, so neither sparse
+boundary outcomes nor repeated raters can make evidence look more certain than
+it is. Wilson's score method avoids the unstable coverage of the ordinary Wald
+interval, particularly near zero or one ([NIST Engineering
 Statistics Handbook](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm),
 [Brown, Cai, and DasGupta
 2001](https://www.stat.purdue.edu/~dasgupta/publications/tr99-19.pdf)).
+
+The crossed layer follows Owen's [pigeonhole
+bootstrap](https://arxiv.org/abs/0712.1111) for sparse, unbalanced data with two
+crossed factors. Each of 1,000 deterministic replicates independently resamples
+reviewer clusters and puzzle clusters with replacement; a decision receives the
+product of its two cluster multiplicities. Fifth and 95th percentiles form
+one-sided 95% sensitivity bounds. Deterministic seeding from immutable decision
+IDs makes the same evidence reproducible across reports and deployments.
 
 ## Blind reviewer experience
 
@@ -98,10 +109,18 @@ high-confidence-wrong-answer, responsive parity, and automated-calibration
 limits. Missing strata fail closed. Unknown technique IDs do not count toward
 technique breadth.
 
-The 95% lower bound is used for candidate-floor success and automated-estimate
-coverage. The 95% upper bound is used for failed-control reviewers,
-multiple-answer reports, visual failures, and high-confidence wrong answers.
-Responsive gaps and calibration error remain deterministic magnitude limits.
+The per-puzzle Wilson 95% lower bound defines candidate-floor success, then the
+corpus-level pass rate uses the smaller of its Wilson and crossed-cluster lower
+bounds. Automated-estimate coverage remains candidate-level Wilson evidence,
+and failed-control reviewers remain reviewer-level Wilson evidence.
+Multiple-answer reports, visual failures, and high-confidence wrong answers use
+the larger of their Wilson and crossed-cluster 95% upper bounds. Responsive
+parity is evaluated as three signed pairwise profile differences; the largest
+absolute endpoint across their crossed-cluster bounds must clear the gate.
+Automated calibration mean absolute error and absolute bias must clear their
+crossed-cluster upper bounds, not merely their point estimates. If two reviewer
+clusters, two puzzle clusters, or a required metric are missing, cluster
+evidence is unavailable and readiness fails closed.
 
 The admin report separately exposes pending, qualified, and excluded reviewer
 counts, control decisions, and generated decisions held out from scoring. A high
@@ -118,11 +137,11 @@ formal external study should additionally document recruitment, language,
 device, locale, age range, and accessibility needs before making broad
 population claims.
 
-Wilson bounds still assume binomial observations more strongly than this
-repeated-review design can guarantee. Reviewer-share limits reduce dependence
-and domination, but a formal external claim should use a preregistered power
-analysis and reviewer-clustered or hierarchical model in addition to this
-product readiness gate.
+The crossed bootstrap is a product-readiness sensitivity analysis, not a
+substitute for study design. Reviewer-share limits still prevent one prolific
+person from defining the sample, and a formal external claim should use a
+preregistered power analysis plus an independently reviewed crossed-effects or
+hierarchical model in addition to this gate.
 
 The controls are frozen from the repository's critical, easiest compound-rebus
 benchmark slice. They are objective attention checks, not evidence that the
@@ -134,6 +153,7 @@ must audit the control set for language, cultural, and accessibility bias.
 ```powershell
 pnpm.cmd exec jest `
   src/ai/statistics/__tests__/binomial.test.ts `
+  src/ai/statistics/__tests__/crossed-cluster-bootstrap.test.ts `
   src/ai/puzzle-agent/review/__tests__/puzzle-playtest-service.test.ts `
   src/app/api/puzzle-playtests/__tests__/route.test.ts `
   src/app/api/admin/ai/puzzle-playtests/__tests__/route.test.ts `
