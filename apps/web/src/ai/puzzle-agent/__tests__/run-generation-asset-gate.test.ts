@@ -127,4 +127,19 @@ describe("runPuzzleAgentGeneration asset gate", () => {
     expect(scorePuzzleQuality).not.toHaveBeenCalled();
     expect(evaluatePublishGates).not.toHaveBeenCalled();
   });
+
+  it("rejects a semantically mismatched board after asset approval but before judges", async () => {
+    verifyPublicationAssets.mockResolvedValue({ ok: true });
+
+    await expect(
+      runPuzzleAgentGeneration({ targetDifficulty: 5, maxAttempts: 1, modelChainLimit: 1 })
+    ).rejects.toBeInstanceOf(PuzzleCandidateRejectedError);
+
+    expect(verifyPublicationAssets).toHaveBeenCalledTimes(1);
+    expect(checkUniqueness).not.toHaveBeenCalled();
+    expect(calibratePuzzleDifficulty).not.toHaveBeenCalled();
+    expect(stressTestSolvability).not.toHaveBeenCalled();
+    expect(scorePuzzleQuality).not.toHaveBeenCalled();
+    expect(evaluatePublishGates).not.toHaveBeenCalled();
+  });
 });

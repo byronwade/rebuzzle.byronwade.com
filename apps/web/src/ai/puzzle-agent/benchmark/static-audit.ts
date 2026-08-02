@@ -4,6 +4,7 @@ import {
   type ReservePuzzle,
   validateReservePuzzleCorpus,
 } from "../reserve-puzzles";
+import { evaluateSemanticAlignment } from "../semantic-alignment";
 import { type PuzzleVisual, PuzzleVisualSchema } from "../visual/composition";
 import { evaluatePictogramPixelIntegrity } from "../visual/pictogram-pixel-integrity";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
@@ -11,13 +12,14 @@ import { renderPuzzleVisualProfiles } from "../visual/render-board";
 import { buildPuzzleSolveBenchmarkCorpus } from "./puzzle-corpus";
 import { PUZZLE_GENERATOR_BENCHMARK_VERSION } from "./types";
 
-export const STATIC_PUZZLE_AUDIT_VERSION = "static-puzzle-audit-v1";
+export const STATIC_PUZZLE_AUDIT_VERSION = "static-puzzle-audit-v2";
 
 export type StaticAuditPuzzle = {
   id: string;
   answer: string;
   rebusPuzzle: string;
   techniqueId: string;
+  explanation?: string;
   visual: PuzzleVisual;
   source: "solve-corpus" | "reserve";
 };
@@ -71,6 +73,7 @@ function defaultCorpus(): StaticAuditPuzzle[] {
     answer: entry.answer,
     rebusPuzzle: entry.rebusPuzzle,
     techniqueId: entry.techniqueId,
+    explanation: entry.explanation,
     visual: entry.visual,
     source: "reserve" as const,
   }));
@@ -107,6 +110,19 @@ async function auditPuzzle(puzzle: StaticAuditPuzzle): Promise<StaticPuzzleAudit
   }
   if (!isKnownTechniqueId(puzzle.techniqueId)) {
     failures.push(`Unknown technique: ${puzzle.techniqueId}`);
+  }
+
+  const semanticAlignment = evaluateSemanticAlignment({
+    answer: puzzle.answer,
+    techniqueId: puzzle.techniqueId,
+    explanation: puzzle.explanation,
+    visual: puzzle.visual,
+    requireExplanation: false,
+  });
+  if (!semanticAlignment.ok) {
+    failures.push(
+      `Semantic alignment failed (${semanticAlignment.rule}): ${semanticAlignment.blockers.join("; ")}`
+    );
   }
 
   let profilesRendered = 0;
