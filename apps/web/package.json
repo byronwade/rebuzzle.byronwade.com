@@ -6,7 +6,7 @@
     "node": "24.x"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "build:webpack": "next build --webpack",
     "start": "next start",
@@ -29,7 +29,15 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "benchmark:puzzles": "tsx scripts/benchmark-puzzle-generator.ts",
+    "benchmark:puzzles:catalog-sheet": "tsx scripts/render-curated-catalog.ts",
+    "benchmark:puzzles:reserve-sheet": "tsx scripts/render-reserve-puzzles.ts",
+    "benchmark:puzzles:solve": "tsx scripts/benchmark-puzzle-solving.ts",
+    "benchmark:puzzles:external:import": "tsx scripts/import-external-puzzle-corpus.ts",
+    "benchmark:puzzles:external:review-template": "tsx scripts/create-external-review-template.ts",
+    "benchmark:puzzles:external:solve": "tsx scripts/benchmark-external-puzzles.ts",
+    "benchmark:puzzles:playtest-backfill": "tsx scripts/backfill-puzzle-playtests.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.33",
@@ -70,6 +78,7 @@
     "eve": "^0.29.2",
     "jose": "^6.1.2",
     "just-bash": "^3.0.0",
+    "lucide": "0.468.0",
     "lucide-react": "^0.468.0",
     "mongodb": "^6.0.0",
     "next": "16.2.12",
@@ -82,6 +91,7 @@
     "recharts": "^2.15.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.5.2",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
@@ -96,8 +106,8 @@
     "@types/canvas-confetti": "^1.9.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@types/uuid": "^11.0.0",
     "autoprefixer": "10.4.20",
     "babel-plugin-react-compiler": "^1.0.0",

@@ -34,6 +34,12 @@ describe("Environment Validation", () => {
       expect(getDatabaseUrl()).toBe("mongodb://localhost:27017/test");
     });
 
+    it("should skip a non-URI marketplace placeholder when MONGODB_URI is valid", () => {
+      process.env.REBUZZLE_MONGODB_URI = "production";
+      process.env.MONGODB_URI = "mongodb+srv://example.invalid/rebuzzle";
+      expect(getDatabaseUrl()).toBe("mongodb+srv://example.invalid/rebuzzle");
+    });
+
     it("should return DATABASE_URL if MONGODB_URI not set", () => {
       process.env.REBUZZLE_MONGODB_URI = undefined;
       process.env.MONGODB_URI = undefined;
@@ -46,6 +52,13 @@ describe("Environment Validation", () => {
       process.env.MONGODB_URI = undefined;
       process.env.DATABASE_URL = undefined;
       expect(() => getDatabaseUrl()).toThrow();
+    });
+
+    it("should reject configured values that are not MongoDB URIs", () => {
+      process.env.REBUZZLE_MONGODB_URI = "production";
+      process.env.MONGODB_URI = undefined;
+      process.env.DATABASE_URL = "postgresql://localhost/rebuzzle";
+      expect(() => getDatabaseUrl()).toThrow("configured but invalid");
     });
   });
 
@@ -74,6 +87,7 @@ describe("Environment Validation", () => {
       process.env.NEXT_PUBLIC_APP_URL = "https://example.com";
       process.env.AI_PROVIDER = "gateway";
       process.env.AI_GATEWAY_API_KEY = "test-key";
+      process.env.AUTH_SECRET = "test-auth-secret";
       process.env.NODE_ENV = "production";
       process.env.CRON_SECRET = "test-secret";
 

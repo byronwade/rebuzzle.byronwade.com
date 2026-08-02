@@ -3,11 +3,11 @@
  */
 
 export {
+  type AdaptiveDifficultyResult,
   baselineDifficultyForDate,
   clampGenerationDifficulty,
   computeAdaptiveDifficulty,
   WEEKLY_DIFFICULTY_SPINE,
-  type AdaptiveDifficultyResult,
 } from "./adaptive-difficulty";
 export {
   isAnswerRegistered,
@@ -16,16 +16,23 @@ export {
 } from "./answer-registry";
 export { backfillAnswerKeys } from "./backfill-answer-keys";
 export {
+  aggregatePerceptionDelta,
+  type DifficultyPerceptionChoice,
+  isDifficultyPerceptionChoice,
+  mapDifficultyPerception,
+  type PerceptionMapping,
+} from "./difficulty-perception";
+export {
+  type GenerationAuditRecord,
   getGenerationSystemHealth,
   listRecentGenerationAudits,
   recordGenerationAudit,
-  type GenerationAuditRecord,
 } from "./generation-audit";
 export {
+  type LearningPolicySnapshot,
   recordFinalAttemptSignal,
   resolveAdaptiveDifficultyForDate,
   runLearningCalibration,
-  type LearningPolicySnapshot,
 } from "./learning-loop";
 export {
   measurePuzzlePerformance,
@@ -33,24 +40,30 @@ export {
   type WindowPerformance,
 } from "./performance-monitor";
 export {
-  aggregatePerceptionDelta,
-  isDifficultyPerceptionChoice,
-  mapDifficultyPerception,
-  type DifficultyPerceptionChoice,
-  type PerceptionMapping,
-} from "./difficulty-perception";
+  isPuzzleQualityReason,
+  isPuzzleQualityVote,
+  loadQualityVoteAggregate,
+  mapPuzzleQualityVote,
+  type PuzzleQualityReason,
+  type PuzzleQualityVote,
+  type QualityVoteAggregate,
+  type QualityVoteMapping,
+  qualityVotesToGuidance,
+} from "./puzzle-quality-vote";
+export {
+  assessQualityDrift,
+  type BinomialInterval,
+  QUALITY_DRIFT_CONTRACT_VERSION,
+  type QualityDriftMetric,
+  type QualityDriftMetricStatus,
+  type QualityDriftReport,
+  type QualityDriftWindow,
+  wilsonInterval,
+} from "./quality-drift";
+export { loadQualityDriftReport } from "./quality-drift-store";
 export {
   applySimCalibration,
   computeSimCalibrationFromPairs,
   loadSimCalibration,
   type SimCalibration,
 } from "./sim-calibration";
-export {
-  isPuzzleQualityVote,
-  loadQualityVoteAggregate,
-  mapPuzzleQualityVote,
-  qualityVotesToGuidance,
-  type PuzzleQualityVote,
-  type QualityVoteAggregate,
-  type QualityVoteMapping,
-} from "./puzzle-quality-vote";

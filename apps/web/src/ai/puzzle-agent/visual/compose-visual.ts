@@ -4,11 +4,7 @@
  */
 
 import { getDifficultyLevelForScore } from "../difficulty-levels";
-import {
-  computeFunScore,
-  displayLeaksAnswer,
-  isKnownTechniqueId,
-} from "../quality";
+import { computeFunScore, displayLeaksAnswer, isKnownTechniqueId } from "../quality";
 import { getTechniques } from "../technique-library";
 import {
   buildUnicodeFallback,
@@ -17,6 +13,7 @@ import {
   PuzzleVisualSchema,
   type VisualLayer,
 } from "./composition";
+import { isAuthenticCuratedPictogram } from "./curated-pictograms";
 import { generateImageTile } from "./generate-image-tile";
 import { generatePictogram } from "./generate-pictogram";
 import { scorePictogramClarity } from "./pictogram-clarity";
@@ -70,12 +67,17 @@ export async function composePuzzleVisual(
 
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
-      if (layer.svg && layer.svg.includes("<svg")) {
+      if (layer.svg?.includes("<svg")) {
         const clarity = scorePictogramClarity(layer.svg);
-        if (clarity.ok) {
+        const authenticCatalogAsset = isAuthenticCuratedPictogram({
+          concept: layer.concept,
+          assetId: layer.assetId,
+          svg: layer.svg,
+        });
+        if (clarity.ok || authenticCatalogAsset) {
           filledLayers.push(layer);
           generated.pictograms += 1;
-          claritySum += clarity.score;
+          claritySum += authenticCatalogAsset ? Math.max(90, clarity.score) : clarity.score;
           clarityCount += 1;
         } else {
           generated.failedPictograms += 1;
@@ -101,6 +103,11 @@ export async function composePuzzleVisual(
           ...layer,
           svg: pic.svg,
           emojiFallback: pic.emojiFallback,
+          source: pic.source,
+          assetId: pic.assetId,
+          seenAs: pic.seenAs,
+          recognitionConfidence: pic.recognitionConfidence,
+          recognitionProfiles: pic.recognitionProfiles,
         });
         generated.pictograms += 1;
         if (typeof pic.clarityScore === "number") {

@@ -27,6 +27,7 @@ import {
   stressTestSolvability,
 } from "./tool-impl";
 import { puzzleAgentTools } from "./tools";
+import { recognizePuzzleBoard } from "./visual/critique-board";
 
 export interface PuzzleGenerationParams {
   targetDifficulty: number;
@@ -203,6 +204,7 @@ export async function runPuzzleAgentGeneration(
             explanation: puzzle.explanation,
             hints: puzzle.hints,
             techniqueId: puzzle.techniqueId,
+            visual: puzzle.visual,
           }),
           calibratePuzzleDifficulty({
             rebusPuzzle: puzzle.rebusPuzzle,
@@ -233,6 +235,13 @@ export async function runPuzzleAgentGeneration(
           techniqueId: puzzle.techniqueId,
           visual: puzzle.visual,
         });
+
+        const boardRecognition = await recognizePuzzleBoard(puzzle.visual);
+        if (!boardRecognition.ok) {
+          priorFailure = boardRecognition.reason ?? "Rendered board recognition failed";
+          lastError = new Error(priorFailure);
+          continue;
+        }
 
         const gate = evaluatePublishGates({
           rebusPuzzle: puzzle.rebusPuzzle,
@@ -271,15 +280,14 @@ export async function runPuzzleAgentGeneration(
             rebusPuzzle: puzzle.rebusPuzzle,
             answer: puzzle.answer,
             category: puzzle.category,
+            visual: puzzle.visual,
           });
 
         const difficultyLevel =
           puzzle.difficultyLevel || output.metadata.difficultyLevel || level.label;
 
         // Prefer measured in-band calibration; fall back to tier target only if already gated in-band
-        const calibrated = calibration.inBand
-          ? calibration.calibratedDifficulty
-          : level.target;
+        const calibrated = calibration.inBand ? calibration.calibratedDifficulty : level.target;
 
         return {
           ...output,
@@ -293,12 +301,43 @@ export async function runPuzzleAgentGeneration(
             ...output.metadata,
             fingerprint,
             uniquenessScore: uniqueness.uniquenessScore,
+            noveltyEvidence: uniqueness.noveltyEvidence,
             calibratedDifficulty: calibrated,
             difficultyLevel,
             qualityScore: quality.overall,
             qualityVerdict: quality.verdict,
             funScore: quality.funScore ?? output.metadata.funScore,
             visualStyleId: puzzle.visual?.styleId ?? output.metadata.visualStyleId,
+            boardRecognitionConfidence: boardRecognition.perceptions.length
+              ? Math.min(
+                  ...boardRecognition.perceptions.map((perception) =>
+                    Math.max(0, Math.min(1, perception.overallConfidence))
+                  )
+                )
+              : undefined,
+            boardRecognitionModels: boardRecognition.perceptions.length
+              ? boardRecognition.perceptions.map((perception) => perception.model)
+              : undefined,
+            boardConceptVotes: boardRecognition.perceptions.length
+              ? boardRecognition.conceptVotes
+              : undefined,
+            boardRecognitionProfiles: boardRecognition.profileResults?.length
+              ? boardRecognition.profileResults.map((profile) => ({
+                  profileId: profile.profileId,
+                  viewportWidth: profile.viewportWidth,
+                  tileSize: profile.tileSize,
+                  confidence: profile.perceptions.length
+                    ? Math.min(
+                        ...profile.perceptions.map((perception) =>
+                          Math.max(0, Math.min(1, perception.overallConfidence))
+                        )
+                      )
+                    : 0,
+                  models: profile.perceptions.map((perception) => perception.model),
+                  conceptVotes: profile.conceptVotes,
+                  wrappedRows: profile.wrappedRows,
+                }))
+              : undefined,
             generationAttempts: attempt,
             thinkingSummary:
               output.metadata.thinkingSummary ??

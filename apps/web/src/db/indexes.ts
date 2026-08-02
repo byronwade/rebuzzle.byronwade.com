@@ -88,12 +88,58 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { createdAt: -1 } },
       // Combined index for filtered date queries
       { spec: { active: 1, publishedAt: -1, puzzleType: 1 } },
+      // Bounded historical sampling for blind human calibration of generated boards
+      {
+        spec: { "metadata.aiGenerated": 1, puzzleType: 1, publishedAt: -1 },
+        options: {
+          name: "generated_rebus_playtest_backfill",
+          partialFilterExpression: { "metadata.aiGenerated": true, visual: { $exists: true } },
+        },
+      },
       // Speeds UTC-day lookups used by findByDate
       { spec: { active: 1, publishedAt: 1 } },
       // Archive-wide answer lookups (app enforces uniqueness; sparse for legacy rows)
-      { spec: { "metadata.answerKey": 1 }, options: { sparse: true, name: "metadata_answerKey_sparse" } },
+      {
+        spec: { "metadata.answerKey": 1 },
+        options: { sparse: true, name: "metadata_answerKey_sparse" },
+      },
+      // Race-safe uniqueness for all newly published rows. Legacy rows remain readable and
+      // are still checked by the application until they can be audited/backfilled safely.
+      {
+        spec: { "metadata.answerKey": 1 },
+        options: {
+          unique: true,
+          name: "answer_key_archive_v1_unique",
+          partialFilterExpression: { "metadata.uniquenessContract": "archive-v1" },
+        },
+      },
+      {
+        spec: { "metadata.dailyPublicationKey": 1 },
+        options: {
+          unique: true,
+          name: "daily_publication_archive_v1_unique",
+          partialFilterExpression: { "metadata.uniquenessContract": "archive-v1" },
+        },
+      },
       // Fingerprint lookups for uniqueness tooling
       { spec: { "metadata.fingerprint": 1 }, options: { sparse: true } },
+      // Structural novelty ledger: searchable archive composition dimensions
+      {
+        spec: { "metadata.noveltyEvidence.mechanismFamilyKey": 1, createdAt: -1 },
+        options: { sparse: true, name: "novelty_mechanism_family_created" },
+      },
+      {
+        spec: { "metadata.noveltyEvidence.mechanismKey": 1, createdAt: -1 },
+        options: { sparse: true, name: "novelty_mechanism_created" },
+      },
+      {
+        spec: { "metadata.noveltyEvidence.topologyKey": 1, createdAt: -1 },
+        options: { sparse: true, name: "novelty_topology_created" },
+      },
+      {
+        spec: { "metadata.noveltyEvidence.cueCombinationKey": 1, createdAt: -1 },
+        options: { sparse: true, name: "novelty_cue_combination_created" },
+      },
     ],
   },
 
@@ -360,6 +406,92 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     ],
   },
 
+  // Human calibration of immutable external benchmark fixtures
+  {
+    collection: "benchmarkReviewFixtures",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      {
+        spec: { datasetId: 1, revision: 1, fixtureId: 1 },
+        options: { unique: true, name: "dataset_revision_fixture_unique" },
+      },
+      { spec: { datasetId: 1, revision: 1, reviewStatus: 1, datasetRow: 1 } },
+      { spec: { reviewerId: 1, reviewedAt: -1 }, options: { sparse: true } },
+      { spec: { reasoningFeatures: 1, reviewStatus: 1 } },
+    ],
+  },
+
+  // Blind human naming calibration for catalog pictograms at player sizes
+  {
+    collection: "iconRecognitionReviews",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      {
+        spec: { contractVersion: 1, catalogVersion: 1, fixtureId: 1, reviewerId: 1 },
+        options: { unique: true, name: "icon_fixture_reviewer_unique" },
+      },
+      { spec: { contractVersion: 1, catalogVersion: 1, fixtureId: 1, createdAt: -1 } },
+      { spec: { reviewerId: 1, contractVersion: 1, catalogVersion: 1, createdAt: -1 } },
+      { spec: { conceptId: 1, sizePx: 1, correct: 1 } },
+      { spec: { matchedConceptId: 1, correct: 1 }, options: { sparse: true } },
+    ],
+  },
+
+  // Human-governed generated pictogram registry
+  {
+    collection: "generatedPictogramCandidates",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      { spec: { assetSha256: 1 }, options: { unique: true } },
+      { spec: { status: 1, createdAt: 1 } },
+      { spec: { conceptKey: 1, styleId: 1, status: 1, updatedAt: -1 } },
+      {
+        spec: { conceptKey: 1, styleId: 1 },
+        options: {
+          unique: true,
+          name: "one_approved_generated_asset_per_concept",
+          partialFilterExpression: { status: "approved" },
+        },
+      },
+    ],
+  },
+  {
+    collection: "generatedPictogramReviews",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      {
+        spec: { registryVersion: 1, candidateId: 1, sizePx: 1, reviewerId: 1 },
+        options: { unique: true, name: "generated_asset_size_reviewer_unique" },
+      },
+      { spec: { candidateId: 1, sizePx: 1, createdAt: 1 } },
+      { spec: { reviewerId: 1, registryVersion: 1, createdAt: 1 } },
+    ],
+  },
+
+  // Blind human playtesting of actual AI-generated puzzle boards
+  {
+    collection: "puzzlePlaytestCandidates",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      { spec: { contractVersion: 1, puzzleId: 1 }, options: { unique: true } },
+      { spec: { contractVersion: 1, status: 1, createdAt: 1 } },
+      { spec: { techniqueId: 1, difficultyScore: 1, status: 1 } },
+    ],
+  },
+  {
+    collection: "puzzlePlaytestReviews",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      {
+        spec: { contractVersion: 1, candidateId: 1, reviewerId: 1 },
+        options: { unique: true, name: "one_profile_per_candidate_reviewer" },
+      },
+      { spec: { contractVersion: 1, candidateId: 1, profileId: 1, createdAt: 1 } },
+      { spec: { contractVersion: 1, reviewerId: 1, createdAt: 1 } },
+      { spec: { failureReason: 1, correct: 1 }, options: { sparse: true } },
+    ],
+  },
+
   // Levels collection
   {
     collection: "levels",
@@ -439,9 +571,7 @@ export async function setupDatabaseIndexes(): Promise<{
     }
   }
 
-  console.log(
-    `[DB Indexes] Complete: ${totalCreated} indexes created, ${totalErrors} errors`
-  );
+  console.log(`[DB Indexes] Complete: ${totalCreated} indexes created, ${totalErrors} errors`);
 
   return {
     success: totalErrors === 0,

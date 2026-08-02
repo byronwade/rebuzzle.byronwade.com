@@ -8,8 +8,15 @@
  * - Similarity scoring
  */
 
-import { createHash } from "node:crypto";
 import { getCollection } from "@/db/mongodb";
+import { createMongoPuzzleNoveltyArchive } from "../puzzle-agent/mongo-novelty-archive";
+import {
+  buildPuzzleNoveltySignature,
+  createPuzzleNoveltyModule,
+  type PuzzleNoveltyAssessment,
+  type PuzzleNoveltyCandidate,
+} from "../puzzle-agent/novelty";
+import type { PuzzleVisual } from "../puzzle-agent/visual/composition";
 
 // ============================================================================
 // FINGERPRINTING
@@ -23,29 +30,16 @@ export function createPuzzleFingerprint(puzzle: {
   answer: string;
   category: string;
   techniqueId?: string;
+  visual?: PuzzleVisual;
 }): string {
-  // Normalize answer
-  const normalizedAnswer = puzzle.answer.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return buildPuzzleNoveltySignature(puzzle).fingerprint;
+}
 
-  // Extract emojis
-  const emojiPattern = /[\p{Emoji}]/gu;
-  const emojis = (puzzle.rebusPuzzle.match(emojiPattern) || []).sort().join("");
-
-  // Extract text components
-  const textComponents = puzzle.rebusPuzzle
-    .replace(emojiPattern, "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => t.toLowerCase())
-    .sort()
-    .join("_");
-
-  const technique = (puzzle.techniqueId || "unknown").toLowerCase();
-
-  // Create composite fingerprint (include technique so identical emoji+answer with different craft still differs)
-  const composite = `${normalizedAnswer}::${emojis}::${textComponents}::${puzzle.category}::${technique}`;
-
-  return createHash("sha256").update(composite).digest("hex");
+/** One fail-closed archive assessment shared by tools and legacy callers. */
+export async function evaluatePuzzleNovelty(
+  puzzle: PuzzleNoveltyCandidate
+): Promise<PuzzleNoveltyAssessment> {
+  return createPuzzleNoveltyModule({ archive: createMongoPuzzleNoveltyArchive() }).evaluate(puzzle);
 }
 
 /**
@@ -310,91 +304,25 @@ export async function validateUniqueness(puzzle: {
   answer: string;
   category: string;
   explanation: string;
+  techniqueId?: string;
+  visual?: PuzzleVisual;
 }): Promise<{
   isUnique: boolean;
   similarityScore: number;
   conflictingPuzzles: Array<{ id: string; similarity: number }>;
   recommendations: string[];
 }> {
-  // Check fingerprint
-  const fingerprint = createPuzzleFingerprint(puzzle);
-  const puzzlesCollection = getCollection("puzzles");
-
-  const existingWithFingerprint = await puzzlesCollection.findOne({
-    "metadata.fingerprint": fingerprint,
-  });
-
-  if (existingWithFingerprint) {
-    return {
-      isUnique: false,
-      similarityScore: 1.0,
-      conflictingPuzzles: [{ id: existingWithFingerprint.id, similarity: 1.0 }],
-      recommendations: ["This exact puzzle already exists. Generate a completely new one."],
-    };
-  }
-
-  // Check semantic similarity
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - 30); // Look back 30 days
-
-  const recentPuzzles = await puzzlesCollection
-    .find({ createdAt: { $gte: cutoffDate } })
-    .sort({ createdAt: -1 })
-    .limit(100)
-    .toArray();
-
-  const conflicts: Array<{ id: string; similarity: number }> = [];
-  let maxSimilarity = 0;
-
-  for (const existing of recentPuzzles) {
-    // Handle both rebusPuzzle and puzzle field names for existing puzzles
-    const existingPuzzleText = (existing as any).rebusPuzzle || (existing as any).puzzle || "";
-    const puzzleText = puzzle.rebusPuzzle || "";
-    const existingAnswer = existing.answer || "";
-    const puzzleAnswer = puzzle.answer || "";
-
-    const similarity = calculateSimilarity(
-      { rebusPuzzle: puzzleText, answer: puzzleAnswer },
-      {
-        rebusPuzzle: existingPuzzleText,
-        puzzle: existingPuzzleText,
-        answer: existingAnswer,
-      }
-    );
-
-    if (similarity > 0.7) {
-      conflicts.push({ id: existing.id, similarity });
-      maxSimilarity = Math.max(maxSimilarity, similarity);
-    }
-  }
-
-  // Check component uniqueness
-  const puzzleText = puzzle.rebusPuzzle || "";
-  const components = extractComponents(puzzleText || "");
-  const isComponentUnique = await isComponentCombinationUnique(components, 30);
-
-  // Check pattern diversity
-  const pattern = identifyPattern({ ...puzzle, rebusPuzzle: puzzleText });
-  const patternCheck = await checkPatternDiversity(pattern.patternType, 7);
-
-  const recommendations: string[] = [];
-  if (!isComponentUnique) {
-    recommendations.push("Emoji combination recently used. Try different visual elements.");
-  }
-  if (!patternCheck.isDiverse) {
-    recommendations.push(patternCheck.recommendation);
-  }
-  if (conflicts.length > 0) {
-    recommendations.push(
-      `Too similar to ${conflicts.length} existing puzzles. Make it more unique.`
-    );
-  }
-
+  const assessment = await evaluatePuzzleNovelty(puzzle);
   return {
-    isUnique: conflicts.length === 0 && isComponentUnique,
-    similarityScore: maxSimilarity,
-    conflictingPuzzles: conflicts,
-    recommendations,
+    isUnique: assessment.isUnique,
+    similarityScore: assessment.blockers.some((blocker) => blocker.startsWith("Answer already"))
+      ? 1
+      : assessment.evidence.closestStructuralSimilarity,
+    conflictingPuzzles: assessment.conflicts.map((conflict) => ({
+      id: conflict.puzzleId,
+      similarity: conflict.structuralSimilarity,
+    })),
+    recommendations: assessment.recommendations,
   };
 }
 
@@ -406,15 +334,8 @@ export async function calculateUniquenessScore(puzzle: {
   answer: string;
   category: string;
   explanation: string;
+  techniqueId?: string;
+  visual?: PuzzleVisual;
 }): Promise<number> {
-  const validation = await validateUniqueness(puzzle);
-
-  if (!validation.isUnique) return 0;
-
-  // Score based on how different it is
-  const baseScore = 100;
-  const similarityPenalty = validation.similarityScore * 30;
-  const componentPenalty = validation.conflictingPuzzles.length * 10;
-
-  return Math.max(0, baseScore - similarityPenalty - componentPenalty);
+  return (await evaluatePuzzleNovelty(puzzle)).score;
 }

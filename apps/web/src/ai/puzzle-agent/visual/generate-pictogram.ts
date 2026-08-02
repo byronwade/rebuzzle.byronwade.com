@@ -4,18 +4,13 @@
  */
 
 import { generateAIText } from "@/ai/client";
+import { logger } from "@/lib/logger";
 import { recognizePictogramIcon } from "./critique-pictogram";
+import { resolveCuratedPictogram } from "./curated-pictograms";
 import { getIconFeatureHints } from "./icon-features";
-import {
-  buildConcreteDrawingBrief,
-  scorePictogramClarity,
-} from "./pictogram-clarity";
+import { buildConcreteDrawingBrief, scorePictogramClarity } from "./pictogram-clarity";
 import { sanitizePictogramSvg } from "./sanitize-svg";
-import {
-  INK_PICTOGRAM_PALETTE,
-  INK_PICTOGRAM_STYLE_GUIDE,
-  INK_PICTOGRAM_STYLE_ID,
-} from "./style";
+import { INK_PICTOGRAM_PALETTE, INK_PICTOGRAM_STYLE_GUIDE, INK_PICTOGRAM_STYLE_ID } from "./style";
 
 export type GeneratePictogramInput = {
   concept: string;
@@ -38,13 +33,114 @@ export type GeneratePictogramResult = {
   clarityReasons?: string[];
   seenAs?: string;
   recognitionConfidence?: number;
+  recognitionProfiles?: Array<{ tileSize: number; seenAs: string; confidence: number }>;
   attempts?: number;
+  source?: "catalog" | "generated" | "approved-cache";
+  assetId?: string;
   error?: string;
 };
+
+async function loadGeneratedPictogramRegistry() {
+  const module = await import("../review/generated-pictogram-registry-server");
+  return module.generatedPictogramRegistry;
+}
 
 function guessEmojiFallback(concept: string): string {
   const c = concept.toLowerCase();
   const map: Record<string, string> = {
+    "computer mouse": "🖱️",
+    "graduation cap": "🎓",
+    "hard hat": "⛑️",
+    headphones: "🎧",
+    "ice cream": "🍨",
+    "milk carton": "🥛",
+    "paint palette": "🎨",
+    "paw print": "🐾",
+    "piggy bank": "🐷",
+    "shopping bag": "🛍️",
+    "soft drink": "🥤",
+    "traffic cone": "🚧",
+    "trash can": "🗑️",
+    "wine glass": "🍷",
+    footprints: "👣",
+    lightning: "⚡",
+    wristwatch: "⌚",
+    baby: "👶",
+    banana: "🍌",
+    battery: "🔋",
+    bed: "🛏️",
+    bicycle: "🚲",
+    bike: "🚲",
+    bomb: "💣",
+    bone: "🦴",
+    box: "📦",
+    package: "📦",
+    briefcase: "💼",
+    bug: "🐛",
+    insect: "🐛",
+    bus: "🚌",
+    candy: "🍬",
+    castle: "🏰",
+    coffee: "☕",
+    cookie: "🍪",
+    biscuit: "🍪",
+    pot: "🍲",
+    soda: "🥤",
+    diamond: "💎",
+    gemstone: "💎",
+    door: "🚪",
+    drum: "🥁",
+    envelope: "✉️",
+    mail: "✉️",
+    letter: "✉️",
+    feather: "🪶",
+    gear: "⚙️",
+    cog: "⚙️",
+    glasses: "👓",
+    globe: "🌍",
+    world: "🌍",
+    earth: "🌍",
+    hammer: "🔨",
+    lamp: "🪔",
+    medal: "🏅",
+    megaphone: "📣",
+    milk: "🥛",
+    newspaper: "📰",
+    news: "📰",
+    palette: "🎨",
+    paw: "🐾",
+    pencil: "✏️",
+    pizza: "🍕",
+    rabbit: "🐇",
+    bunny: "🐇",
+    radio: "📻",
+    rainbow: "🌈",
+    rat: "🐀",
+    rodent: "🐀",
+    ribbon: "🎀",
+    scissors: "✂️",
+    shell: "🐚",
+    seashell: "🐚",
+    shirt: "👕",
+    skull: "💀",
+    snowflake: "❄️",
+    sprout: "🌱",
+    seedling: "🌱",
+    tent: "⛺",
+    ticket: "🎟️",
+    trash: "🗑️",
+    garbage: "🗑️",
+    truck: "🚚",
+    television: "📺",
+    tv: "📺",
+    watch: "⌚",
+    waves: "🌊",
+    ocean: "🌊",
+    wheat: "🌾",
+    grain: "🌾",
+    wine: "🍷",
+    wrench: "🔧",
+    spanner: "🔧",
     bee: "🐝",
     eye: "👁️",
     clock: "🕐",
@@ -78,7 +174,6 @@ function guessEmojiFallback(concept: string): string {
     music: "🎵",
     phone: "📱",
     brain: "🧠",
-    skull: "💀",
     ghost: "👻",
     rocket: "🚀",
     crown: "👑",
@@ -218,6 +313,122 @@ export async function generatePictogram(
   let lastSeenAs: string | undefined;
   let lastRedrawAdvice: string | undefined;
   let lastRecognitionConfidence: number | undefined;
+  let lastRecognitionProfiles:
+    | Array<{ tileSize: number; seenAs: string; confidence: number }>
+    | undefined;
+
+  const curated = resolveCuratedPictogram(concept);
+  if (curated) {
+    const clarity = scorePictogramClarity(curated.svg);
+    if (input.skipRecognition) {
+      return {
+        styleId: INK_PICTOGRAM_STYLE_ID,
+        concept,
+        role: input.role,
+        svg: curated.svg,
+        emojiFallback,
+        ok: true,
+        clarityScore: Math.max(90, clarity.score),
+        clarityReasons: [],
+        attempts: 0,
+        source: "catalog",
+        assetId: curated.assetId,
+      };
+    }
+
+    const recognition = await recognizePictogramIcon({
+      svg: curated.svg,
+      concept,
+    });
+    if (recognition.ok) {
+      return {
+        styleId: INK_PICTOGRAM_STYLE_ID,
+        concept,
+        role: input.role,
+        svg: curated.svg,
+        emojiFallback,
+        ok: true,
+        clarityScore: Math.max(90, clarity.score),
+        clarityReasons: [],
+        seenAs: recognition.seenLabel,
+        recognitionConfidence: recognition.confidence,
+        recognitionProfiles: recognition.profileResults?.map((profile) => ({
+          tileSize: profile.tileSize,
+          seenAs: profile.seenLabel,
+          confidence: profile.confidence,
+        })),
+        attempts: 0,
+        source: "catalog",
+        assetId: curated.assetId,
+      };
+    }
+
+    lastSeenAs = recognition.seenLabel;
+    lastRecognitionConfidence = recognition.confidence;
+    lastRecognitionProfiles = recognition.profileResults?.map((profile) => ({
+      tileSize: profile.tileSize,
+      seenAs: profile.seenLabel,
+      confidence: profile.confidence,
+    }));
+    lastRedrawAdvice = recognition.redrawAdvice;
+    lastReasons = [`catalog_seen_as:${recognition.seenLabel}`, "catalog_recognition_failed"];
+  }
+
+  if (!input.skipRecognition) {
+    try {
+      const registry = await loadGeneratedPictogramRegistry();
+      const approved = await registry.findApproved(concept);
+      if (approved) {
+        const clarity = scorePictogramClarity(approved.svg);
+        const recognition = await recognizePictogramIcon({
+          svg: approved.svg,
+          concept,
+        });
+        if (clarity.ok && recognition.ok) {
+          return {
+            styleId: INK_PICTOGRAM_STYLE_ID,
+            concept,
+            role: input.role,
+            svg: approved.svg,
+            emojiFallback,
+            ok: true,
+            clarityScore: clarity.score,
+            clarityReasons: clarity.reasons,
+            seenAs: recognition.seenLabel,
+            recognitionConfidence: recognition.confidence,
+            recognitionProfiles: recognition.profileResults?.map((profile) => ({
+              tileSize: profile.tileSize,
+              seenAs: profile.seenLabel,
+              confidence: profile.confidence,
+            })),
+            attempts: 0,
+            source: "approved-cache",
+            assetId: approved.id,
+          };
+        }
+        await registry.quarantine(
+          approved.id,
+          recognition.ok
+            ? `Runtime structural clarity regression: ${clarity.reasons.join(", ")}`
+            : `Runtime recognition regression: seen as ${recognition.seenLabel}`
+        );
+        lastSeenAs = recognition.seenLabel;
+        lastRecognitionConfidence = recognition.confidence;
+        lastRecognitionProfiles = recognition.profileResults?.map((profile) => ({
+          tileSize: profile.tileSize,
+          seenAs: profile.seenLabel,
+          confidence: profile.confidence,
+        }));
+        lastRedrawAdvice = recognition.redrawAdvice;
+        lastReasons = ["approved_cache_regression", `seen_as:${recognition.seenLabel}`];
+      }
+    } catch (error) {
+      logger.warn("Generated pictogram registry unavailable; drawing a fresh gated asset", {
+        concept,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const drawn = await drawOnce({
@@ -251,6 +462,11 @@ export async function generatePictogram(
       });
       lastSeenAs = recognition.seenLabel;
       lastRecognitionConfidence = recognition.confidence;
+      lastRecognitionProfiles = recognition.profileResults?.map((profile) => ({
+        tileSize: profile.tileSize,
+        seenAs: profile.seenLabel,
+        confidence: profile.confidence,
+      }));
       lastRedrawAdvice = recognition.redrawAdvice;
 
       if (!recognition.ok) {
@@ -261,6 +477,25 @@ export async function generatePictogram(
         ];
         lastError = `recognition_mismatch:seen=${recognition.seenLabel}`;
         continue;
+      }
+
+      let candidateAssetId: string | undefined;
+      try {
+        const registry = await loadGeneratedPictogramRegistry();
+        const candidate = await registry.submitCandidate({
+          concept,
+          svg: drawn.svg,
+          clarityScore: clarity.score,
+          seenAs: recognition.seenLabel,
+          recognitionConfidence: recognition.confidence,
+          recognitionProfiles: lastRecognitionProfiles,
+        });
+        candidateAssetId = candidate?.id;
+      } catch (error) {
+        logger.warn("Failed to queue generated pictogram for blind human review", {
+          concept,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
 
       return {
@@ -274,7 +509,10 @@ export async function generatePictogram(
         clarityReasons: clarity.reasons,
         seenAs: recognition.seenLabel,
         recognitionConfidence: recognition.confidence,
+        recognitionProfiles: lastRecognitionProfiles,
         attempts: attempt + 1,
+        source: "generated",
+        assetId: candidateAssetId,
       };
     }
 
@@ -288,6 +526,7 @@ export async function generatePictogram(
       clarityScore: clarity.score,
       clarityReasons: clarity.reasons,
       attempts: attempt + 1,
+      source: "generated",
     };
   }
 
@@ -302,6 +541,7 @@ export async function generatePictogram(
     clarityReasons: lastReasons,
     seenAs: lastSeenAs,
     recognitionConfidence: lastRecognitionConfidence,
+    recognitionProfiles: lastRecognitionProfiles,
     attempts: maxAttempts,
     error: lastError,
   };

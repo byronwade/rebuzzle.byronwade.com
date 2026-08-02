@@ -14,6 +14,9 @@ node_modules
 
 # Testing
 coverage
+artifacts/puzzle-generator/external/
+artifacts/puzzle-generator/catalog/
+artifacts/puzzle-generator/reserve/
 
 # Turbo
 .turbo
@@ -50,3 +53,4 @@ pnpm-lock.yaml
 apps/web/playwright-report/
 apps/web/test-results/
 apps/web/blob-report/
+.env*

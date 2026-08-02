@@ -24,6 +24,7 @@ import {
 } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
+import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 import { ChatLockedDock } from "./ChatLockedDock";
@@ -399,8 +400,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     const isNearMiss = similarity !== undefined && similarity >= engagementConfig.nearMissThreshold;
     if (isNearMiss) {
       haptics.warning();
+      void playInterfaceSound("near-miss");
     } else {
       haptics.error();
+      void playInterfaceSound("incorrect");
     }
   }, []);
 
@@ -411,6 +414,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       if (gameState.gameOver || !currentEventPuzzle || !guess || gameState.isSubmitting) {
         return;
       }
+
+      // Start audio while the browser still considers this a direct user gesture.
+      void playInterfaceSound("submit");
 
       // Must have a session cookie before scoring. ensureGuest sets cookies even
       // if React auth state hasn't re-rendered yet — continue after success.
@@ -423,6 +429,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               "Couldn't start your guest session. Check your connection, then refresh and try again.",
             variant: "destructive",
           });
+          void playInterfaceSound("failure");
           return;
         }
       }
@@ -466,6 +473,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
         // Already locked / replay blocked — stay in-thread, don't hard-cut away
         if (response.status === 409 || result.locked) {
+          void playInterfaceSound("notification");
           setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts);
           toast({
             title: result.wasSuccessful ? "Already solved today" : "Day already locked",
@@ -500,6 +508,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         }
 
         if (result.correct) {
+          void playInterfaceSound("success");
           const attempts = attemptNumber;
           const earnedPoints =
             result.pointsEarned ??
@@ -598,6 +607,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         });
 
         if (result.gameOver || newAttemptsLeft <= 0) {
+          void playInterfaceSound("failure");
           setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
 
           const newStats = { ...userStats };
@@ -677,6 +687,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         }
       } catch (error) {
         console.error("Error processing guess:", error);
+        void playInterfaceSound("failure");
         dispatch({ type: "SET_ATTEMPTS_LEFT", payload: previousAttemptsLeft });
         dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: previousLastSubmittedGuess });
         setError({
@@ -784,6 +795,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                           gameId={gameData.id}
                           onHintReveal={(hintIndex) => {
                             dispatch({ type: "REVEAL_HINT" });
+                            void playInterfaceSound("hint");
                             trackEvent(analyticsEvents.HINT_USED, {
                               puzzleId: gameData.id || "unknown",
                               hintIndex,

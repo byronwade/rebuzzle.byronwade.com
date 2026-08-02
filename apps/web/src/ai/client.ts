@@ -12,11 +12,7 @@ import { generateText, type LanguageModel, Output, streamText } from "ai";
 import type { z } from "zod";
 import { AI_CONFIG, validateApiKeys } from "./config";
 import { AIError, AIProviderError, parseAIError, QuotaExceededError } from "./errors";
-import {
-  assertGatewayAuthConfigured,
-  ensureGatewayKey,
-  getGatewayApiKey,
-} from "./gateway-auth";
+import { assertGatewayAuthConfigured, ensureGatewayKey, getGatewayApiKey } from "./gateway-auth";
 import { enforceQuota } from "./quota-manager";
 
 export type ModelTier = "fast" | "smart" | "creative";
@@ -189,6 +185,53 @@ export async function generateAIObject<T>(params: {
   }
 
   throw lastError ?? new Error("All gateway models failed");
+}
+
+/**
+ * Generate a structured result from rendered pixels.
+ *
+ * Callers provide an explicit vision model so independent judges can be used
+ * without accidentally collapsing an ensemble onto one fallback model.
+ */
+export async function generateAIObjectFromImage<T>(params: {
+  prompt: string;
+  system?: string;
+  schema: z.ZodType<T>;
+  image: Uint8Array;
+  mediaType: string;
+  modelId: string;
+  temperature?: number;
+}): Promise<T> {
+  await enforceQuota();
+  ensureGatewayKey();
+  assertGatewayAuthConfigured();
+
+  const result = await generateText({
+    model: getAiGateway()(params.modelId),
+    system: params.system,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: params.prompt },
+          {
+            type: "image",
+            image: params.image,
+            mediaType: params.mediaType,
+          },
+        ],
+      },
+    ],
+    temperature: params.temperature ?? AI_CONFIG.generation.temperature.factual,
+    output: Output.object({ schema: params.schema }),
+    abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.default),
+  });
+
+  if (result.output == null) {
+    throw new Error(`Vision model ${params.modelId} returned no structured output`);
+  }
+
+  return result.output;
 }
 
 /**

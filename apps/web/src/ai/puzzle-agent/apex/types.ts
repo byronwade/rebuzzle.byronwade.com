@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import type { DifficultyTierLabel } from "../difficulty-levels";
+import type { PuzzleNoveltyEvidence } from "../novelty";
 import type { TechniqueId } from "../technique-library";
 import type { PuzzleVisual } from "../visual/composition";
 
@@ -45,6 +46,34 @@ export const PlayerSimSchema = z.object({
   unfairReasons: z.array(z.string()).max(6),
   estimatedSolveRate: z.number().min(0).max(1),
   confidence: z.number().min(0).max(1),
+  blindProfileCount: z.number().int().nonnegative().optional(),
+  blindProfilesWithTarget: z.number().int().nonnegative().optional(),
+  blindTopTargetFoundBy: z.number().int().nonnegative().optional(),
+  blindDominantTargetFoundBy: z.number().int().nonnegative().optional(),
+  blindProfilesWithTopTarget: z.number().int().nonnegative().optional(),
+  blindProfilesWithDominantTarget: z.number().int().nonnegative().optional(),
+  blindMeanReciprocalRank: z.number().min(0).max(1).optional(),
+  blindStrongestWrongConfidence: z.number().min(0).max(1).optional(),
+  blindRequiredVotes: z.number().int().positive().optional(),
+  blindProfileResults: z
+    .array(
+      z.object({
+        profileId: z.string().min(1),
+        judgeCount: z.number().int().nonnegative(),
+        targetFoundBy: z.number().int().nonnegative(),
+        topTargetFoundBy: z.number().int().nonnegative(),
+        dominantTargetFoundBy: z.number().int().nonnegative(),
+        meanReciprocalRank: z.number().min(0).max(1),
+        strongestWrongConfidence: z.number().min(0).max(1),
+      })
+    )
+    .max(6)
+    .optional(),
+  editorialProfileCount: z.number().int().nonnegative().optional(),
+  editorialAcceptedProfiles: z.number().int().nonnegative().optional(),
+  editorialConfidence: z.number().min(0).max(1).optional(),
+  editorialFailureKinds: z.array(z.string().max(40)).max(8).optional(),
+  editorialReasons: z.array(z.string().max(320)).max(8).optional(),
 });
 
 export type PlayerSimResult = z.infer<typeof PlayerSimSchema>;
@@ -116,12 +145,25 @@ export type ApexCandidate = {
   visual: PuzzleVisual;
   fingerprint: string;
   uniquenessScore: number;
+  noveltyEvidence?: PuzzleNoveltyEvidence;
   calibratedDifficulty: number;
   inBand: boolean;
   isUnique: boolean;
   solvable: boolean;
   qualityOverall: number;
   funScore: number;
+  boardRecognitionConfidence?: number;
+  boardRecognitionModels?: string[];
+  boardConceptVotes?: Record<string, number>;
+  boardRecognitionProfiles?: Array<{
+    profileId: string;
+    viewportWidth: number;
+    tileSize: number;
+    confidence: number;
+    models: string[];
+    conceptVotes: Record<string, number>;
+    wrappedRows: number;
+  }>;
   publishable: boolean;
   critique?: CritiqueResult;
   playerSim?: PlayerSimResult;

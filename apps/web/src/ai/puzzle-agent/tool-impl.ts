@@ -8,10 +8,9 @@ import { getCollection } from "@/db/mongodb";
 import { getPuzzleTypeConfig, listPuzzleTypes } from "../config/puzzle-types";
 import { calibrateDifficulty } from "../services/difficulty-calibrator";
 import {
-  calculateUniquenessScore,
   createPuzzleFingerprint,
+  evaluatePuzzleNovelty,
   extractComponents,
-  validateUniqueness,
 } from "../services/uniqueness-tracker";
 import {
   DIFFICULTY_LEVELS,
@@ -207,10 +206,7 @@ function proposeConceptSeedsFallback(input: {
       workingTitle: "Idiom as picture",
       answerDirection: "Widely known idiom rendered literally (no niche slang, no overused tropes)",
       category: "idiom",
-      techniqueId: pick(
-        techniques.find((t) => t.id.includes("idiom"))?.id,
-        "idiom_as_picture"
-      ),
+      techniqueId: pick(techniques.find((t) => t.id.includes("idiom"))?.id, "idiom_as_picture"),
       layerPlan: "pictogram for the punch image + text for the rest of the idiom",
       whyItFitsTier: "Share-worthy aha that still fits the tier budget",
       pictogramNouns: ["boat", "fish"],
@@ -303,9 +299,7 @@ pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, li
         `Band ${level.min}–${level.max}. Budget ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
         input.theme ? `Theme: ${input.theme}` : "No fixed theme — surprise us.",
         input.category ? `Preferred category: ${input.category}` : "",
-        avoidKeys.size
-          ? `Avoid these answer keys: ${[...avoidKeys].slice(0, 25).join(", ")}`
-          : "",
+        avoidKeys.size ? `Avoid these answer keys: ${[...avoidKeys].slice(0, 25).join(", ")}` : "",
         "Each seed needs a specific answerDirection (name a plausible phrase family), mechanismOneLiner, and 1–3 pictogramNouns.",
       ]
         .filter(Boolean)
@@ -400,8 +394,7 @@ export function assembleVisualComponents(input: {
     issueCount: issues.length,
     generativeParts: 0,
     unicodeParts: emojiCount + components.symbols.length,
-    hasSpatialOrOperator:
-      components.arrows.length > 0 || /[/+\-×÷]/.test(input.rebusPuzzle),
+    hasSpatialOrOperator: components.arrows.length > 0 || /[/+\-×÷]/.test(input.rebusPuzzle),
     hasStyledText: false,
     explanationMapsWell: false,
   });
@@ -430,12 +423,11 @@ export function craftHintLadder(input: {
   const answer = input.answer.trim();
   const words = answer.split(/\s+/).filter(Boolean);
   const firstLetter = answer[0]?.toUpperCase() ?? "?";
-  const mechanism =
-    /sound|phonetic|homophone/i.test(input.explanation)
-      ? "Say the pieces out loud — a sound-alike may be hiding."
-      : /over|under|between|position|above|below/i.test(input.explanation)
-        ? "Placement matters as much as the pictures."
-        : "Look for how the pieces combine into a familiar phrase.";
+  const mechanism = /sound|phonetic|homophone/i.test(input.explanation)
+    ? "Say the pieces out loud — a sound-alike may be hiding."
+    : /over|under|between|position|above|below/i.test(input.explanation)
+      ? "Placement matters as much as the pictures."
+      : "Look for how the pieces combine into a familiar phrase.";
 
   const spoilerSafeExplain = input.explanation
     .replace(new RegExp(escapeRegExpSafe(answer), "ig"), "the answer")
@@ -445,9 +437,7 @@ export function craftHintLadder(input: {
     `Think about the ${words.length > 1 ? "phrase" : "word"} category — not the literal picture alone.`,
     mechanism,
     `Notice the relationship between parts (${spoilerSafeExplain}${spoilerSafeExplain.length >= 72 ? "…" : ""}).`,
-    words.length > 1
-      ? `The answer has ${words.length} words.`
-      : `The answer is a single word.`,
+    words.length > 1 ? `The answer has ${words.length} words.` : `The answer is a single word.`,
     // Final hint only: one first-letter nudge — never a full letter scaffold
     `Final nudge: it starts with "${firstLetter}".`,
   ].slice(0, Math.max(3, Math.min(5, level.componentBudget.max + 1)));
@@ -552,55 +542,33 @@ export function stressTestSolvability(
   };
 }
 
-export async function checkUniqueness(
-  input: CandidatePuzzle & { techniqueId?: string }
-) {
-  const display = input.rebusPuzzle;
-  const fingerprint = createPuzzleFingerprint({
-    rebusPuzzle: display,
+export async function checkUniqueness(input: CandidatePuzzle & { techniqueId?: string }) {
+  const assessment = await evaluatePuzzleNovelty({
+    rebusPuzzle: input.rebusPuzzle,
     answer: input.answer,
     category: input.category,
     techniqueId: input.techniqueId,
+    visual: input.visual,
   });
-
-  // Hard ban: answer reuse across the FULL archive (active + retired)
-  const { isAnswerRegistered } = await import("../learning/answer-registry");
-  const archiveHit = await isAnswerRegistered(input.answer);
-
-  const uniqueness = await validateUniqueness({
-    rebusPuzzle: display,
-    answer: input.answer,
-    category: input.category,
-    explanation: input.explanation,
-  });
-
-  const isUnique = uniqueness.isUnique && !archiveHit.taken;
-
-  const uniquenessScore = isUnique
-    ? await calculateUniquenessScore({
-        rebusPuzzle: display,
-        answer: input.answer,
-        category: input.category,
-        explanation: input.explanation,
-      })
-    : 0;
-
-  const recommendations = [...(uniqueness.recommendations ?? [])];
-  if (archiveHit.taken) {
-    recommendations.unshift(
-      `Answer already in archive${archiveHit.active === false ? " (retired puzzle)" : ""} — invent a different phrase`
-    );
-  }
+  const exactAnswerCollision = assessment.blockers.some((blocker) =>
+    blocker.startsWith("Answer already exists")
+  );
 
   return {
-    fingerprint,
-    isUnique,
-    similarityScore: archiveHit.taken ? 1 : uniqueness.similarityScore,
-    uniquenessScore,
-    conflictingPuzzles: uniqueness.conflictingPuzzles,
-    recommendations,
-    exactAnswerCollision: archiveHit.taken,
-    conflictingPuzzleId: archiveHit.puzzleId,
+    fingerprint: assessment.signature.fingerprint,
+    isUnique: assessment.isUnique,
+    similarityScore: exactAnswerCollision ? 1 : assessment.evidence.closestStructuralSimilarity,
+    uniquenessScore: assessment.score,
+    conflictingPuzzles: assessment.conflicts.map((conflict) => ({
+      id: conflict.puzzleId,
+      similarity: conflict.structuralSimilarity,
+    })),
+    recommendations: assessment.recommendations,
+    exactAnswerCollision,
+    conflictingPuzzleId: assessment.conflicts[0]?.puzzleId,
+    noveltyEvidence: assessment.evidence,
+    noveltyBlockers: assessment.blockers,
+    noveltyConflicts: assessment.conflicts,
   };
 }
 
@@ -740,8 +708,7 @@ export function scorePuzzleQuality(
     issueCount: issues.length,
     generativeParts: visualCheck.pictogramSvgCount + (styledText ? 1 : 0),
     unicodeParts: assembly.components.emojis.length + assembly.components.symbols.length,
-    hasSpatialOrOperator:
-      assembly.components.arrows.length > 0 || /[/+\-×÷]/.test(puzzle),
+    hasSpatialOrOperator: assembly.components.arrows.length > 0 || /[/+\-×÷]/.test(puzzle),
     hasStyledText: styledText,
     explanationMapsWell: explanationMapsAnswer(input.explanation ?? "", answer),
   });
@@ -833,7 +800,7 @@ export function validatePuzzleCandidate(
 }
 
 export function fingerprintCandidate(
-  input: Pick<CandidatePuzzle, "rebusPuzzle" | "answer" | "category">
+  input: Pick<CandidatePuzzle, "rebusPuzzle" | "answer" | "category" | "visual">
 ) {
   return createPuzzleFingerprint(input);
 }

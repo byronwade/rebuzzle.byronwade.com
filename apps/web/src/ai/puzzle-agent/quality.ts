@@ -4,11 +4,12 @@
  */
 
 import {
+  type DifficultyTierLabel,
   getDifficultyLevelForScore,
   isDifficultyInBand,
-  type DifficultyTierLabel,
 } from "./difficulty-levels";
 import { TECHNIQUE_LIBRARY, type TechniqueId } from "./technique-library";
+import { isAuthenticCuratedPictogram } from "./visual/curated-pictograms";
 import { scorePictogramClarity } from "./visual/pictogram-clarity";
 
 export const TECHNIQUE_IDS = Object.keys(TECHNIQUE_LIBRARY) as TechniqueId[];
@@ -121,6 +122,9 @@ export function evaluateVisualForPublish(visual?: {
   layers?: Array<{
     kind: string;
     svg?: string;
+    concept?: string;
+    assetId?: string;
+    source?: "catalog" | "generated" | "approved-cache";
     content?: string;
     emphasis?: string;
   }>;
@@ -146,6 +150,16 @@ export function evaluateVisualForPublish(visual?: {
   );
 
   for (const layer of pictogramLayers) {
+    if (
+      layer.source === "catalog" &&
+      isAuthenticCuratedPictogram({
+        concept: layer.concept ?? "",
+        assetId: layer.assetId,
+        svg: layer.svg,
+      })
+    ) {
+      continue;
+    }
     const clarity = scorePictogramClarity(layer.svg);
     if (!clarity.ok) {
       return {
@@ -290,7 +304,10 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
     return { ok: false, reason: "Answer leaked into puzzle text" };
   }
   if (!isKnownTechniqueId(input.techniqueId)) {
-    return { ok: false, reason: "Missing or unknown techniqueId — pick from the technique library" };
+    return {
+      ok: false,
+      reason: "Missing or unknown techniqueId — pick from the technique library",
+    };
   }
   if (!isTechniqueAllowedForTarget(input.techniqueId, input.targetDifficulty)) {
     return { ok: false, reason: `Technique ${input.techniqueId} not allowed for target tier` };

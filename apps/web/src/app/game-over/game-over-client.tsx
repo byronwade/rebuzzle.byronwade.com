@@ -28,6 +28,59 @@ interface GameData {
 
 type PerceptionChoice = "too_easy" | "just_right" | "too_hard";
 type QualityVote = "like" | "dislike";
+type QualityReason =
+  | "unrecognizable"
+  | "ambiguous"
+  | "unfair"
+  | "boring"
+  | "bad_hints"
+  | "too_easy"
+  | "too_hard";
+
+const QUALITY_REASON_OPTIONS: Array<{ id: QualityReason; label: string }> = [
+  { id: "unrecognizable", label: "Couldn’t recognize it" },
+  { id: "ambiguous", label: "Too ambiguous" },
+  { id: "unfair", label: "Felt unfair" },
+  { id: "bad_hints", label: "Hints didn’t help" },
+  { id: "boring", label: "Not interesting" },
+  { id: "too_easy", label: "Too easy" },
+  { id: "too_hard", label: "Too hard" },
+];
+
+function QualityReasonPicker({
+  selected,
+  saving,
+  onToggle,
+}: {
+  selected: QualityReason[];
+  saving: boolean;
+  onToggle: (reason: QualityReason) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-muted-foreground text-xs">What should we improve?</p>
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {QUALITY_REASON_OPTIONS.map((option) => (
+          <Button
+            key={option.id}
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={saving}
+            onClick={() => onToggle(option.id)}
+            className={cn(
+              "h-8 rounded-full px-3 text-xs",
+              selected.includes(option.id) &&
+                "border-destructive/40 bg-destructive/10 text-destructive"
+            )}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface WordResult {
   word: string;
@@ -71,6 +124,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   const [perceptionSaving, setPerceptionSaving] = useState(false);
   const [qualityVote, setQualityVote] = useState<QualityVote | null>(null);
   const [qualityVoteSaving, setQualityVoteSaving] = useState(false);
+  const [qualityReasons, setQualityReasons] = useState<QualityReason[]>([]);
 
   const [solution, setSolution] = useState({
     answer: gameData.answer || "",
@@ -202,17 +256,24 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     try {
       const key = `difficultyPerception:${puzzleId}`;
       const stored = localStorage.getItem(key);
-      if (
-        stored === "too_easy" ||
-        stored === "just_right" ||
-        stored === "too_hard"
-      ) {
+      if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
         setPerception(stored);
       }
       const qualityKey = `puzzleQualityVote:${puzzleId}`;
       const qualityStored = localStorage.getItem(qualityKey);
       if (qualityStored === "like" || qualityStored === "dislike") {
         setQualityVote(qualityStored);
+      }
+      const reasonStored = localStorage.getItem(`puzzleQualityReasons:${puzzleId}`);
+      if (reasonStored) {
+        const parsed = JSON.parse(reasonStored) as unknown;
+        if (Array.isArray(parsed)) {
+          setQualityReasons(
+            parsed.filter((reason): reason is QualityReason =>
+              QUALITY_REASON_OPTIONS.some((option) => option.id === reason)
+            )
+          );
+        }
       }
     } catch {
       // ignore
@@ -246,13 +307,16 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     }
   }
 
-  async function submitQualityVote(vote: QualityVote) {
+  async function submitQualityVote(vote: QualityVote, reasons: QualityReason[] = []) {
     const puzzleId = resolvePuzzleId();
     if (!puzzleId || qualityVoteSaving) return;
     setQualityVoteSaving(true);
     setQualityVote(vote);
+    const nextReasons = vote === "dislike" ? reasons : [];
+    setQualityReasons(nextReasons);
     try {
       localStorage.setItem(`puzzleQualityVote:${puzzleId}`, vote);
+      localStorage.setItem(`puzzleQualityReasons:${puzzleId}`, JSON.stringify(nextReasons));
       await fetch("/api/puzzles/rating", {
         method: "POST",
         credentials: "include",
@@ -260,6 +324,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
         body: JSON.stringify({
           puzzleId,
           vote,
+          reasons: nextReasons,
           source: "game_over",
           solved: success,
           timeSpentSeconds: typeof timeTaken === "number" ? timeTaken : 0,
@@ -272,6 +337,13 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     } finally {
       setQualityVoteSaving(false);
     }
+  }
+
+  function toggleQualityReason(reason: QualityReason) {
+    const next = qualityReasons.includes(reason)
+      ? qualityReasons.filter((candidate) => candidate !== reason)
+      : [...qualityReasons, reason];
+    void submitQualityVote("dislike", next);
   }
 
   const finalScore = success
@@ -429,7 +501,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 })}
               </div>
               {perception && (
-                <p className="text-muted-foreground text-xs">Thanks — this tunes tomorrow&apos;s puzzle</p>
+                <p className="text-muted-foreground text-xs">
+                  Thanks — this tunes tomorrow&apos;s puzzle
+                </p>
               )}
             </div>
 
@@ -464,6 +538,13 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                   Dislike
                 </Button>
               </div>
+              {qualityVote === "dislike" && (
+                <QualityReasonPicker
+                  selected={qualityReasons}
+                  saving={qualityVoteSaving}
+                  onToggle={toggleQualityReason}
+                />
+              )}
               {qualityVote && (
                 <p className="text-muted-foreground text-xs">
                   Saved — likes help Eve craft better boards
@@ -635,7 +716,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 })}
               </div>
               {perception && (
-                <p className="text-muted-foreground text-xs">Thanks — this tunes tomorrow&apos;s puzzle</p>
+                <p className="text-muted-foreground text-xs">
+                  Thanks — this tunes tomorrow&apos;s puzzle
+                </p>
               )}
             </div>
 
@@ -670,6 +753,13 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                   Dislike
                 </Button>
               </div>
+              {qualityVote === "dislike" && (
+                <QualityReasonPicker
+                  selected={qualityReasons}
+                  saving={qualityVoteSaving}
+                  onToggle={toggleQualityReason}
+                />
+              )}
               {qualityVote && (
                 <p className="text-muted-foreground text-xs">
                   Saved — likes help Eve craft better boards

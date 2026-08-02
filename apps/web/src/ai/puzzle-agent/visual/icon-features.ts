@@ -12,6 +12,8 @@ export type IconFeatureEntry = {
   view: string;
 };
 
+import { getCuratedPictogramAliases } from "./curated-pictograms";
+
 export const ICON_FEATURES: Record<string, IconFeatureEntry> = {
   bee: {
     aliases: ["bee", "bumblebee", "honeybee", "insect"],
@@ -303,7 +305,10 @@ export const OVERUSED_REBUS_TROPES = [
 ] as const;
 
 function normalizeLabel(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export function lookupIconFeatures(concept: string): IconFeatureEntry | null {
@@ -339,6 +344,16 @@ export function conceptMatchesSeen(concept: string, seenLabel: string): boolean 
   if (!intended || !seen) return false;
   if (seen === intended) return true;
   if (seen.includes(intended) || intended.includes(seen)) return true;
+
+  const curatedAliases = getCuratedPictogramAliases(concept);
+  if (
+    curatedAliases.some((alias) => {
+      const normalized = normalizeLabel(alias);
+      return seen === normalized || seen.includes(normalized) || normalized.includes(seen);
+    })
+  ) {
+    return true;
+  }
 
   const entry = lookupIconFeatures(concept);
   if (entry) {

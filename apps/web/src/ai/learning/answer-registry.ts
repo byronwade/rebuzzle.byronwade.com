@@ -48,8 +48,8 @@ export async function isAnswerRegistered(answer: string): Promise<{
       }
     }
     return { taken: false };
-  } catch {
-    return { taken: false };
+  } catch (error) {
+    throw new Error("Cannot verify archive-wide answer uniqueness", { cause: error });
   }
 }
 

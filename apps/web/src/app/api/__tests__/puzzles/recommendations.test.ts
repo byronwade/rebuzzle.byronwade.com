@@ -4,20 +4,31 @@
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { NextRequest } from "next/server";
-import { GET } from "../../puzzles/recommendations/route";
 
 // Mock the recommendations service
-jest.mock("@/ai/services/recommendations");
+jest.mock("@/ai/services/recommendations", () => ({
+  getPersonalizedPuzzles: jest.fn(),
+  recommendNextPuzzle: jest.fn(),
+}));
+jest.mock("@/lib/auth-middleware", () => ({
+  getAuthenticatedUser: jest.fn(),
+}));
 
 import { getPersonalizedPuzzles } from "@/ai/services/recommendations";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { GET } from "../../puzzles/recommendations/route";
 
 const mockGetPersonalizedPuzzles = getPersonalizedPuzzles as jest.MockedFunction<
   typeof getPersonalizedPuzzles
+>;
+const mockGetAuthenticatedUser = getAuthenticatedUser as jest.MockedFunction<
+  typeof getAuthenticatedUser
 >;
 
 describe("GET /api/puzzles/recommendations", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetAuthenticatedUser.mockResolvedValue({ userId: "user-1" } as never);
   });
 
   it("should return personalized puzzles for valid user", async () => {
@@ -35,28 +46,27 @@ describe("GET /api/puzzles/recommendations", () => {
 
     mockGetPersonalizedPuzzles.mockResolvedValue(mockPuzzles as any);
 
-    const request = new NextRequest(
-      "http://localhost:3000/api/puzzles/recommendations?userId=user-1&limit=5"
-    );
+    const request = new NextRequest("http://localhost:3000/api/puzzles/recommendations?limit=5");
 
     const response = await GET(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.recommendations).toEqual(mockPuzzles);
-    expect(mockGetPersonalizedPuzzles).toHaveBeenCalledWith("user-1", 10); // Default limit is 10
+    expect(data.recommendations[0]).toMatchObject({ id: "puzzle-1", puzzle: "Test puzzle" });
+    expect(data.recommendations[0].answer).toBeUndefined();
+    expect(mockGetPersonalizedPuzzles).toHaveBeenCalledWith("user-1", 5);
   });
 
-  it("should return 400 if userId is missing", async () => {
+  it("should return 401 if the request is unauthenticated", async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
     const request = new NextRequest("http://localhost:3000/api/puzzles/recommendations");
 
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBeDefined();
-    expect(data.error).toContain("userId");
+    expect(response.status).toBe(401);
+    expect(data.error).toBe("Unauthorized");
   });
 
   it("should handle errors gracefully", async () => {

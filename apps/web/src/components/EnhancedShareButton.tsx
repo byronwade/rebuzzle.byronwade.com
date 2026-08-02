@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 
 interface EnhancedShareButtonProps {
@@ -162,6 +163,7 @@ export function EnhancedShareButton({
               url,
             };
             await navigator.share(shareData);
+            void playInterfaceSound("notification");
           } else {
             // Fallback to copy
             await handleCopy();
@@ -234,9 +236,11 @@ export function EnhancedShareButton({
       const text = generateShareText();
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      void playInterfaceSound("notification");
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
+      void playInterfaceSound("failure");
     }
   };
 

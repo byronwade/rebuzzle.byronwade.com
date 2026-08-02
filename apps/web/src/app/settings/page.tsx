@@ -29,8 +29,15 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useVisualTheme } from "@/components/VisualThemeProvider";
 import { useToast } from "@/hooks/use-toast";
+import {
+  type AppSettings,
+  createDefaultAppSettings,
+  readAppSettings,
+  writeAppSettings,
+} from "@/lib/app-settings";
 import type { AvatarPreferences } from "@/lib/avatar";
 import { isDevModeEnabled, setDevModeEnabled } from "@/lib/dev-mode";
+import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 import { VISUAL_THEME_META, VISUAL_THEMES, type VisualTheme } from "@/lib/visual-theme";
 
@@ -42,14 +49,9 @@ export default function SettingsPage() {
   const { user, isAuthenticated } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [devMode, setDevMode] = useState(false);
-  const [settings, setSettings] = useState({
-    notifications: false,
-    sound: true,
-    darkMode: theme === "dark",
-    emailNotifications: false,
-    pushNotifications: false,
-    showHints: true,
-  });
+  const [settings, setSettings] = useState<AppSettings>(() =>
+    createDefaultAppSettings(theme === "dark")
+  );
   const [savedSettings, setSavedSettings] = useState(settings);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -123,16 +125,12 @@ export default function SettingsPage() {
 
   useEffect(() => {
     // Load settings from localStorage
-    const saved = localStorage.getItem("appSettings");
-    if (saved) {
-      try {
-        const parsedSettings = JSON.parse(saved);
-        setSettings(parsedSettings);
-        setSavedSettings(parsedSettings);
-      } catch (error) {
-        console.error("Failed to load settings:", error);
-      }
-    }
+    const storedSettings = readAppSettings(
+      localStorage,
+      createDefaultAppSettings(theme === "dark")
+    );
+    setSettings(storedSettings);
+    setSavedSettings(storedSettings);
   }, []);
 
   useEffect(() => {
@@ -155,9 +153,10 @@ export default function SettingsPage() {
   }, [hasUnsavedChanges]);
 
   const handleSave = () => {
-    localStorage.setItem("appSettings", JSON.stringify(settings));
+    writeAppSettings(settings);
     setSavedSettings(settings);
     setHasUnsavedChanges(false);
+    void playInterfaceSound("notification");
     toast({
       title: "Settings Saved",
       description: "Your preferences have been updated.",
@@ -166,16 +165,12 @@ export default function SettingsPage() {
 
   const handleReset = () => {
     if (confirm("Are you sure you want to reset all settings to default?")) {
-      const defaultSettings = {
-        notifications: false,
-        sound: true,
-        darkMode: false,
-        emailNotifications: false,
-        pushNotifications: false,
-        showHints: true,
-      };
+      const defaultSettings = createDefaultAppSettings();
       setSettings(defaultSettings);
-      localStorage.setItem("appSettings", JSON.stringify(defaultSettings));
+      setSavedSettings(defaultSettings);
+      setHasUnsavedChanges(false);
+      writeAppSettings(defaultSettings);
+      void playInterfaceSound("sound-on", { ignorePreference: true });
       toast({
         title: "Settings Reset",
         description: "All settings have been reset to default.",
@@ -392,13 +387,18 @@ export default function SettingsPage() {
                     Sound Effects
                   </Label>
                   <p className="text-muted-foreground text-sm">
-                    Play sounds for correct/incorrect answers
+                    Audio cues for guesses, hints, solve results, and key actions
                   </p>
                 </div>
                 <Switch
                   checked={settings.sound}
                   id="sound"
-                  onCheckedChange={(checked) => setSettings({ ...settings, sound: checked })}
+                  onCheckedChange={(checked) => {
+                    setSettings((current) => ({ ...current, sound: checked }));
+                    void playInterfaceSound(checked ? "sound-on" : "sound-off", {
+                      ignorePreference: true,
+                    });
+                  }}
                 />
               </div>
 

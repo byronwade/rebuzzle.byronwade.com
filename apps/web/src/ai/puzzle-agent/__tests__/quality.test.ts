@@ -8,6 +8,7 @@ import {
   isKnownTechniqueId,
   normalizeAnswerKey,
 } from "../quality";
+import { resolveCuratedPictogram } from "../visual/curated-pictograms";
 import { INK_PICTOGRAM_EXAMPLE_EYE } from "../visual/style";
 
 describe("displayLeaksAnswer", () => {
@@ -101,6 +102,43 @@ describe("evaluateVisualForPublish", () => {
         unicodeFallback: "DEAL",
       }).ok
     ).toBe(true);
+  });
+
+  it("accepts an authentic simple catalog silhouette", () => {
+    const heart = resolveCuratedPictogram("heart")!;
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "heart",
+            svg: heart.svg,
+            source: "catalog",
+            assetId: heart.assetId,
+          },
+        ],
+        unicodeFallback: "❤️",
+      }).ok
+    ).toBe(true);
+  });
+
+  it("does not trust spoofed catalog provenance", () => {
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "heart",
+            svg: '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="20"/></svg>',
+            source: "catalog",
+            assetId: "lucide:heart:v1",
+          },
+        ],
+        unicodeFallback: "◆",
+      }).ok
+    ).toBe(false);
   });
 });
 

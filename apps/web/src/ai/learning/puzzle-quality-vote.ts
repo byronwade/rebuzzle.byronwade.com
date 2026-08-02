@@ -5,14 +5,40 @@
 import { getCollection } from "@/db/mongodb";
 
 export type PuzzleQualityVote = "like" | "dislike";
+export type PuzzleQualityReason =
+  | "unrecognizable"
+  | "ambiguous"
+  | "unfair"
+  | "boring"
+  | "bad_hints"
+  | "too_easy"
+  | "too_hard";
+
+const QUALITY_REASONS = new Set<PuzzleQualityReason>([
+  "unrecognizable",
+  "ambiguous",
+  "unfair",
+  "boring",
+  "bad_hints",
+  "too_easy",
+  "too_hard",
+]);
 
 export type QualityVoteMapping = {
   vote: PuzzleQualityVote;
   rating: number;
   satisfaction: number;
+  reasons: PuzzleQualityReason[];
   metrics: {
     creative?: boolean;
     boring?: boolean;
+    unclear?: boolean;
+    unfair?: boolean;
+    unrecognizable?: boolean;
+    ambiguous?: boolean;
+    hintTooVague?: boolean;
+    tooEasy?: boolean;
+    tooHard?: boolean;
   };
 };
 
@@ -20,20 +46,39 @@ export function isPuzzleQualityVote(value: unknown): value is PuzzleQualityVote 
   return value === "like" || value === "dislike";
 }
 
-export function mapPuzzleQualityVote(vote: PuzzleQualityVote): QualityVoteMapping {
+export function isPuzzleQualityReason(value: unknown): value is PuzzleQualityReason {
+  return typeof value === "string" && QUALITY_REASONS.has(value as PuzzleQualityReason);
+}
+
+export function mapPuzzleQualityVote(
+  vote: PuzzleQualityVote,
+  reasons: PuzzleQualityReason[] = []
+): QualityVoteMapping {
   if (vote === "like") {
     return {
       vote,
       rating: 5,
       satisfaction: 5,
+      reasons: [],
       metrics: { creative: true },
     };
   }
+  const uniqueReasons = Array.from(new Set(reasons.filter(isPuzzleQualityReason)));
   return {
     vote,
     rating: 1,
     satisfaction: 1,
-    metrics: { boring: true },
+    reasons: uniqueReasons,
+    metrics: {
+      boring: uniqueReasons.length === 0 || uniqueReasons.includes("boring"),
+      unclear: uniqueReasons.includes("unrecognizable") || uniqueReasons.includes("ambiguous"),
+      unfair: uniqueReasons.includes("unfair"),
+      unrecognizable: uniqueReasons.includes("unrecognizable"),
+      ambiguous: uniqueReasons.includes("ambiguous"),
+      hintTooVague: uniqueReasons.includes("bad_hints"),
+      tooEasy: uniqueReasons.includes("too_easy"),
+      tooHard: uniqueReasons.includes("too_hard"),
+    },
   };
 }
 
@@ -45,6 +90,7 @@ export type QualityVoteAggregate = {
   /** Recent disliked technique ids (when available on linked puzzles) */
   dislikedTechniques: string[];
   likedTechniques: string[];
+  reasonCounts: Partial<Record<PuzzleQualityReason, number>>;
   notes: string[];
 };
 
@@ -82,6 +128,26 @@ export function qualityVotesToGuidance(agg: QualityVoteAggregate): {
   if (agg.dislikedTechniques.length) {
     avoidPatterns.push(
       `Techniques with recent dislikes: ${agg.dislikedTechniques.slice(0, 4).join(", ")}`
+    );
+  }
+  if ((agg.reasonCounts.unrecognizable ?? 0) > 0) {
+    avoidPatterns.push(
+      "Players reported unrecognizable objects — use vetted assets and simpler silhouettes"
+    );
+  }
+  if ((agg.reasonCounts.ambiguous ?? 0) > 0) {
+    avoidPatterns.push(
+      "Players reported ambiguous boards — remove alternate parses and strengthen cue order"
+    );
+  }
+  if ((agg.reasonCounts.unfair ?? 0) > 0) {
+    avoidPatterns.push(
+      "Players reported unfair puzzles — prefer common phrases and complete cue mapping"
+    );
+  }
+  if ((agg.reasonCounts.bad_hints ?? 0) > 0) {
+    avoidPatterns.push(
+      "Players reported weak hints — make each hint unlock one specific reasoning layer"
     );
   }
   if (agg.likedTechniques.length) {
@@ -124,6 +190,7 @@ export async function loadQualityVoteAggregate(input?: {
     likeRate: 0,
     dislikedTechniques: [],
     likedTechniques: [],
+    reasonCounts: {},
     notes: ["No quality votes yet"],
   };
 
@@ -139,7 +206,16 @@ export async function loadQualityVoteAggregate(input?: {
       .toArray()) as Array<{
       rating?: number;
       puzzleId?: string;
-      metrics?: { creative?: boolean; boring?: boolean };
+      metrics?: {
+        creative?: boolean;
+        boring?: boolean;
+        unrecognizable?: boolean;
+        ambiguous?: boolean;
+        unfair?: boolean;
+        hintTooVague?: boolean;
+        tooEasy?: boolean;
+        tooHard?: boolean;
+      };
     }>;
 
     if (!docs.length) return empty;
@@ -148,17 +224,29 @@ export async function loadQualityVoteAggregate(input?: {
     let dislikes = 0;
     const likedPuzzleIds: string[] = [];
     const dislikedPuzzleIds: string[] = [];
+    const reasonCounts: Partial<Record<PuzzleQualityReason, number>> = {};
 
     for (const doc of docs) {
       const isLike =
-        (typeof doc.rating === "number" && doc.rating >= 4) ||
-        Boolean(doc.metrics?.creative);
+        (typeof doc.rating === "number" && doc.rating >= 4) || Boolean(doc.metrics?.creative);
       if (isLike) {
         likes += 1;
         if (doc.puzzleId) likedPuzzleIds.push(doc.puzzleId);
       } else {
         dislikes += 1;
         if (doc.puzzleId) dislikedPuzzleIds.push(doc.puzzleId);
+        const metricReasons: Array<[PuzzleQualityReason, boolean | undefined]> = [
+          ["unrecognizable", doc.metrics?.unrecognizable],
+          ["ambiguous", doc.metrics?.ambiguous],
+          ["unfair", doc.metrics?.unfair],
+          ["boring", doc.metrics?.boring],
+          ["bad_hints", doc.metrics?.hintTooVague],
+          ["too_easy", doc.metrics?.tooEasy],
+          ["too_hard", doc.metrics?.tooHard],
+        ];
+        metricReasons.forEach(([reason, present]) => {
+          if (present) reasonCounts[reason] = (reasonCounts[reason] ?? 0) + 1;
+        });
       }
     }
 
@@ -193,6 +281,7 @@ export async function loadQualityVoteAggregate(input?: {
       likeRate: total > 0 ? likes / total : 0,
       likedTechniques,
       dislikedTechniques,
+      reasonCounts,
       notes: [`${likes} likes / ${dislikes} dislikes over ${lookbackDays}d`],
     };
   } catch {

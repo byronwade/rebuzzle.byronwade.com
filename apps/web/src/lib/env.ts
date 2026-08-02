@@ -4,7 +4,9 @@
  * Type-safe environment variable access with validation
  */
 
-const isProduction = process.env.NODE_ENV === "production";
+function isProduction(): boolean {
+  return process.env.NODE_ENV === "production";
+}
 
 interface EnvConfig {
   // Application
@@ -48,16 +50,23 @@ interface ValidationResult {
  * Prefers Vercel marketplace `REBUZZLE_MONGODB_URI`, then `MONGODB_URI`, then `DATABASE_URL`.
  */
 export function getDatabaseUrl(): string {
-  const url =
-    process.env.REBUZZLE_MONGODB_URI ||
-    process.env.MONGODB_URI ||
-    process.env.DATABASE_URL;
-  if (!url) {
+  const configured = [
+    process.env.REBUZZLE_MONGODB_URI,
+    process.env.MONGODB_URI,
+    process.env.DATABASE_URL,
+  ].filter((value): value is string => Boolean(value?.trim()));
+  if (!configured.length) {
     throw new Error(
       "Database URL not found. Please set REBUZZLE_MONGODB_URI, MONGODB_URI, or DATABASE_URL."
     );
   }
-  return url;
+  const mongoUrl = configured.find((value) => /^mongodb(?:\+srv)?:\/\//i.test(value.trim()));
+  if (!mongoUrl) {
+    throw new Error(
+      "Database URL is configured but invalid. Expected a mongodb:// or mongodb+srv:// URI."
+    );
+  }
+  return mongoUrl.trim();
 }
 
 /** Default MongoDB database name when the URI has no path segment. */
@@ -77,7 +86,7 @@ export function getAppUrl(): string {
       process.env.NEXT_PHASE === "phase-production-build" ||
       process.env.NEXT_PHASE === "phase-development-build";
 
-    if (isProduction && !isBuildTime) {
+    if (isProduction() && !isBuildTime) {
       throw new Error(
         "NEXT_PUBLIC_APP_URL is required in production. Please set it in your environment variables."
       );
@@ -88,7 +97,7 @@ export function getAppUrl(): string {
   // Ensure URL has a protocol (default to https in production)
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     // In production, default to https; in development, default to http
-    return isProduction ? `https://${url}` : `http://${url}`;
+    return isProduction() ? `https://${url}` : `http://${url}`;
   }
 
   return url;
@@ -105,13 +114,11 @@ export function validateEnv(): ValidationResult {
   try {
     getDatabaseUrl();
   } catch (_error) {
-    errors.push(
-      "Database URL (REBUZZLE_MONGODB_URI, MONGODB_URI, or DATABASE_URL) is required"
-    );
+    errors.push("Database URL (REBUZZLE_MONGODB_URI, MONGODB_URI, or DATABASE_URL) is required");
   }
 
   // Required in production
-  if (isProduction) {
+  if (isProduction()) {
     if (!process.env.NEXT_PUBLIC_APP_URL) {
       errors.push("NEXT_PUBLIC_APP_URL is required in production");
     }
@@ -159,7 +166,7 @@ export function validateEnv(): ValidationResult {
   }
 
   // Cron security (required in production)
-  if (isProduction && !(process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET)) {
+  if (isProduction() && !(process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET)) {
     errors.push("CRON_SECRET or VERCEL_CRON_SECRET is required in production");
   }
 

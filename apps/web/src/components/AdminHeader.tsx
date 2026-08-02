@@ -1,6 +1,16 @@
 "use client";
 
-import { Home, LogOut, Settings, User } from "lucide-react";
+import {
+  Eye,
+  FlaskConical,
+  Gamepad2,
+  Home,
+  Images,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,12 +53,39 @@ export default function AdminHeader() {
 
   return (
     <header className="w-full border-border border-b bg-card">
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 md:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6">
         {/* Logo and Title */}
         <div className="flex items-center gap-4">
           <Link className="flex items-center gap-2 transition-opacity hover:opacity-80" href="/">
             <h1 className="font-semibold text-base text-primary md:text-lg">Rebuzzle Admin</h1>
           </Link>
+          <nav className="hidden items-center gap-1 md:flex">
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/admin">
+                <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/admin/benchmark-review">
+                <FlaskConical className="mr-2 h-4 w-4" /> Benchmark QA
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/admin/icon-recognition">
+                <Eye className="mr-2 h-4 w-4" /> Icon Panel
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/admin/generated-assets">
+                <Images className="mr-2 h-4 w-4" /> Asset Registry
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/admin/puzzle-playtests">
+                <Gamepad2 className="mr-2 h-4 w-4" /> Playtests
+              </Link>
+            </Button>
+          </nav>
         </div>
 
         {/* User Menu */}

@@ -77,6 +77,15 @@ export type PuzzleVisualLayer =
       concept: string;
       role?: string;
       svg?: string;
+      assetId?: string;
+      source?: "catalog" | "generated" | "approved-cache";
+      seenAs?: string;
+      recognitionConfidence?: number;
+      recognitionProfiles?: Array<{
+        tileSize: number;
+        seenAs: string;
+        confidence: number;
+      }>;
       emojiFallback: string;
     }
   | {
@@ -145,7 +154,32 @@ export interface Puzzle {
     difficultyLevel?: string;
     /** Normalized answer for archive-wide uniqueness */
     answerKey?: string;
+    /** Marks rows protected by database-level answer/date publication locks. */
+    uniquenessContract?: "archive-v1";
+    /** UTC date key protected against concurrent daily publication. */
+    dailyPublicationKey?: string;
     fingerprint?: string;
+    noveltyEvidence?: {
+      version: "structural-v1";
+      fingerprint: string;
+      answerKey: string;
+      mechanismFamilyKey: string;
+      mechanismKey: string;
+      topologyKey: string;
+      cueCombinationKey: string;
+      orderedCueKey: string;
+      cueTokens: string[];
+      score: number;
+      closestStructuralSimilarity: number;
+      recentMechanismFamilyUses: number;
+      recentTopologyUses: number;
+      lookbackDays: number;
+    };
+    reserveEvidence?: {
+      corpusVersion: string;
+      reserveId: string;
+      validation: "catalog-grounded-structural-novelty";
+    };
     calibratedDifficulty?: number;
     engine?: string;
     generationMethod?: string;
@@ -167,6 +201,50 @@ export interface Puzzle {
     estimatedSolveRate?: number;
     /** Rolling sim bias applied when publishing */
     simCalibrationBias?: number;
+    /** Screenshot-first solve and answer-aware editorial evidence at publish time. */
+    playabilityEvidence?: {
+      blind: {
+        profileCount: number;
+        profilesWithTarget: number;
+        profilesWithTopTarget: number;
+        profilesWithDominantTarget: number;
+        topTargetFoundBy: number;
+        dominantTargetFoundBy: number;
+        meanReciprocalRank: number;
+        strongestWrongConfidence: number;
+        requiredVotes: number;
+        profiles: Array<{
+          profileId: string;
+          judgeCount: number;
+          targetFoundBy: number;
+          topTargetFoundBy: number;
+          dominantTargetFoundBy: number;
+          meanReciprocalRank: number;
+          strongestWrongConfidence: number;
+        }>;
+      };
+      editorial: {
+        profileCount: number;
+        acceptedProfiles: number;
+        confidence: number;
+        failureKinds: string[];
+      };
+    };
+    /** Minimum confidence from the blind rendered-board judges. */
+    boardRecognitionConfidence?: number;
+    /** Independent vision models that judged the rendered board. */
+    boardRecognitionModels?: string[];
+    /** Number of independent judges that saw each declared concept. */
+    boardConceptVotes?: Record<string, number>;
+    boardRecognitionProfiles?: Array<{
+      profileId: string;
+      viewportWidth: number;
+      tileSize: number;
+      confidence: number;
+      models: string[];
+      conceptVotes: Record<string, number>;
+      wrappedRows: number;
+    }>;
     /** Dev Visual Lab preview (inactive) */
     lab?: boolean;
     source?: string;
@@ -867,6 +945,8 @@ export interface AIFeedback {
     unfair?: boolean;
     creative?: boolean;
     boring?: boolean;
+    unrecognizable?: boolean;
+    ambiguous?: boolean;
     hintTooVague?: boolean;
     hintTooObvious?: boolean;
   };
@@ -892,6 +972,172 @@ export interface AIFeedback {
   };
 
   timestamp: Date;
+  createdAt: Date;
+}
+
+export type BenchmarkReviewDecision = "pending" | "approved" | "rejected";
+export type BenchmarkReviewStatus = "pending" | "approved" | "rejected";
+
+export interface BenchmarkReviewDecisionEvent {
+  id: string;
+  actorUserId: string;
+  rights: BenchmarkReviewDecision;
+  answer: BenchmarkReviewDecision;
+  status: BenchmarkReviewStatus;
+  note?: string;
+  createdAt: Date;
+}
+
+/** Immutable external fixture metadata plus atomically versioned review history. */
+export interface BenchmarkReviewFixture {
+  _id?: string;
+  id: string;
+  fixtureId: string;
+  datasetId: string;
+  revision: string;
+  metadataSha256: string;
+  fixtureSha256: string;
+  datasetRow: number;
+  imageUrl: string;
+  sourceUrl: string;
+  answer: string;
+  hint?: string;
+  difficulty: string;
+  reasoningUnits?: number;
+  reasoningFeatures: string[];
+  isAugmented: false;
+  rightsDecision: BenchmarkReviewDecision;
+  answerDecision: BenchmarkReviewDecision;
+  reviewStatus: BenchmarkReviewStatus;
+  reviewerId?: string;
+  reviewedAt?: Date;
+  reviewNote?: string;
+  decisionHistory: BenchmarkReviewDecisionEvent[];
+  version: number;
+  importedBy: string;
+  importedAt: Date;
+  updatedAt: Date;
+}
+
+/** Immutable blind human naming decision for one catalog asset at one player size. */
+export interface IconRecognitionReview {
+  _id?: string;
+  id: string;
+  contractVersion: string;
+  catalogVersion: string;
+  fixtureId: string;
+  assetId: string;
+  conceptId: string;
+  sizePx: 36 | 72;
+  reviewerId: string;
+  rawGuess: string;
+  normalizedGuess: string;
+  matchedConceptId?: string;
+  correct: boolean;
+  uncertain: boolean;
+  createdAt: Date;
+}
+
+export type GeneratedPictogramStatus = "pending" | "approved" | "rejected" | "quarantined";
+
+export interface GeneratedPictogramAuditEvent {
+  id: string;
+  action: "submitted" | "approved" | "rejected" | "quarantined";
+  actor: "generator" | "human-panel" | "runtime-gate";
+  reason: string;
+  createdAt: Date;
+}
+
+/** Exact generated SVG candidate; reuse is forbidden until blind human approval. */
+export interface GeneratedPictogramCandidate {
+  _id?: string;
+  id: string;
+  registryVersion: string;
+  styleId: string;
+  conceptKey: string;
+  conceptLabel: string;
+  assetSha256: string;
+  svg: string;
+  status: GeneratedPictogramStatus;
+  statusVersion: number;
+  automatedEvidence: {
+    clarityScore: number;
+    seenAs?: string;
+    recognitionConfidence?: number;
+    recognitionProfiles: Array<{ tileSize: number; seenAs: string; confidence: number }>;
+  };
+  humanEvidence?: {
+    requiredReviewersPerSize: number;
+    size36: { decisions: number; correct: number };
+    size72: { decisions: number; correct: number };
+  };
+  auditHistory: GeneratedPictogramAuditEvent[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Immutable blind naming decision for a generated long-tail asset. */
+export interface GeneratedPictogramReview {
+  _id?: string;
+  id: string;
+  registryVersion: string;
+  candidateId: string;
+  fixtureId: string;
+  sizePx: 36 | 72;
+  reviewerId: string;
+  rawGuess: string;
+  normalizedGuess: string;
+  matchedConcept?: string;
+  correct: boolean;
+  uncertain: boolean;
+  createdAt: Date;
+}
+
+export type PuzzlePlaytestCandidateStatus = "open" | "complete";
+export type PuzzlePlaytestFailureReason =
+  | "unrecognizable-artwork"
+  | "unreadable-layout"
+  | "missing-cue"
+  | "multiple-answers"
+  | "too-hard"
+  | "other";
+
+/** Immutable snapshot of an AI-generated board sampled for blind human playtesting. */
+export interface PuzzlePlaytestCandidate {
+  _id?: string;
+  id: string;
+  contractVersion: string;
+  puzzleId: string;
+  answer: string;
+  answerKey: string;
+  visual: PuzzleVisual;
+  techniqueId?: string;
+  difficultyScore: number;
+  difficultyLevel?: string;
+  generationMethod?: string;
+  automatedEstimatedSolveRate?: number;
+  status: PuzzlePlaytestCandidateStatus;
+  statusVersion: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** One reviewer sees exactly one responsive profile for each playtest candidate. */
+export interface PuzzlePlaytestReview {
+  _id?: string;
+  id: string;
+  contractVersion: string;
+  candidateId: string;
+  fixtureId: string;
+  profileId: string;
+  reviewerId: string;
+  rawGuess: string;
+  normalizedGuess: string;
+  correct: boolean;
+  gaveUp: boolean;
+  failureReason?: PuzzlePlaytestFailureReason;
+  confidence: 1 | 2 | 3 | 4 | 5;
+  elapsedMs: number;
   createdAt: Date;
 }
 

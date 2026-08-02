@@ -3,6 +3,7 @@
  */
 
 import { evaluateVisualForPublish, isKnownTechniqueId } from "../quality";
+import { isAuthenticCuratedPictogram } from "../visual/curated-pictograms";
 import { scorePictogramClarity } from "../visual/pictogram-clarity";
 import type { ApexCandidate, RubricScores } from "./types";
 
@@ -30,6 +31,8 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
   if (sim) {
     fairness = sim.hintUnlockOrderLooksFair ? 78 : 45;
     fairness += Math.round((sim.estimatedSolveRate - 0.35) * 40);
+    fairness += Math.round(((sim.blindMeanReciprocalRank ?? 0) - 0.75) * 20);
+    fairness -= Math.round(Math.max(0, (sim.blindStrongestWrongConfidence ?? 0) - 0.5) * 20);
     fairness -= (sim.unfairReasons?.length ?? 0) * 10;
   }
   if (!candidate.solvable) fairness -= 25;
@@ -56,11 +59,20 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
 
   const pictogramClarities = (candidate.visual.layers ?? []).flatMap((layer) => {
     if (layer.kind !== "pictogram" || !layer.svg) return [];
+    if (
+      layer.source === "catalog" &&
+      isAuthenticCuratedPictogram({
+        concept: layer.concept,
+        assetId: layer.assetId,
+        svg: layer.svg,
+      })
+    ) {
+      return [90];
+    }
     return [scorePictogramClarity(layer.svg).score];
   });
   if (pictogramClarities.length) {
-    const avg =
-      pictogramClarities.reduce((a, b) => a + b, 0) / pictogramClarities.length;
+    const avg = pictogramClarities.reduce((a, b) => a + b, 0) / pictogramClarities.length;
     if (avg >= 72) visualCraft += 14;
     else if (avg >= 58) visualCraft += 6;
     else visualCraft -= 28;

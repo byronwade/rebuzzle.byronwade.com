@@ -8,11 +8,17 @@
 import { AI_CONFIG } from "../config";
 import { runApexGeneration } from "../puzzle-agent/apex";
 import {
+  blindSolvePublishBlockers,
+  toPlayabilityEvidence,
+} from "../puzzle-agent/apex/blind-solve-consensus";
+import { applyPlayerSimHeuristics, simulatePlayerSolve } from "../puzzle-agent/apex/player-sim";
+import {
   type PuzzleGenerationParams,
   runPuzzleAgentGeneration,
 } from "../puzzle-agent/run-generation";
 import type { PuzzleAgentResult } from "../puzzle-agent/schemas";
 import type { PuzzleVisual } from "../puzzle-agent/visual/composition";
+import { editorialReviewPublishBlockers } from "../puzzle-agent/visual/editorial-consensus";
 
 export type MasterGenerationParams = PuzzleGenerationParams;
 
@@ -32,6 +38,7 @@ export interface GeneratedPuzzleResult {
   metadata: {
     fingerprint: string;
     uniquenessScore: number;
+    noveltyEvidence?: PuzzleAgentResult["metadata"]["noveltyEvidence"];
     difficultyProfile: {
       overall: number;
       method: string;
@@ -53,7 +60,20 @@ export interface GeneratedPuzzleResult {
     aiThinking: { summary?: string };
     engine?: "apex" | "eve";
     estimatedSolveRate?: number;
+    playabilityEvidence?: PuzzleAgentResult["metadata"]["playabilityEvidence"];
     simCalibrationBias?: number;
+    boardRecognitionConfidence?: number;
+    boardRecognitionModels?: string[];
+    boardConceptVotes?: Record<string, number>;
+    boardRecognitionProfiles?: Array<{
+      profileId: string;
+      viewportWidth: number;
+      tileSize: number;
+      confidence: number;
+      models: string[];
+      conceptVotes: Record<string, number>;
+      wrappedRows: number;
+    }>;
   };
   status: "success" | "retry" | "failed";
   recommendations: string[];
@@ -79,6 +99,7 @@ function toGeneratedResult(
     metadata: {
       fingerprint: result.metadata.fingerprint,
       uniquenessScore: result.metadata.uniquenessScore,
+      noveltyEvidence: result.metadata.noveltyEvidence,
       difficultyProfile: {
         overall: result.metadata.calibratedDifficulty,
         method: engine === "apex" ? "apex-tournament" : "eve-tool-agent",
@@ -103,7 +124,12 @@ function toGeneratedResult(
       aiThinking: { summary: result.metadata.thinkingSummary },
       engine,
       estimatedSolveRate: result.metadata.estimatedSolveRate,
+      playabilityEvidence: result.metadata.playabilityEvidence,
       simCalibrationBias: result.metadata.simCalibrationBias,
+      boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
+      boardRecognitionModels: result.metadata.boardRecognitionModels,
+      boardConceptVotes: result.metadata.boardConceptVotes,
+      boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
     },
     status: result.status,
     recommendations: result.recommendations ?? [],
@@ -113,6 +139,45 @@ function toGeneratedResult(
 function apexEnabled(params: MasterGenerationParams): boolean {
   if (params.candidateCount === 1) return false;
   return AI_CONFIG.puzzleAgent.apex.enabled !== false;
+}
+
+async function enforceClassicPlayability(result: PuzzleAgentResult): Promise<PuzzleAgentResult> {
+  const rawSim = await simulatePlayerSolve({
+    rebusPuzzle: result.puzzle.rebusPuzzle,
+    answer: result.puzzle.answer,
+    explanation: result.puzzle.explanation,
+    hints: result.puzzle.hints,
+    techniqueId: result.puzzle.techniqueId,
+    tierLabel: result.puzzle.difficultyLevel,
+    visual: result.puzzle.visual,
+  });
+  const sim = applyPlayerSimHeuristics(rawSim, {
+    answer: result.puzzle.answer,
+    hints: result.puzzle.hints,
+    tierLabel: result.puzzle.difficultyLevel,
+  });
+  const blockers = [
+    ...blindSolvePublishBlockers(sim),
+    ...editorialReviewPublishBlockers(sim),
+    ...(!sim.hintUnlockOrderLooksFair || sim.unfairReasons.length > 2
+      ? sim.unfairReasons.length
+        ? sim.unfairReasons
+        : ["Player simulation rejected the hint ladder"]
+      : []),
+  ];
+  if (blockers.length) {
+    throw new Error(
+      `Classic generator puzzle failed screenshot playability gates: ${Array.from(new Set(blockers)).join(" | ")}`
+    );
+  }
+  return {
+    ...result,
+    metadata: {
+      ...result.metadata,
+      estimatedSolveRate: sim.estimatedSolveRate,
+      playabilityEvidence: toPlayabilityEvidence(sim),
+    },
+  };
 }
 
 /**
@@ -132,21 +197,15 @@ export async function generateMasterPuzzle(
     candidates: useApex ? AI_CONFIG.puzzleAgent.apex.candidateCount : 1,
   });
 
-  try {
-    if (useApex) {
-      const result = await runApexGeneration({
-        ...params,
-        useLearningFeedback: params.useLearningFeedback !== false,
-      });
-      return toGeneratedResult(result, Date.now() - start, "apex");
-    }
-  } catch (apexError) {
-    console.warn("[Master Generator] Apex failed — falling back to Eve", {
-      error: apexError instanceof Error ? apexError.message : String(apexError),
+  if (useApex) {
+    const result = await runApexGeneration({
+      ...params,
+      useLearningFeedback: params.useLearningFeedback !== false,
     });
+    return toGeneratedResult(result, Date.now() - start, "apex");
   }
 
-  const result = await runPuzzleAgentGeneration(params);
+  const result = await enforceClassicPlayability(await runPuzzleAgentGeneration(params));
   return toGeneratedResult(result, Date.now() - start, "eve");
 }
 

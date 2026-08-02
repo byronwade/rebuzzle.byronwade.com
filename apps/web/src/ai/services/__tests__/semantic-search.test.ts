@@ -4,22 +4,33 @@
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { Puzzle } from "@/db/models";
+
+// Mock dependencies BEFORE imports
+jest.mock("@/db/mongodb");
+jest.mock("@/db/operations", () => ({
+  puzzleOps: {
+    findActivePuzzles: jest.fn(),
+    findById: jest.fn(),
+  },
+  puzzleAttemptOps: {
+    getUserAttempts: jest.fn(),
+  },
+}));
+jest.mock("../embeddings", () => ({
+  generateEmbedding: jest.fn(),
+  generatePuzzleEmbedding: jest.fn(),
+}));
+jest.mock("@/db/utils/vector-operations");
+
+import { getCollection } from "@/db/mongodb";
+import { puzzleAttemptOps, puzzleOps } from "@/db/operations";
+import { cosineSimilarity } from "@/db/utils/vector-operations";
+import { generateEmbedding, generatePuzzleEmbedding } from "../embeddings";
 import {
   findSimilarPuzzles,
   recommendPuzzlesByUserHistory,
   searchPuzzlesByConcept,
 } from "../semantic-search";
-
-// Mock dependencies BEFORE imports
-jest.mock("@/db/mongodb");
-jest.mock("@/db/operations");
-jest.mock("../embeddings");
-jest.mock("@/db/utils/vector-operations");
-
-import { getCollection } from "@/db/mongodb";
-import { puzzleOps } from "@/db/operations";
-import { cosineSimilarity } from "@/db/utils/vector-operations";
-import { generateEmbedding, generatePuzzleEmbedding } from "../embeddings";
 
 const mockGetCollection = getCollection as jest.MockedFunction<typeof getCollection>;
 const mockPuzzleOps = puzzleOps as jest.Mocked<typeof puzzleOps>;
@@ -92,6 +103,7 @@ describe("Semantic Search Service", () => {
       const mockCollection = {
         find: jest.fn().mockReturnThis(),
         toArray: jest.fn().mockResolvedValue([]),
+        updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
       };
       mockGetCollection.mockReturnValue(mockCollection as any);
 

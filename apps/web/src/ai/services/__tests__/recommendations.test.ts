@@ -4,154 +4,165 @@
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { Puzzle } from "@/db/models";
+
+jest.mock("../user-profiler", () => ({
+  buildUserPuzzleProfile: jest.fn(),
+}));
+jest.mock("../semantic-search", () => ({
+  findSimilarPuzzles: jest.fn(),
+  recommendPuzzlesByUserHistory: jest.fn(),
+  searchPuzzlesByConcept: jest.fn(),
+}));
+jest.mock("@/db/operations", () => ({
+  puzzleOps: {
+    findActivePuzzles: jest.fn(),
+    findById: jest.fn(),
+  },
+  puzzleAttemptOps: {
+    getUserAttempts: jest.fn(),
+  },
+}));
+
+import { puzzleAttemptOps, puzzleOps } from "@/db/operations";
 import {
   getAdaptiveDifficulty,
   getPersonalizedPuzzles,
   recommendNextPuzzle,
 } from "../recommendations";
-
-// Mock dependencies
-jest.mock("../user-profiler");
-jest.mock("../semantic-search");
-jest.mock("@/db/mongodb");
-
-import { getCollection } from "@/db/mongodb";
-import { findSimilarPuzzles, searchPuzzlesByConcept } from "../semantic-search";
+import {
+  findSimilarPuzzles,
+  recommendPuzzlesByUserHistory,
+  searchPuzzlesByConcept,
+} from "../semantic-search";
 import { buildUserPuzzleProfile } from "../user-profiler";
 
-const mockBuildUserPuzzleProfile = buildUserPuzzleProfile as jest.MockedFunction<
+const mockBuildProfile = buildUserPuzzleProfile as jest.MockedFunction<
   typeof buildUserPuzzleProfile
 >;
-const mockSearchPuzzlesByConcept = searchPuzzlesByConcept as jest.MockedFunction<
+const mockHistoryRecommendations = recommendPuzzlesByUserHistory as jest.MockedFunction<
+  typeof recommendPuzzlesByUserHistory
+>;
+const mockSearchByConcept = searchPuzzlesByConcept as jest.MockedFunction<
   typeof searchPuzzlesByConcept
 >;
-const mockFindSimilarPuzzles = findSimilarPuzzles as jest.MockedFunction<typeof findSimilarPuzzles>;
-const mockGetCollection = getCollection as jest.MockedFunction<typeof getCollection>;
+const mockFindSimilar = findSimilarPuzzles as jest.MockedFunction<typeof findSimilarPuzzles>;
+const mockFindActive = puzzleOps.findActivePuzzles as jest.MockedFunction<
+  typeof puzzleOps.findActivePuzzles
+>;
+const mockFindPuzzle = puzzleOps.findById as jest.MockedFunction<typeof puzzleOps.findById>;
+const mockGetAttempts = puzzleAttemptOps.getUserAttempts as jest.MockedFunction<
+  typeof puzzleAttemptOps.getUserAttempts
+>;
+
+const puzzle: Puzzle = {
+  id: "puzzle-1",
+  puzzle: "Test puzzle",
+  answer: "Answer",
+  difficulty: "medium",
+  publishedAt: new Date(),
+  createdAt: new Date(),
+  active: true,
+};
+
+const profile = {
+  userId: "user-1",
+  skillLevel: "intermediate" as const,
+  skillScore: 50,
+  preferredDifficultyRange: { min: 3, max: 7 },
+  favoriteCategories: [],
+  preferredPuzzleTypes: ["rebus"],
+  averageTimeToSolve: 120,
+  hintUsagePattern: "minimal" as const,
+  engagementLevel: "medium" as const,
+  lastActivityDate: new Date(),
+  totalPuzzlesAttempted: 10,
+  totalPuzzlesSolved: 7,
+  solveRate: 0.7,
+  streakDays: 3,
+};
 
 describe("Recommendations Service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockBuildProfile.mockResolvedValue(profile);
+    mockHistoryRecommendations.mockResolvedValue([]);
+    mockSearchByConcept.mockResolvedValue([]);
+    mockFindActive.mockResolvedValue([]);
+    mockGetAttempts.mockResolvedValue([]);
   });
 
   describe("getPersonalizedPuzzles", () => {
-    const mockPuzzles: Puzzle[] = [
-      {
-        id: "puzzle-1",
-        puzzle: "Test puzzle",
-        answer: "Answer",
-        difficulty: "medium",
-        publishedAt: new Date(),
-        createdAt: new Date(),
-        active: true,
-      },
-    ];
+    it("should preserve the strongest semantic recommendation", async () => {
+      mockHistoryRecommendations.mockResolvedValue([
+        { puzzle, score: 0.9, reason: "Matches your solved puzzles" },
+      ]);
 
-    it("should return personalized puzzles based on profile", async () => {
-      mockBuildUserPuzzleProfile.mockResolvedValue({
-        userId: "user-1",
-        totalPuzzlesSolved: 10,
-        averageSuccessRate: 0.7,
-        preferredCategories: ["animals"],
-        preferredPuzzleTypes: ["rebus"],
-        difficultyPreference: "medium",
-        skillLevel: "intermediate",
-        lastActivity: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      mockSearchPuzzlesByConcept.mockResolvedValue(mockPuzzles);
-
-      const result = await getPersonalizedPuzzles("user-1", 5);
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-      expect(mockBuildUserPuzzleProfile).toHaveBeenCalledWith("user-1");
+      await expect(getPersonalizedPuzzles("user-1", 5)).resolves.toEqual([
+        expect.objectContaining({
+          puzzle,
+          score: 0.9,
+          confidence: 0.8,
+        }),
+      ]);
+      expect(mockHistoryRecommendations).toHaveBeenCalledWith("user-1", 10);
     });
 
-    it("should fallback to random puzzles if no profile", async () => {
-      mockBuildUserPuzzleProfile.mockResolvedValue(null);
-
-      const mockCollection = {
-        aggregate: jest.fn().mockReturnThis(),
-        toArray: jest.fn().mockResolvedValue(mockPuzzles),
-      };
-      mockGetCollection.mockReturnValue(mockCollection as any);
+    it("should include a new in-range puzzle only once", async () => {
+      mockFindActive.mockResolvedValue([puzzle]);
 
       const result = await getPersonalizedPuzzles("user-1", 5);
 
-      expect(result).toEqual(mockPuzzles);
+      expect(result).toHaveLength(1);
+      expect(result[0]?.puzzle.id).toBe(puzzle.id);
     });
   });
 
   describe("recommendNextPuzzle", () => {
-    const mockPuzzle: Puzzle = {
-      id: "puzzle-1",
-      puzzle: "Test puzzle",
-      answer: "Answer",
-      difficulty: "medium",
-      publishedAt: new Date(),
-      createdAt: new Date(),
-      active: true,
-    };
+    it("should recommend a similar puzzle inside the preferred range", async () => {
+      const nextPuzzle = { ...puzzle, id: "puzzle-2" };
+      mockFindPuzzle.mockResolvedValue(puzzle);
+      mockFindSimilar.mockResolvedValue([{ puzzle: nextPuzzle, similarity: 0.9 }]);
 
-    it("should recommend similar puzzle", async () => {
-      mockBuildUserPuzzleProfile.mockResolvedValue({
-        userId: "user-1",
-        totalPuzzlesSolved: 5,
-        averageSuccessRate: 0.6,
-        preferredCategories: [],
-        preferredPuzzleTypes: [],
-        difficultyPreference: "medium",
-        skillLevel: "intermediate",
-        lastActivity: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      await expect(recommendNextPuzzle("user-1", puzzle.id)).resolves.toMatchObject({
+        puzzle: nextPuzzle,
+        score: 0.9,
+        confidence: 0.8,
       });
-
-      mockFindSimilarPuzzles.mockResolvedValue([{ puzzle: mockPuzzle, similarity: 0.9 }]);
-
-      const result = await recommendNextPuzzle("user-1", "puzzle-0");
-
-      expect(result).toBeDefined();
-      expect(result?.puzzleId).toBe("puzzle-1");
-      expect(mockFindSimilarPuzzles).toHaveBeenCalled();
     });
 
-    it("should return null if no profile", async () => {
-      mockBuildUserPuzzleProfile.mockResolvedValue(null);
+    it("should return null when the current puzzle no longer exists", async () => {
+      mockFindPuzzle.mockResolvedValue(null);
 
-      const result = await recommendNextPuzzle("user-1", "puzzle-0");
-
-      expect(result).toBeNull();
+      await expect(recommendNextPuzzle("user-1", "missing")).resolves.toBeNull();
     });
   });
 
   describe("getAdaptiveDifficulty", () => {
-    it("should return difficulty based on preference", () => {
-      const profile = {
-        userId: "user-1",
-        totalPuzzlesSolved: 10,
-        averageSuccessRate: 0.7,
-        preferredCategories: [],
-        preferredPuzzleTypes: [],
-        difficultyPreference: "hard",
-        skillLevel: "advanced",
-        lastActivity: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+    it("should use the profile midpoint when history is sparse", async () => {
+      mockGetAttempts.mockResolvedValue([]);
 
-      const result = getAdaptiveDifficulty("user-1", profile);
-
-      expect(result).toBeGreaterThanOrEqual(0);
-      expect(result).toBeLessThanOrEqual(10);
+      await expect(getAdaptiveDifficulty("user-1")).resolves.toMatchObject({
+        recommended: 5,
+        range: { min: 3, max: 7 },
+      });
     });
 
-    it("should return default difficulty if no profile", () => {
-      const result = getAdaptiveDifficulty("user-1", null);
+    it("should raise difficulty after a strong recent solve rate", async () => {
+      mockGetAttempts.mockResolvedValue(
+        Array.from({ length: 5 }, (_, index) => ({
+          id: `attempt-${index}`,
+          userId: "user-1",
+          puzzleId: `puzzle-${index}`,
+          attemptedAnswer: "Answer",
+          isCorrect: true,
+          attemptedAt: new Date(),
+        }))
+      );
 
-      expect(result).toBe(5); // Default medium
+      await expect(getAdaptiveDifficulty("user-1")).resolves.toMatchObject({
+        recommended: 8,
+        range: { min: 7, max: 9 },
+      });
     });
   });
 });

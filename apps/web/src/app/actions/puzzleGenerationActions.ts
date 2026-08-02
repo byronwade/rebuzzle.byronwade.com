@@ -4,10 +4,12 @@ import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
 import {
   baselineDifficultyForDate,
+  loadQualityDriftReport,
   normalizeAnswerKey,
   recordGenerationAudit,
   resolveAdaptiveDifficultyForDate,
 } from "@/ai/learning";
+import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
 import { db } from "@/db";
 import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
@@ -54,35 +56,49 @@ async function calculateDailyDifficulty(date?: Date): Promise<{
   }
 }
 
-/**
- * Hardcoded fallback puzzles (only used if AI fails AND database fails)
- */
-const FALLBACK_PUZZLES = [
-  {
-    rebusPuzzle: "☀️ 🌻",
-    answer: "sunflower",
-    difficulty: 3,
-    explanation: "Sun (☀️) + Flower (🌻) = Sunflower",
-    category: "compound_words",
-    hints: ["Think about nature", "Combine two elements", "A yellow flower"],
-  },
-  {
-    rebusPuzzle: "🐝 4️⃣",
-    answer: "before",
-    difficulty: 4,
-    explanation: "Bee (🐝) sounds like 'be' + Four (4️⃣) = Before",
-    category: "phonetic",
-    hints: ["Think about sounds", "Phonetic wordplay", "Relates to time"],
-  },
-  {
-    rebusPuzzle: "🌙 💡",
-    answer: "moonlight",
-    difficulty: 5,
-    explanation: "Moon (🌙) + Light (💡) = Moonlight",
-    category: "compound_words",
-    hints: ["Think about nighttime", "Two elements combine", "Natural illumination"],
-  },
-];
+async function persistReservePuzzle(dateString: string, fallbackReason: string) {
+  const selected = await selectMongoReservePuzzle({ dateString });
+  const reserve = selected.puzzle;
+  const persisted = await persistDailyPuzzle({
+    dateString,
+    puzzleDisplay: reserve.rebusPuzzle,
+    puzzleType: "rebus",
+    answer: reserve.answer,
+    difficulty: reserve.difficulty,
+    category: reserve.category,
+    explanation: reserve.explanation,
+    hints: reserve.hints,
+    aiGenerated: false,
+    rebusPuzzle: reserve.rebusPuzzle,
+    visual: reserve.visual,
+    metadataExtra: {
+      fallbackReason,
+      fingerprint: selected.noveltyEvidence.fingerprint,
+      uniquenessScore: selected.noveltyEvidence.score,
+      noveltyEvidence: selected.noveltyEvidence,
+      techniqueId: reserve.techniqueId,
+      visualStyleId: reserve.visual.styleId,
+      difficultyLevel: reserve.difficultyLevel,
+      reserveEvidence: {
+        corpusVersion: selected.corpusVersion,
+        reserveId: reserve.id,
+        validation: "catalog-grounded-structural-novelty",
+      },
+    },
+  });
+  return {
+    ...reserve,
+    id: persisted.id,
+    puzzle: reserve.rebusPuzzle,
+    puzzleType: "rebus" as const,
+    date: dateString,
+    topic: reserve.category,
+    relevanceScore: 7,
+    aiGenerated: false,
+    fromDatabase: true,
+    fallbackReason,
+  };
+}
 
 /**
  * Get or generate today's puzzle
@@ -138,49 +154,11 @@ async function getOrGenerateDailyPuzzle(
     );
   }
 
-  // Interactive play path: never block TTFB on Eve — persist a fast fallback.
+  // Interactive play path: never block TTFB on Eve — persist a validated reserve puzzle.
   // Cron / regenerate / admin regenerate should call with allowAiGenerate: true.
   if (!allowAiGenerate) {
-    const [y, m, d] = dateString.split("-").map(Number);
-    const dayOfYear = Math.floor(
-      (Date.UTC(y!, (m ?? 1) - 1, d ?? 1) - Date.UTC(y!, 0, 0)) / 86_400_000
-    );
-    const fallback = FALLBACK_PUZZLES[dayOfYear % FALLBACK_PUZZLES.length]!;
-    const persisted = await persistDailyPuzzle({
-      dateString,
-      puzzleDisplay: fallback.rebusPuzzle,
-      puzzleType: "rebus",
-      answer: fallback.answer,
-      difficulty: fallback.difficulty,
-      category: fallback.category,
-      explanation: fallback.explanation,
-      hints: fallback.hints,
-      aiGenerated: false,
-      rebusPuzzle: fallback.rebusPuzzle,
-      allowDuplicateAnswer: true,
-      metadataExtra: { fallbackReason: "Play-path fast seed (AI deferred to cron)" },
-    });
-    return {
-      id: persisted.id,
-      ...fallback,
-      puzzle: fallback.rebusPuzzle,
-      puzzleType: "rebus" as const,
-      date: dateString,
-      topic: fallback.category,
-      relevanceScore: 7,
-      aiGenerated: false,
-      fromDatabase: true,
-      fallbackReason: "Play-path fast seed",
-    };
+    return persistReservePuzzle(dateString, "Play-path reserve (AI deferred to cron)");
   }
-
-  // STEP 2: No puzzle in database — Apex/Eve via AI Gateway (ONCE per day)
-  logger.info("Generating new puzzle with Apex/Eve via AI Gateway", {
-    provider: "ai-gateway",
-    agent: "apex-eve",
-    willCostTokens: true,
-    frequency: "once-per-day",
-  });
 
   const genStarted = Date.now();
   let difficultyPlan: {
@@ -194,6 +172,53 @@ async function getOrGenerateDailyPuzzle(
     delta: 0,
     reason: "unset",
   };
+
+  let qualityDrift: Awaited<ReturnType<typeof loadQualityDriftReport>> | null = null;
+  try {
+    qualityDrift = await loadQualityDriftReport();
+  } catch (error) {
+    logger.warn("Quality drift telemetry unavailable; retaining per-puzzle fail-closed gates", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  if (qualityDrift?.shouldUseReserve) {
+    const puzzleDate = new Date(`${dateString}T00:00:00Z`);
+    difficultyPlan = await calculateDailyDifficulty(puzzleDate);
+    logger.warn("Quality SLO circuit breaker halted AI puzzle generation", {
+      dateString,
+      contractVersion: qualityDrift.version,
+      status: qualityDrift.status,
+      criticalMetrics: qualityDrift.metrics
+        .filter((metric) => metric.status === "critical")
+        .map((metric) => metric.id),
+    });
+
+    const reserve = await persistReservePuzzle(dateString, "Quality SLO circuit breaker");
+    void recordGenerationAudit({
+      dateString,
+      puzzleId: reserve.id,
+      engine: "fallback",
+      status: "fallback",
+      attemptedGeneration: false,
+      targetDifficulty: difficultyPlan.difficulty,
+      baselineDifficulty: difficultyPlan.baseline,
+      learningDelta: difficultyPlan.delta,
+      learningReason: difficultyPlan.reason,
+      answerKey: normalizeAnswerKey(reserve.answer),
+      durationMs: Date.now() - genStarted,
+      error: qualityDrift.recommendation,
+    });
+    return reserve;
+  }
+
+  // STEP 2: No puzzle in database — Apex/Eve via AI Gateway (ONCE per day)
+  logger.info("Generating new puzzle with Apex/Eve via AI Gateway", {
+    provider: "ai-gateway",
+    agent: "apex-eve",
+    willCostTokens: true,
+    frequency: "once-per-day",
+  });
 
   try {
     // Parse date string to Date object for difficulty calculation
@@ -289,6 +314,7 @@ async function getOrGenerateDailyPuzzle(
         difficultyLevel: result.puzzle.difficultyLevel,
         difficultyScore: result.puzzle.difficulty,
         fingerprint: result.metadata.fingerprint,
+        noveltyEvidence: result.metadata.noveltyEvidence,
         calibratedDifficulty: result.metadata.calibratedDifficulty,
         generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
         engine: result.metadata.engine ?? "eve",
@@ -298,6 +324,11 @@ async function getOrGenerateDailyPuzzle(
         selfLearning: true,
         estimatedSolveRate: result.metadata.estimatedSolveRate,
         simCalibrationBias: result.metadata.simCalibrationBias,
+        playabilityEvidence: result.metadata.playabilityEvidence,
+        boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
+        boardRecognitionModels: result.metadata.boardRecognitionModels,
+        boardConceptVotes: result.metadata.boardConceptVotes,
+        boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
       },
     });
 
@@ -329,6 +360,7 @@ async function getOrGenerateDailyPuzzle(
       puzzleId: persisted.id,
       engine: result.metadata.engine === "apex" ? "apex" : "eve",
       status: "success",
+      attemptedGeneration: true,
       targetDifficulty: difficultyPlan.difficulty,
       baselineDifficulty: difficultyPlan.baseline,
       learningDelta: difficultyPlan.delta,
@@ -379,40 +411,21 @@ async function getOrGenerateDailyPuzzle(
       throw error instanceof Error ? error : new Error(String(error));
     }
 
-    // STEP 4: AI failed — persist a deterministic fallback so guessing still works
-    const [y, m, d] = dateString.split("-").map(Number);
-    const dayOfYear = Math.floor(
-      (Date.UTC(y!, (m ?? 1) - 1, d ?? 1) - Date.UTC(y!, 0, 0)) / 86_400_000
-    );
-    const fallback = FALLBACK_PUZZLES[dayOfYear % FALLBACK_PUZZLES.length]!;
+    // STEP 4: AI failed — persist an unused, catalog-grounded reserve puzzle.
 
-    logger.warn("Persisting emergency fallback puzzle", {
+    logger.warn("Persisting validated reserve puzzle", {
       dateString,
       reason: "AI generation failed",
     });
 
-    const persisted = await persistDailyPuzzle({
-      dateString,
-      puzzleDisplay: fallback.rebusPuzzle,
-      puzzleType: "rebus",
-      answer: fallback.answer,
-      difficulty: fallback.difficulty,
-      category: fallback.category,
-      explanation: fallback.explanation,
-      hints: fallback.hints,
-      aiGenerated: false,
-      rebusPuzzle: fallback.rebusPuzzle,
-      allowDuplicateAnswer: true,
-      metadataExtra: {
-        fallbackReason: error instanceof Error ? error.message : "AI generation failed",
-      },
-    });
+    const fallback = await persistReservePuzzle(dateString, "AI generation failed");
 
     void recordGenerationAudit({
       dateString,
-      puzzleId: persisted.id,
+      puzzleId: fallback.id,
       engine: "fallback",
       status: "fallback",
+      attemptedGeneration: true,
       targetDifficulty: difficultyPlan.difficulty,
       baselineDifficulty: difficultyPlan.baseline,
       learningDelta: difficultyPlan.delta,
@@ -422,18 +435,7 @@ async function getOrGenerateDailyPuzzle(
       error: error instanceof Error ? error.message : String(error),
     });
 
-    return {
-      id: persisted.id,
-      ...fallback,
-      puzzle: fallback.rebusPuzzle,
-      puzzleType: "rebus",
-      date: dateString,
-      topic: fallback.category,
-      relevanceScore: 7,
-      aiGenerated: false,
-      fromDatabase: true,
-      fallbackReason: error instanceof Error ? error.message : "AI generation failed",
-    };
+    return fallback;
   }
 }
 
@@ -479,40 +481,15 @@ export async function getTodaysPuzzle(
       throw error instanceof Error ? error : new Error(String(error));
     }
 
-    // Last resort — still persist so /api/puzzles/guess can resolve the id
-    const lastResortPuzzle = FALLBACK_PUZZLES[0]!;
+    // Last resort still uses the archive-aware reserve; never recycle a known answer.
     const todayString = dateString || getTodayDateString();
 
     try {
-      const persisted = await persistDailyPuzzle({
-        dateString: todayString,
-        puzzleDisplay: lastResortPuzzle.rebusPuzzle,
-        puzzleType: "rebus",
-        answer: lastResortPuzzle.answer,
-        difficulty: lastResortPuzzle.difficulty,
-        category: lastResortPuzzle.category,
-        explanation: lastResortPuzzle.explanation,
-        hints: lastResortPuzzle.hints,
-        aiGenerated: false,
-        rebusPuzzle: lastResortPuzzle.rebusPuzzle,
-        allowDuplicateAnswer: true,
-        metadataExtra: { fallbackReason: "Emergency fallback" },
-      });
+      const reserve = await persistReservePuzzle(todayString, "Emergency reserve");
 
       return {
         success: true,
-        puzzle: {
-          id: persisted.id,
-          ...lastResortPuzzle,
-          puzzle: lastResortPuzzle.rebusPuzzle,
-          puzzleType: "rebus",
-          date: todayString,
-          topic: lastResortPuzzle.category,
-          relevanceScore: 5,
-          aiGenerated: false,
-          fromDatabase: true,
-          fallbackReason: "Emergency fallback",
-        },
+        puzzle: reserve,
         generatedAt: new Date().toISOString(),
         cached: false,
         fallback: true,

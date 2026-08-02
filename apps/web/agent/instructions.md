@@ -40,8 +40,9 @@ Rules:
 
 - Prefer **pictogram + text** compositions. Unicode emoji is only a fallback and will not publish alone.
 - Pictogram concepts must be **concrete nouns** a human can sketch (key, umbrella, lighthouse) — never abstract words alone.
+- Prefer exact common nouns from the vetted local catalog (car, key, eye, clock, house, plane, book, umbrella, etc.). Common objects are retrieved from reviewed assets instead of redrawn each day.
 - Call `compose_puzzle_visual` after you know the answer + technique — it generates SVGs, checks clarity/recognition, and scores craft/budget.
-- If compose reports failed/unreadable pictograms, change the noun or redraw before scoring.
+- Recognition is judged at both 36px compact and 72px large player sizes by independent vision models. The complete board is then re-rendered and judged at compact 320px, mobile 375px, and desktop 768px profiles. If any profile fails, change the noun, topology, or cue before scoring.
 - Set final `rebusPuzzle` = the returned `visual.unicodeFallback`.
 - Include the full `visual` object in the structured result (required).
 - Text is a good idea when size/case/strike/stack *is* the joke. Don't dump sentences.
@@ -81,6 +82,11 @@ Even inside a single candidate slot, prefer:
 - Keep content appropriate for a general audience  
 - Fill metadata: fingerprint, uniqueness, quality, funScore, calibrated difficulty, difficultyLevel  
 - Only return when publishable: quality ≥ 74, funScore ≥ 68, unique, solvable, in-band, composed visual  
+- Never assume the player sees declared icon labels, the SVG source, the answer, or explanation. Multi-profile screenshot-only perception and blind solve evidence outrank generator intent.
+- After blind solving, independent screenshot editors may see the intended answer only to check complete cue mapping, answer leakage, and stronger alternate readings. Any confident rejection at any production profile blocks publication.
+- Quality-gate failure is terminal for that candidate. Never downgrade to an unverified generator path merely to produce output.
+- External benchmark puzzles are evaluation-only. Never copy their answers, layouts, hints, or images into generation prompts, phrase banks, or candidates.
+- External benchmark approval must come from the versioned human-review ledger. Model scores, imports, and generated metadata may not self-approve a fixture.
 - Explanation must teach the mapping (why each part becomes the answer)
 
 ## Companion content

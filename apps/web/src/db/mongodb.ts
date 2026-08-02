@@ -62,6 +62,13 @@ const globalForDb = globalThis as unknown as {
   indexesInitialized: boolean;
 };
 
+export function shouldAutoInitializeIndexes(environment: NodeJS.ProcessEnv = process.env): boolean {
+  if (environment.REBUZZLE_SKIP_AUTO_INDEXES === "1") return false;
+  if (environment.NEXT_PHASE?.includes("production-build")) return false;
+  if (environment.npm_lifecycle_event === "build") return false;
+  return true;
+}
+
 /**
  * Get or create MongoDB connection (singleton pattern)
  * Configured with connection pooling, retry logic, and timeouts
@@ -158,7 +165,7 @@ export const getDatabase = (): Db => {
     });
 
     // Initialize indexes in background (only once per process)
-    if (!globalForDb.indexesInitialized) {
+    if (!globalForDb.indexesInitialized && shouldAutoInitializeIndexes()) {
       globalForDb.indexesInitialized = true;
       initializeIndexes().catch((error) => {
         console.warn("[MongoDB] Background index initialization failed:", error);

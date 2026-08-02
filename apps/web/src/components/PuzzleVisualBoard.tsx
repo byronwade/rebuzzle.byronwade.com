@@ -1,26 +1,28 @@
 "use client";
 
 import { type CSSProperties, useMemo } from "react";
+import {
+  PUZZLE_BOARD_SIZE_SPECS,
+  type PuzzleBoardSize,
+} from "@/ai/puzzle-agent/visual/presentation";
 import { sanitizePictogramSvg } from "@/ai/puzzle-agent/visual/sanitize-svg";
 import type { PuzzleVisual, PuzzleVisualLayer } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
-
-type BoardSize = "small" | "medium" | "large";
 
 interface PuzzleVisualBoardProps {
   visual: PuzzleVisual;
   /** Unicode fallback when layers can't render */
   fallback: string;
-  size?: BoardSize;
+  size?: PuzzleBoardSize;
   className?: string;
   /** Compact keyboard-aware strip */
   compact?: boolean;
 }
 
-const SIZE_PX: Record<BoardSize, { tile: number; text: string; gap: string }> = {
-  small: { tile: 36, text: "text-lg", gap: "gap-1.5" },
-  medium: { tile: 52, text: "text-2xl", gap: "gap-2" },
-  large: { tile: 72, text: "text-[clamp(1.75rem,5vw,2.75rem)]", gap: "gap-2.5 sm:gap-3" },
+const TEXT_SIZE_CLASS: Record<PuzzleBoardSize, string> = {
+  small: "text-lg",
+  medium: "text-2xl",
+  large: "text-[clamp(1.75rem,5vw,2.75rem)]",
 };
 
 function textEmphasisClass(emphasis?: string): string {
@@ -168,17 +170,18 @@ function LayerView({
 }: {
   layer: PuzzleVisualLayer;
   index: number;
-  size: BoardSize;
+  size: PuzzleBoardSize;
 }) {
-  const dims = SIZE_PX[size];
+  const dims = PUZZLE_BOARD_SIZE_SPECS[size];
+  const textClass = TEXT_SIZE_CLASS[size];
   if (layer.kind === "pictogram") {
     return <PictogramTile layer={layer} sizePx={dims.tile} index={index} />;
   }
   if (layer.kind === "text") {
-    return <TextTile layer={layer} sizeClass={dims.text} index={index} />;
+    return <TextTile layer={layer} sizeClass={textClass} index={index} />;
   }
   if (layer.kind === "operator") {
-    return <OperatorTile layer={layer} sizeClass={dims.text} />;
+    return <OperatorTile layer={layer} sizeClass={textClass} />;
   }
   if (layer.kind === "image") {
     return <ImageTile layer={layer} sizePx={dims.tile} index={index} />;
@@ -197,7 +200,9 @@ export function PuzzleVisualBoard({
   className,
   compact = false,
 }: PuzzleVisualBoardProps) {
-  const dims = SIZE_PX[compact ? "small" : size];
+  const resolvedSize = compact ? "small" : size;
+  const dims = PUZZLE_BOARD_SIZE_SPECS[resolvedSize];
+  const textClass = TEXT_SIZE_CLASS[resolvedSize];
   const layers = visual.layers ?? [];
   const hasRenderable = layers.some((l) => {
     if (l.kind === "pictogram") return Boolean(l.svg || l.emojiFallback);
@@ -210,7 +215,7 @@ export function PuzzleVisualBoard({
       <div
         className={cn(
           "text-center text-foreground font-semibold whitespace-pre-wrap break-words",
-          dims.text,
+          textClass,
           className
         )}
       >
@@ -230,13 +235,14 @@ export function PuzzleVisualBoard({
 
   return (
     <div
-      className={cn("puzzle-visual-board flex w-full max-w-full", layoutClass, dims.gap, className)}
+      className={cn("puzzle-visual-board flex w-full max-w-full", layoutClass, className)}
       style={
         {
           "--rb-ink": "#1a1f1c",
           "--rb-canvas": "#f4f6f3",
           "--rb-accent": "#2f6f5e",
           "--rb-strike": "#b23a2d",
+          gap: dims.gap,
         } as CSSProperties
       }
       role="img"
@@ -248,7 +254,7 @@ export function PuzzleVisualBoard({
           key={`${layer.kind}-${index}`}
           layer={layer}
           index={index}
-          size={compact ? "small" : size}
+          size={resolvedSize}
         />
       ))}
       {visual.caption ? (

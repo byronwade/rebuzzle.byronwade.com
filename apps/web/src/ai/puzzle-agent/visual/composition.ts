@@ -10,6 +10,22 @@ export const PictogramLayerSchema = z.object({
   role: z.string().optional(),
   /** Generated SVG markup (Ink Pictogram v1) */
   svg: z.string().optional(),
+  /** Stable reviewed asset identity when resolved from the local catalog. */
+  assetId: z.string().max(80).optional(),
+  source: z.enum(["catalog", "generated", "approved-cache"]).optional(),
+  /** Blind pixel-recognition evidence captured before publication. */
+  seenAs: z.string().max(80).optional(),
+  recognitionConfidence: z.number().min(0).max(1).optional(),
+  recognitionProfiles: z
+    .array(
+      z.object({
+        tileSize: z.number().int().positive(),
+        seenAs: z.string().max(80),
+        confidence: z.number().min(0).max(1),
+      })
+    )
+    .max(4)
+    .optional(),
   /** Unicode emoji fallback for share text / older clients */
   emojiFallback: z.string().min(1).max(8),
 });

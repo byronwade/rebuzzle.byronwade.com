@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import {
   getGenerationSystemHealth,
   listRecentGenerationAudits,
+  loadQualityDriftReport,
   loadSimCalibration,
   measureWindowPerformance,
   resolveAdaptiveDifficultyForDate,
 } from "@/ai/learning";
+import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { aiFeedbackOps, aiLearningEventOps } from "@/db/ai-operations";
 import { verifyAdminAccess } from "@/lib/admin-auth";
 
@@ -20,20 +22,32 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Admin access required" }, { status: 401 });
     }
 
-    const [health, window, adaptive, audits, learningEvents, simCalibration, unprocessedFeedback] =
-      await Promise.all([
-        getGenerationSystemHealth(),
-        measureWindowPerformance({ lookbackDays: 7, minFinals: 8 }),
-        resolveAdaptiveDifficultyForDate(new Date()),
-        listRecentGenerationAudits(20),
-        aiLearningEventOps.findRecent(20),
-        loadSimCalibration(),
-        aiFeedbackOps.countUnprocessed(),
-      ]);
+    const [
+      health,
+      qualityDrift,
+      window,
+      adaptive,
+      audits,
+      learningEvents,
+      simCalibration,
+      unprocessedFeedback,
+      humanPlaytests,
+    ] = await Promise.all([
+      getGenerationSystemHealth(),
+      loadQualityDriftReport(),
+      measureWindowPerformance({ lookbackDays: 7, minFinals: 8 }),
+      resolveAdaptiveDifficultyForDate(new Date()),
+      listRecentGenerationAudits(20),
+      aiLearningEventOps.findRecent(20),
+      loadSimCalibration(),
+      aiFeedbackOps.countUnprocessed(),
+      puzzlePlaytestService.getReport(admin.id),
+    ]);
 
     return NextResponse.json({
       success: true,
       health,
+      qualityDrift,
       playerPressure: {
         finalPlays: window.finalPlays,
         solveRate: window.solveRate,
@@ -46,6 +60,7 @@ export async function GET(request: Request) {
       },
       adaptiveDifficulty: adaptive,
       simCalibration,
+      humanPlaytests,
       unprocessedFeedback,
       recentAudits: audits,
       recentLearningEvents: learningEvents,
@@ -53,9 +68,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Generation health API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch generation health" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch generation health" }, { status: 500 });
   }
 }

@@ -10,15 +10,14 @@
 
 import { AI_CONFIG } from "../../config";
 import { isKnownTechniqueId } from "../quality";
-import {
-  type PuzzleGenerationParams,
-  runPuzzleAgentGeneration,
-} from "../run-generation";
+import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-generation";
 import type { PuzzleAgentResult } from "../schemas";
-import { stableId } from "../tool-impl";
 import type { TechniqueId } from "../technique-library";
-import { buildGenerationBrief } from "./curriculum";
+import { stableId } from "../tool-impl";
+import { editorialReviewPublishBlockers } from "../visual/editorial-consensus";
+import { blindSolvePublishBlockers, toPlayabilityEvidence } from "./blind-solve-consensus";
 import { critiqueCandidate } from "./critique";
+import { buildGenerationBrief } from "./curriculum";
 import { applyPlayerSimHeuristics, simulatePlayerSolve } from "./player-sim";
 import { scoreRubric } from "./rubric";
 import { pickWinner } from "./tournament";
@@ -47,12 +46,17 @@ function toCandidate(
     visual: p.visual,
     fingerprint: result.metadata.fingerprint,
     uniquenessScore: result.metadata.uniquenessScore,
+    noveltyEvidence: result.metadata.noveltyEvidence,
     calibratedDifficulty: result.metadata.calibratedDifficulty,
     inBand: true,
     isUnique: result.metadata.uniquenessScore >= 50,
     solvable: true,
     qualityOverall: result.metadata.qualityScore,
     funScore: result.metadata.funScore ?? 0,
+    boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
+    boardRecognitionModels: result.metadata.boardRecognitionModels,
+    boardConceptVotes: result.metadata.boardConceptVotes,
+    boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
     publishable: result.metadata.qualityVerdict !== "reject",
     rejectReasons: [],
   };
@@ -107,9 +111,10 @@ async function enrichCandidate(
           `Overused trope with low creativity (${creativityScore}) — invent a fresher mechanism`,
         ],
       };
-    } else if (iconRecognizability < 45) {
+    } else if (iconRecognizability < 70) {
       next = {
         ...next,
+        publishable: false,
         rejectReasons: [
           ...next.rejectReasons,
           `Icons look unrecognizable (score ${iconRecognizability}) — redraw concrete silhouettes`,
@@ -118,6 +123,7 @@ async function enrichCandidate(
     } else if (critique.verdict === "revise" && critique.reviseInstructions.length) {
       next = {
         ...next,
+        publishable: false,
         rejectReasons: [
           ...next.rejectReasons,
           `Critique revise: ${critique.reviseInstructions.slice(0, 2).join("; ")}`,
@@ -134,6 +140,7 @@ async function enrichCandidate(
       hints: candidate.hints,
       techniqueId: candidate.techniqueId,
       tierLabel: brief.tierLabel,
+      visual: candidate.visual,
     });
     let playerSim = applyPlayerSimHeuristics(rawSim, {
       answer: candidate.answer,
@@ -148,16 +155,24 @@ async function enrichCandidate(
       const { applySimCalibration } = await import("../../learning/sim-calibration");
       playerSim = {
         ...playerSim,
-        estimatedSolveRate: applySimCalibration(
-          playerSim.estimatedSolveRate,
-          simCalibration
-        ),
+        estimatedSolveRate: applySimCalibration(playerSim.estimatedSolveRate, simCalibration),
       };
     }
     next = { ...next, playerSim };
-    if (!playerSim.hintUnlockOrderLooksFair || playerSim.unfairReasons.length > 2) {
+    const screenshotBlockers = [
+      ...blindSolvePublishBlockers(playerSim),
+      ...editorialReviewPublishBlockers(playerSim),
+    ];
+    if (screenshotBlockers.length) {
       next = {
         ...next,
+        publishable: false,
+        rejectReasons: [...next.rejectReasons, ...screenshotBlockers],
+      };
+    } else if (!playerSim.hintUnlockOrderLooksFair || playerSim.unfairReasons.length > 2) {
+      next = {
+        ...next,
+        publishable: false,
         rejectReasons: [
           ...next.rejectReasons,
           ...(playerSim.unfairReasons.length
@@ -260,26 +275,8 @@ export async function runApexGeneration(
   const selectMs = Date.now() - selectStarted;
 
   if (!winner) {
-    // Soft fallback: best rubric even if under threshold, if still publishable
-    const fallback = ranked.find((c) => c.publishable && c.isUnique && c.solvable);
-    if (!fallback) {
-      throw new Error(
-        `Apex tournament found no publishable winner. Failures: ${failures.join(" | ") || "gates/rubric"}`
-      );
-    }
-    return await finalizeWinner(
-      fallback,
-      ranked,
-      brief,
-      {
-        briefMs,
-        generateMs,
-        critiqueMs,
-        selectMs,
-        totalMs: Date.now() - started,
-      },
-      failures,
-      simCalibration
+    throw new Error(
+      `Apex tournament found no candidate meeting the publish rubric. Failures: ${failures.join(" | ") || "gates/rubric"}`
     );
   }
 
@@ -312,9 +309,7 @@ async function finalizeWinner(
   let chosen = winner;
   const archiveHit = await isAnswerRegistered(chosen.answer);
   if (archiveHit.taken) {
-    const alternate = ranked.find(
-      (c) => c.id !== chosen.id && (c.tournamentScore ?? -1) >= 0
-    );
+    const alternate = ranked.find((c) => c.id !== chosen.id && (c.tournamentScore ?? -1) >= 0);
     if (!alternate) {
       throw new Error(
         `Apex winner answer already archived (${archiveHit.puzzleId}). No alternate candidate.`
@@ -355,6 +350,7 @@ async function finalizeWinner(
     metadata: {
       fingerprint: chosen.fingerprint,
       uniquenessScore: chosen.uniquenessScore,
+      noveltyEvidence: chosen.noveltyEvidence,
       calibratedDifficulty: chosen.calibratedDifficulty,
       difficultyLevel: chosen.difficultyLevel,
       qualityScore: Math.max(chosen.qualityOverall, chosen.rubric?.overall ?? 0),
@@ -369,17 +365,19 @@ async function finalizeWinner(
       thinkingSummary,
       visualStyleId: chosen.visual.styleId,
       estimatedSolveRate: chosen.playerSim?.estimatedSolveRate,
+      playabilityEvidence: chosen.playerSim ? toPlayabilityEvidence(chosen.playerSim) : undefined,
+      boardRecognitionConfidence: chosen.boardRecognitionConfidence,
+      boardRecognitionModels: chosen.boardRecognitionModels,
+      boardConceptVotes: chosen.boardConceptVotes,
+      boardRecognitionProfiles: chosen.boardRecognitionProfiles,
       simCalibrationBias:
-        simCalibration && simCalibration.sampleSize >= 6
-          ? simCalibration.adjustment
-          : undefined,
+        simCalibration && simCalibration.sampleSize >= 6 ? simCalibration.adjustment : undefined,
     },
     status: "success",
     recommendations: [
       ...(chosen.critique?.reviseInstructions ?? []).slice(0, 2),
       ...runnersUp.map(
-        (r) =>
-          `Runner-up: ${r.answer} (${r.techniqueId}, rubric ${r.rubric?.overall ?? "?"})`
+        (r) => `Runner-up: ${r.answer} (${r.techniqueId}, rubric ${r.rubric?.overall ?? "?"})`
       ),
       brief.learning.enabled && brief.learning.preferPatterns[0]
         ? `Learning: ${brief.learning.preferPatterns[0]}`

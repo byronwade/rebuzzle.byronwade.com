@@ -1,920 +1,380 @@
+import {
+  ArrowRight,
+  Check,
+  Eye,
+  Lightbulb,
+  MessageCircle,
+  MousePointer2,
+  Sparkles,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
-import { generateCourseSchema, generateSpeakableSchema } from "@/lib/seo/structured-data";
+import {
+  generateFAQPageSchema,
+  generateHowToSchema,
+  generateSpeakableSchema,
+} from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = generateStaticPageMetadata({
-  title: "How It Works | Rebuzzle - AI-Powered Puzzle Generation",
+  title: "How to Play Rebuzzle | Decode Daily Visual Puzzles",
   description:
-    "A comprehensive technical overview of Rebuzzle's intelligent AI system for creating unique, challenging puzzles using chain-of-thought reasoning, multi-agent orchestration, quality assurance, and machine learning.",
+    "Learn how to solve Rebuzzle's daily visual word puzzles. Read pictures, notice placement, test your answer, and use progressive hints when you need a nudge.",
   url: "/how-it-works",
   keywords: [
-    "AI puzzle generation",
-    "machine learning puzzles",
-    "intelligent puzzle system",
-    "semantic search",
-    "personalized recommendations",
-    "puzzle learning",
-    "adaptive difficulty",
-    "vector embeddings",
-    "quality assurance",
-    "multi-agent AI",
+    "how to play Rebuzzle",
+    "how to solve rebus puzzles",
+    "daily visual puzzle",
+    "picture word puzzles",
+    "rebus puzzle tips",
   ],
 });
 
+const decodingRules = [
+  {
+    icon: Eye,
+    label: "Read what you see",
+    copy: "Name every picture, word, number, and symbol. The first meaning is often only the beginning.",
+    sample: "HEAD  HEELS",
+    note: "Words can become objects",
+  },
+  {
+    icon: MousePointer2,
+    label: "Notice where it sits",
+    copy: "Above, below, inside, outside, backwards, tiny, repeated—position is part of the sentence.",
+    sample: "CYCLE  CYCLE  CYCLE",
+    note: "Three cycles → tricycle",
+  },
+  {
+    icon: MessageCircle,
+    label: "Say it out loud",
+    copy: "Pictures and letters may be sounds. Join them together and listen for a familiar word or phrase.",
+    sample: "🐝  +  4",
+    note: "Bee + four → before",
+  },
+] as const;
+
+const dailySteps = [
+  {
+    number: "01",
+    title: "Take in the whole board",
+    copy: "Start with the relationship between the clues—not just each clue on its own.",
+  },
+  {
+    number: "02",
+    title: "Send your best read",
+    copy: "Type the phrase you think the board represents. Close answers get useful feedback, not a dead end.",
+  },
+  {
+    number: "03",
+    title: "Ask for a nudge",
+    copy: "Reveal a progressive hint when you need one. It points you toward the mechanism without giving away the answer.",
+  },
+  {
+    number: "04",
+    title: "Learn the trick",
+    copy: "See the explanation, collect your score, and carry the pattern into tomorrow's puzzle.",
+  },
+] as const;
+
+const fairPuzzleChecks = [
+  "Every visual should be recognizable at a glance.",
+  "The intended answer should explain every clue.",
+  "Difficulty should come from the wordplay—not blurry artwork.",
+  "Hints should narrow the path without spoiling the finish.",
+] as const;
+
+function serializeJsonLd(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
 export default function HowItWorksPage() {
-  // Generate Course schema for educational content
-  const courseSchema = generateCourseSchema({
-    name: "Rebuzzle Puzzle Solving Course",
-    description:
-      "Learn how Rebuzzle's AI system generates puzzles and master techniques for solving rebus puzzles, logic grids, cryptic crosswords, and more.",
-    educationalLevel: "Beginner to Advanced",
-    teaches: [
-      "Rebus puzzle solving techniques",
-      "Logic grid deduction",
-      "Cryptic crossword clue interpretation",
-      "Pattern recognition strategies",
-      "Number sequence analysis",
-      "Caesar cipher decryption",
-      "Trivia knowledge application",
-    ],
-    coursePrerequisites: ["Basic reading comprehension", "Elementary math skills"],
+  const howToSchema = generateHowToSchema({
+    name: "How to solve a Rebuzzle puzzle",
+    description: "A four-step guide to reading and solving Rebuzzle's daily visual word puzzles.",
+    steps: dailySteps.map((step) => ({ name: step.title, text: step.copy })),
   });
 
-  // Generate Speakable schema for voice search
+  const faqSchema = generateFAQPageSchema([
+    {
+      question: "What is a rebus puzzle?",
+      answer:
+        "A rebus is a visual word puzzle that uses pictures, words, symbols, sounds, and placement to represent a familiar word or phrase.",
+    },
+    {
+      question: "How do hints work in Rebuzzle?",
+      answer:
+        "Hints are progressive. Each hint gives a more specific nudge toward the puzzle's visual or verbal mechanism without immediately revealing the answer.",
+    },
+    {
+      question: "Do I need special knowledge to play?",
+      answer:
+        "No. Start by naming what you see, noticing how the clues are arranged, and saying possible combinations aloud. Familiar language and observation do most of the work.",
+    },
+  ]);
+
   const speakableSchema = generateSpeakableSchema({
-    cssSelector: ["h1", "h2", "h3"],
+    cssSelector: ["h1", "#decode-rules", "#daily-run"],
   });
 
   return (
     <Layout>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(courseSchema),
-        }}
-        type="application/ld+json"
-      />
-      <script
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(speakableSchema),
-        }}
-        type="application/ld+json"
-      />
-      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-20">
-        {/* Header */}
-        <header className="border-border border-b pb-10">
-          <p className="eyebrow">Engineering</p>
-          <h1 className="mt-4 text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
-            How Rebuzzle works.
-          </h1>
-          <p className="mt-4 text-balance text-lg text-muted-foreground leading-8">
-            A technical overview of our AI-powered puzzle generation system
-          </p>
-        </header>
+      {[
+        { id: "how-it-works-howto", value: howToSchema },
+        { id: "how-it-works-faq", value: faqSchema },
+        { id: "how-it-works-speakable", value: speakableSchema },
+      ].map((schema) => (
+        <script
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema.value) }}
+          id={schema.id}
+          key={schema.id}
+          type="application/ld+json"
+        />
+      ))}
 
-        {/* Introduction */}
-        <div className="mt-10">
-          <p className="text-pretty text-foreground text-lg leading-8">
-            Rebuzzle employs a sophisticated multi-layered artificial intelligence system that
-            generates unique, high-quality puzzles across ten distinct puzzle types. Our system
-            combines chain-of-thought reasoning, multi-agent orchestration, semantic understanding,
-            and continuous learning to create puzzles that are both challenging and solvable.
-          </p>
-        </div>
+      <div className="overflow-hidden">
+        <section className="relative mx-auto grid max-w-page gap-12 px-4 pt-14 pb-20 md:px-6 md:pt-24 md:pb-28 lg:grid-cols-[minmax(0,0.86fr)_minmax(28rem,1.14fr)] lg:items-center lg:gap-16">
+          <div className="relative z-10 max-w-xl">
+            <p className="eyebrow">How to play</p>
+            <h1 className="mt-5 text-balance font-semibold text-[clamp(3.25rem,7vw,6.75rem)] leading-[0.88] tracking-[-0.075em]">
+              See it.
+              <br />
+              Say it.
+              <br />
+              <span className="text-muted-foreground">Solve it.</span>
+            </h1>
+            <p className="mt-7 max-w-lg text-pretty text-lg text-muted-foreground leading-8 md:text-xl">
+              Rebuzzle turns familiar words and phrases into visual clues. Your job is to work
+              backwards—from what you see to the thought hiding underneath.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-5">
+              <Link
+                className="group inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 font-medium text-background text-sm transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
+                href="/"
+              >
+                Play today&apos;s puzzle
+                <ArrowRight
+                  aria-hidden
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                />
+              </Link>
+              <a
+                className="text-muted-foreground text-sm underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
+                href="#decode-rules"
+              >
+                Learn the patterns
+              </a>
+            </div>
+          </div>
 
-        {/* Section 1: System Architecture */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            System Architecture
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Rebuzzle's architecture is built on a serverless, event-driven model that scales
-            automatically to handle millions of puzzle requests. The system is designed with
-            modularity, extensibility, and performance as core principles.
-          </p>
+          <div className="relative lg:py-6">
+            <div
+              aria-hidden
+              className="absolute -inset-20 -z-10 opacity-30 blur-3xl [background:conic-gradient(from_110deg_at_50%_50%,var(--grad-develop-start),var(--grad-develop-end),var(--grad-preview-start),var(--grad-preview-end),var(--grad-ship-end),var(--grad-develop-start))] dark:opacity-20"
+            />
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090909] text-white shadow-[0_32px_80px_-32px_rgba(0,0,0,0.65)]">
+              <div className="flex items-center justify-between border-white/10 border-b px-5 py-4">
+                <span className="font-mono text-[11px] text-white/50 uppercase tracking-[0.18em]">
+                  Practice board
+                </span>
+                <span className="inline-flex items-center gap-2 font-mono text-[11px] text-white/50 uppercase tracking-[0.12em]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Easy read
+                </span>
+              </div>
 
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Core Components
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The system consists of several interconnected components:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Puzzle Generation Engine:</strong> The core AI system that creates puzzles
-              using large language models and specialized prompts
-            </li>
-            <li>
-              <strong>Multi-Agent Orchestrator:</strong> Coordinates four specialized AI agents to
-              generate, evaluate, calibrate, and personalize puzzles
-            </li>
-            <li>
-              <strong>Quality Assurance Pipeline:</strong> Multi-dimensional evaluation system that
-              scores puzzles across seven quality dimensions
-            </li>
-            <li>
-              <strong>Semantic Search Engine:</strong> Vector-based similarity search using
-              embeddings to find related puzzles and enable intelligent recommendations
-            </li>
-            <li>
-              <strong>Learning System:</strong> Analyzes user behavior to improve puzzle quality and
-              difficulty calibration over time
-            </li>
-            <li>
-              <strong>Personalization Engine:</strong> Customizes puzzle generation based on
-              individual user profiles, preferences, and performance history
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Technology Stack
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Built on modern, production-ready technologies:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Vercel AI SDK:</strong> Unified interface for multiple AI providers (OpenAI,
-              Anthropic, Google) with automatic routing and cost optimization
-            </li>
-            <li>
-              <strong>AI SDK Tools:</strong> Advanced orchestration, semantic caching, and state
-              management for multi-agent systems
-            </li>
-            <li>
-              <strong>Next.js 15:</strong> React framework with server components, API routes, and
-              edge runtime support
-            </li>
-            <li>
-              <strong>MongoDB:</strong> Document database for storing puzzles, user data,
-              embeddings, and analytics
-            </li>
-            <li>
-              <strong>Vector Operations:</strong> Cosine similarity calculations for semantic search
-              and recommendation systems
-            </li>
-          </ul>
+              <div className="relative flex min-h-[25rem] flex-col items-center justify-center px-6 py-14 sm:px-12">
+                <div
+                  aria-hidden
+                  className="absolute inset-x-[10%] top-0 h-48 bg-[radial-gradient(ellipse_at_top,rgba(0,124,240,0.22),transparent_70%)]"
+                />
+                <p className="relative mb-10 text-center text-sm text-white/55">
+                  What familiar phrase is pictured here?
+                </p>
+                <div className="relative w-full max-w-md text-center">
+                  <div className="h-px w-full bg-white/35" />
+                  <div className="py-7 font-semibold text-[clamp(2.7rem,8vw,5.4rem)] leading-none tracking-[-0.065em]">
+                    READING
+                  </div>
+                  <div className="h-px w-full bg-white/35" />
+                </div>
+                <details className="group relative mt-12 w-full max-w-md rounded-lg border border-white/15 bg-white/[0.04] open:bg-white/[0.07]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3.5 font-medium text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 [&::-webkit-details-marker]:hidden">
+                    Reveal the answer
+                    <span className="font-mono text-white/45 transition-transform group-open:rotate-45">
+                      +
+                    </span>
+                  </summary>
+                  <div className="border-white/10 border-t px-4 py-4">
+                    <p className="font-medium">Reading between the lines</p>
+                    <p className="mt-1.5 text-sm text-white/55 leading-6">
+                      The word READING is literally placed between two lines.
+                    </p>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <p className="mt-4 text-center font-mono text-[10px] text-subtle uppercase tracking-[0.16em]">
+              The arrangement is part of the clue
+            </p>
+          </div>
         </section>
 
-        {/* Section 2: Puzzle Generation Pipeline */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Puzzle Generation Pipeline
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Every puzzle undergoes a rigorous six-stage generation pipeline designed to ensure
-            quality, uniqueness, and appropriate difficulty.
-          </p>
+        <section className="border-border border-y bg-card" id="decode-rules">
+          <div className="mx-auto max-w-page px-4 py-20 md:px-6 md:py-28">
+            <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
+              <div>
+                <p className="eyebrow">The decoder</p>
+                <h2 className="mt-4 max-w-sm text-balance font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
+                  The clue is more than the clue.
+                </h2>
+                <p className="mt-5 max-w-sm text-pretty text-muted-foreground leading-7">
+                  A rebus can communicate through meaning, sound, count, direction, scale, or
+                  position. Read all of them before you settle on an answer.
+                </p>
+              </div>
 
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Stage 1: Chain-of-Thought Generation
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Before generating a puzzle, the AI is instructed to think through the puzzle concept
-            using chain-of-thought reasoning. This process involves:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Conceptual Planning:</strong> The AI identifies the target answer and
-              considers multiple approaches to represent it visually or textually
-            </li>
-            <li>
-              <strong>Visual Strategy:</strong> For rebus puzzles, the AI plans which emojis,
-              symbols, or words will best represent the concept
-            </li>
-            <li>
-              <strong>Difficulty Assessment:</strong> The AI evaluates the inherent challenge level
-              of the concept before generation
-            </li>
-            <li>
-              <strong>Multi-Layer Thinking:</strong> The AI considers literal meanings, phonetic
-              relationships, cultural references, and abstract connections
-            </li>
-          </ul>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7">
-            This thinking process is captured in a structured format, allowing the system to
-            understand the AI's reasoning and ensure puzzles are created with full comprehension
-            rather than random generation.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Stage 2: Uniqueness Validation
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            To prevent duplicate or near-duplicate puzzles, each generated puzzle undergoes semantic
-            fingerprinting:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Component Tracking:</strong> The system extracts key components (emojis,
-              words, structure) and creates a fingerprint
-            </li>
-            <li>
-              <strong>Semantic Similarity:</strong> Vector embeddings are generated and compared
-              against existing puzzles using cosine similarity
-            </li>
-            <li>
-              <strong>Similarity Threshold:</strong> Puzzles with more than 80% similarity to
-              existing ones are automatically rejected
-            </li>
-            <li>
-              <strong>Automatic Retry:</strong> If a puzzle fails uniqueness validation, the system
-              generates a new variation with different components or approach
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Stage 3: Difficulty Calibration
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The Difficulty Calibrator Agent analyzes the puzzle and adjusts its difficulty rating
-            based on multiple weighted factors:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Visual Ambiguity (20% weight):</strong> How clear are the visual elements?
-              Crystal clear (1) to highly ambiguous (10)
-            </li>
-            <li>
-              <strong>Cognitive Steps (30% weight):</strong> How many mental leaps are needed?
-              Single step (1) to many complex steps (10)
-            </li>
-            <li>
-              <strong>Cultural Knowledge (20% weight):</strong> How much cultural context is
-              required? Universal (1) to deep cultural knowledge (10)
-            </li>
-            <li>
-              <strong>Vocabulary Level (15% weight):</strong> How advanced is the vocabulary? Basic
-              words (1) to advanced vocabulary (10)
-            </li>
-            <li>
-              <strong>Pattern Novelty (15% weight):</strong> How unexpected is the pattern? Common
-              pattern (1) to highly novel (10)
-            </li>
-          </ul>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7">
-            The system maintains a minimum difficulty of 4 (hard) and targets the 4-8 range,
-            ensuring all puzzles are challenging mid-level difficulties that push creative
-            boundaries while remaining solvable.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Stage 4: Quality Assurance
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The Quality Evaluator Agent scores each puzzle across seven dimensions:
-          </p>
-          <ol className="mb-6 ml-5 list-decimal space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:font-mono marker:text-subtle [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Clarity:</strong> Is the puzzle clear and understandable? Are the instructions
-              unambiguous?
-            </li>
-            <li>
-              <strong>Creativity:</strong> Does the puzzle demonstrate creative thinking? Is it
-              novel and interesting?
-            </li>
-            <li>
-              <strong>Solvability:</strong> Can the puzzle be solved with reasonable effort? Is it
-              fair and logical?
-            </li>
-            <li>
-              <strong>Appropriateness:</strong> Is the content family-friendly? Does it avoid
-              sensitive topics?
-            </li>
-            <li>
-              <strong>Visual Appeal:</strong> For visual puzzles, are the elements well-chosen and
-              aesthetically pleasing?
-            </li>
-            <li>
-              <strong>Educational Value:</strong> Does the puzzle teach something or exercise
-              cognitive skills?
-            </li>
-            <li>
-              <strong>Fun Factor:</strong> Is the puzzle enjoyable to solve? Does it provide a
-              satisfying "aha!" moment?
-            </li>
-          </ol>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7">
-            Each dimension is scored on a 0-100 scale, and the scores are weighted and combined to
-            produce an overall quality score. Puzzles must score above 70 to publish directly, 60-69
-            for revision, and below 60 are rejected with automatic retry up to 3 times.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Stage 5: Adversarial Testing
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Before final acceptance, puzzles undergo adversarial testing where the AI attempts to
-            identify potential issues:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Ambiguity Detection:</strong> Could the puzzle have multiple valid answers?
-            </li>
-            <li>
-              <strong>Cultural Sensitivity:</strong> Are there any cultural assumptions that might
-              exclude certain audiences?
-            </li>
-            <li>
-              <strong>Accessibility Concerns:</strong> Is the puzzle accessible to players with
-              different abilities or backgrounds?
-            </li>
-            <li>
-              <strong>Edge Case Analysis:</strong> What happens if players interpret elements
-              differently than intended?
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Stage 6: Final Validation
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The final stage ensures all requirements are met:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>All required fields are present and valid</li>
-            <li>Progressive hints are generated (3-5 hints per puzzle)</li>
-            <li>Explanation is clear and educational</li>
-            <li>Metadata is complete (category, difficulty, puzzle type)</li>
-            <li>Puzzle is stored in database with proper indexing</li>
-            <li>Vector embedding is generated for semantic search</li>
-          </ul>
+              <div className="divide-y divide-border border-border border-y">
+                {decodingRules.map((rule) => {
+                  const Icon = rule.icon;
+                  return (
+                    <article
+                      className="group grid gap-5 py-7 sm:grid-cols-[2.5rem_minmax(0,1fr)_12rem] sm:items-center sm:gap-6"
+                      key={rule.label}
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-inset text-muted-foreground transition-colors group-hover:border-border-strong group-hover:text-foreground">
+                        <Icon aria-hidden className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg tracking-[-0.025em]">{rule.label}</h3>
+                        <p className="mt-1.5 text-sm text-muted-foreground leading-6">
+                          {rule.copy}
+                        </p>
+                      </div>
+                      <div className="border-border border-l pl-5 sm:text-right">
+                        <p className="whitespace-pre font-mono font-medium text-sm tracking-[0.08em]">
+                          {rule.sample}
+                        </p>
+                        <p className="mt-1.5 text-subtle text-xs">{rule.note}</p>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* Section 3: Multi-Agent Orchestration */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Multi-Agent Orchestration
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Rather than using a single AI model, Rebuzzle employs four specialized agents that work
-            together to create optimal puzzles. Each agent has a specific role and expertise.
-          </p>
+        <section className="mx-auto max-w-page px-4 py-20 md:px-6 md:py-28" id="daily-run">
+          <div className="grid gap-14 lg:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.72fr)] lg:gap-24">
+            <div>
+              <p className="eyebrow">Your daily run</p>
+              <h2 className="mt-4 max-w-2xl text-balance font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
+                One board. A short conversation. One satisfying click.
+              </h2>
 
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Puzzle Generator Agent
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The Generator Agent is responsible for creating the initial puzzle. It uses
-            chain-of-thought reasoning to:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>Plan the puzzle concept and visual strategy</li>
-            <li>Generate the puzzle content (emojis, words, structure)</li>
-            <li>Create the answer and explanation</li>
-            <li>Generate progressive hints</li>
-            <li>Consider difficulty and category requirements</li>
-          </ul>
+              <ol className="mt-12 border-border border-t">
+                {dailySteps.map((step) => (
+                  <li
+                    className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-4 border-border border-b py-7 md:grid-cols-[5rem_minmax(0,1fr)] md:gap-8"
+                    key={step.number}
+                  >
+                    <span className="pt-1 font-mono text-subtle text-xs tabular-nums">
+                      {step.number}
+                    </span>
+                    <div className="grid gap-2 md:grid-cols-[minmax(10rem,0.7fr)_minmax(0,1fr)] md:gap-10">
+                      <h3 className="font-semibold text-lg tracking-[-0.025em]">{step.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-6">{step.copy}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
 
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Quality Evaluator Agent
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The Quality Evaluator Agent reviews each puzzle and scores it across the seven quality
-            dimensions. It provides:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>Detailed scoring for each dimension</li>
-            <li>Identification of strengths and weaknesses</li>
-            <li>Specific suggestions for improvement</li>
-            <li>Overall quality score with reasoning</li>
-            <li>Recommendations for revision or acceptance</li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Difficulty Calibrator Agent
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The Difficulty Calibrator Agent analyzes puzzles and adjusts difficulty ratings for
-            accuracy. It:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>Evaluates complexity factors (visual ambiguity, cognitive steps, etc.)</li>
-            <li>Calculates weighted difficulty scores</li>
-            <li>Calibrates difficulty to match actual challenge level</li>
-            <li>Ensures puzzles fall within the 4-8 difficulty range</li>
-            <li>Provides difficulty reasoning and breakdown</li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Personalized Generator Agent
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            When generating puzzles for specific users, the Personalized Generator Agent customizes
-            the generation process based on:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>User's skill level and performance history</li>
-            <li>Preferred difficulty range and puzzle types</li>
-            <li>Favorite categories and themes</li>
-            <li>Recent performance trends</li>
-            <li>Hint usage patterns and engagement levels</li>
-          </ul>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7">
-            This agent ensures puzzles are appropriately challenging for each individual user,
-            maintaining engagement without frustration.
-          </p>
+            <aside className="lg:pt-32">
+              <div className="rounded-xl border border-border bg-card p-5 shadow-lg">
+                <div className="rounded-lg bg-[#0b0b0b] px-5 py-10 text-center text-white">
+                  <div className="font-semibold text-3xl tracking-[-0.04em]">
+                    CYCLE&nbsp; CYCLE&nbsp; CYCLE
+                  </div>
+                  <p className="mt-4 font-mono text-[10px] text-white/45 uppercase tracking-[0.16em]">
+                    Read the count
+                  </p>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="ml-auto max-w-[78%] rounded-xl rounded-br-sm bg-foreground px-4 py-3 text-background text-sm">
+                    Tricycle
+                  </div>
+                  <div className="max-w-[88%] rounded-xl rounded-bl-sm bg-inset px-4 py-3 text-sm leading-6">
+                    <span className="font-medium">Exactly.</span> Three “cycles” make a tri-cycle.
+                  </div>
+                </div>
+                <div className="mt-5 flex items-center justify-between border-border border-t pt-4">
+                  <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
+                    Solved in 1
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-sm">
+                    <Sparkles aria-hidden className="h-3.5 w-3.5" /> +100
+                  </span>
+                </div>
+              </div>
+              <p className="mt-4 px-3 text-center text-subtle text-xs leading-5">
+                Guesses become a thread, so every attempt helps you refine the idea.
+              </p>
+            </aside>
+          </div>
         </section>
 
-        {/* Section 4: Quality Assurance */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Quality Assurance System
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Quality is not an afterthought—it's built into every stage of the generation process.
-            Our quality assurance system ensures that only high-quality puzzles reach players.
-          </p>
+        <section className="border-border border-y bg-foreground text-background">
+          <div className="mx-auto grid max-w-page gap-12 px-4 py-20 md:px-6 md:py-24 lg:grid-cols-[0.75fr_1.25fr] lg:items-start lg:gap-24">
+            <div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-background/20">
+                <Lightbulb aria-hidden className="h-4 w-4" />
+              </div>
+              <h2 className="mt-7 text-balance font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
+                Hard is good.
+                <br />
+                Hazy isn&apos;t.
+              </h2>
+              <p className="mt-5 max-w-md text-pretty text-background/60 leading-7">
+                The best puzzle makes you work, then makes perfect sense. Rebuzzle evaluates each
+                board for clarity, fairness, and that unmistakable aha moment.
+              </p>
+            </div>
 
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Quality Scoring System
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Each puzzle receives a quality score from 0-100, calculated from weighted scores across
-            seven dimensions. The scoring thresholds are:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Exceptional (80-100):</strong> Rare, truly outstanding puzzles that are
-              memorable and exceptional
-            </li>
-            <li>
-              <strong>High Quality (70-79):</strong> High quality puzzles that are good and
-              publishable
-            </li>
-            <li>
-              <strong>Acceptable (60-69):</strong> Acceptable puzzles that are decent but may need
-              minor improvements
-            </li>
-            <li>
-              <strong>Needs Work (50-59):</strong> Puzzles with significant issues that need work
-            </li>
-            <li>
-              <strong>Poor (0-49):</strong> Poor quality puzzles with major problems
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Automatic Retry Mechanism
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            When a puzzle fails quality checks, the system doesn't simply reject it. Instead:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>The Quality Evaluator provides specific improvement suggestions</li>
-            <li>The Generator Agent creates a new version incorporating the feedback</li>
-            <li>
-              The process repeats up to 3 times, with each iteration improving based on previous
-              feedback
-            </li>
-            <li>
-              Only after 3 failed attempts is a puzzle rejected, ensuring maximum quality while
-              maintaining efficiency
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Quality Metrics in Production
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Our system achieves a publish rate of 85%+, meaning the vast majority of generated
-            puzzles meet our quality standards. This high success rate is achieved through:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>Sophisticated prompt engineering that guides AI toward quality</li>
-            <li>Multi-stage validation that catches issues early</li>
-            <li>Automatic improvement loops that refine puzzles iteratively</li>
-            <li>Learning from user feedback to improve generation over time</li>
-          </ul>
+            <ul className="divide-y divide-background/15 border-background/15 border-y">
+              {fairPuzzleChecks.map((check) => (
+                <li className="flex items-start gap-4 py-5" key={check}>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-foreground">
+                    <Check aria-hidden className="h-3 w-3" strokeWidth={2.5} />
+                  </span>
+                  <span className="text-background/75 leading-6">{check}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
-        {/* Section 5: Semantic Understanding */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Semantic Understanding & Vector Embeddings
+        <section className="mx-auto max-w-page px-4 py-24 text-center md:px-6 md:py-32">
+          <p className="eyebrow">Now you know the language</p>
+          <h2 className="mx-auto mt-5 max-w-4xl text-balance font-semibold text-[clamp(3rem,7vw,6.25rem)] leading-[0.92] tracking-[-0.07em]">
+            Today&apos;s answer is hiding in plain sight.
           </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Rebuzzle doesn't just store puzzles as text—it understands their meaning through vector
-            embeddings, enabling powerful semantic search and recommendation capabilities.
+          <p className="mx-auto mt-6 max-w-xl text-pretty text-muted-foreground leading-7">
+            Look closely, trust the wordplay, and send the answer that makes everything click.
           </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Vector Embeddings
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Every puzzle is converted into a high-dimensional vector (embedding) that represents its
-            semantic meaning. The embedding is generated from:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>The puzzle content itself (emojis, words, structure)</li>
-            <li>The answer and explanation</li>
-            <li>The category and puzzle type</li>
-            <li>Any thematic or contextual information</li>
-          </ul>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7">
-            These embeddings are stored in MongoDB alongside puzzle data, enabling fast similarity
-            searches using cosine similarity calculations.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Semantic Search
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Unlike keyword-based search, semantic search understands meaning. For example:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              Searching for "puzzles about cats" finds cat-related puzzles even if the word "cat"
-              doesn't appear (e.g., puzzles with 🐱 emoji)
-            </li>
-            <li>Finding similar puzzles by concept, not just by matching words</li>
-            <li>Discovering puzzles with related themes or difficulty levels</li>
-            <li>Identifying puzzles that require similar solving strategies</li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Semantic Caching
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            To optimize performance and reduce costs, Rebuzzle uses semantic caching:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              When generating a puzzle, the system checks if a semantically similar puzzle was
-              recently generated
-            </li>
-            <li>
-              If similarity is above 85%, the cached result is returned instead of making a new AI
-              API call
-            </li>
-            <li>
-              This reduces redundant API calls, speeds up responses, and significantly reduces costs
-            </li>
-            <li>
-              The cache uses meaning-based matching, so even if the exact prompt differs, similar
-              requests are served from cache
-            </li>
-          </ul>
-        </section>
-
-        {/* Section 6: Puzzle Types */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Puzzle Type System
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Rebuzzle supports ten distinct puzzle types, each with specialized generation logic,
-            validation rules, and difficulty calibration. This modular system allows each puzzle
-            type to have its own configuration while sharing common infrastructure.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Supported Puzzle Types
-          </h3>
-          <ol className="mb-6 ml-5 list-decimal space-y-3 text-[15px] text-muted-foreground leading-7 marker:font-mono marker:text-subtle [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Rebus Puzzles:</strong> Visual word puzzles using emojis and symbols to
-              represent words and phrases. Uses chain-of-thought reasoning to plan visual
-              strategies.
-            </li>
-            <li>
-              <strong>Word Puzzles:</strong> Anagrams, word searches, and cryptograms that test
-              vocabulary and pattern recognition.
-            </li>
-            <li>
-              <strong>Riddles:</strong> Lateral thinking puzzles that require wordplay, double
-              meanings, and creative interpretation.
-            </li>
-            <li>
-              <strong>Logic Grids:</strong> Einstein-style deductive reasoning puzzles with multiple
-              categories and constraint satisfaction.
-            </li>
-            <li>
-              <strong>Number Sequences:</strong> Mathematical pattern recognition puzzles requiring
-              identification of arithmetic, geometric, or recursive patterns.
-            </li>
-            <li>
-              <strong>Pattern Recognition:</strong> Visual or text-based sequences where players
-              identify patterns and predict next elements.
-            </li>
-            <li>
-              <strong>Caesar Ciphers:</strong> Cryptographic code-breaking puzzles using letter
-              substitution.
-            </li>
-            <li>
-              <strong>Cryptic Crosswords:</strong> Advanced crossword puzzles with wordplay and
-              cryptic clues.
-            </li>
-            <li>
-              <strong>Trivia:</strong> Knowledge-based challenge questions across various topics.
-            </li>
-            <li>
-              <strong>Word Ladders:</strong> Transform one word into another by changing one letter
-              at a time.
-            </li>
-          </ol>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Configuration-Driven Architecture
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Each puzzle type has its own configuration file that defines:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Schema:</strong> The data structure for puzzles of this type (fields,
-              validation rules, required elements)
-            </li>
-            <li>
-              <strong>Generation:</strong> System prompts, user prompts, temperature settings, and
-              model preferences
-            </li>
-            <li>
-              <strong>Validation:</strong> Custom validation rules specific to the puzzle type
-            </li>
-            <li>
-              <strong>Difficulty:</strong> How difficulty is calculated for this type (complexity
-              factors, weights, ranges)
-            </li>
-            <li>
-              <strong>Hints:</strong> How progressive hints are generated (count, progression style,
-              content guidelines)
-            </li>
-            <li>
-              <strong>Quality Metrics:</strong> Type-specific quality scoring criteria
-            </li>
-          </ul>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7">
-            This configuration-driven approach allows new puzzle types to be added easily while
-            maintaining consistency and quality across all types.
-          </p>
-        </section>
-
-        {/* Section 7: Learning & Adaptation */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Learning & Adaptation
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Rebuzzle continuously learns from user behavior to improve puzzle quality and difficulty
-            calibration. This learning system ensures the platform gets better over time.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Performance Analysis
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The system tracks and analyzes:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Solve Rates:</strong> What percentage of players successfully solve each
-              puzzle?
-            </li>
-            <li>
-              <strong>Time to Solve:</strong> How long do players take on average? Are puzzles too
-              easy (solved quickly) or too hard (taking excessive time)?
-            </li>
-            <li>
-              <strong>Hint Usage:</strong> How many hints do players need? High hint usage may
-              indicate puzzles are too difficult.
-            </li>
-            <li>
-              <strong>Abandonment Rates:</strong> Do players give up on certain puzzles? This may
-              indicate quality or difficulty issues.
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Difficulty Calibration
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Based on actual user performance, the system:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>Calculates actual difficulty from real user data (not just AI estimates)</li>
-            <li>Identifies puzzles where predicted difficulty doesn't match actual difficulty</li>
-            <li>Auto-calibrates difficulty ratings for accuracy</li>
-            <li>
-              Provides feedback to the generation system to improve future difficulty predictions
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Quality Improvement
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The learning system identifies patterns in problematic puzzles:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              Puzzles with consistently low solve rates may have clarity or solvability issues
-            </li>
-            <li>Puzzles with high abandonment may be too difficult or confusing</li>
-            <li>Puzzles with very high solve rates may be too easy</li>
-            <li>The system generates improvement suggestions for future puzzle generation</li>
-          </ul>
-        </section>
-
-        {/* Section 8: Personalization */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Personalization Engine
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            For authenticated users, Rebuzzle builds detailed profiles and personalizes the puzzle
-            experience to match individual preferences and skill levels.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            User Profiling
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The system builds comprehensive user profiles including:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Skill Level:</strong> Estimated skill level (beginner/intermediate/advanced)
-              based on performance
-            </li>
-            <li>
-              <strong>Difficulty Preferences:</strong> Preferred difficulty range calculated from
-              performance data
-            </li>
-            <li>
-              <strong>Favorite Categories:</strong> Puzzle categories the user enjoys most
-            </li>
-            <li>
-              <strong>Preferred Puzzle Types:</strong> Which puzzle types the user prefers
-            </li>
-            <li>
-              <strong>Performance Metrics:</strong> Solve rates, average time, hint usage patterns
-            </li>
-            <li>
-              <strong>Engagement Level:</strong> How actively the user engages with puzzles
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Adaptive Difficulty
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The personalization engine automatically adjusts puzzle difficulty:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              If a user is solving puzzles quickly, the system suggests more challenging puzzles
-            </li>
-            <li>
-              If a user is struggling, the system offers slightly easier puzzles to build confidence
-            </li>
-            <li>Difficulty adapts based on recent performance trends, not just overall history</li>
-            <li>
-              The system maintains users in their "sweet spot" of challenge—difficult enough to be
-              engaging, but not so hard as to be frustrating
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Recommendation System
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The recommendation engine combines multiple signals:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Semantic Search:</strong> Finds puzzles similar to ones the user enjoyed
-            </li>
-            <li>
-              <strong>Category-Based:</strong> Suggests puzzles in favorite categories
-            </li>
-            <li>
-              <strong>Difficulty-Matched:</strong> Matches current skill level
-            </li>
-            <li>
-              <strong>Performance-Based:</strong> Adjusts from recent performance data
-            </li>
-          </ul>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7">
-            Recommendations improve as the system learns individual preferences and play patterns
-            over time.
-          </p>
-        </section>
-
-        {/* Section 9: Performance */}
-        <section className="scroll-mt-24">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Performance & Optimization
-          </h2>
-          <p className="mb-5 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Rebuzzle is designed for scale and efficiency, with multiple optimization strategies to
-            ensure fast responses and cost-effective operation.
-          </p>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Caching Strategy
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            Multiple layers of caching reduce latency and costs:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Daily Puzzle Cache:</strong> Each day's puzzle is generated once and cached
-              for 24 hours, serving all users from the same cached result
-            </li>
-            <li>
-              <strong>Semantic Cache:</strong> Similar puzzle generation requests are served from
-              cache using semantic similarity matching
-            </li>
-            <li>
-              <strong>Embedding Cache:</strong> Vector embeddings are cached to avoid redundant
-              embedding generation
-            </li>
-            <li>
-              <strong>Vercel Edge Caching:</strong> Static and dynamic content is cached at the edge
-              for global performance
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Cost Optimization
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The system prioritizes cost-effective operation:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Free-Tier First:</strong> Prioritizes free-tier AI models with cost-ordered
-              fallbacks
-            </li>
-            <li>
-              <strong>Model Selection:</strong> Uses the most cost-effective model that meets
-              quality requirements
-            </li>
-            <li>
-              <strong>Batch Processing:</strong> Generates multiple puzzles in batches when possible
-            </li>
-            <li>
-              <strong>Semantic Caching:</strong> Reduces redundant API calls through meaning-based
-              cache matching
-            </li>
-          </ul>
-
-          <h3 className="mt-10 mb-3 font-semibold text-foreground text-lg tracking-[-0.03em]">
-            Scalability
-          </h3>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7">
-            The serverless architecture ensures:
-          </p>
-          <ul className="mb-6 ml-5 list-disc space-y-2.5 text-[15px] text-muted-foreground leading-7 marker:text-border-strong [&>li>strong]:font-medium [&>li>strong]:text-foreground">
-            <li>
-              <strong>Automatic Scaling:</strong> Handles traffic spikes without manual intervention
-            </li>
-            <li>
-              <strong>Edge Distribution:</strong> Content served from global edge locations for low
-              latency
-            </li>
-            <li>
-              <strong>Database Optimization:</strong> Indexed queries and efficient data structures
-              for fast lookups
-            </li>
-            <li>
-              <strong>Async Processing:</strong> Non-critical operations (like embedding generation)
-              run asynchronously to avoid blocking requests
-            </li>
-          </ul>
-        </section>
-
-        {/* Conclusion */}
-        <section className="mt-10">
-          <h2 className="mt-16 mb-5 scroll-mt-24 font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-[32px] md:leading-10">
-            Conclusion
-          </h2>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7 md:text-base">
-            Rebuzzle represents a production-ready, enterprise-grade AI system for puzzle
-            generation. It doesn't simply generate text—it thinks through puzzle creation, learns
-            from user behavior, adapts to individual preferences, validates quality at multiple
-            levels, understands semantic relationships, and improves over time.
-          </p>
-          <p className="mb-4 text-[15px] text-muted-foreground leading-7 md:text-base">
-            The combination of multi-agent orchestration, semantic understanding, continuous
-            learning, and personalization creates a system that produces high-quality, unique, and
-            engaging puzzles that get better with each interaction. This technical foundation
-            enables Rebuzzle to scale to millions of users while maintaining quality and providing
-            personalized experiences.
-          </p>
-        </section>
-
-        {/* Back Link */}
-        <div className="mt-20 flex items-center justify-between gap-4 border-border border-t pt-8">
-          <Link className="text-link text-sm underline-offset-4 hover:underline" href="/">
-            ← Back to today's puzzle
+          <Link
+            className="group mx-auto mt-9 inline-flex h-12 items-center gap-2 rounded-md bg-foreground px-6 font-medium text-background transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
+            href="/"
+          >
+            Start today&apos;s Rebuzzle
+            <ArrowRight
+              aria-hidden
+              className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+            />
           </Link>
-          <Link className="text-link text-sm underline-offset-4 hover:underline" href="/blog">
-            Read the blog →
-          </Link>
-        </div>
+        </section>
       </div>
     </Layout>
   );

@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { NextResponse } from "next/server";
 import type {
   AnalyticsEvent,
@@ -12,9 +12,6 @@ import type {
 } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { verifyAdminAccess } from "@/lib/admin-auth";
-
-// Cache TTL constants
-const ADMIN_STATS_CACHE_TTL = 60; // 60 seconds
 
 /**
  * Fetch admin statistics data
@@ -821,6 +818,18 @@ async function fetchAdminStats(dateStart: Date, dateEnd: Date) {
   }
 }
 
+async function fetchCachedAdminStats(dateStartIso: string, dateEndIso: string) {
+  "use cache";
+  cacheLife({
+    stale: 60,
+    revalidate: 60,
+    expire: 300,
+  });
+  cacheTag("admin-stats");
+
+  return fetchAdminStats(new Date(dateStartIso), new Date(dateEndIso));
+}
+
 /**
  * GET /api/admin/stats
  * Get admin statistics with optional date range
@@ -853,16 +862,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "startDate must be before endDate" }, { status: 400 });
     }
 
-    // Fetch stats with caching
-    const cachedFetchStats = unstable_cache(
-      async () => fetchAdminStats(dateStart, dateEnd),
-      ["admin-stats", dateStart.toISOString(), dateEnd.toISOString()],
-      {
-        revalidate: ADMIN_STATS_CACHE_TTL,
-      }
-    );
-
-    const result = await cachedFetchStats();
+    // Authentication and request parsing stay outside the shared cache boundary.
+    const result = await fetchCachedAdminStats(dateStart.toISOString(), dateEnd.toISOString());
     return NextResponse.json(result);
   } catch (error) {
     console.error("Admin stats GET error:", error);

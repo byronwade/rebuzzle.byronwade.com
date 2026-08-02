@@ -28,6 +28,7 @@ export type GenerationAuditRecord = {
   candidateCount?: number;
   durationMs?: number;
   error?: string;
+  attemptedGeneration?: boolean;
   createdAt: Date;
 };
 
@@ -115,12 +116,8 @@ export async function getGenerationSystemHealth(): Promise<{
       successRate: total ? successes / total : 0,
       fallbackRate: total ? fallbacks / total : 0,
       apexShare: total ? apex / total : 0,
-      avgQuality: qualities.length
-        ? qualities.reduce((a, b) => a + b, 0) / qualities.length
-        : null,
-      lastSuccessAt: lastSuccess?.createdAt
-        ? new Date(lastSuccess.createdAt).toISOString()
-        : null,
+      avgQuality: qualities.length ? qualities.reduce((a, b) => a + b, 0) / qualities.length : null,
+      lastSuccessAt: lastSuccess?.createdAt ? new Date(lastSuccess.createdAt).toISOString() : null,
     };
   } catch {
     return {

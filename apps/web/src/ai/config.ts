@@ -5,6 +5,15 @@
  * Vercel AI Gateway dashboard; locally use `AI_GATEWAY_API_KEY`.
  */
 
+import { BLIND_SOLVE_REQUIRED_VOTES } from "./puzzle-agent/quality-contract";
+
+const VISION_RECOGNITION_MODELS = Array.from(
+  new Set([
+    process.env.REBUZZLE_VISION_MODEL_PRIMARY || "google/gemini-3-flash",
+    process.env.REBUZZLE_VISION_MODEL_SECONDARY || "openai/gpt-5.4",
+  ])
+);
+
 export const AI_CONFIG = {
   defaultProvider: "gateway" as const,
 
@@ -67,10 +76,7 @@ export const AI_CONFIG = {
      */
     apex: {
       enabled: process.env.EVE_APEX_ENGINE !== "0" && process.env.EVE_APEX_ENGINE !== "false",
-      candidateCount: Math.max(
-        2,
-        Math.min(5, Number(process.env.EVE_APEX_CANDIDATES || 3) || 3)
-      ),
+      candidateCount: Math.max(2, Math.min(5, Number(process.env.EVE_APEX_CANDIDATES || 3) || 3)),
       minRubricOverall: Math.max(
         70,
         Math.min(95, Number(process.env.EVE_APEX_MIN_RUBRIC || 78) || 78)
@@ -78,6 +84,17 @@ export const AI_CONFIG = {
       critiqueEnabled: process.env.EVE_APEX_CRITIQUE !== "0",
       playerSimEnabled: process.env.EVE_APEX_PLAYER_SIM !== "0",
     },
+  },
+
+  /** Pixel-level blind recognition gate for generated pictograms. */
+  visualRecognition: {
+    models: VISION_RECOGNITION_MODELS,
+    minConfidence: Math.max(
+      0.5,
+      Math.min(0.95, Number(process.env.REBUZZLE_VISION_MIN_CONFIDENCE || 0.68) || 0.68)
+    ),
+    requiredVotes: BLIND_SOLVE_REQUIRED_VOTES,
+    boardEnabled: process.env.REBUZZLE_BOARD_VISION_GATE !== "0",
   },
 
   generation: {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  isPuzzleQualityReason,
   isPuzzleQualityVote,
   mapPuzzleQualityVote,
 } from "@/ai/learning/puzzle-quality-vote";
@@ -28,10 +29,7 @@ export async function POST(request: Request) {
     })(request);
 
     if (userLimit && !userLimit.success) {
-      return NextResponse.json(
-        { success: false, error: "Too many ratings" },
-        { status: 429 }
-      );
+      return NextResponse.json({ success: false, error: "Too many ratings" }, { status: 429 });
     }
 
     const body = (await request.json()) as {
@@ -43,6 +41,7 @@ export async function POST(request: Request) {
       attemptNumber?: number;
       comment?: string;
       source?: string;
+      reasons?: unknown[];
     };
 
     const puzzleId = typeof body.puzzleId === "string" ? body.puzzleId.trim() : "";
@@ -61,22 +60,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Puzzle not found" }, { status: 404 });
     }
 
-    const mapping = mapPuzzleQualityVote(body.vote);
+    const reasons = Array.isArray(body.reasons)
+      ? body.reasons.filter(isPuzzleQualityReason).slice(0, 5)
+      : [];
+    const mapping = mapPuzzleQualityVote(body.vote, reasons);
     const solved = Boolean(body.solved);
     const timeSpentSeconds =
       typeof body.timeSpentSeconds === "number" && body.timeSpentSeconds > 0
         ? Math.min(body.timeSpentSeconds, 7200)
         : 0;
     const hintsUsed =
-      typeof body.hintsUsed === "number" && body.hintsUsed >= 0
-        ? Math.min(body.hintsUsed, 20)
-        : 0;
+      typeof body.hintsUsed === "number" && body.hintsUsed >= 0 ? Math.min(body.hintsUsed, 20) : 0;
     const attemptNumber =
       typeof body.attemptNumber === "number" && body.attemptNumber > 0
         ? Math.min(body.attemptNumber, 20)
         : 1;
-    const source =
-      typeof body.source === "string" ? body.source.slice(0, 32) : "player";
+    const source = typeof body.source === "string" ? body.source.slice(0, 32) : "player";
 
     const existing = (await getCollection("aiFeedback").findOne({
       userId: user.userId,
@@ -85,8 +84,7 @@ export async function POST(request: Request) {
     })) as { id?: string; rating?: number } | null;
 
     const now = new Date();
-    const prevWasLike =
-      typeof existing?.rating === "number" ? existing.rating >= 4 : null;
+    const prevWasLike = typeof existing?.rating === "number" ? existing.rating >= 4 : null;
     const nextIsLike = mapping.vote === "like";
 
     if (existing?.id) {
@@ -97,10 +95,7 @@ export async function POST(request: Request) {
             rating: mapping.rating,
             satisfaction: mapping.satisfaction,
             metrics: mapping.metrics,
-            comment:
-              typeof body.comment === "string"
-                ? body.comment.slice(0, 500)
-                : undefined,
+            comment: typeof body.comment === "string" ? body.comment.slice(0, 500) : undefined,
             context: {
               timeSpentSeconds,
               hintsUsed,
@@ -170,9 +165,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("puzzle rating error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to record rating" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Failed to record rating" }, { status: 500 });
   }
 }
