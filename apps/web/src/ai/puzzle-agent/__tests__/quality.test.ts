@@ -269,11 +269,18 @@ describe("evaluatePublishGates", () => {
       mode: "composed" as const,
       layers: [
         {
-          kind: "pictogram" as const,
-          concept: "eye",
-          svg: catalogEye.svg,
-          source: "catalog" as const,
-          assetId: catalogEye.assetId,
+          kind: "text" as const,
+          content: "SUN",
+          emphasis: "normal" as const,
+        },
+        {
+          kind: "operator" as const,
+          symbol: "+",
+        },
+        {
+          kind: "text" as const,
+          content: "FLOWER",
+          emphasis: "normal" as const,
         },
       ],
       unicodeFallback: "☀️ + 🌻",

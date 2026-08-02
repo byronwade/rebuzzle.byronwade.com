@@ -34,6 +34,7 @@ import {
   PuzzleAgentDraftSchema,
   type PuzzleAgentResult,
 } from "./schemas";
+import { evaluateSemanticAlignment } from "./semantic-alignment";
 import {
   calibratePuzzleDifficulty,
   checkUniqueness,
@@ -327,6 +328,32 @@ export async function runPuzzleAgentGeneration(
               attempt,
               stage: "asset-approval",
               reason: priorFailure,
+            });
+          }
+          continue;
+        }
+
+        // Semantic alignment is deterministic and intentionally runs before
+        // novelty, calibration, and all model-backed recognition. It catches
+        // a board whose visible parts cannot plausibly produce its answer.
+        const semanticAlignment = evaluateSemanticAlignment({
+          answer: puzzle.answer,
+          techniqueId: puzzle.techniqueId,
+          explanation: puzzle.explanation,
+          visual: puzzle.visual,
+        });
+        if (!semanticAlignment.ok) {
+          priorFailure = `Semantic alignment failed (${semanticAlignment.rule}): ${semanticAlignment.blockers.join("; ")}`;
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+            console.warn("[Puzzle Agent] candidate rejected", {
+              modelId,
+              attempt,
+              stage: "semantic-alignment",
+              reason: priorFailure,
+              score: semanticAlignment.score,
+              warnings: semanticAlignment.warnings,
             });
           }
           continue;

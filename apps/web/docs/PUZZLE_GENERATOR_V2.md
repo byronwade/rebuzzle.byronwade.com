@@ -36,7 +36,9 @@ The implementation owns these internal stages:
 curriculum brief
   -> concept candidates
   -> grounded visual plan
+  -> authoritative composition
   -> asset resolution
+  -> deterministic semantic alignment
   -> production-size render
   -> object recognition gate
   -> board perception gate
@@ -64,6 +66,14 @@ Long-tail concrete nouns may use a generated vector, but generation happens offl
 ### Tier 3: scene illustration
 
 Use a raster image only when the mechanism genuinely requires a scene or relationship that a single icon cannot express. Scene tiles must pass the same rendered recognition and board-solve gates. They should be exceptional, not a fallback for weak grounding.
+
+## Deterministic semantic-alignment gate
+
+After the tool-produced board becomes authoritative, the host runs `semantic-alignment-v1` before novelty, difficulty calibration, quality scoring, or any model-backed judge. This is a plausibility gate, not a solver and not recognition evidence. It rejects cheap, high-signal contradictions such as a `simple_compound` answer whose visible parts cannot concatenate into the answer, a typography technique with no styled answer token, a spatial technique flattened into an ordinary row, or a phonetic technique with no sound/letter mapping in its explanation.
+
+The check uses the same reviewed pictogram aliases and a small versioned rebus ontology for legitimate readings such as `clock → time`, `fire → hot`, and `wrench → tool`. Ordered compounds are matched by complete segmentation rather than substring coincidence, so a stray `car` inside `carpet` cannot pass as a car clue. Failures carry the rule and blocker in candidate telemetry and do not spend database, calibration, or vision-judge budget.
+
+Passing semantic alignment does not prove that a rendered car looks like a car. Every candidate must still pass the exact-size pixel, blind object-recognition, responsive board, blind-solve, editorial, novelty, and human-calibration gates below.
 
 ## Recognition gate
 
@@ -204,7 +214,7 @@ Per-puzzle gates prevent an individual bad candidate from publishing; the longit
 
 ### Operational AI cost envelope
 
-Production defaults bound the expensive portion of a daily generation to two Apex candidates, one complete agent attempt per candidate, and one generator model per attempt. Authoritative asset provenance is checked immediately after composition, before novelty, difficulty, or quality evaluation, so unapproved artwork cannot consume the rest of the candidate budget. The independent multi-model, multi-viewport recognition gates remain mandatory for every candidate that reaches them. Operators may deliberately widen the search with `EVE_APEX_CANDIDATES`, `REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT`, or an explicit `maxAttempts`, but those changes are cost decisions and must be benchmarked before production use.
+Production defaults bound the expensive portion of a daily generation to two Apex candidates, one complete agent attempt per candidate, and one generator model per attempt. Authoritative asset provenance and deterministic semantic alignment are checked immediately after composition, before novelty, difficulty, quality evaluation, or model-backed recognition, so unapproved or obviously mismatched boards cannot consume the rest of the candidate budget. The independent multi-model, multi-viewport recognition gates remain mandatory for every candidate that reaches them. Operators may deliberately widen the search with `EVE_APEX_CANDIDATES`, `REBUZZLE_GENERATOR_MODEL_CHAIN_LIMIT`, or an explicit `maxAttempts`, but those changes are cost decisions and must be benchmarked before production use.
 
 Gateway account/project budget exhaustion is terminal, not a transient quota. The client must stop model fallback immediately, the puzzle agent must stop its attempt loop, Apex must stop remaining candidate slots, and the daily workflow must skip the downstream blog call. Public workflow responses use the sanitized `AI_BUDGET_EXCEEDED` code and never expose spend or limit details.
 
@@ -214,7 +224,7 @@ Before any credentialed benchmark or live canary, run the no-spend static prefli
 pnpm --filter @rebuzzle/web benchmark:puzzles:static
 ```
 
-It renders the frozen positive solve corpus and catalog-grounded reserve inventory at every production board profile, rechecks local schema/provenance and answer-leak invariants, and reruns 36px/72px pictogram pixel-integrity checks. A passing report proves mechanical renderability only; semantic recognition, fairness, diversity, and player outcomes still require independent model and human evidence.
+It renders the frozen positive solve corpus and catalog-grounded reserve inventory at every production board profile, rechecks local schema/provenance, answer-leak, and deterministic semantic-alignment invariants, and reruns 36px/72px pictogram pixel-integrity checks. A passing report proves mechanical renderability and cheap semantic plausibility only; semantic recognition, fairness, diversity, and player outcomes still require independent model and human evidence.
 
 The current provisional SLOs are 1% player-reported unrecognizable, 2% ambiguous or unfair, 20% dislike, and 5% attempted-generation failure/fallback. A player metric needs at least 20 fast-window or 50 slow-window votes; generation health uses 5 and 14 attempts because production generation is approximately daily. A critical halt requires statistically confirmed breaches in both windows, at least three/five player events (two/three generation events), at least 4x fast burn, and at least 2x slow burn. Slow-only or lower-burn confirmed drift blocks evaluator/model promotion and triggers review, but does not replace a potentially good AI puzzle with reserve content.
 

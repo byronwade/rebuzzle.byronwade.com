@@ -31,7 +31,9 @@ import {
   normalizeAnswerKey,
 } from "./quality";
 import type { CandidatePuzzle } from "./schemas";
+import { evaluateSemanticAlignment } from "./semantic-alignment";
 import { getTechniques, listAllTechniques, type TechniqueId } from "./technique-library";
+import type { PuzzleVisual } from "./visual/composition";
 
 function resolvePrompt(
   value: string | ((params: Record<string, unknown>) => string) | undefined,
@@ -733,6 +735,20 @@ export function scorePuzzleQuality(
         ? `Generative Ink Pictograms (${visualCheck.pictogramSvgCount})`
         : "Styled generative text layers"
     );
+
+    const semanticAlignment = evaluateSemanticAlignment({
+      answer,
+      techniqueId: input.techniqueId,
+      explanation: input.explanation,
+      visual: input.visual as unknown as PuzzleVisual,
+    });
+    if (!semanticAlignment.ok) {
+      issues.push(
+        `Semantic alignment failed (${semanticAlignment.rule}): ${semanticAlignment.blockers.join("; ")}`
+      );
+    } else {
+      strengths.push(`Semantic alignment ${semanticAlignment.score}/100`);
+    }
   }
 
   const styledText = Boolean(

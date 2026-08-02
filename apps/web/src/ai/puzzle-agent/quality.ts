@@ -8,7 +8,9 @@ import {
   getDifficultyLevelForScore,
   isDifficultyInBand,
 } from "./difficulty-levels";
+import { evaluateSemanticAlignment } from "./semantic-alignment";
 import { TECHNIQUE_LIBRARY, type TechniqueId } from "./technique-library";
+import type { PuzzleVisual } from "./visual/composition";
 import { isAuthenticCuratedPictogram } from "./visual/curated-pictograms";
 import { scorePictogramClarity } from "./visual/pictogram-clarity";
 
@@ -377,6 +379,19 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
   const visualCheck = evaluateVisualForPublish(input.visual);
   if (!visualCheck.ok) {
     return { ok: false, reason: visualCheck.reason ?? "Visual failed publish check" };
+  }
+
+  const semanticAlignment = evaluateSemanticAlignment({
+    answer,
+    techniqueId: input.techniqueId,
+    explanation: input.explanation,
+    visual: input.visual as unknown as PuzzleVisual,
+  });
+  if (!semanticAlignment.ok) {
+    return {
+      ok: false,
+      reason: `Semantic alignment failed (${semanticAlignment.rule}): ${semanticAlignment.blockers.join("; ")}`,
+    };
   }
 
   if (input.qualityOverall < input.qualityThreshold) {
