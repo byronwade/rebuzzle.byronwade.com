@@ -196,6 +196,65 @@ describe("board perception consensus", () => {
     expect(result.reason).toContain("car");
   });
 
+  it("requires generated image subjects to pass the same blind concept vote", () => {
+    const imageVisual: PuzzleVisual = {
+      ...visual,
+      mode: "hybrid",
+      layers: [
+        {
+          kind: "image",
+          concept: "car",
+          prompt: "one red car on a plain background",
+          alt: "red car",
+          src: "data:image/png;base64,AAAA",
+        },
+      ],
+      unicodeFallback: "🖼️",
+    };
+    const misread = evaluateBoardPerceptionConsensus({
+      visual: imageVisual,
+      perceptions: [perception("vision-a", ["shoe"]), perception("vision-b", ["bus"])],
+      requiredVotes: 2,
+      minConfidence: 0.68,
+    });
+    const recognized = evaluateBoardPerceptionConsensus({
+      visual: imageVisual,
+      perceptions: [perception("vision-a", ["car"]), perception("vision-b", ["automobile"])],
+      requiredVotes: 2,
+      minConfidence: 0.68,
+    });
+
+    expect(misread.ok).toBe(false);
+    expect(misread.reason).toContain("car");
+    expect(recognized.ok).toBe(true);
+    expect(recognized.conceptVotes).toEqual({ car: 2 });
+  });
+
+  it("rejects legacy image tiles without an explicit recognition concept", () => {
+    const legacyImageVisual = {
+      ...visual,
+      mode: "hybrid" as const,
+      layers: [
+        {
+          kind: "image" as const,
+          prompt: "one red car on a plain background",
+          alt: "red car",
+          src: "data:image/png;base64,AAAA",
+        },
+      ],
+      unicodeFallback: "🖼️",
+    };
+    const result = evaluateBoardPerceptionConsensus({
+      visual: legacyImageVisual,
+      perceptions: [perception("vision-a", ["car"]), perception("vision-b", ["car"])],
+      requiredVotes: 2,
+      minConfidence: 0.68,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain("without a declared recognition concept");
+  });
+
   it("does not count duplicate responses from one board model", () => {
     const result = evaluateBoardPerceptionConsensus({
       visual,

@@ -46,6 +46,8 @@ export const OperatorLayerSchema = z.object({
 /** Optional AI-illustrated tile for techniques that need a scene. */
 export const ImageLayerSchema = z.object({
   kind: z.literal("image"),
+  /** Concrete subject that blind judges must independently recognize. */
+  concept: z.string().trim().min(1).max(48).optional(),
   /** Generation prompt (style guide is appended server-side) */
   prompt: z.string().min(8).max(400),
   alt: z.string().min(1).max(120),

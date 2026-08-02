@@ -1,4 +1,5 @@
 import { distinctJudgeResults } from "../quality-contract";
+import { getDeclaredBoardCues } from "./board-cues";
 import type { PuzzleVisual } from "./composition";
 import { conceptMatchesSeen } from "./icon-features";
 
@@ -106,9 +107,18 @@ export function evaluateBoardPerceptionConsensus(input: {
     };
   }
 
-  const expectedConceptCounts = countsByValue(
-    input.visual.layers.flatMap((layer) => (layer.kind === "pictogram" ? [layer.concept] : []))
-  );
+  const declaredCues = getDeclaredBoardCues(input.visual);
+  if (declaredCues.unverifiableImageCount > 0) {
+    return {
+      ok: false,
+      reason: "Rendered board contains an image without a declared recognition concept",
+      perceptions,
+      conceptVotes: {},
+      textVotes: {},
+      operatorVotes: {},
+    };
+  }
+  const expectedConceptCounts = countsByValue(declaredCues.concepts);
   const expectedConcepts = Array.from(expectedConceptCounts.keys());
   const conceptVotes = Object.fromEntries(
     expectedConcepts.map((concept) => [
@@ -122,9 +132,7 @@ export function evaluateBoardPerceptionConsensus(input: {
       ).length,
     ])
   );
-  const expectedTextCounts = countsByValue(
-    input.visual.layers.flatMap((layer) => (layer.kind === "text" ? [layer.content] : []))
-  );
+  const expectedTextCounts = countsByValue(declaredCues.text);
   const expectedText = Array.from(expectedTextCounts.keys());
   const textVotes = Object.fromEntries(
     expectedText.map((content) => [
@@ -136,9 +144,7 @@ export function evaluateBoardPerceptionConsensus(input: {
       ).length,
     ])
   );
-  const expectedOperatorCounts = countsByValue(
-    input.visual.layers.flatMap((layer) => (layer.kind === "operator" ? [layer.symbol] : []))
-  );
+  const expectedOperatorCounts = countsByValue(declaredCues.operators);
   const expectedOperators = Array.from(expectedOperatorCounts.keys());
   const operatorVotes = Object.fromEntries(
     expectedOperators.map((symbol) => [
@@ -243,11 +249,8 @@ export function evaluateBoardProfileConsensus(input: {
   const failed = input.profileResults.filter((profile) => !profile.ok);
   const testedProfiles = new Set(input.profileResults.map((profile) => profile.profileId));
   const missingProfiles = input.expectedProfileIds.filter((id) => !testedProfiles.has(id));
-  const expectedConcepts = Array.from(
-    new Set(
-      input.visual.layers.flatMap((layer) => (layer.kind === "pictogram" ? [layer.concept] : []))
-    )
-  );
+  const declaredCues = getDeclaredBoardCues(input.visual);
+  const expectedConcepts = Array.from(new Set(declaredCues.concepts));
   const conceptVotes = Object.fromEntries(
     expectedConcepts.map((concept) => [
       concept,
@@ -256,9 +259,7 @@ export function evaluateBoardProfileConsensus(input: {
         : 0,
     ])
   );
-  const expectedText = Array.from(
-    new Set(input.visual.layers.flatMap((layer) => (layer.kind === "text" ? [layer.content] : [])))
-  );
+  const expectedText = Array.from(new Set(declaredCues.text));
   const textVotes = Object.fromEntries(
     expectedText.map((content) => [
       content,
@@ -267,11 +268,7 @@ export function evaluateBoardProfileConsensus(input: {
         : 0,
     ])
   );
-  const expectedOperators = Array.from(
-    new Set(
-      input.visual.layers.flatMap((layer) => (layer.kind === "operator" ? [layer.symbol] : []))
-    )
-  );
+  const expectedOperators = Array.from(new Set(declaredCues.operators));
   const operatorVotes = Object.fromEntries(
     expectedOperators.map((symbol) => [
       symbol,

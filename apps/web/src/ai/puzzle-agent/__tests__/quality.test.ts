@@ -177,6 +177,38 @@ describe("evaluateVisualForPublish", () => {
       }).ok
     ).toBe(false);
   });
+
+  it("accepts only embedded image tiles with a concrete blind-recognition concept", () => {
+    const base = {
+      mode: "hybrid",
+      unicodeFallback: "CAR",
+      layers: [
+        { kind: "text", content: "CAR", emphasis: "large" },
+        {
+          kind: "image",
+          concept: "car",
+          src: "data:image/png;base64,AAAA",
+        },
+      ],
+    };
+
+    expect(evaluateVisualForPublish(base).ok).toBe(true);
+    expect(
+      evaluateVisualForPublish({
+        ...base,
+        layers: [base.layers[0]!, { kind: "image", src: "data:image/png;base64,AAAA" }],
+      }).ok
+    ).toBe(false);
+    expect(
+      evaluateVisualForPublish({
+        ...base,
+        layers: [
+          base.layers[0]!,
+          { kind: "image", concept: "car", src: "https://example.com/changeable.png" },
+        ],
+      }).ok
+    ).toBe(false);
+  });
 });
 
 describe("hintLeaksAnswerEarly", () => {

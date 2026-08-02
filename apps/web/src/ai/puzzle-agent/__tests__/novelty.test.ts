@@ -140,6 +140,33 @@ describe("structural puzzle novelty", () => {
     );
   });
 
+  it("fingerprints image tiles by their recognition concept rather than mutable alt copy", () => {
+    const first = candidate("one", ["car"]);
+    first.visual!.mode = "hybrid";
+    first.visual!.layers = [
+      {
+        kind: "image",
+        concept: "car",
+        prompt: "one red car on a plain background",
+        alt: "a bright red automobile",
+      },
+    ];
+    const second = candidate("two", ["car"]);
+    second.visual!.mode = "hybrid";
+    second.visual!.layers = [
+      {
+        kind: "image",
+        concept: "car",
+        prompt: "simple vehicle illustration",
+        alt: "transportation picture",
+      },
+    ];
+
+    expect(buildPuzzleNoveltySignature(first).cueCombinationKey).toBe(
+      buildPuzzleNoveltySignature(second).cueCombinationKey
+    );
+  });
+
   it("falls back deterministically for legacy unicode puzzles", () => {
     const legacy = { answer: "before", category: "phonetic", rebusPuzzle: "🐝 + 4" };
 

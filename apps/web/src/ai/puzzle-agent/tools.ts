@@ -133,7 +133,7 @@ export const puzzleAgentTools: ToolSet = {
 
   compose_puzzle_visual: tool({
     description:
-      "Build a publication board from reviewed pictograms, text, and operators. First call list_pictogram_catalog and use exact catalog concept IDs; unknown concepts fail closed. Set rebusPuzzle = unicodeFallback in the final result.",
+      "Build a publication board from reviewed pictograms, text, operators, and optional image tiles. First call list_pictogram_catalog and use exact catalog concept IDs; unknown pictograms fail closed. Every image layer requires one concrete concept that independent blind judges must recognize from the rendered tile. Set rebusPuzzle = unicodeFallback in the final result.",
     inputSchema: z.object({
       answer: z.string(),
       targetDifficulty: z.number(),

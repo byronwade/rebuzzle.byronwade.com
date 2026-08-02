@@ -22,7 +22,7 @@ describe("puzzle visual composition", () => {
       { kind: "pictogram", concept: "sun", emojiFallback: "☀️" },
       { kind: "operator", symbol: "+" },
       { kind: "text", content: "FLOWER", emphasis: "large" },
-      { kind: "image", prompt: "a daisy field", alt: "flowers" },
+      { kind: "image", concept: "flowers", prompt: "a daisy field", alt: "flowers" },
     ]);
     expect(fallback).toContain("☀️");
     expect(fallback).toContain("FLOWER");

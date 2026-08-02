@@ -242,6 +242,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
 
   if (mode === "image") {
     const image = await generateImageTile({
+      concept,
       prompt: `A single clear ${concept} as a soft ink illustration for a rebus puzzle tile`,
       alt: `${concept} illustration`,
     });
@@ -250,6 +251,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
         ? [
             {
               kind: "image",
+              concept,
               prompt: `illustration of ${concept}`,
               alt: image.alt,
               src: image.src,

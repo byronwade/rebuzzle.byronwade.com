@@ -3,6 +3,7 @@ import { setServers } from "node:dns";
 import path from "node:path";
 import { config } from "dotenv";
 import type { LiveGeneratorCanaryObservation } from "../src/ai/puzzle-agent/benchmark/generator-canary";
+import type { PuzzleVisual } from "../src/ai/puzzle-agent/visual/composition";
 
 function numberArg(name: string, fallback: number): number {
   const raw = process.argv.find((argument) => argument.startsWith(`--${name}=`))?.split("=")[1];
@@ -25,20 +26,20 @@ function safeError(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).replace(/[\r\n]+/g, " ").slice(0, 800);
 }
 
-function rejectedPuzzle(error: unknown): {
+type RejectedPuzzle = {
   answer: string;
   techniqueId: string;
   explanation: string;
   hints: string[];
-  visual: {
-    layers: Array<{ kind: string; source?: string }>;
-  };
-} | null {
+  visual: PuzzleVisual;
+};
+
+function rejectedPuzzle(error: unknown): RejectedPuzzle | null {
   if (!error || typeof error !== "object") return null;
   const puzzle = (error as { puzzle?: unknown }).puzzle;
   if (!puzzle || typeof puzzle !== "object") return null;
-  const candidate = puzzle as ReturnType<typeof rejectedPuzzle>;
-  return candidate?.visual && Array.isArray(candidate.visual.layers) ? candidate : null;
+  const candidate = puzzle as RejectedPuzzle;
+  return candidate.visual && Array.isArray(candidate.visual.layers) ? candidate : null;
 }
 
 async function main(): Promise<void> {
@@ -119,9 +120,7 @@ async function main(): Promise<void> {
       const boardProfiles = result.metadata.boardRecognitionProfiles ?? [];
       const blind = result.metadata.playabilityEvidence?.blind;
       const editorial = result.metadata.playabilityEvidence?.editorial;
-      const boardDeclaredCueCount = result.puzzle.visual.layers.filter(
-        (layer) => layer.kind === "pictogram" || layer.kind === "text" || layer.kind === "operator"
-      ).length;
+      const boardDeclaredCueCount = benchmark.countDeclaredBoardCues(result.puzzle.visual);
       observations.push({
         id,
         targetDifficulty: tier.target,
@@ -193,11 +192,7 @@ async function main(): Promise<void> {
           candidate?.visual.layers.flatMap((layer) =>
             layer.kind === "pictogram" ? [layer.source ?? "unproven"] : []
           ) ?? [],
-        boardDeclaredCueCount:
-          candidate?.visual.layers.filter(
-            (layer) =>
-              layer.kind === "pictogram" || layer.kind === "text" || layer.kind === "operator"
-          ).length ?? 0,
+        boardDeclaredCueCount: candidate ? benchmark.countDeclaredBoardCues(candidate.visual) : 0,
         boardProfileCount: 0,
         boardCompleteProfileCount: 0,
         boardDistinctModels: 0,

@@ -128,6 +128,11 @@ export async function composePuzzleVisual(
     }
 
     if (layer.kind === "image") {
+      if (!layer.concept?.trim()) {
+        generated.failedImages += 1;
+        issues.push("Image layers require one concrete concept for blind recognition");
+        continue;
+      }
       if (layer.src) {
         filledLayers.push(layer);
         generated.images += 1;
@@ -135,6 +140,7 @@ export async function composePuzzleVisual(
       }
       if (input.renderImages !== false) {
         const tile = await generateImageTile({
+          concept: layer.concept,
           prompt: layer.prompt,
           alt: layer.alt,
         });

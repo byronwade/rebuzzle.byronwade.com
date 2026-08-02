@@ -60,4 +60,32 @@ describe("PuzzleAgentDraftSchema", () => {
       emojiFallback: "👁️",
     });
   });
+
+  it("requires and preserves a concrete concept for provider-generated image layers", () => {
+    const imageDraft = structuredClone(strictDraft) as unknown as {
+      puzzle: { visual: { layers: unknown[] } };
+    };
+    imageDraft.puzzle.visual.layers = [
+      {
+        kind: "image",
+        concept: "car",
+        prompt: "one red car on a plain background",
+        alt: "red car",
+        src: null,
+      },
+    ];
+
+    const parsed = PuzzleAgentDraftSchema.safeParse(imageDraft);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(normalizePuzzleAgentDraft(parsed.data).puzzle.visual.layers[0]).toEqual({
+      kind: "image",
+      concept: "car",
+      prompt: "one red car on a plain background",
+      alt: "red car",
+    });
+
+    (imageDraft.puzzle.visual.layers[0] as { concept?: string }).concept = undefined;
+    expect(PuzzleAgentDraftSchema.safeParse(imageDraft).success).toBe(false);
+  });
 });
