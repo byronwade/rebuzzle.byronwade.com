@@ -102,8 +102,19 @@ async function main(): Promise<void> {
           result.profileResults?.find((profile) => profile.tileSize === tileSize)?.judges.length ?? 0
       );
       if (judgeCounts.some((count) => count !== AI_CONFIG.visualRecognition.models.length)) {
+        const judgeErrors = (result.profileResults ?? []).flatMap((profile) =>
+          (profile.judgeErrors ?? []).map(
+            (failure) => `${profile.tileSize}px ${failure.model}: ${failure.error}`
+          )
+        );
         throw new Error(
-          `Vision model preflight failed: expected ${AI_CONFIG.visualRecognition.models.length} independent judges per player size, received ${judgeCounts.join("/")}. Retry after provider limits reset; no benchmark score was produced.`
+          [
+            `Vision model preflight failed: expected ${AI_CONFIG.visualRecognition.models.length} independent judges per player size, received ${judgeCounts.join("/")}.`,
+            judgeErrors.length
+              ? `Judge failures: ${Array.from(new Set(judgeErrors)).join(" | ")}`
+              : "No judge error detail was returned.",
+            "Retry after repairing provider/model access; no benchmark score was produced.",
+          ].join(" ")
         );
       }
     }
@@ -131,6 +142,7 @@ async function main(): Promise<void> {
         alternateReadings: profile.alternateReadings,
         redrawAdvice: profile.redrawAdvice,
         judges: profile.judges,
+        judgeErrors: profile.judgeErrors ?? [],
       }));
     return { observations, failedDiagnostics };
   });

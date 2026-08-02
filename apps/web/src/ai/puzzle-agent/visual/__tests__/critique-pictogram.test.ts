@@ -115,4 +115,26 @@ describe("rendered pictogram recognition consensus", () => {
     expect(result.ok).toBe(false);
     expect(result.redrawAdvice).toContain("Missing tests at 36px");
   });
+
+  it("preserves per-model failures across player sizes for diagnosis", () => {
+    const failed = evaluateRecognitionConsensus({
+      concept: "car",
+      judgments: [],
+      minConfidence: 0.68,
+      requiredVotes: 2,
+    });
+    const result = evaluateRecognitionProfiles({
+      profileResults: [
+        {
+          ...failed,
+          tileSize: 36,
+          judgeErrors: [{ model: "vision-a", error: "model access denied" }],
+        },
+      ],
+      expectedTileSizes: [36, 72],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.judgeErrors).toEqual([{ model: "vision-a@36px", error: "model access denied" }]);
+  });
 });
