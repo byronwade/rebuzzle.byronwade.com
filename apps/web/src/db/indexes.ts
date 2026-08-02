@@ -205,6 +205,22 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     ],
   },
 
+  // AI blog proposals are idempotent per puzzle and point to their review PR.
+  {
+    collection: "blogPostProposals",
+    indexes: [
+      { spec: { puzzleId: 1 }, options: { unique: true } },
+      { spec: { pullRequestNumber: 1 }, options: { sparse: true } },
+      { spec: { createdAt: -1 } },
+    ],
+  },
+
+  // Delivery state works for both repository-backed and legacy Mongo posts.
+  {
+    collection: "blogEmailDeliveries",
+    indexes: [{ spec: { slug: 1 }, options: { unique: true } }, { spec: { sentAt: -1 } }],
+  },
+
   // Achievements collection
   {
     collection: "achievements",

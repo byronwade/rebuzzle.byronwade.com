@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { generateNextPuzzle } from "@/app/actions/puzzleGenerationActions";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
-import { persistBlogForPuzzle } from "@/lib/blog/persist-puzzle-blog";
+import { proposeBlogForPuzzle } from "@/lib/blog/propose-puzzle-blog";
 import { logger } from "@/lib/logger";
 
 /**
@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
  *
  * Midnight (via cron):
  * 1. Eve generates today's puzzle → Mongo `puzzles`
- * 2. Eve generates blog for yesterday's puzzle → Mongo `blogPosts` (full fields)
+ * 2. Eve generates yesterday's blog → draft GitHub pull request
  */
 function authorizeWorkflow(request: Request): boolean {
   const authHeader = request.headers.get("authorization");
@@ -135,8 +135,7 @@ async function generateBlogForYesterday() {
       return { success: false, error: "no_puzzle_found" };
     }
 
-    // Puzzle is already in Mongo from when it was published — blog archives it.
-    return await persistBlogForPuzzle(previousPuzzle);
+    return await proposeBlogForPuzzle(previousPuzzle);
   } catch (error) {
     logger.error(
       "Blog generation failed",

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchBlogPosts } from "@/app/actions/blogActions";
 import type { BlogPost } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { authorizeCron } from "@/lib/cron/auth";
@@ -15,7 +16,7 @@ async function handleSendBlogEmails() {
   console.log("[Blog Emails] Starting morning blog notification send...");
 
   const blogPostsCollection = getCollection<BlogPost>("blogPosts");
-  const post = await blogPostsCollection.findOne({}, { sort: { publishedAt: -1 } });
+  const post = (await fetchBlogPosts())[0];
 
   if (!post) {
     return NextResponse.json({
@@ -24,15 +25,18 @@ async function handleSendBlogEmails() {
     });
   }
 
-  // Avoid re-sending the same post on every morning run
-  if (post.lastEmailedAt) {
-    const last = new Date(post.lastEmailedAt).getTime();
+  const deliveries = getCollection<{ slug: string; sentAt: Date }>("blogEmailDeliveries");
+  const delivery = await deliveries.findOne({ slug: post.slug });
+
+  // Avoid re-sending the same merged post on every morning run.
+  if (delivery?.sentAt) {
+    const last = new Date(delivery.sentAt).getTime();
     const ageMs = Date.now() - last;
     if (ageMs < 20 * 60 * 60 * 1000) {
       return NextResponse.json({
         success: true,
         skipped: "already_emailed_recently",
-        postId: post.id,
+        postId: post.slug,
         slug: post.slug,
       });
     }
@@ -98,9 +102,15 @@ async function handleSendBlogEmails() {
     }
   }
 
+  const sentAt = new Date();
+  await deliveries.updateOne(
+    { slug: post.slug },
+    { $set: { slug: post.slug, sentAt } },
+    { upsert: true }
+  );
   await blogPostsCollection.updateOne(
-    { id: post.id },
-    { $set: { lastEmailedAt: new Date(), updatedAt: new Date() } }
+    { slug: post.slug },
+    { $set: { lastEmailedAt: sentAt, updatedAt: sentAt } }
   );
 
   console.log("[Blog Emails] Morning blog send completed:", emailResults);
@@ -108,7 +118,7 @@ async function handleSendBlogEmails() {
   return NextResponse.json({
     success: true,
     message: "Blog notifications sent",
-    postId: post.id,
+    postId: post.slug,
     slug: post.slug,
     results: { emails: emailResults },
   });

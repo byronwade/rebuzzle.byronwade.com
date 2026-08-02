@@ -37,6 +37,15 @@ interface EnvConfig {
   CRON_SECRET?: string;
   VERCEL_CRON_SECRET?: string;
   VERCEL_OIDC_TOKEN?: string;
+
+  // GitHub blog pull requests
+  GITHUB_BLOG_TOKEN?: string;
+  GITHUB_BLOG_APP_ID?: string;
+  GITHUB_BLOG_APP_INSTALLATION_ID?: string;
+  GITHUB_BLOG_APP_PRIVATE_KEY?: string;
+  GITHUB_BLOG_REPOSITORY?: string;
+  GITHUB_BLOG_BASE_BRANCH?: string;
+  GITHUB_BLOG_PR_DRAFT?: string;
 }
 
 interface ValidationResult {
@@ -168,6 +177,18 @@ export function validateEnv(): ValidationResult {
   // Cron security (required in production)
   if (isProduction() && !(process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET)) {
     errors.push("CRON_SECRET or VERCEL_CRON_SECRET is required in production");
+  }
+
+  const hasGitHubToken = Boolean(process.env.GITHUB_BLOG_TOKEN?.trim());
+  const hasGitHubApp = Boolean(
+    process.env.GITHUB_BLOG_APP_ID?.trim() &&
+      process.env.GITHUB_BLOG_APP_INSTALLATION_ID?.trim() &&
+      process.env.GITHUB_BLOG_APP_PRIVATE_KEY?.trim()
+  );
+  if (!(hasGitHubToken || hasGitHubApp)) {
+    warnings.push(
+      "GitHub blog PR authentication is not configured - Eve cannot open blog pull requests"
+    );
   }
 
   return {

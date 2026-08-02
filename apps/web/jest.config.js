@@ -6,6 +6,7 @@ const config = {
   testMatch: ["**/__tests__/**/*.test.ts", "**/?(*.)+(spec|test).ts"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^server-only$": "<rootDir>/src/test/server-only.ts",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

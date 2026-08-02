@@ -3,6 +3,7 @@
 import { cacheLife, cacheTag, revalidateTag } from "next/cache";
 import type { BlogPostPuzzleOrigin, BlogPostSEOMetadata, BlogPostSections } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { loadRepositoryBlogPosts } from "@/lib/blog/repository-posts";
 import { getAppUrl } from "@/lib/env";
 
 // Blog post response type (matches the structure returned from database)
@@ -88,109 +89,30 @@ export interface AdjacentPosts {
   next: BlogPostResponse | null;
 }
 
+function blogPostTime(post: BlogPostResponse): number {
+  const value = post.publishedAt ?? post.date;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function mergeBlogPosts(
+  repositoryPosts: BlogPostResponse[],
+  databasePosts: BlogPostResponse[]
+): BlogPostResponse[] {
+  const bySlug = new Map<string, BlogPostResponse>();
+  for (const post of databasePosts) bySlug.set(post.slug, post);
+  // Repository content wins after a PR is merged.
+  for (const post of repositoryPosts) bySlug.set(post.slug, post);
+  return [...bySlug.values()].sort((a, b) => blogPostTime(b) - blogPostTime(a));
+}
+
 // Cache blog posts list
 export async function fetchBlogPosts(): Promise<BlogPostResponse[]> {
   "use cache";
   cacheLife("hours");
   cacheTag("blog-posts", "blog-posts-list");
 
-  try {
-    // Try to fetch from database first
-    const blogPostsCollection = getCollection("blogPosts");
-
-    // Use aggregation pipeline with $lookup to join puzzles in a single query
-    const postsWithPuzzles = await blogPostsCollection
-      .aggregate([
-        // Sort by published date
-        { $sort: { publishedAt: -1 } },
-        // Limit to 10 posts
-        { $limit: 10 },
-        // Join with puzzles collection
-        {
-          $lookup: {
-            from: "puzzles",
-            localField: "puzzleId",
-            foreignField: "id",
-            as: "puzzleData",
-          },
-        },
-        // Unwind puzzle data (will be empty array if no puzzle found)
-        {
-          $unwind: {
-            path: "$puzzleData",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        // Project the final structure
-        {
-          $project: {
-            slug: 1,
-            date: {
-              $dateToString: {
-                format: "%Y-%m-%d",
-                date: "$publishedAt",
-              },
-            },
-            title: 1,
-            puzzle: {
-              $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
-            },
-            puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
-            answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
-            explanation: {
-              $ifNull: ["$puzzleData.explanation", "No explanation available"],
-            },
-            content: 1,
-            excerpt: 1,
-            difficulty: { $ifNull: ["$puzzleData.difficulty", "general"] },
-          },
-        },
-      ])
-      .toArray();
-
-    if (postsWithPuzzles.length > 0) {
-      // Transform to match expected format
-      const transformedPosts = postsWithPuzzles.map((post: any) => ({
-        slug: post.slug,
-        date: post.date,
-        title: post.title,
-        puzzle: post.puzzle,
-        puzzleType: post.puzzleType,
-        answer: post.answer,
-        explanation: post.explanation,
-        content: post.content,
-        excerpt: post.excerpt,
-        metadata: {
-          topic: post.difficulty,
-          keyword: (post.answer || "").replace(/\s+/g, ""),
-          category: post.difficulty,
-        },
-      }));
-
-      // Filter out invalid posts (bad slugs, missing titles, etc.)
-      const validPosts = transformedPosts.filter((post) => {
-        // Filter out posts with invalid slugs (starting with "-" or empty)
-        if (!post.slug || post.slug.startsWith("-") || post.slug.length < 3) {
-          return false;
-        }
-        // Filter out posts with markdown headers as titles
-        if (post.title?.startsWith("#")) {
-          return false;
-        }
-        return true;
-      });
-
-      return validPosts;
-    }
-
-    // No blog posts found in database
-    return [];
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("Database fetch failed:", error);
-    // Return empty array on error - no fallback to fake data
-    return [];
-  }
+  return (await fetchAllBlogPosts()).slice(0, 10);
 }
 
 // Cache individual blog posts
@@ -204,6 +126,9 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
     console.error("No slug provided to fetchBlogPost");
     return null;
   }
+
+  const repositoryPost = loadRepositoryBlogPosts().find((post) => post.slug === slug);
+  if (repositoryPost) return repositoryPost;
 
   try {
     // Try to fetch from database using aggregation with $lookup
@@ -400,112 +325,17 @@ async function fetchBlogPostsPaginatedInternal(
 ): Promise<PaginatedBlogResponse> {
   const { page = 1, limit = 12, puzzleType, year, month } = options;
   const skip = (page - 1) * limit;
+  const allPosts = await fetchAllBlogPosts({ puzzleType, year, month });
+  const totalCount = allPosts.length;
+  const totalPages = Math.ceil(totalCount / limit);
 
-  try {
-    const blogPostsCollection = getCollection("blogPosts");
-
-    // Build match conditions
-    const matchConditions: Record<string, unknown> = {};
-
-    if (year) {
-      const startDate = new Date(year, month ? month - 1 : 0, 1);
-      const endDate = month
-        ? new Date(year, month, 0, 23, 59, 59)
-        : new Date(year, 11, 31, 23, 59, 59);
-      matchConditions.publishedAt = { $gte: startDate, $lte: endDate };
-    }
-
-    // Get total count first
-    const totalCount = await blogPostsCollection.countDocuments(matchConditions);
-
-    // Build aggregation pipeline
-    const pipeline: object[] = [
-      { $match: matchConditions },
-      { $sort: { publishedAt: -1 } },
-      { $skip: skip },
-      { $limit: limit },
-      {
-        $lookup: {
-          from: "puzzles",
-          localField: "puzzleId",
-          foreignField: "id",
-          as: "puzzleData",
-        },
-      },
-      {
-        $unwind: {
-          path: "$puzzleData",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-    ];
-
-    // Add puzzle type filter after lookup if specified
-    if (puzzleType) {
-      pipeline.push({ $match: { "puzzleData.puzzleType": puzzleType } });
-    }
-
-    // Project final structure
-    pipeline.push({
-      $project: {
-        slug: 1,
-        date: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
-        publishedAt: 1,
-        title: 1,
-        puzzle: {
-          $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
-        },
-        puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
-        answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
-        explanation: { $ifNull: ["$puzzleData.explanation", "No explanation available"] },
-        content: 1,
-        excerpt: 1,
-        sections: 1,
-        seoMetadata: 1,
-        puzzleOrigin: 1,
-      },
-    });
-
-    const posts = await blogPostsCollection.aggregate(pipeline).toArray();
-
-    // Transform and filter posts
-    const transformedPosts = posts
-      .map((post: any) => ({
-        slug: post.slug,
-        date: post.date,
-        publishedAt: post.publishedAt,
-        title: post.title,
-        puzzle: post.puzzle,
-        puzzleType: post.puzzleType,
-        answer: post.answer,
-        explanation: post.explanation,
-        content: post.content,
-        excerpt: post.excerpt,
-        sections: post.sections,
-        seoMetadata: post.seoMetadata,
-        puzzleOrigin: post.puzzleOrigin,
-      }))
-      .filter((post) => post.slug && !post.slug.startsWith("-") && post.slug.length >= 3);
-
-    const totalPages = Math.ceil(totalCount / limit);
-
-    return {
-      posts: transformedPosts,
-      totalCount,
-      totalPages,
-      currentPage: page,
-      hasMore: page < totalPages,
-    };
-  } catch (error) {
-    console.error("Error fetching paginated blog posts:", error);
-    return {
-      posts: [],
-      totalCount: 0,
-      totalPages: 0,
-      currentPage: page,
-      hasMore: false,
-    };
-  }
+  return {
+    posts: allPosts.slice(skip, skip + limit),
+    totalCount,
+    totalPages,
+    currentPage: page,
+    hasMore: page < totalPages,
+  };
 }
 
 // Paginated fetches stay uncached (query-dependent); list/post use "use cache" above.
@@ -520,79 +350,34 @@ export async function fetchBlogArchiveStats(): Promise<ArchiveStats> {
   cacheLife("hours");
   cacheTag("blog-posts", "blog-archive");
 
-  try {
-    const blogPostsCollection = getCollection("blogPosts");
+  const posts = await fetchAllBlogPosts();
+  const grouped = new Map<number, Map<number, MonthArchiveStats>>();
 
-    const stats = await blogPostsCollection
-      .aggregate([
-        {
-          $lookup: {
-            from: "puzzles",
-            localField: "puzzleId",
-            foreignField: "id",
-            as: "puzzleData",
-          },
-        },
-        {
-          $unwind: {
-            path: "$puzzleData",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $group: {
-            _id: {
-              year: { $year: "$publishedAt" },
-              month: { $month: "$publishedAt" },
-            },
-            count: { $sum: 1 },
-            puzzleTypes: { $push: { $ifNull: ["$puzzleData.puzzleType", "rebus"] } },
-          },
-        },
-        {
-          $group: {
-            _id: "$_id.year",
-            months: {
-              $push: {
-                month: "$_id.month",
-                postCount: "$count",
-                puzzleTypesArray: "$puzzleTypes",
-              },
-            },
-            totalPosts: { $sum: "$count" },
-          },
-        },
-        { $sort: { _id: -1 } },
-      ])
-      .toArray();
-
-    // Transform to proper structure with puzzle type counts
-    const years: YearArchiveStats[] = stats.map((yearData: any) => ({
-      year: yearData._id,
-      totalPosts: yearData.totalPosts,
-      months: yearData.months
-        .map((m: any) => {
-          // Count puzzle types
-          const typeCounts: Record<string, number> = {};
-          for (const type of m.puzzleTypesArray || []) {
-            typeCounts[type] = (typeCounts[type] || 0) + 1;
-          }
-          return {
-            month: m.month,
-            postCount: m.postCount,
-            puzzleTypes: typeCounts,
-          };
-        })
-        .sort((a: MonthArchiveStats, b: MonthArchiveStats) => b.month - a.month),
-    }));
-
-    const totalPosts = years.reduce((sum, y) => sum + y.totalPosts, 0);
-
-    return { years, totalPosts };
-  } catch (error) {
-    console.error("Error fetching archive stats:", error);
-    return { years: [], totalPosts: 0 };
+  for (const post of posts) {
+    const date = new Date(post.publishedAt ?? post.date);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const months = grouped.get(year) ?? new Map<number, MonthArchiveStats>();
+    const current = months.get(month) ?? { month, postCount: 0, puzzleTypes: {} };
+    const type = post.puzzleType || "rebus";
+    current.postCount += 1;
+    current.puzzleTypes[type] = (current.puzzleTypes[type] || 0) + 1;
+    months.set(month, current);
+    grouped.set(year, months);
   }
+
+  const years = [...grouped.entries()]
+    .sort(([a], [b]) => b - a)
+    .map(([year, months]): YearArchiveStats => {
+      const sortedMonths = [...months.values()].sort((a, b) => b.month - a.month);
+      return {
+        year,
+        months: sortedMonths,
+        totalPosts: sortedMonths.reduce((sum, item) => sum + item.postCount, 0),
+      };
+    });
+
+  return { years, totalPosts: posts.length };
 }
 
 // ============================================================================
@@ -608,86 +393,15 @@ export async function searchBlogPosts(
   }
 
   const { puzzleType, year, limit = 20 } = options || {};
-
-  try {
-    const blogPostsCollection = getCollection("blogPosts");
-
-    // Build search conditions using regex for text search
-    const searchRegex = new RegExp(query.trim(), "i");
-    const matchConditions: Record<string, unknown> = {
-      $or: [
-        { title: searchRegex },
-        { content: searchRegex },
-        { excerpt: searchRegex },
-        { slug: searchRegex },
-      ],
-    };
-
-    if (year) {
-      const startDate = new Date(year, 0, 1);
-      const endDate = new Date(year, 11, 31, 23, 59, 59);
-      matchConditions.publishedAt = { $gte: startDate, $lte: endDate };
-    }
-
-    const pipeline: object[] = [
-      { $match: matchConditions },
-      { $sort: { publishedAt: -1 } },
-      { $limit: limit },
-      {
-        $lookup: {
-          from: "puzzles",
-          localField: "puzzleId",
-          foreignField: "id",
-          as: "puzzleData",
-        },
-      },
-      {
-        $unwind: {
-          path: "$puzzleData",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-    ];
-
-    if (puzzleType) {
-      pipeline.push({ $match: { "puzzleData.puzzleType": puzzleType } });
-    }
-
-    pipeline.push({
-      $project: {
-        slug: 1,
-        date: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
-        title: 1,
-        puzzle: {
-          $ifNull: [{ $ifNull: ["$puzzleData.puzzle", "$puzzleData.rebusPuzzle"] }, "N/A"],
-        },
-        puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
-        answer: { $ifNull: ["$puzzleData.answer", "Unknown"] },
-        explanation: { $ifNull: ["$puzzleData.explanation", "No explanation available"] },
-        content: 1,
-        excerpt: 1,
-      },
-    });
-
-    const posts = await blogPostsCollection.aggregate(pipeline).toArray();
-
-    return posts
-      .map((post: any) => ({
-        slug: post.slug,
-        date: post.date,
-        title: post.title,
-        puzzle: post.puzzle,
-        puzzleType: post.puzzleType,
-        answer: post.answer,
-        explanation: post.explanation,
-        content: post.content,
-        excerpt: post.excerpt,
-      }))
-      .filter((post) => post.slug && !post.slug.startsWith("-"));
-  } catch (error) {
-    console.error("Error searching blog posts:", error);
-    return [];
-  }
+  const search = query.trim().toLowerCase();
+  const posts = await fetchAllBlogPosts({ puzzleType, year });
+  return posts
+    .filter((post) =>
+      [post.title, post.content, post.excerpt, post.slug].some((value) =>
+        value?.toLowerCase().includes(search)
+      )
+    )
+    .slice(0, limit);
 }
 
 // ============================================================================
@@ -697,11 +411,10 @@ export async function searchBlogPosts(
 export async function fetchBlogPostWithStats(slug: string): Promise<BlogPostWithStats | null> {
   if (!slug) return null;
 
-  try {
-    // First get the blog post
-    const post = await fetchBlogPost(slug);
-    if (!post) return null;
+  const post = await fetchBlogPost(slug);
+  if (!post) return null;
 
+  try {
     // Get puzzle statistics from attempts collection
     const attemptsCollection = getCollection("puzzleAttempts");
     const puzzlesCollection = getCollection("puzzles");
@@ -764,7 +477,7 @@ export async function fetchBlogPostWithStats(slug: string): Promise<BlogPostWith
     };
   } catch (error) {
     console.error("Error fetching blog post with stats:", error);
-    return null;
+    return { ...post, puzzleStats: undefined };
   }
 }
 
@@ -773,87 +486,14 @@ export async function fetchBlogPostWithStats(slug: string): Promise<BlogPostWith
 // ============================================================================
 
 export async function fetchAdjacentPosts(currentDate: Date | string): Promise<AdjacentPosts> {
-  try {
-    const blogPostsCollection = getCollection("blogPosts");
-    const date = typeof currentDate === "string" ? new Date(currentDate) : currentDate;
+  const currentKey = new Date(currentDate).toISOString().slice(0, 10);
+  const posts = await fetchAllBlogPosts();
+  const older = posts.filter((post) => post.date < currentKey);
+  const newer = posts
+    .filter((post) => post.date > currentKey)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Fetch previous post (older)
-    const prevPosts = await blogPostsCollection
-      .aggregate([
-        { $match: { publishedAt: { $lt: date } } },
-        { $sort: { publishedAt: -1 } },
-        { $limit: 1 },
-        {
-          $lookup: {
-            from: "puzzles",
-            localField: "puzzleId",
-            foreignField: "id",
-            as: "puzzleData",
-          },
-        },
-        { $unwind: { path: "$puzzleData", preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            slug: 1,
-            date: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
-            title: 1,
-            puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
-            excerpt: 1,
-          },
-        },
-      ])
-      .toArray();
-
-    // Fetch next post (newer)
-    const nextPosts = await blogPostsCollection
-      .aggregate([
-        { $match: { publishedAt: { $gt: date } } },
-        { $sort: { publishedAt: 1 } },
-        { $limit: 1 },
-        {
-          $lookup: {
-            from: "puzzles",
-            localField: "puzzleId",
-            foreignField: "id",
-            as: "puzzleData",
-          },
-        },
-        { $unwind: { path: "$puzzleData", preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            slug: 1,
-            date: { $dateToString: { format: "%Y-%m-%d", date: "$publishedAt" } },
-            title: 1,
-            puzzleType: { $ifNull: ["$puzzleData.puzzleType", "rebus"] },
-            excerpt: 1,
-          },
-        },
-      ])
-      .toArray();
-
-    const transformPost = (post: any): BlogPostResponse | null => {
-      if (!post) return null;
-      return {
-        slug: post.slug,
-        date: post.date,
-        title: post.title,
-        puzzleType: post.puzzleType,
-        excerpt: post.excerpt || "",
-        puzzle: "",
-        answer: "",
-        explanation: "",
-        content: "",
-      };
-    };
-
-    return {
-      prev: prevPosts[0] ? transformPost(prevPosts[0]) : null,
-      next: nextPosts[0] ? transformPost(nextPosts[0]) : null,
-    };
-  } catch (error) {
-    console.error("Error fetching adjacent posts:", error);
-    return { prev: null, next: null };
-  }
+  return { prev: older[0] ?? null, next: newer[0] ?? null };
 }
 
 // ============================================================================
@@ -869,9 +509,17 @@ export async function fetchAllBlogPosts(options?: {
   cacheLife("hours");
   cacheTag("blog-posts", "blog-posts-all");
 
+  const { year, month, puzzleType } = options || {};
+  const repositoryPosts = loadRepositoryBlogPosts().filter((post) => {
+    const date = new Date(post.publishedAt ?? post.date);
+    if (year && date.getUTCFullYear() !== year) return false;
+    if (month && date.getUTCMonth() + 1 !== month) return false;
+    if (puzzleType && post.puzzleType !== puzzleType) return false;
+    return true;
+  });
+
   try {
     const blogPostsCollection = getCollection("blogPosts");
-    const { year, month, puzzleType } = options || {};
 
     const matchConditions: Record<string, unknown> = {};
 
@@ -915,12 +563,15 @@ export async function fetchAllBlogPosts(options?: {
         explanation: { $ifNull: ["$puzzleData.explanation", "No explanation available"] },
         content: 1,
         excerpt: 1,
+        sections: 1,
+        seoMetadata: 1,
+        puzzleOrigin: 1,
       },
     });
 
     const posts = await blogPostsCollection.aggregate(pipeline).toArray();
 
-    return posts
+    const databasePosts = posts
       .map((post: any) => ({
         slug: post.slug,
         date: post.date,
@@ -932,10 +583,15 @@ export async function fetchAllBlogPosts(options?: {
         explanation: post.explanation,
         content: post.content,
         excerpt: post.excerpt,
+        sections: post.sections,
+        seoMetadata: post.seoMetadata,
+        puzzleOrigin: post.puzzleOrigin,
       }))
       .filter((post) => post.slug && !post.slug.startsWith("-") && post.slug.length >= 3);
+
+    return mergeBlogPosts(repositoryPosts, databasePosts);
   } catch (error) {
     console.error("Error fetching all blog posts:", error);
-    return [];
+    return repositoryPosts;
   }
 }

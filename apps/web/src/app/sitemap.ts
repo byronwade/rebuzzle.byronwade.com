@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-import type { BlogPost } from "@/db/models";
-import { getCollection } from "@/db/mongodb";
+import { fetchAllBlogPosts } from "@/app/actions/blogActions";
 import { getBaseUrl } from "@/lib/seo/utils";
 
 /**
@@ -126,23 +125,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Fetch blog posts from database
+  // Fetch merged repository and legacy database blog posts.
   let blogPosts: MetadataRoute.Sitemap = [];
 
   try {
-    const blogPostsCollection = getCollection<BlogPost>("blogPosts");
-
-    // Get all published blog posts
-    const posts = await blogPostsCollection
-      .find({
-        publishedAt: { $lte: new Date() },
-      })
-      .sort({ publishedAt: -1 })
-      .toArray();
+    const posts = await fetchAllBlogPosts();
 
     blogPosts = posts.map((post) => ({
       url: `${baseUrl}/blog/${post.slug}`,
-      lastModified: post.updatedAt || post.publishedAt || post.createdAt,
+      lastModified: post.publishedAt || new Date(post.date),
       changeFrequency: "weekly" as const,
       priority: 0.8,
     }));
