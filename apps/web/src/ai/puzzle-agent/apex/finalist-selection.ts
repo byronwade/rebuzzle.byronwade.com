@@ -23,7 +23,12 @@ export async function selectQualifiedFinalist(input: {
 }): Promise<FinalistSelectionResult> {
   const preRanked = rankCandidates(input.candidates, input.minRubricOverall);
   const eligible = preRanked.filter(
-    (candidate) => candidate.publishable && (candidate.tournamentScore ?? -1) >= 0
+    (candidate) =>
+      candidate.publishable &&
+      candidate.isUnique &&
+      candidate.solvable &&
+      candidate.inBand &&
+      candidate.critique?.verdict !== "reject"
   );
   const evaluatedById = new Map<string, ApexCandidate>();
   const failures: string[] = [];

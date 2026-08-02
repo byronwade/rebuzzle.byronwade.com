@@ -82,6 +82,23 @@ describe("Apex rendered finalist selection", () => {
     expect(evaluated).toEqual(["top"]);
   });
 
+  it("evaluates a hard-gate-passing draft before requiring the final rubric", async () => {
+    const draft = candidate("draft", 74);
+
+    const result = await selectQualifiedFinalist({
+      candidates: [draft],
+      minRubricOverall: 78,
+      canStartEvaluation: () => true,
+      evaluate: async (value) => ({
+        ...value,
+        rubric: { ...value.rubric!, fairness: 90, overall: 82 },
+      }),
+    });
+
+    expect(result.winner?.id).toBe("draft");
+    expect(result.winner?.rubric?.overall).toBe(82);
+  });
+
   it("evaluates the runner-up only after the first finalist is rejected", async () => {
     const evaluated: string[] = [];
     const top = candidate("top", 92);
