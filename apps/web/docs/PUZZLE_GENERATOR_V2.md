@@ -136,7 +136,7 @@ Thresholds must be recalibrated from real data rather than treated as permanent 
 
 The first implementation slice now includes:
 
-- a 118-concept local Lucide-backed catalog with exact provenance checks and a shared recognition-alias ontology;
+- a 98-concept publication catalog selected from 118 local Lucide-backed candidates, with 20 benchmark-failing assets quarantined behind exact provenance checks until replacements pass;
 - catalog-first resolution before long-tail SVG generation;
 - 36px and 72px rasterization so evaluators see compact and large player-level detail;
 - two independent blind vision judges at every icon size;
@@ -149,8 +149,8 @@ The first implementation slice now includes:
 - fail-closed master generation: Apex rejection can no longer fall through to a less-verified Eve result, and explicitly selected Eve generation must pass the same screenshot playability gates;
 - hard rejection of low-recognition, revise, unfair-hint, and below-rubric Apex candidates;
 - persisted per-size and per-profile model, confidence, vote, and wrapping evidence;
-- a frozen 236-specimen icon evaluator corpus producing 472 required decisions;
-- an admin-only blind human naming panel for all 236 catalog/size specimens, with opaque fixture IDs and browser payloads that contain no concept, alias, asset ID, or correctness signal;
+- a frozen 196-specimen publication icon evaluator corpus producing 392 required decisions, plus an opt-in diagnostic lane for quarantined candidates;
+- an admin-only blind human naming panel for all 196 publication catalog/size specimens, with opaque fixture IDs and browser payloads that contain no concept, alias, asset ID, or correctness signal;
 - immutable one-response-per-reviewer/specimen storage, reviewer-specific randomized order, private no-store transport, and results withheld until that reviewer completes the full panel;
 - separate human release (90%) and market-leading (97%) top-1 gates at both 36px and 72px, requiring at least three independent reviewers for every specimen;
 - a per-specimen two-of-three hard floor so a single unusable icon cannot hide behind a strong catalog average, plus weakest-concept and semantic-confusion reports for replacement decisions;
@@ -203,7 +203,7 @@ These constants are launch safeguards, not permanent statistical truth. Recalibr
 
 ### Blind human icon calibration
 
-The automated vision benchmark is a screening gate, not proof that players recognize the artwork. Administrators can now run the human naming panel at `/admin/icon-recognition`. It presents each of the 118 curated assets once at 36px and once at 72px, for 236 blind specimens per reviewer. The browser receives only an opaque fixture ID, exact-size sanitized SVG, and size; intended concepts, aliases, catalog asset IDs, scoring, and aggregate results remain server-side.
+The automated vision benchmark is a screening gate, not proof that players recognize the artwork. Administrators can now run the human naming panel at `/admin/icon-recognition`. It presents each of the 98 publication-eligible assets once at 36px and once at 72px, for 196 blind specimens per reviewer. The browser receives only an opaque fixture ID, exact-size sanitized SVG, and size; intended concepts, aliases, catalog asset IDs, scoring, and aggregate results remain server-side. Twenty additional candidate assets remain quarantined and can be included only in diagnostic benchmark runs with `--include-quarantined`; generation cannot use them until a versioned replacement passes.
 
 Responses are immutable and uniquely locked by contract, catalog version, fixture, and reviewer. “I don't know” is a scored recognition failure, not a skip. Exact reviewed aliases such as `automobile` for `car` are accepted after stripping generic framing such as “an icon of”; fuzzy guesses such as `vehicle` or multi-answer guesses do not receive credit. Immediate correctness is never returned, and aggregate labels/confusions remain unavailable until that reviewer completes the full panel, preventing early answers from coaching later 36px/72px decisions.
 
@@ -249,10 +249,10 @@ pnpm benchmark:puzzles:playtest-backfill -- --apply --limit=100
 Run the complete evaluator benchmark from `apps/web`:
 
 ```bash
-pnpm benchmark:puzzles
+pnpm benchmark:puzzles -- --env-file=.vercel/.env.development.local
 pnpm benchmark:puzzles:catalog-sheet
 pnpm benchmark:puzzles:reserve-sheet
-pnpm benchmark:puzzles:solve
+pnpm benchmark:puzzles:solve -- --env-file=.vercel/.env.development.local
 pnpm benchmark:puzzles:external:import
 pnpm benchmark:puzzles:external:review-template
 ```
@@ -263,7 +263,7 @@ The evaluator commands write versioned JSON evidence under `artifacts/puzzle-gen
 
 `benchmark:puzzles:reserve-sheet` renders the complete degraded-service inventory at the production compact profile in four ignored review sheets. It makes weak substitutions and wrapping defects visible before a reserve corpus change is accepted; the automated corpus and 30-day scheduling tests remain the enforcement layer.
 
-The solve report distinguishes answer presence from actual playability. A profile counts as detected only when both independent judges agree; one-of-two agreement is a failure, not half credit. Promotion currently requires at least 80% answer presence, 75% top-answer detection, 70% dominant-answer detection, 70% compact top-answer detection, mean reciprocal rank of at least 0.75, and no more than 10% ambiguous observations. These are provisional automated screening thresholds; human calibration remains authoritative. Benchmark contract `2026-08-01.6` intentionally invalidates reports produced under the older any-one-judge scoring semantics.
+The solve report distinguishes answer presence from actual playability. A profile counts as detected only when both independent judges agree; one-of-two agreement is a failure, not half credit. Promotion currently requires at least 80% answer presence, 75% top-answer detection, 70% dominant-answer detection, 70% compact top-answer detection, mean reciprocal rank of at least 0.75, and no more than 10% ambiguous observations. These are provisional automated screening thresholds; human calibration remains authoritative. Benchmark contract `2026-08-02.7` invalidates both reports produced under the older any-one-judge scoring semantics and pre-quarantine catalog reports.
 
 The editorial report prevents trivial evaluators from winning: known-good acceptance must remain at least 95%, known-failure detection at least 99%, two-judge failure consensus at least 90%, compact failure detection at least 99%, and all critical fixtures must pass. Market-readiness remains false until the corpus contains at least 150 vetted positives, 100 vetted failures, complete technique coverage, and at least 10 failures per failure class. The current 24-positive/12-failure seed is executable infrastructure, not market-leading evidence.
 
@@ -292,7 +292,7 @@ pnpm benchmark:puzzles:external:review-template
 pnpm benchmark:puzzles:external:import -- --review=../../artifacts/puzzle-generator/external/re-bus-hf-v1.reviews.json
 
 # Run two blind vision judges; answer metadata is used only after guesses are returned.
-pnpm benchmark:puzzles:external:solve
+pnpm benchmark:puzzles:external:solve -- --env-file=.vercel/.env.development.local
 ```
 
 An external run can promote only with at least 100 human-approved originals, both source domains, both annotated difficulty bands, all eight annotated reasoning features, at least five cases per feature, complete two-judge agreement (not merely two returned responses), at least 85% answer detection, 70% top-1 detection, 60% dominant-answer detection, and mean reciprocal rank of at least 0.75. These thresholds reflect the pinned dataset's actual coverage ceiling (the aspect-ratio feature has only seven originals). They are evaluator-calibration gates, not proof that generated Rebuzzle boards are good. Internal multi-profile fixtures and real-player calibration remain separately required.
@@ -319,7 +319,7 @@ An external run can promote only with at least 100 human-approved originals, bot
 ### Stage 4 — benchmark and learn (in progress)
 
 - Curate at least 100 source-rights-reviewed originals from the pinned external metadata import and run the non-training evaluator benchmark.
-- Add human icon-naming and puzzle-rating workflows.
+- Maintain the implemented human icon-naming and generated-puzzle rating workflows.
 - Complete at least 30/100 fully covered generated-puzzle playtests for release/market-leading human evidence.
 - Calibrate model scores to solve rate, solve time, hint usage, skips, and quality reports.
 - Promote evaluator/model changes only when they beat the frozen benchmark without regressions.

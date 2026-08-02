@@ -56,6 +56,14 @@ async function main(): Promise<void> {
     );
   }
 
+  const { probeGatewayAuth } = await import("../src/ai/client");
+  const auth = await probeGatewayAuth();
+  if (!auth.ok) {
+    throw new Error(
+      `${auth.error} Pass --env-file=.vercel/.env.development.local after pulling the linked development environment.`
+    );
+  }
+
   // A benchmark is read-only and must not fan out hundreds of index mutations
   // while measuring generation latency or archive lookups.
   process.env.REBUZZLE_SKIP_AUTO_INDEXES = "1";

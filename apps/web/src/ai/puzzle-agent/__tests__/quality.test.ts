@@ -170,7 +170,7 @@ describe("evaluateVisualForPublish", () => {
             concept: "heart",
             svg: '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="20"/></svg>',
             source: "catalog",
-            assetId: "lucide:heart:v1",
+            assetId: "lucide:heart:v2",
           },
         ],
         unicodeFallback: "◆",

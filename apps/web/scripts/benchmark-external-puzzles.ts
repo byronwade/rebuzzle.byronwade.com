@@ -10,8 +10,6 @@ import type {
 import { assertExternalCorpusArtifact } from "../src/ai/puzzle-agent/benchmark/external-corpus";
 import type { ExternalPuzzleBenchmarkReport } from "../src/ai/puzzle-agent/benchmark/external-score";
 
-config({ path: ".env.local", quiet: true });
-
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const SUPPORTED_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -19,6 +17,13 @@ const SUPPORTED_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/webp"])
 function arg(name: string): string | undefined {
   return process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
 }
+
+const explicitEnvFile = process.argv.some((value) => value.startsWith("--env-file="));
+config({
+  path: arg("env-file") ?? ".env.local",
+  quiet: true,
+  override: explicitEnvFile,
+});
 
 function numberArg(name: string, fallback: number): number {
   const parsed = Number(arg(name));
@@ -87,6 +92,20 @@ async function fetchExternalImage(
 }
 
 async function main(): Promise<void> {
+  if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
+    throw new Error(
+      "External solve benchmark requires AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN. Pull the linked Vercel environment first."
+    );
+  }
+
+  const { probeGatewayAuth } = await import("../src/ai/client");
+  const auth = await probeGatewayAuth();
+  if (!auth.ok) {
+    throw new Error(
+      `${auth.error} Pass --env-file=.vercel/.env.development.local after pulling the linked development environment.`
+    );
+  }
+
   const benchmark = await import("../src/ai/puzzle-agent/benchmark");
   const playerSim = await import("../src/ai/puzzle-agent/apex/player-sim");
   const blindConsensus = await import("../src/ai/puzzle-agent/apex/blind-solve-consensus");

@@ -121,7 +121,7 @@ import {
 import { sanitizePictogramSvg } from "./sanitize-svg";
 import { INK_PICTOGRAM_PALETTE } from "./style";
 
-export const CURATED_PICTOGRAM_CATALOG_VERSION = "lucide-v1";
+export const CURATED_PICTOGRAM_CATALOG_VERSION = "lucide-v2";
 
 type CuratedPictogramEntry = {
   id: string;
@@ -290,6 +290,36 @@ const CATALOG: CuratedPictogramEntry[] = [
   { id: "boat", aliases: ["boat", "sailboat"], icon: Sailboat },
 ];
 
+/**
+ * Assets that failed the complete multi-model, multi-size recognition benchmark.
+ * Keep them available for diagnostic reruns, but never offer them to generation
+ * or accept their provenance until a versioned replacement passes the gate.
+ */
+export const QUARANTINED_CURATED_PICTOGRAM_IDS = [
+  "battery",
+  "bomb",
+  "box",
+  "briefcase",
+  "cake",
+  "cloud",
+  "coffee",
+  "compass",
+  "milk",
+  "mountain",
+  "computer-mouse",
+  "radio",
+  "rainbow",
+  "rat",
+  "shell",
+  "shopping-bag",
+  "soda",
+  "tent",
+  "water",
+  "waves",
+] as const;
+
+const QUARANTINED_IDS = new Set<string>(QUARANTINED_CURATED_PICTOGRAM_IDS);
+
 function normalizeConcept(value: string): string {
   return value
     .toLowerCase()
@@ -304,33 +334,38 @@ export type CuratedPictogram = {
 };
 
 /** Resolve common concrete nouns to a stable, versioned local icon. */
-export function resolveCuratedPictogram(concept: string): CuratedPictogram | null {
+export function resolveCuratedPictogram(
+  concept: string,
+  options: { includeQuarantined?: boolean } = {}
+): CuratedPictogram | null {
   const normalized = normalizeConcept(concept);
   const entry = CATALOG.find((candidate) =>
     candidate.aliases.some((alias) => normalizeConcept(alias) === normalized)
   );
-  if (!entry) return null;
+  if (!entry || (!options.includeQuarantined && QUARANTINED_IDS.has(entry.id))) return null;
 
   const raw = serializeIconNode(entry.icon, {
     width: 64,
     height: 64,
     stroke: INK_PICTOGRAM_PALETTE.ink,
     fill: "none",
-    "stroke-width": 0.84375,
+    "stroke-width": 1.5,
     "aria-hidden": "true",
   });
   const svg = sanitizePictogramSvg(raw);
   if (!svg) return null;
 
   return {
-    assetId: `lucide:${entry.id}:v1`,
+    assetId: `lucide:${entry.id}:v2`,
     canonicalConcept: entry.id,
     svg,
   };
 }
 
-export function listCuratedPictogramIds(): string[] {
-  return CATALOG.map((entry) => entry.id);
+export function listCuratedPictogramIds(options: { includeQuarantined?: boolean } = {}): string[] {
+  return CATALOG.filter(
+    (entry) => options.includeQuarantined || !QUARANTINED_IDS.has(entry.id)
+  ).map((entry) => entry.id);
 }
 
 /** Share the catalog's reviewed synonym ontology with blind-label matching. */
