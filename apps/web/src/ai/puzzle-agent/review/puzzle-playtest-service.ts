@@ -525,11 +525,18 @@ export function createPuzzlePlaytestService(
       : existingCandidates;
   }
 
-  async function loadEvidence(): Promise<{
+  async function loadEvidence(options?: { ensureControls?: boolean }): Promise<{
     candidates: PuzzlePlaytestCandidate[];
     reviews: PuzzlePlaytestReview[];
   }> {
-    const controls = await ensureControlCandidates();
+    const controls =
+      options?.ensureControls === false
+        ? await repository.listCandidates({
+            contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+            evidenceRoles: ["control"],
+            limit: 100,
+          })
+        : await ensureControlCandidates();
     const [generated, reviews] = await Promise.all([
       repository.listCandidates({
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
@@ -786,11 +793,17 @@ export function createPuzzlePlaytestService(
       return (await getNextAssignment(reviewerId)).progress;
     },
 
-    async getReport(reviewerIdInput: string, now = new Date()): Promise<PuzzlePlaytestReport> {
+    async getReport(
+      reviewerIdInput: string,
+      now = new Date(),
+      options?: { readOnly?: boolean }
+    ): Promise<PuzzlePlaytestReport> {
       const reviewerId = reviewerIdInput.trim().slice(0, 100);
       if (!reviewerId) throw new Error("Reviewer is required");
-      await refreshCandidateCompletions();
-      const { candidates, reviews } = await loadEvidence();
+      if (!options?.readOnly) await refreshCandidateCompletions();
+      const { candidates, reviews } = await loadEvidence({
+        ensureControls: !options?.readOnly,
+      });
       const reviewerReviews = reviews.filter((review) => review.reviewerId === reviewerId);
       const controlCandidates = candidates.filter(
         (candidate) => candidate.evidenceRole === "control"
