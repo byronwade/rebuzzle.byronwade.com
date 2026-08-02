@@ -398,7 +398,8 @@ export default function PuzzlePlaytestsPage() {
               <CardDescription>
                 Release requires 30 fully covered generated puzzles; market-leading evidence
                 requires 100, with five reviewers on every responsive profile plus representative
-                reviewer, difficulty, and technique coverage.
+                reviewer, difficulty, and technique coverage. Only reviewers who pass the blinded
+                known-answer controls contribute generated-puzzle evidence.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -438,6 +439,31 @@ export default function PuzzlePlaytestsPage() {
                 <div className="text-muted-foreground text-xs">Techniques represented</div>
                 <div className="font-semibold text-xl">{report.techniqueScores.length}</div>
               </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Reviewer qualification</div>
+                <div className="font-semibold text-xl">
+                  {percent(report.reviewerQuality.qualificationRate)}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Qualified / excluded</div>
+                <div className="font-semibold text-xl">
+                  {report.reviewerQuality.qualifiedReviewers} /{" "}
+                  {report.reviewerQuality.excludedReviewers}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Control decisions</div>
+                <div className="font-semibold text-xl">
+                  {report.reviewerQuality.controlDecisions}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Generated decisions held out</div>
+                <div className="font-semibold text-xl">
+                  {report.reviewerQuality.unscoredGeneratedDecisions}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -454,7 +480,8 @@ export default function PuzzlePlaytestsPage() {
                   Market-leading {report.marketLeadingReady ? "proven" : "not proven"}
                 </Badge>
                 <Badge variant="outline">{report.reviewerCount} reviewers</Badge>
-                <Badge variant="outline">{report.decisionCount} decisions</Badge>
+                <Badge variant="outline">{report.decisionCount} generated decisions</Badge>
+                <Badge variant="outline">{report.controlCandidateCount} blinded controls</Badge>
               </div>
               {!report.releaseReady && (
                 <div className="space-y-1 text-muted-foreground text-sm">

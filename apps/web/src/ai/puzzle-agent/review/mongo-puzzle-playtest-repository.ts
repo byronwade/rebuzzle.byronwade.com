@@ -35,6 +35,7 @@ export function createMongoPuzzlePlaytestRepository(): PuzzlePlaytestRepository 
       const filter: Filter<PuzzlePlaytestCandidate> = {
         contractVersion: input.contractVersion,
         ...(input.statuses?.length ? { status: { $in: input.statuses } } : {}),
+        ...(input.evidenceRoles?.length ? { evidenceRole: { $in: input.evidenceRoles } } : {}),
       };
       return candidates()
         .find(filter)

@@ -491,6 +491,7 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { id: 1 }, options: { unique: true } },
       { spec: { contractVersion: 1, puzzleId: 1 }, options: { unique: true } },
       { spec: { contractVersion: 1, status: 1, createdAt: 1 } },
+      { spec: { contractVersion: 1, evidenceRole: 1, status: 1, createdAt: 1 } },
       { spec: { techniqueId: 1, difficultyScore: 1, status: 1 } },
     ],
   },
