@@ -23,6 +23,11 @@ const IconRecognitionSchema = z.object({
 
 export type { IconRecognitionResult } from "./recognition-consensus";
 
+function safeJudgeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/Bearer\s+\S+/giu, "Bearer [redacted]").slice(0, 300);
+}
+
 async function recognizeAtSize(input: {
   svg: string;
   concept: string;
@@ -53,6 +58,16 @@ Do not infer the creator's intent and do not invent missing details.`,
   const judgments = settled.flatMap((result) =>
     result.status === "fulfilled" ? [result.value] : []
   );
+  const judgeErrors = settled.flatMap((result, index) =>
+    result.status === "rejected"
+      ? [
+          {
+            model: AI_CONFIG.visualRecognition.models[index] ?? `judge-${index + 1}`,
+            error: safeJudgeError(result.reason),
+          },
+        ]
+      : []
+  );
   return {
     ...evaluateRecognitionConsensus({
       concept: input.concept,
@@ -61,6 +76,7 @@ Do not infer the creator's intent and do not invent missing details.`,
       requiredVotes: AI_CONFIG.visualRecognition.requiredVotes,
     }),
     tileSize: input.tileSize,
+    judgeErrors,
   };
 }
 
@@ -80,7 +96,7 @@ export async function recognizePictogramIcon(input: {
       profileResults,
       expectedTileSizes: ICON_PLAYER_SIZES,
     });
-  } catch {
+  } catch (error) {
     return {
       seenLabel: "unclear",
       confidence: 0,
@@ -90,6 +106,7 @@ export async function recognizePictogramIcon(input: {
       matchesConcept: false,
       ok: false,
       judges: [],
+      judgeErrors: [{ model: "recognition-pipeline", error: safeJudgeError(error) }],
       profileResults: [],
     };
   }

@@ -15,6 +15,11 @@ export type IconRecognitionJudgeResult = IconRecognitionJudgment & {
   passed: boolean;
 };
 
+export type IconRecognitionJudgeError = {
+  model: string;
+  error: string;
+};
+
 export type IconRecognitionResultBase = Omit<IconRecognitionJudgment, "model"> & {
   matchesConcept: boolean;
   ok: boolean;
@@ -23,10 +28,12 @@ export type IconRecognitionResultBase = Omit<IconRecognitionJudgment, "model"> &
 
 export type IconRecognitionProfileResult = IconRecognitionResultBase & {
   tileSize: number;
+  judgeErrors?: IconRecognitionJudgeError[];
 };
 
 export type IconRecognitionResult = IconRecognitionResultBase & {
   profileResults?: IconRecognitionProfileResult[];
+  judgeErrors?: IconRecognitionJudgeError[];
 };
 
 export function evaluateRecognitionConsensus(input: {
@@ -108,6 +115,12 @@ export function evaluateRecognitionProfiles(input: {
       profile.judges.map((judge) => ({
         ...judge,
         model: `${judge.model}@${profile.tileSize}px`,
+      }))
+    ),
+    judgeErrors: input.profileResults.flatMap((profile) =>
+      (profile.judgeErrors ?? []).map((failure) => ({
+        model: `${failure.model}@${profile.tileSize}px`,
+        error: failure.error,
       }))
     ),
     profileResults: input.profileResults,
