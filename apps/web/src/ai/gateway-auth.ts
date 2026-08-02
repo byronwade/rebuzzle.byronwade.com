@@ -32,6 +32,11 @@ export function looksLikeJwt(value: string): boolean {
   return parts.length === 3 && parts.every((p) => p.length > 4);
 }
 
+/** True only for the documented Vercel AI Gateway API-key shape. */
+export function looksLikeGatewayApiKey(value: string): boolean {
+  return /^vck_[A-Za-z0-9_-]+$/.test(value.trim());
+}
+
 /**
  * Sanitize gateway auth env before SDK calls.
  * - Keep real API keys in AI_GATEWAY_API_KEY
@@ -39,12 +44,20 @@ export function looksLikeJwt(value: string): boolean {
  */
 export function ensureGatewayKey(): void {
   const key = process.env.AI_GATEWAY_API_KEY?.trim();
-  if (key && looksLikeJwt(key)) {
+  if (!key) return;
+  if (looksLikeJwt(key)) {
     const oidc = process.env.VERCEL_OIDC_TOKEN?.trim();
     if (!oidc || oidc === "undefined") {
       process.env.VERCEL_OIDC_TOKEN = key;
     }
     // delete — assigning undefined becomes the string "undefined" in Node
+    // biome-ignore lint/performance/noDelete: must remove env key entirely
+    delete process.env.AI_GATEWAY_API_KEY;
+    return;
+  }
+  if (!looksLikeGatewayApiKey(key)) {
+    // Invalid placeholders must not force the SDK onto api-key auth when
+    // Vercel OIDC is available.
     // biome-ignore lint/performance/noDelete: must remove env key entirely
     delete process.env.AI_GATEWAY_API_KEY;
   }
@@ -54,7 +67,7 @@ export function ensureGatewayKey(): void {
 export function getGatewayApiKey(): string | undefined {
   ensureGatewayKey();
   const key = process.env.AI_GATEWAY_API_KEY?.trim();
-  if (!key || key === "undefined" || looksLikeJwt(key)) return undefined;
+  if (!key || !looksLikeGatewayApiKey(key)) return undefined;
   return key;
 }
 

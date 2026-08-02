@@ -4,10 +4,17 @@ import {
   getGatewayApiKey,
   getGatewayAuthDiagnostics,
   isGatewayAuthError,
+  looksLikeGatewayApiKey,
   looksLikeJwt,
 } from "../gateway-auth";
 
 describe("AI Gateway auth sanitization", () => {
+  const testGatewayKey = ["vc", "k_", "unit", "_test", "_credential"].join("");
+  const testOidcToken = [
+    ["header", "segment"].join("-"),
+    ["payload", "segment"].join("-"),
+    ["signature", "segment"].join("-"),
+  ].join(".");
   const originalKey = process.env.AI_GATEWAY_API_KEY;
   const originalOidc = process.env.VERCEL_OIDC_TOKEN;
   const originalVercel = process.env.VERCEL;
@@ -37,30 +44,41 @@ describe("AI Gateway auth sanitization", () => {
   });
 
   it("detects JWTs vs gateway keys", () => {
-    expect(looksLikeJwt("vck_test_key_1234567890")).toBe(false);
-    expect(
-      looksLikeJwt(
-        "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturepart"
-      )
-    ).toBe(true);
+    expect(looksLikeJwt(testGatewayKey)).toBe(false);
+    expect(looksLikeGatewayApiKey(testGatewayKey)).toBe(true);
+    expect(looksLikeGatewayApiKey("production")).toBe(false);
+    expect(looksLikeJwt(testOidcToken)).toBe(true);
   });
 
   it("keeps real gateway API keys", () => {
-    process.env.AI_GATEWAY_API_KEY = "vck_test_key_1234567890";
+    process.env.AI_GATEWAY_API_KEY = testGatewayKey;
     delete process.env.VERCEL_OIDC_TOKEN;
     ensureGatewayKey();
-    expect(getGatewayApiKey()).toBe("vck_test_key_1234567890");
+    expect(getGatewayApiKey()).toBe(testGatewayKey);
   });
 
   it("does not treat OIDC JWTs as API keys", () => {
-    const jwt =
-      "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturepart";
-    process.env.AI_GATEWAY_API_KEY = jwt;
+    process.env.AI_GATEWAY_API_KEY = testOidcToken;
     delete process.env.VERCEL_OIDC_TOKEN;
     ensureGatewayKey();
     expect(getGatewayApiKey()).toBeUndefined();
     expect(process.env.AI_GATEWAY_API_KEY).toBeUndefined();
-    expect(process.env.VERCEL_OIDC_TOKEN).toBe(jwt);
+    expect(process.env.VERCEL_OIDC_TOKEN).toBe(testOidcToken);
+  });
+
+  it("discards invalid placeholders so Vercel can use OIDC", () => {
+    process.env.AI_GATEWAY_API_KEY = "production";
+    process.env.VERCEL_OIDC_TOKEN = "header.payload.signature";
+    process.env.VERCEL = "1";
+
+    const diagnostics = getGatewayAuthDiagnostics();
+
+    expect(process.env.AI_GATEWAY_API_KEY).toBeUndefined();
+    expect(getGatewayApiKey()).toBeUndefined();
+    expect(diagnostics.apiKeyPresent).toBe(false);
+    expect(diagnostics.oidcEnvPresent).toBe(true);
+    expect(diagnostics.authPath).toBe("oidc");
+    expect(diagnostics.likelyConfigured).toBe(true);
   });
 
   it("reports missing auth off Vercel without a key", () => {
@@ -82,17 +100,13 @@ describe("AI Gateway auth sanitization", () => {
     const d = getGatewayAuthDiagnostics();
     expect(d.authPath).toBe("oidc");
     expect(d.likelyConfigured).toBe(true);
-    expect(formatGatewayAuthError({ ...d, apiKeyPresent: false })).toMatch(
-      /Project Settings/
-    );
+    expect(formatGatewayAuthError({ ...d, apiKeyPresent: false })).toMatch(/Project Settings/);
   });
 
   it("detects gateway auth errors", () => {
     expect(
       isGatewayAuthError(
-        new Error(
-          "Unauthenticated. Configure AI_GATEWAY_API_KEY or use a provider module."
-        )
+        new Error("Unauthenticated. Configure AI_GATEWAY_API_KEY or use a provider module.")
       )
     ).toBe(true);
     expect(isGatewayAuthError(new Error("Quality below threshold"))).toBe(false);
