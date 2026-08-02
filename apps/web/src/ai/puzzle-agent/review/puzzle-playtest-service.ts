@@ -1,5 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { fuzzyMatch, normalizeString } from "@rebuzzle/game-logic/fuzzy-match";
+import {
+  type BinomialInterval,
+  ONE_SIDED_95_Z,
+  wilsonScoreInterval,
+} from "@/ai/statistics/binomial";
 import type {
   PuzzlePlaytestCandidate,
   PuzzlePlaytestEvidenceRole,
@@ -17,6 +22,7 @@ import { renderPuzzleVisualProfile } from "../visual/render-board";
 import { buildPuzzlePlaytestControlCorpus } from "./puzzle-playtest-controls";
 
 export const PUZZLE_PLAYTEST_CONTRACT_VERSION = "puzzle-playtest-v3";
+export const PUZZLE_PLAYTEST_READINESS_VERSION = "puzzle-playtest-readiness-v2";
 export const PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE = 5;
 export const PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER = 4;
 export const PUZZLE_PLAYTEST_MINIMUM_CORRECT_CONTROLS = 3;
@@ -76,6 +82,7 @@ export type PuzzlePlaytestCandidateReport = {
   decisions: number;
   correct: number;
   solveRate: number | null;
+  solveRateLowerBound: number;
   expectedSolveFloor: number;
   ambiguityRate: number | null;
 };
@@ -107,8 +114,20 @@ export type PuzzlePlaytestReviewerQuality = {
   unscoredGeneratedDecisions: number;
 };
 
+export type PuzzlePlaytestStatisticalEvidence = {
+  method: "one-sided-wilson-score";
+  confidenceLevel: 0.95;
+  reviewerExclusion: BinomialInterval;
+  candidateFloorPass: BinomialInterval;
+  ambiguity: BinomialInterval;
+  visualFailure: BinomialInterval;
+  highConfidenceWrong: BinomialInterval;
+  solveCalibrationCoverage: BinomialInterval;
+};
+
 export type PuzzlePlaytestReport = {
   contractVersion: typeof PUZZLE_PLAYTEST_CONTRACT_VERSION;
+  readinessVersion: typeof PUZZLE_PLAYTEST_READINESS_VERSION;
   requiredReviewersPerProfile: number;
   candidateCount: number;
   openCandidates: number;
@@ -116,6 +135,7 @@ export type PuzzlePlaytestReport = {
   reviewerCount: number;
   reviewerCoverage: PuzzlePlaytestReviewerCoverage;
   reviewerQuality: PuzzlePlaytestReviewerQuality;
+  statisticalEvidence: PuzzlePlaytestStatisticalEvidence;
   controlCandidateCount: number;
   decisionCount: number;
   completedDecisionCount: number;
@@ -220,6 +240,20 @@ export function expectedHumanSolveFloor(difficultyScore: number): number {
   return 0.2;
 }
 
+export function humanSolveFloorEvidence(
+  correct: number,
+  decisions: number,
+  difficultyScore: number
+): BinomialInterval & { expectedFloor: number; passes: boolean } {
+  const evidence = wilsonScoreInterval(correct, decisions, ONE_SIDED_95_Z);
+  const expectedFloor = expectedHumanSolveFloor(difficultyScore);
+  return {
+    ...evidence,
+    expectedFloor,
+    passes: evidence.lower >= expectedFloor,
+  };
+}
+
 function progress(available: number, completed: number): PuzzlePlaytestProgress {
   const safe = Math.max(0, Math.min(available, completed));
   return { completed: safe, available, remaining: available - safe, complete: safe === available };
@@ -295,7 +329,7 @@ function reportFailures(input: {
   minimumReviewers: number;
   maximumReviewerDecisionShare: number | null;
   maximumAllowedReviewerDecisionShare: number;
-  reviewerExclusionRate: number | null;
+  reviewerExclusionEvidence: BinomialInterval;
   maximumReviewerExclusionRate: number;
   difficultyTierScores: PuzzlePlaytestStratumScore[];
   minimumCandidatesPerDifficultyTier: number;
@@ -303,17 +337,17 @@ function reportFailures(input: {
   classifiedTechniqueCandidates: number;
   minimumTechniques: number;
   maximumTechniqueShare: number;
-  candidateFloorPassRate: number | null;
+  candidateFloorPassEvidence: BinomialInterval;
   minimumFloorPassRate: number;
-  ambiguityRate: number | null;
+  ambiguityEvidence: BinomialInterval;
   maximumAmbiguityRate: number;
-  visualFailureRate: number | null;
+  visualFailureEvidence: BinomialInterval;
   maximumVisualFailureRate: number;
-  highConfidenceWrongRate: number | null;
+  highConfidenceWrongEvidence: BinomialInterval;
   maximumHighConfidenceWrongRate: number;
   responsiveSolveGap: number | null;
   maximumResponsiveSolveGap: number;
-  solveCalibrationCoverage: number | null;
+  solveCalibrationCoverageEvidence: BinomialInterval;
   minimumSolveCalibrationCoverage: number;
   solveCalibrationMeanAbsoluteError: number | null;
   maximumSolveCalibrationMeanAbsoluteError: number;
@@ -321,6 +355,8 @@ function reportFailures(input: {
   maximumAbsoluteSolveCalibrationBias: number;
 }): string[] {
   const failures: string[] = [];
+  const observed = (evidence: BinomialInterval) =>
+    `${evidence.rate.toFixed(3)}, ${evidence.events}/${evidence.total}`;
   if (input.completedCandidates < input.minimumCandidates) {
     failures.push(
       `Completed generated-puzzle sample ${input.completedCandidates}/${input.minimumCandidates}`
@@ -335,11 +371,10 @@ function reportFailures(input: {
   ) {
     failures.push(`One-reviewer decision share above ${input.maximumAllowedReviewerDecisionShare}`);
   }
-  if (
-    input.reviewerExclusionRate === null ||
-    input.reviewerExclusionRate > input.maximumReviewerExclusionRate
-  ) {
-    failures.push(`Failed-control reviewer rate above ${input.maximumReviewerExclusionRate}`);
+  if (input.reviewerExclusionEvidence.upper > input.maximumReviewerExclusionRate) {
+    failures.push(
+      `Failed-control reviewer rate 95% upper bound ${input.reviewerExclusionEvidence.upper.toFixed(3)} above ${input.maximumReviewerExclusionRate} (observed ${observed(input.reviewerExclusionEvidence)})`
+    );
   }
   const undercoveredDifficultyTiers = input.difficultyTierScores
     .filter((score) => score.candidates < input.minimumCandidatesPerDifficultyTier)
@@ -363,27 +398,24 @@ function reportFailures(input: {
       `Technique concentration ${dominantTechnique.id} ${dominantTechnique.share!.toFixed(3)} above ${input.maximumTechniqueShare}`
     );
   }
-  if (
-    input.candidateFloorPassRate === null ||
-    input.candidateFloorPassRate < input.minimumFloorPassRate
-  ) {
-    failures.push(`Difficulty-adjusted candidate floor below ${input.minimumFloorPassRate}`);
-  }
-  if (input.ambiguityRate === null || input.ambiguityRate > input.maximumAmbiguityRate) {
-    failures.push(`Multiple-answer rate above ${input.maximumAmbiguityRate}`);
-  }
-  if (
-    input.visualFailureRate === null ||
-    input.visualFailureRate > input.maximumVisualFailureRate
-  ) {
-    failures.push(`Visual playability failure rate above ${input.maximumVisualFailureRate}`);
-  }
-  if (
-    input.highConfidenceWrongRate === null ||
-    input.highConfidenceWrongRate > input.maximumHighConfidenceWrongRate
-  ) {
+  if (input.candidateFloorPassEvidence.lower < input.minimumFloorPassRate) {
     failures.push(
-      `High-confidence wrong-answer rate above ${input.maximumHighConfidenceWrongRate}`
+      `Difficulty-adjusted candidate-floor 95% lower bound ${input.candidateFloorPassEvidence.lower.toFixed(3)} below ${input.minimumFloorPassRate} (observed ${observed(input.candidateFloorPassEvidence)})`
+    );
+  }
+  if (input.ambiguityEvidence.upper > input.maximumAmbiguityRate) {
+    failures.push(
+      `Multiple-answer 95% upper bound ${input.ambiguityEvidence.upper.toFixed(3)} above ${input.maximumAmbiguityRate} (observed ${observed(input.ambiguityEvidence)})`
+    );
+  }
+  if (input.visualFailureEvidence.upper > input.maximumVisualFailureRate) {
+    failures.push(
+      `Visual-playability failure 95% upper bound ${input.visualFailureEvidence.upper.toFixed(3)} above ${input.maximumVisualFailureRate} (observed ${observed(input.visualFailureEvidence)})`
+    );
+  }
+  if (input.highConfidenceWrongEvidence.upper > input.maximumHighConfidenceWrongRate) {
+    failures.push(
+      `High-confidence wrong-answer 95% upper bound ${input.highConfidenceWrongEvidence.upper.toFixed(3)} above ${input.maximumHighConfidenceWrongRate} (observed ${observed(input.highConfidenceWrongEvidence)})`
     );
   }
   if (
@@ -392,12 +424,9 @@ function reportFailures(input: {
   ) {
     failures.push(`Responsive solve-rate gap above ${input.maximumResponsiveSolveGap}`);
   }
-  if (
-    input.solveCalibrationCoverage === null ||
-    input.solveCalibrationCoverage < input.minimumSolveCalibrationCoverage
-  ) {
+  if (input.solveCalibrationCoverageEvidence.lower < input.minimumSolveCalibrationCoverage) {
     failures.push(
-      `Automated solve-rate calibration coverage below ${input.minimumSolveCalibrationCoverage}`
+      `Automated solve-rate coverage 95% lower bound ${input.solveCalibrationCoverageEvidence.lower.toFixed(3)} below ${input.minimumSolveCalibrationCoverage} (observed ${observed(input.solveCalibrationCoverageEvidence)})`
     );
   }
   if (
@@ -858,11 +887,15 @@ export function createPuzzlePlaytestService(
         );
       const candidatePasses = completeCandidates.filter((candidate) => {
         const rows = completedReviews.filter((review) => review.candidateId === candidate.id);
-        const solveRate = ratio(rows.filter((review) => review.correct).length, rows.length) ?? 0;
+        const solveEvidence = humanSolveFloorEvidence(
+          rows.filter((review) => review.correct).length,
+          rows.length,
+          candidate.difficultyScore
+        );
         const ambiguous = rows.filter(
           (review) => review.failureReason === "multiple-answers"
         ).length;
-        return solveRate >= expectedHumanSolveFloor(candidate.difficultyScore) && ambiguous <= 1;
+        return solveEvidence.passes && ambiguous <= 1;
       }).length;
       const candidateFloorPassRate = ratio(candidatePasses, completeCandidates.length);
       const calibrationRows = completeCandidates.flatMap((candidate) => {
@@ -886,18 +919,46 @@ export function createPuzzlePlaytestService(
         calibrationRows.reduce((sum, row) => sum + row.error, 0),
         calibrationRows.length
       );
-      const ambiguityRate = ratio(
-        completedReviews.filter((review) => review.failureReason === "multiple-answers").length,
-        completedReviews.length
-      );
-      const visualFailureRate = ratio(
-        completedReviews.filter(isVisualFailure).length,
-        completedReviews.length
-      );
-      const highConfidenceWrongRate = ratio(
-        completedReviews.filter((review) => !review.correct && review.confidence >= 4).length,
-        completedReviews.length
-      );
+      const ambiguityEvents = completedReviews.filter(
+        (review) => review.failureReason === "multiple-answers"
+      ).length;
+      const visualFailureEvents = completedReviews.filter(isVisualFailure).length;
+      const highConfidenceWrongEvents = completedReviews.filter(
+        (review) => !review.correct && review.confidence >= 4
+      ).length;
+      const ambiguityRate = ratio(ambiguityEvents, completedReviews.length);
+      const visualFailureRate = ratio(visualFailureEvents, completedReviews.length);
+      const highConfidenceWrongRate = ratio(highConfidenceWrongEvents, completedReviews.length);
+      const statisticalEvidence: PuzzlePlaytestStatisticalEvidence = {
+        method: "one-sided-wilson-score",
+        confidenceLevel: 0.95,
+        reviewerExclusion: wilsonScoreInterval(
+          reviewerQuality.excludedReviewers,
+          reviewerQuality.evaluatedReviewers,
+          ONE_SIDED_95_Z
+        ),
+        candidateFloorPass: wilsonScoreInterval(
+          candidatePasses,
+          completeCandidates.length,
+          ONE_SIDED_95_Z
+        ),
+        ambiguity: wilsonScoreInterval(ambiguityEvents, completedReviews.length, ONE_SIDED_95_Z),
+        visualFailure: wilsonScoreInterval(
+          visualFailureEvents,
+          completedReviews.length,
+          ONE_SIDED_95_Z
+        ),
+        highConfidenceWrong: wilsonScoreInterval(
+          highConfidenceWrongEvents,
+          completedReviews.length,
+          ONE_SIDED_95_Z
+        ),
+        solveCalibrationCoverage: wilsonScoreInterval(
+          calibrationRows.length,
+          completeCandidates.length,
+          ONE_SIDED_95_Z
+        ),
+      };
       const releaseFailures = reportFailures({
         completedCandidates: completeCandidates.length,
         minimumCandidates: PUZZLE_PLAYTEST_RELEASE_SAMPLE,
@@ -905,10 +966,7 @@ export function createPuzzlePlaytestService(
         minimumReviewers: PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS,
         maximumReviewerDecisionShare: reviewerCoverage.maximumDecisionShare,
         maximumAllowedReviewerDecisionShare: PUZZLE_PLAYTEST_RELEASE_MAX_REVIEWER_SHARE,
-        reviewerExclusionRate: ratio(
-          reviewerQuality.excludedReviewers,
-          reviewerQuality.evaluatedReviewers
-        ),
+        reviewerExclusionEvidence: statisticalEvidence.reviewerExclusion,
         maximumReviewerExclusionRate: 0.2,
         difficultyTierScores,
         minimumCandidatesPerDifficultyTier: PUZZLE_PLAYTEST_RELEASE_MIN_PER_DIFFICULTY_TIER,
@@ -919,17 +977,17 @@ export function createPuzzlePlaytestService(
         ),
         minimumTechniques: PUZZLE_PLAYTEST_RELEASE_MIN_TECHNIQUES,
         maximumTechniqueShare: PUZZLE_PLAYTEST_RELEASE_MAX_TECHNIQUE_SHARE,
-        candidateFloorPassRate,
+        candidateFloorPassEvidence: statisticalEvidence.candidateFloorPass,
         minimumFloorPassRate: 0.9,
-        ambiguityRate,
+        ambiguityEvidence: statisticalEvidence.ambiguity,
         maximumAmbiguityRate: 0.12,
-        visualFailureRate,
+        visualFailureEvidence: statisticalEvidence.visualFailure,
         maximumVisualFailureRate: 0.05,
-        highConfidenceWrongRate,
+        highConfidenceWrongEvidence: statisticalEvidence.highConfidenceWrong,
         maximumHighConfidenceWrongRate: 0.08,
         responsiveSolveGap,
         maximumResponsiveSolveGap: 0.12,
-        solveCalibrationCoverage,
+        solveCalibrationCoverageEvidence: statisticalEvidence.solveCalibrationCoverage,
         minimumSolveCalibrationCoverage: 0.8,
         solveCalibrationMeanAbsoluteError,
         maximumSolveCalibrationMeanAbsoluteError: 0.15,
@@ -943,10 +1001,7 @@ export function createPuzzlePlaytestService(
         minimumReviewers: PUZZLE_PLAYTEST_MARKET_MIN_REVIEWERS,
         maximumReviewerDecisionShare: reviewerCoverage.maximumDecisionShare,
         maximumAllowedReviewerDecisionShare: PUZZLE_PLAYTEST_MARKET_MAX_REVIEWER_SHARE,
-        reviewerExclusionRate: ratio(
-          reviewerQuality.excludedReviewers,
-          reviewerQuality.evaluatedReviewers
-        ),
+        reviewerExclusionEvidence: statisticalEvidence.reviewerExclusion,
         maximumReviewerExclusionRate: 0.1,
         difficultyTierScores,
         minimumCandidatesPerDifficultyTier: PUZZLE_PLAYTEST_MARKET_MIN_PER_DIFFICULTY_TIER,
@@ -957,17 +1012,17 @@ export function createPuzzlePlaytestService(
         ),
         minimumTechniques: PUZZLE_PLAYTEST_MARKET_MIN_TECHNIQUES,
         maximumTechniqueShare: PUZZLE_PLAYTEST_MARKET_MAX_TECHNIQUE_SHARE,
-        candidateFloorPassRate,
+        candidateFloorPassEvidence: statisticalEvidence.candidateFloorPass,
         minimumFloorPassRate: 0.97,
-        ambiguityRate,
+        ambiguityEvidence: statisticalEvidence.ambiguity,
         maximumAmbiguityRate: 0.05,
-        visualFailureRate,
+        visualFailureEvidence: statisticalEvidence.visualFailure,
         maximumVisualFailureRate: 0.02,
-        highConfidenceWrongRate,
+        highConfidenceWrongEvidence: statisticalEvidence.highConfidenceWrong,
         maximumHighConfidenceWrongRate: 0.03,
         responsiveSolveGap,
         maximumResponsiveSolveGap: 0.05,
-        solveCalibrationCoverage,
+        solveCalibrationCoverageEvidence: statisticalEvidence.solveCalibrationCoverage,
         minimumSolveCalibrationCoverage: 0.95,
         solveCalibrationMeanAbsoluteError,
         maximumSolveCalibrationMeanAbsoluteError: 0.1,
@@ -988,6 +1043,11 @@ export function createPuzzlePlaytestService(
             (review) => review.candidateId === candidate.id
           );
           const correct = rows.filter((review) => review.correct).length;
+          const solveEvidence = humanSolveFloorEvidence(
+            correct,
+            rows.length,
+            candidate.difficultyScore
+          );
           return {
             candidateId: candidate.id,
             puzzleId: candidate.puzzleId,
@@ -998,6 +1058,7 @@ export function createPuzzlePlaytestService(
             decisions: rows.length,
             correct,
             solveRate: ratio(correct, rows.length),
+            solveRateLowerBound: solveEvidence.lower,
             expectedSolveFloor: expectedHumanSolveFloor(candidate.difficultyScore),
             ambiguityRate: ratio(
               rows.filter((review) => review.failureReason === "multiple-answers").length,
@@ -1007,6 +1068,7 @@ export function createPuzzlePlaytestService(
         });
       return {
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        readinessVersion: PUZZLE_PLAYTEST_READINESS_VERSION,
         requiredReviewersPerProfile: PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE,
         candidateCount: generatedCandidates.length,
         openCandidates: generatedCandidates.filter((candidate) => candidate.status === "open")
@@ -1015,6 +1077,7 @@ export function createPuzzlePlaytestService(
         reviewerCount: reviewerCoverage.reviewers,
         reviewerCoverage,
         reviewerQuality,
+        statisticalEvidence,
         controlCandidateCount: controlCandidates.length,
         decisionCount: generatedReviews.length,
         completedDecisionCount: completedReviews.length,

@@ -399,7 +399,8 @@ export default function PuzzlePlaytestsPage() {
                 Release requires 30 fully covered generated puzzles; market-leading evidence
                 requires 100, with five reviewers on every responsive profile plus representative
                 reviewer, difficulty, and technique coverage. Only reviewers who pass the blinded
-                known-answer controls contribute generated-puzzle evidence.
+                known-answer controls contribute generated-puzzle evidence. Readiness uses one-sided
+                95% Wilson bounds rather than raw sample rates.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -418,6 +419,32 @@ export default function PuzzlePlaytestsPage() {
               <div>
                 <div className="text-muted-foreground text-xs">Visual failures</div>
                 <div className="font-semibold text-xl">{percent(report.visualFailureRate)}</div>
+                <div className="text-muted-foreground text-xs">
+                  {percent(report.statisticalEvidence.visualFailure.upper)} 95% upper
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Candidate floor pass</div>
+                <div className="font-semibold text-xl">
+                  {percent(report.candidateFloorPassRate)}
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  {percent(report.statisticalEvidence.candidateFloorPass.lower)} 95% lower
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Ambiguity safety bound</div>
+                <div className="font-semibold text-xl">
+                  {percent(report.statisticalEvidence.ambiguity.upper)}
+                </div>
+                <div className="text-muted-foreground text-xs">One-sided 95% upper</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">High-confidence wrong bound</div>
+                <div className="font-semibold text-xl">
+                  {percent(report.statisticalEvidence.highConfidenceWrong.upper)}
+                </div>
+                <div className="text-muted-foreground text-xs">One-sided 95% upper</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">Solve estimate MAE</div>
@@ -570,13 +597,14 @@ export default function PuzzlePlaytestsPage() {
                     </span>
                     <Badge
                       variant={
-                        candidate.solveRate !== null &&
-                        candidate.solveRate >= candidate.expectedSolveFloor
+                        candidate.solveRateLowerBound >= candidate.expectedSolveFloor
                           ? "default"
                           : "secondary"
                       }
                     >
-                      {percent(candidate.solveRate)} solve
+                      {percent(candidate.solveRate)} solve ·{" "}
+                      {percent(candidate.solveRateLowerBound)}
+                      95% lower
                     </Badge>
                   </div>
                 ))}
