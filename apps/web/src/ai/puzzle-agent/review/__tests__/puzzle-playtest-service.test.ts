@@ -171,6 +171,21 @@ describe("blind human generated-puzzle playtesting", () => {
     renderedVisuals.length = 0;
   });
 
+  it("builds an operational report without creating or completing evidence", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+
+    const report = await service.getReport("operational-audit", new Date(0), {
+      readOnly: true,
+    });
+
+    expect(store.candidates).toEqual([]);
+    expect(store.reviews).toEqual([]);
+    expect(report.candidateCount).toBe(0);
+    expect(report.controlCandidateCount).toBe(0);
+    expect(report.generatedAt).toBe(new Date(0).toISOString());
+  });
+
   it("returns only an opaque rendered-board payload", async () => {
     const { repository, store } = inMemoryRepository();
     const service = createPuzzlePlaytestService(repository, renderer);
