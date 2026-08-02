@@ -50,6 +50,15 @@ export {
 } from "./quality-score";
 export { compareIconBenchmarkReports, scoreIconBenchmark } from "./score";
 export {
+  auditStaticPuzzleCorpus,
+  STATIC_PUZZLE_AUDIT_VERSION,
+  type StaticAssetAuditItem,
+  type StaticAuditPuzzle,
+  type StaticPuzzleAuditOptions,
+  type StaticPuzzleAuditItem,
+  type StaticPuzzleAuditReport,
+} from "./static-audit";
+export {
   ICON_BENCHMARK_TILE_SIZES,
   type IconBenchmarkCase,
   type IconBenchmarkObservation,

@@ -208,6 +208,14 @@ Production defaults bound the expensive portion of a daily generation to two Ape
 
 Gateway account/project budget exhaustion is terminal, not a transient quota. The client must stop model fallback immediately, the puzzle agent must stop its attempt loop, Apex must stop remaining candidate slots, and the daily workflow must skip the downstream blog call. Public workflow responses use the sanitized `AI_BUDGET_EXCEEDED` code and never expose spend or limit details.
 
+Before any credentialed benchmark or live canary, run the no-spend static preflight:
+
+```bash
+pnpm --filter @rebuzzle/web benchmark:puzzles:static
+```
+
+It renders the frozen positive solve corpus and catalog-grounded reserve inventory at every production board profile, rechecks local schema/provenance and answer-leak invariants, and reruns 36px/72px pictogram pixel-integrity checks. A passing report proves mechanical renderability only; semantic recognition, fairness, diversity, and player outcomes still require independent model and human evidence.
+
 The current provisional SLOs are 1% player-reported unrecognizable, 2% ambiguous or unfair, 20% dislike, and 5% attempted-generation failure/fallback. A player metric needs at least 20 fast-window or 50 slow-window votes; generation health uses 5 and 14 attempts because production generation is approximately daily. A critical halt requires statistically confirmed breaches in both windows, at least three/five player events (two/three generation events), at least 4x fast burn, and at least 2x slow burn. Slow-only or lower-burn confirmed drift blocks evaluator/model promotion and triggers review, but does not replace a potentially good AI puzzle with reserve content.
 
 When any metric is critical, the daily generation action does not call the AI generator. It persists an unused, catalog-grounded reserve puzzle through the same novelty archive and publication locks, records the reason, and reevaluates the rolling windows on the next generation opportunity. Circuit-open reserve days are not counted as failed AI attempts because no AI attempt occurred. If quality telemetry itself is unavailable, the health endpoint fails visibly; the generation path logs the monitoring loss and retains all candidate-level fail-closed recognition, solve, editorial, novelty, and persistence gates.

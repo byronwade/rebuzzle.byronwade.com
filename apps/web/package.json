@@ -34,6 +34,7 @@
     "benchmark:puzzles:live-canary": "tsx scripts/benchmark-live-generator.ts",
     "benchmark:puzzles:catalog-sheet": "tsx scripts/render-curated-catalog.ts",
     "benchmark:puzzles:reserve-sheet": "tsx scripts/render-reserve-puzzles.ts",
+    "benchmark:puzzles:static": "tsx scripts/benchmark-static-puzzles.ts",
     "benchmark:puzzles:solve": "tsx scripts/benchmark-puzzle-solving.ts",
     "benchmark:puzzles:external:import": "tsx scripts/import-external-puzzle-corpus.ts",
     "benchmark:puzzles:external:review-template": "tsx scripts/create-external-review-template.ts",
