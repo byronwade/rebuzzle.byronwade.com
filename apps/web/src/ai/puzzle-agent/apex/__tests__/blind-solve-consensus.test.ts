@@ -1,6 +1,31 @@
-import { summarizeBlindSolveAttempts } from "../blind-solve-consensus";
+import { blindAnswerMatch, summarizeBlindSolveAttempts } from "../blind-solve-consensus";
 
 describe("blind screenshot solve consensus", () => {
+  it("uses exact normalized phrases instead of typo-tolerant solve credit", () => {
+    expect(blindAnswerMatch("car-key", "car key")).toBe(true);
+    expect(blindAnswerMatch("cars", "car")).toBe(false);
+    expect(blindAnswerMatch("the car", "car")).toBe(false);
+  });
+
+  it("does not count a near-match as a successful visual solve", () => {
+    const summary = summarizeBlindSolveAttempts({
+      answer: "car",
+      attempts: [
+        {
+          model: "vision-a",
+          profileId: "compact-320",
+          visibleElements: ["car"],
+          relationships: ["single object"],
+          hypotheses: [{ answer: "cars", confidence: 0.9, rationale: "looks like a car" }],
+          confidence: 0.9,
+        },
+      ],
+    });
+
+    expect(summary.targetFoundBy).toBe(0);
+    expect(summary.wrongParses).toEqual(["cars"]);
+  });
+
   it("derives solve rate only from answer hypotheses", () => {
     const summary = summarizeBlindSolveAttempts({
       answer: "car key",

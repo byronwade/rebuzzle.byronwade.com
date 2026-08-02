@@ -1,9 +1,9 @@
-import { fuzzyMatch } from "@rebuzzle/game-logic/fuzzy-match";
 import {
   BLIND_SOLVE_DOMINANCE_MARGIN,
   BLIND_SOLVE_REQUIRED_VOTES,
   distinctJudgeResults,
 } from "../quality-contract";
+import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
 import type { PlayerSimResult } from "./types";
 
 export type BlindSolveHypothesis = {
@@ -53,6 +53,25 @@ export type BlindSolveProfileResult = {
   strongestWrongConfidence: number;
 };
 
+/**
+ * Blind recognition evidence is intentionally stricter than player answer
+ * validation. A typo-tolerant match can make a visually wrong answer look
+ * like a successful solve and hide an ambiguous board from publication.
+ * Punctuation and whitespace variants are harmless; different words are not.
+ */
+export function blindAnswerMatch(input: string, target: string): boolean {
+  const normalize = (value: string) =>
+    value
+      .normalize("NFKC")
+      .toLocaleLowerCase("en-US")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  const normalizedInput = normalize(input);
+  const normalizedTarget = normalize(target);
+  return Boolean(normalizedInput && normalizedInput === normalizedTarget);
+}
+
 type RankedAttempt = {
   attempt: BlindSolveAttempt;
   ranked: BlindSolveHypothesis[];
@@ -70,22 +89,35 @@ type RankedAttempt = {
  */
 export function blindSolvePublishBlockers(
   sim: PlayerSimResult,
-  expectedProfileCount = 3,
+  expectedProfileIds: readonly string[] = PUZZLE_BOARD_RECOGNITION_PROFILES.map(
+    (profile) => profile.id
+  ),
   requiredVotes = BLIND_SOLVE_REQUIRED_VOTES
 ): string[] {
   const blockers: string[] = [];
+  const expectedProfileCount = expectedProfileIds.length;
   if (sim.confidence < 0.45) {
     blockers.push("Blind screenshot solve simulation was unavailable or low-confidence");
   }
   const profileResults = sim.blindProfileResults ?? [];
-  const uniqueProfileCount = new Set(profileResults.map((profile) => profile.profileId)).size;
+  const observedProfileIds = new Set(profileResults.map((profile) => profile.profileId));
+  const missingProfileIds = expectedProfileIds.filter((id) => !observedProfileIds.has(id));
+  const unexpectedProfileIds = Array.from(observedProfileIds).filter(
+    (id) => !expectedProfileIds.includes(id)
+  );
   if (
     profileResults.length !== expectedProfileCount ||
-    uniqueProfileCount !== expectedProfileCount ||
-    (sim.blindProfileCount ?? 0) !== expectedProfileCount
+    observedProfileIds.size !== expectedProfileCount ||
+    (sim.blindProfileCount ?? 0) !== expectedProfileCount ||
+    missingProfileIds.length > 0 ||
+    unexpectedProfileIds.length > 0
   ) {
+    const coverageDetails = [
+      missingProfileIds.length > 0 ? `; missing: ${missingProfileIds.join(", ")}` : "",
+      unexpectedProfileIds.length > 0 ? `; unexpected: ${unexpectedProfileIds.join(", ")}` : "",
+    ].join("");
     blockers.push(
-      "Blind solve tournament did not cover each production board profile exactly once"
+      `Blind solve tournament did not cover the exact production board profiles${coverageDetails}`
     );
   }
   if (profileResults.length === 0) {
@@ -191,11 +223,11 @@ export function toPlayabilityEvidence(sim: PlayerSimResult): {
 
 function rankAttempt(answer: string, attempt: BlindSolveAttempt): RankedAttempt {
   const ranked = [...attempt.hypotheses].sort((a, b) => b.confidence - a.confidence);
-  const targetIndex = ranked.findIndex((hypothesis) => fuzzyMatch(hypothesis.answer, answer, 82));
+  const targetIndex = ranked.findIndex((hypothesis) => blindAnswerMatch(hypothesis.answer, answer));
   const target = targetIndex >= 0 ? ranked[targetIndex] : undefined;
   const strongestWrongConfidence = ranked.reduce(
     (strongest, hypothesis) =>
-      fuzzyMatch(hypothesis.answer, answer, 82)
+      blindAnswerMatch(hypothesis.answer, answer)
         ? strongest
         : Math.max(strongest, hypothesis.confidence),
     0
@@ -244,7 +276,7 @@ export function summarizeBlindSolveAttempts(input: {
     new Map(
       rankedAttempts
         .flatMap((result) => result.ranked)
-        .filter((hypothesis) => !fuzzyMatch(hypothesis.answer, input.answer, 82))
+        .filter((hypothesis) => !blindAnswerMatch(hypothesis.answer, input.answer))
         .sort((a, b) => b.confidence - a.confidence)
         .map((hypothesis) => [hypothesis.answer.toLowerCase(), hypothesis.answer])
     ).values()
