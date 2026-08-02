@@ -48,7 +48,7 @@ describe("daily content workflow", () => {
 
   afterEach(() => {
     jest.useRealTimers();
-    if (originalCronSecret === undefined) delete process.env.CRON_SECRET;
+    if (originalCronSecret === undefined) process.env.CRON_SECRET = undefined;
     else process.env.CRON_SECRET = originalCronSecret;
   });
 
@@ -105,5 +105,78 @@ describe("daily content workflow", () => {
       date: "2026-08-03",
       error: "gateway unavailable",
     });
+  });
+
+  it("stops before blog generation when the Gateway spending cap is exhausted", async () => {
+    const budgetError = Object.assign(new Error("Gateway request failed"), {
+      name: "GatewayError",
+      data: {
+        error: {
+          type: "quota_for_entity_exceeded",
+          message: "API key budget exceeded. Current spend: $10.40, limit: $10.00.",
+        },
+      },
+    });
+    getTodaysPuzzle.mockRejectedValue(budgetError);
+
+    const response = await POST(
+      new Request("https://rebuzzle.test/api/workflows/daily-content", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-cron-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ triggeredBy: "test" }),
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.nextPuzzle).toEqual({
+      success: false,
+      date: "2026-08-03",
+      error: "AI Gateway budget exhausted. Increase the project Gateway budget before retrying.",
+      errorCode: "AI_BUDGET_EXCEEDED",
+    });
+    expect(data.blog).toEqual({
+      success: false,
+      skipped: "ai_budget_exceeded",
+      error: "AI Gateway budget exhausted",
+    });
+    expect(findOne).not.toHaveBeenCalled();
+    expect(proposeBlogForPuzzle).not.toHaveBeenCalled();
+    expect(JSON.stringify(data)).not.toContain("$10.40");
+    expect(JSON.stringify(data)).not.toContain("quota_for_entity_exceeded");
+  });
+
+  it("skips next-day and blog calls when today's generation reports the spending cap", async () => {
+    generateNextPuzzle.mockResolvedValue({
+      success: false,
+      error: "API key budget exceeded. Current spend: $10.40, limit: $10.00.",
+    });
+
+    const response = await POST(
+      new Request("https://rebuzzle.test/api/workflows/daily-content", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-cron-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ triggeredBy: "test" }),
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(getTodaysPuzzle).not.toHaveBeenCalled();
+    expect(findOne).not.toHaveBeenCalled();
+    expect(proposeBlogForPuzzle).not.toHaveBeenCalled();
+    expect(data.nextPuzzle).toMatchObject({
+      success: false,
+      errorCode: "AI_BUDGET_EXCEEDED",
+      skipped: "ai_budget_exceeded",
+    });
+    expect(data.blog.skipped).toBe("ai_budget_exceeded");
+    expect(JSON.stringify(data)).not.toContain("$10.40");
   });
 });

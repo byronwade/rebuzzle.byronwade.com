@@ -47,6 +47,68 @@ export class QuotaExceededError extends AIError {
   }
 }
 
+/** A project/account spending cap. Retrying cannot succeed until an operator changes it. */
+export class AIBudgetExceededError extends AIError {
+  constructor() {
+    super(
+      "AI Gateway budget exhausted. Increase the project Gateway budget before retrying.",
+      "AI_BUDGET_EXCEEDED",
+      429
+    );
+    this.name = "AIBudgetExceededError";
+  }
+}
+
+function collectErrorSignals(error: unknown): string {
+  const signals: string[] = [];
+  const queue: Array<{ value: unknown; depth: number }> = [{ value: error, depth: 0 }];
+  const seen = new Set<unknown>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || current.depth > 6 || current.value == null) continue;
+
+    if (typeof current.value === "string" || typeof current.value === "number") {
+      signals.push(String(current.value));
+      continue;
+    }
+    if (typeof current.value !== "object" || seen.has(current.value)) continue;
+    seen.add(current.value);
+
+    const record = current.value as Record<string, unknown>;
+    for (const key of ["name", "message", "type", "code"]) {
+      const value = record[key];
+      if (typeof value === "string" || typeof value === "number") {
+        signals.push(String(value));
+      }
+    }
+    for (const key of ["data", "error", "cause", "lastError", "errors"]) {
+      const value = record[key];
+      if (Array.isArray(value)) {
+        for (const item of value) queue.push({ value: item, depth: current.depth + 1 });
+      } else if (value != null) {
+        queue.push({ value, depth: current.depth + 1 });
+      }
+    }
+  }
+
+  return signals.join(" ");
+}
+
+/** True only for a hard project/account budget cap, not a transient rate quota. */
+export function isHardAIBudgetError(error: unknown): boolean {
+  if (error instanceof AIBudgetExceededError) return true;
+  if (error instanceof AIError && error.code === "AI_BUDGET_EXCEEDED") return true;
+
+  const signals = collectErrorSignals(error);
+  return (
+    /quota_for_entity_exceeded/i.test(signals) ||
+    /api key budget exceeded/i.test(signals) ||
+    /(?:project|account|gateway) budget (?:has been )?exceeded/i.test(signals) ||
+    /current spend[^\n]*limit/i.test(signals)
+  );
+}
+
 export class RateLimitError extends AIError {
   constructor(public retryAfter?: number) {
     super("Rate limit exceeded. Please slow down your requests.", "RATE_LIMIT", 429);
@@ -69,6 +131,12 @@ export class AIProviderError extends AIError {
  * Parse AI SDK errors into typed errors
  */
 export function parseAIError(error: unknown): AIError {
+  // Spending caps are terminal. Detect nested Gateway/RetryError payloads before
+  // generic auth or quota handling so callers can stop all fallback fan-out.
+  if (isHardAIBudgetError(error)) {
+    return error instanceof AIBudgetExceededError ? error : new AIBudgetExceededError();
+  }
+
   if (error instanceof AIError) {
     return error;
   }
@@ -250,6 +318,17 @@ export function createErrorResponse(error: AIError): {
   fallbackAvailable: boolean;
   message: string;
 } {
+  if (error instanceof AIBudgetExceededError || error.code === "AI_BUDGET_EXCEEDED") {
+    return {
+      error: "AI Budget Exceeded",
+      code: error.code,
+      statusCode: error.statusCode || 429,
+      retryable: false,
+      fallbackAvailable: false,
+      message: error.message,
+    };
+  }
+
   if (error instanceof QuotaExceededError) {
     return {
       error: "AI Quota Exceeded",

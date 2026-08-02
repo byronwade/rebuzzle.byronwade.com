@@ -11,7 +11,7 @@ import { createGateway, gateway } from "@ai-sdk/gateway";
 import { generateText, type LanguageModel, Output, streamText } from "ai";
 import type { z } from "zod";
 import { AI_CONFIG, validateApiKeys } from "./config";
-import { AIError, AIProviderError, parseAIError, QuotaExceededError } from "./errors";
+import { AIProviderError, isHardAIBudgetError, parseAIError, QuotaExceededError } from "./errors";
 import { assertGatewayAuthConfigured, ensureGatewayKey, getGatewayApiKey } from "./gateway-auth";
 import { enforceQuota } from "./quota-manager";
 
@@ -68,6 +68,7 @@ function usageFromResult(usage: {
 }
 
 function isRetryableModelError(error: unknown): boolean {
+  if (isHardAIBudgetError(error)) return false;
   const parsed = parseAIError(error);
   if (parsed instanceof QuotaExceededError || parsed.code === "QUOTA_EXCEEDED") return true;
   if (parsed.code === "RATE_LIMIT" || parsed.code === "MODEL_NOT_FOUND") return true;
@@ -291,9 +292,10 @@ export async function withRetry<T>(
     try {
       return await operation();
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (error instanceof AIError && error.code === "QUOTA_EXCEEDED") {
-        throw error;
+      const parsed = parseAIError(error);
+      lastError = parsed;
+      if (parsed.code === "QUOTA_EXCEEDED" || parsed.code === "AI_BUDGET_EXCEEDED") {
+        throw parsed;
       }
       if (attempt < maxAttempts) {
         const delay = Math.min(

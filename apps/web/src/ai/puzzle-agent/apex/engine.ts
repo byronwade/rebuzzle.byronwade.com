@@ -9,6 +9,7 @@
  */
 
 import { AI_CONFIG } from "../../config";
+import { isHardAIBudgetError, parseAIError } from "../../errors";
 import { isKnownTechniqueId } from "../quality";
 import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-generation";
 import type { PuzzleAgentResult } from "../schemas";
@@ -248,7 +249,9 @@ export async function runApexGeneration(
 
       const result = await runPuzzleAgentGeneration({
         ...params,
-        maxAttempts: Math.min(params.maxAttempts ?? 2, 2),
+        // Host-side quality gates remain strict; do not pay for a second full
+        // agent + vision tournament unless an operator explicitly requests it.
+        maxAttempts: Math.min(params.maxAttempts ?? 1, 2),
         qualityThreshold: brief.qualityThreshold,
         briefSummary: brief.briefSummary,
         preferredTechniques: focusTechnique
@@ -266,6 +269,9 @@ export async function runApexGeneration(
 
       candidates.push(toCandidate(result, brief, slot));
     } catch (error) {
+      if (isHardAIBudgetError(error)) {
+        throw parseAIError(error);
+      }
       failures.push(error instanceof Error ? error.message : String(error));
     }
   }
