@@ -50,7 +50,7 @@ WRITING STYLE:
 
 SEO REQUIREMENTS:
 - Use clear H2 and H3 headings for structure
-- Include the puzzle answer naturally 5-8 times (NOT in title)
+- Keep the puzzle answer completely spoiler-safe outside the dedicated solution section
 - Target 1200-2000 words for comprehensive coverage
 - Include FAQ section for featured snippets
 - Focus keyword in first 100 words
@@ -183,7 +183,7 @@ ${originInfoText}
 - Hook readers immediately with an engaging opening
 - Introduce the puzzle type and today's challenge
 - Include focus keyword in first 100 words
-- Mention the answer "${puzzle.answer}" naturally for SEO
+- Do not mention or hint at the answer "${puzzle.answer}"
 - Set expectations for what readers will learn
 
 ## 2. PUZZLE ANALYSIS (200-300 words)
@@ -215,6 +215,7 @@ ${
 - Walk through the logic step-by-step
 - Explain the "aha" moment
 - Connect back to the strategy section
+- This is the ONLY section where the answer may appear
 
 ## 6. FAQ SECTION (3-5 Q&As)
 Create relevant FAQs such as:
@@ -222,6 +223,7 @@ Create relevant FAQs such as:
 - "What makes this puzzle challenging?"
 - "How can I improve at ${puzzleTypeName.toLowerCase()} puzzles?"
 - "Where can I find more puzzles like this?"
+- Keep every FAQ spoiler-free; never include the answer
 
 ## 7. CALL TO ACTION (50-80 words)
 - Encourage readers to try today's puzzle
@@ -229,7 +231,8 @@ Create relevant FAQs such as:
 - Invite them to explore more content
 
 **SEO REQUIREMENTS:**
-- Include "${puzzle.answer}" naturally 5-8 times (NOT in title)
+- Do not include "${puzzle.answer}" in the title, meta description, excerpt, or any section except THE SOLUTION
+- Mention the answer only 2-4 times inside THE SOLUTION
 - Use "${puzzleTypeName.toLowerCase()} puzzle" 3-5 times
 - Include related keywords: solve, strategy, tips, challenge, brain teaser
 - Proper H2/H3 heading structure
