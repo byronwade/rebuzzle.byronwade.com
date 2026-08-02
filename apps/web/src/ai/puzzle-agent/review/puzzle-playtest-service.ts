@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { fuzzyMatch, normalizeString } from "@rebuzzle/game-logic/fuzzy-match";
 import type {
   PuzzlePlaytestCandidate,
+  PuzzlePlaytestEvidenceRole,
   PuzzlePlaytestFailureReason,
   PuzzlePlaytestReview,
 } from "@/db/models";
@@ -13,9 +14,12 @@ import {
   type PuzzleBoardRecognitionProfileId,
 } from "../visual/presentation";
 import { renderPuzzleVisualProfile } from "../visual/render-board";
+import { buildPuzzlePlaytestControlCorpus } from "./puzzle-playtest-controls";
 
-export const PUZZLE_PLAYTEST_CONTRACT_VERSION = "puzzle-playtest-v2";
+export const PUZZLE_PLAYTEST_CONTRACT_VERSION = "puzzle-playtest-v3";
 export const PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE = 5;
+export const PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER = 4;
+export const PUZZLE_PLAYTEST_MINIMUM_CORRECT_CONTROLS = 3;
 export const PUZZLE_PLAYTEST_RELEASE_SAMPLE = 30;
 export const PUZZLE_PLAYTEST_MARKET_SAMPLE = 100;
 export const PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS = 20;
@@ -91,6 +95,18 @@ export type PuzzlePlaytestReviewerCoverage = {
   maximumDecisionShare: number | null;
 };
 
+export type PuzzlePlaytestReviewerQuality = {
+  reviewers: number;
+  evaluatedReviewers: number;
+  qualifiedReviewers: number;
+  excludedReviewers: number;
+  pendingReviewers: number;
+  qualificationRate: number | null;
+  controlDecisions: number;
+  qualifiedGeneratedDecisions: number;
+  unscoredGeneratedDecisions: number;
+};
+
 export type PuzzlePlaytestReport = {
   contractVersion: typeof PUZZLE_PLAYTEST_CONTRACT_VERSION;
   requiredReviewersPerProfile: number;
@@ -99,6 +115,8 @@ export type PuzzlePlaytestReport = {
   completedCandidates: number;
   reviewerCount: number;
   reviewerCoverage: PuzzlePlaytestReviewerCoverage;
+  reviewerQuality: PuzzlePlaytestReviewerQuality;
+  controlCandidateCount: number;
   decisionCount: number;
   completedDecisionCount: number;
   overallSolveRate: number | null;
@@ -132,6 +150,7 @@ export type PuzzlePlaytestRepository = {
   listCandidates(input: {
     contractVersion: string;
     statuses?: PuzzlePlaytestCandidate["status"][];
+    evidenceRoles?: PuzzlePlaytestEvidenceRole[];
     limit?: number;
   }): Promise<PuzzlePlaytestCandidate[]>;
   listReviews(input: {
@@ -225,6 +244,50 @@ function uniqueReviews(reviews: PuzzlePlaytestReview[]): PuzzlePlaytestReview[] 
   });
 }
 
+type ReviewerQualificationStatus = "pending" | "qualified" | "excluded";
+
+type ReviewerQualification = {
+  status: ReviewerQualificationStatus;
+  decisions: number;
+  correct: number;
+};
+
+function reviewerQualification(
+  reviews: PuzzlePlaytestReview[],
+  controlCandidateIds: ReadonlySet<string>
+): ReviewerQualification {
+  const controls = reviews
+    .filter((review) => controlCandidateIds.has(review.candidateId))
+    .slice(0, PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER);
+  const correct = controls.filter((review) => review.correct).length;
+  if (controls.length < PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER) {
+    return { status: "pending", decisions: controls.length, correct };
+  }
+  return {
+    status: correct >= PUZZLE_PLAYTEST_MINIMUM_CORRECT_CONTROLS ? "qualified" : "excluded",
+    decisions: controls.length,
+    correct,
+  };
+}
+
+function reviewerQualificationMap(
+  reviews: PuzzlePlaytestReview[],
+  controlCandidateIds: ReadonlySet<string>
+): Map<string, ReviewerQualification> {
+  const byReviewer = new Map<string, PuzzlePlaytestReview[]>();
+  for (const review of reviews) {
+    const rows = byReviewer.get(review.reviewerId) ?? [];
+    rows.push(review);
+    byReviewer.set(review.reviewerId, rows);
+  }
+  return new Map(
+    [...byReviewer].map(([reviewerId, rows]) => [
+      reviewerId,
+      reviewerQualification(rows, controlCandidateIds),
+    ])
+  );
+}
+
 function reportFailures(input: {
   completedCandidates: number;
   minimumCandidates: number;
@@ -232,6 +295,8 @@ function reportFailures(input: {
   minimumReviewers: number;
   maximumReviewerDecisionShare: number | null;
   maximumAllowedReviewerDecisionShare: number;
+  reviewerExclusionRate: number | null;
+  maximumReviewerExclusionRate: number;
   difficultyTierScores: PuzzlePlaytestStratumScore[];
   minimumCandidatesPerDifficultyTier: number;
   techniqueScores: PuzzlePlaytestStratumScore[];
@@ -269,6 +334,12 @@ function reportFailures(input: {
     input.maximumReviewerDecisionShare > input.maximumAllowedReviewerDecisionShare
   ) {
     failures.push(`One-reviewer decision share above ${input.maximumAllowedReviewerDecisionShare}`);
+  }
+  if (
+    input.reviewerExclusionRate === null ||
+    input.reviewerExclusionRate > input.maximumReviewerExclusionRate
+  ) {
+    failures.push(`Failed-control reviewer rate above ${input.maximumReviewerExclusionRate}`);
   }
   const undercoveredDifficultyTiers = input.difficultyTierScores
     .filter((score) => score.candidates < input.minimumCandidatesPerDifficultyTier)
@@ -353,18 +424,84 @@ export function createPuzzlePlaytestService(
   renderer: PuzzlePlaytestRenderer = async (visual, profileId) =>
     renderPuzzleVisualProfile(PuzzleVisualSchema.parse(visual), profileId)
 ) {
-  async function evaluateCandidate(candidate: PuzzlePlaytestCandidate) {
-    const reviews = uniqueReviews(
-      await repository.listReviews({
+  async function ensureControlCandidates(now = new Date()): Promise<PuzzlePlaytestCandidate[]> {
+    const existingCandidates = await repository.listCandidates({
+      contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+      evidenceRoles: ["control"],
+      limit: 100,
+    });
+    const existingPuzzleIds = new Set(existingCandidates.map((candidate) => candidate.puzzleId));
+    let foundMissingControl = false;
+    for (const control of buildPuzzlePlaytestControlCorpus()) {
+      const puzzleId = `reviewer-control:${control.id}`;
+      if (existingPuzzleIds.has(puzzleId)) continue;
+      foundMissingControl = true;
+      const visual = PuzzleVisualSchema.parse(control.visual);
+      await repository.insertCandidate({
+        id: `puzzle-playtest-control:${sha256(`${control.id}:${control.answer}:${JSON.stringify(visual)}`).slice(0, 32)}`,
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
-        candidateIds: [candidate.id],
-      })
+        evidenceRole: "control",
+        puzzleId,
+        answer: control.answer,
+        answerKey: normalizeString(control.answer).replaceAll(" ", ""),
+        visual,
+        techniqueId: "simple_compound",
+        difficultyScore: 1,
+        difficultyLevel: "control",
+        generationMethod: "frozen-reviewer-control",
+        status: "open",
+        statusVersion: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    return foundMissingControl
+      ? repository.listCandidates({
+          contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+          evidenceRoles: ["control"],
+          limit: 100,
+        })
+      : existingCandidates;
+  }
+
+  async function loadEvidence(): Promise<{
+    candidates: PuzzlePlaytestCandidate[];
+    reviews: PuzzlePlaytestReview[];
+  }> {
+    const controls = await ensureControlCandidates();
+    const [generated, reviews] = await Promise.all([
+      repository.listCandidates({
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        evidenceRoles: ["generated"],
+        limit: 2000,
+      }),
+      repository.listReviews({
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+      }),
+    ]);
+    return { candidates: [...generated, ...controls], reviews: uniqueReviews(reviews) };
+  }
+
+  async function evaluateCandidate(
+    candidate: PuzzlePlaytestCandidate,
+    evidence?: { candidates: PuzzlePlaytestCandidate[]; reviews: PuzzlePlaytestReview[] }
+  ) {
+    if (candidate.evidenceRole === "control" || candidate.status === "complete") return candidate;
+    const current = evidence ?? (await loadEvidence());
+    const controlIds = new Set(
+      current.candidates.filter((row) => row.evidenceRole === "control").map((row) => row.id)
     );
-    const counts = countByProfile(reviews);
+    const qualifications = reviewerQualificationMap(current.reviews, controlIds);
+    const qualifiedReviews = current.reviews.filter(
+      (review) =>
+        review.candidateId === candidate.id &&
+        qualifications.get(review.reviewerId)?.status === "qualified"
+    );
+    const counts = countByProfile(qualifiedReviews);
     const complete = PUZZLE_BOARD_RECOGNITION_PROFILES.every(
       (profile) => (counts.get(profile.id) ?? 0) >= PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE
     );
-    if (!complete || candidate.status === "complete") return candidate;
+    if (!complete) return candidate;
     return (
       (await repository.completeCandidate({
         id: candidate.id,
@@ -372,6 +509,99 @@ export function createPuzzlePlaytestService(
         updatedAt: new Date(),
       })) ?? candidate
     );
+  }
+
+  async function refreshCandidateCompletions(): Promise<void> {
+    const evidence = await loadEvidence();
+    for (const candidate of evidence.candidates) {
+      if (candidate.evidenceRole === "generated" && candidate.status === "open") {
+        await evaluateCandidate(candidate, evidence);
+      }
+    }
+  }
+
+  async function getNextAssignment(reviewerIdInput: string): Promise<{
+    specimen: BlindPuzzlePlaytestSpecimen | null;
+    progress: PuzzlePlaytestProgress;
+  }> {
+    const reviewerId = reviewerIdInput.trim().slice(0, 100);
+    if (!reviewerId) throw new Error("Reviewer is required");
+    const { candidates, reviews } = await loadEvidence();
+    const generatedCandidates = candidates.filter(
+      (candidate) => candidate.evidenceRole === "generated" && candidate.status === "open"
+    );
+    const controlCandidates = candidates.filter(
+      (candidate) => candidate.evidenceRole === "control" && candidate.status === "open"
+    );
+    const controlIds = new Set(controlCandidates.map((candidate) => candidate.id));
+    const reviewerReviews = reviews.filter((review) => review.reviewerId === reviewerId);
+    const qualifications = reviewerQualificationMap(reviews, controlIds);
+    const reviewed = new Set(reviewerReviews.map((review) => review.candidateId));
+    const qualification = reviewerQualification(reviewerReviews, controlIds);
+    const pendingControls = controlCandidates
+      .filter((candidate) => !reviewed.has(candidate.id))
+      .sort((left, right) =>
+        sha256(`${reviewerId}:control:${left.id}`).localeCompare(
+          sha256(`${reviewerId}:control:${right.id}`)
+        )
+      );
+    const pendingGenerated = generatedCandidates
+      .filter((candidate) => !reviewed.has(candidate.id))
+      .sort((left, right) =>
+        sha256(`${reviewerId}:generated:${left.id}`).localeCompare(
+          sha256(`${reviewerId}:generated:${right.id}`)
+        )
+      );
+    const reviewerGeneratedDecisions = reviewerReviews.filter(
+      (review) => !controlIds.has(review.candidateId)
+    ).length;
+    const shouldServeControl =
+      qualification.status === "pending" &&
+      (reviewerGeneratedDecisions >= qualification.decisions || pendingGenerated.length === 0);
+    const candidate =
+      qualification.status === "excluded"
+        ? undefined
+        : qualification.status === "qualified"
+          ? pendingGenerated[0]
+          : shouldServeControl
+            ? pendingControls[0]
+            : (pendingGenerated[0] ?? pendingControls[0]);
+    const completed =
+      generatedCandidates.filter((row) => reviewed.has(row.id)).length +
+      Math.min(qualification.decisions, PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER);
+    const available =
+      qualification.status === "excluded"
+        ? completed
+        : generatedCandidates.length +
+          Math.min(controlCandidates.length, PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER);
+    if (!candidate) {
+      return { specimen: null, progress: progress(available, completed) };
+    }
+    const candidateReviews = reviews.filter(
+      (review) =>
+        review.candidateId === candidate.id &&
+        qualifications.get(review.reviewerId)?.status !== "excluded"
+    );
+    const counts = countByProfile(candidateReviews);
+    const profile = [...PUZZLE_BOARD_RECOGNITION_PROFILES].sort((left, right) => {
+      const countDelta = (counts.get(left.id) ?? 0) - (counts.get(right.id) ?? 0);
+      return (
+        countDelta ||
+        sha256(`${reviewerId}:${candidate.id}:${left.id}`).localeCompare(
+          sha256(`${reviewerId}:${candidate.id}:${right.id}`)
+        )
+      );
+    })[0]!;
+    const rendered = await renderer(candidate.visual, profile.id);
+    return {
+      specimen: {
+        fixtureId: fixtureId(candidate.id, profile.id),
+        imageDataUrl: `data:image/png;base64,${Buffer.from(rendered.pixels).toString("base64")}`,
+        width: rendered.width,
+        height: rendered.height,
+      },
+      progress: progress(available, completed),
+    };
   }
 
   return {
@@ -399,6 +629,7 @@ export function createPuzzlePlaytestService(
       const candidate: PuzzlePlaytestCandidate = {
         id: `puzzle-playtest:${sha256(`${puzzleId}:${answer}:${JSON.stringify(visual)}`).slice(0, 32)}`,
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        evidenceRole: "generated",
         puzzleId,
         answer,
         answerKey: normalizeString(answer).replaceAll(" ", ""),
@@ -430,57 +661,7 @@ export function createPuzzlePlaytestService(
       specimen: BlindPuzzlePlaytestSpecimen | null;
       progress: PuzzlePlaytestProgress;
     }> {
-      const reviewerId = reviewerIdInput.trim().slice(0, 100);
-      if (!reviewerId) throw new Error("Reviewer is required");
-      const [candidates, reviewerReviews] = await Promise.all([
-        repository.listCandidates({
-          contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
-          statuses: ["open"],
-          limit: 200,
-        }),
-        repository.listReviews({
-          contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
-          reviewerId,
-        }),
-      ]);
-      const reviewed = new Set(reviewerReviews.map((review) => review.candidateId));
-      const available = candidates.length;
-      const completed = candidates.filter((candidate) => reviewed.has(candidate.id)).length;
-      const pending = candidates
-        .filter((candidate) => !reviewed.has(candidate.id))
-        .sort((left, right) =>
-          sha256(`${reviewerId}:${left.id}`).localeCompare(sha256(`${reviewerId}:${right.id}`))
-        );
-      const candidate = pending[0];
-      if (!candidate) {
-        return { specimen: null, progress: progress(available, completed) };
-      }
-      const candidateReviews = uniqueReviews(
-        await repository.listReviews({
-          contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
-          candidateIds: [candidate.id],
-        })
-      );
-      const counts = countByProfile(candidateReviews);
-      const profile = [...PUZZLE_BOARD_RECOGNITION_PROFILES].sort((left, right) => {
-        const countDelta = (counts.get(left.id) ?? 0) - (counts.get(right.id) ?? 0);
-        return (
-          countDelta ||
-          sha256(`${reviewerId}:${candidate.id}:${left.id}`).localeCompare(
-            sha256(`${reviewerId}:${candidate.id}:${right.id}`)
-          )
-        );
-      })[0]!;
-      const rendered = await renderer(candidate.visual, profile.id);
-      return {
-        specimen: {
-          fixtureId: fixtureId(candidate.id, profile.id),
-          imageDataUrl: `data:image/png;base64,${Buffer.from(rendered.pixels).toString("base64")}`,
-          width: rendered.width,
-          height: rendered.height,
-        },
-        progress: progress(available, completed),
-      };
+      return getNextAssignment(reviewerIdInput);
     },
 
     async submitReview(input: {
@@ -495,11 +676,8 @@ export function createPuzzlePlaytestService(
     }): Promise<PuzzlePlaytestProgress> {
       const reviewerId = input.reviewerId.trim().slice(0, 100);
       if (!reviewerId) throw new Error("Reviewer is required");
-      const candidates = await repository.listCandidates({
-        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
-        statuses: ["open"],
-        limit: 200,
-      });
+      const { candidates: allCandidates } = await loadEvidence();
+      const candidates = allCandidates.filter((candidate) => candidate.status === "open");
       const match = candidates
         .map((candidate) => ({
           candidate,
@@ -539,29 +717,45 @@ export function createPuzzlePlaytestService(
         createdAt: input.now ?? new Date(),
       });
       if (!inserted) throw new PuzzlePlaytestConflictError();
-      await evaluateCandidate(match.candidate);
-      return (await this.getNext(reviewerId)).progress;
+      if (match.candidate.evidenceRole === "control") {
+        await refreshCandidateCompletions();
+      } else {
+        await evaluateCandidate(match.candidate);
+      }
+      return (await getNextAssignment(reviewerId)).progress;
     },
 
     async getReport(reviewerIdInput: string, now = new Date()): Promise<PuzzlePlaytestReport> {
       const reviewerId = reviewerIdInput.trim().slice(0, 100);
       if (!reviewerId) throw new Error("Reviewer is required");
-      const [candidates, rawReviews, rawReviewerReviews] = await Promise.all([
-        repository.listCandidates({
-          contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
-          limit: 1000,
-        }),
-        repository.listReviews({ contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION }),
-        repository.listReviews({ contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION, reviewerId }),
-      ]);
-      const reviews = uniqueReviews(rawReviews);
-      const reviewerReviews = uniqueReviews(rawReviewerReviews);
+      await refreshCandidateCompletions();
+      const { candidates, reviews } = await loadEvidence();
+      const reviewerReviews = reviews.filter((review) => review.reviewerId === reviewerId);
+      const controlCandidates = candidates.filter(
+        (candidate) => candidate.evidenceRole === "control"
+      );
+      const generatedCandidates = candidates.filter(
+        (candidate) => candidate.evidenceRole === "generated"
+      );
+      const controlIds = new Set(controlCandidates.map((candidate) => candidate.id));
+      const qualifications = reviewerQualificationMap(reviews, controlIds);
+      const qualifiedReviewerIds = new Set(
+        [...qualifications]
+          .filter(([, qualification]) => qualification.status === "qualified")
+          .map(([id]) => id)
+      );
+      const generatedReviews = reviews.filter((review) => !controlIds.has(review.candidateId));
+      const qualifiedGeneratedReviews = generatedReviews.filter((review) =>
+        qualifiedReviewerIds.has(review.reviewerId)
+      );
       const completeIds = new Set(
-        candidates
+        generatedCandidates
           .filter((candidate) => candidate.status === "complete")
           .map((candidate) => candidate.id)
       );
-      const completedReviews = reviews.filter((review) => completeIds.has(review.candidateId));
+      const completedReviews = qualifiedGeneratedReviews.filter((review) =>
+        completeIds.has(review.candidateId)
+      );
       const profileScores = PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => {
         const rows = completedReviews.filter((review) => review.profileId === profile.id);
         return {
@@ -583,7 +777,28 @@ export function createPuzzlePlaytestService(
       const responsiveSolveGap = solveRates.length
         ? Math.max(...solveRates) - Math.min(...solveRates)
         : null;
-      const completeCandidates = candidates.filter((candidate) => completeIds.has(candidate.id));
+      const completeCandidates = generatedCandidates.filter((candidate) =>
+        completeIds.has(candidate.id)
+      );
+      const evaluatedQualifications = [...qualifications.values()].filter(
+        (qualification) => qualification.status !== "pending"
+      );
+      const excludedReviewers = evaluatedQualifications.filter(
+        (qualification) => qualification.status === "excluded"
+      ).length;
+      const reviewerQuality: PuzzlePlaytestReviewerQuality = {
+        reviewers: qualifications.size,
+        evaluatedReviewers: evaluatedQualifications.length,
+        qualifiedReviewers: qualifiedReviewerIds.size,
+        excludedReviewers,
+        pendingReviewers: [...qualifications.values()].filter(
+          (qualification) => qualification.status === "pending"
+        ).length,
+        qualificationRate: ratio(qualifiedReviewerIds.size, evaluatedQualifications.length),
+        controlDecisions: reviews.filter((review) => controlIds.has(review.candidateId)).length,
+        qualifiedGeneratedDecisions: qualifiedGeneratedReviews.length,
+        unscoredGeneratedDecisions: generatedReviews.length - qualifiedGeneratedReviews.length,
+      };
       const reviewerDecisionCounts = new Map<string, number>();
       for (const review of completedReviews) {
         reviewerDecisionCounts.set(
@@ -690,6 +905,11 @@ export function createPuzzlePlaytestService(
         minimumReviewers: PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS,
         maximumReviewerDecisionShare: reviewerCoverage.maximumDecisionShare,
         maximumAllowedReviewerDecisionShare: PUZZLE_PLAYTEST_RELEASE_MAX_REVIEWER_SHARE,
+        reviewerExclusionRate: ratio(
+          reviewerQuality.excludedReviewers,
+          reviewerQuality.evaluatedReviewers
+        ),
+        maximumReviewerExclusionRate: 0.2,
         difficultyTierScores,
         minimumCandidatesPerDifficultyTier: PUZZLE_PLAYTEST_RELEASE_MIN_PER_DIFFICULTY_TIER,
         techniqueScores,
@@ -723,6 +943,11 @@ export function createPuzzlePlaytestService(
         minimumReviewers: PUZZLE_PLAYTEST_MARKET_MIN_REVIEWERS,
         maximumReviewerDecisionShare: reviewerCoverage.maximumDecisionShare,
         maximumAllowedReviewerDecisionShare: PUZZLE_PLAYTEST_MARKET_MAX_REVIEWER_SHARE,
+        reviewerExclusionRate: ratio(
+          reviewerQuality.excludedReviewers,
+          reviewerQuality.evaluatedReviewers
+        ),
+        maximumReviewerExclusionRate: 0.1,
         difficultyTierScores,
         minimumCandidatesPerDifficultyTier: PUZZLE_PLAYTEST_MARKET_MIN_PER_DIFFICULTY_TIER,
         techniqueScores,
@@ -756,10 +981,12 @@ export function createPuzzlePlaytestService(
         ])
       ) as Record<PuzzlePlaytestFailureReason, number>;
       const visibleIds = new Set(reviewerReviews.map((review) => review.candidateId));
-      const visibleCandidates = candidates
+      const visibleCandidates = generatedCandidates
         .filter((candidate) => visibleIds.has(candidate.id))
         .map((candidate): PuzzlePlaytestCandidateReport => {
-          const rows = reviews.filter((review) => review.candidateId === candidate.id);
+          const rows = qualifiedGeneratedReviews.filter(
+            (review) => review.candidateId === candidate.id
+          );
           const correct = rows.filter((review) => review.correct).length;
           return {
             candidateId: candidate.id,
@@ -781,12 +1008,15 @@ export function createPuzzlePlaytestService(
       return {
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
         requiredReviewersPerProfile: PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE,
-        candidateCount: candidates.length,
-        openCandidates: candidates.filter((candidate) => candidate.status === "open").length,
+        candidateCount: generatedCandidates.length,
+        openCandidates: generatedCandidates.filter((candidate) => candidate.status === "open")
+          .length,
         completedCandidates: completeCandidates.length,
         reviewerCount: reviewerCoverage.reviewers,
         reviewerCoverage,
-        decisionCount: reviews.length,
+        reviewerQuality,
+        controlCandidateCount: controlCandidates.length,
+        decisionCount: generatedReviews.length,
         completedDecisionCount: completedReviews.length,
         overallSolveRate: ratio(
           completedReviews.filter((review) => review.correct).length,

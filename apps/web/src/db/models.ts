@@ -1094,6 +1094,7 @@ export interface GeneratedPictogramReview {
 }
 
 export type PuzzlePlaytestCandidateStatus = "open" | "complete";
+export type PuzzlePlaytestEvidenceRole = "generated" | "control";
 export type PuzzlePlaytestFailureReason =
   | "unrecognizable-artwork"
   | "unreadable-layout"
@@ -1107,6 +1108,8 @@ export interface PuzzlePlaytestCandidate {
   _id?: string;
   id: string;
   contractVersion: string;
+  /** Controls qualify reviewers but never contribute to generated-puzzle quality metrics. */
+  evidenceRole: PuzzlePlaytestEvidenceRole;
   puzzleId: string;
   answer: string;
   answerKey: string;

@@ -180,7 +180,9 @@ export default function PlaytestPage() {
         <AlertDescription>
           Responses are stored under your account ID for duplicate prevention and used only in
           aggregate generator-quality measurements. Eligible accounts are at least 24 hours old and
-          have completed three normal puzzles.
+          have completed three normal puzzles. A small set of known-answer calibration boards is
+          mixed into early assignments to validate attention and task understanding; individual
+          calibration boards are never labeled.
         </AlertDescription>
       </Alert>
 
