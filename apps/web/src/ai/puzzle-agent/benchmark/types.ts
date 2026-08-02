@@ -1,6 +1,6 @@
 import type { EditorialFailureKind } from "../visual/editorial-consensus";
 
-export const PUZZLE_GENERATOR_BENCHMARK_VERSION = "2026-08-02.9";
+export const PUZZLE_GENERATOR_BENCHMARK_VERSION = "2026-08-02.10";
 export const ICON_BENCHMARK_TILE_SIZES = [36, 72] as const;
 
 export type IconBenchmarkExpectation = "accept" | "reject";

@@ -119,6 +119,9 @@ async function main(): Promise<void> {
       const boardProfiles = result.metadata.boardRecognitionProfiles ?? [];
       const blind = result.metadata.playabilityEvidence?.blind;
       const editorial = result.metadata.playabilityEvidence?.editorial;
+      const boardDeclaredCueCount = result.puzzle.visual.layers.filter(
+        (layer) => layer.kind === "pictogram" || layer.kind === "text" || layer.kind === "operator"
+      ).length;
       observations.push({
         id,
         targetDifficulty: tier.target,
@@ -133,7 +136,12 @@ async function main(): Promise<void> {
         funScore: result.metadata.qualityMetrics.scores.fun,
         uniquenessScore: result.metadata.uniquenessScore,
         assetSources: assets,
+        boardDeclaredCueCount,
         boardProfileCount: boardProfiles.length,
+        boardCompleteProfileCount: benchmark.countCompleteBoardCueProfiles({
+          visual: result.puzzle.visual,
+          profiles: boardProfiles,
+        }),
         boardDistinctModels: new Set(boardProfiles.flatMap((profile) => profile.models)).size,
         blindProfileCount: blind?.profileCount ?? 0,
         blindCompleteProfileCount:
@@ -185,7 +193,13 @@ async function main(): Promise<void> {
           candidate?.visual.layers.flatMap((layer) =>
             layer.kind === "pictogram" ? [layer.source ?? "unproven"] : []
           ) ?? [],
+        boardDeclaredCueCount:
+          candidate?.visual.layers.filter(
+            (layer) =>
+              layer.kind === "pictogram" || layer.kind === "text" || layer.kind === "operator"
+          ).length ?? 0,
         boardProfileCount: 0,
+        boardCompleteProfileCount: 0,
         boardDistinctModels: 0,
         blindProfileCount: 0,
         blindCompleteProfileCount: 0,
