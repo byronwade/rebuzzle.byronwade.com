@@ -61,22 +61,29 @@ describe("generated pictogram registry integration", () => {
     submitCandidate.mockResolvedValue({ id: "generated-pictogram:approved-later" });
   });
 
-  it("queues a newly generated asset only after current two-size recognition passes", async () => {
+  it("fails fast when publication requests an unapproved concept", async () => {
     const result = await generatePictogram({ concept: "lighthouse", maxRetries: 0 });
 
-    expect(result.ok).toBe(true);
-    expect(result.source).toBe("generated");
-    expect(result.assetId).toBe("generated-pictogram:approved-later");
-    expect(submitCandidate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        concept: "lighthouse",
-        svg,
-        recognitionProfiles: expect.arrayContaining([
-          expect.objectContaining({ tileSize: 36 }),
-          expect.objectContaining({ tileSize: 72 }),
-        ]),
-      })
-    );
+    expect(result.ok).toBe(false);
+    expect(result.svg).toBeNull();
+    expect(result.error).toBe("approved_asset_required");
+    expect(generateAIText).not.toHaveBeenCalled();
+    expect(submitCandidate).not.toHaveBeenCalled();
+  });
+
+  it("returns a newly generated asset to explicit review tooling", async () => {
+    const result = await generatePictogram({
+      concept: "lighthouse",
+      maxRetries: 0,
+      usage: "review",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      svg,
+      source: "generated",
+      assetId: "generated-pictogram:approved-later",
+    });
   });
 
   it("reuses a human-approved exact asset but still reruns current recognition", async () => {
@@ -94,11 +101,9 @@ describe("generated pictogram registry integration", () => {
     expect(generateAIText).not.toHaveBeenCalled();
   });
 
-  it("quarantines a cached recognition regression and draws a fresh gated replacement", async () => {
+  it("quarantines a cached recognition regression and blocks publication", async () => {
     findApproved.mockResolvedValue({ id: "generated-pictogram:stale", svg });
-    recognizePictogramIcon
-      .mockResolvedValueOnce(recognition(false, "tower"))
-      .mockResolvedValueOnce(recognition(true));
+    recognizePictogramIcon.mockResolvedValueOnce(recognition(false, "tower"));
 
     const result = await generatePictogram({ concept: "lighthouse", maxRetries: 0 });
 
@@ -106,13 +111,20 @@ describe("generated pictogram registry integration", () => {
       "generated-pictogram:stale",
       expect.stringContaining("seen as tower")
     );
-    expect(result.source).toBe("generated");
-    expect(generateAIText).toHaveBeenCalledTimes(1);
-    expect(submitCandidate).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      ok: false,
+      error: "approved_asset_required",
+    });
+    expect(generateAIText).not.toHaveBeenCalled();
+    expect(submitCandidate).not.toHaveBeenCalled();
   });
 
   it("keeps offline skip-recognition runs independent of the registry", async () => {
-    const result = await generatePictogram({ concept: "lighthouse", skipRecognition: true });
+    const result = await generatePictogram({
+      concept: "lighthouse",
+      skipRecognition: true,
+      usage: "review",
+    });
 
     expect(result.ok).toBe(true);
     expect(findApproved).not.toHaveBeenCalled();

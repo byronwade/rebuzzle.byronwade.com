@@ -12,6 +12,7 @@ import { getCollection } from "@/db/mongodb";
 import { createMongoPuzzleNoveltyArchive } from "../puzzle-agent/mongo-novelty-archive";
 import {
   buildPuzzleNoveltySignature,
+  createInMemoryPuzzleNoveltyArchive,
   createPuzzleNoveltyModule,
   type PuzzleNoveltyAssessment,
   type PuzzleNoveltyCandidate,
@@ -39,6 +40,18 @@ export function createPuzzleFingerprint(puzzle: {
 export async function evaluatePuzzleNovelty(
   puzzle: PuzzleNoveltyCandidate
 ): Promise<PuzzleNoveltyAssessment> {
+  if (process.env.REBUZZLE_GENERATOR_ARCHIVE_MODE === "fixture") {
+    const { RESERVE_PUZZLES } = await import("../puzzle-agent/reserve-puzzles");
+    const now = Date.now();
+    const archive = createInMemoryPuzzleNoveltyArchive(
+      RESERVE_PUZZLES.map((entry, index) => ({
+        ...entry,
+        createdAt: new Date(now - index * 86_400_000),
+        active: true,
+      }))
+    );
+    return createPuzzleNoveltyModule({ archive }).evaluate(puzzle);
+  }
   return createPuzzleNoveltyModule({ archive: createMongoPuzzleNoveltyArchive() }).evaluate(puzzle);
 }
 

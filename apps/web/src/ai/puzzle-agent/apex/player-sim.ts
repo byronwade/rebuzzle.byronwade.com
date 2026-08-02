@@ -1,15 +1,23 @@
 /** Player simulation: answer-aware hint review plus screenshot-only blind solving. */
 
 import { z } from "zod";
-import { generateAIObject, generateAIObjectFromImage } from "../../client";
+import { generateAIObjectFromImage } from "../../client";
 import { AI_CONFIG } from "../../config";
+import { hintLeaksAnswerEarly } from "../quality";
 import type { PuzzleVisual } from "../visual/composition";
-import { summarizeEditorialReviewAttempts } from "../visual/editorial-consensus";
+import {
+  editorialReviewPublishBlockers,
+  summarizeEditorialReviewAttempts,
+} from "../visual/editorial-consensus";
 import { runPuzzleEditorialTournament } from "../visual/editorial-review";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
 import { renderPuzzleVisualProfiles } from "../visual/render-board";
-import { type BlindSolveAttempt, summarizeBlindSolveAttempts } from "./blind-solve-consensus";
-import { type PlayerSimResult, PlayerSimSchema } from "./types";
+import {
+  type BlindSolveAttempt,
+  blindSolvePublishBlockers,
+  summarizeBlindSolveAttempts,
+} from "./blind-solve-consensus";
+import type { PlayerSimResult } from "./types";
 
 const BlindSolveSchema = z.object({
   visibleElements: z.array(z.string().max(100)).max(20),
@@ -26,6 +34,13 @@ const BlindSolveSchema = z.object({
     .max(5),
   confidence: z.number().min(0).max(1),
 });
+
+function safeSimulationError(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error))
+    .replace(/vck_[A-Za-z0-9_-]+/g, "[redacted]")
+    .replace(/[\r\n]+/g, " ")
+    .slice(0, 300);
+}
 
 /** Blindly solve one supplied image with every configured independent judge. */
 export async function runBlindSolveImageTournament(input: {
@@ -89,28 +104,18 @@ export async function simulatePlayerSolve(input: {
   visual?: PuzzleVisual;
 }): Promise<PlayerSimResult> {
   try {
-    const hintReviewPromise = generateAIObject({
-      modelType: "smart",
-      temperature: AI_CONFIG.generation.temperature.balanced,
-      schema: PlayerSimSchema,
-      system: `You are a rebus editor reviewing the hint ladder after the answer is known.
-Judge whether hints progress fairly from mechanism guidance to a final nudge.
-Do not treat this answer-aware review as evidence that an unhinted player can solve the board.`,
-      prompt: [
-        `Review hint fairness for a ${input.tierLabel} rebus.`,
-        `Board: ${input.rebusPuzzle}`,
-        `Answer: ${input.answer}`,
-        `Technique: ${input.techniqueId}`,
-        `Explanation: ${input.explanation}`,
-        `Hints: ${input.hints.map((hint, index) => `${index + 1}. ${hint}`).join(" | ")}`,
-        "",
-        "Return fairness flags and an editorial confidence. Solve-rate fields are provisional and will be replaced by blind screenshot attempts.",
-      ].join("\n"),
-    });
+    const hintProblems = hintLeaksAnswerEarly(input.hints, input.answer);
+    const hintReview = {
+      firstWrongParses: [] as string[],
+      likelySolvePath: input.explanation,
+      hintUnlockOrderLooksFair: hintProblems.length === 0,
+      unfairReasons: hintProblems,
+      estimatedSolveRate: 0,
+      confidence: 1,
+    };
 
-    if (!input.visual) return await hintReviewPromise;
-    const [hintReview, attempts, editorialAttempts] = await Promise.all([
-      hintReviewPromise,
+    if (!input.visual) return hintReview;
+    const [attempts, editorialAttempts] = await Promise.all([
       runBlindSolveTournament({ visual: input.visual, tierLabel: input.tierLabel }),
       runPuzzleEditorialTournament({ visual: input.visual, answer: input.answer }),
     ]);
@@ -144,7 +149,11 @@ Do not treat this answer-aware review as evidence that an unhinted player can so
       editorialFailureKinds: editorial.failureKinds,
       editorialReasons: editorial.reasons,
     };
-  } catch {
+  } catch (error) {
+    const failure = safeSimulationError(error);
+    if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+      console.warn("[Player Sim] screenshot tournament failed", failure);
+    }
     return {
       firstWrongParses: [],
       likelySolvePath: "Blind screenshot simulation unavailable",
@@ -166,9 +175,24 @@ Do not treat this answer-aware review as evidence that an unhinted player can so
       editorialAcceptedProfiles: 0,
       editorialConfidence: 0,
       editorialFailureKinds: [],
-      editorialReasons: ["Answer-aware screenshot review failed"],
+      editorialReasons: [`Answer-aware screenshot review failed: ${failure}`],
     };
   }
+}
+
+/** Consolidate every answer-blind, answer-aware, and hint fairness blocker. */
+export function playerSimPublishBlockers(sim: PlayerSimResult): string[] {
+  return Array.from(
+    new Set([
+      ...blindSolvePublishBlockers(sim),
+      ...editorialReviewPublishBlockers(sim),
+      ...(!sim.hintUnlockOrderLooksFair || sim.unfairReasons.length > 2
+        ? sim.unfairReasons.length
+          ? sim.unfairReasons
+          : ["Player simulation rejected the hint ladder"]
+        : []),
+    ])
+  );
 }
 
 /** Deterministic fairness heuristics layered on top of model simulation. */

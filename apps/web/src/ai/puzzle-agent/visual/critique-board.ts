@@ -43,6 +43,7 @@ async function judgeRenderedProfile(
         system: `You are inspecting a rendered rebus board exactly as a player sees it.
 Report only visible evidence. Do not infer hidden creator intent or solve from metadata.
 Name each concrete object literally, transcribe visible text, and describe spatial or typographic relationships.
+When multiple marks form one familiar icon, name the whole symbol semantically (for example, a cloud with falling lines is a rain cloud) instead of splitting it into unrelated strokes.
 Flag clipping, accidental overlap, broken wrapping, or anything unreadable.`,
         prompt: [
           "Inventory the visible objects, text, and relationships in this rebus board.",

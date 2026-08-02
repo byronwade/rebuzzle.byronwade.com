@@ -166,7 +166,15 @@ export const ICON_FEATURES: Record<string, IconFeatureEntry> = {
     view: "front",
   },
   rain: {
-    aliases: ["rain", "raindrop", "droplet"],
+    aliases: [
+      "rain",
+      "rain cloud",
+      "cloud with rain",
+      "cloud with falling lines",
+      "cloud with raindrops",
+      "raindrop",
+      "droplet",
+    ],
     features: ["teardrop shapes falling", "optional cloud"],
     view: "front",
   },

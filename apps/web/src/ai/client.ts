@@ -214,11 +214,7 @@ export async function generateAIObjectFromImage<T>(params: {
         role: "user",
         content: [
           { type: "text", text: params.prompt },
-          {
-            type: "image",
-            image: params.image,
-            mediaType: params.mediaType,
-          },
+          { type: "file", data: params.image, mediaType: params.mediaType },
         ],
       },
     ],

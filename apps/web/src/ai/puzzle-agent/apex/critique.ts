@@ -5,7 +5,7 @@
 import { generateAIObject } from "../../client";
 import { AI_CONFIG } from "../../config";
 import { OVERUSED_REBUS_TROPES } from "../visual/icon-features";
-import { CritiqueSchema, type CritiqueResult } from "./types";
+import { CritiqueProviderSchema, type CritiqueResult } from "./types";
 
 export async function critiqueCandidate(input: {
   rebusPuzzle: string;
@@ -22,7 +22,7 @@ export async function critiqueCandidate(input: {
     const raw = await generateAIObject({
       modelType: "smart",
       temperature: AI_CONFIG.generation.temperature.balanced,
-      schema: CritiqueSchema,
+      schema: CritiqueProviderSchema,
       system: `You are an adversarial rebus editor for a national daily (Rebuzzle).
 Reject lazy emoji salad, unreadable/vague icons, answer leaks, unfair obscurity, weak aha moments, and overused tropes (${OVERUSED_REBUS_TROPES.slice(0, 6).join(", ")}) unless the twist is genuinely new.
 Demand: one clean clever mechanism, concrete pictogram nouns a human can sketch, fair progressive hints, family-friendly.

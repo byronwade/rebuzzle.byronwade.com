@@ -11,73 +11,13 @@
 import { z } from "zod";
 import { generateAIObject, withRetry } from "../client";
 import { AI_CONFIG } from "../config";
+import { calculateDifficultyProfile, type DifficultyProfile } from "./difficulty-profile";
+
+export { calculateDifficultyProfile, type DifficultyProfile };
 
 // ============================================================================
 // MULTI-DIMENSIONAL DIFFICULTY
 // ============================================================================
-
-export interface DifficultyProfile {
-  visualAmbiguity: number; // 1-10: How clear are the visual elements?
-  cognitiveSteps: number; // 1-10: How many mental leaps needed?
-  culturalKnowledge: number; // 1-10: How much cultural context required?
-  vocabularyLevel: number; // 1-10: How advanced is the vocabulary?
-  patternNovelty: number; // 1-10: How unexpected is the pattern?
-  overallDifficulty: number; // Calculated composite score
-}
-
-/**
- * Calculate multi-dimensional difficulty score
- */
-export function calculateDifficultyProfile(puzzle: {
-  rebusPuzzle: string;
-  answer: string;
-  explanation: string;
-  category: string;
-}): DifficultyProfile {
-  // Visual ambiguity: count visual elements and potential interpretations
-  const emojiCount = (puzzle.rebusPuzzle.match(/[\p{Emoji}]/gu) || []).length;
-  const visualAmbiguity = Math.min(10, Math.max(1, emojiCount * 1.5));
-
-  // Cognitive steps: analyze explanation for steps
-  const stepIndicators = ["+", "→", "=", "sounds like", "positioned", "represents"];
-  const cognitiveSteps = Math.min(
-    10,
-    stepIndicators.filter((indicator) => puzzle.explanation.toLowerCase().includes(indicator))
-      .length * 2
-  );
-
-  // Cultural knowledge: check for idioms, phrases, cultural references
-  const isIdiom = puzzle.category.includes("idiom") || puzzle.category.includes("phrase");
-  const culturalKnowledge = isIdiom ? 7 : puzzle.answer.split(/\s+/).length * 2;
-
-  // Vocabulary level: answer length and complexity
-  const vocabularyLevel = Math.min(
-    10,
-    Math.max(1, puzzle.answer.length / 3 + (puzzle.answer.split(/\s+/).length - 1) * 2)
-  );
-
-  // Pattern novelty: based on category rarity
-  const rarePatterns = ["positional", "mathematical", "lateral_thinking", "multi_layer"];
-  const patternNovelty = rarePatterns.includes(puzzle.category) ? 8 : 5;
-
-  // Calculate overall difficulty (weighted average)
-  const overallDifficulty = Math.round(
-    visualAmbiguity * 0.2 +
-      cognitiveSteps * 0.3 +
-      culturalKnowledge * 0.2 +
-      vocabularyLevel * 0.15 +
-      patternNovelty * 0.15
-  );
-
-  return {
-    visualAmbiguity,
-    cognitiveSteps,
-    culturalKnowledge,
-    vocabularyLevel,
-    patternNovelty,
-    overallDifficulty,
-  };
-}
 
 // ============================================================================
 // AI SELF-TESTING

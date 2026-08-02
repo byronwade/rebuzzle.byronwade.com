@@ -15,7 +15,7 @@ import {
 } from "./composition";
 import { isAuthenticCuratedPictogram } from "./curated-pictograms";
 import { generateImageTile } from "./generate-image-tile";
-import { generatePictogram } from "./generate-pictogram";
+import { type GeneratePictogramInput, generatePictogram } from "./generate-pictogram";
 import { scorePictogramClarity } from "./pictogram-clarity";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
 
@@ -29,6 +29,8 @@ export type ComposePuzzleVisualInput = {
   caption?: string;
   /** When true, generate AI image tiles for image layers */
   renderImages?: boolean;
+  /** Internal review tooling may display newly generated, unapproved assets. */
+  assetUsage?: GeneratePictogramInput["usage"];
 };
 
 export type ComposePuzzleVisualResult = {
@@ -68,35 +70,29 @@ export async function composePuzzleVisual(
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
       if (layer.svg?.includes("<svg")) {
-        const clarity = scorePictogramClarity(layer.svg);
         const authenticCatalogAsset = isAuthenticCuratedPictogram({
           concept: layer.concept,
           assetId: layer.assetId,
           svg: layer.svg,
         });
-        if (clarity.ok || authenticCatalogAsset) {
+        if (authenticCatalogAsset) {
+          const clarity = scorePictogramClarity(layer.svg);
           filledLayers.push(layer);
           generated.pictograms += 1;
-          claritySum += authenticCatalogAsset ? Math.max(90, clarity.score) : clarity.score;
+          claritySum += Math.max(90, clarity.score);
           clarityCount += 1;
-        } else {
-          generated.failedPictograms += 1;
-          filledLayers.push({
-            ...layer,
-            svg: undefined,
-            emojiFallback: layer.emojiFallback,
-          });
-          issues.push(
-            `Unreadable pictogram for "${layer.concept}" (${clarity.reasons.join(", ") || "low clarity"}) — regenerate with a clearer silhouette`
-          );
+          continue;
         }
-        continue;
+        tips.push(
+          `Ignored unverified inline SVG for "${layer.concept}" and resolved it through the approved asset pipeline`
+        );
       }
       const pic = await generatePictogram({
         concept: layer.concept,
         role: layer.role,
         emojiFallback: layer.emojiFallback,
         maxRetries: 2,
+        usage: input.assetUsage ?? "publication",
       });
       if (pic.ok && pic.svg) {
         filledLayers.push({
@@ -122,7 +118,9 @@ export async function composePuzzleVisual(
           emojiFallback: pic.emojiFallback || layer.emojiFallback,
         });
         issues.push(
-          `Pictogram "${layer.concept}" failed clarity/generation — use a more concrete noun or redraw`
+          pic.error === "approved_asset_required"
+            ? `Pictogram "${layer.concept}" is not in the approved catalog — choose an exact concept from list_pictogram_catalog`
+            : `Pictogram "${layer.concept}" failed clarity/generation — use a more concrete noun or redraw`
         );
         tips.push(`Pictogram fallback used for "${layer.concept}" — unicode emoji only`);
       }

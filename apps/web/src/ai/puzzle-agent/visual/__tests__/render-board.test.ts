@@ -56,7 +56,7 @@ describe("renderPuzzleVisual", () => {
       "desktop-768",
     ]);
     expect(profiles.map((profile) => profile.width)).toEqual([320, 375, 768]);
-    expect(profiles[0]!.tileSize).toBe(36);
+    expect(profiles[0]!.tileSize).toBe(44);
     expect(profiles[1]!.tileSize).toBe(72);
     expect(profiles[1]!.wrappedRows).toBeGreaterThan(profiles[2]!.wrappedRows);
   });

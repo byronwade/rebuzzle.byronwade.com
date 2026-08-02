@@ -125,6 +125,7 @@ export function evaluateVisualForPublish(visual?: {
     concept?: string;
     assetId?: string;
     source?: "catalog" | "generated" | "approved-cache";
+    recognitionProfiles?: Array<{ tileSize: number; seenAs: string; confidence: number }>;
     content?: string;
     emphasis?: string;
   }>;
@@ -159,6 +160,33 @@ export function evaluateVisualForPublish(visual?: {
       })
     ) {
       continue;
+    }
+    if (layer.source === "generated" || !layer.source) {
+      return {
+        ok: false,
+        reason:
+          layer.source === "generated"
+            ? `Generated pictogram "${layer.concept ?? "unknown"}" is pending human approval`
+            : `Pictogram "${layer.concept ?? "unknown"}" has no trusted asset provenance`,
+        mode: visual.mode,
+        pictogramSvgCount,
+        textLayerCount,
+      };
+    }
+    if (
+      layer.source === "approved-cache" &&
+      (!layer.assetId ||
+        ![36, 72].every((size) =>
+          layer.recognitionProfiles?.some((profile) => profile.tileSize === size)
+        ))
+    ) {
+      return {
+        ok: false,
+        reason: `Approved pictogram "${layer.concept ?? "unknown"}" is missing current player-size evidence`,
+        mode: visual.mode,
+        pictogramSvgCount,
+        textLayerCount,
+      };
     }
     const clarity = scorePictogramClarity(layer.svg);
     if (!clarity.ok) {
@@ -282,6 +310,7 @@ export type PublishGateInput = {
   };
   isUnique?: boolean;
   uniquenessScore?: number;
+  uniquenessBlockers?: string[];
   solvable?: boolean;
   solvabilityBlockers?: string[];
   calibratedDifficulty?: number;
@@ -356,7 +385,10 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
   }
 
   if (input.isUnique === false) {
-    return { ok: false, reason: "Puzzle is not unique vs recent catalog" };
+    return {
+      ok: false,
+      reason: `Puzzle is not unique: ${input.uniquenessBlockers?.join("; ") || "recent catalog collision"}`,
+    };
   }
   if (typeof input.uniquenessScore === "number" && input.uniquenessScore < 50) {
     return { ok: false, reason: `Uniqueness score ${input.uniquenessScore} too low` };

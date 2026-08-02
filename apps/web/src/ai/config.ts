@@ -11,6 +11,7 @@ const VISION_RECOGNITION_MODELS = Array.from(
   new Set([
     process.env.REBUZZLE_VISION_MODEL_PRIMARY || "google/gemini-3-flash",
     process.env.REBUZZLE_VISION_MODEL_SECONDARY || "openai/gpt-5.4",
+    process.env.REBUZZLE_VISION_MODEL_TERTIARY || "anthropic/claude-sonnet-4.6",
   ])
 );
 
@@ -47,12 +48,7 @@ export const AI_CONFIG = {
           "openai/gpt-5.6-luna",
           "anthropic/claude-sonnet-4.6",
         ],
-        creative: [
-          "openai/gpt-5.6-luna",
-          "google/gemini-2.5-flash",
-          "xai/grok-4.1-fast-reasoning",
-          "anthropic/claude-sonnet-4.6",
-        ],
+        creative: ["openai/gpt-5.6-luna", "google/gemini-2.5-flash", "anthropic/claude-sonnet-4.6"],
       },
     },
   },
@@ -66,7 +62,8 @@ export const AI_CONFIG = {
   puzzleAgent: {
     // Prefer creative-tier models for wordplay; override with EVE_PUZZLE_MODEL
     model: process.env.EVE_PUZZLE_MODEL || "openai/gpt-5.6-luna",
-    maxSteps: 24,
+    // Research/compose/hints plus one repair pass; publication gates run host-side.
+    maxSteps: 10,
     qualityThreshold: 74,
     minFunScore: 68,
     maxAttempts: 4,

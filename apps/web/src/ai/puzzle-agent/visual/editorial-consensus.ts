@@ -88,7 +88,7 @@ export function editorialAttemptsToObservation(input: {
   };
 }
 
-/** Require unanimous, confident acceptance at every production presentation. */
+/** Require a confident independent majority at every production presentation. */
 export function summarizeEditorialReviewAttempts(input: {
   attempts: EditorialReviewAttempt[];
   expectedProfileIds: readonly string[];
@@ -112,7 +112,7 @@ export function summarizeEditorialReviewAttempts(input: {
     if (
       profileAttempts.length >= input.requiredVotes &&
       publishVotes >= input.requiredVotes &&
-      rejectAttempts.length === 0
+      rejectAttempts.length < input.requiredVotes
     ) {
       acceptedProfiles += 1;
       continue;
@@ -127,7 +127,11 @@ export function summarizeEditorialReviewAttempts(input: {
     }
   }
 
-  const confidentAttempts = attempts.filter((attempt) => attempt.confidence >= input.minConfidence);
+  const rejectedProfileIds = new Set(rejectedProfiles);
+  const confidentAttempts = attempts.filter(
+    (attempt) =>
+      rejectedProfileIds.has(attempt.profileId) && attempt.confidence >= input.minConfidence
+  );
   const failureKinds = Array.from(
     new Set(
       confidentAttempts

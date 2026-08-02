@@ -37,6 +37,15 @@ export const CritiqueSchema = z.object({
   overusedTrope: z.boolean().optional(),
 });
 
+// Provider response schemas must require every property under strict JSON
+// schema. Nullable creative scores are normalized into conservative defaults
+// before the result enters the publication pipeline.
+export const CritiqueProviderSchema = CritiqueSchema.extend({
+  creativityScore: CritiqueSchema.shape.creativityScore.unwrap().nullable(),
+  iconRecognizability: CritiqueSchema.shape.iconRecognizability.unwrap().nullable(),
+  overusedTrope: CritiqueSchema.shape.overusedTrope.unwrap().nullable(),
+});
+
 export type CritiqueResult = z.infer<typeof CritiqueSchema>;
 
 export const PlayerSimSchema = z.object({

@@ -242,7 +242,17 @@ const CATALOG: CuratedPictogramEntry[] = [
   { id: "puzzle", aliases: ["puzzle", "jigsaw"], icon: Puzzle },
   { id: "rabbit", aliases: ["rabbit", "bunny"], icon: Rabbit },
   { id: "radio", aliases: ["radio", "boombox"], icon: BoomBox },
-  { id: "rain", aliases: ["rain", "rain cloud"], icon: CloudRain },
+  {
+    id: "rain",
+    aliases: [
+      "rain",
+      "rain cloud",
+      "cloud with rain",
+      "cloud with falling lines",
+      "cloud with raindrops",
+    ],
+    icon: CloudRain,
+  },
   { id: "rainbow", aliases: ["rainbow"], icon: Rainbow },
   { id: "rat", aliases: ["rat", "rodent"], icon: Rat },
   { id: "ribbon", aliases: ["ribbon"], icon: Ribbon },

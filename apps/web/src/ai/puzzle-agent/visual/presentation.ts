@@ -8,7 +8,7 @@ export type PuzzleBoardSizeSpec = {
 
 /** Shared by the React player board and the server-side quality renderer. */
 export const PUZZLE_BOARD_SIZE_SPECS: Record<PuzzleBoardSize, PuzzleBoardSizeSpec> = {
-  small: { tile: 36, fontSize: 18, gap: 6 },
+  small: { tile: 44, fontSize: 20, gap: 7 },
   medium: { tile: 52, fontSize: 24, gap: 8 },
   large: { tile: 72, fontSize: 44, gap: 12 },
 };

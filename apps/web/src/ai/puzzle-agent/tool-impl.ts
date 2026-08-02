@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { getCollection } from "@/db/mongodb";
 import { getPuzzleTypeConfig, listPuzzleTypes } from "../config/puzzle-types";
 import { calibrateDifficulty } from "../services/difficulty-calibrator";
+import { calculateDifficultyProfile } from "../services/difficulty-profile";
 import {
   createPuzzleFingerprint,
   evaluatePuzzleNovelty,
@@ -109,12 +110,36 @@ export async function listTechniqueLibrary(input: { techniqueIds?: string[] }) {
 export async function listRecentAnswers(input: { lookbackDays?: number; limit?: number }) {
   const lookbackDays = input.lookbackDays ?? 60;
   const limit = Math.min(input.limit ?? 40, 100);
+
+  if (process.env.REBUZZLE_GENERATOR_ARCHIVE_MODE === "fixture") {
+    const { RESERVE_PUZZLES } = await import("./reserve-puzzles");
+    const puzzles = RESERVE_PUZZLES.slice(0, limit);
+    return {
+      count: puzzles.length,
+      answers: puzzles.map((puzzle) => ({
+        answer: puzzle.answer,
+        category: puzzle.category,
+        difficulty: puzzle.difficulty,
+        tier: puzzle.difficultyLevel,
+        techniqueId: puzzle.techniqueId,
+        preview: puzzle.rebusPuzzle.slice(0, 80),
+      })),
+    };
+  }
+
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - lookbackDays);
 
   const puzzles = await getCollection("puzzles")
     .find({ createdAt: { $gte: cutoff } })
-    .project({ answer: 1, category: 1, puzzle: 1, rebusPuzzle: 1, difficulty: 1 })
+    .project({
+      answer: 1,
+      category: 1,
+      puzzle: 1,
+      rebusPuzzle: 1,
+      difficulty: 1,
+      "metadata.techniqueId": 1,
+    })
     .sort({ createdAt: -1 })
     .limit(limit)
     .toArray();
@@ -127,6 +152,10 @@ export async function listRecentAnswers(input: { lookbackDays?: number; limit?: 
       difficulty: typeof p.difficulty === "number" ? p.difficulty : null,
       tier:
         typeof p.difficulty === "number" ? getDifficultyLevelForScore(p.difficulty).label : null,
+      techniqueId:
+        typeof (p as { metadata?: { techniqueId?: unknown } }).metadata?.techniqueId === "string"
+          ? (p as { metadata: { techniqueId: string } }).metadata.techniqueId
+          : null,
       preview: String(
         (p as { rebusPuzzle?: string; puzzle?: string }).rebusPuzzle ?? p.puzzle ?? ""
       ).slice(0, 80),
@@ -343,12 +372,14 @@ export function assembleVisualComponents(input: {
   rebusPuzzle: string;
   techniqueId?: string;
   targetDifficulty: number;
+  visual?: { layers?: Array<{ kind: string }> };
 }) {
   const level = getDifficultyLevelForScore(input.targetDifficulty);
   const components = extractComponents(input.rebusPuzzle);
   const emojiCount = components.emojis.length;
-  const totalParts =
-    emojiCount + components.text.length + components.arrows.length + components.symbols.length;
+  const totalParts = input.visual?.layers?.length
+    ? input.visual.layers.filter((layer) => layer.kind !== "operator").length
+    : emojiCount + components.text.length + components.arrows.length + components.symbols.length;
 
   const issues: string[] = [];
   const tips: string[] = [];
@@ -478,6 +509,7 @@ export function stressTestSolvability(
     rebusPuzzle: input.rebusPuzzle,
     techniqueId: input.techniqueId,
     targetDifficulty: target,
+    visual: input.visual,
   });
 
   const blockers: string[] = [];
@@ -584,7 +616,17 @@ export async function calibratePuzzleDifficulty(
   let profile: unknown;
 
   if (config.difficulty?.calculate) {
-    calibratedDifficulty = config.difficulty.calculate(input as never);
+    const complexityScore = calculateDifficultyProfile({
+      rebusPuzzle: input.rebusPuzzle,
+      answer: input.answer,
+      explanation: input.explanation,
+      category: input.category,
+    });
+    profile = complexityScore;
+    calibratedDifficulty = config.difficulty.calculate({
+      ...input,
+      complexityScore,
+    });
   } else {
     method = "ai";
     const calibration = await calibrateDifficulty({
@@ -674,6 +716,7 @@ export function scorePuzzleQuality(
     rebusPuzzle: puzzle,
     techniqueId: input.techniqueId,
     targetDifficulty: target,
+    visual: input.visual,
   });
   if (!assembly.withinBudget) {
     issues.push(...assembly.issues.filter((i) => !issues.includes(i)));

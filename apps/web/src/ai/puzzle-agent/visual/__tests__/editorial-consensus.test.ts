@@ -22,7 +22,7 @@ function acceptedAttempts(): EditorialReviewAttempt[] {
 }
 
 describe("answer-aware screenshot editorial consensus", () => {
-  it("accepts only unanimous, confident evidence across every profile", () => {
+  it("accepts a confident independent majority across every profile", () => {
     const summary = summarizeEditorialReviewAttempts({
       attempts: acceptedAttempts(),
       expectedProfileIds: PROFILES,
@@ -41,7 +41,34 @@ describe("answer-aware screenshot editorial consensus", () => {
     ).toEqual([]);
   });
 
-  it("rejects a single confident report of a stronger alternate reading", () => {
+  it("does not let one stochastic outlier veto two independent approvals", () => {
+    const attempts = PROFILES.flatMap((profileId) =>
+      ["vision-a", "vision-b", "vision-c"].map((model, index) => ({
+        model,
+        profileId,
+        verdict: index === 2 ? ("reject" as const) : ("publish" as const),
+        confidence: 0.9,
+        cueCoverage: index === 2 ? 0.65 : 0.95,
+        answerVisibleVerbatim: false,
+        failureKinds: index === 2 ? (["ambiguous"] as const) : [],
+        reason:
+          index === 2 ? "A weaker alternate may exist" : "Every answer element is fairly encoded",
+      }))
+    );
+    const summary = summarizeEditorialReviewAttempts({
+      attempts,
+      expectedProfileIds: PROFILES,
+      requiredVotes: 2,
+      minConfidence: 0.68,
+    });
+
+    expect(summary.ok).toBe(true);
+    expect(summary.acceptedProfiles).toBe(3);
+    expect(summary.failureKinds).toEqual([]);
+    expect(summary.reasons).toEqual([]);
+  });
+
+  it("rejects when two confident judges report a stronger alternate reading", () => {
     const attempts = acceptedAttempts();
     attempts[0] = {
       ...attempts[0]!,
@@ -50,6 +77,7 @@ describe("answer-aware screenshot editorial consensus", () => {
       strongestAlternate: "turn key",
       reason: "Turn key is a stronger reading than car key",
     };
+    attempts.push({ ...attempts[0]!, model: "vision-c" });
     const summary = summarizeEditorialReviewAttempts({
       attempts,
       expectedProfileIds: PROFILES,
