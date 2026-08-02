@@ -14,11 +14,14 @@ import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-ge
 import type { PuzzleAgentResult } from "../schemas";
 import type { TechniqueId } from "../technique-library";
 import { stableId } from "../tool-impl";
-import { editorialReviewPublishBlockers } from "../visual/editorial-consensus";
-import { blindSolvePublishBlockers, toPlayabilityEvidence } from "./blind-solve-consensus";
+import { toPlayabilityEvidence } from "./blind-solve-consensus";
 import { critiqueCandidate } from "./critique";
 import { buildGenerationBrief } from "./curriculum";
-import { applyPlayerSimHeuristics, simulatePlayerSolve } from "./player-sim";
+import {
+  applyPlayerSimHeuristics,
+  playerSimPublishBlockers,
+  simulatePlayerSolve,
+} from "./player-sim";
 import { scoreRubric } from "./rubric";
 import { pickWinner } from "./tournament";
 import type { ApexCandidate, ApexEngineResult, GenerationBrief } from "./types";
@@ -32,6 +35,35 @@ function toCandidate(
   const techniqueId = (
     isKnownTechniqueId(p.techniqueId) ? p.techniqueId : brief.preferredTechniques[0]
   ) as TechniqueId;
+  const evidence = result.metadata.playabilityEvidence;
+  const playerSim = evidence
+    ? {
+        firstWrongParses: [],
+        likelySolvePath: p.explanation,
+        hintUnlockOrderLooksFair: true,
+        unfairReasons: [],
+        estimatedSolveRate: result.metadata.estimatedSolveRate ?? 0,
+        confidence: Math.min(
+          result.metadata.boardRecognitionConfidence ?? 1,
+          evidence.editorial.confidence
+        ),
+        blindProfileCount: evidence.blind.profileCount,
+        blindProfilesWithTarget: evidence.blind.profilesWithTarget,
+        blindTopTargetFoundBy: evidence.blind.topTargetFoundBy,
+        blindDominantTargetFoundBy: evidence.blind.dominantTargetFoundBy,
+        blindProfilesWithTopTarget: evidence.blind.profilesWithTopTarget,
+        blindProfilesWithDominantTarget: evidence.blind.profilesWithDominantTarget,
+        blindMeanReciprocalRank: evidence.blind.meanReciprocalRank,
+        blindStrongestWrongConfidence: evidence.blind.strongestWrongConfidence,
+        blindRequiredVotes: evidence.blind.requiredVotes,
+        blindProfileResults: evidence.blind.profiles,
+        editorialProfileCount: evidence.editorial.profileCount,
+        editorialAcceptedProfiles: evidence.editorial.acceptedProfiles,
+        editorialConfidence: evidence.editorial.confidence,
+        editorialFailureKinds: evidence.editorial.failureKinds,
+        editorialReasons: [],
+      }
+    : undefined;
 
   return {
     id: stableId("apex", String(slot), p.answer, p.rebusPuzzle),
@@ -57,6 +89,7 @@ function toCandidate(
     boardRecognitionModels: result.metadata.boardRecognitionModels,
     boardConceptVotes: result.metadata.boardConceptVotes,
     boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
+    playerSim,
     publishable: result.metadata.qualityVerdict !== "reject",
     rejectReasons: [],
   };
@@ -133,20 +166,23 @@ async function enrichCandidate(
   }
 
   if (apex.playerSimEnabled) {
-    const rawSim = await simulatePlayerSolve({
-      rebusPuzzle: candidate.rebusPuzzle,
-      answer: candidate.answer,
-      explanation: candidate.explanation,
-      hints: candidate.hints,
-      techniqueId: candidate.techniqueId,
-      tierLabel: brief.tierLabel,
-      visual: candidate.visual,
-    });
-    let playerSim = applyPlayerSimHeuristics(rawSim, {
-      answer: candidate.answer,
-      hints: candidate.hints,
-      tierLabel: brief.tierLabel,
-    });
+    let playerSim = next.playerSim;
+    if (!playerSim) {
+      const rawSim = await simulatePlayerSolve({
+        rebusPuzzle: candidate.rebusPuzzle,
+        answer: candidate.answer,
+        explanation: candidate.explanation,
+        hints: candidate.hints,
+        techniqueId: candidate.techniqueId,
+        tierLabel: brief.tierLabel,
+        visual: candidate.visual,
+      });
+      playerSim = applyPlayerSimHeuristics(rawSim, {
+        answer: candidate.answer,
+        hints: candidate.hints,
+        tierLabel: brief.tierLabel,
+      });
+    }
     if (
       simCalibration &&
       simCalibration.sampleSize >= 6 &&
@@ -159,26 +195,12 @@ async function enrichCandidate(
       };
     }
     next = { ...next, playerSim };
-    const screenshotBlockers = [
-      ...blindSolvePublishBlockers(playerSim),
-      ...editorialReviewPublishBlockers(playerSim),
-    ];
+    const screenshotBlockers = playerSimPublishBlockers(playerSim);
     if (screenshotBlockers.length) {
       next = {
         ...next,
         publishable: false,
         rejectReasons: [...next.rejectReasons, ...screenshotBlockers],
-      };
-    } else if (!playerSim.hintUnlockOrderLooksFair || playerSim.unfairReasons.length > 2) {
-      next = {
-        ...next,
-        publishable: false,
-        rejectReasons: [
-          ...next.rejectReasons,
-          ...(playerSim.unfairReasons.length
-            ? playerSim.unfairReasons
-            : ["Player sim flagged unfair hint ladder"]),
-        ],
       };
     }
   }

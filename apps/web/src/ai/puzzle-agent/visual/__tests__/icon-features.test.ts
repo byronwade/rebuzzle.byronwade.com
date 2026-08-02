@@ -10,6 +10,7 @@ describe("icon features", () => {
     expect(conceptMatchesSeen("bee", "bumblebee")).toBe(true);
     expect(conceptMatchesSeen("clock", "alarm clock")).toBe(true);
     expect(conceptMatchesSeen("key", "umbrella")).toBe(false);
+    expect(conceptMatchesSeen("rain", "cloud with falling lines icon")).toBe(true);
   });
 
   it("shares reviewed catalog aliases with blind recognition", () => {

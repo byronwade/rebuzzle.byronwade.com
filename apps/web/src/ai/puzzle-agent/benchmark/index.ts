@@ -32,6 +32,13 @@ export {
   buildPuzzleEditorialBenchmarkCorpus,
   buildPuzzleFailureBenchmarkCorpus,
 } from "./failure-corpus";
+export {
+  LIVE_GENERATOR_CANARY_MIN_ATTEMPTS,
+  LIVE_GENERATOR_CANARY_REQUIRED_PROFILES,
+  type LiveGeneratorCanaryObservation,
+  type LiveGeneratorCanaryReport,
+  scoreLiveGeneratorCanary,
+} from "./generator-canary";
 export { buildPuzzleSolveBenchmarkCorpus } from "./puzzle-corpus";
 export {
   comparePuzzleSolveBenchmarkReports,

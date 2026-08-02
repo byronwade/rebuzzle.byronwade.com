@@ -7,18 +7,18 @@
 
 import { AI_CONFIG } from "../config";
 import { runApexGeneration } from "../puzzle-agent/apex";
+import { toPlayabilityEvidence } from "../puzzle-agent/apex/blind-solve-consensus";
 import {
-  blindSolvePublishBlockers,
-  toPlayabilityEvidence,
-} from "../puzzle-agent/apex/blind-solve-consensus";
-import { applyPlayerSimHeuristics, simulatePlayerSolve } from "../puzzle-agent/apex/player-sim";
+  applyPlayerSimHeuristics,
+  playerSimPublishBlockers,
+  simulatePlayerSolve,
+} from "../puzzle-agent/apex/player-sim";
 import {
   type PuzzleGenerationParams,
   runPuzzleAgentGeneration,
 } from "../puzzle-agent/run-generation";
 import type { PuzzleAgentResult } from "../puzzle-agent/schemas";
 import type { PuzzleVisual } from "../puzzle-agent/visual/composition";
-import { editorialReviewPublishBlockers } from "../puzzle-agent/visual/editorial-consensus";
 
 export type MasterGenerationParams = PuzzleGenerationParams;
 
@@ -142,6 +142,7 @@ function apexEnabled(params: MasterGenerationParams): boolean {
 }
 
 async function enforceClassicPlayability(result: PuzzleAgentResult): Promise<PuzzleAgentResult> {
+  if (result.metadata.playabilityEvidence) return result;
   const rawSim = await simulatePlayerSolve({
     rebusPuzzle: result.puzzle.rebusPuzzle,
     answer: result.puzzle.answer,
@@ -156,15 +157,7 @@ async function enforceClassicPlayability(result: PuzzleAgentResult): Promise<Puz
     hints: result.puzzle.hints,
     tierLabel: result.puzzle.difficultyLevel,
   });
-  const blockers = [
-    ...blindSolvePublishBlockers(sim),
-    ...editorialReviewPublishBlockers(sim),
-    ...(!sim.hintUnlockOrderLooksFair || sim.unfairReasons.length > 2
-      ? sim.unfairReasons.length
-        ? sim.unfairReasons
-        : ["Player simulation rejected the hint ladder"]
-      : []),
-  ];
+  const blockers = playerSimPublishBlockers(sim);
   if (blockers.length) {
     throw new Error(
       `Classic generator puzzle failed screenshot playability gates: ${Array.from(new Set(blockers)).join(" | ")}`

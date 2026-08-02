@@ -31,6 +31,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "benchmark:puzzles": "tsx scripts/benchmark-puzzle-generator.ts",
+    "benchmark:puzzles:live-canary": "tsx scripts/benchmark-live-generator.ts",
     "benchmark:puzzles:catalog-sheet": "tsx scripts/render-curated-catalog.ts",
     "benchmark:puzzles:reserve-sheet": "tsx scripts/render-reserve-puzzles.ts",
     "benchmark:puzzles:solve": "tsx scripts/benchmark-puzzle-solving.ts",

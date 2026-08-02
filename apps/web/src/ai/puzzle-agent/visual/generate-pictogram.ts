@@ -20,6 +20,12 @@ export type GeneratePictogramInput = {
   maxRetries?: number;
   /** Skip blind recognition (tests / offline) */
   skipRecognition?: boolean;
+  /**
+   * Publication is fail-closed: fresh generated assets are queued for blind
+   * human review but cannot be returned to a player-facing composition.
+   * Review mode is reserved for the Visual Lab and review tooling.
+   */
+  usage?: "publication" | "review";
 };
 
 export type GeneratePictogramResult = {
@@ -294,6 +300,7 @@ export async function generatePictogram(
   const concept = input.concept.trim().slice(0, 48);
   const emojiFallback = input.emojiFallback?.trim() || guessEmojiFallback(concept);
   const maxAttempts = Math.max(1, Math.min(4, (input.maxRetries ?? 2) + 1));
+  const usage = input.usage ?? "publication";
 
   if (!concept) {
     return {
@@ -320,7 +327,7 @@ export async function generatePictogram(
   const curated = resolveCuratedPictogram(concept);
   if (curated) {
     const clarity = scorePictogramClarity(curated.svg);
-    if (input.skipRecognition) {
+    if (input.skipRecognition || usage === "publication") {
       return {
         styleId: INK_PICTOGRAM_STYLE_ID,
         concept,
@@ -423,11 +430,29 @@ export async function generatePictogram(
         lastReasons = ["approved_cache_regression", `seen_as:${recognition.seenLabel}`];
       }
     } catch (error) {
-      logger.warn("Generated pictogram registry unavailable; drawing a fresh gated asset", {
+      logger.warn("Generated pictogram registry unavailable", {
         concept,
         error: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  if (usage === "publication") {
+    return {
+      styleId: INK_PICTOGRAM_STYLE_ID,
+      concept,
+      role: input.role,
+      svg: null,
+      emojiFallback,
+      ok: false,
+      clarityScore: lastScore,
+      clarityReasons: lastReasons,
+      seenAs: lastSeenAs,
+      recognitionConfidence: lastRecognitionConfidence,
+      recognitionProfiles: lastRecognitionProfiles,
+      attempts: 0,
+      error: "approved_asset_required",
+    };
   }
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -480,6 +505,7 @@ export async function generatePictogram(
       }
 
       let candidateAssetId: string | undefined;
+      let candidateQueued = false;
       try {
         const registry = await loadGeneratedPictogramRegistry();
         const candidate = await registry.submitCandidate({
@@ -491,6 +517,7 @@ export async function generatePictogram(
           recognitionProfiles: lastRecognitionProfiles,
         });
         candidateAssetId = candidate?.id;
+        candidateQueued = Boolean(candidate);
       } catch (error) {
         logger.warn("Failed to queue generated pictogram for blind human review", {
           concept,

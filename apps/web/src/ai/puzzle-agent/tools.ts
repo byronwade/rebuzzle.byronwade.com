@@ -4,13 +4,14 @@
 
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
-import { buildGenerationBrief } from "./apex/curriculum";
 import { critiqueCandidate } from "./apex/critique";
+import { buildGenerationBrief } from "./apex/curriculum";
 import { applyPlayerSimHeuristics, simulatePlayerSolve } from "./apex/player-sim";
 import { scoreRubric } from "./apex/rubric";
 import type { ApexCandidate } from "./apex/types";
 import { isKnownTechniqueId } from "./quality";
 import { CandidatePuzzleSchema } from "./schemas";
+import type { TechniqueId } from "./technique-library";
 import {
   assembleVisualComponents,
   calibratePuzzleDifficulty,
@@ -28,7 +29,7 @@ import {
   validatePuzzleCandidate,
 } from "./tool-impl";
 import { PuzzleVisualSchema, VisualLayerSchema } from "./visual/composition";
-import type { TechniqueId } from "./technique-library";
+import { listCuratedPictogramIds } from "./visual/curated-pictograms";
 
 const withType = CandidatePuzzleSchema.extend({
   puzzleType: z.string().optional(),
@@ -116,9 +117,20 @@ export const puzzleAgentTools: ToolSet = {
     execute: async (input) => generatePictogram(input),
   }),
 
+  list_pictogram_catalog: tool({
+    description:
+      "List exact, reviewed pictogram concept IDs that are immediately eligible for publication. Use these exact nouns in compose_puzzle_visual.",
+    inputSchema: z.object({}),
+    execute: async () => ({
+      version: "lucide-v1",
+      concepts: listCuratedPictogramIds(),
+      rule: "Publication compositions must use these exact concept IDs or an existing approved-cache asset.",
+    }),
+  }),
+
   compose_puzzle_visual: tool({
     description:
-      "Build a generative puzzle board from layers (pictogram / text / operator / optional image). Generates custom SVGs, scores budget + fun. Set rebusPuzzle = unicodeFallback in the final result.",
+      "Build a publication board from reviewed pictograms, text, and operators. First call list_pictogram_catalog and use exact catalog concept IDs; unknown concepts fail closed. Set rebusPuzzle = unicodeFallback in the final result.",
     inputSchema: z.object({
       answer: z.string(),
       targetDifficulty: z.number(),
@@ -129,7 +141,15 @@ export const puzzleAgentTools: ToolSet = {
       caption: z.string().optional(),
       renderImages: z.boolean().optional(),
     }),
-    execute: async (input) => composePuzzleVisual(input),
+    execute: async (input) => {
+      const composition = await composePuzzleVisual(input);
+      if (composition.issues.length) {
+        throw new Error(
+          `Composition rejected: ${composition.issues.join("; ")}. Use the returned tier budget and exact catalog concepts, then compose once more.`
+        );
+      }
+      return { ...composition, publicationReady: true };
+    },
   }),
 
   craft_hint_ladder: tool({
@@ -208,8 +228,7 @@ export const puzzleAgentTools: ToolSet = {
   }),
 
   simulate_player_solve: tool({
-    description:
-      "Simulate clever players: wrong parses, hint fairness, estimated solve rate.",
+    description: "Simulate clever players: wrong parses, hint fairness, estimated solve rate.",
     inputSchema: z.object({
       rebusPuzzle: z.string(),
       answer: z.string(),
@@ -248,7 +267,9 @@ export const puzzleAgentTools: ToolSet = {
         styleId: "ink-pictogram-v1" as const,
         mode: "unicode" as const,
         layout: "row" as const,
-        layers: [{ kind: "text" as const, content: input.rebusPuzzle || "?", emphasis: "normal" as const }],
+        layers: [
+          { kind: "text" as const, content: input.rebusPuzzle || "?", emphasis: "normal" as const },
+        ],
         unicodeFallback: input.rebusPuzzle,
       };
       const candidate: ApexCandidate = {

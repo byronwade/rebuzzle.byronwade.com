@@ -11,6 +11,8 @@ import {
 import { resolveCuratedPictogram } from "../visual/curated-pictograms";
 import { INK_PICTOGRAM_EXAMPLE_EYE } from "../visual/style";
 
+const catalogEye = resolveCuratedPictogram("eye")!;
+
 describe("displayLeaksAnswer", () => {
   it("detects full answer in display", () => {
     expect(displayLeaksAnswer("sun flower", "sunflower")).toBe(false);
@@ -69,14 +71,49 @@ describe("evaluateVisualForPublish", () => {
     ).toBe(false);
   });
 
-  it("accepts composed pictogram SVG boards with readable geometry", () => {
+  it("accepts composed pictogram SVG boards with trusted catalog provenance", () => {
     expect(
       evaluateVisualForPublish({
         mode: "composed",
-        layers: [{ kind: "pictogram", svg: INK_PICTOGRAM_EXAMPLE_EYE }],
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "eye",
+            svg: catalogEye.svg,
+            source: "catalog",
+            assetId: catalogEye.assetId,
+          },
+        ],
         unicodeFallback: "👁️",
       }).ok
     ).toBe(true);
+  });
+
+  it("rejects structurally clear SVGs without approved provenance", () => {
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [{ kind: "pictogram", concept: "eye", svg: INK_PICTOGRAM_EXAMPLE_EYE }],
+        unicodeFallback: "👁️",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects fresh generated SVGs pending human approval", () => {
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "lighthouse",
+            svg: INK_PICTOGRAM_EXAMPLE_EYE,
+            source: "generated",
+          },
+        ],
+        unicodeFallback: "🔦",
+      }).ok
+    ).toBe(false);
   });
 
   it("rejects unreadable blob pictograms", () => {
@@ -198,7 +235,15 @@ describe("evaluatePublishGates", () => {
     publishable: true,
     visual: {
       mode: "composed" as const,
-      layers: [{ kind: "pictogram", svg: INK_PICTOGRAM_EXAMPLE_EYE }],
+      layers: [
+        {
+          kind: "pictogram" as const,
+          concept: "eye",
+          svg: catalogEye.svg,
+          source: "catalog" as const,
+          assetId: catalogEye.assetId,
+        },
+      ],
       unicodeFallback: "☀️ + 🌻",
     },
   };

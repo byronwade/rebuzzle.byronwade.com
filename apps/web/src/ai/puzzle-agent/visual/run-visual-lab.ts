@@ -128,10 +128,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
   // Full Eve / Apex: AI invents concept + answer; only difficulty may be adapted.
   if (mode === "full-puzzle" || mode === "apex-tournament") {
     const adaptive = await resolveAdaptiveDifficultyForDate(new Date());
-    const difficulty = Math.max(
-      4,
-      Math.min(9, input.difficulty ?? adaptive.target)
-    );
+    const difficulty = Math.max(4, Math.min(9, input.difficulty ?? adaptive.target));
     const result = await generateMasterPuzzle({
       targetDifficulty: difficulty,
       puzzleType: "rebus",
@@ -202,6 +199,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
       concept,
       role: "dev-lab",
       emojiFallback: guessEmoji(concept),
+      usage: "review",
     });
     const layers: VisualLayer[] = [
       {
@@ -344,6 +342,7 @@ export async function runVisualLab(input: RunVisualLabInput): Promise<RunVisualL
       layers: plan.layers,
       caption: plan.caption,
       renderImages: mode === "hybrid" ? renderImages : false,
+      assetUsage: "review",
     });
     return {
       mode,
