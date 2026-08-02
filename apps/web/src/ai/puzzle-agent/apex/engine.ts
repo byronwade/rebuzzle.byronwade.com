@@ -239,7 +239,6 @@ export async function runApexGeneration(
     );
   }
 
-  const critiqueStarted = Date.now();
   let simCalibration: { adjustment: number; sampleSize: number } | undefined;
   try {
     const { loadSimCalibration } = await import("../../learning/sim-calibration");
@@ -251,10 +250,9 @@ export async function runApexGeneration(
   } catch {
     simCalibration = undefined;
   }
-  const enriched = await Promise.all(candidates.map((c) => enrichCandidate(c, brief)));
-  const critiqueMs = Date.now() - critiqueStarted;
 
   const selectStarted = Date.now();
+  let critiqueMs = 0;
   const configuredRuntimeBudgetMs = Number(process.env.REBUZZLE_APEX_RUNTIME_BUDGET_MS);
   const runtimeBudgetMs = Math.max(
     120_000,
@@ -267,8 +265,16 @@ export async function runApexGeneration(
   );
   let lastEvaluationMs = 0;
   const selection = await selectQualifiedFinalist({
-    candidates: enriched,
+    candidates,
     minRubricOverall: brief.minRubricOverall,
+    prepare: async (candidate) => {
+      const critiqueStarted = Date.now();
+      try {
+        return await enrichCandidate(candidate, brief);
+      } finally {
+        critiqueMs += Date.now() - critiqueStarted;
+      }
+    },
     canStartEvaluation: () => {
       const remaining = runtimeBudgetMs - (Date.now() - started);
       const required = lastEvaluationMs > 0 ? lastEvaluationMs + 10_000 : 65_000;
@@ -285,7 +291,7 @@ export async function runApexGeneration(
   });
   const { winner, ranked } = selection;
   failures.push(...selection.failures);
-  const selectMs = Date.now() - selectStarted;
+  const selectMs = Math.max(0, Date.now() - selectStarted - critiqueMs);
 
   if (!winner) {
     throw new Error(

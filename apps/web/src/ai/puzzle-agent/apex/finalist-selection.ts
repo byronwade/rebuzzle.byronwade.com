@@ -11,6 +11,8 @@ export type FinalistSelectionResult = {
   failures: string[];
 };
 
+type FinalistPreparation = (candidate: ApexCandidate) => Promise<ApexCandidate>;
+
 function isEligibleForRenderedEvaluation(candidate: ApexCandidate): boolean {
   return (
     candidate.publishable &&
@@ -60,31 +62,49 @@ export async function selectQualifiedFinalist(input: {
   minRubricOverall: number;
   canStartEvaluation: () => boolean;
   evaluate: (candidate: ApexCandidate) => Promise<ApexCandidate>;
+  prepare?: FinalistPreparation;
 }): Promise<FinalistSelectionResult> {
   const preRanked = rankCandidates(input.candidates, input.minRubricOverall);
-  const eligible = preRanked.filter(isEligibleForRenderedEvaluation);
-  const preRankingFailures = preRanked
-    .filter((candidate) => !isEligibleForRenderedEvaluation(candidate))
-    .map((candidate) => preRankingFailure(candidate, input.minRubricOverall));
+  const preparedById = new Map<string, ApexCandidate>();
   const evaluatedById = new Map<string, ApexCandidate>();
   const failures: string[] = [];
 
-  for (const candidate of eligible) {
+  for (const draft of preRanked) {
+    if (!isEligibleForRenderedEvaluation(draft)) {
+      failures.push(preRankingFailure(draft, input.minRubricOverall));
+      continue;
+    }
+
+    const candidate = input.prepare ? await input.prepare(draft) : draft;
+    const prepared = rankCandidates([candidate], input.minRubricOverall)[0];
+    if (!prepared) {
+      failures.push(`${draft.id}: finalist preparation returned no candidate`);
+      continue;
+    }
+    preparedById.set(prepared.id, prepared);
+
+    if (!isEligibleForRenderedEvaluation(prepared)) {
+      failures.push(preRankingFailure(prepared, input.minRubricOverall));
+      continue;
+    }
+
     if (!input.canStartEvaluation()) {
       failures.push(RUNTIME_GUARD_FAILURE);
       break;
     }
 
-    const evaluated = await input.evaluate(candidate);
+    const evaluated = await input.evaluate(prepared);
     const rescored = rankCandidates([evaluated], input.minRubricOverall)[0];
     if (!rescored) {
       failures.push("Rendered finalist evaluation returned no candidate");
       continue;
     }
-    evaluatedById.set(candidate.id, rescored);
+    evaluatedById.set(rescored.id, rescored);
 
     if (rescored.publishable && (rescored.tournamentScore ?? -1) >= 0) {
-      const ranked = preRanked.map((value) => evaluatedById.get(value.id) ?? value);
+      const ranked = preRanked.map(
+        (value) => evaluatedById.get(value.id) ?? preparedById.get(value.id) ?? value
+      );
       return { winner: rescored, ranked, failures };
     }
 
@@ -93,7 +113,9 @@ export async function selectQualifiedFinalist(input: {
 
   return {
     winner: null,
-    ranked: preRanked.map((value) => evaluatedById.get(value.id) ?? value),
-    failures: [...preRankingFailures, ...failures],
+    ranked: preRanked.map(
+      (value) => evaluatedById.get(value.id) ?? preparedById.get(value.id) ?? value
+    ),
+    failures,
   };
 }

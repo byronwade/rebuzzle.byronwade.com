@@ -82,6 +82,48 @@ describe("Apex rendered finalist selection", () => {
     expect(evaluated).toEqual(["top"]);
   });
 
+  it("prepares only the top-ranked finalist when its rendered evidence qualifies", async () => {
+    const prepared: string[] = [];
+    const result = await selectQualifiedFinalist({
+      candidates: [candidate("runner-up", 84), candidate("top", 92)],
+      minRubricOverall: 78,
+      canStartEvaluation: () => true,
+      evaluate: async (value) => value,
+      prepare: async (value: ApexCandidate) => {
+        prepared.push(value.id);
+        return value;
+      },
+    } as Parameters<typeof selectQualifiedFinalist>[0] & {
+      prepare: (value: ApexCandidate) => Promise<ApexCandidate>;
+    });
+
+    expect(result.winner?.id).toBe("top");
+    expect(prepared).toEqual(["top"]);
+  });
+
+  it("prepares the runner-up only after the first finalist fails rendered gates", async () => {
+    const prepared: string[] = [];
+    const result = await selectQualifiedFinalist({
+      candidates: [candidate("top", 92), candidate("runner-up", 84)],
+      minRubricOverall: 78,
+      canStartEvaluation: () => true,
+      prepare: async (value: ApexCandidate) => {
+        prepared.push(value.id);
+        return value;
+      },
+      evaluate: async (value) => ({
+        ...value,
+        publishable: value.id !== "top",
+        rejectReasons: value.id === "top" ? ["Rendered board was not recognized"] : [],
+      }),
+    } as Parameters<typeof selectQualifiedFinalist>[0] & {
+      prepare: (value: ApexCandidate) => Promise<ApexCandidate>;
+    });
+
+    expect(result.winner?.id).toBe("runner-up");
+    expect(prepared).toEqual(["top", "runner-up"]);
+  });
+
   it("evaluates a hard-gate-passing draft before requiring the final rubric", async () => {
     const draft = candidate("draft", 74);
 
