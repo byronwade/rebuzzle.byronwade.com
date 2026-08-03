@@ -1111,7 +1111,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       </div>
                     ) : null}
 
-                    <section aria-label="Puzzle" className="w-full max-w-2xl">
+                    <section aria-label="Puzzle" className="w-full max-w-2xl shrink-0">
                       <PuzzleStage
                         puzzle={puzzleDisplay}
                         puzzleType={puzzleType}
@@ -1123,7 +1123,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
                     {hasThread ? (
                       <GuessThread
-                        className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl flex-1 px-0.5 pb-2"
+                        className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl min-h-0 flex-1 px-0.5"
                         footer={resultCard}
                         turns={turns}
                       />

@@ -940,16 +940,10 @@
    ============================================================ */
 
 .guess-thread {
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  min-height: 0;
 }
 
-.guess-thread::-webkit-scrollbar {
-  display: none;
-}
-
-.guess-thread > * {
+.guess-thread [data-slot="message-scroller-item"] {
   animation: message-in 320ms var(--ease) both;
 }
 
@@ -966,7 +960,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .guess-thread > * {
+  .guess-thread [data-slot="message-scroller-item"] {
     animation: none !important;
   }
 }

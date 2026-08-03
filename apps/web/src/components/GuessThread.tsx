@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MessageAvatar,
   MessageBubble,
@@ -9,6 +9,14 @@ import {
   MessageRow,
   MessageTyping,
 } from "@/components/ui/message";
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from "@/components/ui/message-scroller";
 import type { WordResult } from "@/lib/game/build-word-results";
 import { REACTION_TONE, type ReactionTier } from "@/lib/game/reactions";
 import { cn } from "@/lib/utils";
@@ -126,42 +134,41 @@ function AgentReply({ turn }: { turn: ThreadTurn }) {
 /**
  * The conversation.
  *
- * Each guess is a turn: what you said, Eve's instant read on it, and — if the
- * model gets there in time — an extra riff where she can't help adding
- * something. The instant line never waits on the model, so feedback is always
- * immediate; the riff types itself into the same reply if it shows up.
+ * Uses shadcn MessageScroller so the thread can scroll on mobile and desktop,
+ * anchors each new guess, and follows Eve's streamed riff while the reader
+ * stays at the live edge.
  */
 export function GuessThread({ turns, footer, className }: GuessThreadProps) {
-  const endRef = useRef<HTMLLIElement>(null);
-  const lastQuip = turns.at(-1)?.quip;
-  const hasFooter = Boolean(footer);
-  const lastTier = turns.at(-1)?.tier;
-
-  useEffect(() => {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    endRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
-  }, [turns.length, lastQuip, hasFooter, lastTier]);
-
   if (turns.length === 0) return null;
 
   return (
-    <ol
-      aria-label="Your guesses and Eve's replies"
-      className={cn("guess-thread flex w-full flex-col gap-5 overflow-y-auto", className)}
-      role="log"
-    >
-      {turns.map((turn) => (
-        <li className="flex flex-col gap-3" key={turn.id}>
-          <MessageRow from="user">
-            <MessageBubble from="user">{turn.text}</MessageBubble>
-          </MessageRow>
-          <AgentReply turn={turn} />
-        </li>
-      ))}
+    <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+      <MessageScroller className={cn("guess-thread w-full min-h-0 flex-1", className)}>
+        <MessageScrollerViewport aria-label="Your guesses and Eve's replies">
+          <MessageScrollerContent className="pb-2" role="log" aria-live="polite">
+            {turns.map((turn) => (
+              <MessageScrollerItem
+                key={turn.id}
+                messageId={`guess-${turn.id}`}
+                scrollAnchor
+                className="flex flex-col gap-3"
+              >
+                <MessageRow from="user">
+                  <MessageBubble from="user">{turn.text}</MessageBubble>
+                </MessageRow>
+                <AgentReply turn={turn} />
+              </MessageScrollerItem>
+            ))}
 
-      {footer ? <li className="list-none pt-1">{footer}</li> : null}
-
-      <li aria-hidden ref={endRef} />
-    </ol>
+            {footer ? (
+              <MessageScrollerItem messageId="solve-result" className="pt-1">
+                {footer}
+              </MessageScrollerItem>
+            ) : null}
+          </MessageScrollerContent>
+        </MessageScrollerViewport>
+        <MessageScrollerButton />
+      </MessageScroller>
+    </MessageScrollerProvider>
   );
 }

@@ -66,6 +66,7 @@
     "@react-email/render": "^2.0.0",
     "@rebuzzle/config": "workspace:^",
     "@rebuzzle/game-logic": "workspace:^",
+    "@shadcn/react": "^0.2.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-virtual": "^3.13.12",
     "@types/web-push": "^3.6.4",
