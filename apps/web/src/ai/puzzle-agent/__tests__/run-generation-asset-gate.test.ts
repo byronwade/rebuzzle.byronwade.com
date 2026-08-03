@@ -46,6 +46,7 @@ jest.mock("../difficulty-levels", () => ({
 }));
 jest.mock("../quality", () => ({
   evaluatePublishGates,
+  normalizeAnswerKey: (answer: string) => answer.toLowerCase().replace(/[^a-z0-9]/g, ""),
 }));
 jest.mock("../schemas", () => ({
   normalizePuzzleAgentDraft: jest.fn((output) => output),
@@ -140,6 +141,21 @@ describe("runPuzzleAgentGeneration asset gate", () => {
     expect(calibratePuzzleDifficulty).not.toHaveBeenCalled();
     expect(stressTestSolvability).not.toHaveBeenCalled();
     expect(scorePuzzleQuality).not.toHaveBeenCalled();
+    expect(evaluatePublishGates).not.toHaveBeenCalled();
+  });
+
+  it("rejects an answer that violates the Apex answer-first contract before asset checks", async () => {
+    await expect(
+      runPuzzleAgentGeneration({
+        targetDifficulty: 5,
+        maxAttempts: 1,
+        modelChainLimit: 1,
+        answerSeed: "car",
+      })
+    ).rejects.toBeInstanceOf(PuzzleCandidateRejectedError);
+
+    expect(verifyPublicationAssets).not.toHaveBeenCalled();
+    expect(checkUniqueness).not.toHaveBeenCalled();
     expect(evaluatePublishGates).not.toHaveBeenCalled();
   });
 });

@@ -28,7 +28,7 @@ import {
   type CapturedPuzzleComposition,
 } from "./authoritative-draft";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
-import { evaluatePublishGates } from "./quality";
+import { evaluatePublishGates, normalizeAnswerKey } from "./quality";
 import {
   normalizePuzzleAgentDraft,
   PuzzleAgentDraftSchema,
@@ -76,6 +76,8 @@ export interface PuzzleGenerationParams {
   avoidTechniques?: string[];
   /** Phrase-bank inspirations (not mandatory answers) */
   phraseSeeds?: string[];
+  /** Apex answer-first contract; when present the model must preserve this answer. */
+  answerSeed?: string;
   /** Banned normalized answer keys */
   bannedAnswerKeys?: string[];
   /** Tournament candidate slot (1-based) — encourages diversity across slots */
@@ -164,6 +166,13 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
       : null,
     params.category ? `Preferred category: ${params.category}.` : null,
     params.theme ? `Theme: ${params.theme}.` : null,
+    params.answerSeed
+      ? [
+          `ANSWER-FIRST CONTRACT: the intended answer is exactly "${params.answerSeed}".`,
+          "Backform one clean, fair visual mechanism from that answer using catalog-backed cues.",
+          "Do not substitute a different answer; if the seed cannot be composed fairly, let the host reject this attempt.",
+        ].join("\n")
+      : null,
     params.phraseSeeds?.length
       ? `Phrase-bank tropes/seeds to avoid copying (invent a different mechanism/answer; cousins of bee/before/sunflower/piece-of-cake are discouraged): ${params.phraseSeeds.join("; ")}.`
       : null,
@@ -313,6 +322,16 @@ export async function runPuzzleAgentGeneration(
           throw new Error("compose_puzzle_visual did not return a valid authoritative board");
         }
         const puzzle = applyAuthoritativeComposition(output.puzzle, capturedComposition);
+
+        if (
+          params.answerSeed &&
+          normalizeAnswerKey(puzzle.answer) !== normalizeAnswerKey(params.answerSeed)
+        ) {
+          priorFailure = `Answer-first seed mismatch: expected "${params.answerSeed}" but received "${puzzle.answer}"`;
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          continue;
+        }
 
         // Asset provenance is a cheap, fail-closed gate. Run it before novelty
         // and difficulty evaluation so an unapproved/generated pictogram cannot
@@ -473,6 +492,7 @@ export async function runPuzzleAgentGeneration(
               qualityVerdict: quality.verdict,
               funScore: quality.funScore,
               visualStyleId: puzzle.visual?.styleId,
+              answerSeed: params.answerSeed,
               generationAttempts: attempt,
               thinkingSummary:
                 output.thinkingSummary ??
@@ -546,6 +566,7 @@ export async function runPuzzleAgentGeneration(
             qualityVerdict: quality.verdict,
             funScore: quality.funScore,
             visualStyleId: puzzle.visual?.styleId,
+            answerSeed: params.answerSeed,
             boardRecognitionConfidence: boardRecognition.perceptions.length
               ? Math.min(
                   ...boardRecognition.perceptions.map((perception) =>

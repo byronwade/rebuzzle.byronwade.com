@@ -163,6 +163,7 @@ export type ApexCandidate = {
   solvable: boolean;
   qualityOverall: number;
   funScore: number;
+  answerSeed?: string;
   boardRecognitionConfidence?: number;
   boardRecognitionModels?: string[];
   boardConceptVotes?: Record<string, number>;
