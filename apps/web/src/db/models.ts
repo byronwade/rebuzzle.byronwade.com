@@ -1036,7 +1036,7 @@ export interface IconRecognitionReview {
   fixtureId: string;
   assetId: string;
   conceptId: string;
-  sizePx: 36 | 72;
+  sizePx: number;
   reviewerId: string;
   rawGuess: string;
   normalizedGuess: string;
@@ -1076,8 +1076,12 @@ export interface GeneratedPictogramCandidate {
   };
   humanEvidence?: {
     requiredReviewersPerSize: number;
+    /** Compact player-tile evidence (legacy key; tile may be 44px). */
     size36: { decisions: number; correct: number };
+    /** Large player-tile evidence. */
     size72: { decisions: number; correct: number };
+    compactTilePx?: number;
+    largeTilePx?: number;
   };
   auditHistory: GeneratedPictogramAuditEvent[];
   createdAt: Date;
@@ -1091,7 +1095,7 @@ export interface GeneratedPictogramReview {
   registryVersion: string;
   candidateId: string;
   fixtureId: string;
-  sizePx: 36 | 72;
+  sizePx: number;
   reviewerId: string;
   rawGuess: string;
   normalizedGuess: string;

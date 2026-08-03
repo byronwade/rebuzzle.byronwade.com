@@ -336,7 +336,9 @@ export async function generatePictogram(
     const clarity = scorePictogramClarity(curated.svg);
     const pixelIntegrity = await evaluatePictogramPixelIntegrity(curated.svg);
     lastPixelIntegrity = pixelIntegrity;
-    if (clarity.ok && pixelIntegrity.ok && (input.skipRecognition || usage === "publication")) {
+    // Publication must still prove blind recognition at player sizes.
+    // Only explicit skipRecognition (tests / offline tools) bypasses judges.
+    if (clarity.ok && pixelIntegrity.ok && input.skipRecognition) {
       return {
         styleId: INK_PICTOGRAM_STYLE_ID,
         concept,

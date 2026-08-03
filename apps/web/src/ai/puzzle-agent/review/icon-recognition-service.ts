@@ -10,9 +10,11 @@ import {
   listMaterialSymbolCandidateIds,
   MATERIAL_SYMBOL_CANDIDATE_SOURCE,
 } from "../visual/material-symbol-candidates";
+import { PLAYER_ICON_GATE_SIZES } from "../visual/presentation";
 
-export const HUMAN_ICON_RECOGNITION_CONTRACT_VERSION = "human-icon-recognition-v2";
-export const ICON_RECOGNITION_SIZES = [36, 72] as const;
+/** v3 aligns blind naming specimens to live player tile sizes (44px + 72px). */
+export const HUMAN_ICON_RECOGNITION_CONTRACT_VERSION = "human-icon-recognition-v3";
+export const ICON_RECOGNITION_SIZES = PLAYER_ICON_GATE_SIZES;
 export const ICON_RECOGNITION_MIN_REVIEWERS = 3;
 export const ICON_RECOGNITION_CANDIDATE_MIN_REVIEWERS = 5;
 export const ICON_RECOGNITION_RELEASE_ACCURACY = 0.9;

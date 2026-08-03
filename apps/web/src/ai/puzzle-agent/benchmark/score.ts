@@ -61,13 +61,15 @@ export function scoreIconBenchmark(input: {
       return observation.expected === "accept" ? !observation.accepted : observation.accepted;
     })
     .map((observation) => `${observation.caseId}@${observation.tileSize}`);
+  const [compactTile = 44, largeTile = 72] = ICON_BENCHMARK_TILE_SIZES;
   const compactPositive = scoreSlice(
     validObservations,
-    (observation) => observation.expected === "accept" && observation.tileSize === 36
+    (observation) =>
+      observation.expected === "accept" && observation.tileSize === compactTile
   );
   const largePositive = scoreSlice(
     validObservations,
-    (observation) => observation.expected === "accept" && observation.tileSize === 72
+    (observation) => observation.expected === "accept" && observation.tileSize === largeTile
   );
   const independentJudgeCoverage = safeRate(
     validObservations.filter((observation) => observation.judgeCount >= 2).length,
@@ -120,8 +122,14 @@ export function scoreIconBenchmark(input: {
         validObservations,
         (observation) => observation.expected === "reject"
       ),
-      "compact-36": scoreSlice(validObservations, (observation) => observation.tileSize === 36),
-      "large-72": scoreSlice(validObservations, (observation) => observation.tileSize === 72),
+      [`compact-${compactTile}`]: scoreSlice(
+        validObservations,
+        (observation) => observation.tileSize === compactTile
+      ),
+      [`large-${largeTile}`]: scoreSlice(
+        validObservations,
+        (observation) => observation.tileSize === largeTile
+      ),
     },
     promotion: {
       passed: promotionFailures.length === 0,

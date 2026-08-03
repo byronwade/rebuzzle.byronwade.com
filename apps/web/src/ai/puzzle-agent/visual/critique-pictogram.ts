@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { generateAIObjectFromImage } from "@/ai/client";
 import { AI_CONFIG } from "@/ai/config";
+import { PLAYER_ICON_GATE_SIZES } from "./presentation";
 import { rasterizePictogramForRecognition } from "./rasterize-pictogram";
 import {
   evaluateRecognitionConsensus,
@@ -11,7 +12,7 @@ import {
   type IconRecognitionResult,
 } from "./recognition-consensus";
 
-const ICON_PLAYER_SIZES = [36, 72] as const;
+const ICON_PLAYER_SIZES = PLAYER_ICON_GATE_SIZES;
 
 const IconRecognitionSchema = z.object({
   seenLabel: z.string().min(1).max(48).describe("Concrete object name you see, or 'unclear'"),
@@ -82,8 +83,8 @@ Do not infer the creator's intent and do not invent missing details.`,
 }
 
 /**
- * Require independent recognition at both compact (36px) and large (72px)
- * player sizes. An unavailable size or judge is a publication failure.
+ * Require independent recognition at every production player tile size
+ * (compact + large). An unavailable size or judge is a publication failure.
  */
 export async function recognizePictogramIcon(input: {
   svg: string;

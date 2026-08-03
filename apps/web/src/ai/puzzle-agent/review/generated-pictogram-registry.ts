@@ -7,14 +7,15 @@ import type {
 } from "@/db/models";
 import { scorePictogramClarity } from "../visual/pictogram-clarity";
 import { evaluatePictogramPixelIntegrity } from "../visual/pictogram-pixel-integrity";
+import { PLAYER_ICON_GATE_SIZES } from "../visual/presentation";
 import { sanitizePictogramSvg } from "../visual/sanitize-svg";
 import { INK_PICTOGRAM_STYLE_ID } from "../visual/style";
 import { normalizeIconNamingGuess, resolveIconNamingGuess } from "./icon-recognition-service";
 
-export const GENERATED_PICTOGRAM_REGISTRY_VERSION = "generated-pictogram-registry-v1";
+export const GENERATED_PICTOGRAM_REGISTRY_VERSION = "generated-pictogram-registry-v2";
 export const GENERATED_PICTOGRAM_REQUIRED_REVIEWERS_PER_SIZE = 3;
 export const GENERATED_PICTOGRAM_MAX_PENDING_PER_CONCEPT = 1;
-export const GENERATED_PICTOGRAM_REVIEW_SIZES = [36, 72] as const;
+export const GENERATED_PICTOGRAM_REVIEW_SIZES = PLAYER_ICON_GATE_SIZES;
 
 export type GeneratedPictogramReviewSize = (typeof GENERATED_PICTOGRAM_REVIEW_SIZES)[number];
 
@@ -199,12 +200,17 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
         candidateId: candidate.id,
       })
     );
-    const size36 = sizeEvidence(reviews, 36);
-    const size72 = sizeEvidence(reviews, 72);
+    const [compactPx, largePx] = GENERATED_PICTOGRAM_REVIEW_SIZES;
+    const size36 = sizeEvidence(reviews, compactPx!);
+    const size72 = sizeEvidence(reviews, largePx!);
     const humanEvidence = {
       requiredReviewersPerSize: GENERATED_PICTOGRAM_REQUIRED_REVIEWERS_PER_SIZE,
+      // Legacy field names keep admin/report consumers working; values are
+      // compact/large player-tile evidence for the current gate sizes.
       size36,
       size72,
+      compactTilePx: compactPx!,
+      largeTilePx: largePx!,
     };
     const failed = [size36, size72].some(
       (size) =>
@@ -230,7 +236,7 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
           action: approved ? "approved" : "rejected",
           actor: "human-panel",
           reason: approved
-            ? "Three independent exact-name decisions passed at both 36px and 72px"
+            ? `Three independent exact-name decisions passed at both ${compactPx}px and ${largePx}px`
             : "A player-size specimen failed unanimous blind naming",
           now,
         }),
@@ -263,9 +269,9 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
         );
       }
       const profileSizes = new Set((input.recognitionProfiles ?? []).map((row) => row.tileSize));
-      if (!profileSizes.has(36) || !profileSizes.has(72)) {
+      if (!GENERATED_PICTOGRAM_REVIEW_SIZES.every((size) => profileSizes.has(size))) {
         throw new Error(
-          "Generated pictogram candidate lacks both player-size recognition profiles"
+          `Generated pictogram candidate lacks player-size recognition profiles (${GENERATED_PICTOGRAM_REVIEW_SIZES.join("px, ")}px)`
         );
       }
       const assetSha256 = sha256(svg);
@@ -450,11 +456,12 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
                 .filter((review) => review.candidateId === candidate.id)
                 .map((review) => review.sizePx)
             );
-            return sizes.has(36) && sizes.has(72);
+            return GENERATED_PICTOGRAM_REVIEW_SIZES.every((size) => sizes.has(size));
           })
           .map((candidate) => candidate.id)
       );
       const visible = candidates.filter((candidate) => completedCandidateIds.has(candidate.id));
+      const [compactPx, largePx] = GENERATED_PICTOGRAM_REVIEW_SIZES;
       const reports = await Promise.all(
         visible.map(async (candidate): Promise<GeneratedPictogramCandidateReport> => {
           const reviews = uniqueReviews(
@@ -467,8 +474,8 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
             id: candidate.id,
             conceptLabel: candidate.conceptLabel,
             status: candidate.status,
-            size36: sizeEvidence(reviews, 36),
-            size72: sizeEvidence(reviews, 72),
+            size36: sizeEvidence(reviews, compactPx!),
+            size72: sizeEvidence(reviews, largePx!),
             automatedConfidence: candidate.automatedEvidence.recognitionConfidence,
             createdAt: candidate.createdAt.toISOString(),
             updatedAt: candidate.updatedAt.toISOString(),

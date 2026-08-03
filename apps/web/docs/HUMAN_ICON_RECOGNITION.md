@@ -8,7 +8,7 @@ communicates its intended message without explanatory text. A clean SVG or a
 model confidence score is therefore not enough to qualify a puzzle asset.
 
 The admin panel at `/admin/icon-recognition` presents one unlabeled pictogram at
-the exact 36px or 72px player size. It never returns the intended concept,
+the exact compact (44px) or large (72px) player tile size. It never returns the intended concept,
 aliases, correctness, or aggregate results until that reviewer finishes the
 selected cohort. Answers use the catalog's exact synonym ontology; fuzzy or
 generic matches receive no credit.

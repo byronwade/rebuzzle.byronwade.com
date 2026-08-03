@@ -1,7 +1,8 @@
 import type { EditorialFailureKind } from "../visual/editorial-consensus";
+import { PLAYER_ICON_GATE_SIZES } from "../visual/presentation";
 
-export const PUZZLE_GENERATOR_BENCHMARK_VERSION = "2026-08-02.11";
-export const ICON_BENCHMARK_TILE_SIZES = [36, 72] as const;
+export const PUZZLE_GENERATOR_BENCHMARK_VERSION = "2026-08-03.1";
+export const ICON_BENCHMARK_TILE_SIZES = PLAYER_ICON_GATE_SIZES;
 
 export type IconBenchmarkExpectation = "accept" | "reject";
 

@@ -2,7 +2,7 @@ import { listCuratedPictogramIds, resolveCuratedPictogram } from "../curated-pic
 import { evaluatePictogramPixelIntegrity } from "../pictogram-pixel-integrity";
 
 describe("player-sized pictogram pixel integrity", () => {
-  it("accepts every publication catalog asset at 36px and 72px", async () => {
+  it("accepts every publication catalog asset at live player tile sizes", async () => {
     const failures: Array<{ id: string; reasons: string[] }> = [];
     for (const id of listCuratedPictogramIds()) {
       const result = await evaluatePictogramPixelIntegrity(resolveCuratedPictogram(id)!.svg);

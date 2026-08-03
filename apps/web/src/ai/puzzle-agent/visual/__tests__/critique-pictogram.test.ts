@@ -75,7 +75,7 @@ describe("rendered pictogram recognition consensus", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("rejects an icon that works at 72px but fails at compact 36px", () => {
+  it("rejects an icon that works at 72px but fails at compact 44px", () => {
     const large = evaluateRecognitionConsensus({
       concept: "car",
       judgments: [judgment("vision-a", "car", 0.94), judgment("vision-b", "car", 0.9)],
@@ -90,14 +90,14 @@ describe("rendered pictogram recognition consensus", () => {
     });
     const result = evaluateRecognitionProfiles({
       profileResults: [
-        { ...compact, tileSize: 36 },
+        { ...compact, tileSize: 44 },
         { ...large, tileSize: 72 },
       ],
-      expectedTileSizes: [36, 72],
+      expectedTileSizes: [44, 72],
     });
 
     expect(result.ok).toBe(false);
-    expect(result.redrawAdvice).toContain("36px");
+    expect(result.redrawAdvice).toContain("44px");
   });
 
   it("fails closed when a required player size was not tested", () => {
@@ -109,11 +109,11 @@ describe("rendered pictogram recognition consensus", () => {
     });
     const result = evaluateRecognitionProfiles({
       profileResults: [{ ...large, tileSize: 72 }],
-      expectedTileSizes: [36, 72],
+      expectedTileSizes: [44, 72],
     });
 
     expect(result.ok).toBe(false);
-    expect(result.redrawAdvice).toContain("Missing tests at 36px");
+    expect(result.redrawAdvice).toContain("Missing tests at 44px");
   });
 
   it("preserves per-model failures across player sizes for diagnosis", () => {
@@ -127,14 +127,14 @@ describe("rendered pictogram recognition consensus", () => {
       profileResults: [
         {
           ...failed,
-          tileSize: 36,
+          tileSize: 44,
           judgeErrors: [{ model: "vision-a", error: "model access denied" }],
         },
       ],
-      expectedTileSizes: [36, 72],
+      expectedTileSizes: [44, 72],
     });
 
     expect(result.ok).toBe(false);
-    expect(result.judgeErrors).toEqual([{ model: "vision-a@36px", error: "model access denied" }]);
+    expect(result.judgeErrors).toEqual([{ model: "vision-a@44px", error: "model access denied" }]);
   });
 });
