@@ -51,7 +51,7 @@ async function handleSendBlogEmails() {
   const emailResults = {
     sent: 0,
     failed: 0,
-    errors: [] as string[],
+    failures: [] as string[],
   };
 
   const BATCH_SIZE = 10;
@@ -85,11 +85,11 @@ async function handleSendBlogEmails() {
         if (result.value.success) emailResults.sent++;
         else {
           emailResults.failed++;
-          emailResults.errors.push(`${result.value.email}: ${result.value.error}`);
+          emailResults.failures.push(`${result.value.email}: ${result.value.error}`);
         }
       } else {
         emailResults.failed++;
-        emailResults.errors.push(
+        emailResults.failures.push(
           `Batch item failed: ${
             result.reason instanceof Error ? result.reason.message : "Unknown error"
           }`

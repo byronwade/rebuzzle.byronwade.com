@@ -69,16 +69,12 @@ export default function AIErrorPage() {
 
               {/* Actions */}
               <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
-                <Link href="/">
-                  <Button className="w-full sm:w-auto" size="lg">
-                    Try Again
-                  </Button>
-                </Link>
-                <Link href="/blog">
-                  <Button className="w-full sm:w-auto" size="lg" variant="outline">
-                    Read Puzzle Tips
-                  </Button>
-                </Link>
+                <Button asChild className="w-full sm:w-auto" size="lg">
+                  <Link href="/">Try Again</Link>
+                </Button>
+                <Button asChild className="w-full sm:w-auto" size="lg" variant="outline">
+                  <Link href="/blog">Read Puzzle Tips</Link>
+                </Button>
               </div>
 
               {/* Additional Info */}

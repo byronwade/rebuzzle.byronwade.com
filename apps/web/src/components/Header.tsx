@@ -98,21 +98,26 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
               type="button"
               variant="ghost"
             >
-              {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {mobileNavOpen ? <X className="h-4 w-4" data-icon="inline-end" /> : <Menu className="h-4 w-4" data-icon="inline-end" />}
             </Button>
 
             {mounted && <NotificationBadge />}
             <InfoButton puzzleType={puzzleType} />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button asChild className="hidden sm:inline-flex" size="icon-sm" variant="ghost">
+                <Button
+                  aria-label="Support the developer"
+                  asChild
+                  className="hidden sm:inline-flex"
+                  size="icon-sm"
+                  variant="ghost"
+                >
                   <Link
-                    aria-label="Support the developer"
                     href="https://github.com/sponsors/byronwade"
                     rel="noopener noreferrer"
                     target="_blank"
                   >
-                    <Heart className="h-4 w-4" />
+                    <Heart className="h-4 w-4" data-icon="inline-start" />
                   </Link>
                 </Button>
               </TooltipTrigger>

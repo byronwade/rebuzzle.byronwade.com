@@ -770,31 +770,31 @@ export default function AdminPage() {
       <Tabs onValueChange={(v) => setActiveTab(v as Tab)} value={activeTab}>
         <TabsList className="mb-8 h-11 bg-muted/50">
           <TabsTrigger className="data-[state=active]:bg-background" value="stats">
-            <BarChart3 className="mr-2 h-4 w-4" />
+            <BarChart3 data-icon="inline-start" className="mr-2 h-4 w-4" />
             Statistics
           </TabsTrigger>
           <TabsTrigger className="data-[state=active]:bg-background" value="puzzles">
-            <PuzzleIcon className="mr-2 h-4 w-4" />
+            <PuzzleIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             Puzzles
           </TabsTrigger>
           <TabsTrigger className="data-[state=active]:bg-background" value="blogs">
-            <BookOpen className="mr-2 h-4 w-4" />
+            <BookOpen data-icon="inline-start" className="mr-2 h-4 w-4" />
             Blog Posts
           </TabsTrigger>
           <TabsTrigger className="data-[state=active]:bg-background" value="users">
-            <Users className="mr-2 h-4 w-4" />
+            <Users data-icon="inline-start" className="mr-2 h-4 w-4" />
             Users
           </TabsTrigger>
           <TabsTrigger className="data-[state=active]:bg-background" value="analytics">
-            <Activity className="mr-2 h-4 w-4" />
+            <Activity data-icon="inline-start" className="mr-2 h-4 w-4" />
             Analytics
           </TabsTrigger>
           <TabsTrigger className="data-[state=active]:bg-background" value="tools">
-            <Wrench className="mr-2 h-4 w-4" />
+            <Wrench data-icon="inline-start" className="mr-2 h-4 w-4" />
             Tools
           </TabsTrigger>
           <TabsTrigger className="data-[state=active]:bg-background" value="ai-insights">
-            <Brain className="mr-2 h-4 w-4" />
+            <Brain data-icon="inline-start" className="mr-2 h-4 w-4" />
             AI Insights
           </TabsTrigger>
         </TabsList>
@@ -1438,7 +1438,7 @@ function PuzzlesTab({
           </p>
         </div>
         <Button onClick={onCreateNew}>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" data-icon="inline-start" />
           Create Puzzle
         </Button>
       </div>
@@ -1473,7 +1473,7 @@ function PuzzlesTab({
             Get started by creating your first puzzle
           </p>
           <Button onClick={onCreateNew}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" data-icon="inline-start" />
             Create Puzzle
           </Button>
         </Card>
@@ -1518,22 +1518,22 @@ function PuzzlesTab({
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
+                      <Button aria-label="Puzzle actions" size="sm" variant="ghost">
+                        <MoreHorizontal className="h-4 w-4" data-icon="inline-start" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => onEdit(puzzle)}>
-                        <Edit className="mr-2 h-4 w-4" />
+                        <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDelete(puzzle.id)}
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -1649,7 +1649,7 @@ function BlogsTab({
           </p>
         </div>
         <Button onClick={onCreateNew}>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" data-icon="inline-start" />
           Create Blog Post
         </Button>
       </div>
@@ -1684,7 +1684,7 @@ function BlogsTab({
             Get started by creating your first blog post
           </p>
           <Button onClick={onCreateNew}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" data-icon="inline-start" />
             Create Blog Post
           </Button>
         </Card>
@@ -1710,22 +1710,22 @@ function BlogsTab({
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
+                      <Button aria-label="Blog post actions" size="sm" variant="ghost">
+                        <MoreHorizontal className="h-4 w-4" data-icon="inline-start" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => onEdit(blog)}>
-                        <Edit className="mr-2 h-4 w-4" />
+                        <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDelete(blog.id)}
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -1886,7 +1886,7 @@ function UsersTab({
           <p className="mt-1 text-muted-foreground text-sm">View and manage all registered users</p>
         </div>
         <Button onClick={handleExport} size="sm" variant="outline">
-          <Download className="mr-2 h-4 w-4" />
+          <Download className="mr-2 h-4 w-4" data-icon="inline-start" />
           Export CSV
         </Button>
       </div>
@@ -1942,7 +1942,7 @@ function UsersTab({
                       variant="ghost"
                     >
                       Points
-                      <ArrowUpDown className="ml-2 h-3 w-3" />
+                      <ArrowUpDown className="ml-2 h-3 w-3" data-icon="inline-end" />
                     </Button>
                   </TableHead>
                   <TableHead className="font-semibold">
@@ -1953,7 +1953,7 @@ function UsersTab({
                       variant="ghost"
                     >
                       Streak
-                      <ArrowUpDown className="ml-2 h-3 w-3" />
+                      <ArrowUpDown className="ml-2 h-3 w-3" data-icon="inline-end" />
                     </Button>
                   </TableHead>
                   <TableHead className="font-semibold">Level</TableHead>
@@ -1966,7 +1966,7 @@ function UsersTab({
                       variant="ghost"
                     >
                       Last Login
-                      <ArrowUpDown className="ml-2 h-3 w-3" />
+                      <ArrowUpDown className="ml-2 h-3 w-3" data-icon="inline-end" />
                     </Button>
                   </TableHead>
                   <TableHead className="font-semibold">
@@ -1977,7 +1977,7 @@ function UsersTab({
                       variant="ghost"
                     >
                       Joined
-                      <ArrowUpDown className="ml-2 h-3 w-3" />
+                      <ArrowUpDown className="ml-2 h-3 w-3" data-icon="inline-end" />
                     </Button>
                   </TableHead>
                   <TableHead className="text-right font-semibold">Actions</TableHead>
@@ -2029,22 +2029,22 @@ function UsersTab({
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button aria-label="User actions" size="sm" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" data-icon="inline-start" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => onSendPasswordReset(user.id)}>
-                              <Mail className="mr-2 h-4 w-4" />
+                              <Mail className="mr-2 h-4 w-4" data-icon="inline-start" />
                               Send Password Reset
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => onDelete(user.id)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                               Delete User
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -2142,7 +2142,7 @@ function AnalyticsTab({
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-base md:text-lg">Analytics & Events</h2>
         <Select onValueChange={setFilterType} value={filterType}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger aria-label="Filter events by type" className="w-[180px]">
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
           <SelectContent>

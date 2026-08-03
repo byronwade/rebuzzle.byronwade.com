@@ -90,7 +90,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                 )}
                 variant="warning"
               >
-                <LightbulbIcon className="mr-1.5 h-3.5 w-3.5" />
+                <LightbulbIcon data-icon="inline-start" className="mr-1.5 h-3.5 w-3.5" />
                 <span className="hidden sm:inline">
                   Need a hint? ({hints.length - revealedHints} left)
                 </span>
@@ -163,7 +163,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                   size="lg"
                   variant="outline"
                 >
-                  <LightbulbIcon className="h-4 w-4" />
+                  <LightbulbIcon className="h-4 w-4" data-icon="inline-start" />
                   Reveal hint {revealedHints + 1}
                 </Button>
                 <p className="mt-3 px-2 text-center text-subtle text-xs leading-relaxed">

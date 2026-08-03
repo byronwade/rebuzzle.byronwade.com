@@ -91,7 +91,7 @@ export function DateRangePicker({
             size="sm"
             variant="outline"
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             {startDate && endDate ? (
               <>
                 {format(startDate, "LLL dd, y")} - {format(endDate, "LLL dd, y")}

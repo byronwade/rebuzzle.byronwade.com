@@ -195,30 +195,30 @@ export default function SettingsPage() {
   };
 
   const validatePasswordForm = (): boolean => {
-    const errors: typeof passwordErrors = {};
+    const nextErrors: typeof passwordErrors = {};
 
     if (!passwordForm.currentPassword) {
-      errors.currentPassword = "Current password is required";
+      nextErrors.currentPassword = "Current password is required";
     }
 
     if (!passwordForm.newPassword) {
-      errors.newPassword = "New password is required";
+      nextErrors.newPassword = "New password is required";
     } else if (passwordForm.newPassword.length < 6) {
-      errors.newPassword = "Password must be at least 6 characters";
+      nextErrors.newPassword = "Password must be at least 6 characters";
     }
 
     if (!passwordForm.confirmPassword) {
-      errors.confirmPassword = "Please confirm your new password";
+      nextErrors.confirmPassword = "Please confirm your new password";
     } else if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      errors.confirmPassword = "Passwords do not match";
+      nextErrors.confirmPassword = "Passwords do not match";
     }
 
     if (passwordForm.currentPassword === passwordForm.newPassword) {
-      errors.newPassword = "New password must be different from current password";
+      nextErrors.newPassword = "New password must be different from current password";
     }
 
-    setPasswordErrors(errors);
-    return Object.keys(errors).length === 0;
+    setPasswordErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handlePasswordChange = async () => {
@@ -473,7 +473,7 @@ export default function SettingsPage() {
                         <div className="flex w-full items-center gap-2">
                           <Icon className="h-4 w-4 shrink-0" />
                           <span className="font-medium text-sm">{meta.label}</span>
-                          {selected && <Check className="ml-auto h-4 w-4" />}
+                          {selected && <Check data-icon="inline-end" className="ml-auto h-4 w-4" />}
                         </div>
                         <p className="text-muted-foreground text-xs leading-snug">
                           {meta.description}
@@ -530,6 +530,7 @@ export default function SettingsPage() {
                     Current Password
                   </Label>
                   <Input
+                    autoComplete="current-password"
                     className="mt-1"
                     id="current-password"
                     onChange={(e) =>
@@ -543,7 +544,7 @@ export default function SettingsPage() {
                     value={passwordForm.currentPassword}
                   />
                   {passwordErrors.currentPassword && (
-                    <p className="mt-1.5 text-destructive text-xs">
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
                       {passwordErrors.currentPassword}
                     </p>
                   )}
@@ -554,8 +555,10 @@ export default function SettingsPage() {
                     New Password
                   </Label>
                   <Input
+                    autoComplete="new-password"
                     className="mt-1"
                     id="new-password"
+                    minLength={6}
                     onChange={(e) =>
                       setPasswordForm({
                         ...passwordForm,
@@ -567,7 +570,9 @@ export default function SettingsPage() {
                     value={passwordForm.newPassword}
                   />
                   {passwordErrors.newPassword && (
-                    <p className="mt-1.5 text-destructive text-xs">{passwordErrors.newPassword}</p>
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
+                      {passwordErrors.newPassword}
+                    </p>
                   )}
                 </div>
 
@@ -576,8 +581,10 @@ export default function SettingsPage() {
                     Confirm New Password
                   </Label>
                   <Input
+                    autoComplete="new-password"
                     className="mt-1"
                     id="confirm-password"
+                    minLength={6}
                     onChange={(e) =>
                       setPasswordForm({
                         ...passwordForm,
@@ -594,7 +601,7 @@ export default function SettingsPage() {
                     value={passwordForm.confirmPassword}
                   />
                   {passwordErrors.confirmPassword && (
-                    <p className="mt-1.5 text-destructive text-xs">
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
                       {passwordErrors.confirmPassword}
                     </p>
                   )}
@@ -632,7 +639,7 @@ export default function SettingsPage() {
                   size="sm"
                   variant="destructive"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                   Clear All Game Data
                 </Button>
               </div>
@@ -641,8 +648,14 @@ export default function SettingsPage() {
 
           {/* Action Buttons */}
           <div className="flex gap-4">
-            <Button className="flex-1" disabled={!hasUnsavedChanges} onClick={handleSave} size="lg">
-              <Save className="mr-2 h-4 w-4" />
+            <Button
+              aria-label="Save settings"
+              className="flex-1"
+              disabled={!hasUnsavedChanges}
+              onClick={handleSave}
+              size="lg"
+            >
+              <Save className="mr-2 h-4 w-4" data-icon="inline-start" />
               {hasUnsavedChanges ? "Save Settings" : "Saved"}
             </Button>
             <Button onClick={handleReset} size="lg" variant="outline">

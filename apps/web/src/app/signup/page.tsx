@@ -390,7 +390,7 @@ export default function SignupPage() {
                   </>
                 ) : (
                   <>
-                    <UserPlus aria-hidden="true" className="h-4 w-4" />
+                    <UserPlus aria-hidden="true" className="h-4 w-4" data-icon="inline-end" />
                     Create account
                   </>
                 )}

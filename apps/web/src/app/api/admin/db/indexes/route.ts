@@ -143,9 +143,9 @@ export async function DELETE(request: NextRequest) {
       success: result.success,
       message: result.success
         ? `Successfully dropped ${result.dropped} indexes`
-        : `Dropped ${result.dropped} indexes with ${result.errors.length} errors`,
+        : `Dropped ${result.dropped} indexes with ${result.failures.length} errors`,
       dropped: result.dropped,
-      errors: result.errors,
+      failures: result.failures,
     });
   } catch (error) {
     console.error("[Admin API] Error dropping indexes:", error);

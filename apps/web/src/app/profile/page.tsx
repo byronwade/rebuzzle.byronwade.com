@@ -281,12 +281,10 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-            <Link href="/settings">
-              <Button size="sm" variant="outline" className="font-medium text-sm">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Button>
-            </Link>
+            <Button asChild size="sm" variant="outline" className="font-medium text-sm">
+                  <Link href="/settings"><Edit data-icon="inline-start" className="mr-2 h-4 w-4" />
+                Edit Profile</Link>
+                </Button>
           </div>
         </div>
 
@@ -419,16 +417,12 @@ export default function ProfilePage() {
 
         {/* Actions */}
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
-          <Link href="/" className="w-full sm:w-auto">
-            <Button size="lg" className="w-full font-medium text-sm sm:w-auto">
-              Play Today's Puzzle
-            </Button>
-          </Link>
-          <Link href="/leaderboard" className="w-full sm:w-auto">
-            <Button size="lg" variant="outline" className="w-full font-medium text-sm sm:w-auto">
-              View Leaderboard
-            </Button>
-          </Link>
+          <Button asChild size="lg" className="w-full font-medium text-sm sm:w-auto">
+                  <Link href="/" className="w-full sm:w-auto">Play Today's Puzzle</Link>
+                </Button>
+          <Button asChild size="lg" variant="outline" className="w-full font-medium text-sm sm:w-auto">
+                  <Link href="/leaderboard" className="w-full sm:w-auto">View Leaderboard</Link>
+                </Button>
         </div>
       </div>
     </Layout>

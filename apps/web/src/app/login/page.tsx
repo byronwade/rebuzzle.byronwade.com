@@ -290,7 +290,7 @@ export default function LoginPage() {
                   </>
                 ) : (
                   <>
-                    <LogIn aria-hidden="true" className="h-4 w-4" />
+                    <LogIn aria-hidden="true" className="h-4 w-4" data-icon="inline-end" />
                     Log in
                   </>
                 )}

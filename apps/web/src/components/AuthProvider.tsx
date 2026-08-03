@@ -8,7 +8,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useTransition,
 } from "react";
 import { trackUserSession } from "@/lib/analytics";
 import type { ServerSession } from "@/lib/auth/get-server-session";
@@ -98,7 +97,6 @@ export function AuthProvider({
     isLoading: initialSession === undefined,
     refreshAuth: async () => {},
   });
-  const [, startTransition] = useTransition();
 
   const checkAuth = useCallback(async () => {
     try {
@@ -203,9 +201,7 @@ export function AuthProvider({
       return;
     }
 
-    startTransition(() => {
-      void checkAuth();
-    });
+    void checkAuth();
   }, [pathname, checkAuth, authState.isLoading]);
 
   const refreshAuth = useCallback(async () => {

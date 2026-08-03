@@ -48,7 +48,7 @@ async function handleSendPuzzleEmails() {
   const emailResults = {
     sent: 0,
     failed: 0,
-    errors: [] as string[],
+    failures: [] as string[],
   };
 
   const BATCH_SIZE = 10;
@@ -87,13 +87,13 @@ async function handleSendPuzzleEmails() {
           emailResults.sent++;
         } else {
           emailResults.failed++;
-          emailResults.errors.push(`${result.value.email}: ${result.value.error}`);
+          emailResults.failures.push(`${result.value.email}: ${result.value.error}`);
         }
       } else {
         emailResults.failed++;
-        const errorMessage =
+        const failureText =
           result.reason instanceof Error ? result.reason.message : "Unknown error";
-        emailResults.errors.push(`Batch item failed: ${errorMessage}`);
+        emailResults.failures.push(`Batch item failed: ${failureText}`);
       }
     }
 

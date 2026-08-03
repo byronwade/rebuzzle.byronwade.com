@@ -187,19 +187,21 @@ export default function ResetPasswordPage() {
             </div>
 
             {success ? (
-              <div className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center">
+              <div className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center" role="status">
                 <p className="text-foreground text-sm">
                   Your password has been reset successfully. Redirecting to login...
                 </p>
               </div>
             ) : (
-              <form className="space-y-4" onSubmit={handleSubmit}>
+              <form className="space-y-4" noValidate onSubmit={handleSubmit}>
                 <div>
                   <Label htmlFor="password">New Password</Label>
                   <Input
+                    autoComplete="new-password"
                     autoFocus
                     disabled={isLoading}
                     id="password"
+                    minLength={6}
                     name="password"
                     onBlur={(e) => {
                       const error = validateField("password", e.target.value);
@@ -212,15 +214,19 @@ export default function ResetPasswordPage() {
                     value={formData.password}
                   />
                   {errors.password && (
-                    <p className="mt-1.5 text-destructive text-xs">{errors.password}</p>
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
+                      {errors.password}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <Input
+                    autoComplete="new-password"
                     disabled={isLoading}
                     id="confirmPassword"
+                    minLength={6}
                     name="confirmPassword"
                     onBlur={(e) => {
                       const error = validateField("confirmPassword", e.target.value, formData);
@@ -236,12 +242,17 @@ export default function ResetPasswordPage() {
                     value={formData.confirmPassword}
                   />
                   {errors.confirmPassword && (
-                    <p className="mt-1.5 text-destructive text-xs">{errors.confirmPassword}</p>
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
+                      {errors.confirmPassword}
+                    </p>
                   )}
                 </div>
 
                 {errors.form && (
-                  <div className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5">
+                  <div
+                    className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5"
+                    role="alert"
+                  >
                     <p className="text-destructive text-sm">{errors.form}</p>
                   </div>
                 )}

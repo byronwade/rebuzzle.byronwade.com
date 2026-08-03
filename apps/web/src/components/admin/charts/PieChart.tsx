@@ -59,25 +59,29 @@ export function PieChart({
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          <RechartsPieChart>
-            <Pie
-              cx="50%"
-              cy="50%"
-              data={data}
-              dataKey={dataKey}
-              label
-              nameKey={nameKey}
-              outerRadius={100}
-            >
-              {data.map((_entry, index) => (
-                <Cell fill={colors[index % colors.length]} key={`cell-${index}`} />
-              ))}
-            </Pie>
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
-          </RechartsPieChart>
-        </ChartContainer>
+        {data.length === 0 ? (
+          <p className="py-10 text-center text-muted-foreground text-sm">No data to display.</p>
+        ) : (
+          <ChartContainer config={chartConfig}>
+            <RechartsPieChart>
+              <Pie
+                cx="50%"
+                cy="50%"
+                data={data}
+                dataKey={dataKey}
+                label
+                nameKey={nameKey}
+                outerRadius={100}
+              >
+                {data.map((_entry, index) => (
+                  <Cell fill={colors[index % colors.length]} key={`cell-${index}`} />
+                ))}
+              </Pie>
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartLegend content={<ChartLegendContent />} />
+            </RechartsPieChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );

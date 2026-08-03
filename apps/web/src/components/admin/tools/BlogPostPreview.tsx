@@ -62,12 +62,12 @@ export function BlogPostPreview({ blogPost, onSave, onCancel }: BlogPostPreviewP
             >
               {isEditing ? (
                 <>
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Preview
                 </>
               ) : (
                 <>
-                  <Edit2 className="mr-2 h-4 w-4" />
+                  <Edit2 data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Edit
                 </>
               )}
@@ -206,7 +206,7 @@ export function BlogPostPreview({ blogPost, onSave, onCancel }: BlogPostPreviewP
 
         <div className="mt-6 flex justify-end gap-2 border-t pt-4">
           <Button className="w-full md:w-auto" onClick={handleSave}>
-            <GitPullRequest className="mr-2 h-4 w-4" />
+            <GitPullRequest data-icon="inline-start" className="mr-2 h-4 w-4" />
             Open Draft PR
           </Button>
         </div>

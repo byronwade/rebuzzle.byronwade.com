@@ -101,7 +101,7 @@ export default function ForgotPasswordPage() {
 
             {success ? (
               <div className="space-y-4">
-                <div className="rounded-lg bg-accent/50 p-4 text-center">
+                <div className="rounded-lg bg-accent/50 p-4 text-center" role="status">
                   <p className="text-foreground text-sm">
                     If an account exists with this email, a password reset link has been sent. Check
                     your inbox and follow the instructions.
@@ -128,6 +128,7 @@ export default function ForgotPasswordPage() {
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
+                    autoComplete="email"
                     autoFocus
                     disabled={isLoading}
                     id="email"
@@ -145,7 +146,11 @@ export default function ForgotPasswordPage() {
                     type="email"
                     value={email}
                   />
-                  {error && <p className="mt-1.5 text-destructive text-xs">{error}</p>}
+                  {error && (
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
+                      {error}
+                    </p>
+                  )}
                 </div>
 
                 <Button className="w-full" disabled={isLoading} type="submit">

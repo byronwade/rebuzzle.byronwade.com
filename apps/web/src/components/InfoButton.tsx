@@ -69,7 +69,7 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
             size="icon"
             variant="ghost"
           >
-            <Info aria-hidden="true" className="h-5 w-5" />
+            <Info aria-hidden="true" className="h-5 w-5" data-icon="inline-end" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>How to play</TooltipContent>

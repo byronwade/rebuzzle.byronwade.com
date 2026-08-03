@@ -63,12 +63,12 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
             >
               {isEditing ? (
                 <>
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Preview
                 </>
               ) : (
                 <>
-                  <Edit2 className="mr-2 h-4 w-4" />
+                  <Edit2 data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Edit
                 </>
               )}
@@ -263,6 +263,7 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
                 <div className="mt-2 space-y-2">
                   {editedPuzzle.hints.map((hint, index) => (
                     <Textarea
+                      aria-label="Puzzle hint"
                       key={index}
                       onChange={(e) => {
                         const newHints = [...editedPuzzle.hints];
@@ -313,7 +314,7 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
 
         <div className="mt-6 flex justify-end gap-2 border-t pt-4">
           <Button className="w-full md:w-auto" onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" />
+            <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
             Save to Database
           </Button>
         </div>

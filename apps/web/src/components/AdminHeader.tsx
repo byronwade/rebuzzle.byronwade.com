@@ -62,27 +62,27 @@ export default function AdminHeader() {
           <nav className="hidden items-center gap-1 md:flex">
             <Button asChild size="sm" variant="ghost">
               <Link href="/admin">
-                <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+                <LayoutDashboard data-icon="inline-start" className="mr-2 h-4 w-4" /> Dashboard
               </Link>
             </Button>
             <Button asChild size="sm" variant="ghost">
               <Link href="/admin/benchmark-review">
-                <FlaskConical className="mr-2 h-4 w-4" /> Benchmark QA
+                <FlaskConical data-icon="inline-start" className="mr-2 h-4 w-4" /> Benchmark QA
               </Link>
             </Button>
             <Button asChild size="sm" variant="ghost">
               <Link href="/admin/icon-recognition">
-                <Eye className="mr-2 h-4 w-4" /> Icon Panel
+                <Eye data-icon="inline-start" className="mr-2 h-4 w-4" /> Icon Panel
               </Link>
             </Button>
             <Button asChild size="sm" variant="ghost">
               <Link href="/admin/generated-assets">
-                <Images className="mr-2 h-4 w-4" /> Asset Registry
+                <Images data-icon="inline-start" className="mr-2 h-4 w-4" /> Asset Registry
               </Link>
             </Button>
             <Button asChild size="sm" variant="ghost">
               <Link href="/admin/puzzle-playtests">
-                <Gamepad2 className="mr-2 h-4 w-4" /> Playtests
+                <Gamepad2 data-icon="inline-start" className="mr-2 h-4 w-4" /> Playtests
               </Link>
             </Button>
           </nav>
@@ -90,16 +90,22 @@ export default function AdminHeader() {
 
         {/* User Menu */}
         <div className="flex items-center gap-3">
-          {isLoading ? (
+          {isLoading && (
             <Button disabled size="sm" variant="outline">
               <Avatar className="h-6 w-6">
                 <AvatarFallback>...</AvatarFallback>
               </Avatar>
             </Button>
-          ) : user ? (
+          )}
+          {!isLoading && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="flex items-center gap-2" size="sm" variant="outline">
+                <Button
+                  aria-label="Account menu"
+                  className="flex items-center gap-2"
+                  size="sm"
+                  variant="outline"
+                >
                   <Avatar className="h-6 w-6">
                     {avatarProps && (
                       <AvatarFallback className={getAvatarClassName(avatarProps)}>
@@ -121,21 +127,21 @@ export default function AdminHeader() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/")}>
-                  <Home className="mr-2 h-4 w-4" />
+                  <Home data-icon="inline-start" className="mr-2 h-4 w-4" />
                   <span>Back to App</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="cursor-pointer"
                   onClick={() => router.push("/profile")}
                 >
-                  <User className="mr-2 h-4 w-4" />
+                  <User data-icon="inline-start" className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="cursor-pointer"
                   onClick={() => router.push("/settings")}
                 >
-                  <Settings className="mr-2 h-4 w-4" />
+                  <Settings data-icon="inline-start" className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -143,7 +149,7 @@ export default function AdminHeader() {
                   className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
                   onClick={handleLogout}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut data-icon="inline-start" className="mr-2 h-4 w-4" />
                   <span className="font-semibold">Log Out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

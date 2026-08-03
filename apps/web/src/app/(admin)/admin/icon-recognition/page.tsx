@@ -48,7 +48,7 @@ export default function IconRecognitionPage() {
   const [report, setReport] = useState<IconRecognitionCalibrationReport | null>(null);
   const [guess, setGuess] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = useCallback(async () => {
@@ -103,12 +103,12 @@ export default function IconRecognitionPage() {
   }, [authLoading, isAuthenticated, loadNext, router]);
 
   const submit = async (input: { uncertain: boolean }) => {
-    if (!specimen || saving) return;
+    if (!specimen || isSubmitting) return;
     if (!input.uncertain && !guess.trim()) {
       toast({ title: "Enter the object name or choose I don't know", variant: "destructive" });
       return;
     }
-    setSaving(true);
+    setIsSubmitting(true);
     try {
       const response = await fetch("/api/admin/ai/icon-recognition", {
         method: "POST",
@@ -131,7 +131,7 @@ export default function IconRecognitionPage() {
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -252,7 +252,7 @@ export default function IconRecognitionPage() {
                 aria-label="Object name"
                 autoComplete="off"
                 autoFocus
-                disabled={saving}
+                disabled={isSubmitting}
                 maxLength={100}
                 onChange={(event) => setGuess(event.target.value)}
                 placeholder="e.g. bicycle"
@@ -260,17 +260,17 @@ export default function IconRecognitionPage() {
                 value={guess}
               />
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button className="sm:flex-1" disabled={saving} type="submit">
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button className="sm:flex-1" disabled={isSubmitting} type="submit">
+                  {isSubmitting && <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />}
                   Record answer
                 </Button>
                 <Button
-                  disabled={saving}
+                  disabled={isSubmitting}
                   onClick={() => void submit({ uncertain: true })}
                   type="button"
                   variant="outline"
                 >
-                  <SkipForward className="mr-2 h-4 w-4" /> I don't know
+                  <SkipForward className="mr-2 h-4 w-4" data-icon="inline-start" /> I don't know
                 </Button>
               </div>
             </form>

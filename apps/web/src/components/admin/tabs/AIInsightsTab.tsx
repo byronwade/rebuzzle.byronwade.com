@@ -323,7 +323,7 @@ export function AIInsightsTab() {
         </div>
         <div className="flex items-center gap-4">
           <Select onValueChange={handlePresetChange} defaultValue="7d">
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger aria-label="Filter insights" className="w-[180px]">
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
             <SelectContent>
@@ -343,7 +343,7 @@ export function AIInsightsTab() {
               fetchGenerationHealth();
             }}
           >
-            <RefreshCw className="mr-2 h-4 w-4" />
+            <RefreshCw data-icon="inline-start" className="mr-2 h-4 w-4" />
             Refresh
           </Button>
         </div>
@@ -353,27 +353,27 @@ export function AIInsightsTab() {
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">
-            <Activity className="mr-2 h-4 w-4" />
+            <Activity data-icon="inline-start" className="mr-2 h-4 w-4" />
             Overview
           </TabsTrigger>
           <TabsTrigger value="decisions">
-            <Brain className="mr-2 h-4 w-4" />
+            <Brain data-icon="inline-start" className="mr-2 h-4 w-4" />
             Chain of Thought
           </TabsTrigger>
           <TabsTrigger value="errors">
-            <AlertTriangle className="mr-2 h-4 w-4" />
+            <AlertTriangle data-icon="inline-start" className="mr-2 h-4 w-4" />
             Errors
           </TabsTrigger>
           <TabsTrigger value="feedback">
-            <ThumbsUp className="mr-2 h-4 w-4" />
+            <ThumbsUp data-icon="inline-start" className="mr-2 h-4 w-4" />
             Feedback
           </TabsTrigger>
           <TabsTrigger value="learning">
-            <Sparkles className="mr-2 h-4 w-4" />
+            <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
             Generation
           </TabsTrigger>
           <TabsTrigger value="config">
-            <Settings className="mr-2 h-4 w-4" />
+            <Settings data-icon="inline-start" className="mr-2 h-4 w-4" />
             Config
           </TabsTrigger>
         </TabsList>
@@ -749,7 +749,7 @@ export function AIInsightsTab() {
             </CardHeader>
             <CardContent>
               {errors.length > 0 ? (
-                <Table>
+                <Table role="alert">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Error Code</TableHead>

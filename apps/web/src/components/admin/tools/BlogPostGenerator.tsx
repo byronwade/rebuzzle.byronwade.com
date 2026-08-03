@@ -182,9 +182,9 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
                   variant="outline"
                 >
                   {searching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-end" />
                   ) : (
-                    <Search className="h-4 w-4" />
+                    <Search className="h-4 w-4" data-icon="inline-end" />
                   )}
                 </Button>
               </div>
@@ -194,7 +194,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
               <div>
                 <Label>Select Puzzle</Label>
                 <Select onValueChange={setSelectedPuzzleId} value={selectedPuzzleId}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Blog generation option">
                     <SelectValue placeholder="Choose a puzzle" />
                   </SelectTrigger>
                   <SelectContent>
@@ -236,12 +236,12 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <FileText className="mr-2 h-4 w-4" />
+                  <FileText data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Blog Post
                 </>
               )}

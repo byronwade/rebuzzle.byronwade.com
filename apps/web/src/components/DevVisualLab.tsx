@@ -335,7 +335,7 @@ export function DevVisualLab() {
           onClick={() => void generate()}
           className="gap-2"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-end" /> : <Sparkles className="h-4 w-4" data-icon="inline-end" />}
           Generate {modes.find((m) => m.id === mode)?.label ?? mode}
         </Button>
         <Button asChild variant="outline" disabled={busy}>
@@ -400,7 +400,7 @@ export function DevVisualLab() {
                     vote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
                   Like
                 </Button>
                 <Button
@@ -413,7 +413,7 @@ export function DevVisualLab() {
                     vote === "dislike" && "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
                 >
-                  <ThumbsDown className="h-4 w-4" />
+                  <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
                   Dislike
                 </Button>
               </div>

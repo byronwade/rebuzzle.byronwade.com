@@ -213,7 +213,7 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
                 onValueChange={(value) => setFormData({ ...formData, puzzleType: value })}
                 value={formData.puzzleType}
               >
-                <SelectTrigger id="puzzle-type">
+                <SelectTrigger aria-label="Date range option" id="puzzle-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,12 +266,12 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Puzzles for {days} Day{days !== 1 ? "s" : ""}
                 </>
               )}
@@ -291,7 +291,7 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
                 </CardDescription>
               </div>
               <Button disabled={selectedPuzzles.size === 0} onClick={handleSaveSelected}>
-                <Save className="mr-2 h-4 w-4" />
+                <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
                 Save Selected ({selectedPuzzles.size})
               </Button>
             </div>
@@ -301,6 +301,7 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
               {generatedPuzzles.map((puzzle, index) => (
                 <div className="flex items-start gap-4 rounded-lg border p-4" key={index}>
                   <Checkbox
+                    aria-label="Select generated puzzle"
                     checked={selectedPuzzles.has(index)}
                     className="mt-1"
                     onCheckedChange={() => toggleSelection(index)}

@@ -147,7 +147,7 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
                 onValueChange={(value) => setFormData({ ...formData, puzzleType: value })}
                 value={formData.puzzleType}
               >
-                <SelectTrigger id="puzzle-type">
+                <SelectTrigger aria-label="Puzzle generation option" id="puzzle-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -210,12 +210,12 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
             <Button className="w-full" disabled={loading} onClick={handleGenerate}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Puzzle
                 </>
               )}

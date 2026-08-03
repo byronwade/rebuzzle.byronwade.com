@@ -46,7 +46,13 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
 
   if (isLoading) {
     return (
-      <Button className="h-8 w-8 rounded-full p-0" disabled size="icon" variant="ghost">
+      <Button
+        aria-label="Loading account menu"
+        className="h-8 w-8 rounded-full p-0"
+        disabled
+        size="icon"
+        variant="ghost"
+      >
         <Avatar className="h-7 w-7">
           <AvatarFallback className="animate-pulse bg-inset text-xs" />
         </Avatar>
@@ -61,6 +67,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
+            aria-label="Guest account menu"
             className="group h-8 gap-1.5 rounded-full border border-warning/40 border-dashed bg-transparent pr-2 pl-1 hover:border-warning hover:bg-warning/10"
             size="sm"
             variant="ghost"
@@ -72,7 +79,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
                 {avatarProps.initials}
               </AvatarFallback>
             </Avatar>
-            <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" />
+            <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" data-icon="inline-end" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
@@ -100,7 +107,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               size="sm"
               variant="secondary"
             >
-              <User className="h-4 w-4" />
+              <User className="h-4 w-4" data-icon="inline-start" />
               Save my progress
             </Button>
             <button
@@ -144,6 +151,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
+            aria-label="Account menu"
             className="group h-8 gap-1.5 rounded-full border border-border bg-card pr-2 pl-1 hover:bg-muted"
             size="sm"
             variant="ghost"
@@ -153,7 +161,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
                 ?
               </AvatarFallback>
             </Avatar>
-            <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" />
+            <ChevronDown className="h-3.5 w-3.5 text-subtle transition-transform group-data-[state=open]:rotate-180" data-icon="inline-end" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
@@ -169,7 +177,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               size="sm"
               variant="secondary"
             >
-              <User className="h-4 w-4" />
+              <User className="h-4 w-4" data-icon="inline-start" />
               Sign in
             </Button>
             <button
@@ -216,6 +224,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          aria-label="Account menu"
           className={cn(
             "group h-8 gap-1.5 rounded-full border bg-card pr-2 pl-1 hover:bg-muted",
             hasStreak ? "border-warning/40 hover:border-warning" : "border-border"
@@ -237,7 +246,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               </div>
             )}
           </div>
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" data-icon="inline-end" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">

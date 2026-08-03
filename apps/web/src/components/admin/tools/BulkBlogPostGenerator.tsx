@@ -152,6 +152,7 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
             <div>
               <Label>Generation Mode</Label>
               <RadioGroup
+                aria-label="Generation mode"
                 className="mt-2"
                 onValueChange={(value) =>
                   setMode(value as "without-blogs" | "date-range" | "puzzle-ids")
@@ -225,12 +226,12 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <FileText className="mr-2 h-4 w-4" />
+                  <FileText data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Blog Posts
                 </>
               )}
@@ -250,7 +251,7 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
                 </CardDescription>
               </div>
               <Button disabled={selectedPosts.size === 0} onClick={handleSaveSelected}>
-                <Save className="mr-2 h-4 w-4" />
+                <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
                 Save Selected ({selectedPosts.size})
               </Button>
             </div>
@@ -315,6 +316,7 @@ function VirtualizedBlogPostList({
             >
               <div className="flex items-start gap-4 rounded-lg border p-4">
                 <Checkbox
+                  aria-label="Select generated blog post"
                   checked={selectedPosts.has(index)}
                   className="mt-1"
                   onCheckedChange={() => toggleSelection(index)}

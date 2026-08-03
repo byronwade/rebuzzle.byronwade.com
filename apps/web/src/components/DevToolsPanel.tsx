@@ -215,9 +215,9 @@ export function DevToolsPanel() {
               variant="secondary"
             >
               {busy === "regenerate" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" data-icon="inline-end" />
               ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" data-icon="inline-end" />
               )}
               Generate new puzzle
             </Button>
@@ -228,7 +228,7 @@ export function DevToolsPanel() {
               size="sm"
               variant="outline"
             >
-              <Palette className="h-3.5 w-3.5" />
+              <Palette className="h-3.5 w-3.5" data-icon="inline-start" />
               Visual Lab (pictogram / text / image)
             </Button>
             <Button
@@ -239,9 +239,9 @@ export function DevToolsPanel() {
               variant="outline"
             >
               {busy === "clear-attempts" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" data-icon="inline-end" />
               ) : (
-                <Unlock className="h-3.5 w-3.5" />
+                <Unlock className="h-3.5 w-3.5" data-icon="inline-end" />
               )}
               Unlock today (clear lock)
             </Button>
@@ -277,7 +277,7 @@ export function DevToolsPanel() {
                 size="sm"
                 variant="outline"
               >
-                <Trophy className="mr-1 h-3 w-3" />
+                <Trophy data-icon="inline-start" className="mr-1 h-3 w-3" />
                 Win
               </Button>
               <Button
@@ -322,7 +322,10 @@ export function DevToolsPanel() {
           </div>
 
           {status && (
-            <p className="rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px]">
+            <p
+              className="rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px]"
+              role="status"
+            >
               {status}
             </p>
           )}

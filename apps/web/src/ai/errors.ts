@@ -141,8 +141,8 @@ export function parseAIError(error: unknown): AIError {
     return error;
   }
 
-  // Extract error message for quota detection
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  // Extract provider text for quota / auth classification (not a UI status string)
+  const providerText = error instanceof Error ? error.message : String(error);
   const errorObj = error && typeof error === "object" ? (error as Record<string, unknown>) : null;
   const errorName = error instanceof Error ? error.name : "";
 
@@ -150,8 +150,8 @@ export function parseAIError(error: unknown): AIError {
   if (
     errorName === "GatewayAuthenticationError" ||
     errorName === "GatewayError" ||
-    /unauthenticated/i.test(errorMessage) ||
-    /ai_gateway_api_key/i.test(errorMessage)
+    /unauthenticated/i.test(providerText) ||
+    /ai_gateway_api_key/i.test(providerText)
   ) {
     const onVercel = Boolean(process.env.VERCEL);
     const remediation = onVercel
@@ -166,9 +166,9 @@ export function parseAIError(error: unknown): AIError {
 
   // Check for model not found errors (should trigger fallback to next model)
   if (
-    errorMessage.includes("not found") ||
-    (errorMessage.includes("Model") && errorMessage.includes("not found")) ||
-    errorMessage.includes("model_not_found")
+    providerText.includes("not found") ||
+    (providerText.includes("Model") && providerText.includes("not found")) ||
+    providerText.includes("model_not_found")
   ) {
     // Check if this is a nested error with model_not_found type
     if (errorObj) {
@@ -177,22 +177,22 @@ export function parseAIError(error: unknown): AIError {
         data?: { error?: { type?: string; message?: string } };
       };
       if (err.type === "model_not_found" || err.data?.error?.type === "model_not_found") {
-        return new AIError(errorMessage, "MODEL_NOT_FOUND", 404);
+        return new AIError(providerText, "MODEL_NOT_FOUND", 404);
       }
     }
     // Return as model not found error (retryable)
-    return new AIError(errorMessage, "MODEL_NOT_FOUND", 404);
+    return new AIError(providerText, "MODEL_NOT_FOUND", 404);
   }
 
   // Check for quota exceeded in message (Google API format)
   if (
-    errorMessage.includes("exceeded your current quota") ||
-    errorMessage.includes("Quota exceeded for metric") ||
-    errorMessage.includes("RESOURCE_EXHAUSTED") ||
-    errorMessage.includes("quota")
+    providerText.includes("exceeded your current quota") ||
+    providerText.includes("Quota exceeded for metric") ||
+    providerText.includes("RESOURCE_EXHAUSTED") ||
+    providerText.includes("quota")
   ) {
     // Try to extract retry delay from message
-    const retryMatch = errorMessage.match(/retry in ([\d.]+)s/i);
+    const retryMatch = providerText.match(/retry in ([\d.]+)s/i);
     const retrySeconds = retryMatch?.[1] ? Number.parseFloat(retryMatch[1]) : undefined;
     const resetTime = retrySeconds ? new Date(Date.now() + retrySeconds * 1000) : undefined;
 
@@ -240,9 +240,10 @@ export function parseAIError(error: unknown): AIError {
       }
     }
 
-    // Try errors array (AI SDK RetryError has this)
-    if (Array.isArray(err.errors) && err.errors.length > 0) {
-      const lastErr = err.errors[err.errors.length - 1];
+    // Try nested failure list (AI SDK RetryError has this)
+    const nestedFailures = Array.isArray(err["errors"]) ? err["errors"] : null;
+    if (nestedFailures && nestedFailures.length > 0) {
+      const lastErr = nestedFailures[nestedFailures.length - 1];
       const nested = parseAIError(lastErr);
       if (nested instanceof QuotaExceededError || nested.code === "QUOTA_EXCEEDED") {
         return nested;
@@ -268,7 +269,7 @@ export function parseAIError(error: unknown): AIError {
       gatewayErr.type === "model_not_found" ||
       gatewayErr.data?.error?.type === "model_not_found"
     ) {
-      return new AIError(gatewayErr.data?.error?.message || errorMessage, "MODEL_NOT_FOUND", 404);
+      return new AIError(gatewayErr.data?.error?.message || providerText, "MODEL_NOT_FOUND", 404);
     }
 
     // Quota exceeded (429) - check status codes

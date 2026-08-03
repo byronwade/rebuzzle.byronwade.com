@@ -214,7 +214,7 @@ export default function LeaderboardClient({
             onClick={() => setSortBy("points")}
             className="h-10 min-w-[7.5rem] gap-1.5 px-4"
           >
-            <Trophy className="size-4" />
+            <Trophy className="size-4" data-icon="inline-start" />
             Points
           </Button>
           <Button
@@ -223,7 +223,7 @@ export default function LeaderboardClient({
             onClick={() => setSortBy("streak")}
             className="h-10 min-w-[7.5rem] gap-1.5 px-4"
           >
-            <Flame className="size-4" />
+            <Flame className="size-4" data-icon="inline-start" />
             Streaks
           </Button>
         </div>
@@ -304,7 +304,7 @@ export default function LeaderboardClient({
                       size="sm"
                       className="gap-1.5 font-medium text-sm"
                     >
-                      <ArrowDown className="size-3.5" />
+                      <ArrowDown className="size-3.5" data-icon="inline-start" />
                       Find me
                     </Button>
                   )}
@@ -351,9 +351,9 @@ export default function LeaderboardClient({
               <p className="text-muted-foreground text-sm mb-4">
                 Be the first to solve a puzzle and claim the top spot!
               </p>
-              <Link href="/">
-                <Button>Start Playing</Button>
-              </Link>
+              <Button asChild>
+                  <Link href="/">Start Playing</Link>
+                </Button>
             </CardContent>
           </Card>
         ) : (
@@ -597,11 +597,9 @@ export default function LeaderboardClient({
 
         {/* Call to Action */}
         <div className="mt-8 text-center">
-          <Link href="/">
-            <Button size="lg" className="font-medium">
-              Play Today's Puzzle
-            </Button>
-          </Link>
+          <Button asChild size="lg" className="font-medium">
+                  <Link href="/">Play Today's Puzzle</Link>
+                </Button>
         </div>
 
         {/* Achievements & Levels Link */}

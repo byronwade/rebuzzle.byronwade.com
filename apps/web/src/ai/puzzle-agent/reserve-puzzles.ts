@@ -607,46 +607,46 @@ export const RESERVE_PUZZLES: readonly ReservePuzzle[] = [
 export function validateReservePuzzleCorpus(
   corpus: readonly ReservePuzzle[] = RESERVE_PUZZLES
 ): string[] {
-  const errors: string[] = [];
+  const issues: string[] = [];
   const ids = new Set<string>();
   const answers = new Set<string>();
   const compositions = new Set<string>();
-  if (corpus.length < 60) errors.push(`Reserve corpus has only ${corpus.length} puzzles; need 60+`);
+  if (corpus.length < 60) issues.push(`Reserve corpus has only ${corpus.length} puzzles; need 60+`);
 
   for (const puzzle of corpus) {
-    if (ids.has(puzzle.id)) errors.push(`Duplicate reserve id: ${puzzle.id}`);
+    if (ids.has(puzzle.id)) issues.push(`Duplicate reserve id: ${puzzle.id}`);
     ids.add(puzzle.id);
     const answerKey = normalizeAnswerKey(puzzle.answer);
-    if (answers.has(answerKey)) errors.push(`Duplicate reserve answer: ${puzzle.answer}`);
+    if (answers.has(answerKey)) issues.push(`Duplicate reserve answer: ${puzzle.answer}`);
     answers.add(answerKey);
     const parsed = PuzzleVisualSchema.safeParse(puzzle.visual);
-    if (!parsed.success) errors.push(`Invalid visual for ${puzzle.id}: ${parsed.error.message}`);
+    if (!parsed.success) issues.push(`Invalid visual for ${puzzle.id}: ${parsed.error.message}`);
     if (puzzle.rebusPuzzle !== puzzle.visual.unicodeFallback) {
-      errors.push(`Unicode fallback drift for ${puzzle.id}`);
+      issues.push(`Unicode fallback drift for ${puzzle.id}`);
     }
     if (normalizeAnswerKey(puzzle.rebusPuzzle) === answerKey) {
-      errors.push(`Reserve board exposes its answer: ${puzzle.id}`);
+      issues.push(`Reserve board exposes its answer: ${puzzle.id}`);
     }
     if (puzzle.hints.length !== 3 || puzzle.hints.some((hint) => !hint.trim())) {
-      errors.push(`Reserve hints are incomplete: ${puzzle.id}`);
+      issues.push(`Reserve hints are incomplete: ${puzzle.id}`);
     }
     for (const layer of puzzle.visual.layers) {
-      if (layer.kind === "image") errors.push(`Reserve puzzle uses an image layer: ${puzzle.id}`);
+      if (layer.kind === "image") issues.push(`Reserve puzzle uses an image layer: ${puzzle.id}`);
       if (
         layer.kind === "pictogram" &&
         (layer.source !== "catalog" || !layer.assetId || !layer.svg)
       ) {
-        errors.push(`Reserve pictogram is not catalog-grounded: ${puzzle.id}/${layer.concept}`);
+        issues.push(`Reserve pictogram is not catalog-grounded: ${puzzle.id}/${layer.concept}`);
       }
     }
     const signature = buildPuzzleNoveltySignature(puzzle);
     const composition = `${signature.mechanismKey}:${signature.orderedCueKey}`;
     if (compositions.has(composition)) {
-      errors.push(`Duplicate reserve structural composition: ${puzzle.id}`);
+      issues.push(`Duplicate reserve structural composition: ${puzzle.id}`);
     }
     compositions.add(composition);
   }
-  return errors;
+  return issues;
 }
 
 function stableDateSeed(dateString: string): number {

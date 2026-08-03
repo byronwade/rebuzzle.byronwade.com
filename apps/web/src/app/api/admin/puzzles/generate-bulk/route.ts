@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     console.log(`[Admin] Generating ${validatedCount} puzzles in bulk...`);
 
     const puzzles: any[] = [];
-    const errors: string[] = [];
+    const failures: string[] = [];
 
     // Generate puzzles sequentially to avoid overwhelming the AI
     for (let i = 0; i < validatedCount; i++) {
@@ -80,10 +80,10 @@ export async function POST(request: Request) {
             },
           });
         } else {
-          errors.push(`Puzzle ${i + 1}: ${result.recommendations.join(", ")}`);
+          failures.push(`Puzzle ${i + 1}: ${result.recommendations.join(", ")}`);
         }
       } catch (error) {
-        errors.push(`Puzzle ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`);
+        failures.push(`Puzzle ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     }
 
@@ -93,8 +93,8 @@ export async function POST(request: Request) {
       metadata: {
         requested: validatedCount,
         generated: puzzles.length,
-        failed: errors.length,
-        errors: errors.length > 0 ? errors : undefined,
+        failed: failures.length,
+        errors: failures.length > 0 ? failures : undefined,
       },
     });
   } catch (error) {

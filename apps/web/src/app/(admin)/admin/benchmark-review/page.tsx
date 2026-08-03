@@ -268,15 +268,15 @@ export default function BenchmarkReviewPage() {
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <a href="/api/admin/ai/benchmark-reviews/export">
-              <Download className="mr-2 h-4 w-4" /> Export reviews
+              <Download className="mr-2 h-4 w-4" data-icon="inline-start" /> Export reviews
             </a>
           </Button>
           <Button asChild variant="outline">
             <label className="cursor-pointer">
               {importing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
               ) : (
-                <FileUp className="mr-2 h-4 w-4" />
+                <FileUp className="mr-2 h-4 w-4" data-icon="inline-start" />
               )}
               Import pinned artifact
               <input
@@ -351,7 +351,7 @@ export default function BenchmarkReviewPage() {
           }}
           value={status}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger aria-label="Filter reviews by status" className="w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -362,7 +362,11 @@ export default function BenchmarkReviewPage() {
           </SelectContent>
         </Select>
         <Button disabled={loading} onClick={() => void loadQueue()} size="sm" variant="ghost">
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          <RefreshCw
+            className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
+            data-icon="inline-start"
+          />{" "}
+          Refresh
         </Button>
       </div>
 
@@ -424,7 +428,7 @@ export default function BenchmarkReviewPage() {
                   rel="noreferrer"
                   target="_blank"
                 >
-                  Check {sourceHost(current.sourceUrl)} <ExternalLink className="ml-1 h-3 w-3" />
+                  Check {sourceHost(current.sourceUrl)} <ExternalLink data-icon="inline-end" className="ml-1 h-3 w-3" />
                 </a>
               </div>
               <div className="flex items-center gap-3 text-sm">
@@ -446,11 +450,11 @@ export default function BenchmarkReviewPage() {
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button disabled={saving} onClick={() => void submitDecision("approve")}>
-                  <Check className="mr-2 h-4 w-4" /> Approve both{" "}
+                  <Check className="mr-2 h-4 w-4" data-icon="inline-start" /> Approve both{" "}
                   <kbd className="ml-auto text-xs opacity-60">A</kbd>
                 </Button>
                 <Button disabled={saving} onClick={skipCurrent} variant="outline">
-                  <SkipForward className="mr-2 h-4 w-4" /> Skip{" "}
+                  <SkipForward className="mr-2 h-4 w-4" data-icon="inline-start" /> Skip{" "}
                   <kbd className="ml-auto text-xs opacity-60">S</kbd>
                 </Button>
                 <Button
@@ -458,7 +462,7 @@ export default function BenchmarkReviewPage() {
                   onClick={() => void submitDecision("reject-rights")}
                   variant="destructive"
                 >
-                  <ShieldX className="mr-2 h-4 w-4" /> Reject rights{" "}
+                  <ShieldX className="mr-2 h-4 w-4" data-icon="inline-start" /> Reject rights{" "}
                   <kbd className="ml-auto text-xs opacity-70">R</kbd>
                 </Button>
                 <Button
@@ -466,7 +470,7 @@ export default function BenchmarkReviewPage() {
                   onClick={() => void submitDecision("reject-answer")}
                   variant="destructive"
                 >
-                  <X className="mr-2 h-4 w-4" /> Wrong answer{" "}
+                  <X className="mr-2 h-4 w-4" data-icon="inline-start" /> Wrong answer{" "}
                   <kbd className="ml-auto text-xs opacity-70">W</kbd>
                 </Button>
               </div>
@@ -477,7 +481,7 @@ export default function BenchmarkReviewPage() {
                   size="sm"
                   variant="ghost"
                 >
-                  <RotateCcw className="mr-2 h-4 w-4" /> Return to pending
+                  <RotateCcw className="mr-2 h-4 w-4" data-icon="inline-start" /> Return to pending
                 </Button>
               )}
               <p className="text-center text-muted-foreground text-xs">

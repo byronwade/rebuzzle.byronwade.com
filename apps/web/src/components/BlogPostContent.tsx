@@ -239,7 +239,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
 
             <div className="border-border border-t bg-inset px-5 py-3">
               <Button onClick={() => setIsRevealed(false)} size="sm" variant="ghost">
-                <EyeOff className="size-3.5" />
+                <EyeOff className="size-3.5" data-icon="inline-start" />
                 Hide solution
               </Button>
             </div>
@@ -254,12 +254,12 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             >
               {canReveal ? (
                 <>
-                  <Eye className="size-4" />
+                  <Eye className="size-4" data-icon="inline-end" />
                   Reveal solution
                 </>
               ) : (
                 <>
-                  <Lock className="size-4" />
+                  <Lock className="size-4" data-icon="inline-end" />
                   Complete the puzzle first
                 </>
               )}

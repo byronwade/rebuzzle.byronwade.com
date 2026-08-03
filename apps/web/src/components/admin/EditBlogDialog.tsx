@@ -87,10 +87,12 @@ export function EditBlogDialog({
     }
   }, [blog, form]);
 
-  const onSubmit = (data: BlogPost) => {
+  const onSubmit = async (data: BlogPost) => {
     onSave(data);
     onOpenChange(false);
   };
+
+  const isSubmitting = form.formState.isSubmitting;
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -205,10 +207,17 @@ export function EditBlogDialog({
             </div>
 
             <DialogFooter>
-              <Button onClick={() => onOpenChange(false)} type="button" variant="outline">
+              <Button
+                disabled={isSubmitting}
+                onClick={() => onOpenChange(false)}
+                type="button"
+                variant="outline"
+              >
                 Cancel
               </Button>
-              <Button type="submit">{isCreating ? "Create" : "Save Changes"}</Button>
+              <Button disabled={isSubmitting} type="submit">
+                {isSubmitting ? "Saving…" : isCreating ? "Create" : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

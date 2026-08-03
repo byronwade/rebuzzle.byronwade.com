@@ -46,7 +46,7 @@ export default function PlaytestPage() {
   const [failureReason, setFailureReason] = useState<PuzzlePlaytestFailureReason | "">("");
   const [shownAt, setShownAt] = useState(Date.now());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadNext = useCallback(async () => {
@@ -82,7 +82,7 @@ export default function PlaytestPage() {
   }, [authLoading, isAuthenticated, isGuest, loadNext]);
 
   const submit = async (gaveUp: boolean) => {
-    if (!specimen || saving) return;
+    if (!specimen || isSubmitting) return;
     if (!gaveUp && !guess.trim()) {
       toast({ title: "Enter your answer", variant: "destructive" });
       return;
@@ -91,7 +91,7 @@ export default function PlaytestPage() {
       toast({ title: "Choose why you could not solve it", variant: "destructive" });
       return;
     }
-    setSaving(true);
+    setIsSubmitting(true);
     try {
       const response = await fetch("/api/puzzle-playtests", {
         method: "POST",
@@ -118,7 +118,7 @@ export default function PlaytestPage() {
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -234,7 +234,7 @@ export default function PlaytestPage() {
                 aria-label="Puzzle answer"
                 autoComplete="off"
                 autoFocus
-                disabled={saving}
+                disabled={isSubmitting}
                 maxLength={160}
                 onChange={(event) => setGuess(event.target.value)}
                 placeholder="Enter the word or phrase"
@@ -262,7 +262,7 @@ export default function PlaytestPage() {
                 <select
                   aria-label="Reason puzzle was not playable"
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  disabled={saving}
+                  disabled={isSubmitting}
                   onChange={(event) =>
                     setFailureReason(event.target.value as PuzzlePlaytestFailureReason | "")
                   }
@@ -276,7 +276,7 @@ export default function PlaytestPage() {
                   ))}
                 </select>
                 <Button
-                  disabled={saving}
+                  disabled={isSubmitting}
                   onClick={() => void submit(true)}
                   type="button"
                   variant="outline"
@@ -284,11 +284,11 @@ export default function PlaytestPage() {
                   I cannot solve this
                 </Button>
               </div>
-              <Button className="w-full" disabled={saving} type="submit">
-                {saving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Button className="w-full" disabled={isSubmitting} type="submit">
+                {isSubmitting ? (
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Send className="mr-2 h-4 w-4" />
+                  <Send data-icon="inline-start" className="mr-2 h-4 w-4" />
                 )}
                 Submit final answer
               </Button>

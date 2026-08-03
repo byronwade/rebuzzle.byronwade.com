@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     console.log(`[Admin] Generating blog posts for ${limitedPuzzles.length} puzzles...`);
 
     const blogPosts: any[] = [];
-    const errors: string[] = [];
+    const failures: string[] = [];
 
     // Generate blog posts sequentially
     for (let i = 0; i < limitedPuzzles.length; i++) {
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
             : new Date().toISOString(),
         });
       } catch (error) {
-        errors.push(
+        failures.push(
           `Puzzle ${puzzle.id}: ${error instanceof Error ? error.message : "Unknown error"}`
         );
       }
@@ -104,8 +104,8 @@ export async function POST(request: Request) {
       metadata: {
         requested: limitedPuzzles.length,
         generated: blogPosts.length,
-        failed: errors.length,
-        errors: errors.length > 0 ? errors : undefined,
+        failed: failures.length,
+        errors: failures.length > 0 ? failures : undefined,
       },
     });
   } catch (error) {

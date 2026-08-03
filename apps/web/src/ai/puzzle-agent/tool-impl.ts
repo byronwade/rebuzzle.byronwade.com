@@ -825,34 +825,34 @@ export function validatePuzzleCandidate(
   const target = input.targetDifficulty ?? input.difficulty;
   const level = getDifficultyLevelForScore(target);
 
-  const errors: string[] = [];
+  const failures: string[] = [];
 
   if (config.validation?.validate) {
     const result = config.validation.validate(input as never);
-    if (!result.valid) errors.push(...(result.errors ?? []));
+    if (!result.valid) failures.push(...(result.errors ?? []));
   }
 
   if (!isKnownTechniqueId(input.techniqueId)) {
-    errors.push("techniqueId must be a known library technique");
+    failures.push("techniqueId must be a known library technique");
   }
 
   const visualCheck = evaluateVisualForPublish(input.visual);
   if (!visualCheck.ok) {
-    errors.push(visualCheck.reason ?? "Visual failed publish check");
+    failures.push(visualCheck.reason ?? "Visual failed publish check");
   }
 
   const quality = scorePuzzleQuality({ ...input, targetDifficulty: target });
-  if (!quality.publishable) errors.push(...quality.issues);
+  if (!quality.publishable) failures.push(...quality.issues);
 
   if (!isDifficultyInBand(input.difficulty, target)) {
-    errors.push(
+    failures.push(
       `Proposed difficulty ${input.difficulty} outside ${level.label} band ${level.min}-${level.max}`
     );
   }
 
   return {
-    valid: errors.length === 0,
-    errors: [...new Set(errors)],
+    valid: failures.length === 0,
+    errors: [...new Set(failures)],
     puzzleType,
     tier: level.label,
   };

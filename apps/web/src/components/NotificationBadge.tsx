@@ -157,7 +157,7 @@ export function NotificationBadge() {
   if (!mounted) {
     return (
       <Button aria-label="Email Reminders" className="relative" size="icon" variant="ghost">
-        <Bell className="h-5 w-5" />
+        <Bell className="h-5 w-5" data-icon="inline-start" />
       </Button>
     );
   }
@@ -248,12 +248,12 @@ export function NotificationBadge() {
                 >
                   {emailLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                       Disabling...
                     </>
                   ) : (
                     <>
-                      <Bell className="mr-2 h-4 w-4" />
+                      <Bell data-icon="inline-start" className="mr-2 h-4 w-4" />
                       Disable email reminders
                     </>
                   )}
@@ -280,12 +280,12 @@ export function NotificationBadge() {
                 >
                   {emailLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                       Enabling...
                     </>
                   ) : (
                     <>
-                      <Mail className="mr-2 h-4 w-4" />
+                      <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                       Enable daily reminders
                     </>
                   )}
@@ -372,12 +372,12 @@ export function NotificationBadge() {
             >
               {isSubmitting || emailLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Enabling...
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Enable Notifications
                 </>
               )}

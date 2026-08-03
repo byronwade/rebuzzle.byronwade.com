@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     console.log(`[Admin] Generating puzzles for ${dates.length} dates...`);
 
     const puzzles: any[] = [];
-    const errors: string[] = [];
+    const failures: string[] = [];
 
     // Generate puzzles for each date
     for (let i = 0; i < dates.length; i++) {
@@ -97,10 +97,10 @@ export async function POST(request: Request) {
             date: format(date, "yyyy-MM-dd"),
           });
         } else {
-          errors.push(`${format(date, "yyyy-MM-dd")}: ${result.recommendations.join(", ")}`);
+          failures.push(`${format(date, "yyyy-MM-dd")}: ${result.recommendations.join(", ")}`);
         }
       } catch (error) {
-        errors.push(
+        failures.push(
           `${format(date, "yyyy-MM-dd")}: ${error instanceof Error ? error.message : "Unknown error"}`
         );
       }
@@ -116,8 +116,8 @@ export async function POST(request: Request) {
           days: dates.length,
         },
         generated: puzzles.length,
-        failed: errors.length,
-        errors: errors.length > 0 ? errors : undefined,
+        failed: failures.length,
+        errors: failures.length > 0 ? failures : undefined,
       },
     });
   } catch (error) {

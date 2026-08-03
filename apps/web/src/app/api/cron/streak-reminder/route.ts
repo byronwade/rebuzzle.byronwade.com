@@ -62,7 +62,7 @@ async function handleStreakReminder() {
     sent: 0,
     skipped: 0,
     failed: 0,
-    errors: [] as string[],
+    failures: [] as string[],
   };
 
   const BATCH_SIZE = 10;
@@ -102,12 +102,12 @@ async function handleStreakReminder() {
           );
         } else {
           results.failed++;
-          results.errors.push(`${user.email}: ${result.error}`);
+          results.failures.push(`${user.email}: ${result.error}`);
         }
       } catch (error) {
         results.failed++;
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        results.errors.push(`${user.email}: ${errorMessage}`);
+        const failureText = error instanceof Error ? error.message : "Unknown error";
+        results.failures.push(`${user.email}: ${failureText}`);
       }
     });
 

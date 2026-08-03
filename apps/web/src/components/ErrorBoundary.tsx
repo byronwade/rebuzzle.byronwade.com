@@ -163,11 +163,11 @@ function FullPageErrorFallback({ error, resetError }: ErrorFallbackProps) {
           )}
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Button onClick={resetError} variant="default">
-              <RefreshCw className="mr-2 h-4 w-4" />
+              <RefreshCw data-icon="inline-start" className="mr-2 h-4 w-4" />
               Try Again
             </Button>
             <Button onClick={() => (window.location.href = "/")} variant="outline">
-              <Home className="mr-2 h-4 w-4" />
+              <Home data-icon="inline-start" className="mr-2 h-4 w-4" />
               Go Home
             </Button>
           </div>
@@ -198,7 +198,7 @@ function InlineErrorFallback({ error, resetError }: ErrorFallbackProps) {
             {isDev ? error.message : "An unexpected error occurred."}
           </p>
           <Button onClick={resetError} size="sm" variant="outline">
-            <RefreshCw className="mr-1 h-3 w-3" />
+            <RefreshCw data-icon="inline-start" className="mr-1 h-3 w-3" />
             Retry
           </Button>
         </div>

@@ -186,7 +186,7 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
                 onValueChange={(value) => setFormData({ ...formData, puzzleType: value })}
                 value={formData.puzzleType}
               >
-                <SelectTrigger id="puzzle-type">
+                <SelectTrigger aria-label="Bulk generation option" id="puzzle-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -250,12 +250,12 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
             <Button className="w-full" disabled={loading} onClick={handleGenerate}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate {formData.count} Puzzles
                 </>
               )}
@@ -275,7 +275,7 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
                 </CardDescription>
               </div>
               <Button disabled={selectedPuzzles.size === 0} onClick={handleSaveSelected}>
-                <Save className="mr-2 h-4 w-4" />
+                <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
                 Save Selected ({selectedPuzzles.size})
               </Button>
             </div>
@@ -340,6 +340,7 @@ function VirtualizedPuzzleList({
             >
               <div className="flex items-start gap-4 rounded-lg border p-4">
                 <Checkbox
+                  aria-label="Select generated puzzle"
                   checked={selectedPuzzles.has(index)}
                   className="mt-1"
                   onCheckedChange={() => toggleSelection(index)}

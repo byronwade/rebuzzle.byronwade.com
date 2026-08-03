@@ -436,14 +436,12 @@ export default function AchievementsPage() {
                 Create an account to save your achievements
               </p>
               <div className="flex justify-center gap-2">
-                <Link href="/login">
-                  <Button variant="outline" size="sm">
-                    Login
-                  </Button>
-                </Link>
-                <Link href="/signup">
-                  <Button size="sm">Sign Up</Button>
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/login">Login</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -110,7 +110,7 @@ function PlaytestInvitation() {
       <Button asChild className="mt-4 w-full" variant="outline">
         <Link href="/playtest?from=game-over">
           Review a test puzzle
-          <ArrowRight className="ml-2 h-4 w-4" />
+          <ArrowRight data-icon="inline-end" className="ml-2 h-4 w-4" />
         </Link>
       </Button>
     </div>
@@ -443,9 +443,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           <p className="text-muted-foreground text-sm">
             Results unlock after you finish today&apos;s puzzle.
           </p>
-          <Link href="/">
-            <Button className="w-full">Go to puzzle</Button>
-          </Link>
+          <Button asChild className="w-full">
+                  <Link href="/">Go to puzzle</Link>
+                </Button>
         </div>
       </Layout>
     );
@@ -575,7 +575,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     qualityVote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
                   Like
                 </Button>
                 <Button
@@ -589,7 +589,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                       "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
                 >
-                  <ThumbsDown className="h-4 w-4" />
+                  <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
                   Dislike
                 </Button>
               </div>
@@ -668,16 +668,12 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
             {/* Secondary Actions */}
             <div className="flex gap-3">
-              <Link className="flex-1" href="/leaderboard">
-                <Button variant="outline" className="w-full">
-                  Leaderboard
+              <Button asChild variant="outline" className="w-full">
+                  <Link className="flex-1" href="/leaderboard">Leaderboard</Link>
                 </Button>
-              </Link>
-              <Link className="flex-1" href="/blog">
-                <Button variant="outline" className="w-full">
-                  Tips
+              <Button asChild variant="outline" className="w-full">
+                  <Link className="flex-1" href="/blog">Tips</Link>
                 </Button>
-              </Link>
             </div>
 
             {playtestEligible && <PlaytestInvitation />}
@@ -695,9 +691,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     guest — signing up won&apos;t lose today&apos;s solve.
                   </p>
                 </div>
-                <Link href="/signup" className="block">
-                  <Button className="w-full">Create a free account</Button>
-                </Link>
+                <Button asChild className="w-full">
+                  <Link href="/signup" className="block">Create a free account</Link>
+                </Button>
                 <p className="text-muted-foreground text-xs">
                   Already have one?{" "}
                   <Link
@@ -792,7 +788,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     qualityVote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
                   Like
                 </Button>
                 <Button
@@ -806,7 +802,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                       "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
                 >
-                  <ThumbsDown className="h-4 w-4" />
+                  <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
                   Dislike
                 </Button>
               </div>
@@ -870,16 +866,12 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Link className="flex-1" href="/leaderboard">
-                <Button variant="outline" className="w-full">
-                  Leaderboard
+              <Button asChild variant="outline" className="w-full">
+                  <Link className="flex-1" href="/leaderboard">Leaderboard</Link>
                 </Button>
-              </Link>
-              <Link className="flex-1" href="/blog">
-                <Button variant="outline" className="w-full">
-                  Tips
+              <Button asChild variant="outline" className="w-full">
+                  <Link className="flex-1" href="/blog">Tips</Link>
                 </Button>
-              </Link>
             </div>
 
             {playtestEligible && <PlaytestInvitation />}

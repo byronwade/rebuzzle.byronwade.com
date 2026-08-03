@@ -101,10 +101,12 @@ export function EditPuzzleDialog({
     }
   }, [puzzle, form]);
 
-  const onSubmit = (data: Puzzle) => {
+  const onSubmit = async (data: Puzzle) => {
     onSave(data);
     onOpenChange(false);
   };
+
+  const isSubmitting = form.formState.isSubmitting;
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -143,7 +145,7 @@ export function EditPuzzleDialog({
                     <FormLabel>Puzzle Type</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || "rebus"}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Puzzle type">
                           <SelectValue placeholder="Select puzzle type" />
                         </SelectTrigger>
                       </FormControl>
@@ -184,7 +186,7 @@ export function EditPuzzleDialog({
                     <FormLabel>Difficulty</FormLabel>
                     <Select onValueChange={field.onChange} value={String(field.value)}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Difficulty">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -280,7 +282,11 @@ export function EditPuzzleDialog({
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      <Switch
+                        aria-label="Active"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -288,10 +294,17 @@ export function EditPuzzleDialog({
             </div>
 
             <DialogFooter>
-              <Button onClick={() => onOpenChange(false)} type="button" variant="outline">
+              <Button
+                disabled={isSubmitting}
+                onClick={() => onOpenChange(false)}
+                type="button"
+                variant="outline"
+              >
                 Cancel
               </Button>
-              <Button type="submit">{isCreating ? "Create" : "Save Changes"}</Button>
+              <Button disabled={isSubmitting} type="submit">
+                {isSubmitting ? "Saving…" : isCreating ? "Create" : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

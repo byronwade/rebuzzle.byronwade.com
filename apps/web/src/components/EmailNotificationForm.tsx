@@ -187,7 +187,7 @@ export function EmailNotificationForm() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 pt-2">
+        <div aria-live="polite" className="flex gap-2 pt-2">
           {enabled ? (
             <Button
               className="flex-1"
@@ -197,12 +197,12 @@ export function EmailNotificationForm() {
             >
               {isSubmitting || isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Disabling...
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Disable Notifications
                 </>
               )}
@@ -215,12 +215,12 @@ export function EmailNotificationForm() {
             >
               {isSubmitting || isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Enabling...
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Enable Notifications
                 </>
               )}

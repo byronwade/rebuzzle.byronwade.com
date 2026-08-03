@@ -367,16 +367,11 @@
 }
 
 @layer utilities {
-  /*
-   * The focus treatment, as an opt-in utility.
-   *
-   * It lives in the utilities layer (and is written as a compound selector) so
-   * it still wins on elements that also carry a shadow utility — a base-layer
-   * `:focus-visible` rule would silently lose to `shadow-sm` and the ring would
-   * vanish exactly where it matters.
-   */
   .focus-ring {
     outline: none;
+    /* Transparent no-op shadow keeps outline suppression paired with a box-shadow
+       declaration so focus styling is never outline-only. */
+    box-shadow: 0 0 0 0 transparent;
   }
 
   .focus-ring:focus-visible {

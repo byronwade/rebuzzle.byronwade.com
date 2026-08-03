@@ -529,9 +529,9 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
 async function createCollectionIndexes(
   db: Db,
   definition: IndexDefinition
-): Promise<{ collection: string; created: number; errors: string[] }> {
+): Promise<{ collection: string; created: number; failures: string[] }> {
   const collection = db.collection(definition.collection);
-  const errors: string[] = [];
+  const failures: string[] = [];
   let created = 0;
 
   for (const indexDef of definition.indexes) {
@@ -543,16 +543,16 @@ async function createCollectionIndexes(
       created++;
     } catch (error) {
       // Index might already exist with different options
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const failureText = error instanceof Error ? error.message : String(error);
 
       // Ignore "index already exists" errors
-      if (!errorMessage.includes("already exists")) {
-        errors.push(`${JSON.stringify(indexDef.spec)}: ${errorMessage}`);
+      if (!failureText.includes("already exists")) {
+        failures.push(`${JSON.stringify(indexDef.spec)}: ${failureText}`);
       }
     }
   }
 
-  return { collection: definition.collection, created, errors };
+  return { collection: definition.collection, created, failures };
 }
 
 /**
@@ -561,12 +561,12 @@ async function createCollectionIndexes(
  */
 export async function setupDatabaseIndexes(): Promise<{
   success: boolean;
-  results: Array<{ collection: string; created: number; errors: string[] }>;
+  results: Array<{ collection: string; created: number; failures: string[] }>;
   totalCreated: number;
   totalErrors: number;
 }> {
   const db = getDatabase();
-  const results: Array<{ collection: string; created: number; errors: string[] }> = [];
+  const results: Array<{ collection: string; created: number; failures: string[] }> = [];
   let totalCreated = 0;
   let totalErrors = 0;
 
@@ -576,10 +576,10 @@ export async function setupDatabaseIndexes(): Promise<{
     const result = await createCollectionIndexes(db, definition);
     results.push(result);
     totalCreated += result.created;
-    totalErrors += result.errors.length;
+    totalErrors += result.failures.length;
 
-    if (result.errors.length > 0) {
-      console.warn(`[DB Indexes] ${result.collection}: ${result.errors.length} errors`);
+    if (result.failures.length > 0) {
+      console.warn(`[DB Indexes] ${result.collection}: ${result.failures.length} errors`);
       for (const error of result.errors) {
         console.warn(`  - ${error}`);
       }
@@ -632,11 +632,11 @@ export async function listAllIndexes(): Promise<
 export async function dropAllCustomIndexes(): Promise<{
   success: boolean;
   dropped: number;
-  errors: string[];
+  failures: string[];
 }> {
   const db = getDatabase();
   let dropped = 0;
-  const errors: string[] = [];
+  const failures: string[] = [];
 
   const collections = await db.listCollections().toArray();
 
@@ -653,15 +653,15 @@ export async function dropAllCustomIndexes(): Promise<{
           await collection.dropIndex(index.name!);
           dropped++;
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          errors.push(`${collInfo.name}.${index.name}: ${errorMessage}`);
+          const failureText = error instanceof Error ? error.message : String(error);
+          failures.push(`${collInfo.name}.${index.name}: ${failureText}`);
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      errors.push(`${collInfo.name}: ${errorMessage}`);
+      const failureText = error instanceof Error ? error.message : String(error);
+      failures.push(`${collInfo.name}: ${failureText}`);
     }
   }
 
-  return { success: errors.length === 0, dropped, errors };
+  return { success: failures.length === 0, dropped, failures };
 }
