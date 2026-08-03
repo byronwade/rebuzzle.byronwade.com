@@ -1113,7 +1113,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   className={cn(
                     "play-stage flex min-h-0 flex-1 flex-col items-center overflow-hidden px-4 md:px-6",
                     keyboardOpen
-                      ? "justify-start gap-1.5 pt-0 pb-1"
+                      ? "justify-start gap-1 pt-1 pb-0"
                       : hasThread
                         ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
                         : "justify-center py-[clamp(0.5rem,2vh,1rem)]"
@@ -1218,7 +1218,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 }
                 className={cn(
                   "input-area play-dock z-30 shrink-0 px-4 md:px-6",
-                  keyboardOpen ? "pt-2 pb-2" : "pt-5 pb-safe-lg"
+                  keyboardOpen ? "pt-1.5 pb-1.5" : "pt-5 pb-safe-lg"
                 )}
               >
                 <div className="mx-auto max-w-2xl">

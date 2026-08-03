@@ -845,12 +845,15 @@
   --stage-radius: 12px;
 }
 
-/* Keyboard-open: near-hero plate, top-pinned — chrome is gone, use the room. */
+/*
+ * Keyboard-open: fixed rem sizes — do NOT use vh here. While the OSK animates,
+ * vh tracks the shrinking visual viewport and makes the plate pulse/jitter.
+ */
 .puzzle-stage[data-state="compact"] {
-  --stage-pad: clamp(0.9rem, 3.5vh, 1.5rem);
-  --stage-min: clamp(120px, 22vh, 200px);
-  --stage-scale: 1.05;
-  --stage-radius: 16px;
+  --stage-pad: 0.85rem;
+  --stage-min: 7.5rem;
+  --stage-scale: 1;
+  --stage-radius: 14px;
 }
 
 .puzzle-stage[data-state="compact"] .puzzle-stage-plate {
@@ -862,7 +865,13 @@
 }
 
 .puzzle-stage[data-state="compact"] .puzzle-container-responsive {
-  padding: clamp(0.35rem, 1.2vh, 0.75rem) clamp(0.75rem, 3vw, 1.25rem);
+  padding: 0.4rem 1rem;
+}
+
+/* Kill stage size transitions while compact — they fight the shell resize. */
+.puzzle-stage[data-state="compact"] .puzzle-stage-plate,
+.puzzle-stage[data-state="compact"] .puzzle-stage-content {
+  transition: none;
 }
 
 .puzzle-stage-plate {
@@ -1151,6 +1160,8 @@
 
 .visual-viewport-shell {
   overscroll-behavior: none;
+  /* Contain layout so VV height ticks don't reflow the whole document. */
+  contain: layout style;
 }
 
 .keyboard-aware-container {
@@ -1169,11 +1180,36 @@
 
 .keyboard-visible .input-area {
   flex: 0 0 auto;
+  /* Safe-area already cleared by the shell height; keep a tight dock. */
+  padding-bottom: 0.5rem;
 }
 
-/* Free vertical space for the puzzle while typing. */
+/*
+ * Collapse chrome after the keyboard has settled (class toggled via
+ * isLayoutCompact). Prefer max-height over display:none so the first frame
+ * doesn't hard-cut and fight the shell resize.
+ */
+.visual-viewport-shell .play-chrome {
+  max-height: 12rem;
+  opacity: 1;
+  overflow: hidden;
+  transition:
+    max-height 160ms var(--ease),
+    opacity 120ms var(--ease),
+    border-color 120ms var(--ease);
+}
+
 .visual-viewport-shell.keyboard-open .play-chrome {
-  display: none;
+  max-height: 0;
+  opacity: 0;
+  border-bottom-color: transparent;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visual-viewport-shell .play-chrome {
+    transition: none;
+  }
 }
 
 /* ============================================================
