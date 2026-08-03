@@ -2,6 +2,7 @@
   "name": "@rebuzzle/web",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "engines": {
     "node": "24.x"
   },
@@ -13,6 +14,7 @@
     "lint": "npx biome check .",
     "lint:fix": "npx biome check --write .",
     "format": "npx biome format --write .",
+    "typecheck": "tsc --noEmit",
     "knip": "knip",
     "knip:fix": "knip --fix",
     "doctor": "react-doctor . -y --no-score",

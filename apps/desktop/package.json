@@ -2,6 +2,7 @@
   "name": "@rebuzzle/desktop",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Rebuzzle Desktop App - Daily puzzle game with native experience",
   "author": "Rebuzzle Team <hello@rebuzzle.com>",
   "homepage": "https://rebuzzle.byronwade.com",
