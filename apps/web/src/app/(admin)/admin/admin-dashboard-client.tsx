@@ -78,6 +78,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -1527,7 +1528,8 @@ function PuzzlesTab({
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onEdit(puzzle)}>
+                      <DropdownMenuGroup>
+<DropdownMenuItem onClick={() => onEdit(puzzle)}>
                         <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Edit
                       </DropdownMenuItem>
@@ -1538,7 +1540,7 @@ function PuzzlesTab({
                         <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Delete…
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
+                      </DropdownMenuGroup>                    </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </Card>
@@ -1719,7 +1721,8 @@ function BlogsTab({
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onEdit(blog)}>
+                      <DropdownMenuGroup>
+<DropdownMenuItem onClick={() => onEdit(blog)}>
                         <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Edit
                       </DropdownMenuItem>
@@ -1730,7 +1733,7 @@ function BlogsTab({
                         <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                         Delete…
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
+                      </DropdownMenuGroup>                    </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </Card>
@@ -2038,7 +2041,8 @@ function UsersTab({
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => onSendPasswordReset(user.id)}>
+                            <DropdownMenuGroup>
+<DropdownMenuItem onClick={() => onSendPasswordReset(user.id)}>
                               <Mail className="mr-2 h-4 w-4" data-icon="inline-start" />
                               Send Password Reset
                             </DropdownMenuItem>
@@ -2049,7 +2053,7 @@ function UsersTab({
                               <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
                               Delete… User
                             </DropdownMenuItem>
-                          </DropdownMenuContent>
+                      </DropdownMenuGroup>                          </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
