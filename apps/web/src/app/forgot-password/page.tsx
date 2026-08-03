@@ -1,10 +1,10 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,30 +44,14 @@ export default function ForgotPasswordPage() {
     setError(null);
     await withLoadingFlag(setIsLoading, async () => {
       try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({} as { error?: string }));
-        const errorMessage = data.error || "Failed to send reset email. Please try again.";
-        setError(errorMessage);
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
+        const response = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim() }),
         });
-      } else {
-        const data = await response.json();
-        if (data.success) {
-          setSuccess(true);
-          toast({
-            title: "Email sent!",
-            description: "Check your inbox for password reset instructions.",
-          });
-        } else {
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}) as { error?: string });
           const errorMessage = data.error || "Failed to send reset email. Please try again.";
           setError(errorMessage);
           toast({
@@ -75,17 +59,33 @@ export default function ForgotPasswordPage() {
             description: errorMessage,
             variant: "destructive",
           });
+        } else {
+          const data = await response.json();
+          if (data.success) {
+            setSuccess(true);
+            toast({
+              title: "Email sent!",
+              description: "Check your inbox for password reset instructions.",
+            });
+          } else {
+            const errorMessage = data.error || "Failed to send reset email. Please try again.";
+            setError(errorMessage);
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          }
         }
-      }
       } catch (error) {
-      console.error("Forgot password error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setError(errorMessage);
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+        console.error("Forgot password error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
     });
   };

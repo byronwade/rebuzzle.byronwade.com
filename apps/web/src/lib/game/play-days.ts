@@ -9,8 +9,7 @@ const LEGACY_STORAGE_KEY = "rebuzzlePlayDays";
 function readPlayDays(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw =
-      localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     const days = raw ? (JSON.parse(raw) as string[]) : [];
     return Array.isArray(days) ? days : [];
   } catch {

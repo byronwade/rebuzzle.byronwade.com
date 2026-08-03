@@ -28,7 +28,7 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
   const [puzzleIds, setPuzzleIds] = useState("");
 
   const handleGenerate = async () => {
-        await withLoadingFlag(setLoading, async () => {
+    await withLoadingFlag(setLoading, async () => {
       setGeneratedPosts([]);
       setSelectedPosts(new Set());
 
@@ -74,7 +74,6 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
         });
       }
     });
-
   };
 
   const toggleSelection = (index: number) => {

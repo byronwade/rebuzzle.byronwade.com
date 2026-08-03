@@ -38,7 +38,6 @@ export function useInAppNotifications(enabled: boolean) {
         // non-fatal
       }
     });
-
   }, [enabled]);
 
   useEffect(() => {

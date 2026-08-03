@@ -110,7 +110,8 @@ export function useEmailNotifications() {
             return data.subscriptionId as string | undefined;
           }
         } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : "Failed to enable notifications";
+          const errorMessage =
+            err instanceof Error ? err.message : "Failed to enable notifications";
           setError(errorMessage);
           toast({
             title: "Error",

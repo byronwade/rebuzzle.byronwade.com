@@ -13,8 +13,8 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useRef, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,8 +25,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { getLevelProgress as getProgress } from "@/lib/gameSettings";
-import { generateItemListSchema } from "@/lib/seo/structured-data";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
+import { generateItemListSchema } from "@/lib/seo/structured-data";
 
 interface LeaderboardEntry {
   rank: number;
@@ -146,7 +146,8 @@ export default function LeaderboardClient({
               }
             }
           }
-        }      } catch (error) {
+        }
+      } catch (error) {
         console.error("Error fetching leaderboard:", error);
       }
       setLoading(false);
@@ -218,7 +219,7 @@ export default function LeaderboardClient({
             variant={sortBy === "points" ? "default" : "outline"}
             size="sm"
             onClick={() => setSortBy("points")}
-            className="h-10 min-w-[7.5rem] gap-1.5 px-4"
+            className="h-10 gap-1.5 px-4"
           >
             <Trophy className="size-4" data-icon="inline-start" />
             Points
@@ -227,7 +228,7 @@ export default function LeaderboardClient({
             variant={sortBy === "streak" ? "default" : "outline"}
             size="sm"
             onClick={() => setSortBy("streak")}
-            className="h-10 min-w-[7.5rem] gap-1.5 px-4"
+            className="h-10 gap-1.5 px-4"
           >
             <Flame className="size-4" data-icon="inline-start" />
             Streaks
@@ -358,8 +359,8 @@ export default function LeaderboardClient({
                 Be the first to solve a puzzle and claim the top spot!
               </p>
               <Button asChild>
-                  <Link href="/">Start Playing</Link>
-                </Button>
+                <Link href="/">Start Playing</Link>
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -517,7 +518,7 @@ export default function LeaderboardClient({
                           </div>
 
                           {/* Score Display */}
-                          <div className="min-w-[4.5rem] shrink-0 text-right sm:min-w-[5.5rem]">
+                          <div className="shrink-0 text-right tabular-nums">
                             <div className="font-semibold text-foreground text-lg tabular-nums sm:text-xl">
                               {entry.stats.points.toLocaleString()}
                             </div>
@@ -604,8 +605,8 @@ export default function LeaderboardClient({
         {/* Call to Action */}
         <div className="mt-8 text-center">
           <Button asChild size="lg" className="font-medium">
-                  <Link href="/">Play Today's Puzzle</Link>
-                </Button>
+            <Link href="/">Play Today's Puzzle</Link>
+          </Button>
         </div>
 
         {/* Achievements & Levels Link */}
@@ -618,9 +619,7 @@ export default function LeaderboardClient({
                     <Sparkles className="size-5 text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-base text-foreground">
-                      Achievements & Levels
-                    </p>
+                    <p className="font-semibold text-base text-foreground">Achievements & Levels</p>
                     <p className="text-muted-foreground text-sm">
                       View all 100 achievements and 8 rank tiers
                     </p>

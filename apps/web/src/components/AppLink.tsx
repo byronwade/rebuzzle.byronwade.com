@@ -1,12 +1,12 @@
 import NextLink from "next/link";
 import type { ComponentProps } from "react";
 
-export type AppLinkProps = ComponentProps<typeof NextLink>;
+export type AppLinkProps = Omit<ComponentProps<typeof NextLink>, "prefetch">;
 
 /**
- * App-wide Link wrapper. Defaults `prefetch` to false to avoid viewport
- * prefetch storms (Fast Origin Transfer). Pass `prefetch` for critical CTAs.
+ * App-wide Link wrapper. Always disables viewport prefetch to avoid Fast
+ * Origin Transfer storms.
  */
-export function AppLink({ prefetch, ...props }: AppLinkProps) {
-  return <NextLink {...props} prefetch={prefetch === true} />;
+export function AppLink(props: AppLinkProps) {
+  return <NextLink {...props} prefetch={false} />;
 }

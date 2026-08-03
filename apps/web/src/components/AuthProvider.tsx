@@ -1,14 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { trackUserSession } from "@/lib/analytics";
 import type { ServerSession } from "@/lib/auth/get-server-session";
 import { setupSessionTracking } from "@/lib/session-tracker";

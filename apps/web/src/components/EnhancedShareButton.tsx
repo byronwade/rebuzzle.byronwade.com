@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -242,13 +243,13 @@ export function EnhancedShareButton({
       }
     }
     setIsSharing(false);
-
   };
 
   const moreMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          aria-label="Share options"
           className={cn(
             hasNativeShare || !success ? "flex-1" : "w-full",
             !hasNativeShare && "w-full"
@@ -258,35 +259,43 @@ export function EnhancedShareButton({
           variant={hasNativeShare ? "outline" : "default"}
         >
           <Share2 data-icon="inline-start" className="mr-2 h-4 w-4" />
-          {copied ? "Copied!" : hasNativeShare ? "More" : "Share"}
+          {hasNativeShare ? "More" : "Share"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className="w-56">
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("twitter")}>
-          <Twitter data-icon="inline-start" className="mr-2 h-4 w-4" />
-          Share on X
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("facebook")}>
-          <Facebook data-icon="inline-start" className="mr-2 h-4 w-4" />
-          Share on Facebook
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("linkedin")}>
-          <Linkedin data-icon="inline-start" className="mr-2 h-4 w-4" />
-          Share on LinkedIn
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("reddit")}>
-          <MessageCircle data-icon="inline-start" className="mr-2 h-4 w-4" />
-          Share on Reddit
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("twitter")}>
+            <Twitter data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on X
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("facebook")}>
+            <Facebook data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on Facebook
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("linkedin")}>
+            <Linkedin data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on LinkedIn
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("reddit")}>
+            <MessageCircle data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on Reddit
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("email")}>
-          <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
-          Email
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("copy")}>
-          {copied ? <Check data-icon="inline-start" className="mr-2 h-4 w-4" /> : <Copy data-icon="inline-start" className="mr-2 h-4 w-4" />}
-          {copied ? "Copied!" : "Copy text"}
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("email")}>
+            <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Email
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("copy")}>
+            {copied ? (
+              <Check data-icon="inline-start" className="mr-2 h-4 w-4" />
+            ) : (
+              <Copy data-icon="inline-start" className="mr-2 h-4 w-4" />
+            )}
+            {copied ? "Copied!" : "Copy text"}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -299,13 +308,14 @@ export function EnhancedShareButton({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  aria-label="Share your result"
                   className="flex-[1.4]"
                   disabled={isSharing}
                   onClick={() => void handleShare("native")}
                   size={size}
                 >
                   <Share2 data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  {success ? "Share" : nearMiss ? "Share the near miss" : "Share"}
+                  Share
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Share your result</TooltipContent>
@@ -325,7 +335,11 @@ export function EnhancedShareButton({
                 size={size}
                 variant="outline"
               >
-                {copied ? <Check data-icon="inline-start" className="mr-2 h-4 w-4" /> : <Link2 data-icon="inline-start" className="mr-2 h-4 w-4" />}
+                {copied ? (
+                  <Check data-icon="inline-start" className="mr-2 h-4 w-4" />
+                ) : (
+                  <Link2 data-icon="inline-start" className="mr-2 h-4 w-4" />
+                )}
                 {copied ? "Copied" : "Copy"}
               </Button>
             </TooltipTrigger>

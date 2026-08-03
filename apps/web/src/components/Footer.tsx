@@ -49,11 +49,7 @@ export function Footer() {
       <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-16">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-1">
-            <Link
-              className="font-semibold text-[17px] text-foreground tracking-[-0.04em]"
-              href="/"
-              prefetch
-            >
+            <Link className="font-semibold text-[17px] text-foreground tracking-[-0.04em]" href="/">
               Rebuzzle
             </Link>
             <p className="mt-3 max-w-[26ch] text-muted-foreground text-sm leading-6">
@@ -70,7 +66,6 @@ export function Footer() {
                     <Link
                       className="text-muted-foreground text-sm transition-colors hover:text-foreground"
                       href={link.href}
-                      prefetch={link.href === "/"}
                     >
                       {link.label}
                     </Link>

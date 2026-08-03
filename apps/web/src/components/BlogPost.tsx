@@ -1,11 +1,11 @@
 "use client";
 
+import { format as formatDateFns } from "date-fns";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
 import { Badge } from "@/components/ui/badge";
 import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
-import { format as formatDateFns } from "date-fns";
 
 interface BlogPostProps {
   post: {

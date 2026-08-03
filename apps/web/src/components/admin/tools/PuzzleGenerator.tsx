@@ -18,9 +18,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { PuzzlePreview } from "./PuzzlePreview";
 import { fail } from "@/lib/fail";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
+import { PuzzlePreview } from "./PuzzlePreview";
 
 interface PuzzleGeneratorProps {
   onPuzzleSaved?: () => void;
@@ -41,7 +41,7 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
   const puzzleTypes = listPuzzleTypes();
 
   const handleGenerate = async () => {
-        await withLoadingFlag(setLoading, async () => {
+    await withLoadingFlag(setLoading, async () => {
       setGeneratedPuzzle(null);
 
       try {
@@ -77,7 +77,6 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
         });
       }
     });
-
   };
 
   const handleSave = async (puzzle: any) => {
@@ -155,11 +154,11 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                  {puzzleTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </SelectItem>
-                  ))}
+                    {puzzleTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>

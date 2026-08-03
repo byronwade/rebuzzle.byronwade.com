@@ -71,7 +71,6 @@ export function EmailNotificationForm() {
       }
     }
     setIsSubmitting(false);
-
   };
 
   const handleUnsubscribe = async () => {
@@ -82,7 +81,6 @@ export function EmailNotificationForm() {
       // Error handled by hook
     }
     setIsSubmitting(false);
-
   };
 
   const _handleToggle = async () => {

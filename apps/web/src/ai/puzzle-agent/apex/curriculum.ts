@@ -97,9 +97,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   const preferredTechniquesRaw = (
     [
       ...harderBias.filter((t) => supportedTierSet.has(t)),
-      ...diversity.underusedTechniques.filter((t) =>
-        supportedTierSet.has(t as TechniqueId)
-      ),
+      ...diversity.underusedTechniques.filter((t) => supportedTierSet.has(t as TechniqueId)),
       ...supportedTierTechniques.filter((t) => !overused.has(t)),
       ...supportedTierTechniques,
     ] as TechniqueId[]
@@ -114,9 +112,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   const preferredTechniques = techniqueBias.techniques;
 
   const avoidTechniques = [
-    ...diversity.overusedTechniques.filter((t) =>
-      supportedTierSet.has(t as TechniqueId)
-    ),
+    ...diversity.overusedTechniques.filter((t) => supportedTierSet.has(t as TechniqueId)),
     ...(learning.tooEasy
       ? (["simple_compound", "obvious_emoji_sum"] as string[]).filter((t) =>
           supportedTierSet.has(t as TechniqueId)

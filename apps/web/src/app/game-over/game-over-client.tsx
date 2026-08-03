@@ -11,8 +11,8 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Confetti } from "@/components/Confetti";
 import { CountdownTimer } from "@/components/CountdownTimer";
@@ -197,9 +197,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       try {
         const stored = localStorage.getItem(`difficultyPerception:${puzzleFeedbackKey}`);
         const perception =
-          stored === "too_easy" || stored === "just_right" || stored === "too_hard"
-            ? stored
-            : null;
+          stored === "too_easy" || stored === "just_right" || stored === "too_hard" ? stored : null;
         const qualityStored = localStorage.getItem(`puzzleQualityVote:${puzzleFeedbackKey}`);
         const qualityVote =
           qualityStored === "like" || qualityStored === "dislike" ? qualityStored : null;
@@ -352,7 +350,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   function resolvePuzzleId(): string {
     if (gameData.puzzleId) return gameData.puzzleId;
     try {
-      const stored = (localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution"));
+      const stored =
+        localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution");
       if (!stored) return "";
       const parsed = JSON.parse(stored) as { puzzleId?: string };
       return parsed.puzzleId || "";
@@ -385,7 +384,6 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       // Non-blocking — local selection still stands
     }
     setPerceptionSaving(false);
-
   }
 
   async function submitQualityVote(vote: QualityVote, reasons: QualityReason[] = []) {
@@ -417,7 +415,6 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       // Non-blocking — local selection still stands
     }
     setQualityVoteSaving(false);
-
   }
 
   function toggleQualityReason(reason: QualityReason) {
@@ -471,10 +468,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             Results unlock after you finish today&apos;s puzzle.
           </p>
           <Button asChild className="w-full">
-                  <Link href="/" prefetch>
-                    Go to puzzle
-                  </Link>
-                </Button>
+            <Link href="/">Go to puzzle</Link>
+          </Button>
         </div>
       </Layout>
     );
@@ -548,7 +543,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
             {/* Global Comparison Badge - Social proof */}
             {percentile !== null && percentile > 50 && (
- <div className="rb-enter  mx-auto flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 ">
+              <div className="rb-enter  mx-auto flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 ">
                 <TrendingUp className="h-3.5 w-3.5 text-success" />
                 <span className="font-medium text-success text-sm">
                   Faster than {percentile}% of players today
@@ -699,11 +694,15 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             {/* Secondary Actions */}
             <div className="flex gap-3">
               <Button asChild variant="outline" className="w-full">
-                  <Link className="flex-1" href="/leaderboard">Leaderboard</Link>
-                </Button>
+                <Link className="flex-1" href="/leaderboard">
+                  Leaderboard
+                </Link>
+              </Button>
               <Button asChild variant="outline" className="w-full">
-                  <Link className="flex-1" href="/blog">Tips</Link>
-                </Button>
+                <Link className="flex-1" href="/blog">
+                  Tips
+                </Link>
+              </Button>
             </div>
 
             {playtestEligible && <PlaytestInvitation />}
@@ -722,7 +721,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                   </p>
                 </div>
                 <Button asChild className="w-full">
-                  <Link href="/signup" className="block">Create a free account</Link>
+                  <Link href="/signup" className="block">
+                    Create a free account
+                  </Link>
                 </Button>
                 <p className="text-muted-foreground text-xs">
                   Already have one?{" "}
@@ -897,11 +898,15 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             {/* Actions */}
             <div className="flex gap-3">
               <Button asChild variant="outline" className="w-full">
-                  <Link className="flex-1" href="/leaderboard">Leaderboard</Link>
-                </Button>
+                <Link className="flex-1" href="/leaderboard">
+                  Leaderboard
+                </Link>
+              </Button>
               <Button asChild variant="outline" className="w-full">
-                  <Link className="flex-1" href="/blog">Tips</Link>
-                </Button>
+                <Link className="flex-1" href="/blog">
+                  Tips
+                </Link>
+              </Button>
             </div>
 
             {playtestEligible && <PlaytestInvitation />}

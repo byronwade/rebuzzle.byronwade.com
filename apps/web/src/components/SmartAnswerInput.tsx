@@ -91,9 +91,7 @@ export function SmartAnswerInput({
       e.preventDefault();
       const cursor = cursorPositionRef.current || { start: 0, end: 0 };
       applyHistoryEntry(
-        e.shiftKey
-          ? getUndoRedo().redo(value, cursor)
-          : getUndoRedo().undo(value, cursor)
+        e.shiftKey ? getUndoRedo().redo(value, cursor) : getUndoRedo().undo(value, cursor)
       );
     }
   };

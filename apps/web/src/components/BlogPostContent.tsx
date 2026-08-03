@@ -1,5 +1,6 @@
 "use client";
 
+import { format as formatDateFns } from "date-fns";
 import {
   ArrowLeft,
   ArrowRight,
@@ -12,10 +13,10 @@ import {
   Lock,
   Sparkles,
 } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { AppLink as Link } from "@/components/AppLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { BlogPostSections } from "@/db/models";
@@ -23,7 +24,6 @@ import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
-import { format as formatDateFns } from "date-fns";
 
 interface BlogPostContentProps {
   post: {

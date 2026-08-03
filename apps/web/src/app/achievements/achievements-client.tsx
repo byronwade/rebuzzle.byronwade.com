@@ -23,10 +23,9 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
-import { withLoadingFlag } from "@/lib/with-loading-flag";
 import Layout from "@/components/Layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { gameSettings, getPointsForLevel } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 interface Achievement {
   id: string;

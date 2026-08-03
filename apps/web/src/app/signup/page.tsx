@@ -1,10 +1,10 @@
 "use client";
 
 import { Check, Lock, Mail, User, UserPlus } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
-import * as React from "react";
+import type * as React from "react";
 import { useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -137,44 +137,18 @@ export default function SignupPage() {
     setErrors({});
     await withLoadingFlag(setIsLoading, async () => {
       try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username.trim(),
-          email: formData.email.trim(),
-          password: formData.password,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({} as { error?: string }));
-        const errorMessage = data.error || "Something went wrong. Please try again.";
-        setErrors({ form: errorMessage });
-        toast({
-          title: "Signup failed",
-          description: errorMessage,
-          variant: "destructive",
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: formData.username.trim(),
+            email: formData.email.trim(),
+            password: formData.password,
+          }),
         });
-      } else {
-        const data = await response.json();
 
-        if (data.success) {
-          toast({
-            title: "Account created!",
-            description: "Your account has been created successfully. Redirecting to login…",
-          });
-
-          // Store user data temporarily
-          localStorage.setItem("username", formData.username.trim());
-
-          const nextPath = safeInternalRedirect(
-            new URLSearchParams(window.location.search).get("next")
-          );
-          setTimeout(() => {
-            router.push(`/login?next=${encodeURIComponent(nextPath)}`);
-          }, 1500);
-        } else {
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}) as { error?: string });
           const errorMessage = data.error || "Something went wrong. Please try again.";
           setErrors({ form: errorMessage });
           toast({
@@ -182,21 +156,46 @@ export default function SignupPage() {
             description: errorMessage,
             variant: "destructive",
           });
+        } else {
+          const data = await response.json();
+
+          if (data.success) {
+            toast({
+              title: "Account created!",
+              description: "Your account has been created successfully. Redirecting to login…",
+            });
+
+            // Store user data temporarily
+            localStorage.setItem("username", formData.username.trim());
+
+            const nextPath = safeInternalRedirect(
+              new URLSearchParams(window.location.search).get("next")
+            );
+            setTimeout(() => {
+              router.push(`/login?next=${encodeURIComponent(nextPath)}`);
+            }, 1500);
+          } else {
+            const errorMessage = data.error || "Something went wrong. Please try again.";
+            setErrors({ form: errorMessage });
+            toast({
+              title: "Signup failed",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          }
         }
-      }
       } catch (error) {
-      console.error("Signup error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setErrors({ form: errorMessage });
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+        console.error("Signup error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
+        setErrors({ form: errorMessage });
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
     });
   };
-
 
   return (
     <Layout>

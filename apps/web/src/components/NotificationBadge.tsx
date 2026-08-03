@@ -1,9 +1,8 @@
 "use client";
 
 import { Bell, BellRing, Check, Loader2, Mail, Sparkles } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
-import { useIsClient } from "@/lib/hooks/use-is-client";
+import { AppLink as Link } from "@/components/AppLink";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +23,7 @@ import {
   dailyReminderEnabledBlurb,
   PUZZLE_EMAIL_REMINDER_SHORT,
 } from "@/lib/game/reminder-copy";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 

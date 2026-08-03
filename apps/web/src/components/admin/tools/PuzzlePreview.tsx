@@ -278,7 +278,10 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
               ) : (
                 <div className="mt-2 space-y-2">
                   {editedPuzzle.hints.map((hint, index) => (
-                    <div className="rounded-md border bg-muted/50 p-3 text-sm" key={`view-hint-${hint}`}>
+                    <div
+                      className="rounded-md border bg-muted/50 p-3 text-sm"
+                      key={`view-hint-${hint}`}
+                    >
                       <span className="font-medium">Hint {index + 1}:</span> {hint}
                     </div>
                   ))}

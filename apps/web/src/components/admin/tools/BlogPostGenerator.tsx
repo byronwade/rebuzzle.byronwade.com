@@ -15,9 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { type BlogPostDraft, BlogPostPreview } from "./BlogPostPreview";
 import { fail } from "@/lib/fail";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
+import { type BlogPostDraft, BlogPostPreview } from "./BlogPostPreview";
 
 interface BlogPostGeneratorProps {
   onBlogPostSaved?: () => void;
@@ -50,7 +50,6 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       console.error("Search error:", error);
     }
     setSearching(false);
-
   };
 
   const handleGenerate = async () => {
@@ -65,7 +64,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       return;
     }
 
-        await withLoadingFlag(setLoading, async () => {
+    await withLoadingFlag(setLoading, async () => {
       setGeneratedPost(null);
 
       try {
@@ -95,7 +94,6 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
         });
       }
     });
-
   };
 
   const handleSave = async (blogPost: BlogPostDraft) => {

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -122,27 +123,29 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             </button>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => router.push("/settings")}
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => router.push("/leaderboard")}
-          >
-            <Trophy className="h-4 w-4" />
-            Leaderboard
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => router.push("/how-it-works")}
-          >
-            <HelpCircle className="h-4 w-4" />
-            How It Works
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="cursor-pointer gap-2"
+              onClick={() => router.push("/settings")}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer gap-2"
+              onClick={() => router.push("/leaderboard")}
+            >
+              <Trophy className="h-4 w-4" />
+              Leaderboard
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer gap-2"
+              onClick={() => router.push("/how-it-works")}
+            >
+              <HelpCircle className="h-4 w-4" />
+              How It Works
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <VisualThemeMenuItems />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -195,27 +198,29 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             </button>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => router.push("/settings")}
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => router.push("/leaderboard")}
-          >
-            <Trophy className="h-4 w-4" />
-            Leaderboard
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => router.push("/how-it-works")}
-          >
-            <HelpCircle className="h-4 w-4" />
-            How It Works
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="cursor-pointer gap-2"
+              onClick={() => router.push("/settings")}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer gap-2"
+              onClick={() => router.push("/leaderboard")}
+            >
+              <Trophy className="h-4 w-4" />
+              Leaderboard
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer gap-2"
+              onClick={() => router.push("/how-it-works")}
+            >
+              <HelpCircle className="h-4 w-4" />
+              How It Works
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <VisualThemeMenuItems />
         </DropdownMenuContent>
       </DropdownMenu>

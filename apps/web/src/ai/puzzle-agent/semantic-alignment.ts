@@ -103,10 +103,14 @@ function compact(value: string): string {
 }
 
 function unique(values: string[]): string[] {
-  return [...new Set(values.flatMap((v) => {
-    const n = normalize(v);
-    return n ? [n] : [];
-  }))];
+  return [
+    ...new Set(
+      values.flatMap((v) => {
+        const n = normalize(v);
+        return n ? [n] : [];
+      })
+    ),
+  ];
 }
 
 function containsTokenSequence(haystack: string, needle: string): boolean {

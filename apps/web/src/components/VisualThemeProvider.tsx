@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useSyncExternalStore,
-} from "react";
+import { createContext, type ReactNode, useContext, useSyncExternalStore } from "react";
 import {
   applyVisualTheme,
   getStoredVisualTheme,
@@ -66,9 +61,7 @@ export function VisualThemeProvider({ children }: { children: ReactNode }) {
   const setVisualTheme = (theme: VisualTheme) => {
     setStoredVisualTheme(theme);
     applyVisualTheme(theme);
-    window.dispatchEvent(
-      new CustomEvent("rebuzzle:visual-theme", { detail: { theme } })
-    );
+    window.dispatchEvent(new CustomEvent("rebuzzle:visual-theme", { detail: { theme } }));
   };
 
   const value = { visualTheme, setVisualTheme, mounted };

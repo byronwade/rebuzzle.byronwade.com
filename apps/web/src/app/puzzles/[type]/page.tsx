@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { AppLink as Link } from "@/components/AppLink";
 import { notFound } from "next/navigation";
+import { AppLink as Link } from "@/components/AppLink";
 import BlogPost from "@/components/BlogPost";
 import Layout from "@/components/Layout";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePuzzleTypeMetadata } from "@/lib/seo/metadata";
 import {
   generateBreadcrumbSchema,
@@ -10,7 +11,6 @@ import {
   generateWebPageSchema,
 } from "@/lib/seo/structured-data";
 import { getBaseUrl, getCanonicalUrl } from "@/lib/seo/utils";
-import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { fetchBlogPosts } from "../../actions/blogActions";
 
 // Puzzle type metadata

@@ -25,8 +25,8 @@ import {
   isDevModeEnabled,
   setDevModeEnabled,
 } from "@/lib/dev-mode";
-import { cn } from "@/lib/utils";
 import { fail } from "@/lib/fail";
+import { cn } from "@/lib/utils";
 
 type DevAction = "clear-attempts" | "lock-win" | "lock-lose" | "regenerate";
 
@@ -145,7 +145,6 @@ export function DevToolsPanel() {
       setStatus(error instanceof Error ? error.message : "Failed");
     }
     setBusy(null);
-
   };
 
   const go = (path: string) => {

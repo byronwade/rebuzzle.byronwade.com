@@ -80,9 +80,7 @@ export function PieChart({
                     (entry as Record<string, unknown>)[nameKey] ??
                       (entry as Record<string, unknown>)[dataKey]
                   );
-                  return (
-                    <Cell fill={colors[colorIndex % colors.length]} key={`cell-${cellKey}`} />
-                  );
+                  return <Cell fill={colors[colorIndex % colors.length]} key={`cell-${cellKey}`} />;
                 })}
               </Pie>
               <ChartTooltip content={<ChartTooltipContent />} />

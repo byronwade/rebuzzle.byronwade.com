@@ -6,6 +6,7 @@ import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
 import { HomePageSkeleton } from "@/components/page-skeletons";
 import { PrefetchGuestClient } from "@/components/prefetch-guest-client";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePuzzleMetadata } from "@/lib/seo/metadata";
 import {
   generateFAQPageSchema,
@@ -17,7 +18,6 @@ import {
   fetchGameData,
   isPuzzleCompletedForToday,
 } from "./actions/gameActions";
-import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 /**
  * Generate dynamic metadata based on today's puzzle

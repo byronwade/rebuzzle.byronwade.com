@@ -112,70 +112,71 @@ async function fetchAdminStats(dateStart: Date, dateEnd: Date) {
     // Get daily signups (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const [dailySignups, dailyActiveUsers, monthlyActiveUsers, sessionsWithDuration] = await Promise.all([
-      usersCollection
-            .aggregate([
-              {
-                $match: {
-                  createdAt: { $gte: thirtyDaysAgo },
-                },
+    const [dailySignups, dailyActiveUsers, monthlyActiveUsers, sessionsWithDuration] =
+      await Promise.all([
+        usersCollection
+          .aggregate([
+            {
+              $match: {
+                createdAt: { $gte: thirtyDaysAgo },
               },
-              {
-                $group: {
-                  _id: {
-                    $dateToString: {
-                      format: "%Y-%m-%d",
-                      date: "$createdAt",
-                    },
+            },
+            {
+              $group: {
+                _id: {
+                  $dateToString: {
+                    format: "%Y-%m-%d",
+                    date: "$createdAt",
                   },
-                  count: { $sum: 1 },
                 },
+                count: { $sum: 1 },
               },
-              { $sort: { _id: 1 } },
-            ])
-            .toArray(),
+            },
+            { $sort: { _id: 1 } },
+          ])
+          .toArray(),
 
-      analyticsEventsCollection
-            .aggregate([
-              {
-                $match: {
-                  timestamp: { $gte: dateStart, $lte: dateEnd },
-                  userId: { $exists: true, $ne: null as any },
-                },
+        analyticsEventsCollection
+          .aggregate([
+            {
+              $match: {
+                timestamp: { $gte: dateStart, $lte: dateEnd },
+                userId: { $exists: true, $ne: null as any },
               },
-              {
-                $group: {
-                  _id: {
-                    $dateToString: {
-                      format: "%Y-%m-%d",
-                      date: "$timestamp",
-                    },
+            },
+            {
+              $group: {
+                _id: {
+                  $dateToString: {
+                    format: "%Y-%m-%d",
+                    date: "$timestamp",
                   },
-                  uniqueUsers: { $addToSet: "$userId" },
                 },
+                uniqueUsers: { $addToSet: "$userId" },
               },
-              {
-                $project: {
-                  date: "$_id",
-                  count: { $size: "$uniqueUsers" },
-                },
+            },
+            {
+              $project: {
+                date: "$_id",
+                count: { $size: "$uniqueUsers" },
               },
-              { $sort: { date: 1 } },
-            ])
-            .toArray(),
+            },
+            { $sort: { date: 1 } },
+          ])
+          .toArray(),
 
-      analyticsEventsCollection.distinct("userId", {
-            timestamp: { $gte: dateStart, $lte: dateEnd },
-            userId: { $exists: true, $ne: null as any },
-          } as any),
+        analyticsEventsCollection.distinct("userId", {
+          timestamp: { $gte: dateStart, $lte: dateEnd },
+          userId: { $exists: true, $ne: null as any },
+        } as any),
 
-      userSessionsCollection
-            .find({
-              endTime: { $exists: true },
-              startTime: { $gte: dateStart, $lte: dateEnd },
-            })
-            .toArray()
-    ]);
+        userSessionsCollection
+          .find({
+            endTime: { $exists: true },
+            startTime: { $gte: dateStart, $lte: dateEnd },
+          })
+          .toArray(),
+      ]);
 
     const avgSessionDuration =
       sessionsWithDuration.length > 0
@@ -259,118 +260,118 @@ async function fetchAdminStats(dateStart: Date, dateEnd: Date) {
     // Puzzle completion rates by type
     const [puzzleCompletionRates, avgTimeToSolve, popularPuzzles] = await Promise.all([
       puzzlesCollection
-            .aggregate([
-              {
-                $lookup: {
-                  from: "gameSessions",
-                  localField: "id",
-                  foreignField: "puzzleId",
-                  as: "sessions",
-                },
-              },
-              {
-                $project: {
-                  puzzleType: { $ifNull: ["$puzzleType", "unknown"] },
-                  totalSessions: { $size: "$sessions" },
-                  completedSessions: {
-                    $size: {
-                      $filter: {
-                        input: "$sessions",
-                        as: "session",
-                        cond: { $eq: ["$$session.completed", true] },
-                      },
-                    },
+        .aggregate([
+          {
+            $lookup: {
+              from: "gameSessions",
+              localField: "id",
+              foreignField: "puzzleId",
+              as: "sessions",
+            },
+          },
+          {
+            $project: {
+              puzzleType: { $ifNull: ["$puzzleType", "unknown"] },
+              totalSessions: { $size: "$sessions" },
+              completedSessions: {
+                $size: {
+                  $filter: {
+                    input: "$sessions",
+                    as: "session",
+                    cond: { $eq: ["$$session.completed", true] },
                   },
                 },
               },
-              {
-                $group: {
-                  _id: "$puzzleType",
-                  totalSessions: { $sum: "$totalSessions" },
-                  completedSessions: { $sum: "$completedSessions" },
-                },
-              },
-              {
-                $project: {
-                  type: "$_id",
-                  completionRate: {
-                    $cond: {
-                      if: { $gt: ["$totalSessions", 0] },
-                      then: {
-                        $multiply: [{ $divide: ["$completedSessions", "$totalSessions"] }, 100],
-                      },
-                      else: 0,
-                    },
+            },
+          },
+          {
+            $group: {
+              _id: "$puzzleType",
+              totalSessions: { $sum: "$totalSessions" },
+              completedSessions: { $sum: "$completedSessions" },
+            },
+          },
+          {
+            $project: {
+              type: "$_id",
+              completionRate: {
+                $cond: {
+                  if: { $gt: ["$totalSessions", 0] },
+                  then: {
+                    $multiply: [{ $divide: ["$completedSessions", "$totalSessions"] }, 100],
                   },
-                  totalSessions: 1,
-                  completedSessions: 1,
+                  else: 0,
                 },
               },
-              { $sort: { completionRate: -1 } },
-            ])
-            .toArray(),
+              totalSessions: 1,
+              completedSessions: 1,
+            },
+          },
+          { $sort: { completionRate: -1 } },
+        ])
+        .toArray(),
 
       puzzleAttemptsCollection
-            .aggregate([
-              {
-                $match: {
-                  isCorrect: true,
-                  timeSpentSeconds: { $exists: true, $ne: null as any },
-                  attemptedAt: { $gte: dateStart, $lte: dateEnd },
-                },
-              },
-              {
-                $lookup: {
-                  from: "puzzles",
-                  localField: "puzzleId",
-                  foreignField: "id",
-                  as: "puzzle",
-                },
-              },
-              { $unwind: "$puzzle" },
-              {
-                $group: {
-                  _id: { $ifNull: ["$puzzle.puzzleType", "unknown"] },
-                  avgTime: { $avg: "$timeSpentSeconds" },
-                  count: { $sum: 1 },
-                },
-              },
-              {
-                $project: {
-                  type: "$_id",
-                  avgTimeSeconds: { $round: ["$avgTime", 2] },
-                  count: 1,
-                },
-              },
-              { $sort: { avgTimeSeconds: -1 } },
-            ])
-            .toArray(),
+        .aggregate([
+          {
+            $match: {
+              isCorrect: true,
+              timeSpentSeconds: { $exists: true, $ne: null as any },
+              attemptedAt: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $lookup: {
+              from: "puzzles",
+              localField: "puzzleId",
+              foreignField: "id",
+              as: "puzzle",
+            },
+          },
+          { $unwind: "$puzzle" },
+          {
+            $group: {
+              _id: { $ifNull: ["$puzzle.puzzleType", "unknown"] },
+              avgTime: { $avg: "$timeSpentSeconds" },
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              type: "$_id",
+              avgTimeSeconds: { $round: ["$avgTime", 2] },
+              count: 1,
+            },
+          },
+          { $sort: { avgTimeSeconds: -1 } },
+        ])
+        .toArray(),
 
       puzzleAttemptsCollection
-            .aggregate([
-              {
-                $match: {
-                  attemptedAt: { $gte: dateStart, $lte: dateEnd },
-                },
-              },
-              {
-                $group: {
-                  _id: "$puzzleId",
-                  attempts: { $sum: 1 },
-                  uniqueUsers: { $addToSet: "$userId" },
-                },
-              },
-              {
-                $project: {
-                  puzzleId: "$_id",
-                  attempts: 1,
-                  uniqueUsers: { $size: "$uniqueUsers" },
-                },
-              },
-              { $sort: { attempts: -1 } },
-              { $limit: 20 },
-            ])
-            .toArray()
+        .aggregate([
+          {
+            $match: {
+              attemptedAt: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $group: {
+              _id: "$puzzleId",
+              attempts: { $sum: 1 },
+              uniqueUsers: { $addToSet: "$userId" },
+            },
+          },
+          {
+            $project: {
+              puzzleId: "$_id",
+              attempts: 1,
+              uniqueUsers: { $size: "$uniqueUsers" },
+            },
+          },
+          { $sort: { attempts: -1 } },
+          { $limit: 20 },
+        ])
+        .toArray(),
     ]);
 
     // Get puzzle details for popular puzzles
@@ -404,306 +405,306 @@ async function fetchAdminStats(dateStart: Date, dateEnd: Date) {
       peakUsageTimes,
       totalSignups,
       usersWithFirstPuzzle,
-      regularPlayers
+      regularPlayers,
     ] = await Promise.all([
       gameSessionsCollection
-            .aggregate([
-              {
-                $match: {
-                  startTime: { $gte: dateStart, $lte: dateEnd },
-                },
+        .aggregate([
+          {
+            $match: {
+              startTime: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $group: {
+              _id: "$puzzleId",
+              totalSessions: { $sum: 1 },
+              completedSessions: {
+                $sum: { $cond: ["$completed", 1, 0] },
               },
-              {
-                $group: {
-                  _id: "$puzzleId",
-                  totalSessions: { $sum: 1 },
-                  completedSessions: {
-                    $sum: { $cond: ["$completed", 1, 0] },
+            },
+          },
+          {
+            $project: {
+              puzzleId: "$_id",
+              completionRate: {
+                $cond: {
+                  if: { $gt: ["$totalSessions", 0] },
+                  then: {
+                    $multiply: [{ $divide: ["$completedSessions", "$totalSessions"] }, 100],
                   },
+                  else: 0,
                 },
               },
-              {
-                $project: {
-                  puzzleId: "$_id",
-                  completionRate: {
-                    $cond: {
-                      if: { $gt: ["$totalSessions", 0] },
-                      then: {
-                        $multiply: [{ $divide: ["$completedSessions", "$totalSessions"] }, 100],
-                      },
-                      else: 0,
-                    },
-                  },
-                  totalSessions: 1,
-                },
-              },
-              { $sort: { completionRate: 1 } },
-              { $limit: 20 },
-            ])
-            .toArray(),
+              totalSessions: 1,
+            },
+          },
+          { $sort: { completionRate: 1 } },
+          { $limit: 20 },
+        ])
+        .toArray(),
 
       puzzleAttemptsCollection
-            .aggregate([
-              {
-                $match: {
-                  attemptedAt: { $gte: dateStart, $lte: dateEnd },
-                  abandoned: { $exists: true },
-                },
+        .aggregate([
+          {
+            $match: {
+              attemptedAt: { $gte: dateStart, $lte: dateEnd },
+              abandoned: { $exists: true },
+            },
+          },
+          {
+            $group: {
+              _id: "$puzzleId",
+              totalAttempts: { $sum: 1 },
+              abandonedAttempts: {
+                $sum: { $cond: ["$abandoned", 1, 0] },
               },
-              {
-                $group: {
-                  _id: "$puzzleId",
-                  totalAttempts: { $sum: 1 },
-                  abandonedAttempts: {
-                    $sum: { $cond: ["$abandoned", 1, 0] },
+            },
+          },
+          {
+            $project: {
+              puzzleId: "$_id",
+              abandonmentRate: {
+                $cond: {
+                  if: { $gt: ["$totalAttempts", 0] },
+                  then: {
+                    $multiply: [{ $divide: ["$abandonedAttempts", "$totalAttempts"] }, 100],
                   },
+                  else: 0,
                 },
               },
-              {
-                $project: {
-                  puzzleId: "$_id",
-                  abandonmentRate: {
-                    $cond: {
-                      if: { $gt: ["$totalAttempts", 0] },
-                      then: {
-                        $multiply: [{ $divide: ["$abandonedAttempts", "$totalAttempts"] }, 100],
-                      },
-                      else: 0,
-                    },
-                  },
-                },
-              },
-              { $sort: { abandonmentRate: -1 } },
-            ])
-            .toArray(),
+            },
+          },
+          { $sort: { abandonmentRate: -1 } },
+        ])
+        .toArray(),
 
       puzzleAttemptsCollection
-            .aggregate([
-              {
-                $match: {
-                  attemptedAt: { $gte: dateStart, $lte: dateEnd },
-                  hintsUsed: { $exists: true, $ne: null as any },
-                },
-              },
-              {
-                $group: {
-                  _id: "$hintsUsed",
-                  count: { $sum: 1 },
-                },
-              },
-              { $sort: { _id: 1 } },
-            ])
-            .toArray(),
+        .aggregate([
+          {
+            $match: {
+              attemptedAt: { $gte: dateStart, $lte: dateEnd },
+              hintsUsed: { $exists: true, $ne: null as any },
+            },
+          },
+          {
+            $group: {
+              _id: "$hintsUsed",
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
 
       gameSessionsCollection
-            .aggregate([
-              {
-                $match: {
-                  completed: true,
-                  endTime: { $gte: dateStart, $lte: dateEnd },
+        .aggregate([
+          {
+            $match: {
+              completed: true,
+              endTime: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$endTime",
                 },
               },
-              {
-                $group: {
-                  _id: {
-                    $dateToString: {
-                      format: "%Y-%m-%d",
-                      date: "$endTime",
-                    },
-                  },
-                  count: { $sum: 1 },
-                },
-              },
-              { $sort: { _id: 1 } },
-            ])
-            .toArray(),
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
 
       puzzleAttemptsCollection
-            .aggregate([
-              {
-                $match: {
-                  attemptedAt: { $gte: dateStart, $lte: dateEnd },
+        .aggregate([
+          {
+            $match: {
+              attemptedAt: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$attemptedAt",
                 },
               },
-              {
-                $group: {
-                  _id: {
-                    $dateToString: {
-                      format: "%Y-%m-%d",
-                      date: "$attemptedAt",
-                    },
-                  },
-                  count: { $sum: 1 },
-                },
-              },
-              { $sort: { _id: 1 } },
-            ])
-            .toArray(),
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
 
       gameSessionsCollection
-            .aggregate([
-              {
-                $match: {
-                  startTime: { $gte: dateStart, $lte: dateEnd },
+        .aggregate([
+          {
+            $match: {
+              startTime: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$startTime",
                 },
               },
-              {
-                $group: {
-                  _id: {
-                    $dateToString: {
-                      format: "%Y-%m-%d",
-                      date: "$startTime",
-                    },
-                  },
-                  count: { $sum: 1 },
-                },
-              },
-              { $sort: { _id: 1 } },
-            ])
-            .toArray(),
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
 
       analyticsEventsCollection
-            .aggregate([
-              {
-                $match: {
-                  timestamp: { $gte: dateStart, $lte: dateEnd },
-                },
-              },
-              {
-                $group: {
-                  _id: {
-                    date: {
-                      $dateToString: {
-                        format: "%Y-%m-%d",
-                        date: "$timestamp",
-                      },
-                    },
-                    eventType: "$eventType",
-                  },
-                  count: { $sum: 1 },
-                },
-              },
-              {
-                $group: {
-                  _id: "$_id.date",
-                  events: {
-                    $push: {
-                      type: "$_id.eventType",
-                      count: "$count",
-                    },
+        .aggregate([
+          {
+            $match: {
+              timestamp: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                date: {
+                  $dateToString: {
+                    format: "%Y-%m-%d",
+                    date: "$timestamp",
                   },
                 },
+                eventType: "$eventType",
               },
-              { $sort: { _id: 1 } },
-            ])
-            .toArray(),
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $group: {
+              _id: "$_id.date",
+              events: {
+                $push: {
+                  type: "$_id.eventType",
+                  count: "$count",
+                },
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
 
       puzzleAttemptsCollection
-            .aggregate([
-              {
-                $match: {
-                  userSatisfaction: { $exists: true, $ne: null as any },
-                  attemptedAt: { $gte: dateStart, $lte: dateEnd },
-                },
-              },
-              {
-                $lookup: {
-                  from: "puzzles",
-                  localField: "puzzleId",
-                  foreignField: "id",
-                  as: "puzzle",
-                },
-              },
-              { $unwind: "$puzzle" },
-              {
-                $group: {
-                  _id: { $ifNull: ["$puzzle.puzzleType", "unknown"] },
-                  avgSatisfaction: { $avg: "$userSatisfaction" },
-                  count: { $sum: 1 },
-                },
-              },
-              {
-                $project: {
-                  type: "$_id",
-                  avgSatisfaction: { $round: ["$avgSatisfaction", 2] },
-                  count: 1,
-                },
-              },
-              { $sort: { avgSatisfaction: -1 } },
-            ])
-            .toArray(),
+        .aggregate([
+          {
+            $match: {
+              userSatisfaction: { $exists: true, $ne: null as any },
+              attemptedAt: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $lookup: {
+              from: "puzzles",
+              localField: "puzzleId",
+              foreignField: "id",
+              as: "puzzle",
+            },
+          },
+          { $unwind: "$puzzle" },
+          {
+            $group: {
+              _id: { $ifNull: ["$puzzle.puzzleType", "unknown"] },
+              avgSatisfaction: { $avg: "$userSatisfaction" },
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              type: "$_id",
+              avgSatisfaction: { $round: ["$avgSatisfaction", 2] },
+              count: 1,
+            },
+          },
+          { $sort: { avgSatisfaction: -1 } },
+        ])
+        .toArray(),
 
       puzzleAttemptsCollection
-            .aggregate([
-              {
-                $match: {
-                  difficultyPerception: { $exists: true, $ne: null as any },
-                  attemptedAt: { $gte: dateStart, $lte: dateEnd },
+        .aggregate([
+          {
+            $match: {
+              difficultyPerception: { $exists: true, $ne: null as any },
+              attemptedAt: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $lookup: {
+              from: "puzzles",
+              localField: "puzzleId",
+              foreignField: "id",
+              as: "puzzle",
+            },
+          },
+          { $unwind: "$puzzle" },
+          {
+            $project: {
+              puzzleId: 1,
+              perceivedDifficulty: "$difficultyPerception",
+              actualDifficulty: {
+                $switch: {
+                  branches: [
+                    { case: { $eq: ["$puzzle.difficulty", "easy"] }, then: 3 },
+                    { case: { $eq: ["$puzzle.difficulty", "medium"] }, then: 5 },
+                    { case: { $eq: ["$puzzle.difficulty", "hard"] }, then: 8 },
+                  ],
+                  default: 5,
                 },
               },
-              {
-                $lookup: {
-                  from: "puzzles",
-                  localField: "puzzleId",
-                  foreignField: "id",
-                  as: "puzzle",
-                },
-              },
-              { $unwind: "$puzzle" },
-              {
-                $project: {
-                  puzzleId: 1,
-                  perceivedDifficulty: "$difficultyPerception",
-                  actualDifficulty: {
-                    $switch: {
-                      branches: [
-                        { case: { $eq: ["$puzzle.difficulty", "easy"] }, then: 3 },
-                        { case: { $eq: ["$puzzle.difficulty", "medium"] }, then: 5 },
-                        { case: { $eq: ["$puzzle.difficulty", "hard"] }, then: 8 },
-                      ],
-                      default: 5,
-                    },
-                  },
-                },
-              },
-              {
-                $group: {
-                  _id: "$puzzleId",
-                  avgPerceived: { $avg: "$perceivedDifficulty" },
-                  actualDifficulty: { $first: "$actualDifficulty" },
-                  count: { $sum: 1 },
-                },
-              },
-              { $limit: 50 },
-            ])
-            .toArray(),
+            },
+          },
+          {
+            $group: {
+              _id: "$puzzleId",
+              avgPerceived: { $avg: "$perceivedDifficulty" },
+              actualDifficulty: { $first: "$actualDifficulty" },
+              count: { $sum: 1 },
+            },
+          },
+          { $limit: 50 },
+        ])
+        .toArray(),
 
       analyticsEventsCollection
-            .aggregate([
-              {
-                $match: {
-                  timestamp: { $gte: dateStart, $lte: dateEnd },
-                },
+        .aggregate([
+          {
+            $match: {
+              timestamp: { $gte: dateStart, $lte: dateEnd },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $hour: "$timestamp",
               },
-              {
-                $group: {
-                  _id: {
-                    $hour: "$timestamp",
-                  },
-                  count: { $sum: 1 },
-                },
-              },
-              { $sort: { _id: 1 } },
-            ])
-            .toArray(),
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
 
       usersCollection.countDocuments(),
 
       puzzleAttemptsCollection.distinct("userId"),
 
       userStatsCollection.countDocuments({
-            totalGames: { $gte: 10 },
-          })
+        totalGames: { $gte: 10 },
+      }),
     ]);
 
     const progressionFunnel = {

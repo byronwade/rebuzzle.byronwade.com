@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -78,44 +79,50 @@ export function UserMenuAccountContent({
       <DropdownMenuSeparator />
 
       <DropdownMenuLabel>Account</DropdownMenuLabel>
-      <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => router.push("/profile")}>
-        <User className="h-4 w-4" />
-        Profile
-      </DropdownMenuItem>
-      <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => router.push("/settings")}>
-        <Settings className="h-4 w-4" />
-        Settings
-      </DropdownMenuItem>
+      <DropdownMenuGroup>
+        <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => router.push("/profile")}>
+          <User className="h-4 w-4" />
+          Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => router.push("/settings")}>
+          <Settings className="h-4 w-4" />
+          Settings
+        </DropdownMenuItem>
+      </DropdownMenuGroup>
 
       <DropdownMenuSeparator />
 
       <DropdownMenuLabel>Game</DropdownMenuLabel>
-      <DropdownMenuItem
-        className="cursor-pointer gap-2"
-        onClick={() => router.push("/leaderboard")}
-      >
-        <Trophy className="h-4 w-4" />
-        Leaderboard
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        className="cursor-pointer gap-2"
-        onClick={() => router.push("/how-it-works")}
-      >
-        <HelpCircle className="h-4 w-4" />
-        How It Works
-      </DropdownMenuItem>
+      <DropdownMenuGroup>
+        <DropdownMenuItem
+          className="cursor-pointer gap-2"
+          onClick={() => router.push("/leaderboard")}
+        >
+          <Trophy className="h-4 w-4" />
+          Leaderboard
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer gap-2"
+          onClick={() => router.push("/how-it-works")}
+        >
+          <HelpCircle className="h-4 w-4" />
+          How It Works
+        </DropdownMenuItem>
+      </DropdownMenuGroup>
 
       <VisualThemeMenuItems />
 
       <DropdownMenuSeparator />
 
-      <DropdownMenuItem
-        className="cursor-pointer gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
-        onClick={onLogout}
-      >
-        <LogOut className="h-4 w-4" />
-        Log Out
-      </DropdownMenuItem>
+      <DropdownMenuGroup>
+        <DropdownMenuItem
+          className="cursor-pointer gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+          onClick={onLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          Log Out
+        </DropdownMenuItem>
+      </DropdownMenuGroup>
     </DropdownMenuContent>
   );
 }

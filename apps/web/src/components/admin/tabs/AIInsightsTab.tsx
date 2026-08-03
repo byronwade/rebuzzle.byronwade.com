@@ -1,5 +1,6 @@
 "use client";
 
+import { format as formatDateFns } from "date-fns";
 import {
   Activity,
   AlertTriangle,
@@ -47,7 +48,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format as formatDateFns } from "date-fns";
 
 // ============================================================================
 // TYPES
@@ -221,7 +221,6 @@ export function AIInsightsTab() {
       console.error("Failed to fetch AI analytics:", error);
     }
     setLoading(false);
-
   }, [dateRange]);
 
   // Fetch decisions
@@ -276,7 +275,6 @@ export function AIInsightsTab() {
       console.error("Failed to fetch generation health:", error);
     }
     setGenerationLoading(false);
-
   }, []);
 
   useEffect(() => {
@@ -564,7 +562,10 @@ export function AIInsightsTab() {
                               {pattern.resolvedCount}/{pattern.count}
                             </TableCell>
                             <TableCell>
-                              {formatDateFns(new Date(pattern.recentOccurrence), "MMM d, yyyy h:mm a")}
+                              {formatDateFns(
+                                new Date(pattern.recentOccurrence),
+                                "MMM d, yyyy h:mm a"
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}

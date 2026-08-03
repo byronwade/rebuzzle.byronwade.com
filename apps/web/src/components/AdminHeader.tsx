@@ -11,13 +11,14 @@ import {
   Settings,
   User,
 } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
+import { AppLink as Link } from "@/components/AppLink";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -126,32 +127,36 @@ export default function AdminHeader() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/")}>
-                  <Home data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  <span>Back to App</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onClick={() => router.push("/profile")}
-                >
-                  <User data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onClick={() => router.push("/settings")}
-                >
-                  <Settings data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/")}>
+                    <Home data-icon="inline-start" className="mr-2 h-4 w-4" />
+                    <span>Back to App</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => router.push("/profile")}
+                  >
+                    <User data-icon="inline-start" className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => router.push("/settings")}
+                  >
+                    <Settings data-icon="inline-start" className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
-                  onClick={handleLogout}
-                >
-                  <LogOut data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  <span className="font-semibold">Log Out</span>
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut data-icon="inline-start" className="mr-2 h-4 w-4" />
+                    <span className="font-semibold">Log Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

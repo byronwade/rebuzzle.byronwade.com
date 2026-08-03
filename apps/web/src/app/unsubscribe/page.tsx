@@ -1,6 +1,6 @@
 import { CheckCircle2, Mail, XCircle } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { connection } from "next/server";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

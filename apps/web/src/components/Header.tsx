@@ -65,7 +65,6 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
             <Link
               className="font-semibold text-[17px] text-foreground tracking-[-0.04em] transition-opacity hover:opacity-70"
               href="/"
-              prefetch
             >
               Rebuzzle
             </Link>
@@ -88,7 +87,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
             <Button
               aria-controls={mobileNavId}
               aria-expanded={mobileNavOpen}
-              aria-label="Open menu"
+              aria-label="Menu"
               className="md:hidden"
               onClick={() => setMobileNavOpen((open) => !open)}
               size="icon-sm"
@@ -100,6 +99,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
               ) : (
                 <Menu className="h-4 w-4" data-icon="inline-end" />
               )}
+              <span className="sr-only">Menu</span>
             </Button>
 
             {mounted && <NotificationBadge />}

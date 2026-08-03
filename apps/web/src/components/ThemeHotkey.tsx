@@ -25,10 +25,7 @@ export function ThemeHotkey() {
       const isChord =
         (event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "d";
       const isPlainD =
-        !event.metaKey &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        event.key.toLowerCase() === "d";
+        !event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === "d";
 
       if (!isChord && !isPlainD) return;
 

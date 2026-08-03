@@ -1,10 +1,10 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { AuthFormSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
@@ -115,39 +115,17 @@ export default function ResetPasswordPage() {
     setErrors({});
     await withLoadingFlag(setIsLoading, async () => {
       try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          password: formData.password,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({} as { error?: string }));
-        const errorMessage = data.error || "Failed to reset password. Please try again.";
-        setErrors({ form: errorMessage });
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
+        const response = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            password: formData.password,
+          }),
         });
-      } else {
-        const data = await response.json();
 
-        if (data.success) {
-          setSuccess(true);
-          toast({
-            title: "Password Reset!",
-            description: "Your password has been reset successfully.",
-          });
-
-          // Redirect to login after 2 seconds
-          setTimeout(() => {
-            router.push("/login");
-          }, 2000);
-        } else {
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}) as { error?: string });
           const errorMessage = data.error || "Failed to reset password. Please try again.";
           setErrors({ form: errorMessage });
           toast({
@@ -155,17 +133,39 @@ export default function ResetPasswordPage() {
             description: errorMessage,
             variant: "destructive",
           });
+        } else {
+          const data = await response.json();
+
+          if (data.success) {
+            setSuccess(true);
+            toast({
+              title: "Password Reset!",
+              description: "Your password has been reset successfully.",
+            });
+
+            // Redirect to login after 2 seconds
+            setTimeout(() => {
+              router.push("/login");
+            }, 2000);
+          } else {
+            const errorMessage = data.error || "Failed to reset password. Please try again.";
+            setErrors({ form: errorMessage });
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          }
         }
-      }
       } catch (error) {
-      console.error("Reset password error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setErrors({ form: errorMessage });
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+        console.error("Reset password error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
+        setErrors({ form: errorMessage });
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
     });
   };
@@ -193,7 +193,10 @@ export default function ResetPasswordPage() {
             </div>
 
             {success ? (
-              <div className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center" role="status">
+              <div
+                className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center"
+                role="status"
+              >
                 <p className="text-foreground text-sm">
                   Your password has been reset successfully. Redirecting to login...
                 </p>

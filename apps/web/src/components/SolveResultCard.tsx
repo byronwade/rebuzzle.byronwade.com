@@ -1,8 +1,8 @@
 "use client";
 
 import { Check, Flame, Lock, Trophy } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import { Timer } from "@/components/Timer";
@@ -227,7 +227,6 @@ export function SolveResultCard({
       // Non-blocking — local selection still stands
     }
     setPerceptionSaving(false);
-
   }
 
   return (
@@ -262,7 +261,7 @@ export function SolveResultCard({
             {streakTease}
           </p>
           {unlockedAchievementName && scoreDone ? (
- <p className="rb-enter mt-1 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] ">
+            <p className="rb-enter mt-1 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] ">
               Unlocked · {unlockedAchievementName}
             </p>
           ) : null}
@@ -298,12 +297,12 @@ export function SolveResultCard({
               {attempts === 1 ? "Guess" : "Guesses"}
             </p>
             {cleanSolve && scoreDone ? (
- <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
                 {noHintStreak > 1 ? `No hints · ${noHintStreak}` : "No hints"}
               </p>
             ) : null}
             {clutchSolve && scoreDone ? (
- <p className="rb-enter mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] ">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] ">
                 Clutch
               </p>
             ) : null}
@@ -326,7 +325,7 @@ export function SolveResultCard({
               </p>
             ) : null}
             {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
- <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
                 Day · #{dayRank}
               </p>
             ) : null}
@@ -361,12 +360,12 @@ export function SolveResultCard({
               </p>
             ) : null}
             {personalBest && scoreDone ? (
- <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
                 {personalBest}
               </p>
             ) : null}
             {paceLabel && scoreDone ? (
- <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
                 {paceLabel}
               </p>
             ) : null}

@@ -9,5 +9,9 @@ const emptySubscribe = () => () => {};
  * Uses the React-recommended `useSyncExternalStore` client/server snapshot split.
  */
 export function useIsClient(): boolean {
-  return useSyncExternalStore(emptySubscribe, () => true, () => false);
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 }

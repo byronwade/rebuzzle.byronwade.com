@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
 import { hasComposedVisual } from "@/lib/puzzle-visual";

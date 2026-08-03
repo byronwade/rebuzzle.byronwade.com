@@ -1,10 +1,10 @@
 "use client";
 
 import { Lock, LogIn, Mail } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
-import * as React from "react";
+import type * as React from "react";
 import { useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -148,7 +148,6 @@ export default function LoginPage() {
       }
     });
   };
-
 
   const handleGuestPlay = () => {
     // Set guest mode in localStorage

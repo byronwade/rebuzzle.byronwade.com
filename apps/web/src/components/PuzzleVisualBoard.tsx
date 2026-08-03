@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import {
   PUZZLE_BOARD_SIZE_SPECS,
   type PuzzleBoardSize,
@@ -59,7 +59,7 @@ function PictogramTile({
   if (safeSvg) {
     return (
       <span
- className="rb-enter puzzle-pictogram inline-flex shrink-0 items-center justify-center "
+        className="rb-enter puzzle-pictogram inline-flex shrink-0 items-center justify-center "
         style={{
           width: sizePx,
           height: sizePx,
@@ -100,7 +100,7 @@ function TextTile({
   return (
     <span
       className={cn(
- "puzzle-text-layer inline-block ",
+        "puzzle-text-layer inline-block ",
         sizeClass,
         textEmphasisClass(layer.emphasis),
         stacked && "whitespace-pre text-center"
@@ -291,7 +291,7 @@ export function PuzzleVisualBoard({
       ))}
       {visual.caption ? (
         <p
- className="rb-enter basis-full mt-2 text-center text-sm opacity-70 "
+          className="rb-enter basis-full mt-2 text-center text-sm opacity-70 "
           style={{ color: "var(--rb-ink)" }}
         >
           {visual.caption}

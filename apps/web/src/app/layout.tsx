@@ -9,10 +9,11 @@ import { AuthSessionSeed } from "@/components/AuthSessionSeed";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeHotkey } from "@/components/ThemeHotkey";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/toaster";
 import { VisualThemeProvider } from "@/components/VisualThemeProvider";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getServerSession } from "@/lib/auth/get-server-session";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import {
   generateAccessibilitySchema,
   generateEducationalUseSchema,
@@ -21,7 +22,6 @@ import {
   generateSoftwareApplicationSchema,
   generateWebSiteSchema,
 } from "@/lib/seo/structured-data";
-import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { VISUAL_THEME_BOOTSTRAP_SCRIPT } from "@/lib/visual-theme";
 
 // Geometric sans carries display, body, button — everything narrative.

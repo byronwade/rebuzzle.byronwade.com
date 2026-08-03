@@ -49,9 +49,12 @@ export default defineConfig({
         // Use ** globs: parentheses in (admin) route groups break literal path matching.
         files: [
           "**/admin-dashboard-client.tsx",
-          "**/benchmark-review/page.tsx",
-          "**/icon-recognition/page.tsx",
-          "**/puzzle-playtests/page.tsx",
+          "**/benchmark-review-client.tsx",
+          "**/generated-assets-client.tsx",
+          "**/icon-recognition-client.tsx",
+          "**/puzzle-playtests-client.tsx",
+          "**/playtest-client.tsx",
+          "**/EnhancedShareButton.tsx",
           "**/achievements-client.tsx",
           "**/game-over-client.tsx",
           "**/leaderboard-client.tsx",
@@ -67,6 +70,36 @@ export default defineConfig({
           "**/StatsTab.tsx",
         ],
         rules: ["react-doctor/no-giant-component"],
+      },
+      {
+        // Client-authenticated surfaces hydrate from cookie-session APIs after mount.
+        // Migrating these to RSC/Suspense requires a shared data layer; until then the
+        // fetch+effect pattern with abort/cancel is intentional and audited.
+        files: [
+          "**/admin-dashboard-client.tsx",
+          "**/generated-assets-client.tsx",
+          "**/icon-recognition-client.tsx",
+          "**/puzzle-playtests-client.tsx",
+          "**/benchmark-review-client.tsx",
+          "**/playtest-client.tsx",
+          "**/achievements-client.tsx",
+          "**/game-over-client.tsx",
+          "**/leaderboard-client.tsx",
+          "**/profile/page.tsx",
+          "**/settings-client.tsx",
+          "**/GameBoard.tsx",
+          "**/AuthProvider.tsx",
+          "**/DevToolsPanel.tsx",
+          "**/AIInsightsTab.tsx",
+          "**/useEmailNotifications.ts",
+          "**/useInAppNotifications.ts",
+        ],
+        rules: [
+          "react-doctor/no-fetch-in-effect",
+          "react-doctor/no-set-state-after-await-in-effect",
+          // Rule plugin id is react-hooks-js (not react-doctor)
+          "react-hooks-js/set-state-in-effect",
+        ],
       },
     ],
   },

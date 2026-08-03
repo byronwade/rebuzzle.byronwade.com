@@ -226,11 +226,7 @@ export function calculateGamePoints(
  * Legacy function for backwards compatibility
  * @deprecated Use calculateGamePoints instead
  */
-function calculateGamePointsLegacy(
-  attempts: number,
-  hintsUsed: number,
-  streakDays = 0
-): number {
+function calculateGamePointsLegacy(attempts: number, hintsUsed: number, streakDays = 0): number {
   const { basePoints, streakBonus, maxAttempts } = gameSettings;
   const attemptPenalty = (maxAttempts - attempts) * 10;
   const hintPenalty = hintsUsed * 25;

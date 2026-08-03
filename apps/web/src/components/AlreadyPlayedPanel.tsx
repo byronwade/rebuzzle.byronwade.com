@@ -1,7 +1,7 @@
 "use client";
 
-import { AppLink as Link } from "@/components/AppLink";
 import { useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { Timer } from "@/components/Timer";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { getStreakTease } from "@/lib/game/streak-tease";
@@ -35,9 +35,7 @@ export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
   const solutionLegacy = useLocalStorageJson<StoredSolution | null>("lastGameSolution", null);
   const solution = solutionV1 ?? solutionLegacy;
   const answer =
-    typeof solution?.answer === "string" && solution.answer.trim()
-      ? solution.answer.trim()
-      : null;
+    typeof solution?.answer === "string" && solution.answer.trim() ? solution.answer.trim() : null;
 
   const eveRaw = useLocalStorageRaw("lastEveClosingLine");
   const eveLine = typeof eveRaw === "string" && eveRaw.trim() ? eveRaw.trim() : null;

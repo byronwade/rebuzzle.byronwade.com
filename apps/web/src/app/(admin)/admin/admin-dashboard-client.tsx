@@ -73,6 +73,7 @@ const AIInsightsTab = dynamic(
   }
 );
 
+import { format as formatDateFns } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -113,7 +114,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
-import { format as formatDateFns } from "date-fns";
 
 type Tab = "stats" | "puzzles" | "blogs" | "users" | "analytics" | "tools" | "ai-insights";
 
@@ -360,7 +360,6 @@ export default function AdminPage() {
         window.location.assign("/");
       }
       setLoading(false);
-
     };
 
     if (isAuthenticated) {
@@ -392,7 +391,6 @@ export default function AdminPage() {
       console.error("Failed to fetch stats:", error);
     }
     setStatsLoading(false);
-
   }, []);
 
   const fetchPuzzles = useCallback(async (page = 1) => {
@@ -1296,7 +1294,9 @@ function _StatsTabOld({
                 </div>
                 <div className="space-y-2 text-center">
                   <div className="font-semibold text-3xl text-primary">
-                    {stats.advancedAnalytics.progressionFunnel.regularPlayers.toLocaleString("en-US")}
+                    {stats.advancedAnalytics.progressionFunnel.regularPlayers.toLocaleString(
+                      "en-US"
+                    )}
                   </div>
                   <div className="font-medium text-muted-foreground text-sm">
                     Regular Players (10+ games)
@@ -1336,7 +1336,9 @@ function _StatsTabOld({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-lg">{user.points.toLocaleString("en-US")} pts</div>
+                    <div className="font-semibold text-lg">
+                      {user.points.toLocaleString("en-US")} pts
+                    </div>
                     <div className="text-muted-foreground text-xs">
                       Level {user.level} • {user.wins} wins • {user.streak} day streak
                     </div>
@@ -1510,7 +1512,9 @@ function PuzzlesTab({
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-muted-foreground text-xs">
-                      <span>Published: {formatDateFns(new Date(puzzle.publishedAt), "MMM d, yyyy")}</span>
+                      <span>
+                        Published: {formatDateFns(new Date(puzzle.publishedAt), "MMM d, yyyy")}
+                      </span>
                       {puzzle.difficulty && (
                         <span className="capitalize">Difficulty: {puzzle.difficulty}</span>
                       )}
@@ -1526,17 +1530,17 @@ function PuzzlesTab({
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => onEdit(puzzle)}>
-                        <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => onDelete(puzzle.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                        Delete…
-                      </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(puzzle)}>
+                          <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => onDelete(puzzle.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
+                          Delete…
+                        </DropdownMenuItem>
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1707,7 +1711,9 @@ function BlogsTab({
                     <div className="flex items-center gap-4 text-muted-foreground text-xs">
                       <span className="font-mono">{blog.slug}</span>
                       <span>•</span>
-                      <span>Published: {formatDateFns(new Date(blog.publishedAt), "MMM d, yyyy")}</span>
+                      <span>
+                        Published: {formatDateFns(new Date(blog.publishedAt), "MMM d, yyyy")}
+                      </span>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -1720,17 +1726,17 @@ function BlogsTab({
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => onEdit(blog)}>
-                        <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => onDelete(blog.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                        Delete…
-                      </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(blog)}>
+                          <Edit className="mr-2 h-4 w-4" data-icon="inline-start" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => onDelete(blog.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
+                          Delete…
+                        </DropdownMenuItem>
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1877,7 +1883,9 @@ function UsersTab({
       Wins: user.stats?.wins || 0,
       Streak: user.stats?.streak || 0,
       "Joined Date": formatDateFns(new Date(user.createdAt), "MMM d, yyyy"),
-      "Last Login": user.lastLogin ? formatDateFns(new Date(user.lastLogin), "MMM d, yyyy") : "Never",
+      "Last Login": user.lastLogin
+        ? formatDateFns(new Date(user.lastLogin), "MMM d, yyyy")
+        : "Never",
     }));
     exportToCSV(exportData, `users-export-${new Date().toISOString().split("T")[0]}`);
   };
@@ -2041,18 +2049,18 @@ function UsersTab({
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => onSendPasswordReset(user.id)}>
-                              <Mail className="mr-2 h-4 w-4" data-icon="inline-start" />
-                              Send Password Reset
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => onDelete(user.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                              Delete… User
-                            </DropdownMenuItem>
-                      </DropdownMenuGroup>
+                              <DropdownMenuItem onClick={() => onSendPasswordReset(user.id)}>
+                                <Mail className="mr-2 h-4 w-4" data-icon="inline-start" />
+                                Send Password Reset
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => onDelete(user.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
+                                Delete… User
+                              </DropdownMenuItem>
+                            </DropdownMenuGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

@@ -3,13 +3,13 @@ import type { Metadata } from "next";
 import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePageMetadata } from "@/lib/seo/metadata";
 import {
   generateBreadcrumbSchema,
   generateFAQPageSchema,
   generateItemListSchema,
 } from "@/lib/seo/structured-data";
-import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 export const metadata: Metadata = generatePageMetadata({
   title: "Rebuzzle vs Wordle - Which Puzzle Game is Better?",

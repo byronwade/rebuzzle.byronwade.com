@@ -84,7 +84,9 @@ export async function POST(request: Request) {
           failures.push(`Puzzle ${i + 1}: ${result.recommendations.join(", ")}`);
         }
       } catch (error) {
-        failures.push(`Puzzle ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`);
+        failures.push(
+          `Puzzle ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
     }
 

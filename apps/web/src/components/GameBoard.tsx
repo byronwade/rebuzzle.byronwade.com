@@ -11,6 +11,7 @@ import {
   trackPuzzleStart,
 } from "@/lib/analytics";
 import { fireConfetti } from "@/lib/confetti";
+import { fail } from "@/lib/fail";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
@@ -28,6 +29,7 @@ import {
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { playInterfaceSound } from "@/lib/interface-sounds";
+import { getPuzzleQuestion } from "@/lib/puzzle-questions";
 import { isReturningUser } from "@/lib/session-tracker";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
@@ -38,11 +40,9 @@ import { useGameContext } from "./GameContext";
 import { GuessThread, type ThreadTurn } from "./GuessThread";
 import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
-import { getPuzzleQuestion } from "@/lib/puzzle-questions";
 import { PuzzleStage } from "./PuzzleStage";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 import { SolveResultCard } from "./SolveResultCard";
-import { fail } from "@/lib/fail";
 
 interface UserStats {
   points: number;
@@ -262,45 +262,45 @@ export default function GameBoard({ gameData }: GameBoardProps) {
    * holding the input open forever.
    */
   const streamQuip = async (id: number, guess: string, tier: ReactionTier) => {
-      patchTurn(id, { quipPending: true });
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 4500);
-      try {
-        const response = await fetch("/api/puzzles/quip", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ puzzleId: gameData.id, guess, tier }),
-          signal: controller.signal,
-        });
+    patchTurn(id, { quipPending: true });
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 4500);
+    try {
+      const response = await fetch("/api/puzzles/quip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ puzzleId: gameData.id, guess, tier }),
+        signal: controller.signal,
+      });
 
-        if (!(response.ok && response.body)) {
-          patchTurn(id, { quipPending: false });
-          window.clearTimeout(timeoutId);
-          return;
+      if (!(response.ok && response.body)) {
+        patchTurn(id, { quipPending: false });
+        window.clearTimeout(timeoutId);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let text = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        if (text.trim()) {
+          patchTurn(id, { quip: text.trim(), quipPending: false });
         }
+      }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let text = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          text += decoder.decode(value, { stream: true });
-          if (text.trim()) {
-            patchTurn(id, { quip: text.trim(), quipPending: false });
-          }
-        }
-
-        if (!text.trim()) {
-          patchTurn(id, { quipPending: false });
-        }
-      } catch (_error) {
-        // A missing riff is not worth surfacing — the instant line stands.
+      if (!text.trim()) {
         patchTurn(id, { quipPending: false });
       }
-      window.clearTimeout(timeoutId);
+    } catch (_error) {
+      // A missing riff is not worth surfacing — the instant line stands.
+      patchTurn(id, { quipPending: false });
+    }
+    window.clearTimeout(timeoutId);
   };
   const { userId, isLoading: authLoading } = useAuth();
   const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
@@ -414,78 +414,78 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   };
 
   const setCompletionState = (
-      success: boolean,
-      finalGuess: string,
-      attempts: number,
-      opts?: {
-        serverScore?: number;
-        celebrate?: boolean;
-        isLucky?: boolean;
-        dailyBonusMultiplier?: number;
-      }
-    ) => {
-      const tomorrow = getNextUtcMidnight();
-      const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
-      const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
-      const serverScore = opts?.serverScore;
+    success: boolean,
+    finalGuess: string,
+    attempts: number,
+    opts?: {
+      serverScore?: number;
+      celebrate?: boolean;
+      isLucky?: boolean;
+      dailyBonusMultiplier?: number;
+    }
+  ) => {
+    const tomorrow = getNextUtcMidnight();
+    const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
+    const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
+    const serverScore = opts?.serverScore;
 
-      // Prefer authoritative server points; fall back to local estimate for UX only
-      let score =
-        typeof serverScore === "number" && serverScore > 0
-          ? serverScore
-          : success
-            ? calculateGamePoints(
-                attempts,
-                timeTakenSeconds,
-                userStats.streak,
-                difficultyLevel,
-                gameState.hintsUsed
-              )
-            : 0;
+    // Prefer authoritative server points; fall back to local estimate for UX only
+    let score =
+      typeof serverScore === "number" && serverScore > 0
+        ? serverScore
+        : success
+          ? calculateGamePoints(
+              attempts,
+              timeTakenSeconds,
+              userStats.streak,
+              difficultyLevel,
+              gameState.hintsUsed
+            )
+          : 0;
 
-      if (success) {
-        if (typeof opts?.isLucky === "boolean" || typeof opts?.dailyBonusMultiplier === "number") {
-          setIsLuckySolve(Boolean(opts.isLucky));
-          if (opts.dailyBonusMultiplier && opts.dailyBonusMultiplier > 1) {
-            setDayBonusMultiplier(opts.dailyBonusMultiplier);
-          }
-        } else if (!(typeof serverScore === "number" && serverScore > 0)) {
-          // Offline / no server score only — never invent lucky when server authored points.
-          const dailyBonus = getDailyBonusMultiplier();
-          if (dailyBonus.hasBonus) {
-            setDayBonusMultiplier(dailyBonus.multiplier);
-          }
-          const luckyResult = rollLuckySolve();
-          if (luckyResult.isLucky) {
-            score = Math.round(score * luckyResult.multiplier);
-            setIsLuckySolve(true);
-          } else if (dailyBonus.hasBonus) {
-            score = Math.round(score * dailyBonus.multiplier);
-          }
+    if (success) {
+      if (typeof opts?.isLucky === "boolean" || typeof opts?.dailyBonusMultiplier === "number") {
+        setIsLuckySolve(Boolean(opts.isLucky));
+        if (opts.dailyBonusMultiplier && opts.dailyBonusMultiplier > 1) {
+          setDayBonusMultiplier(opts.dailyBonusMultiplier);
+        }
+      } else if (!(typeof serverScore === "number" && serverScore > 0)) {
+        // Offline / no server score only — never invent lucky when server authored points.
+        const dailyBonus = getDailyBonusMultiplier();
+        if (dailyBonus.hasBonus) {
+          setDayBonusMultiplier(dailyBonus.multiplier);
+        }
+        const luckyResult = rollLuckySolve();
+        if (luckyResult.isLucky) {
+          score = Math.round(score * luckyResult.multiplier);
+          setIsLuckySolve(true);
+        } else if (dailyBonus.hasBonus) {
+          score = Math.round(score * dailyBonus.multiplier);
         }
       }
+    }
 
-      dispatch({
-        type: "SET_COMPLETION",
-        payload: {
-          finalGuess,
-          wasSuccessful: success,
-          attempts,
-          nextPlayTime: tomorrow,
-          score,
-          timeTakenSeconds,
-        },
-      });
+    dispatch({
+      type: "SET_COMPLETION",
+      payload: {
+        finalGuess,
+        wasSuccessful: success,
+        attempts,
+        nextPlayTime: tomorrow,
+        score,
+        timeTakenSeconds,
+      },
+    });
 
-      // Clear header difficulty / attempts rail — stay-in-thread solve used to leave them up.
-      endGame();
-      dismissKeyboard();
-      if (success && opts?.celebrate) {
-        pendingCelebrationRef.current = true;
-        markJustSolvedInSession();
-      } else if (!success) {
-        haptics.error();
-      }
+    // Clear header difficulty / attempts rail — stay-in-thread solve used to leave them up.
+    endGame();
+    dismissKeyboard();
+    if (success && opts?.celebrate) {
+      pendingCelebrationRef.current = true;
+      markJustSolvedInSession();
+    } else if (!success) {
+      haptics.error();
+    }
   };
 
   const handleIncorrectGuess = (
@@ -514,285 +514,156 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   };
 
   const handleGuess = async (guessValue?: string) => {
-      const guess = guessValue?.trim() ?? "";
+    const guess = guessValue?.trim() ?? "";
 
-      if (gameState.gameOver || !currentEventPuzzle || !guess || gameState.isSubmitting) {
+    if (gameState.gameOver || !currentEventPuzzle || !guess || gameState.isSubmitting) {
+      return;
+    }
+
+    // Start audio while the browser still considers this a direct user gesture.
+    void playInterfaceSound("submit");
+
+    // Must have a session cookie before scoring. ensureGuest sets cookies even
+    // if React auth state hasn't re-rendered yet — continue after success.
+    if (!userId) {
+      const created = await ensureGuest();
+      if (!created) {
+        toast({
+          title: "Session error",
+          description:
+            "Couldn't start your guest session. Check your connection, then refresh and try again.",
+          variant: "destructive",
+        });
+        void playInterfaceSound("failure");
+        return;
+      }
+    }
+
+    dispatch({ type: "SET_IS_SUBMITTING", payload: true });
+    const previousAttemptsLeft = gameState.attemptsLeft;
+    const previousLastSubmittedGuess = gameState.lastSubmittedGuess;
+    const guessToCheck = guess;
+    const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
+    const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
+
+    try {
+      const response = await fetch("/api/puzzles/guess", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          puzzleId: gameData.id,
+          guess: guessToCheck,
+          timeSpentSeconds: timeTaken,
+          hintsUsed: gameState.hintsUsed,
+          consecutiveCold: consecutiveColdRef.current,
+        }),
+      });
+
+      let result: {
+        success?: boolean;
+        correct?: boolean;
+        similarity?: number;
+        attemptNumber?: number;
+        attemptsLeft?: number;
+        gameOver?: boolean;
+        locked?: boolean;
+        wasSuccessful?: boolean;
+        wordResults?: WordResult[];
+        answer?: string;
+        explanation?: string;
+        pointsEarned?: number;
+        reaction?: GuessReaction;
+        unlockedAchievement?: { name?: string };
+        isLucky?: boolean;
+        hasDailyBonus?: boolean;
+        dailyBonusMultiplier?: number;
+        streak?: number;
+        maxStreak?: number;
+        streakFreezes?: number;
+        streakFrozen?: boolean;
+        guessDistribution?: number[];
+        recentPlayDates?: string[];
+        error?: string;
+      };
+      if (response.ok || response.status === 409) {
+        result = (await response.json()) as typeof result;
+      } else {
+        fail(`Guess failed (${response.status})`);
+      }
+
+      // Already locked / replay blocked — stay in-thread, don't hard-cut away
+      if (response.status === 409 || result.locked) {
+        void playInterfaceSound("notification");
+        setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts, {
+          celebrate: false,
+        });
+        toast({
+          title: result.wasSuccessful ? "Already solved today" : "Day already locked",
+          description: "Chat is locked. Open full results from the card below.",
+        });
+        dispatch({ type: "SET_IS_SUBMITTING", payload: false });
         return;
       }
 
-      // Start audio while the browser still considers this a direct user gesture.
-      void playInterfaceSound("submit");
-
-      // Must have a session cookie before scoring. ensureGuest sets cookies even
-      // if React auth state hasn't re-rendered yet — continue after success.
-      if (!userId) {
-        const created = await ensureGuest();
-        if (!created) {
-          toast({
-            title: "Session error",
-            description:
-              "Couldn't start your guest session. Check your connection, then refresh and try again.",
-            variant: "destructive",
-          });
-          void playInterfaceSound("failure");
-          return;
-        }
+      if (!response.ok || !result.success) {
+        fail(result.error || "Failed to process guess");
       }
 
-      dispatch({ type: "SET_IS_SUBMITTING", payload: true });
-      const previousAttemptsLeft = gameState.attemptsLeft;
-      const previousLastSubmittedGuess = gameState.lastSubmittedGuess;
-      const guessToCheck = guess;
-      const timeTaken = Math.floor((Date.now() - gameState.startTime) / 1000);
-      const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
+      const wordResults: WordResult[] = result.wordResults || [];
+      const attemptNumber =
+        result.attemptNumber ?? gameSettings.maxAttempts - previousAttemptsLeft + 1;
 
-      try {
-        const response = await fetch("/api/puzzles/guess", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            puzzleId: gameData.id,
-            guess: guessToCheck,
-            timeSpentSeconds: timeTaken,
-            hintsUsed: gameState.hintsUsed,
-            consecutiveCold: consecutiveColdRef.current,
-          }),
-        });
+      if (typeof result.similarity === "number") {
+        setClosestSimilarity((prev) => Math.max(prev, result.similarity ?? 0));
+      }
 
-        let result: {
-          success?: boolean;
-          correct?: boolean;
-          similarity?: number;
-          attemptNumber?: number;
-          attemptsLeft?: number;
-          gameOver?: boolean;
-          locked?: boolean;
-          wasSuccessful?: boolean;
-          wordResults?: WordResult[];
-          answer?: string;
-          explanation?: string;
-          pointsEarned?: number;
-          reaction?: GuessReaction;
-          unlockedAchievement?: { name?: string };
-          isLucky?: boolean;
-          hasDailyBonus?: boolean;
-          dailyBonusMultiplier?: number;
-          streak?: number;
-          maxStreak?: number;
-          streakFreezes?: number;
-          streakFrozen?: boolean;
-          guessDistribution?: number[];
-          recentPlayDates?: string[];
-          error?: string;
-        };
-        if (response.ok || response.status === 409) {
-          result = (await response.json()) as typeof result;
+      // Post the turn the moment the server answers. The reaction is derived
+      // from the similarity score server-side, so this is instant.
+      const reaction = result.reaction;
+      const turnId = ++turnSeq.current;
+      if (reaction) {
+        if (reaction.tier === "close") {
+          setHadNearMiss(true);
+        }
+        if (reaction.tier === "cold") {
+          consecutiveColdRef.current += 1;
         } else {
-          fail(`Guess failed (${response.status})`);
+          consecutiveColdRef.current = 0;
         }
+        setTurns((prev) => [
+          ...prev,
+          {
+            id: turnId,
+            text: guessToCheck,
+            attemptNumber,
+            tier: reaction.tier,
+            line: reaction.line,
+            wordResults: wordResults.map((w) => ({
+              word: w.word,
+              correct: w.correct,
+              similarity: w.similarity ?? 0,
+            })),
+          },
+        ]);
+      }
 
-        // Already locked / replay blocked — stay in-thread, don't hard-cut away
-        if (response.status === 409 || result.locked) {
-          void playInterfaceSound("notification");
-          setCompletionState(
-            Boolean(result.wasSuccessful),
-            guessToCheck,
-            gameSettings.maxAttempts,
-            {
-              celebrate: false,
-            }
-          );
-          toast({
-            title: result.wasSuccessful ? "Already solved today" : "Day already locked",
-            description: "Chat is locked. Open full results from the card below.",
-          });
-          dispatch({ type: "SET_IS_SUBMITTING", payload: false });
-          return;
-        }
+      if (result.correct) {
+        void playInterfaceSound("success");
+        const attempts = attemptNumber;
+        const earnedPoints =
+          result.pointsEarned ??
+          calculateGamePoints(attempts, timeTaken, userStats.streak + 1, difficultyLevel);
 
-        if (!response.ok || !result.success) {
-          fail(result.error || "Failed to process guess");
-        }
-
-        const wordResults: WordResult[] = result.wordResults || [];
-        const attemptNumber =
-          result.attemptNumber ?? gameSettings.maxAttempts - previousAttemptsLeft + 1;
-
-        if (typeof result.similarity === "number") {
-          setClosestSimilarity((prev) => Math.max(prev, result.similarity ?? 0));
-        }
-
-        // Post the turn the moment the server answers. The reaction is derived
-        // from the similarity score server-side, so this is instant.
-        const reaction = result.reaction;
-        const turnId = ++turnSeq.current;
-        if (reaction) {
-          if (reaction.tier === "close") {
-            setHadNearMiss(true);
-          }
-          if (reaction.tier === "cold") {
-            consecutiveColdRef.current += 1;
-          } else {
-            consecutiveColdRef.current = 0;
-          }
-          setTurns((prev) => [
-            ...prev,
-            {
-              id: turnId,
-              text: guessToCheck,
-              attemptNumber,
-              tier: reaction.tier,
-              line: reaction.line,
-              wordResults: wordResults.map((w) => ({
-                word: w.word,
-                correct: w.correct,
-                similarity: w.similarity ?? 0,
-              })),
-            },
-          ]);
-        }
-
-        if (result.correct) {
-          void playInterfaceSound("success");
-          const attempts = attemptNumber;
-          const earnedPoints =
-            result.pointsEarned ??
-            calculateGamePoints(attempts, timeTaken, userStats.streak + 1, difficultyLevel);
-
-          const winningHistory = [
-            ...gameState.guessHistory,
-            {
-              text: guessToCheck,
-              timestamp: new Date(),
-              wordResults,
-              attemptNumber: attempts,
-            },
-          ];
-
-          dispatch({
-            type: "ADD_GUESS_HISTORY",
-            payload: {
-              text: guessToCheck,
-              timestamp: new Date(),
-              wordResults,
-              attemptNumber: attempts,
-            },
-          });
-
-          if (typeof result.answer === "string" && result.answer.trim()) {
-            setRevealedAnswer(result.answer.trim());
-          }
-          if (result.unlockedAchievement?.name) {
-            setUnlockedAchievementName(result.unlockedAchievement.name);
-          }
-          recordPlayDay();
-          setShowGuestSave(shouldPromptGuestSave());
-
-          // Start Eve's closing riff before lock UI so the dock waits on it.
-          if (reaction) {
-            try {
-              localStorage.setItem("lastEveClosingLine", reaction.line);
-            } catch {
-              // Ignore quota / private mode.
-            }
-            void streamQuip(turnId, guessToCheck, reaction.tier);
-          }
-
-          const previousBest = userStats.fastestSolveSeconds;
-          setPreviousBestSeconds(
-            typeof previousBest === "number" && previousBest > 0 ? previousBest : null
-          );
-
-          setCompletionState(true, guessToCheck, attempts, {
-            serverScore: earnedPoints,
-            celebrate: true,
-            isLucky: Boolean(result.isLucky),
-            dailyBonusMultiplier:
-              typeof result.dailyBonusMultiplier === "number"
-                ? result.dailyBonusMultiplier
-                : undefined,
-          });
-
-          const cleanWin = gameState.hintsUsed === 0;
-          const serverStreak =
-            typeof result.streak === "number" ? result.streak : userStats.streak + 1;
-          const newStats = { ...userStats };
-          newStats.totalGames += 1;
-          newStats.wins += 1;
-          newStats.streak = serverStreak;
-          newStats.maxStreak = Math.max(
-            newStats.maxStreak,
-            typeof result.maxStreak === "number" ? result.maxStreak : serverStreak
-          );
-          newStats.points += earnedPoints;
-          newStats.level = Math.floor(newStats.points / 1000) + 1;
-          newStats.lastPlayDate = new Date().toISOString();
-          newStats.noHintStreak = cleanWin ? (userStats.noHintStreak || 0) + 1 : 0;
-          if (typeof result.streakFreezes === "number") {
-            newStats.streakFreezes = result.streakFreezes;
-          }
-          if (Array.isArray(result.guessDistribution)) {
-            newStats.guessDistribution = result.guessDistribution;
-          }
-          if (Array.isArray(result.recentPlayDates)) {
-            newStats.recentPlayDates = result.recentPlayDates;
-          }
-          if (previousBest == null || previousBest <= 0 || timeTaken < previousBest) {
-            newStats.fastestSolveSeconds = timeTaken;
-          }
-          setUserStats(newStats);
-
-          trackPuzzleCompletion({
-            puzzleId: gameData.id || "unknown",
-            puzzleType,
-            difficulty:
-              typeof gameData.difficulty === "number"
-                ? gameData.difficulty.toString()
-                : gameData.difficulty || "medium",
-            attempts,
-            hintsUsed: gameState.hintsUsed,
-            completionTime: timeTaken * 1000,
-            score: earnedPoints,
-          });
-          trackEvent(analyticsEvents.GAME_COMPLETE, {
-            puzzleId: gameData.id,
-            puzzleType,
-            attempts,
-            hintsUsed: gameState.hintsUsed,
-            score: earnedPoints,
-          });
-
-          // Persist solution + completion for game-over (server reveals only after lock)
-          if (result.answer || result.explanation) {
-            localStorage.setItem(
-              "lastGameSolution:v1",
-              JSON.stringify({
-                answer: result.answer,
-                explanation: result.explanation,
-                puzzleId: gameData.id,
-                puzzleDate: new Date().toISOString().slice(0, 10),
-              })
-            );
-          }
-          localStorage.setItem(
-            "lastGameCompletion:v1",
-            JSON.stringify({
-              guessHistory: winningHistory,
-              timeTaken,
-              usedHints: gameState.hintsUsed,
-              streak: userStats.streak + 1,
-              score: earnedPoints,
-            })
-          );
-
-          return;
-        }
-
-        // Incorrect guess
-        const newAttemptsLeft = result.attemptsLeft ?? previousAttemptsLeft - 1;
-        dispatch({ type: "SET_ATTEMPTS_LEFT", payload: newAttemptsLeft });
-        dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: guessToCheck });
+        const winningHistory = [
+          ...gameState.guessHistory,
+          {
+            text: guessToCheck,
+            timestamp: new Date(),
+            wordResults,
+            attemptNumber: attempts,
+          },
+        ];
 
         dispatch({
           type: "ADD_GUESS_HISTORY",
@@ -800,135 +671,259 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             text: guessToCheck,
             timestamp: new Date(),
             wordResults,
-            attemptNumber,
+            attemptNumber: attempts,
           },
         });
 
-        if (result.gameOver || newAttemptsLeft <= 0) {
-          void playInterfaceSound("failure");
-
-          if (typeof result.answer === "string" && result.answer.trim()) {
-            setRevealedAnswer(result.answer.trim());
-          }
-          recordPlayDay();
-          setShowGuestSave(shouldPromptGuestSave());
-
-          // Start Eve's closing riff before lock UI so the dock waits on it.
-          if (reaction) {
-            try {
-              localStorage.setItem("lastEveClosingLine", reaction.line);
-            } catch {
-              // Ignore quota / private mode.
-            }
-            void streamQuip(turnId, guessToCheck, reaction.tier);
-          }
-
-          setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
-          setStreakFrozen(Boolean(result.streakFrozen));
-
-          const newStats = { ...userStats };
-          newStats.totalGames += 1;
-          newStats.streak =
-            typeof result.streak === "number"
-              ? result.streak
-              : result.streakFrozen
-                ? userStats.streak
-                : 0;
-          newStats.maxStreak = Math.max(
-            newStats.maxStreak,
-            typeof result.maxStreak === "number" ? result.maxStreak : newStats.maxStreak
-          );
-          newStats.noHintStreak = 0;
-          newStats.lastPlayDate = new Date().toISOString();
-          if (typeof result.streakFreezes === "number") {
-            newStats.streakFreezes = result.streakFreezes;
-          }
-          if (Array.isArray(result.guessDistribution)) {
-            newStats.guessDistribution = result.guessDistribution;
-          }
-          if (Array.isArray(result.recentPlayDates)) {
-            newStats.recentPlayDates = result.recentPlayDates;
-          }
-          setUserStats(newStats);
-
-          trackPuzzleAbandon({
-            puzzleId: gameData.id || "unknown",
-            puzzleType,
-            attempts: gameSettings.maxAttempts,
-            hintsUsed: gameState.hintsUsed,
-          });
-          trackEvent(analyticsEvents.PUZZLE_ABANDON, {
-            puzzleId: gameData.id,
-            puzzleType,
-            attempts: gameSettings.maxAttempts,
-            hintsUsed: gameState.hintsUsed,
-          });
-
-          if (result.answer || result.explanation) {
-            localStorage.setItem(
-              "lastGameSolution:v1",
-              JSON.stringify({
-                answer: result.answer,
-                explanation: result.explanation,
-                puzzleId: gameData.id,
-                puzzleDate: new Date().toISOString().slice(0, 10),
-              })
-            );
-          }
-
-          const completionData = {
-            guessHistory: [
-              ...gameState.guessHistory,
-              {
-                text: guessToCheck,
-                timestamp: new Date(),
-                wordResults,
-                attemptNumber: gameSettings.maxAttempts,
-              },
-            ],
-            timeTaken,
-            usedHints: gameState.hintsUsed,
-            streak: 0,
-            score: 0,
-          };
-          localStorage.setItem("lastGameCompletion:v1", JSON.stringify(completionData));
-
-          return;
+        if (typeof result.answer === "string" && result.answer.trim()) {
+          setRevealedAnswer(result.answer.trim());
         }
+        if (result.unlockedAchievement?.name) {
+          setUnlockedAchievementName(result.unlockedAchievement.name);
+        }
+        recordPlayDay();
+        setShowGuestSave(shouldPromptGuestSave());
 
-        trackEvent(analyticsEvents.GUESS_SUBMITTED, {
-          puzzleId: gameData.id || "unknown",
-          puzzleType,
-          attemptNumber,
-          isCorrect: false,
-        });
-
-        const overallSimilarity =
-          typeof result.similarity === "number"
-            ? result.similarity
-            : wordResults.length > 0
-              ? Math.round(
-                  wordResults.reduce((acc, w) => acc + (w.similarity ?? 0), 0) / wordResults.length
-                )
-              : 0;
-
-        handleIncorrectGuess(newAttemptsLeft, overallSimilarity, reaction?.tier);
-
-        // Eve's riff arrives behind the instant line, in its own bubble.
+        // Start Eve's closing riff before lock UI so the dock waits on it.
         if (reaction) {
+          try {
+            localStorage.setItem("lastEveClosingLine", reaction.line);
+          } catch {
+            // Ignore quota / private mode.
+          }
           void streamQuip(turnId, guessToCheck, reaction.tier);
         }
-      } catch (error) {
-        console.error("Error processing guess:", error);
-        void playInterfaceSound("failure");
-        dispatch({ type: "SET_ATTEMPTS_LEFT", payload: previousAttemptsLeft });
-        dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: previousLastSubmittedGuess });
-        setError({
-          message: "Failed to process your guess. Please try again.",
-          details: error instanceof Error ? error.message : "Unknown error",
+
+        const previousBest = userStats.fastestSolveSeconds;
+        setPreviousBestSeconds(
+          typeof previousBest === "number" && previousBest > 0 ? previousBest : null
+        );
+
+        setCompletionState(true, guessToCheck, attempts, {
+          serverScore: earnedPoints,
+          celebrate: true,
+          isLucky: Boolean(result.isLucky),
+          dailyBonusMultiplier:
+            typeof result.dailyBonusMultiplier === "number"
+              ? result.dailyBonusMultiplier
+              : undefined,
         });
+
+        const cleanWin = gameState.hintsUsed === 0;
+        const serverStreak =
+          typeof result.streak === "number" ? result.streak : userStats.streak + 1;
+        const newStats = { ...userStats };
+        newStats.totalGames += 1;
+        newStats.wins += 1;
+        newStats.streak = serverStreak;
+        newStats.maxStreak = Math.max(
+          newStats.maxStreak,
+          typeof result.maxStreak === "number" ? result.maxStreak : serverStreak
+        );
+        newStats.points += earnedPoints;
+        newStats.level = Math.floor(newStats.points / 1000) + 1;
+        newStats.lastPlayDate = new Date().toISOString();
+        newStats.noHintStreak = cleanWin ? (userStats.noHintStreak || 0) + 1 : 0;
+        if (typeof result.streakFreezes === "number") {
+          newStats.streakFreezes = result.streakFreezes;
+        }
+        if (Array.isArray(result.guessDistribution)) {
+          newStats.guessDistribution = result.guessDistribution;
+        }
+        if (Array.isArray(result.recentPlayDates)) {
+          newStats.recentPlayDates = result.recentPlayDates;
+        }
+        if (previousBest == null || previousBest <= 0 || timeTaken < previousBest) {
+          newStats.fastestSolveSeconds = timeTaken;
+        }
+        setUserStats(newStats);
+
+        trackPuzzleCompletion({
+          puzzleId: gameData.id || "unknown",
+          puzzleType,
+          difficulty:
+            typeof gameData.difficulty === "number"
+              ? gameData.difficulty.toString()
+              : gameData.difficulty || "medium",
+          attempts,
+          hintsUsed: gameState.hintsUsed,
+          completionTime: timeTaken * 1000,
+          score: earnedPoints,
+        });
+        trackEvent(analyticsEvents.GAME_COMPLETE, {
+          puzzleId: gameData.id,
+          puzzleType,
+          attempts,
+          hintsUsed: gameState.hintsUsed,
+          score: earnedPoints,
+        });
+
+        // Persist solution + completion for game-over (server reveals only after lock)
+        if (result.answer || result.explanation) {
+          localStorage.setItem(
+            "lastGameSolution:v1",
+            JSON.stringify({
+              answer: result.answer,
+              explanation: result.explanation,
+              puzzleId: gameData.id,
+              puzzleDate: new Date().toISOString().slice(0, 10),
+            })
+          );
+        }
+        localStorage.setItem(
+          "lastGameCompletion:v1",
+          JSON.stringify({
+            guessHistory: winningHistory,
+            timeTaken,
+            usedHints: gameState.hintsUsed,
+            streak: userStats.streak + 1,
+            score: earnedPoints,
+          })
+        );
+
+        return;
       }
-      dispatch({ type: "SET_IS_SUBMITTING", payload: false });
+
+      // Incorrect guess
+      const newAttemptsLeft = result.attemptsLeft ?? previousAttemptsLeft - 1;
+      dispatch({ type: "SET_ATTEMPTS_LEFT", payload: newAttemptsLeft });
+      dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: guessToCheck });
+
+      dispatch({
+        type: "ADD_GUESS_HISTORY",
+        payload: {
+          text: guessToCheck,
+          timestamp: new Date(),
+          wordResults,
+          attemptNumber,
+        },
+      });
+
+      if (result.gameOver || newAttemptsLeft <= 0) {
+        void playInterfaceSound("failure");
+
+        if (typeof result.answer === "string" && result.answer.trim()) {
+          setRevealedAnswer(result.answer.trim());
+        }
+        recordPlayDay();
+        setShowGuestSave(shouldPromptGuestSave());
+
+        // Start Eve's closing riff before lock UI so the dock waits on it.
+        if (reaction) {
+          try {
+            localStorage.setItem("lastEveClosingLine", reaction.line);
+          } catch {
+            // Ignore quota / private mode.
+          }
+          void streamQuip(turnId, guessToCheck, reaction.tier);
+        }
+
+        setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
+        setStreakFrozen(Boolean(result.streakFrozen));
+
+        const newStats = { ...userStats };
+        newStats.totalGames += 1;
+        newStats.streak =
+          typeof result.streak === "number"
+            ? result.streak
+            : result.streakFrozen
+              ? userStats.streak
+              : 0;
+        newStats.maxStreak = Math.max(
+          newStats.maxStreak,
+          typeof result.maxStreak === "number" ? result.maxStreak : newStats.maxStreak
+        );
+        newStats.noHintStreak = 0;
+        newStats.lastPlayDate = new Date().toISOString();
+        if (typeof result.streakFreezes === "number") {
+          newStats.streakFreezes = result.streakFreezes;
+        }
+        if (Array.isArray(result.guessDistribution)) {
+          newStats.guessDistribution = result.guessDistribution;
+        }
+        if (Array.isArray(result.recentPlayDates)) {
+          newStats.recentPlayDates = result.recentPlayDates;
+        }
+        setUserStats(newStats);
+
+        trackPuzzleAbandon({
+          puzzleId: gameData.id || "unknown",
+          puzzleType,
+          attempts: gameSettings.maxAttempts,
+          hintsUsed: gameState.hintsUsed,
+        });
+        trackEvent(analyticsEvents.PUZZLE_ABANDON, {
+          puzzleId: gameData.id,
+          puzzleType,
+          attempts: gameSettings.maxAttempts,
+          hintsUsed: gameState.hintsUsed,
+        });
+
+        if (result.answer || result.explanation) {
+          localStorage.setItem(
+            "lastGameSolution:v1",
+            JSON.stringify({
+              answer: result.answer,
+              explanation: result.explanation,
+              puzzleId: gameData.id,
+              puzzleDate: new Date().toISOString().slice(0, 10),
+            })
+          );
+        }
+
+        const completionData = {
+          guessHistory: [
+            ...gameState.guessHistory,
+            {
+              text: guessToCheck,
+              timestamp: new Date(),
+              wordResults,
+              attemptNumber: gameSettings.maxAttempts,
+            },
+          ],
+          timeTaken,
+          usedHints: gameState.hintsUsed,
+          streak: 0,
+          score: 0,
+        };
+        localStorage.setItem("lastGameCompletion:v1", JSON.stringify(completionData));
+
+        return;
+      }
+
+      trackEvent(analyticsEvents.GUESS_SUBMITTED, {
+        puzzleId: gameData.id || "unknown",
+        puzzleType,
+        attemptNumber,
+        isCorrect: false,
+      });
+
+      const overallSimilarity =
+        typeof result.similarity === "number"
+          ? result.similarity
+          : wordResults.length > 0
+            ? Math.round(
+                wordResults.reduce((acc, w) => acc + (w.similarity ?? 0), 0) / wordResults.length
+              )
+            : 0;
+
+      handleIncorrectGuess(newAttemptsLeft, overallSimilarity, reaction?.tier);
+
+      // Eve's riff arrives behind the instant line, in its own bubble.
+      if (reaction) {
+        void streamQuip(turnId, guessToCheck, reaction.tier);
+      }
+    } catch (error) {
+      console.error("Error processing guess:", error);
+      void playInterfaceSound("failure");
+      dispatch({ type: "SET_ATTEMPTS_LEFT", payload: previousAttemptsLeft });
+      dispatch({ type: "SET_LAST_SUBMITTED_GUESS", payload: previousLastSubmittedGuess });
+      setError({
+        message: "Failed to process your guess. Please try again.",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+    dispatch({ type: "SET_IS_SUBMITTING", payload: false });
   };
 
   const resultsHref = !gameState.gameOver
@@ -1199,10 +1194,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
               {/* Error display - positioned above input area */}
               {error && (
-                <div
-                  className="rb-enter mx-4 mb-2 flex justify-center"
-                  role="alert"
-                >
+                <div className="rb-enter mx-4 mb-2 flex justify-center" role="alert">
                   <div className="rounded-lg border border-destructive/25 bg-card p-4 text-center shadow-lg">
                     <p className="font-medium text-destructive text-sm">{error.message}</p>
                     {error.details && (

@@ -6,14 +6,14 @@
  */
 
 import { FlaskConical, Loader2, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useReducer, useState, useSyncExternalStore } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { PuzzleContainer, PuzzleDisplay } from "@/components/PuzzleDisplay";
 import { Button } from "@/components/ui/button";
 import { isDevModeEnabled } from "@/lib/dev-mode";
+import { fail } from "@/lib/fail";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
-import { fail } from "@/lib/fail";
 
 type ModeMeta = {
   id: string;
@@ -329,7 +329,6 @@ export function DevVisualLab() {
       // keep local selection
     }
     setVoteSaving(false);
-
   };
 
   if (!devOn) {
@@ -409,7 +408,11 @@ export function DevVisualLab() {
           onClick={() => void generate()}
           className="gap-2"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-end" /> : <Sparkles className="h-4 w-4" data-icon="inline-end" />}
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-end" />
+          ) : (
+            <Sparkles className="h-4 w-4" data-icon="inline-end" />
+          )}
           Generate {modes.find((m) => m.id === mode)?.label ?? mode}
         </Button>
         <Button asChild variant="outline" disabled={busy}>

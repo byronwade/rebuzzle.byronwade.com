@@ -43,7 +43,7 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
   const puzzleTypes = listPuzzleTypes();
 
   const handleGenerate = async () => {
-        await withLoadingFlag(setLoading, async () => {
+    await withLoadingFlag(setLoading, async () => {
       setGeneratedPuzzles([]);
       setSelectedPuzzles(new Set());
 
@@ -84,7 +84,6 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
         });
       }
     });
-
   };
 
   const toggleSelection = (index: number) => {

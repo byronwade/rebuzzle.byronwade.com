@@ -14,10 +14,10 @@ import {
   Trash2,
   Trophy,
 } from "lucide-react";
-import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import { EmailNotificationForm } from "@/components/EmailNotificationForm";
 import Layout from "@/components/Layout";
@@ -37,11 +37,11 @@ import {
 } from "@/lib/app-settings";
 import type { AvatarPreferences } from "@/lib/avatar";
 import { isDevModeEnabled, setDevModeEnabled } from "@/lib/dev-mode";
+import { fail } from "@/lib/fail";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 import { VISUAL_THEME_META, VISUAL_THEMES, type VisualTheme } from "@/lib/visual-theme";
-import { fail } from "@/lib/fail";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -60,10 +60,7 @@ export default function SettingsPage() {
 
   // Hydrate from localStorage once after mount (no effect-driven setState)
   if (mounted && !hydrated) {
-    const initial = readAppSettings(
-      localStorage,
-      createDefaultAppSettings(theme === "dark")
-    );
+    const initial = readAppSettings(localStorage, createDefaultAppSettings(theme === "dark"));
     setSettings(initial);
     setSavedSettings(initial);
     setDevMode(isDevModeEnabled());
@@ -278,7 +275,6 @@ export default function SettingsPage() {
       }
     }
     setIsChangingPassword(false);
-
   };
 
   return (

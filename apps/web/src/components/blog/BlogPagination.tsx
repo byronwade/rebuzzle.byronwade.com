@@ -79,26 +79,14 @@ export function BlogPagination({
     >
       {/* Previous button */}
       {currentPage > 1 ? (
-        <Button
-          aria-label="Previous page"
-          asChild
-          className="h-9 w-9"
-          size="icon"
-          variant="ghost"
-        >
+        <Button aria-label="Previous page" asChild className="h-9 w-9" size="icon" variant="ghost">
           <Link aria-label="Previous page" href={getPageUrl(currentPage - 1)}>
             <ChevronLeft className="size-4" data-icon="inline-start" />
             <span className="sr-only">Previous page</span>
           </Link>
         </Button>
       ) : (
-        <Button
-          aria-label="Previous page"
-          className="h-9 w-9"
-          disabled
-          size="icon"
-          variant="ghost"
-        >
+        <Button aria-label="Previous page" className="h-9 w-9" disabled size="icon" variant="ghost">
           <ChevronLeft className="size-4" data-icon="inline-start" />
         </Button>
       )}

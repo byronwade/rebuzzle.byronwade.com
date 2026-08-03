@@ -1,14 +1,15 @@
 import { FileText } from "lucide-react";
 import type { Metadata } from "next";
-import { AppLink as Link } from "@/components/AppLink";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import BlogPost from "@/components/BlogPost";
 import { BlogPagination, BlogSearch } from "@/components/blog";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generateBlogListMetadata } from "@/lib/seo/metadata";
 import {
   generateBreadcrumbSchema,
@@ -16,7 +17,6 @@ import {
   generateItemListSchema,
 } from "@/lib/seo/structured-data";
 import { fetchBlogPostsPaginated } from "../actions/blogActions";
-import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 export async function generateMetadata(): Promise<Metadata> {
   await connection();

@@ -565,9 +565,7 @@ export async function fetchAllBlogPosts(options?: {
         seoMetadata: post.seoMetadata,
         puzzleOrigin: post.puzzleOrigin,
       };
-      return mapped.slug && !mapped.slug.startsWith("-") && mapped.slug.length >= 3
-        ? [mapped]
-        : [];
+      return mapped.slug && !mapped.slug.startsWith("-") && mapped.slug.length >= 3 ? [mapped] : [];
     });
 
     return mergeBlogPosts(repositoryPosts, databasePosts);

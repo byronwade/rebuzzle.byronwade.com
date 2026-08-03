@@ -75,9 +75,7 @@ export async function loadDiversitySnapshot(input?: {
   const recentCategories = countBy(categories);
 
   const allTierTechniques = new Set(DIFFICULTY_LEVELS.flatMap((l) => l.techniques));
-  const usedRecently = new Set(
-    recentTechniques.flatMap((t) => (t.count >= 2 ? [t.id] : []))
-  );
+  const usedRecently = new Set(recentTechniques.flatMap((t) => (t.count >= 2 ? [t.id] : [])));
   const overusedTechniques = recentTechniques.flatMap((t) => (t.count >= 3 ? [t.id] : []));
 
   const underusedTechniques = [...allTierTechniques].filter(
@@ -85,10 +83,12 @@ export async function loadDiversitySnapshot(input?: {
   );
 
   const bannedAnswerKeys = [
-    ...new Set(recentAnswers.flatMap((a) => {
-      const key = normalizeAnswerKey(a);
-      return key ? [key] : [];
-    })),
+    ...new Set(
+      recentAnswers.flatMap((a) => {
+        const key = normalizeAnswerKey(a);
+        return key ? [key] : [];
+      })
+    ),
   ];
 
   return {

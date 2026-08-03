@@ -571,7 +571,9 @@ export function createIconRecognitionService(repository: IconRecognitionReposito
     fixtureIds: Set<string>
   ): Set<string> {
     return new Set(
-      decisions.flatMap((decision) => (fixtureIds.has(decision.fixtureId) ? [decision.fixtureId] : []))
+      decisions.flatMap((decision) =>
+        fixtureIds.has(decision.fixtureId) ? [decision.fixtureId] : []
+      )
     );
   }
 

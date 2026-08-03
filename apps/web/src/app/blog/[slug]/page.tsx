@@ -1,15 +1,16 @@
 import { Puzzle } from "lucide-react";
 import type { Metadata } from "next";
-import { AppLink as Link } from "@/components/AppLink";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import BlogPostContent from "@/components/BlogPostContent";
 import { FAQSection, PostNavigation, PuzzleStatsCard } from "@/components/blog";
 import Layout from "@/components/Layout";
 import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generateBlogPostMetadata } from "@/lib/seo/metadata";
 import {
   generateArticleSchema,
@@ -23,7 +24,6 @@ import {
   fetchBlogPosts,
   fetchBlogPostWithStats,
 } from "../../actions/blogActions";
-import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 const puzzleTypeLabels: Record<string, string> = {
   rebus: "Rebus",
