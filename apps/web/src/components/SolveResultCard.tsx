@@ -8,6 +8,7 @@ import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import { Timer } from "@/components/Timer";
 import { Button } from "@/components/ui/button";
 import { getStreakTease } from "@/lib/game/streak-tease";
+import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 export interface SolveResultCardProps {
@@ -20,15 +21,25 @@ export interface SolveResultCardProps {
   /** Revealed on loss (and optionally win) once the day is locked. */
   answer?: string | null;
   nextPlayTime?: Date | null;
+  /** Brushed a close miss during the day. */
+  nearMiss?: boolean;
+  /** Variable-reward lucky solve echo. */
+  isLucky?: boolean;
   className?: string;
 }
 
-function useCountUp(target: number, enabled: boolean, durationMs = 700): number {
+function useCountUp(
+  target: number,
+  enabled: boolean,
+  durationMs = 700
+): { value: number; done: boolean } {
   const [value, setValue] = useState(enabled ? 0 : target);
+  const [done, setDone] = useState(!enabled || target <= 0);
 
   useEffect(() => {
     if (!enabled || target <= 0) {
       setValue(target);
+      setDone(true);
       return;
     }
 
@@ -37,25 +48,28 @@ function useCountUp(target: number, enabled: boolean, durationMs = 700): number 
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) {
       setValue(target);
+      setDone(true);
       return;
     }
 
+    setDone(false);
     let frame = 0;
     const started = performance.now();
     const tick = (now: number) => {
       const t = Math.min(1, (now - started) / durationMs);
-      // Ease-out cubic — lands with a little weight.
       const eased = 1 - (1 - t) ** 3;
       setValue(Math.round(target * eased));
       if (t < 1) {
         frame = window.requestAnimationFrame(tick);
+      } else {
+        setDone(true);
       }
     };
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
   }, [target, enabled, durationMs]);
 
-  return value;
+  return { value, done };
 }
 
 /**
@@ -71,12 +85,28 @@ export function SolveResultCard({
   resultsHref,
   answer = null,
   nextPlayTime = null,
+  nearMiss = false,
+  isLucky = false,
   className,
 }: SolveResultCardProps) {
   const { isGuest, userId } = useAuth();
-  const displayScore = useCountUp(success ? score : 0, success && score > 0);
+  const { value: displayScore, done: scoreDone } = useCountUp(
+    success ? score : 0,
+    success && score > 0
+  );
   const streakTease = getStreakTease(streak, success);
   const showAnswer = Boolean(answer) && !success;
+  const [streakLocked, setStreakLocked] = useState(false);
+  const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
+
+  // Streak lock-in + tease land after the numbers settle.
+  useEffect(() => {
+    if (!scoreDone) return;
+    if (success && streak > 0) {
+      setStreakLocked(true);
+      haptics.tap();
+    }
+  }, [scoreDone, success, streak]);
 
   return (
     <div
@@ -101,7 +131,14 @@ export function SolveResultCard({
           <p className="font-semibold text-foreground text-base tracking-tight">
             {success ? "Solved" : "Out of guesses"}
           </p>
-          <p className="mt-0.5 text-muted-foreground text-sm">{streakTease}</p>
+          <p
+            className={cn(
+              "mt-0.5 text-muted-foreground text-sm transition-opacity duration-200",
+              scoreDone ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {streakTease}
+          </p>
         </div>
       </div>
 
@@ -133,13 +170,28 @@ export function SolveResultCard({
           <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
             Points
           </p>
+          {isLucky && scoreDone ? (
+            <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              ×2 lucky
+            </p>
+          ) : null}
         </div>
         <div>
-          <p className="flex items-center justify-center gap-1 font-semibold text-foreground text-xl tabular-nums tracking-tight">
+          <p
+            className={cn(
+              "flex items-center justify-center gap-1 font-semibold text-foreground text-xl tabular-nums tracking-tight",
+              streakLocked && "streak-lock-in"
+            )}
+          >
             {streak > 0 ? (
               <>
                 <span className="text-warning">{streak}</span>
-                <Flame className="h-3.5 w-3.5 text-warning" />
+                <Flame
+                  className={cn(
+                    "h-3.5 w-3.5 text-warning",
+                    isMilestone && streakLocked && "opacity-100"
+                  )}
+                />
               </>
             ) : (
               "0"
@@ -160,21 +212,24 @@ export function SolveResultCard({
         />
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        {success ? (
-          <EnhancedShareButton
-            className="flex-1"
-            success
-            attempts={attempts}
-            maxAttempts={maxAttempts}
-            streak={streak}
-          />
-        ) : null}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        <EnhancedShareButton
+          className="flex-1"
+          success={success}
+          attempts={attempts}
+          maxAttempts={maxAttempts}
+          streak={streak}
+          nearMiss={nearMiss}
+        />
         {success ? (
           <Button asChild className="flex-1" size="sm" variant="outline">
             <Link href={resultsHref}>Full results</Link>
           </Button>
-        ) : showAnswer ? null : (
+        ) : showAnswer ? (
+          <Button asChild className="flex-1" size="sm" variant="outline">
+            <Link href={resultsHref}>Full results</Link>
+          </Button>
+        ) : (
           <Button asChild className="flex-1" size="sm" variant="default">
             <Link href={resultsHref}>See the answer</Link>
           </Button>

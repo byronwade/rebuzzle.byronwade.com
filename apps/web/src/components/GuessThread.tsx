@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageAvatar,
   MessageBubble,
@@ -41,6 +41,55 @@ const TIER_LABEL: Record<ReactionTier, string> = {
   out: "Out of guesses",
 };
 
+function AgentReply({ turn }: { turn: ThreadTurn }) {
+  const tone = REACTION_TONE[turn.tier];
+  const showRiff = Boolean(turn.quipPending || turn.quip);
+  const isClose = turn.tier === "close";
+  const staggerBody = turn.tier === "close" || turn.tier === "warm";
+  const [showBody, setShowBody] = useState(!staggerBody);
+
+  // Near-miss beat: meta lands first, then the line — sells "almost" better than more copy.
+  useEffect(() => {
+    if (!staggerBody) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      setShowBody(true);
+      return;
+    }
+    const delay = turn.tier === "close" ? 110 : 70;
+    const id = window.setTimeout(() => setShowBody(true), delay);
+    return () => window.clearTimeout(id);
+  }, [staggerBody, turn.tier]);
+
+  return (
+    <MessageRow from="agent">
+      <MessageAvatar />
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+        <MessageMeta className={cn(isClose && "reaction-heat")} tone={tone}>
+          Eve · {TIER_LABEL[turn.tier]} · Guess {turn.attemptNumber}
+        </MessageMeta>
+
+        {showBody ? (
+          <MessageBubble
+            className={cn("min-w-0", isClose && "reaction-heat-bubble")}
+            from="agent"
+            tone={tone}
+          >
+            <p>{turn.line}</p>
+            {showRiff ? (
+              <div className="mt-2 border-border/70 border-t pt-2 text-muted-foreground">
+                {turn.quip ? turn.quip : <MessageTyping />}
+              </div>
+            ) : null}
+          </MessageBubble>
+        ) : (
+          <div aria-hidden className="h-11" />
+        )}
+      </div>
+    </MessageRow>
+  );
+}
+
 /**
  * The conversation.
  *
@@ -53,12 +102,13 @@ export function GuessThread({ turns, footer, className }: GuessThreadProps) {
   const endRef = useRef<HTMLLIElement>(null);
   const lastQuip = turns.at(-1)?.quip;
   const hasFooter = Boolean(footer);
+  const lastTier = turns.at(-1)?.tier;
 
   // Follow the conversation the way a chat does — including as a riff grows.
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     endRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
-  }, [turns.length, lastQuip, hasFooter]);
+  }, [turns.length, lastQuip, hasFooter, lastTier]);
 
   if (turns.length === 0) return null;
 
@@ -70,36 +120,14 @@ export function GuessThread({ turns, footer, className }: GuessThreadProps) {
       className={cn("guess-thread flex w-full flex-col gap-5 overflow-y-auto", className)}
       role="log"
     >
-      {turns.map((turn) => {
-        const tone = REACTION_TONE[turn.tier];
-        const showRiff = Boolean(turn.quipPending || turn.quip);
-
-        return (
-          <li className="flex flex-col gap-3" key={turn.id}>
-            <MessageRow from="user">
-              <MessageBubble from="user">{turn.text}</MessageBubble>
-            </MessageRow>
-
-            <MessageRow from="agent">
-              <MessageAvatar />
-              <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
-                <MessageMeta tone={tone}>
-                  Eve · {TIER_LABEL[turn.tier]} · Guess {turn.attemptNumber}
-                </MessageMeta>
-
-                <MessageBubble className="min-w-0" from="agent" tone={tone}>
-                  <p>{turn.line}</p>
-                  {showRiff ? (
-                    <div className="mt-2 border-border/70 border-t pt-2 text-muted-foreground">
-                      {turn.quip ? turn.quip : <MessageTyping />}
-                    </div>
-                  ) : null}
-                </MessageBubble>
-              </div>
-            </MessageRow>
-          </li>
-        );
-      })}
+      {turns.map((turn) => (
+        <li className="flex flex-col gap-3" key={turn.id}>
+          <MessageRow from="user">
+            <MessageBubble from="user">{turn.text}</MessageBubble>
+          </MessageRow>
+          <AgentReply turn={turn} />
+        </li>
+      ))}
 
       {footer ? <li className="list-none pt-1">{footer}</li> : null}
 

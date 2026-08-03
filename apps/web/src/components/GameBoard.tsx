@@ -191,8 +191,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const hasThread = turns.length > 0;
   /** Answer revealed after a loss (and stored for revisit). */
   const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
+  /** Brushed a close miss — fuels share copy + Zeigarnik. */
+  const [hadNearMiss, setHadNearMiss] = useState(false);
+  /** Variable-reward lucky solve (client roll when server points absent). */
+  const [isLuckySolve, setIsLuckySolve] = useState(false);
   /** Celebrate when the locked dock + result card land — not at guess submit. */
   const pendingCelebrationRef = useRef(false);
+  const wasChatLockedRef = useRef(false);
 
   const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
     setTurns((prev) =>
@@ -397,6 +402,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         const dailyBonus = getDailyBonusMultiplier();
         if (luckyResult.isLucky) {
           score = Math.round(score * luckyResult.multiplier);
+          setIsLuckySolve(true);
         } else if (dailyBonus.hasBonus) {
           score = Math.round(score * dailyBonus.multiplier);
         }
@@ -434,16 +440,29 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     ]
   );
 
-  const handleIncorrectGuess = useCallback((_attemptsLeft: number, similarity?: number) => {
-    const isNearMiss = similarity !== undefined && similarity >= engagementConfig.nearMissThreshold;
-    if (isNearMiss) {
-      haptics.warning();
-      void playInterfaceSound("near-miss");
-    } else {
-      haptics.error();
-      void playInterfaceSound("incorrect");
-    }
-  }, []);
+  const handleIncorrectGuess = useCallback(
+    (_attemptsLeft: number, similarity?: number, tier?: ReactionTier) => {
+      const resolvedTier =
+        tier ??
+        (similarity !== undefined && similarity >= engagementConfig.nearMissThreshold
+          ? "close"
+          : similarity !== undefined && similarity >= 40
+            ? "warm"
+            : "cold");
+
+      if (resolvedTier === "close") {
+        haptics.warning();
+        void playInterfaceSound("near-miss");
+      } else if (resolvedTier === "warm") {
+        haptics.warm();
+        void playInterfaceSound("incorrect");
+      } else {
+        haptics.error();
+        void playInterfaceSound("incorrect");
+      }
+    },
+    []
+  );
 
   const handleGuess = useCallback(
     async (guessValue?: string) => {
@@ -535,6 +554,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         const reaction = result.reaction;
         const turnId = ++turnSeq.current;
         if (reaction) {
+          if (reaction.tier === "close") {
+            setHadNearMiss(true);
+          }
           setTurns((prev) => [
             ...prev,
             {
@@ -749,7 +771,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 )
               : 0;
 
-        handleIncorrectGuess(newAttemptsLeft, overallSimilarity);
+        handleIncorrectGuess(newAttemptsLeft, overallSimilarity, reaction?.tier);
 
         // Eve's riff arrives behind the instant line, in its own bubble.
         if (reaction) {
@@ -822,6 +844,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     });
   }, [chatLocked, gameState.wasSuccessful]);
 
+  // Soft lock click when the day closes — ritualizes "come back tomorrow".
+  useEffect(() => {
+    if (chatLocked && !wasChatLockedRef.current) {
+      haptics.lock();
+      void playInterfaceSound("notification");
+    }
+    wasChatLockedRef.current = chatLocked;
+  }, [chatLocked]);
+
   const resultCard = chatLocked ? (
     <SolveResultCard
       success={gameState.wasSuccessful}
@@ -832,6 +863,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       resultsHref={resultsHref}
       answer={revealedAnswer}
       nextPlayTime={gameState.nextPlayTime}
+      nearMiss={hadNearMiss}
+      isLucky={isLuckySolve}
     />
   ) : null;
 
@@ -865,7 +898,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                         <div className="font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
                           Last: {lastTurn.text}
                         </div>
-                        <p className="mt-1 line-clamp-2 text-muted-foreground text-xs leading-5">
+                        <p
+                          className={cn(
+                            "mt-1 line-clamp-2 text-xs leading-5",
+                            lastTurn.tier === "close" || lastTurn.tier === "warm"
+                              ? "text-warning"
+                              : "text-muted-foreground"
+                          )}
+                        >
                           Eve · {lastTurn.line}
                         </p>
                       </div>

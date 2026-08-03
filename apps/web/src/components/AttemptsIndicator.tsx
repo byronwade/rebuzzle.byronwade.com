@@ -33,12 +33,12 @@ export function AttemptsIndicator({
   const remainingAttempts = maxAttempts - currentAttempts;
   const isLastAttempt = remainingAttempts === 1;
 
-  // Animate heart break when attempts increase
+  // Animate heart break when attempts increase (haptics live on the guess path —
+  // keep this visual-only so we don't double-buzz).
   useEffect(() => {
     if (animateOnChange && currentAttempts > prevAttempts) {
       const brokenHeartIndex = maxAttempts - currentAttempts;
       setAnimatingIndex(brokenHeartIndex);
-      haptics.error();
 
       const timeout = setTimeout(() => {
         setAnimatingIndex(null);
@@ -50,7 +50,7 @@ export function AttemptsIndicator({
     setPrevAttempts(currentAttempts);
   }, [currentAttempts, prevAttempts, maxAttempts, animateOnChange]);
 
-  // Warning haptic on last attempt
+  // One soft warning when the last heart becomes fragile.
   useEffect(() => {
     if (isLastAttempt && currentAttempts > 0) {
       haptics.warning();
@@ -59,7 +59,7 @@ export function AttemptsIndicator({
 
   const getTooltipText = () => {
     if (remainingAttempts === 0) return "No attempts remaining";
-    if (isLastAttempt) return "Last attempt! Be careful";
+    if (isLastAttempt) return "Last attempt — make it count";
     return `${remainingAttempts} attempts remaining`;
   };
 
@@ -82,7 +82,7 @@ export function AttemptsIndicator({
                     aria-hidden="true"
                     className={cn(
                       "h-3.5 w-3.5 transition-all duration-300",
-                      isFilled && isLastAttempt && "fill-destructive text-destructive",
+                      isFilled && isLastAttempt && "heart-fragile fill-destructive text-destructive",
                       isFilled && !isLastAttempt && "fill-foreground text-foreground",
                       !isFilled && "fill-transparent text-border-strong/50",
                       isAnimating && "scale-125"

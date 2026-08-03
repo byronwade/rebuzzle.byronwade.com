@@ -18,7 +18,7 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
   return (
     <div className={cn("play-dock-panel w-full", className)}>
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">
+        <div className="chat-lock-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">
           <Lock className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
