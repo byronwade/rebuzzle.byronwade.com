@@ -74,7 +74,7 @@ const imageSectionStyle = {
 const imageStyle = {
   maxWidth: "100%",
   height: "auto",
-  borderRadius: "4px",
+  borderRadius: "8px",
   border: `1px solid ${colors.line}`,
 };
 

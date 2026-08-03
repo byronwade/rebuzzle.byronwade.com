@@ -15,10 +15,10 @@ interface AchievementUnlockedEmailProps {
 }
 
 const rarityStyles = {
-  common: { label: "Common", ink: colors.inkSoft, bg: colors.inset },
-  uncommon: { label: "Uncommon", ink: "#1f5c45", bg: "#e4f0ea" },
-  rare: { label: "Rare", ink: "#1a4a6b", bg: "#e3eef6" },
-  epic: { label: "Epic", ink: "#4a2f6b", bg: "#efe6f6" },
+  common: { label: "Common", ink: colors.muted, bg: colors.inset },
+  uncommon: { label: "Uncommon", ink: colors.inkSoft, bg: colors.inset },
+  rare: { label: "Rare", ink: colors.linkDeep, bg: "#eef5ff" },
+  epic: { label: "Epic", ink: colors.ink, bg: colors.inset },
   legendary: { label: "Legendary", ink: colors.warnInk, bg: colors.warnBg },
 } as const;
 
@@ -114,23 +114,25 @@ const pointsStyle = {
   display: "inline-block",
   padding: "6px 12px",
   backgroundColor: colors.ink,
-  color: colors.paper,
+  color: colors.onInk,
+  borderRadius: "999px",
   fontFamily: fonts.mono,
-  fontSize: "12px",
-  letterSpacing: "0.08em",
+  fontSize: "11px",
+  fontWeight: "500" as const,
+  letterSpacing: "0.1em",
   textTransform: "uppercase" as const,
 };
 
 const trackStyle = {
   backgroundColor: colors.line,
-  borderRadius: "2px",
+  borderRadius: "999px",
   height: "6px",
   margin: "0 0 10px",
   overflow: "hidden" as const,
 };
 
 const fillStyle = {
-  backgroundColor: colors.accent,
+  backgroundColor: colors.ink,
   height: "6px",
-  borderRadius: "2px",
+  borderRadius: "999px",
 };

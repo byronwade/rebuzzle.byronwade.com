@@ -66,7 +66,7 @@ export function StreakAtRiskEmail({
       </Section>
 
       <Section style={styles.ctaWrap}>
-        <Button href={puzzleUrl} style={styles.ctaAccent}>
+        <Button href={puzzleUrl} style={styles.cta}>
           Keep the streak
         </Button>
       </Section>
@@ -89,26 +89,27 @@ export function StreakAtRiskEmail({
 }
 
 const streakPanelStyle = {
-  ...styles.panelWarn,
+  ...styles.panel,
   textAlign: "center" as const,
   padding: "28px 20px",
 };
 
 const streakNumberStyle = {
   margin: "0",
-  fontFamily: fonts.serif,
+  fontFamily: fonts.sans,
   fontSize: "56px",
-  fontWeight: "700" as const,
-  lineHeight: "1",
-  letterSpacing: "-0.03em",
+  fontWeight: "600" as const,
+  lineHeight: "0.95",
+  letterSpacing: "-0.06em",
   color: colors.ink,
 };
 
 const streakLabelStyle = {
-  margin: "10px 0 0",
+  margin: "12px 0 0",
   fontFamily: fonts.mono,
   fontSize: "11px",
-  letterSpacing: "0.16em",
+  fontWeight: "500" as const,
+  letterSpacing: "0.14em",
   textTransform: "uppercase" as const,
-  color: colors.warnInk,
+  color: colors.subtle,
 };

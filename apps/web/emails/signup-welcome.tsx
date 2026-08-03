@@ -27,7 +27,7 @@ export function SignupWelcomeEmail({ username, email }: SignupWelcomeEmailProps)
         familiar phrase. No subscriptions. No clutter. Just the click when it clicks.
       </Text>
 
-      <Section style={styles.panelAccent}>
+      <Section style={styles.panel}>
         <Text style={styles.h3}>How to settle in</Text>
         <Text style={styles.pSmall}>1. Play today&apos;s board — start a streak if you like.</Text>
         <Text style={styles.pSmall}>2. Use progressive hints when you&apos;re stuck (they cost points).</Text>

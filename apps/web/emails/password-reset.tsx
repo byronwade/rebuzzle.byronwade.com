@@ -52,7 +52,7 @@ const linkBoxStyle = {
   padding: "12px 14px",
   backgroundColor: colors.inset,
   border: `1px solid ${colors.line}`,
-  borderRadius: "4px",
+  borderRadius: "8px",
   fontFamily: fonts.mono,
   fontSize: "12px",
   lineHeight: "1.5",

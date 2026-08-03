@@ -11,7 +11,7 @@ export function EmailFooter({ unsubscribeUrl, showUnsubscribe = true }: EmailFoo
 
   return (
     <Section style={footerStyle}>
-      <Text style={brandNoteStyle}>One board a day. Local midnight unlock.</Text>
+      <Text style={brandNoteStyle}>One board a day · Local midnight unlock</Text>
       <Text style={navStyle}>
         <Link href={baseUrl} style={linkStyle}>
           Play
@@ -51,23 +51,24 @@ export function EmailFooter({ unsubscribeUrl, showUnsubscribe = true }: EmailFoo
 }
 
 const footerStyle = {
-  backgroundColor: colors.inset,
+  backgroundColor: colors.canvas,
   borderTop: `1px solid ${colors.line}`,
-  padding: "22px 28px 26px",
+  padding: "24px 28px 28px",
   textAlign: "center" as const,
 };
 
 const brandNoteStyle = {
-  margin: "0 0 12px",
+  margin: "0 0 14px",
   fontFamily: fonts.mono,
   fontSize: "11px",
-  letterSpacing: "0.12em",
+  fontWeight: "500" as const,
+  letterSpacing: "0.14em",
   textTransform: "uppercase" as const,
   color: colors.subtle,
 };
 
 const navStyle = {
-  margin: "0 0 10px",
+  margin: "0 0 12px",
   fontSize: "13px",
   color: colors.muted,
 };
@@ -85,9 +86,8 @@ const unsubStyle = {
 };
 
 const linkStyle = {
-  color: colors.ink,
-  textDecoration: "underline",
-  textUnderlineOffset: "2px",
+  color: colors.muted,
+  textDecoration: "none",
 };
 
 const mutedLinkStyle = {

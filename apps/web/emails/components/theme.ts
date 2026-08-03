@@ -1,30 +1,46 @@
 /**
- * Rebuzzle email design tokens — ink on canvas, email-safe stacks.
- * Avoids the old purple SaaS look; keeps brand readable in Gmail/Outlook.
+ * Email tokens aligned to the marketing/play site (globals.css + Header).
+ * Narrative type = Inter (Geist fallback). Technical layer = IBM Plex Mono.
  */
 
 export const colors = {
-  canvas: "#f4f2ee",
-  paper: "#fffcf7",
-  ink: "#141414",
-  inkSoft: "#3a3a3a",
-  muted: "#6b6560",
-  subtle: "#8a837c",
-  line: "#e4dfd6",
-  inset: "#efeae2",
-  accent: "#0f766e",
-  accentSoft: "#d8ebe8",
-  warnBg: "#f7efe4",
-  warnInk: "#6b4a1b",
-  dangerBg: "#f8e8e6",
-  dangerInk: "#7a2e24",
+  /** `--background` */
+  canvas: "#fafafa",
+  /** `--card` */
+  paper: "#ffffff",
+  /** `--foreground` / `--primary` */
+  ink: "#171717",
+  /** Soft body ink */
+  inkSoft: "#2a2a2a",
+  /** `--muted-foreground` */
+  muted: "#666666",
+  /** `--subtle-foreground` */
+  subtle: "#888888",
+  /** `--border` */
+  line: "#ebebeb",
+  /** `--border-strong` */
+  lineStrong: "#a1a1a1",
+  /** `--inset` / `--muted` / `--secondary` */
+  inset: "#f5f5f5",
+  /** `--link` */
+  link: "#0070f3",
+  /** `--link-deep` */
+  linkDeep: "#0761d1",
+  /** `--primary-foreground` / on-ink */
+  onInk: "#fafafa",
+  /** Soft warning wash (from `--warning` #f5a623) */
+  warnBg: "#fff6e8",
+  warnInk: "#8a5a12",
+  /** Soft danger wash (from `--destructive` #ee0000) */
+  dangerBg: "#fff1f1",
+  dangerInk: "#b30000",
   white: "#ffffff",
 } as const;
 
+/** Site stacks: Geist → Inter. Email loads Inter + IBM Plex Mono via <Head>. */
 export const fonts = {
-  sans: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  serif: 'Georgia, "Times New Roman", Times, serif',
-  mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  sans: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  mono: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
 } as const;
 
 export function appBaseUrl(): string {
@@ -38,61 +54,65 @@ export const styles = {
     margin: "0",
     padding: "0",
     color: colors.ink,
+    WebkitFontSmoothing: "antialiased" as const,
   },
   outer: {
     backgroundColor: colors.canvas,
-    padding: "32px 12px",
+    padding: "40px 16px",
   },
   container: {
     backgroundColor: colors.paper,
     margin: "0 auto",
     maxWidth: "560px",
-    borderRadius: "4px",
+    borderRadius: "8px",
     border: `1px solid ${colors.line}`,
     overflow: "hidden" as const,
   },
   content: {
-    padding: "36px 28px 28px",
+    padding: "32px 28px 28px",
   },
+  /** Site `.eyebrow`: mono 11px, uppercase, tracking 0.14em, subtle */
   eyebrow: {
-    margin: "0 0 12px",
+    margin: "0 0 14px",
     fontFamily: fonts.mono,
     fontSize: "11px",
-    fontWeight: "600" as const,
-    letterSpacing: "0.16em",
+    fontWeight: "500" as const,
+    letterSpacing: "0.14em",
     textTransform: "uppercase" as const,
     color: colors.subtle,
   },
+  /** Site h1: weight 600, tracking ~-0.04em — no serif */
   h1: {
-    margin: "0 0 18px",
-    fontFamily: fonts.serif,
-    fontSize: "34px",
-    fontWeight: "700" as const,
-    lineHeight: "1.15",
-    letterSpacing: "-0.02em",
+    margin: "0 0 16px",
+    fontFamily: fonts.sans,
+    fontSize: "32px",
+    fontWeight: "600" as const,
+    lineHeight: "1.12",
+    letterSpacing: "-0.04em",
     color: colors.ink,
   },
   h2: {
     margin: "0 0 10px",
-    fontFamily: fonts.serif,
+    fontFamily: fonts.sans,
     fontSize: "22px",
-    fontWeight: "700" as const,
-    lineHeight: "1.25",
-    letterSpacing: "-0.015em",
+    fontWeight: "600" as const,
+    lineHeight: "1.2",
+    letterSpacing: "-0.035em",
     color: colors.ink,
   },
   h3: {
     margin: "0 0 8px",
     fontFamily: fonts.sans,
     fontSize: "15px",
-    fontWeight: "700" as const,
+    fontWeight: "600" as const,
+    letterSpacing: "-0.02em",
     color: colors.ink,
   },
   p: {
-    margin: "0 0 14px",
-    fontSize: "16px",
+    margin: "0 0 16px",
+    fontSize: "15px",
     lineHeight: "1.65",
-    color: colors.inkSoft,
+    color: colors.muted,
   },
   pSmall: {
     margin: "0 0 10px",
@@ -104,57 +124,42 @@ export const styles = {
     textAlign: "center" as const,
     margin: "28px 0 8px",
   },
+  /** Marketing `.cta-pill`: ink fill, pill radius, medium weight, 15px */
   cta: {
     backgroundColor: colors.ink,
-    color: colors.paper,
-    padding: "14px 26px",
-    borderRadius: "4px",
+    color: colors.onInk,
+    padding: "12px 20px",
+    borderRadius: "999px",
     textDecoration: "none",
-    fontWeight: "600" as const,
+    fontWeight: "500" as const,
     fontSize: "15px",
-    letterSpacing: "0.01em",
+    letterSpacing: "-0.01em",
     display: "inline-block",
-  },
-  ctaAccent: {
-    backgroundColor: colors.accent,
-    color: colors.white,
-    padding: "14px 26px",
-    borderRadius: "4px",
-    textDecoration: "none",
-    fontWeight: "600" as const,
-    fontSize: "15px",
-    display: "inline-block",
+    lineHeight: "1.2",
   },
   panel: {
     backgroundColor: colors.inset,
     border: `1px solid ${colors.line}`,
-    borderRadius: "4px",
-    padding: "18px 20px",
-    margin: "22px 0",
-  },
-  panelAccent: {
-    backgroundColor: colors.accentSoft,
-    border: `1px solid ${colors.accent}33`,
-    borderRadius: "4px",
-    padding: "18px 20px",
-    margin: "22px 0",
+    borderRadius: "8px",
+    padding: "20px 20px",
+    margin: "24px 0",
   },
   panelWarn: {
     backgroundColor: colors.warnBg,
     border: `1px solid ${colors.warnInk}22`,
-    borderRadius: "4px",
-    padding: "18px 20px",
-    margin: "22px 0",
+    borderRadius: "8px",
+    padding: "20px 20px",
+    margin: "24px 0",
   },
   panelDanger: {
     backgroundColor: colors.dangerBg,
     border: `1px solid ${colors.dangerInk}22`,
-    borderRadius: "4px",
-    padding: "18px 20px",
-    margin: "22px 0",
+    borderRadius: "8px",
+    padding: "20px 20px",
+    margin: "24px 0",
   },
   link: {
-    color: colors.accent,
+    color: colors.link,
     textDecoration: "underline",
     textUnderlineOffset: "2px",
   },
@@ -165,8 +170,8 @@ export const styles = {
   },
   signature: {
     margin: "28px 0 0",
-    fontSize: "15px",
+    fontSize: "14px",
     lineHeight: "1.6",
-    color: colors.muted,
+    color: colors.subtle,
   },
 } as const;
