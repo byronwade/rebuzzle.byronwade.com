@@ -828,16 +828,24 @@
   --stage-radius: 12px;
 }
 
-/* Keyboard-open: medium tiles, top-pinned — header is hidden so use the room. */
+/* Keyboard-open: near-hero plate, top-pinned — chrome is gone, use the room. */
 .puzzle-stage[data-state="compact"] {
-  --stage-pad: clamp(0.65rem, 1.8vh, 1rem);
-  --stage-min: clamp(88px, 14vh, 132px);
-  --stage-scale: 1;
-  --stage-radius: 14px;
+  --stage-pad: clamp(0.9rem, 3.5vh, 1.5rem);
+  --stage-min: clamp(120px, 22vh, 200px);
+  --stage-scale: 1.05;
+  --stage-radius: 16px;
 }
 
 .puzzle-stage[data-state="compact"] .puzzle-stage-plate {
   overflow: visible;
+}
+
+.puzzle-stage[data-state="compact"] .puzzle-stage-content {
+  transform-origin: top center;
+}
+
+.puzzle-stage[data-state="compact"] .puzzle-container-responsive {
+  padding: clamp(0.35rem, 1.2vh, 0.75rem) clamp(0.75rem, 3vw, 1.25rem);
 }
 
 .puzzle-stage-plate {

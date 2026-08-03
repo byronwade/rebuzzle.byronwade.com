@@ -36,11 +36,11 @@ export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: Puz
   const composed = hasComposedVisual(visual);
   const surface = useMemo(() => resolvePuzzleSurface(visual), [visual]);
   const onPaper = surface.mode === "paper";
-  // Keyboard preview uses medium tiles — header is gone, so we can breathe.
+  // Compact (keyboard) keeps large tiles — chrome is hidden, so match hero scale.
   const size =
     SMALL_TEXT_TYPES.has(puzzleType)
       ? "small"
-      : state === "compact" || state === "docked"
+      : state === "docked"
         ? "medium"
         : "large";
 

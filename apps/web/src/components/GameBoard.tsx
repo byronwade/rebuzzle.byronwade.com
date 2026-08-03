@@ -1052,7 +1052,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   className={cn(
                     "play-stage flex min-h-0 flex-1 flex-col items-center overflow-hidden px-4 md:px-6",
                     keyboardOpen
-                      ? "justify-start gap-2 pt-1 pb-2"
+                      ? "justify-start gap-1.5 pt-0 pb-1"
                       : hasThread
                         ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
                         : "justify-center py-[clamp(0.5rem,2vh,1rem)]"
