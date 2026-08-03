@@ -62,20 +62,18 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
               Rebuzzle
             </Link>
 
-            {/* Keep marketing nav off the play surface — app-like focus */}
-            {!isPlaying && (
-              <nav className="hidden items-center gap-1 md:flex">
-                {NAV_LINKS.map((link) => (
-                  <Link
-                    className="rounded-md px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
-                    href={link.href}
-                    key={link.href}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            )}
+            {/* Always show site nav — home starts a game which used to hide these */}
+            <nav className="hidden items-center gap-1 md:flex">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  className="rounded-md px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+                  href={link.href}
+                  key={link.href}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
           </div>
 
           <div className="flex items-center gap-1.5">
