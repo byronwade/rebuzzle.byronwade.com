@@ -63,6 +63,7 @@ function puzzleResult(answer: string) {
       qualityVerdict: "good" as const,
       funScore: 82,
       visualStyleId: "ink-pictogram-v1" as const,
+      answerSeed: answer,
       thinkingSummary: "test",
     },
     status: "success" as const,
@@ -84,7 +85,20 @@ describe("Apex spending-cap behavior", () => {
       candidateCount: 2,
       preferredTechniques: ["simple_compound"],
       avoidTechniques: [],
-      phraseSuggestions: [],
+      phraseSuggestions: [
+        {
+          answer: "moonlight",
+          category: "compound",
+          difficultyHint: 5,
+          techniqueAffinity: ["simple_compound"],
+        },
+        {
+          answer: "under the weather",
+          category: "positional",
+          difficultyHint: 6,
+          techniqueAffinity: ["simple_compound"],
+        },
+      ],
       diversity: { bannedAnswerKeys: [] },
       briefSummary: "test",
     });
@@ -96,7 +110,29 @@ describe("Apex spending-cap behavior", () => {
     expect(runPuzzleAgentGeneration).toHaveBeenCalledTimes(1);
   });
 
-  it("runs at most one model-backed critique repair and bans the original answer", async () => {
+  it("fails closed before any model call when answer seeds cannot cover the tournament", async () => {
+    buildGenerationBrief.mockResolvedValue({
+      targetDifficulty: 5,
+      tierLabel: "Medium",
+      qualityThreshold: 74,
+      minRubricOverall: 78,
+      candidateCount: 2,
+      preferredTechniques: ["simple_compound"],
+      avoidTechniques: [],
+      phraseSuggestions: [],
+      diversity: { bannedAnswerKeys: [] },
+      briefSummary: "test",
+    });
+
+    await expect(runApexGeneration({ targetDifficulty: 5 })).rejects.toMatchObject({
+      code: "APEX_ANSWER_FIRST_SEED_UNAVAILABLE",
+      requestedCount: 2,
+      selectedCount: 0,
+    });
+    expect(runPuzzleAgentGeneration).not.toHaveBeenCalled();
+  });
+
+  it("runs at most one model-backed critique repair while preserving the original answer", async () => {
     buildGenerationBrief.mockResolvedValue({
       targetDifficulty: 5,
       tierLabel: "Hard",
@@ -105,7 +141,20 @@ describe("Apex spending-cap behavior", () => {
       candidateCount: 2,
       preferredTechniques: ["simple_compound"],
       avoidTechniques: [],
-      phraseSuggestions: [],
+      phraseSuggestions: [
+        {
+          answer: "moonlight",
+          category: "compound",
+          difficultyHint: 5,
+          techniqueAffinity: ["simple_compound"],
+        },
+        {
+          answer: "under the weather",
+          category: "positional",
+          difficultyHint: 6,
+          techniqueAffinity: ["simple_compound"],
+        },
+      ],
       diversity: { bannedAnswerKeys: [] },
       briefSummary: "test",
       learning: {
@@ -167,7 +216,8 @@ describe("Apex spending-cap behavior", () => {
       maxAttempts: 1,
       modelChainLimit: 1,
       revisionInstructions: ["Replace the abstract icon with a concrete silhouette"],
-      bannedAnswerKeys: ["top"],
+      answerSeed: "top",
+      bannedAnswerKeys: [],
       candidateIndex: undefined,
       candidateCount: undefined,
     });

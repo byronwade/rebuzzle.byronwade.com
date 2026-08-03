@@ -23,6 +23,8 @@ export type GenerationAuditRecord = {
   uniquenessScore?: number;
   fingerprint?: string;
   answerKey?: string;
+  /** Exact Apex seed contract used to ground the candidate, when applicable. */
+  answerSeed?: string;
   estimatedSolveRate?: number;
   simCalibrationBias?: number;
   candidateCount?: number;

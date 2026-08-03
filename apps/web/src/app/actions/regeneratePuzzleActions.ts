@@ -101,9 +101,7 @@ export async function regenerateTodaysPuzzle(
 
     const dateKey = getUtcPuzzleDate();
     const typeToUse = puzzleType || process.env.DEFAULT_PUZZLE_TYPE || "rebus";
-    const difficultyPlan = await resolveAdaptiveDifficultyForDate(
-      new Date(`${dateKey}T00:00:00Z`)
-    );
+    const difficultyPlan = await resolveAdaptiveDifficultyForDate(new Date(`${dateKey}T00:00:00Z`));
 
     // Generate BEFORE archiving so a failed run keeps the current daily puzzle.
     const result = await generateMasterPuzzle({
@@ -149,9 +147,9 @@ export async function regenerateTodaysPuzzle(
         difficultyScore: result.puzzle.difficulty,
         fingerprint: result.metadata.fingerprint,
         calibratedDifficulty: result.metadata.calibratedDifficulty,
-        generationMethod:
-          result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
+        generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
         engine: result.metadata.engine ?? "eve",
+        answerSeed: result.metadata.answerSeed,
         learningBaselineDifficulty: difficultyPlan.baseline,
         learningDifficultyDelta: difficultyPlan.delta,
         learningReason: difficultyPlan.reason,

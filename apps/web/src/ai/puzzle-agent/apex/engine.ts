@@ -15,7 +15,11 @@ import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-ge
 import type { PuzzleAgentResult } from "../schemas";
 import type { TechniqueId } from "../technique-library";
 import { stableId } from "../tool-impl";
-import { answerFirstSeedKey, selectAnswerFirstSeed } from "./answer-first";
+import {
+  AnswerFirstSeedUnavailableError,
+  answerFirstSeedKey,
+  selectAnswerFirstSeeds,
+} from "./answer-first";
 import { toPlayabilityEvidence } from "./blind-solve-consensus";
 import { critiqueCandidate } from "./critique";
 import { buildGenerationBrief } from "./curriculum";
@@ -193,21 +197,27 @@ export async function runApexGeneration(
   const generateStarted = Date.now();
   const candidates: ApexCandidate[] = [];
   const failures: string[] = [];
-  const usedAnswerSeeds = new Set<string>();
+  const answerSeedEntries = selectAnswerFirstSeeds({
+    entries: brief.phraseSuggestions,
+    techniqueIds: brief.preferredTechniques,
+    count: brief.candidateCount,
+  });
+  if (answerSeedEntries.length !== brief.candidateCount) {
+    throw new AnswerFirstSeedUnavailableError({
+      requestedCount: brief.candidateCount,
+      selectedCount: answerSeedEntries.length,
+    });
+  }
 
-  // Sequential slots — safer for gateway quota; each slot gets a distinct brief nudge
+  // Sequential slots — safer for gateway quota; each slot has a reserved answer
+  // contract and a distinct brief nudge.
   for (let slot = 1; slot <= brief.candidateCount; slot++) {
     try {
       // Rotate preferred technique focus per slot
       const focusTechnique =
         brief.preferredTechniques[(slot - 1) % Math.max(1, brief.preferredTechniques.length)];
-      const answerSeedEntry = selectAnswerFirstSeed({
-        entries: brief.phraseSuggestions,
-        techniqueId: focusTechnique,
-        usedAnswerKeys: usedAnswerSeeds,
-      });
+      const answerSeedEntry = answerSeedEntries[slot - 1];
       const answerSeed = answerFirstSeedKey(answerSeedEntry);
-      if (answerSeed) usedAnswerSeeds.add(answerSeed);
       const antiCopySuggestions = brief.phraseSuggestions.filter(
         (entry) => answerFirstSeedKey(entry) !== answerSeed
       );
@@ -319,10 +329,14 @@ export async function runApexGeneration(
             ...brief.preferredTechniques.filter((technique) => technique !== candidate.techniqueId),
           ],
           avoidTechniques: brief.avoidTechniques,
-          phraseSeeds: brief.phraseSuggestions.slice(0, 3).map((phrase) => phrase.answer),
-          bannedAnswerKeys: Array.from(
-            new Set([...brief.diversity.bannedAnswerKeys, normalizeAnswerKey(candidate.answer)])
-          ),
+          phraseSeeds: brief.phraseSuggestions
+            .filter(
+              (phrase) => normalizeAnswerKey(phrase.answer) !== normalizeAnswerKey(candidate.answer)
+            )
+            .slice(0, 3)
+            .map((phrase) => phrase.answer),
+          answerSeed: candidate.answer,
+          bannedAnswerKeys: Array.from(new Set(brief.diversity.bannedAnswerKeys)),
           candidateIndex: undefined,
           candidateCount: undefined,
           deferRenderedEvaluation: true,
