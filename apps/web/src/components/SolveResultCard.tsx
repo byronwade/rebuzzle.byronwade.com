@@ -2,9 +2,12 @@
 
 import { Check, Flame, Lock, Trophy } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
+import { Timer } from "@/components/Timer";
 import { Button } from "@/components/ui/button";
+import { getStreakTease } from "@/lib/game/streak-tease";
 import { cn } from "@/lib/utils";
 
 export interface SolveResultCardProps {
@@ -14,7 +17,45 @@ export interface SolveResultCardProps {
   attempts: number;
   maxAttempts: number;
   resultsHref: string;
+  /** Revealed on loss (and optionally win) once the day is locked. */
+  answer?: string | null;
+  nextPlayTime?: Date | null;
   className?: string;
+}
+
+function useCountUp(target: number, enabled: boolean, durationMs = 700): number {
+  const [value, setValue] = useState(enabled ? 0 : target);
+
+  useEffect(() => {
+    if (!enabled || target <= 0) {
+      setValue(target);
+      return;
+    }
+
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      setValue(target);
+      return;
+    }
+
+    let frame = 0;
+    const started = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / durationMs);
+      // Ease-out cubic — lands with a little weight.
+      const eased = 1 - (1 - t) ** 3;
+      setValue(Math.round(target * eased));
+      if (t < 1) {
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [target, enabled, durationMs]);
+
+  return value;
 }
 
 /**
@@ -28,9 +69,14 @@ export function SolveResultCard({
   attempts,
   maxAttempts,
   resultsHref,
+  answer = null,
+  nextPlayTime = null,
   className,
 }: SolveResultCardProps) {
   const { isGuest, userId } = useAuth();
+  const displayScore = useCountUp(success ? score : 0, success && score > 0);
+  const streakTease = getStreakTease(streak, success);
+  const showAnswer = Boolean(answer) && !success;
 
   return (
     <div
@@ -55,13 +101,21 @@ export function SolveResultCard({
           <p className="font-semibold text-foreground text-base tracking-tight">
             {success ? "Solved" : "Out of guesses"}
           </p>
-          <p className="mt-0.5 text-muted-foreground text-sm">
-            {success
-              ? "Today’s puzzle is done. Chat is locked until tomorrow."
-              : "That’s the day — chat is locked. See the answer on the results page."}
-          </p>
+          <p className="mt-0.5 text-muted-foreground text-sm">{streakTease}</p>
         </div>
       </div>
+
+      {showAnswer ? (
+        <div className="mt-4 rounded-xl border border-border/70 bg-background/70 px-3.5 py-3">
+          <p className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">Answer</p>
+          <p className="mt-1 font-semibold text-foreground text-lg tracking-tight">{answer}</p>
+          <Button asChild className="mt-2.5" size="sm" variant="link">
+            <Link className="h-auto px-0" href={resultsHref}>
+              Explain more
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="mt-4 grid grid-cols-3 divide-x divide-border/80 overflow-hidden rounded-xl border border-border/70 bg-background/60 py-3 text-center">
         <div>
@@ -74,7 +128,7 @@ export function SolveResultCard({
         </div>
         <div>
           <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
-            {success ? score : 0}
+            {displayScore}
           </p>
           <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
             Points
@@ -97,6 +151,15 @@ export function SolveResultCard({
         </div>
       </div>
 
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
+        <p className="min-w-0 truncate text-muted-foreground text-xs">Next puzzle</p>
+        <Timer
+          className="shrink-0 font-mono text-foreground text-xs tabular-nums"
+          compact
+          nextPlayTime={nextPlayTime}
+        />
+      </div>
+
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         {success ? (
           <EnhancedShareButton
@@ -107,9 +170,15 @@ export function SolveResultCard({
             streak={streak}
           />
         ) : null}
-        <Button asChild className="flex-1" size="sm" variant={success ? "outline" : "default"}>
-          <Link href={resultsHref}>{success ? "Full results" : "See the answer"}</Link>
-        </Button>
+        {success ? (
+          <Button asChild className="flex-1" size="sm" variant="outline">
+            <Link href={resultsHref}>Full results</Link>
+          </Button>
+        ) : showAnswer ? null : (
+          <Button asChild className="flex-1" size="sm" variant="default">
+            <Link href={resultsHref}>See the answer</Link>
+          </Button>
+        )}
       </div>
 
       {(isGuest || !userId) && success ? (

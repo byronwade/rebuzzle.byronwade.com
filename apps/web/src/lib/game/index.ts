@@ -33,3 +33,4 @@ export {
   type GuessReaction,
   type ReactionTier,
 } from "./reactions";
+export { getStreakTease } from "./streak-tease";

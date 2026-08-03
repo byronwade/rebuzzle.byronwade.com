@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 interface TimerProps {
   nextPlayTime: Date | null;
   className?: string;
+  /** Digits only — for docks / cards that already label "Next puzzle". */
+  compact?: boolean;
 }
 
 function formatCountdown(diffMs: number): string {
@@ -21,7 +23,7 @@ function formatCountdown(diffMs: number): string {
     .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function Timer({ nextPlayTime, className }: TimerProps) {
+export function Timer({ nextPlayTime, className, compact = false }: TimerProps) {
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState("--:--:--");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -71,8 +73,12 @@ export function Timer({ nextPlayTime, className }: TimerProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <div className={cn("cursor-default font-mono text-subtle text-xs", className)}>
-            <span className="xs:inline hidden">Next puzzle in </span>
-            <span className="xs:hidden">Next </span>
+            {compact ? null : (
+              <>
+                <span className="xs:inline hidden">Next puzzle in </span>
+                <span className="xs:hidden">Next </span>
+              </>
+            )}
             <span className="text-foreground tabular-nums">{timeLeft}</span>
           </div>
         </TooltipTrigger>

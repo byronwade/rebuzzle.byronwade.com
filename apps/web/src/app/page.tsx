@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { AlreadyPlayedPanel } from "@/components/AlreadyPlayedPanel";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
 import { HomePageSkeleton } from "@/components/page-skeletons";
@@ -145,25 +146,12 @@ function NoPuzzleDisplay() {
 }
 
 /**
- * Puzzle already attempted component - shows when user has completed or failed today's puzzle
+ * Puzzle already attempted — soft landing that echoes the in-thread result beat.
  */
 function PuzzleAlreadyAttemptedDisplay({ wasSuccessful }: { wasSuccessful: boolean }) {
   return (
     <Layout>
-      <StatusPanel
-        action={{
-          href: wasSuccessful ? "/game-over?success=true" : "/game-over?success=false",
-          label: "View results",
-        }}
-        eyebrow={wasSuccessful ? "Solved" : "Attempted"}
-        headingId="puzzle-attempted-title"
-        secondaryAction={{ href: "/leaderboard", label: "Check the leaderboard" }}
-        title={wasSuccessful ? "You solved today's puzzle." : "You've used today's attempt."}
-      >
-        {wasSuccessful
-          ? "Nicely done. A new puzzle lands at midnight."
-          : "One puzzle a day, one shot at it. A new puzzle lands at midnight."}
-      </StatusPanel>
+      <AlreadyPlayedPanel wasSuccessful={wasSuccessful} />
     </Layout>
   );
 }

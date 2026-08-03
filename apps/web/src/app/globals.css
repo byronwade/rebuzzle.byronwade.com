@@ -698,6 +698,29 @@
   );
 }
 
+/* Answer bar ↔ closing / locked dock: soft lift instead of a hard cut. */
+.play-dock-panel {
+  animation: dock-in 280ms var(--ease) both;
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-dock-panel {
+    animation: none !important;
+  }
+}
+
 /*
  * The answer bar. A single hairline field that lifts on focus — a crisp edge
  * plus a soft halo, matching the global focus treatment, so it reads as

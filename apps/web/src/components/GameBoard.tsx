@@ -27,6 +27,7 @@ import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
+import { ChatClosingDock } from "./ChatClosingDock";
 import { ChatLockedDock } from "./ChatLockedDock";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { useGameContext } from "./GameContext";
@@ -188,9 +189,31 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [turns, setTurns] = useState<ThreadTurn[]>([]);
   const turnSeq = useRef(0);
   const hasThread = turns.length > 0;
+  /** Answer revealed after a loss (and stored for revisit). */
+  const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
+  /** Celebrate when the locked dock + result card land — not at guess submit. */
+  const pendingCelebrationRef = useRef(false);
 
   const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
-    setTurns((prev) => prev.map((turn) => (turn.id === id ? { ...turn, ...patch } : turn)));
+    setTurns((prev) =>
+      prev.map((turn) => {
+        if (turn.id !== id) return turn;
+        const next = { ...turn, ...patch };
+        // Persist Eve's closing line for the soft revisit landing.
+        if (
+          (next.tier === "correct" || next.tier === "out") &&
+          typeof next.quip === "string" &&
+          next.quip.trim()
+        ) {
+          try {
+            localStorage.setItem("lastEveClosingLine", next.quip.trim());
+          } catch {
+            // Ignore quota / private mode.
+          }
+        }
+        return next;
+      })
+    );
   }, []);
 
   /**
@@ -395,12 +418,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       endGame();
       dismissKeyboard();
       if (success && opts?.celebrate) {
-        haptics.celebration();
+        pendingCelebrationRef.current = true;
         markJustSolvedInSession();
-        // Wait a frame so the lock UI has painted before the canvas mounts.
-        window.requestAnimationFrame(() => {
-          void fireConfetti();
-        });
       } else if (!success) {
         haptics.error();
       }
@@ -498,7 +517,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           });
           toast({
             title: result.wasSuccessful ? "Already solved today" : "Day already locked",
-            description: "Chat is locked. Open full results anytime from the dock.",
+            description: "Chat is locked. Open full results from the card below.",
           });
           return;
         }
@@ -555,8 +574,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             },
           });
 
+          if (typeof result.answer === "string" && result.answer.trim()) {
+            setRevealedAnswer(result.answer.trim());
+          }
+
           // Start Eve's closing riff before lock UI so the dock waits on it.
           if (reaction) {
+            try {
+              localStorage.setItem("lastEveClosingLine", reaction.line);
+            } catch {
+              // Ignore quota / private mode.
+            }
             void streamQuip(turnId, guessToCheck, reaction.tier);
           }
 
@@ -638,8 +666,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         if (result.gameOver || newAttemptsLeft <= 0) {
           void playInterfaceSound("failure");
 
+          if (typeof result.answer === "string" && result.answer.trim()) {
+            setRevealedAnswer(result.answer.trim());
+          }
+
           // Start Eve's closing riff before lock UI so the dock waits on it.
           if (reaction) {
+            try {
+              localStorage.setItem("lastEveClosingLine", reaction.line);
+            } catch {
+              // Ignore quota / private mode.
+            }
             void streamQuip(turnId, guessToCheck, reaction.tier);
           }
 
@@ -768,11 +805,22 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     gameState.timeTakenSeconds,
   ]);
 
-  // Keep the answer bar open (disabled) until Eve's closing riff settles.
+  // Keep the answer bar open until Eve's closing riff settles.
   const awaitingClosingQuip = turns.some(
     (turn) => (turn.tier === "correct" || turn.tier === "out") && Boolean(turn.quipPending)
   );
   const chatLocked = gameState.gameOver && !awaitingClosingQuip;
+  const lastTurn = turns.at(-1);
+
+  // Confetti + celebration haptic land with the result card / locked dock.
+  useEffect(() => {
+    if (!chatLocked || !gameState.wasSuccessful || !pendingCelebrationRef.current) return;
+    pendingCelebrationRef.current = false;
+    haptics.celebration();
+    window.requestAnimationFrame(() => {
+      void fireConfetti();
+    });
+  }, [chatLocked, gameState.wasSuccessful]);
 
   const resultCard = chatLocked ? (
     <SolveResultCard
@@ -782,8 +830,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       attempts={gameState.finalAttempts}
       maxAttempts={gameSettings.maxAttempts}
       resultsHref={resultsHref}
+      answer={revealedAnswer}
+      nextPlayTime={gameState.nextPlayTime}
     />
   ) : null;
+
+  const showStageChrome =
+    !gameState.gameOver && (!hasThread || Boolean(gameData.hints && gameData.hints.length > 0));
 
   // Puzzle data is already on the server-rendered board — never blank it for
   // auth/guest warm-up. Guest creation only disables submit (below).
@@ -799,20 +852,24 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               {/* Puzzle area - collapses when keyboard is visible, centers content */}
               <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area flex flex-col">
                 {collapsed ? (
-                  /* COLLAPSED VIEW - minimal puzzle hint when keyboard is open */
-                  <div className="flex flex-col items-center pt-2">
+                  /* COLLAPSED VIEW - minimal puzzle + last Eve line while typing */
+                  <div className="flex flex-col items-center px-4 pt-2">
                     <PuzzleMinimal
                       puzzle={puzzleDisplay}
                       puzzleType={puzzleType}
                       visual={gameData.visual}
                       className="w-full max-w-2xl"
                     />
-                    {/* Show last guess attempt in collapsed view */}
-                    {gameState.guessHistory.length > 0 && (
-                      <div className="mt-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
-                        Last: {gameState.guessHistory[gameState.guessHistory.length - 1]?.text}
+                    {lastTurn ? (
+                      <div className="mt-2 w-full max-w-2xl text-center">
+                        <div className="font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
+                          Last: {lastTurn.text}
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-muted-foreground text-xs leading-5">
+                          Eve · {lastTurn.line}
+                        </p>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 ) : (
                   /* EXPANDED VIEW — focused play stage */
@@ -822,13 +879,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       hasThread ? "justify-start" : "justify-center"
                     )}
                   >
-                    {!gameState.gameOver ? (
+                    {showStageChrome ? (
                       <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
-                        <DifficultyBadge
-                          className="play-fade-in"
-                          difficulty={currentEventPuzzle?.difficulty}
-                          showDescription={!hasThread}
-                        />
+                        {!hasThread ? (
+                          <DifficultyBadge
+                            className="play-fade-in"
+                            difficulty={currentEventPuzzle?.difficulty}
+                            showDescription
+                          />
+                        ) : (
+                          <span />
+                        )}
                         {gameData.hints && gameData.hints.length > 0 ? (
                           <HintBadge
                             hints={gameData.hints}
@@ -895,22 +956,35 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               )}
 
               <section
-                aria-label={chatLocked ? "Day locked" : "Answer input"}
+                aria-label={
+                  chatLocked
+                    ? "Day locked"
+                    : awaitingClosingQuip
+                      ? "Eve finishing"
+                      : "Answer input"
+                }
                 className="input-area input-area-keyboard-transition play-dock z-30 shrink-0 px-4 pt-5 pb-safe-lg md:px-6"
               >
                 <div className="mx-auto max-w-2xl">
                   {chatLocked ? (
-                    <ChatLockedDock success={gameState.wasSuccessful} resultsHref={resultsHref} />
-                  ) : (
-                    <SmartAnswerInput
-                      disabled={
-                        gameState.gameOver ||
-                        gameState.isSubmitting ||
-                        (!userId && isCreatingGuest)
-                      }
-                      isSubmitting={gameState.isSubmitting || isCreatingGuest}
-                      onSubmit={handleGuess}
+                    <ChatLockedDock
+                      success={gameState.wasSuccessful}
+                      nextPlayTime={gameState.nextPlayTime}
                     />
+                  ) : awaitingClosingQuip ? (
+                    <ChatClosingDock success={gameState.wasSuccessful} />
+                  ) : (
+                    <div className="play-dock-panel">
+                      <SmartAnswerInput
+                        disabled={
+                          gameState.gameOver ||
+                          gameState.isSubmitting ||
+                          (!userId && isCreatingGuest)
+                        }
+                        isSubmitting={gameState.isSubmitting || isCreatingGuest}
+                        onSubmit={handleGuess}
+                      />
+                    </div>
                   )}
                 </div>
               </section>

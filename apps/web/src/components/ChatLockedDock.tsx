@@ -1,23 +1,22 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Timer } from "@/components/Timer";
 import { cn } from "@/lib/utils";
 
 interface ChatLockedDockProps {
   success: boolean;
-  resultsHref: string;
+  nextPlayTime?: Date | null;
   className?: string;
 }
 
 /**
- * Replaces the answer bar once the day is locked and Eve's closing
- * riff has landed (or timed out), so the conversation clearly ends.
+ * Status-only dock after Eve's closing riff. Results / answer live on the
+ * SolveResultCard so there's a single primary CTA in the completion beat.
  */
-export function ChatLockedDock({ success, resultsHref, className }: ChatLockedDockProps) {
+export function ChatLockedDock({ success, nextPlayTime = null, className }: ChatLockedDockProps) {
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("play-dock-panel w-full", className)}>
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3.5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">
           <Lock className="h-4 w-4" />
@@ -27,12 +26,14 @@ export function ChatLockedDock({ success, resultsHref, className }: ChatLockedDo
             {success ? "Chat locked · puzzle solved" : "Chat locked · day over"}
           </p>
           <p className="truncate text-muted-foreground text-xs">
-            Come back after UTC midnight for tomorrow’s puzzle.
+            Come back after UTC midnight for tomorrow's puzzle.
           </p>
         </div>
-        <Button asChild className="shrink-0" size="sm" variant="outline">
-          <Link href={resultsHref}>{success ? "Results" : "Answer"}</Link>
-        </Button>
+        <Timer
+          className="shrink-0 font-mono text-foreground text-xs tabular-nums"
+          compact
+          nextPlayTime={nextPlayTime}
+        />
       </div>
     </div>
   );
