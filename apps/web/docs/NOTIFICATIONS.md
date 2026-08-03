@@ -7,12 +7,12 @@ Rebuzzle uses a simple, reliable notification system that replaces VAPID push no
 ### 1. Email Notifications (Primary)
 - **Reliable**: Works everywhere, no browser permissions needed
 - **Simple setup**: Just configure an email service
-- **Daily reminders**: Users receive emails at 8 AM when new puzzles are ready
+- **Daily reminders**: Puzzle-ready emails around 4 PM UTC (puzzle publishes at UTC midnight)
 
 ### 2. In-App Notifications (Secondary)
-- **No permissions**: Works automatically for authenticated users
-- **Badge counter**: Shows unread notification count in header
-- **Notification center**: Click badge to see all notifications
+- **No permissions**: Works automatically for authenticated (non-guest) users
+- **Quiet unread mark**: Soft dot in the header when something is waiting
+- **Notification center**: Click to read; empty state stays calm
 
 ## Setup
 

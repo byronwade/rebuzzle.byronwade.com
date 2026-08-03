@@ -606,7 +606,7 @@ Send daily notifications (cron job).
 
 Vercel automatically calls cron endpoints at scheduled times:
 - `/api/cron/generate-puzzles`: Daily at midnight UTC
-- `/api/cron/send-notifications`: Daily at 8 AM UTC
+- `/api/cron/send-notifications`: Daily at 16:00 UTC (puzzle-ready email + in-app)
 
 Configure in `vercel.json`.
 
