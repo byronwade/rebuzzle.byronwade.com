@@ -87,8 +87,8 @@ function LayoutContent({
 
       <main
         className={cn(
-          "relative z-10 flex-1",
-          // Game page: no overflow/scroll
+          "relative z-10 flex min-h-0 flex-1 flex-col",
+          // Game page: no page scroll — the chat scroller owns overflow.
           isGamePage && "overflow-hidden",
           className
         )}

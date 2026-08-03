@@ -828,6 +828,19 @@
   --stage-radius: 12px;
 }
 
+/* Keyboard-open: real small tiles (no transform shrink that clips glyphs). */
+.puzzle-stage[data-state="compact"] {
+  --stage-pad: 0.5rem;
+  --stage-min: 0px;
+  --stage-scale: 1;
+  --stage-radius: 12px;
+}
+
+.puzzle-stage[data-state="compact"] .puzzle-stage-plate {
+  min-height: 0;
+  overflow: visible;
+}
+
 .puzzle-stage-plate {
   position: relative;
   display: flex;
@@ -941,6 +954,12 @@
 
 .guess-thread {
   min-height: 0;
+  flex: 1 1 auto;
+}
+
+.guess-thread [data-slot="message-scroller-viewport"] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .guess-thread [data-slot="message-scroller-item"] {
@@ -1112,17 +1131,24 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
-  transition: height 0.3s ease-out;
+  transition: height 0.2s ease-out;
 }
 
-.keyboard-visible .puzzle-area,
+.keyboard-visible .puzzle-area {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .keyboard-visible .input-area {
   flex: 0 0 auto;
 }
 
-.keyboard-visible .puzzle-area {
-  overflow: hidden;
+.keyboard-visible .play-dock {
+  padding-top: 0.75rem;
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
 }
 
 .input-area-keyboard-transition {

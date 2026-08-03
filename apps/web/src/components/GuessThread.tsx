@@ -132,43 +132,41 @@ function AgentReply({ turn }: { turn: ThreadTurn }) {
 }
 
 /**
- * The conversation.
- *
- * Uses shadcn MessageScroller so the thread can scroll on mobile and desktop,
- * anchors each new guess, and follows Eve's streamed riff while the reader
- * stays at the live edge.
+ * The conversation — shadcn MessageScroller owns scroll / anchor / jump-to-latest.
  */
 export function GuessThread({ turns, footer, className }: GuessThreadProps) {
   if (turns.length === 0) return null;
 
   return (
-    <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
-      <MessageScroller className={cn("guess-thread w-full min-h-0 flex-1", className)}>
-        <MessageScrollerViewport aria-label="Your guesses and Eve's replies">
-          <MessageScrollerContent className="pb-2" role="log" aria-live="polite">
-            {turns.map((turn) => (
-              <MessageScrollerItem
-                key={turn.id}
-                messageId={`guess-${turn.id}`}
-                scrollAnchor
-                className="flex flex-col gap-3"
-              >
-                <MessageRow from="user">
-                  <MessageBubble from="user">{turn.text}</MessageBubble>
-                </MessageRow>
-                <AgentReply turn={turn} />
-              </MessageScrollerItem>
-            ))}
+    <div className={cn("guess-thread flex min-h-0 w-full flex-1 flex-col", className)}>
+      <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+        <MessageScroller>
+          <MessageScrollerViewport aria-label="Your guesses and Eve's replies">
+            <MessageScrollerContent className="px-0.5 pb-3" role="log" aria-live="polite">
+              {turns.map((turn) => (
+                <MessageScrollerItem
+                  key={turn.id}
+                  messageId={`guess-${turn.id}`}
+                  scrollAnchor
+                  className="flex flex-col gap-3"
+                >
+                  <MessageRow from="user">
+                    <MessageBubble from="user">{turn.text}</MessageBubble>
+                  </MessageRow>
+                  <AgentReply turn={turn} />
+                </MessageScrollerItem>
+              ))}
 
-            {footer ? (
-              <MessageScrollerItem messageId="solve-result" className="pt-1">
-                {footer}
-              </MessageScrollerItem>
-            ) : null}
-          </MessageScrollerContent>
-        </MessageScrollerViewport>
-        <MessageScrollerButton />
-      </MessageScroller>
-    </MessageScrollerProvider>
+              {footer ? (
+                <MessageScrollerItem messageId="solve-result" className="pt-1">
+                  {footer}
+                </MessageScrollerItem>
+              ) : null}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton />
+        </MessageScroller>
+      </MessageScrollerProvider>
+    </div>
   );
 }

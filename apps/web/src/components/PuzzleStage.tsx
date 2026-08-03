@@ -7,16 +7,15 @@ import { cn } from "@/lib/utils";
 import { hasComposedVisual } from "./PuzzleVisualBoard";
 import { PuzzleDisplay } from "./PuzzleDisplay";
 
-export type StageState = "hero" | "docked";
+export type StageState = "hero" | "docked" | "compact";
 
 interface PuzzleStageProps {
   puzzle: string;
   puzzleType: string;
   /**
    * `hero` before the first guess — the puzzle owns the screen.
-   * `docked` once the thread starts — it shrinks and pins to the top so the
-   * conversation has room, the way a video collapses when you start reading
-   * the comments.
+   * `docked` once the thread starts — it shrinks and pins to the top.
+   * `compact` while the mobile keyboard is open — full puzzle, smaller plate.
    */
   state: StageState;
   question?: string;
@@ -34,10 +33,15 @@ const SMALL_TEXT_TYPES = new Set(["riddle", "trivia", "logic-grid", "cryptic-cro
  * non-palette meaning colors, the surface flips for contrast.
  */
 export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: PuzzleStageProps) {
-  const size = SMALL_TEXT_TYPES.has(puzzleType) ? "small" : "large";
   const composed = hasComposedVisual(visual);
   const surface = useMemo(() => resolvePuzzleSurface(visual), [visual]);
   const onPaper = surface.mode === "paper";
+  const size =
+    state === "compact" || SMALL_TEXT_TYPES.has(puzzleType)
+      ? "small"
+      : state === "docked"
+        ? "medium"
+        : "large";
 
   return (
     <div className="puzzle-stage w-full" data-state={state} data-surface={surface.mode}>
@@ -52,13 +56,8 @@ export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: Puz
             : undefined
         }
       >
-        {/* Atmospheric wash — cinema only; paper boards stay clean. */}
         {!onPaper ? <div aria-hidden className="puzzle-stage-glow" /> : null}
 
-        {/*
-         * The docked state scales this wrapper rather than swapping the type
-         * size, so the shrink is one continuous motion instead of a cut.
-         */}
         <div className="puzzle-stage-content">
           <PuzzleDisplay
             className={onPaper || composed ? undefined : "text-white"}
@@ -70,7 +69,9 @@ export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: Puz
         </div>
       </div>
 
-      {question ? <p className="puzzle-stage-caption">{question}</p> : null}
+      {question && state !== "compact" ? (
+        <p className="puzzle-stage-caption">{question}</p>
+      ) : null}
     </div>
   );
 }
