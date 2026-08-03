@@ -577,7 +577,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         });
 
         if (!(response.ok || response.status === 409)) {
-          throw new Error(`Guess failed (${response.status})`);
+          fail(`Guess failed (${response.status})`);
         }
 
         const result = (await response.json()) as {
