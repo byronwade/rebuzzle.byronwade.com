@@ -2,7 +2,6 @@
 
 import { Images, Loader2, ShieldCheck, SkipForward } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import type {
   BlindGeneratedPictogramSpecimen,
@@ -53,7 +52,6 @@ export default function GeneratedAssetsPage() {
 }
 
 function GeneratedAssetsPageInner() {
-  const router = useRouter();
   const { toast } = useToast();
   const [specimen, setSpecimen] = useState<BlindGeneratedPictogramSpecimen | null>(null);
   const [progress, setProgress] = useState<GeneratedPictogramPanelProgress | null>(null);

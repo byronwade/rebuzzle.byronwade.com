@@ -14,7 +14,6 @@ import {
   SkipForward,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { AppLink } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import type { ExternalCorpusReadinessReport } from "@/ai/puzzle-agent/benchmark/external-corpus";
@@ -102,7 +101,6 @@ export default function BenchmarkReviewPage() {
 }
 
 function BenchmarkReviewPageInner() {
-  const router = useRouter();
   const { toast } = useToast();
   const [queue, setQueue] = useState<Queue | null>(null);
   const [status, setStatus] = useState<FilterStatus>("pending");

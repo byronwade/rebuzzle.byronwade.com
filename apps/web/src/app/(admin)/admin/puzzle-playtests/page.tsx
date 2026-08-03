@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
-import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
 import type {
@@ -66,7 +65,6 @@ export default function PuzzlePlaytestsPage() {
 }
 
 function PuzzlePlaytestsPageInner() {
-  const router = useRouter();
   const { toast } = useToast();
   const [specimen, setSpecimen] = useState<BlindPuzzlePlaytestSpecimen | null>(null);
   const [progress, setProgress] = useState<PuzzlePlaytestProgress | null>(null);
