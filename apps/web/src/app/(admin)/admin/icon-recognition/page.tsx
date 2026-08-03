@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
+import { fail } from "@/lib/fail";
 
 type NextResponse = {
   success?: boolean;
@@ -61,7 +62,7 @@ export default function IconRecognitionPage() {
     }
     const data = await safeJsonParse<ReportResponse>(response);
     if (!response.ok || !data?.report) {
-      throw new Error(data?.error || "Failed to load calibration report");
+      fail(data?.error || "Failed to load calibration report");
     }
     setReport(data.report);
     if (data.reviewerProgress) setProgress(data.reviewerProgress);
@@ -77,20 +78,21 @@ export default function IconRecognitionPage() {
       });
       if (response.status === 401) {
         router.push("/login");
+        setLoading(false);
         return;
       }
       const data = await safeJsonParse<NextResponse>(response);
       if (!response.ok || !data?.progress) {
-        throw new Error(data?.error || "Failed to load recognition specimen");
+        fail(data?.error || "Failed to load recognition specimen");
       }
       setSpecimen(data.specimen ?? null);
       setProgress(data.progress);
       if (data.progress.complete) await loadReport();
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load recognition panel");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   }, [loadReport, panelId, router]);
 
   useEffect(() => {
@@ -121,7 +123,7 @@ export default function IconRecognitionPage() {
         }),
       });
       const data = await safeJsonParse<NextResponse>(response);
-      if (!response.ok) throw new Error(data?.error || "Failed to save response");
+      if (!response.ok) fail(data?.error || "Failed to save response");
       setGuess("");
       await loadNext();
     } catch (saveError) {
@@ -130,9 +132,9 @@ export default function IconRecognitionPage() {
         description: saveError instanceof Error ? saveError.message : "Try again",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   };
 
   const onSubmit = (event: FormEvent) => {

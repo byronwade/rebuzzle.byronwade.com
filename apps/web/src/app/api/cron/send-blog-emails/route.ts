@@ -7,6 +7,7 @@ import { getAppUrl } from "@/lib/env";
 import { sendBlogPostEmail } from "@/lib/notifications/email-service";
 import { getActiveEmailRecipients } from "@/lib/notifications/subscribers";
 
+const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" } as const;
 /**
  * Morning blog-post emails for the notification list.
  * Picks the most recently published Eve archive post and blasts subscribers.
@@ -19,10 +20,13 @@ async function handleSendBlogEmails() {
   const post = (await fetchBlogPosts())[0];
 
   if (!post) {
-    return NextResponse.json({
-      success: false,
-      error: "No blog post found to send",
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: "No blog post found to send",
+      },
+      { headers: PRIVATE_NO_STORE }
+    );
   }
 
   const deliveries = getCollection<{ slug: string; sentAt: Date }>("blogEmailDeliveries");
@@ -33,12 +37,15 @@ async function handleSendBlogEmails() {
     const last = new Date(delivery.sentAt).getTime();
     const ageMs = Date.now() - last;
     if (ageMs < 20 * 60 * 60 * 1000) {
-      return NextResponse.json({
-        success: true,
-        skipped: "already_emailed_recently",
-        postId: post.slug,
-        slug: post.slug,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: "already_emailed_recently",
+          postId: post.slug,
+          slug: post.slug,
+        },
+        { headers: PRIVATE_NO_STORE }
+      );
     }
   }
 
@@ -115,13 +122,16 @@ async function handleSendBlogEmails() {
 
   console.log("[Blog Emails] Morning blog send completed:", emailResults);
 
-  return NextResponse.json({
-    success: true,
-    message: "Blog notifications sent",
-    postId: post.slug,
-    slug: post.slug,
-    results: { emails: emailResults },
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      message: "Blog notifications sent",
+      postId: post.slug,
+      slug: post.slug,
+      results: { emails: emailResults },
+    },
+    { headers: PRIVATE_NO_STORE }
+  );
 }
 
 export async function GET(request: Request) {
@@ -137,7 +147,7 @@ export async function GET(request: Request) {
         error: "Failed to send blog emails",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 }

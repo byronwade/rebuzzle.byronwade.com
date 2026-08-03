@@ -2,7 +2,7 @@
 
 import { AlertCircle, CheckCircle2, FlaskConical, Loader2, Send, ShieldCheck } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type {
@@ -18,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import type { PuzzlePlaytestFailureReason } from "@/db/models";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
+import { fail } from "@/lib/fail";
 
 type QueueResponse = {
   success?: boolean;
@@ -44,7 +45,7 @@ export default function PlaytestPage() {
   const [guess, setGuess] = useState("");
   const [confidence, setConfidence] = useState(3);
   const [failureReason, setFailureReason] = useState<PuzzlePlaytestFailureReason | "">("");
-  const [shownAt, setShownAt] = useState(Date.now());
+  const [shownAt, setShownAt] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,20 +57,21 @@ export default function PlaytestPage() {
       const response = await fetch("/api/puzzle-playtests", { cache: "no-store" });
       if (response.status === 401) {
         router.push("/login?next=/playtest");
+        setLoading(false);
         return;
       }
       const data = await safeJsonParse<QueueResponse>(response);
       if (!response.ok || !data?.progress) {
-        throw new Error(data?.error || "Failed to load a playtest puzzle");
+        fail(data?.error || "Failed to load a playtest puzzle");
       }
       setSpecimen(data.specimen ?? null);
       setProgress(data.progress);
       setShownAt(Date.now());
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load a playtest puzzle");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   }, [router]);
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function PlaytestPage() {
         }),
       });
       const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok) throw new Error(data?.error || "Failed to save your response");
+      if (!response.ok) fail(data?.error || "Failed to save your response");
       setGuess("");
       setConfidence(3);
       setFailureReason("");
@@ -117,9 +119,9 @@ export default function PlaytestPage() {
         description: saveError instanceof Error ? saveError.message : "Try again",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   };
 
   const onSubmit = (event: FormEvent) => {

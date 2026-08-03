@@ -58,9 +58,9 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
       dismissNudge();
     } catch {
       // hook surfaces error
-    } finally {
-      setSubscribing(false);
     }
+    setSubscribing(false);
+
   };
 
   return (

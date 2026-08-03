@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Flame, Lock, Trophy } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
@@ -219,9 +219,9 @@ export function SolveResultCard({
       });
     } catch {
       // Non-blocking — local selection still stands
-    } finally {
-      setPerceptionSaving(false);
     }
+    setPerceptionSaving(false);
+
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, BellRing, Check, Loader2, Mail, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,9 +73,10 @@ export function NotificationBadge() {
       setIsSubmitting(true);
       try {
         await subscribe(user.email);
-      } finally {
-        setIsSubmitting(false);
+      } catch {
+        // Error handled in hook
       }
+      setIsSubmitting(false);
     } else {
       // Guest - need to collect email
       setShowEmailDialog(true);
@@ -91,9 +92,9 @@ export function NotificationBadge() {
       await unsubscribe();
     } catch (_err) {
       // Error handled in hook
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   }, [unsubscribe, isSubmitting, emailLoading]);
 
   const handleEmailSubmit = useCallback(async () => {
@@ -122,9 +123,9 @@ export function NotificationBadge() {
       if (err instanceof Error) {
         setEmailError(err.message);
       }
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   }, [guestEmail, validateEmail, subscribe]);
 
   const getBellIcon = () => {

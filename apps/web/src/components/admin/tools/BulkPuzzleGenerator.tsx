@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
 
 interface BulkPuzzleGeneratorProps {
   onPuzzlesSaved?: () => void;
@@ -61,7 +62,7 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Failed to generate puzzles");
+        fail(data.error || "Failed to generate puzzles");
       }
 
       setGeneratedPuzzles(data.puzzles);
@@ -79,9 +80,9 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   };
 
   const toggleSelection = (index: number) => {

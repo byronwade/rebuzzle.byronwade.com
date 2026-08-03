@@ -11,7 +11,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Confetti } from "@/components/Confetti";
@@ -222,62 +222,60 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
   useEffect(() => {
     async function loadClientExtras() {
+      // Load completion data from localStorage
       try {
-        // Load completion data from localStorage
-        try {
-          const storedData = localStorage.getItem("lastGameCompletion");
-          if (storedData) {
-            const parsed = JSON.parse(storedData) as CompletionData;
-            setCompletionData(parsed);
-            if (parsed.streak) {
-              setStreak(parsed.streak);
-            }
-          }
-        } catch (e) {
-          console.error("Error loading completion data:", e);
-        }
-
-        // Fallback: Load streak from database (only if we have a userId)
-        if (userId) {
-          try {
-            const response = await fetch("/api/user/stats");
-            if (response.ok) {
-              const userStats = await response.json();
-              if (userStats.stats?.streak) {
-                setStreak((prev) => prev || userStats.stats.streak);
-              }
-            }
-          } catch (error) {
-            console.error("Error loading user stats:", error);
+        const storedData = localStorage.getItem("lastGameCompletion");
+        if (storedData) {
+          const parsed = JSON.parse(storedData) as CompletionData;
+          setCompletionData(parsed);
+          if (parsed.streak) {
+            setStreak(parsed.streak);
           }
         }
+      } catch (e) {
+        console.error("Error loading completion data:", e);
+      }
 
-        // Fetch puzzle stats for global comparison
+      // Fallback: Load streak from database (only if we have a userId)
+      if (userId) {
         try {
-          const statsResponse = await fetch("/api/puzzles/stats");
-          if (statsResponse.ok) {
-            const stats = await statsResponse.json();
-            setTodaySolves(stats.todaySolves || 0);
-
-            const storedData = localStorage.getItem("lastGameCompletion");
-            if (storedData && stats.percentiles) {
-              const parsed = JSON.parse(storedData) as CompletionData;
-              const userTime = parsed.timeTaken;
-              // Approximate "faster than X%" from aggregate percentile buckets
-              let pct = 50;
-              if (userTime <= stats.percentiles.p25) pct = 75;
-              else if (userTime <= stats.percentiles.p50) pct = 50;
-              else if (userTime <= stats.percentiles.p75) pct = 25;
-              else pct = 10;
-              setPercentile(Math.min(99, Math.max(1, pct)));
+          const response = await fetch("/api/user/stats");
+          if (response.ok) {
+            const userStats = await response.json();
+            if (userStats.stats?.streak) {
+              setStreak((prev) => prev || userStats.stats.streak);
             }
           }
         } catch (error) {
-          console.error("Error loading puzzle stats:", error);
+          console.error("Error loading user stats:", error);
         }
-      } finally {
-        setLoading(false);
       }
+
+      // Fetch puzzle stats for global comparison
+      try {
+        const statsResponse = await fetch("/api/puzzles/stats");
+        if (statsResponse.ok) {
+          const stats = await statsResponse.json();
+          setTodaySolves(stats.todaySolves || 0);
+
+          const storedData = localStorage.getItem("lastGameCompletion");
+          if (storedData && stats.percentiles) {
+            const parsed = JSON.parse(storedData) as CompletionData;
+            const userTime = parsed.timeTaken;
+            // Approximate "faster than X%" from aggregate percentile buckets
+            let pct = 50;
+            if (userTime <= stats.percentiles.p25) pct = 75;
+            else if (userTime <= stats.percentiles.p50) pct = 50;
+            else if (userTime <= stats.percentiles.p75) pct = 25;
+            else pct = 10;
+            setPercentile(Math.min(99, Math.max(1, pct)));
+          }
+        }
+      } catch (error) {
+        console.error("Error loading puzzle stats:", error);
+      }
+
+      setLoading(false);
     }
 
     loadClientExtras();
@@ -357,9 +355,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       });
     } catch {
       // Non-blocking — local selection still stands
-    } finally {
-      setPerceptionSaving(false);
     }
+    setPerceptionSaving(false);
+
   }
 
   async function submitQualityVote(vote: QualityVote, reasons: QualityReason[] = []) {
@@ -389,9 +387,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       });
     } catch {
       // Non-blocking — local selection still stands
-    } finally {
-      setQualityVoteSaving(false);
     }
+    setQualityVoteSaving(false);
+
   }
 
   function toggleQualityReason(reason: QualityReason) {
@@ -444,7 +442,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             Results unlock after you finish today&apos;s puzzle.
           </p>
           <Button asChild className="w-full">
-                  <Link href="/">Go to puzzle</Link>
+                  <Link href="/" prefetch>
+                    Go to puzzle
+                  </Link>
                 </Button>
         </div>
       </Layout>

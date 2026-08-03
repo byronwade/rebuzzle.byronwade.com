@@ -26,6 +26,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -38,6 +39,7 @@ import type {
 } from "@/db/models";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
+import { fail } from "@/lib/fail";
 
 type Queue = {
   items: BenchmarkReviewFixture[];
@@ -117,6 +119,7 @@ export default function BenchmarkReviewPage() {
         });
         if (response.status === 401) {
           router.push("/login");
+          setLoading(false);
           return;
         }
         const data = await safeJsonParse<{ success: boolean; queue?: Queue; error?: string }>(
@@ -125,10 +128,11 @@ export default function BenchmarkReviewPage() {
         if (response.status === 404) {
           setNotImported(true);
           setQueue(null);
+          setLoading(false);
           return;
         }
         if (!response.ok || !data?.queue)
-          throw new Error(data?.error || "Review queue unavailable");
+          fail(data?.error || "Review queue unavailable");
         setQueue(data.queue);
         setPage(data.queue.page);
         setNotImported(false);
@@ -138,9 +142,9 @@ export default function BenchmarkReviewPage() {
           description: error instanceof Error ? error.message : "Try again shortly",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
+
     },
     [page, router, status, toast]
   );
@@ -173,7 +177,7 @@ export default function BenchmarkReviewPage() {
           }),
         });
         const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
-        if (!response.ok) throw new Error(data?.error || "Decision was not saved");
+        if (!response.ok) fail(data?.error || "Decision was not saved");
         setNote("");
         await loadQueue(page);
       } catch (error) {
@@ -183,9 +187,9 @@ export default function BenchmarkReviewPage() {
           variant: "destructive",
         });
         if (error instanceof Error && error.message.includes("refresh")) await loadQueue(page);
-      } finally {
-        setSaving(false);
       }
+      setSaving(false);
+
     },
     [current, loadQueue, note, page, saving, toast]
   );
@@ -231,7 +235,7 @@ export default function BenchmarkReviewPage() {
         existing?: number;
         error?: string;
       }>(response);
-      if (!response.ok) throw new Error(data?.error || "Import failed");
+      if (!response.ok) fail(data?.error || "Import failed");
       toast({
         title: "Benchmark imported",
         description: `${data?.inserted ?? 0} new fixtures; ${data?.existing ?? 0} already present.`,
@@ -244,9 +248,9 @@ export default function BenchmarkReviewPage() {
         description: error instanceof Error ? error.message : "Invalid benchmark artifact",
         variant: "destructive",
       });
-    } finally {
-      setImporting(false);
     }
+    setImporting(false);
+
   };
 
   const progress = queue?.progress;
@@ -355,10 +359,12 @@ export default function BenchmarkReviewPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-            <SelectItem value="all">All reviews</SelectItem>
+            <SelectGroup>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="all">All reviews</SelectItem>
+            </SelectGroup>
           </SelectContent>
         </Select>
         <Button disabled={loading} onClick={() => void loadQueue()} size="sm" variant="ghost">
@@ -372,8 +378,10 @@ export default function BenchmarkReviewPage() {
 
       {notImported && (
         <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>No benchmark imported</AlertTitle>
+          <AlertTitle>
+            <AlertTriangle className="h-4 w-4" data-icon="inline-start" aria-hidden />
+            No benchmark imported
+          </AlertTitle>
           <AlertDescription>
             Run the pinned metadata importer, then upload its ignored JSON artifact here. Tampered,
             unpinned, or invalid corpora are rejected before persistence.

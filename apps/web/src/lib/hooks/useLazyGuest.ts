@@ -58,24 +58,27 @@ export function useLazyGuest(): LazyGuestResult {
           }
           // Refresh auth context to pick up new / existing session
           await refreshAuth();
+          setIsCreating(false);
           return true;
         }
         // Legacy response shape — cookie already present
         if (data.alreadyAuthenticated || data.isAuthenticated) {
           await refreshAuth();
+          setIsCreating(false);
           return true;
         }
         setError(data.error || "Failed to create guest session");
+        setIsCreating(false);
         return false;
       }
 
       setError("Failed to create guest session");
+      setIsCreating(false);
       return false;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
-      return false;
-    } finally {
       setIsCreating(false);
+      return false;
     }
   }, [isAuthenticated, userId, refreshAuth]);
 

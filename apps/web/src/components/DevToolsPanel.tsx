@@ -26,6 +26,7 @@ import {
   setDevModeEnabled,
 } from "@/lib/dev-mode";
 import { cn } from "@/lib/utils";
+import { fail } from "@/lib/fail";
 
 type DevAction = "clear-attempts" | "lock-win" | "lock-lose" | "regenerate";
 
@@ -119,7 +120,7 @@ export function DevToolsPanel() {
       });
       const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Action failed");
+        fail(data.error || "Action failed");
       }
       clearDevClientGameState();
       setStatus(data.message || "Done");
@@ -132,9 +133,9 @@ export function DevToolsPanel() {
       }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed");
-    } finally {
-      setBusy(null);
     }
+    setBusy(null);
+
   };
 
   const go = (path: string) => {

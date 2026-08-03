@@ -3,6 +3,7 @@ import type { NewInAppNotification } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { sanitizeId } from "@/lib/api-validation";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 /**
@@ -12,14 +13,27 @@ export async function GET(req: Request) {
   // Rate limit
   const rateLimitResult = await rateLimiters.api(req);
   if (rateLimitResult && !rateLimitResult.success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": buildCacheControl({
+            private: true,
+          }),
+        },
+      }
+    );
   }
 
   try {
     // Require authentication
     const authUser = await getAuthenticatedUser(req);
     if (!authUser) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     // Use authenticated user's ID, ignore any userId param to prevent unauthorized access
@@ -36,18 +50,21 @@ export async function GET(req: Request) {
       .limit(50)
       .toArray();
 
-    return NextResponse.json({
-      success: true,
-      notifications: notifications.map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        link: n.link,
-        createdAt: n.createdAt,
-      })),
-      unreadCount: notifications.length,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        notifications: notifications.map((n) => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          link: n.link,
+          createdAt: n.createdAt,
+        })),
+        unreadCount: notifications.length,
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("[Notifications] Get error:", error);
     return NextResponse.json(
@@ -55,7 +72,7 @@ export async function GET(req: Request) {
         success: false,
         error: "Failed to get notifications",
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }
@@ -67,14 +84,27 @@ export async function PATCH(req: Request) {
   // Rate limit
   const rateLimitResult = await rateLimiters.api(req);
   if (rateLimitResult && !rateLimitResult.success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": buildCacheControl({
+            private: true,
+          }),
+        },
+      }
+    );
   }
 
   try {
     // Require authentication
     const authUser = await getAuthenticatedUser(req);
     if (!authUser) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     const { notificationId } = await req.json();
@@ -82,7 +112,7 @@ export async function PATCH(req: Request) {
     if (!notificationId) {
       return NextResponse.json(
         { success: false, error: "Notification ID is required" },
-        { status: 400 }
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -91,7 +121,7 @@ export async function PATCH(req: Request) {
     if (!sanitizedNotificationId) {
       return NextResponse.json(
         { success: false, error: "Invalid notification ID" },
-        { status: 400 }
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -114,14 +144,17 @@ export async function PATCH(req: Request) {
     if (result.matchedCount === 0) {
       return NextResponse.json(
         { success: false, error: "Notification not found" },
-        { status: 404 }
+        { status: 404, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Notification marked as read",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Notification marked as read",
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("[Notifications] Mark read error:", error);
     return NextResponse.json(
@@ -129,7 +162,7 @@ export async function PATCH(req: Request) {
         success: false,
         error: "Failed to mark notification as read",
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }
@@ -142,7 +175,17 @@ export async function POST(req: Request) {
   // Rate limit
   const rateLimitResult = await rateLimiters.api(req);
   if (rateLimitResult && !rateLimitResult.success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": buildCacheControl({
+            private: true,
+          }),
+        },
+      }
+    );
   }
 
   try {
@@ -154,14 +197,17 @@ export async function POST(req: Request) {
       // If not internal, require admin authentication
       const authUser = await getAuthenticatedUser(req);
       if (!authUser) {
-        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+        );
       }
 
       // Check if user is admin (would need to look up user record)
       // For now, block non-internal requests to this endpoint
       return NextResponse.json(
         { success: false, error: "This endpoint is for internal use only" },
-        { status: 403 }
+        { status: 403, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -170,14 +216,17 @@ export async function POST(req: Request) {
     if (!(userId && type && title && message)) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 }
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
     // Sanitize inputs
     const sanitizedUserId = sanitizeId(userId);
     if (!sanitizedUserId) {
-      return NextResponse.json({ success: false, error: "Invalid user ID" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Invalid user ID" },
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     const notificationsCollection = getCollection<NewInAppNotification>("inAppNotifications");
@@ -195,10 +244,13 @@ export async function POST(req: Request) {
 
     await notificationsCollection.insertOne(notification);
 
-    return NextResponse.json({
-      success: true,
-      notificationId: notification.id,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        notificationId: notification.id,
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("[Notifications] Create error:", error);
     return NextResponse.json(
@@ -206,7 +258,7 @@ export async function POST(req: Request) {
         success: false,
         error: "Failed to create notification",
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }

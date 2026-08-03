@@ -8,7 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
 import {
@@ -152,6 +152,7 @@ export default function HowItWorksPage() {
               <Link
                 className="group inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 font-medium text-background text-sm transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
                 href="/"
+                prefetch
               >
                 Play today&apos;s puzzle
                 <ArrowRight
@@ -367,6 +368,7 @@ export default function HowItWorksPage() {
           <Link
             className="group mx-auto mt-9 inline-flex h-12 items-center gap-2 rounded-md bg-foreground px-6 font-medium text-background transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
             href="/"
+            prefetch
           >
             Start today&apos;s Rebuzzle
             <ArrowRight

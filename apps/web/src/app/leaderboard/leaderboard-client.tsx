@@ -13,7 +13,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
@@ -141,9 +141,9 @@ export default function LeaderboardClient({
         }
       } catch (error) {
         console.error("Error fetching leaderboard:", error);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
+
     };
 
     fetchLeaderboard();

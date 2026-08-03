@@ -196,10 +196,10 @@ export function AIInsightsTab() {
   const [generationHealth, setGenerationHealth] = useState<GenerationHealthPayload | null>(null);
   const [generationLoading, setGenerationLoading] = useState(false);
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => ({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     to: new Date(),
-  });
+  }));
 
   // Fetch analytics data
   const fetchAnalytics = useCallback(async () => {
@@ -217,9 +217,9 @@ export function AIInsightsTab() {
       }
     } catch (error) {
       console.error("Failed to fetch AI analytics:", error);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   }, [dateRange]);
 
   // Fetch decisions
@@ -272,9 +272,9 @@ export function AIInsightsTab() {
       }
     } catch (error) {
       console.error("Failed to fetch generation health:", error);
-    } finally {
-      setGenerationLoading(false);
     }
+    setGenerationLoading(false);
+
   }, []);
 
   useEffect(() => {

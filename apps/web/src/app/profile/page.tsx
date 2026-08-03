@@ -1,7 +1,7 @@
 "use client";
 
 import { Award, Calendar, Clock, Edit, Trophy } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";

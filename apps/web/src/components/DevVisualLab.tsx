@@ -6,13 +6,14 @@
  */
 
 import { FlaskConical, Loader2, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useCallback, useEffect, useState } from "react";
 import { PuzzleContainer, PuzzleDisplay } from "@/components/PuzzleDisplay";
 import { Button } from "@/components/ui/button";
 import { isDevModeEnabled } from "@/lib/dev-mode";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
+import { fail } from "@/lib/fail";
 
 type ModeMeta = {
   id: string;
@@ -224,15 +225,15 @@ export function DevVisualLab() {
         error?: string;
       };
       if (!res.ok || !data.success || !data.result) {
-        throw new Error(data.error || "Generation failed");
+        fail(data.error || "Generation failed");
       }
       setResult(data.result);
       setPuzzleId(data.puzzleId || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
+
   };
 
   const submitVote = async (next: QualityVote) => {
@@ -253,9 +254,9 @@ export function DevVisualLab() {
       });
     } catch {
       // keep local selection
-    } finally {
-      setVoteSaving(false);
     }
+    setVoteSaving(false);
+
   };
 
   if (!devOn) {

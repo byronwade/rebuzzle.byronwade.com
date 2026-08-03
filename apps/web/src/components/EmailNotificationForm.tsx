@@ -72,9 +72,9 @@ export function EmailNotificationForm() {
       if (err instanceof Error) {
         setEmailError(err.message);
       }
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   };
 
   const handleUnsubscribe = async () => {
@@ -83,9 +83,9 @@ export function EmailNotificationForm() {
       await unsubscribe();
     } catch (_err) {
       // Error handled by hook
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   };
 
   const _handleToggle = async () => {

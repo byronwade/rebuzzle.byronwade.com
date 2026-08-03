@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { type BlogPostDraft, BlogPostPreview } from "./BlogPostPreview";
+import { fail } from "@/lib/fail";
 
 interface BlogPostGeneratorProps {
   onBlogPostSaved?: () => void;
@@ -45,9 +46,9 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       }
     } catch (error) {
       console.error("Search error:", error);
-    } finally {
-      setSearching(false);
     }
+    setSearching(false);
+
   };
 
   const handleGenerate = async () => {
@@ -75,7 +76,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Failed to generate blog post");
+        fail(data.error || "Failed to generate blog post");
       }
 
       setGeneratedPost(data.blogPost);
@@ -90,9 +91,9 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   };
 
   const handleSave = async (blogPost: BlogPostDraft) => {
@@ -116,7 +117,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.details || data.error || "Failed to open blog pull request");
+        fail(data.details || data.error || "Failed to open blog pull request");
       }
 
       const proposal = data.proposal as {

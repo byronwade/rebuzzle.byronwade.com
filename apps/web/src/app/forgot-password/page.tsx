@@ -1,7 +1,7 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useState } from "react";
@@ -76,9 +76,9 @@ export default function ForgotPasswordPage() {
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
+
   };
 
   return (

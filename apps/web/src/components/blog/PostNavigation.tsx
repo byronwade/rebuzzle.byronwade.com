@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import type { BlogPostResponse } from "@/app/actions/blogActions";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

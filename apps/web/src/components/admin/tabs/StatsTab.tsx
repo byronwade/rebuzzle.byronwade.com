@@ -104,10 +104,10 @@ export function StatsTab({
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
     end: Date | null;
-  }>({
+  }>(() => ({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     end: new Date(),
-  });
+  }));
   const [_selectedPreset, setSelectedPreset] = useState<DateRangePreset>("30d");
   const prevDateRangeRef = useRef<{ start: Date | null; end: Date | null } | null>(null);
 

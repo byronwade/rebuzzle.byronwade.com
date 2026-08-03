@@ -10,7 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
@@ -29,6 +29,7 @@ import { Progress } from "@/components/ui/progress";
 import type { PuzzlePlaytestFailureReason } from "@/db/models";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
+import { fail } from "@/lib/fail";
 
 type QueueResponse = {
   success?: boolean;
@@ -68,7 +69,7 @@ export default function PuzzlePlaytestsPage() {
   const [guess, setGuess] = useState("");
   const [confidence, setConfidence] = useState(3);
   const [failureReason, setFailureReason] = useState<PuzzlePlaytestFailureReason | "">("");
-  const [shownAt, setShownAt] = useState(Date.now());
+  const [shownAt, setShownAt] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backfillLoading, setBackfillLoading] = useState(false);
@@ -84,7 +85,7 @@ export default function PuzzlePlaytestsPage() {
     }
     const data = await safeJsonParse<ReportResponse>(response);
     if (!response.ok || !data?.report)
-      throw new Error(data?.error || "Failed to load playtest report");
+      fail(data?.error || "Failed to load playtest report");
     setReport(data.report);
   }, [router]);
 
@@ -95,20 +96,21 @@ export default function PuzzlePlaytestsPage() {
       const response = await fetch("/api/admin/ai/puzzle-playtests", { cache: "no-store" });
       if (response.status === 401) {
         router.push("/login");
+        setLoading(false);
         return;
       }
       const data = await safeJsonParse<QueueResponse>(response);
       if (!response.ok || !data?.progress)
-        throw new Error(data?.error || "Failed to load playtest");
+        fail(data?.error || "Failed to load playtest");
       setSpecimen(data.specimen ?? null);
       setProgress(data.progress);
       setShownAt(Date.now());
       await loadReport();
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle playtests");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   }, [loadReport, router]);
 
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function PuzzlePlaytestsPage() {
         }),
       });
       const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok) throw new Error(data?.error || "Failed to save playtest");
+      if (!response.ok) fail(data?.error || "Failed to save playtest");
       setGuess("");
       setConfidence(3);
       setFailureReason("");
@@ -156,9 +158,9 @@ export default function PuzzlePlaytestsPage() {
         description: saveError instanceof Error ? saveError.message : "Try again",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   };
 
   const onSubmit = (event: FormEvent) => {
@@ -177,7 +179,7 @@ export default function PuzzlePlaytestsPage() {
       });
       const data = await safeJsonParse<BackfillResponse>(response);
       if (!response.ok || !data?.report) {
-        throw new Error(data?.error || "Failed to inspect historical puzzles");
+        fail(data?.error || "Failed to inspect historical puzzles");
       }
       setBackfillReport(data.report);
       if (!dryRun) {
@@ -193,9 +195,9 @@ export default function PuzzlePlaytestsPage() {
         description: backfillError instanceof Error ? backfillError.message : "Try again",
         variant: "destructive",
       });
-    } finally {
-      setBackfillLoading(false);
     }
+    setBackfillLoading(false);
+
   };
 
   if (authLoading || loading) {

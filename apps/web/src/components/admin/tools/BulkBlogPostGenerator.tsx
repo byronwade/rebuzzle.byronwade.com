@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
 
 interface BulkBlogPostGeneratorProps {
   onBlogPostsSaved?: () => void;
@@ -52,7 +53,7 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Failed to generate blog posts");
+        fail(data.error || "Failed to generate blog posts");
       }
 
       setGeneratedPosts(data.blogPosts);
@@ -70,9 +71,9 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   };
 
   const toggleSelection = (index: number) => {

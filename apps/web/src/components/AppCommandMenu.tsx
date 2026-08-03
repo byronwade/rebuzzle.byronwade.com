@@ -1,17 +1,9 @@
 "use client";
 
-import {
-  Award,
-  Home,
-  Play,
-  Settings,
-  Trophy,
-  User,
-  Newspaper,
-} from "lucide-react";
-import Link from "next/link";
+import { Award, Home, Newspaper, Play, Settings, Trophy, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import {
   CommandDialog,
   CommandEmpty,

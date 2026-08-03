@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
 
 interface DateRangePuzzleGeneratorProps {
   onPuzzlesSaved?: () => void;
@@ -28,14 +29,14 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
   const [loading, setLoading] = useState(false);
   const [generatedPuzzles, setGeneratedPuzzles] = useState<any[]>([]);
   const [selectedPuzzles, setSelectedPuzzles] = useState<Set<number>>(new Set());
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     startDate: format(new Date(), "yyyy-MM-dd"),
     endDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
     puzzleType: "rebus",
     difficulty: 7,
     category: "",
     theme: "",
-  });
+  }));
 
   const puzzleTypes = listPuzzleTypes();
 
@@ -61,7 +62,7 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Failed to generate puzzles");
+        fail(data.error || "Failed to generate puzzles");
       }
 
       setGeneratedPuzzles(data.puzzles);
@@ -79,9 +80,9 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   };
 
   const toggleSelection = (index: number) => {

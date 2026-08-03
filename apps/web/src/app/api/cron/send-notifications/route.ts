@@ -9,6 +9,8 @@ import {
   getInAppPuzzleRecipientIds,
 } from "@/lib/notifications/subscribers";
 
+const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" } as const;
+
 /**
  * Afternoon puzzle-ready emails for the notification list.
  * Vercel cron uses GET — export both methods.
@@ -28,7 +30,7 @@ async function handleSendPuzzleEmails() {
     console.error("[Notifications] No puzzle found for today");
     return NextResponse.json(
       { success: false, error: "No puzzle found for today" },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 
@@ -131,11 +133,14 @@ async function handleSendPuzzleEmails() {
     inApp: inAppResults,
   });
 
-  return NextResponse.json({
-    success: true,
-    message: "Puzzle notifications sent",
-    results: { emails: emailResults, inApp: inAppResults },
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      message: "Puzzle notifications sent",
+      results: { emails: emailResults, inApp: inAppResults },
+    },
+    { headers: PRIVATE_NO_STORE }
+  );
 }
 
 export async function GET(request: Request) {
@@ -151,7 +156,7 @@ export async function GET(request: Request) {
         error: "Failed to send notifications",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 }

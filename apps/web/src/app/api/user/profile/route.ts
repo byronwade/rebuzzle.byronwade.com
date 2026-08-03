@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 
 /**
  * GET /api/user/profile
@@ -11,27 +12,50 @@ export async function GET(request: Request) {
     const authUser = await getAuthenticatedUser(request);
 
     if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        {
+          status: 401,
+          headers: {
+            "Cache-Control": buildCacheControl({
+              private: true,
+            }),
+          },
+        }
+      );
     }
 
     const user = await db.userOps.findById(authUser.userId);
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "User not found" },
+        {
+          status: 404,
+          headers: {
+            "Cache-Control": buildCacheControl({
+              private: true,
+            }),
+          },
+        }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        avatarColorIndex: user.avatarColorIndex,
-        avatarCustomInitials: user.avatarCustomInitials,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin,
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          avatarColorIndex: user.avatarColorIndex,
+          avatarCustomInitials: user.avatarCustomInitials,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin,
+        },
       },
-    });
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("Failed to fetch user profile:", error);
     return NextResponse.json(
@@ -40,7 +64,7 @@ export async function GET(request: Request) {
         error: "Failed to fetch user profile",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }
@@ -54,7 +78,17 @@ export async function PATCH(request: Request) {
     const authUser = await getAuthenticatedUser(request);
 
     if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        {
+          status: 401,
+          headers: {
+            "Cache-Control": buildCacheControl({
+              private: true,
+            }),
+          },
+        }
+      );
     }
 
     const body = await request.json();
@@ -63,13 +97,16 @@ export async function PATCH(request: Request) {
     // Validate username if provided
     if (username !== undefined) {
       if (typeof username !== "string" || username.trim().length === 0) {
-        return NextResponse.json({ error: "Username cannot be empty" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Username cannot be empty" },
+          { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+        );
       }
 
       if (username.length > 50) {
         return NextResponse.json(
           { error: "Username must be 50 characters or less" },
-          { status: 400 }
+          { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
         );
       }
 
@@ -87,7 +124,10 @@ export async function PATCH(request: Request) {
         });
 
         if (usernameTaken) {
-          return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
+          return NextResponse.json(
+            { error: "Username is already taken" },
+            { status: 409, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+          );
         }
       }
     }
@@ -99,7 +139,7 @@ export async function PATCH(request: Request) {
     ) {
       return NextResponse.json(
         { error: "Avatar color index must be between 0 and 9" },
-        { status: 400 }
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -107,14 +147,14 @@ export async function PATCH(request: Request) {
       if (typeof avatarCustomInitials !== "string") {
         return NextResponse.json(
           { error: "Avatar custom initials must be a string" },
-          { status: 400 }
+          { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
         );
       }
       const trimmed = avatarCustomInitials.trim().toUpperCase();
       if (trimmed.length > 2) {
         return NextResponse.json(
           { error: "Avatar custom initials must be 1-2 characters" },
-          { status: 400 }
+          { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
         );
       }
     }
@@ -142,22 +182,28 @@ export async function PATCH(request: Request) {
     const updatedUser = await db.userOps.findById(authUser.userId);
 
     if (!updatedUser) {
-      return NextResponse.json({ error: "User not found after update" }, { status: 404 });
+      return NextResponse.json(
+        { error: "User not found after update" },
+        { status: 404, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: updatedUser.id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        avatarColorIndex: updatedUser.avatarColorIndex,
-        avatarCustomInitials: updatedUser.avatarCustomInitials,
-        createdAt: updatedUser.createdAt,
-        lastLogin: updatedUser.lastLogin,
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          avatarColorIndex: updatedUser.avatarColorIndex,
+          avatarCustomInitials: updatedUser.avatarCustomInitials,
+          createdAt: updatedUser.createdAt,
+          lastLogin: updatedUser.lastLogin,
+        },
+        message: "Profile updated successfully",
       },
-      message: "Profile updated successfully",
-    });
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("Failed to update user profile:", error);
     return NextResponse.json(
@@ -166,7 +212,7 @@ export async function PATCH(request: Request) {
         error: "Failed to update user profile",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }

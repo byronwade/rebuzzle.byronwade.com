@@ -1,8 +1,8 @@
 "use client";
 
 import { Heart, Info, Menu, X } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useId, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -69,6 +69,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
             <Link
               className="font-semibold text-[17px] text-foreground tracking-[-0.04em] transition-opacity hover:opacity-70"
               href="/"
+              prefetch
             >
               Rebuzzle
             </Link>
@@ -98,26 +99,26 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
               type="button"
               variant="ghost"
             >
-              {mobileNavOpen ? <X className="h-4 w-4" data-icon="inline-end" /> : <Menu className="h-4 w-4" data-icon="inline-end" />}
+              {mobileNavOpen ? (
+                <X className="h-4 w-4" data-icon="inline-end" />
+              ) : (
+                <Menu className="h-4 w-4" data-icon="inline-end" />
+              )}
             </Button>
 
             {mounted && <NotificationBadge />}
             <InfoButton puzzleType={puzzleType} />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  aria-label="Support the developer"
-                  asChild
-                  className="hidden sm:inline-flex"
-                  size="icon-sm"
-                  variant="ghost"
-                >
+                <Button asChild className="hidden sm:inline-flex" size="icon-sm" variant="ghost">
                   <Link
+                    aria-label="Support the developer"
                     href="https://github.com/sponsors/byronwade"
                     rel="noopener noreferrer"
                     target="_blank"
                   >
                     <Heart className="h-4 w-4" data-icon="inline-start" />
+                    <span className="sr-only">Support the developer</span>
                   </Link>
                 </Button>
               </TooltipTrigger>
@@ -133,10 +134,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
         {/* Mobile nav panel */}
         <nav
           aria-label="Primary mobile"
-          className={cn(
-            "border-border border-t md:hidden",
-            mobileNavOpen ? "block" : "hidden"
-          )}
+          className={cn("border-border border-t md:hidden", mobileNavOpen ? "block" : "hidden")}
           id={mobileNavId}
         >
           <ul className="mx-auto flex max-w-page flex-col gap-0.5 px-4 py-3">

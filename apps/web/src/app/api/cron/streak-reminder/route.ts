@@ -5,6 +5,7 @@ import { authorizeCron } from "@/lib/cron/auth";
 import { getAppUrl } from "@/lib/env";
 import { sendStreakAtRiskEmail } from "@/lib/notifications/email-service";
 
+const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" } as const;
 /**
  * Evening streak-at-risk emails (loss aversion).
  * Vercel cron uses GET — export both methods.
@@ -34,11 +35,14 @@ async function handleStreakReminder() {
   console.log(`[Streak Reminder] Found ${usersAtRisk.length} users with streaks at risk`);
 
   if (usersAtRisk.length === 0) {
-    return NextResponse.json({
-      success: true,
-      message: "No users with at-risk streaks",
-      results: { sent: 0, skipped: 0, failed: 0 },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "No users with at-risk streaks",
+        results: { sent: 0, skipped: 0, failed: 0 },
+      },
+      { headers: PRIVATE_NO_STORE }
+    );
   }
 
   const userIds = usersAtRisk.map((s) => s.userId);
@@ -120,16 +124,19 @@ async function handleStreakReminder() {
 
   console.log("[Streak Reminder] Notification send completed:", results);
 
-  return NextResponse.json({
-    success: true,
-    message: "Streak reminder notifications sent",
-    results: {
-      sent: results.sent,
-      skipped: results.skipped,
-      failed: results.failed,
-      usersAtRisk: usersAtRisk.length,
+  return NextResponse.json(
+    {
+      success: true,
+      message: "Streak reminder notifications sent",
+      results: {
+        sent: results.sent,
+        skipped: results.skipped,
+        failed: results.failed,
+        usersAtRisk: usersAtRisk.length,
+      },
     },
-  });
+    { headers: PRIVATE_NO_STORE }
+  );
 }
 
 export async function GET(request: Request) {
@@ -145,7 +152,7 @@ export async function GET(request: Request) {
         error: "Failed to send streak reminders",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 }

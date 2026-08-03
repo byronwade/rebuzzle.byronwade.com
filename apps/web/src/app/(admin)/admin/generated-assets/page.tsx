@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
+import { fail } from "@/lib/fail";
 
 type QueueResponse = {
   success?: boolean;
@@ -64,7 +65,7 @@ export default function GeneratedAssetsPage() {
     }
     const data = await safeJsonParse<ReportResponse>(response);
     if (!response.ok || !data?.report) {
-      throw new Error(data?.error || "Failed to load generated-asset report");
+      fail(data?.error || "Failed to load generated-asset report");
     }
     setReport(data.report);
   }, [router]);
@@ -76,20 +77,21 @@ export default function GeneratedAssetsPage() {
       const response = await fetch("/api/admin/ai/generated-pictograms", { cache: "no-store" });
       if (response.status === 401) {
         router.push("/login");
+        setLoading(false);
         return;
       }
       const data = await safeJsonParse<QueueResponse>(response);
       if (!response.ok || !data?.progress) {
-        throw new Error(data?.error || "Failed to load generated-asset specimen");
+        fail(data?.error || "Failed to load generated-asset specimen");
       }
       setSpecimen(data.specimen ?? null);
       setProgress(data.progress);
       await loadReport();
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load asset registry");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
+
   }, [loadReport, router]);
 
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function GeneratedAssetsPage() {
         }),
       });
       const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok) throw new Error(data?.error || "Failed to save response");
+      if (!response.ok) fail(data?.error || "Failed to save response");
       setGuess("");
       await loadNext();
     } catch (saveError) {
@@ -128,9 +130,9 @@ export default function GeneratedAssetsPage() {
         description: saveError instanceof Error ? saveError.message : "Try again",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
+
   };
 
   const onSubmit = (event: FormEvent) => {

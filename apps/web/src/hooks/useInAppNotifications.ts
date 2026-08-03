@@ -25,7 +25,10 @@ export function useInAppNotifications(enabled: boolean) {
     setIsLoading(true);
     try {
       const response = await fetch("/api/notifications/in-app", { credentials: "include" });
-      if (!response.ok) return;
+      if (!response.ok) {
+        setIsLoading(false);
+        return;
+      }
       const data = await response.json();
       if (data.success) {
         setNotifications(data.notifications ?? []);
@@ -33,9 +36,9 @@ export function useInAppNotifications(enabled: boolean) {
       }
     } catch {
       // non-fatal
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
+
   }, [enabled]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
@@ -159,9 +159,9 @@ export default function ResetPasswordPage() {
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
+
   };
 
   if (!token) {

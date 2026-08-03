@@ -16,6 +16,7 @@ import {
   RARITY_INFO,
 } from "@/lib/achievements";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,27 +46,32 @@ export async function GET(request: NextRequest) {
         filteredAchievements = filteredAchievements.filter((a) => a.definition.rarity === rarity);
       }
 
-      return NextResponse.json({
-        success: true,
-        achievements: filteredAchievements.map((a) => ({
-          id: a.definition.id,
-          name: a.definition.name,
-          description: a.definition.secret && !a.unlocked ? "???" : a.definition.description,
-          hint:
-            a.definition.secret && !a.unlocked ? "This is a secret achievement" : a.definition.hint,
-          icon: a.definition.icon,
-          category: a.definition.category,
-          rarity: a.definition.rarity,
-          points: a.definition.points,
-          order: a.definition.order,
-          secret: a.definition.secret,
-          unlocked: a.unlocked,
-          unlockedAt: a.unlockedAt,
-        })),
-        progress,
-        categories: CATEGORY_INFO,
-        rarities: RARITY_INFO,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          achievements: filteredAchievements.map((a) => ({
+            id: a.definition.id,
+            name: a.definition.name,
+            description: a.definition.secret && !a.unlocked ? "???" : a.definition.description,
+            hint:
+              a.definition.secret && !a.unlocked
+                ? "This is a secret achievement"
+                : a.definition.hint,
+            icon: a.definition.icon,
+            category: a.definition.category,
+            rarity: a.definition.rarity,
+            points: a.definition.points,
+            order: a.definition.order,
+            secret: a.definition.secret,
+            unlocked: a.unlocked,
+            unlockedAt: a.unlockedAt,
+          })),
+          progress,
+          categories: CATEGORY_INFO,
+          rarities: RARITY_INFO,
+        },
+        { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     // For non-authenticated users, return all achievements without unlock status
@@ -79,31 +85,34 @@ export async function GET(request: NextRequest) {
       achievements = achievements.filter((a) => a.rarity === rarity);
     }
 
-    return NextResponse.json({
-      success: true,
-      achievements: achievements.map((a) => ({
-        id: a.id,
-        name: a.secret ? "???" : a.name,
-        description: a.secret ? "???" : a.description,
-        hint: a.secret ? "This is a secret achievement" : a.hint,
-        icon: a.secret ? "star" : a.icon,
-        category: a.category,
-        rarity: a.rarity,
-        points: a.points,
-        order: a.order,
-        secret: a.secret,
-        unlocked: false,
-        unlockedAt: null,
-      })),
-      progress: null,
-      categories: CATEGORY_INFO,
-      rarities: RARITY_INFO,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        achievements: achievements.map((a) => ({
+          id: a.id,
+          name: a.secret ? "???" : a.name,
+          description: a.secret ? "???" : a.description,
+          hint: a.secret ? "This is a secret achievement" : a.hint,
+          icon: a.secret ? "star" : a.icon,
+          category: a.category,
+          rarity: a.rarity,
+          points: a.points,
+          order: a.order,
+          secret: a.secret,
+          unlocked: false,
+          unlockedAt: null,
+        })),
+        progress: null,
+        categories: CATEGORY_INFO,
+        rarities: RARITY_INFO,
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("Error fetching achievements:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch achievements" },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }
@@ -115,20 +124,26 @@ export async function POST(request: NextRequest) {
 
     // Only admins can initialize achievements
     if (!user?.isAdmin) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     await initializeAchievements();
 
-    return NextResponse.json({
-      success: true,
-      message: `Initialized ${ALL_ACHIEVEMENTS.length} achievements`,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Initialized ${ALL_ACHIEVEMENTS.length} achievements`,
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("Error initializing achievements:", error);
     return NextResponse.json(
       { success: false, error: "Failed to initialize achievements" },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }

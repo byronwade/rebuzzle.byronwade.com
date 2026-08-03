@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { Timer } from "@/components/Timer";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";

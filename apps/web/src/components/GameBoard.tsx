@@ -42,6 +42,7 @@ import { getPuzzleQuestion } from "./PuzzleDisplay";
 import { PuzzleStage } from "./PuzzleStage";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 import { SolveResultCard } from "./SolveResultCard";
+import { fail } from "@/lib/fail";
 
 interface UserStats {
   points: number;
@@ -280,6 +281,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
         if (!(response.ok && response.body)) {
           patchTurn(id, { quipPending: false });
+          window.clearTimeout(timeoutId);
           return;
         }
 
@@ -302,9 +304,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       } catch (_error) {
         // A missing riff is not worth surfacing — the instant line stands.
         patchTurn(id, { quipPending: false });
-      } finally {
-        window.clearTimeout(timeoutId);
       }
+      window.clearTimeout(timeoutId);
+
     },
     [gameData.id, patchTurn]
   );
@@ -616,11 +618,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             title: result.wasSuccessful ? "Already solved today" : "Day already locked",
             description: "Chat is locked. Open full results from the card below.",
           });
+          dispatch({ type: "SET_IS_SUBMITTING", payload: false });
           return;
         }
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || "Failed to process guess");
+          fail(result.error || "Failed to process guess");
         }
 
         const wordResults: WordResult[] = result.wordResults || [];
@@ -935,9 +938,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           message: "Failed to process your guess. Please try again.",
           details: error instanceof Error ? error.message : "Unknown error",
         });
-      } finally {
-        dispatch({ type: "SET_IS_SUBMITTING", payload: false });
       }
+      dispatch({ type: "SET_IS_SUBMITTING", payload: false });
+
     },
     [
       gameState.gameOver,

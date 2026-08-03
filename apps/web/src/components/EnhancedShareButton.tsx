@@ -241,9 +241,9 @@ export function EnhancedShareButton({
         console.error("Error sharing:", error);
         await handleCopy();
       }
-    } finally {
-      setIsSharing(false);
     }
+    setIsSharing(false);
+
   };
 
   const moreMenu = (
