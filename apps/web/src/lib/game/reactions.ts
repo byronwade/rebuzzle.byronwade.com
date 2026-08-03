@@ -103,7 +103,8 @@ export function getReactionTier({
 
 export function buildGuessReaction(input: ReactionInput): GuessReaction {
   const tier = getReactionTier(input);
-  const escalateCold = tier === "cold" && (input.consecutiveCold ?? 0) >= 2;
+  // Escalate from the second cold onward (3-attempt days rarely reach a third).
+  const escalateCold = tier === "cold" && (input.consecutiveCold ?? 0) >= 1;
   const pool = escalateCold ? COLD_ESCALATED : LINES[tier];
   const line = pool[hash(input.guess.toLowerCase()) % pool.length] ?? pool[0];
   return { tier, line: line as string };

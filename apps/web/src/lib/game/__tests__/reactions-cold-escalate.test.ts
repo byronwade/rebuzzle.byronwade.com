@@ -13,13 +13,13 @@ describe("buildGuessReaction cold escalation", () => {
     expect(reaction.line).not.toMatch(/Cold streak|Two swings|collecting misses/i);
   });
 
-  it("uses sharper lines after two consecutive colds", () => {
+  it("uses sharper lines from the second consecutive cold", () => {
     const reaction = buildGuessReaction({
       correct: false,
       similarity: 10,
       attemptsLeft: 1,
       guess: "banana split",
-      consecutiveCold: 2,
+      consecutiveCold: 1,
     });
     expect(reaction.tier).toBe("cold");
     expect(reaction.line).toMatch(
