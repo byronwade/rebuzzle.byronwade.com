@@ -33,6 +33,7 @@ export function clearDevClientGameState(): void {
   const keys = [
     "lastGameCompletion",
     "lastGameSolution",
+    "lastEveClosingLine",
     "gameCompletion",
     "userStats",
   ];
