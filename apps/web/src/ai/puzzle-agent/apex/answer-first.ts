@@ -19,7 +19,7 @@ export class AnswerFirstSeedUnavailableError extends Error {
 }
 
 /**
- * Choose a fresh answer seed before the model invents a board.
+ * Choose a fresh, technique-compatible answer seed before the model invents a board.
  *
  * The generator still owns the creative composition, but the answer is no
  * longer allowed to drift independently from the curated phrase inventory.
@@ -28,7 +28,7 @@ export class AnswerFirstSeedUnavailableError extends Error {
  */
 export function selectAnswerFirstSeed(input: {
   entries: readonly PhraseBankEntry[];
-  techniqueId?: string;
+  techniqueId: string;
   usedAnswerKeys?: Iterable<string>;
 }): PhraseBankEntry | undefined {
   const used = new Set(
@@ -40,14 +40,10 @@ export function selectAnswerFirstSeed(input: {
   });
   if (!fresh.length) return undefined;
 
-  if (input.techniqueId) {
-    const compatible = fresh.filter((entry) =>
-      entry.techniqueAffinity.some((technique) => technique === input.techniqueId)
-    );
-    if (compatible.length) return compatible[0];
-  }
-
-  return fresh[0];
+  const compatible = fresh.filter((entry) =>
+    entry.techniqueAffinity.some((technique) => technique === input.techniqueId)
+  );
+  return compatible[0];
 }
 
 /**
@@ -68,6 +64,7 @@ export function selectAnswerFirstSeeds(input: {
 
   for (let index = 0; index < input.count; index++) {
     const techniqueId = input.techniqueIds[index % Math.max(1, input.techniqueIds.length)];
+    if (!techniqueId) break;
     const seed = selectAnswerFirstSeed({
       entries: input.entries,
       techniqueId,
