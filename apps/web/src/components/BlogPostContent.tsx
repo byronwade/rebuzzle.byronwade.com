@@ -22,6 +22,7 @@ import type { BlogPostSections } from "@/db/models";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
+import { format as formatDateFns } from "date-fns";
 
 interface BlogPostContentProps {
   post: {
@@ -118,14 +119,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
     trackEvent(analyticsEvents.BLOG_ANSWER_REVEALED, { slug: post.slug });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const formatDate = (dateString: string) => formatDateFns(new Date(dateString), "MMMM d, yyyy");
 
   const typeLabel = post.puzzleType
     ? puzzleTypeLabels[post.puzzleType] || post.puzzleType

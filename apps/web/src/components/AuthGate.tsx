@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 
 interface AuthGateProps {
@@ -28,25 +27,23 @@ export function AuthGate({
   denyRedirectTo = "/",
   fallback = null,
 }: AuthGateProps) {
-  const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
-  const [ready, setReady] = useState(false);
+  const denied = !isLoading && !isAuthenticated;
+  const forbidden = !isLoading && isAuthenticated && allow === false;
+  const waiting = isLoading || allow === null;
+  const ready = !waiting && isAuthenticated && allow === true;
 
   useEffect(() => {
-    if (isLoading) return;
-    if (!isAuthenticated) {
-      router.replace(redirectTo);
+    if (denied) {
+      window.location.replace(redirectTo);
       return;
     }
-    if (allow === false) {
-      router.replace(denyRedirectTo);
-      return;
+    if (forbidden) {
+      window.location.replace(denyRedirectTo);
     }
-    if (allow === null) return; // still resolving extra gate
-    setReady(true);
-  }, [allow, denyRedirectTo, isAuthenticated, isLoading, redirectTo, router]);
+  }, [denied, denyRedirectTo, forbidden, redirectTo]);
 
-  if (isLoading || !isAuthenticated || allow === false || allow === null || !ready) {
+  if (!ready) {
     return <>{fallback}</>;
   }
 

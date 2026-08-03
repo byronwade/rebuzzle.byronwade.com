@@ -534,6 +534,7 @@ async function createCollectionIndexes(
   const failures: string[] = [];
   let created = 0;
 
+  // react-doctor-sequential: intentional — order/rate-limit required
   for (const indexDef of definition.indexes) {
     try {
       await collection.createIndex(indexDef.spec, {

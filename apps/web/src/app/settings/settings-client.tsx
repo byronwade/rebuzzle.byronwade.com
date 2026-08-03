@@ -252,8 +252,7 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
-        fail(data.error || "Failed to change password");
+        fail("Failed to change password");
       }
 
       const data = await response.json();

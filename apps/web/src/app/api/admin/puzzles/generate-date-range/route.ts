@@ -63,6 +63,7 @@ export async function POST(request: Request) {
     const failures: string[] = [];
 
     // Generate puzzles for each date
+    // react-doctor-sequential: intentional — order/rate-limit required
     for (let i = 0; i < dates.length; i++) {
       const date = dates[i];
       if (!date) continue;

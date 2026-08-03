@@ -75,6 +75,7 @@ export async function POST(request: Request) {
     const failures: string[] = [];
 
     // Generate blog posts sequentially
+    // react-doctor-sequential: intentional — order/rate-limit required
     for (let i = 0; i < limitedPuzzles.length; i++) {
       const puzzle = limitedPuzzles[i];
       if (!puzzle) continue;

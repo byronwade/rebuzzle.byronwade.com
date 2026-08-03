@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { WordleStatsPanel } from "@/components/WordleStatsPanel";
 import { type AvatarPreferences, generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
+import { format as formatDateFns } from "date-fns";
 
 type UserStats = {
   level: number;
@@ -276,7 +277,7 @@ export default function ProfilePage() {
                     Level {currentLevel}
                   </Badge>
                   <Badge variant="outline" className="font-medium text-xs">
-                    {stats.points.toLocaleString()} points
+                    {stats.points.toLocaleString("en-US", { useGrouping: true })} points
                   </Badge>
                 </div>
               </div>
@@ -302,13 +303,13 @@ export default function ProfilePage() {
                 <div className="mb-2 flex justify-between text-sm">
                   <span className="text-muted-foreground">Level Progress</span>
                   <span className="font-semibold text-foreground">
-                    {stats.points.toLocaleString()} / {nextLevelThreshold.toLocaleString()}
+                    {stats.points.toLocaleString("en-US", { useGrouping: true })} / {nextLevelThreshold.toLocaleString("en-US", { useGrouping: true })}
                   </span>
                 </div>
                 <Progress className="h-3" value={progressToNextLevel} />
                 <p className="mt-1.5 text-muted-foreground text-xs">
                   {pointsToNextLevel > 0
-                    ? `${pointsToNextLevel.toLocaleString()} points to Level ${currentLevel + 1}`
+                    ? `${pointsToNextLevel.toLocaleString("en-US", { useGrouping: true })} points to Level ${currentLevel + 1}`
                     : "Max level reached!"}
                 </p>
               </div>
@@ -330,7 +331,7 @@ export default function ProfilePage() {
               {stats.lastPlayDate && (
                 <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm">
                   <Clock className="h-4 w-4" />
-                  <span>Last played: {new Date(stats.lastPlayDate).toLocaleDateString()}</span>
+                  <span>Last played: {formatDateFns(new Date(stats.lastPlayDate), "MMM d, yyyy")}</span>
                 </div>
               )}
             </div>
@@ -397,7 +398,7 @@ export default function ProfilePage() {
             <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
               <div className="mb-1 text-muted-foreground text-sm">Total Points</div>
               <div className="font-semibold text-2xl text-foreground">
-                {stats.points.toLocaleString()}
+                {stats.points.toLocaleString("en-US", { useGrouping: true })}
               </div>
             </div>
 

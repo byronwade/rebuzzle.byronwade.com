@@ -112,6 +112,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
+import { format as formatDateFns } from "date-fns";
 
 type Tab = "stats" | "puzzles" | "blogs" | "users" | "analytics" | "tools" | "ai-insights";
 
@@ -1026,7 +1027,7 @@ function _StatsTabOld({
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           description="Total registered users and those who have logged in recently"
-          formatValue={(v) => (typeof v === "number" ? v.toLocaleString() : v)}
+          formatValue={(v) => (typeof v === "number" ? v.toLocaleString("en-US") : v)}
           icon={<Users className="h-5 w-5" />}
           subtitle={`${stats.overview.activeUsers} active users`}
           title="Total Users"
@@ -1034,7 +1035,7 @@ function _StatsTabOld({
         />
         <MetricCard
           description="Total puzzles in the database and currently available to users"
-          formatValue={(v) => (typeof v === "number" ? v.toLocaleString() : v)}
+          formatValue={(v) => (typeof v === "number" ? v.toLocaleString("en-US") : v)}
           icon={<PuzzleIcon className="h-5 w-5" />}
           subtitle={`${stats.overview.activePuzzles} active puzzles`}
           title="Total Puzzles"
@@ -1042,7 +1043,7 @@ function _StatsTabOld({
         />
         <MetricCard
           description="Total blog posts created and those currently published"
-          formatValue={(v) => (typeof v === "number" ? v.toLocaleString() : v)}
+          formatValue={(v) => (typeof v === "number" ? v.toLocaleString("en-US") : v)}
           icon={<BookOpen className="h-5 w-5" />}
           subtitle={`${stats.overview.publishedBlogPosts} published`}
           title="Blog Posts"
@@ -1050,7 +1051,7 @@ function _StatsTabOld({
         />
         <MetricCard
           description="Users subscribed to email notifications"
-          formatValue={(v) => (typeof v === "number" ? v.toLocaleString() : v)}
+          formatValue={(v) => (typeof v === "number" ? v.toLocaleString("en-US") : v)}
           icon={<Mail className="h-5 w-5" />}
           subtitle="Active subscriptions"
           title="Email Subscriptions"
@@ -1072,7 +1073,7 @@ function _StatsTabOld({
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               description="Number of unique users who have performed any action in the selected period"
-              formatValue={(v) => (typeof v === "number" ? v.toLocaleString() : v)}
+              formatValue={(v) => (typeof v === "number" ? v.toLocaleString("en-US") : v)}
               icon={<Activity className="h-5 w-5" />}
               subtitle="Users active in the last 30 days"
               title="Monthly Active Users"
@@ -1278,14 +1279,14 @@ function _StatsTabOld({
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-2 text-center">
                   <div className="font-semibold text-3xl text-primary">
-                    {stats.advancedAnalytics.progressionFunnel.signups.toLocaleString()}
+                    {stats.advancedAnalytics.progressionFunnel.signups.toLocaleString("en-US")}
                   </div>
                   <div className="font-medium text-muted-foreground text-sm">Total Signups</div>
                   <div className="text-muted-foreground text-xs">Starting point</div>
                 </div>
                 <div className="space-y-2 text-center">
                   <div className="font-semibold text-3xl text-primary">
-                    {stats.advancedAnalytics.progressionFunnel.firstPuzzle.toLocaleString()}
+                    {stats.advancedAnalytics.progressionFunnel.firstPuzzle.toLocaleString("en-US")}
                   </div>
                   <div className="font-medium text-muted-foreground text-sm">
                     First Puzzle Completed
@@ -1297,7 +1298,7 @@ function _StatsTabOld({
                 </div>
                 <div className="space-y-2 text-center">
                   <div className="font-semibold text-3xl text-primary">
-                    {stats.advancedAnalytics.progressionFunnel.regularPlayers.toLocaleString()}
+                    {stats.advancedAnalytics.progressionFunnel.regularPlayers.toLocaleString("en-US")}
                   </div>
                   <div className="font-medium text-muted-foreground text-sm">
                     Regular Players (10+ games)
@@ -1337,7 +1338,7 @@ function _StatsTabOld({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-lg">{user.points.toLocaleString()} pts</div>
+                    <div className="font-semibold text-lg">{user.points.toLocaleString("en-US")} pts</div>
                     <div className="text-muted-foreground text-xs">
                       Level {user.level} • {user.wins} wins • {user.streak} day streak
                     </div>
@@ -1369,28 +1370,28 @@ function _StatsTabOld({
             <div className="rounded-lg border bg-background/50 p-4">
               <div className="mb-1 font-medium text-muted-foreground text-sm">New Users</div>
               <div className="font-semibold text-2xl">
-                {stats.recentActivity.newUsersLast7Days.toLocaleString()}
+                {stats.recentActivity.newUsersLast7Days.toLocaleString("en-US")}
               </div>
               <div className="mt-1 text-muted-foreground text-xs">Registered this week</div>
             </div>
             <div className="rounded-lg border bg-background/50 p-4">
               <div className="mb-1 font-medium text-muted-foreground text-sm">New Puzzles</div>
               <div className="font-semibold text-2xl">
-                {stats.recentActivity.newPuzzlesLast7Days.toLocaleString()}
+                {stats.recentActivity.newPuzzlesLast7Days.toLocaleString("en-US")}
               </div>
               <div className="mt-1 text-muted-foreground text-xs">Added this week</div>
             </div>
             <div className="rounded-lg border bg-background/50 p-4">
               <div className="mb-1 font-medium text-muted-foreground text-sm">New Blog Posts</div>
               <div className="font-semibold text-2xl">
-                {stats.recentActivity.newBlogPostsLast7Days.toLocaleString()}
+                {stats.recentActivity.newBlogPostsLast7Days.toLocaleString("en-US")}
               </div>
               <div className="mt-1 text-muted-foreground text-xs">Published this week</div>
             </div>
             <div className="rounded-lg border bg-background/50 p-4">
               <div className="mb-1 font-medium text-muted-foreground text-sm">Analytics Events</div>
               <div className="font-semibold text-2xl">
-                {stats.recentActivity.eventsLast7Days.toLocaleString()}
+                {stats.recentActivity.eventsLast7Days.toLocaleString("en-US")}
               </div>
               <div className="mt-1 text-muted-foreground text-xs">Tracked this week</div>
             </div>
@@ -1511,7 +1512,7 @@ function PuzzlesTab({
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-muted-foreground text-xs">
-                      <span>Published: {new Date(puzzle.publishedAt).toLocaleDateString()}</span>
+                      <span>Published: {formatDateFns(new Date(puzzle.publishedAt), "MMM d, yyyy")}</span>
                       {puzzle.difficulty && (
                         <span className="capitalize">Difficulty: {puzzle.difficulty}</span>
                       )}
@@ -1706,7 +1707,7 @@ function BlogsTab({
                     <div className="flex items-center gap-4 text-muted-foreground text-xs">
                       <span className="font-mono">{blog.slug}</span>
                       <span>•</span>
-                      <span>Published: {new Date(blog.publishedAt).toLocaleDateString()}</span>
+                      <span>Published: {formatDateFns(new Date(blog.publishedAt), "MMM d, yyyy")}</span>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -1873,8 +1874,8 @@ function UsersTab({
       Level: user.stats?.level || 0,
       Wins: user.stats?.wins || 0,
       Streak: user.stats?.streak || 0,
-      "Joined Date": new Date(user.createdAt).toLocaleDateString(),
-      "Last Login": user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "Never",
+      "Joined Date": formatDateFns(new Date(user.createdAt), "MMM d, yyyy"),
+      "Last Login": user.lastLogin ? formatDateFns(new Date(user.lastLogin), "MMM d, yyyy") : "Never",
     }));
     exportToCSV(exportData, `users-export-${new Date().toISOString().split("T")[0]}`);
   };
@@ -1998,7 +1999,7 @@ function UsersTab({
                       <TableCell className="text-muted-foreground text-sm">{user.email}</TableCell>
                       <TableCell>
                         <span className="font-semibold">
-                          {user.stats?.points.toLocaleString() || 0}
+                          {user.stats?.points.toLocaleString("en-US") || 0}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -2016,16 +2017,16 @@ function UsersTab({
                           {user.stats?.level || 0}
                         </span>
                       </TableCell>
-                      <TableCell>{user.stats?.wins.toLocaleString() || 0}</TableCell>
+                      <TableCell>{user.stats?.wins.toLocaleString("en-US") || 0}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {user.lastLogin ? (
-                          new Date(user.lastLogin).toLocaleDateString()
+                          formatDateFns(new Date(user.lastLogin), "MMM d, yyyy")
                         ) : (
                           <span className="text-muted-foreground/60">Never</span>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {new Date(user.createdAt).toLocaleDateString()}
+                        {formatDateFns(new Date(user.createdAt), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -2226,7 +2227,7 @@ function AnalyticsTab({
                       )}
                     </div>
                     <div className="mt-1 text-muted-foreground text-xs">
-                      {new Date(event.timestamp).toLocaleString()}
+                      {formatDateFns(new Date(event.timestamp), "MMM d, yyyy h:mm a")}
                     </div>
                   </div>
                 </div>

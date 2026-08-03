@@ -125,8 +125,7 @@ export function DevToolsPanel() {
         body: JSON.stringify({ action }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        fail(data.error || "Action failed");
+        fail((await res.text().catch(() => "")) || "Action failed");
       }
       const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
       if (!data.success) {

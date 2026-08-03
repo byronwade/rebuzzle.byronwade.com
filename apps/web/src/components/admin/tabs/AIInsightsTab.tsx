@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format as formatDateFns } from "date-fns";
 
 // ============================================================================
 // TYPES
@@ -395,7 +396,7 @@ export function AIInsightsTab() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <MetricCard
                   title="Total AI Decisions"
-                  value={analytics.overview.totalDecisions.toLocaleString()}
+                  value={analytics.overview.totalDecisions.toLocaleString("en-US")}
                   icon={<Cpu className="h-4 w-4" />}
                   subtitle="API calls made"
                 />
@@ -511,7 +512,7 @@ export function AIInsightsTab() {
                       <TableBody>
                         {analytics.satisfactionTrend.slice(0, 10).map((d) => (
                           <TableRow key={d.date}>
-                            <TableCell>{new Date(d.date).toLocaleDateString()}</TableCell>
+                            <TableCell>{formatDateFns(new Date(d.date), "MMM d, yyyy")}</TableCell>
                             <TableCell>{d.avgRating.toFixed(1)}</TableCell>
                             <TableCell>{d.avgSatisfaction.toFixed(1)}</TableCell>
                             <TableCell>{d.count}</TableCell>
@@ -563,7 +564,7 @@ export function AIInsightsTab() {
                               {pattern.resolvedCount}/{pattern.count}
                             </TableCell>
                             <TableCell>
-                              {new Date(pattern.recentOccurrence).toLocaleString()}
+                              {formatDateFns(new Date(pattern.recentOccurrence), "MMM d, yyyy h:mm a")}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -626,7 +627,7 @@ export function AIInsightsTab() {
                           </Badge>
                         </TableCell>
                         <TableCell>{formatDuration(decision.durationMs)}</TableCell>
-                        <TableCell>{decision.tokens.total.toLocaleString()}</TableCell>
+                        <TableCell>{decision.tokens.total.toLocaleString("en-US")}</TableCell>
                         <TableCell>{formatCost(decision.tokens.cost)}</TableCell>
                         <TableCell>
                           {decision.qualityMetrics ? (
@@ -636,7 +637,7 @@ export function AIInsightsTab() {
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {new Date(decision.timestamp).toLocaleTimeString()}
+                          {formatDateFns(new Date(decision.timestamp), "h:mm a")}
                         </TableCell>
                         <TableCell>
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -675,7 +676,7 @@ export function AIInsightsTab() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Tokens</p>
-                      <p>{selectedDecision.tokens.total.toLocaleString()}</p>
+                      <p>{selectedDecision.tokens.total.toLocaleString("en-US")}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Cost</p>
@@ -795,7 +796,7 @@ export function AIInsightsTab() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {new Date(error.timestamp).toLocaleString()}
+                          {formatDateFns(new Date(error.timestamp), "MMM d, yyyy h:mm a")}
                         </TableCell>
                       </TableRow>
                     ))}

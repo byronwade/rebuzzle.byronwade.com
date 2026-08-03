@@ -67,6 +67,7 @@ export async function composePuzzleVisual(
   let claritySum = 0;
   let clarityCount = 0;
 
+  // react-doctor-sequential: intentional — order/rate-limit required
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
       if (layer.svg?.includes("<svg")) {

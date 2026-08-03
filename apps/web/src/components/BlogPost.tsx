@@ -5,6 +5,7 @@ import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { format as formatDateFns } from "date-fns";
 
 interface BlogPostProps {
   post: {
@@ -50,13 +51,7 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
     setIsYesterday(yesterday.getTime() === postDate.getTime());
   }, [post.date]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const formatDate = (dateString: string) => formatDateFns(new Date(dateString), "MMMM d, yyyy");
 
   const typeLabel = post.puzzleType
     ? puzzleTypeLabels[post.puzzleType] || post.puzzleType
@@ -110,7 +105,7 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
               {new Date(post.date).getDate()}
             </div>
             <div className="mt-1 font-mono text-[9px] text-subtle uppercase tracking-[0.08em]">
-              {new Date(post.date).toLocaleDateString("en-US", { month: "short" })}
+              {formatDateFns(new Date(post.date), "MMM")}
             </div>
           </div>
 

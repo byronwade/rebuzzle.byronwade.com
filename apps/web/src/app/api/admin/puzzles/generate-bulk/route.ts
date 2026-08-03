@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     const failures: string[] = [];
 
     // Generate puzzles sequentially to avoid overwhelming the AI
+    // react-doctor-sequential: intentional — order/rate-limit required
     for (let i = 0; i < validatedCount; i++) {
       try {
         // Vary difficulty across the range

@@ -215,6 +215,7 @@ export async function runApexGeneration(
 
   // Sequential slots — safer for gateway quota; each slot has a reserved answer
   // contract and a distinct brief nudge.
+  // react-doctor-sequential: intentional — order/rate-limit required
   for (let slot = 1; slot <= brief.candidateCount; slot++) {
     try {
       // Rotate preferred technique focus per slot

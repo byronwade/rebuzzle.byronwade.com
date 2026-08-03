@@ -1,16 +1,15 @@
 "use client";
 
 import * as React from "react";
-import dynamic from "next/dynamic";
-import type { TooltipProps } from "recharts";
-import { Legend, type LegendProps, Tooltip as RechartsTooltip } from "recharts";
+import {
+  Legend,
+  type LegendProps,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  type TooltipProps,
+} from "recharts";
 
 import { cn } from "@/lib/utils";
-
-const ResponsiveContainer = dynamic(
-  () => import("recharts").then((m) => m.ResponsiveContainer),
-  { ssr: false }
-);
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;

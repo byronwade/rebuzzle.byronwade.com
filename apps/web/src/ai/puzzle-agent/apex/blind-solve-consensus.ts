@@ -276,11 +276,12 @@ export function summarizeBlindSolveAttempts(input: {
   const wrongParses = Array.from(
     new Map(
       rankedAttempts
-        .flatMap((result) => result.ranked)
-        .flatMap((hypothesis) =>
-          blindAnswerMatch(hypothesis.answer, input.answer)
-            ? []
-            : [{ answer: hypothesis.answer, confidence: hypothesis.confidence }]
+        .flatMap((result) =>
+          result.ranked.flatMap((hypothesis) =>
+            blindAnswerMatch(hypothesis.answer, input.answer)
+              ? []
+              : [{ answer: hypothesis.answer, confidence: hypothesis.confidence }]
+          )
         )
         .sort((a, b) => b.confidence - a.confidence)
         .map((hypothesis) => [hypothesis.answer.toLowerCase(), hypothesis.answer] as const)
