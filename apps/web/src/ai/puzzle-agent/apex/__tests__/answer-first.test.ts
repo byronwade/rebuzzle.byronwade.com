@@ -109,4 +109,27 @@ describe("answer-first seed selection", () => {
       })
     ).toEqual([]);
   });
+
+  it("can require a host-owned visual cue plan for strict generation", () => {
+    expect(
+      selectAnswerFirstSeed({
+        entries,
+        techniqueId: "simple_compound",
+        requireVisualCuePlan: true,
+      })
+    ).toBeUndefined();
+
+    expect(
+      selectAnswerFirstSeed({
+        entries: [
+          {
+            ...entries[1],
+            visualCues: [{ kind: "catalog", concept: "moon", role: "word-part" }],
+          },
+        ],
+        techniqueId: "simple_compound",
+        requireVisualCuePlan: true,
+      })?.answer
+    ).toBe("moonlight");
+  });
 });

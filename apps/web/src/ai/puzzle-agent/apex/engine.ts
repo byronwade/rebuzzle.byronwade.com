@@ -88,6 +88,7 @@ function toCandidate(
     qualityOverall: result.metadata.qualityScore,
     funScore: result.metadata.funScore ?? 0,
     answerSeed: result.metadata.answerSeed,
+    answerSeedCuePlan: result.metadata.answerSeedCuePlan,
     boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
     boardRecognitionModels: result.metadata.boardRecognitionModels,
     boardConceptVotes: result.metadata.boardConceptVotes,
@@ -202,6 +203,7 @@ export async function runApexGeneration(
     techniqueIds: brief.preferredTechniques,
     count: brief.candidateCount,
     usedAnswerKeys: brief.diversity.bannedAnswerKeys,
+    requireVisualCuePlan: true,
   });
   if (answerSeedEntries.length !== brief.candidateCount) {
     throw new AnswerFirstSeedUnavailableError({
@@ -241,6 +243,7 @@ export async function runApexGeneration(
           ? phraseSlice
           : antiCopySuggestions.slice(0, 3).map((p) => p.answer),
         answerSeed: answerSeedEntry?.answer,
+        answerSeedCuePlan: answerSeedEntry?.visualCues,
         bannedAnswerKeys: brief.diversity.bannedAnswerKeys,
         candidateIndex: slot,
         candidateCount: brief.candidateCount,
@@ -337,6 +340,7 @@ export async function runApexGeneration(
             .slice(0, 3)
             .map((phrase) => phrase.answer),
           answerSeed: candidate.answer,
+          answerSeedCuePlan: candidate.answerSeedCuePlan,
           bannedAnswerKeys: Array.from(new Set(brief.diversity.bannedAnswerKeys)),
           candidateIndex: undefined,
           candidateCount: undefined,
@@ -463,6 +467,7 @@ async function finalizeWinner(
       thinkingSummary,
       visualStyleId: chosen.visual.styleId,
       answerSeed: chosen.answerSeed,
+      answerSeedCuePlan: chosen.answerSeedCuePlan ? [...chosen.answerSeedCuePlan] : undefined,
       estimatedSolveRate: chosen.playerSim?.estimatedSolveRate,
       playabilityEvidence: chosen.playerSim ? toPlayabilityEvidence(chosen.playerSim) : undefined,
       boardRecognitionConfidence: chosen.boardRecognitionConfidence,

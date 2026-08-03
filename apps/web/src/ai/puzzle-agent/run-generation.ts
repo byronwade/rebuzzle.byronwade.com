@@ -17,12 +17,18 @@ import {
 import { AI_CONFIG } from "../config";
 import { isHardAIBudgetError, parseAIError } from "../errors";
 import { enforceQuota } from "../quota-manager";
+import {
+  answerSeedCuePlanIssues,
+  formatAnswerSeedCuePlan,
+  missingAnswerSeedCues,
+} from "./apex/answer-seed-cues";
 import { toPlayabilityEvidence } from "./apex/blind-solve-consensus";
 import {
   applyPlayerSimHeuristics,
   playerSimPublishBlockers,
   simulatePlayerSolve,
 } from "./apex/player-sim";
+import type { AnswerSeedVisualCue } from "./apex/types";
 import {
   applyAuthoritativeComposition,
   type CapturedPuzzleComposition,
@@ -78,6 +84,8 @@ export interface PuzzleGenerationParams {
   phraseSeeds?: string[];
   /** Apex answer-first contract; when present the model must preserve this answer. */
   answerSeed?: string;
+  /** Host-owned visual ingredients that the composed board must contain. */
+  answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
   /** Banned normalized answer keys */
   bannedAnswerKeys?: string[];
   /** Tournament candidate slot (1-based) — encourages diversity across slots */
@@ -173,6 +181,13 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
           "Do not substitute a different answer; if the seed cannot be composed fairly, let the host reject this attempt.",
         ].join("\n")
       : null,
+    params.answerSeedCuePlan?.length
+      ? [
+          `MANDATORY ANSWER-SEED CUE CONTRACT: place every ingredient below in the authoritative board: ${formatAnswerSeedCuePlan(params.answerSeedCuePlan)}.`,
+          "Catalog cues are exact reviewed pictogram concepts; do not replace them with a vaguely related icon.",
+          "Text/operator cues must remain visibly present and support the named technique. Keep the complete answer hidden as a contiguous phrase.",
+        ].join("\n")
+      : null,
     params.phraseSeeds?.length
       ? `Phrase-bank tropes/seeds to avoid copying (invent a different mechanism/answer; cousins of bee/before/sunflower/piece-of-cake are discouraged): ${params.phraseSeeds.join("; ")}.`
       : null,
@@ -233,6 +248,11 @@ function safeGenerationError(error: unknown): string {
 export async function runPuzzleAgentGeneration(
   params: PuzzleGenerationParams
 ): Promise<PuzzleAgentResult> {
+  const cuePlanIssues = answerSeedCuePlanIssues(params.answerSeedCuePlan);
+  if (cuePlanIssues.length) {
+    throw new Error(`Invalid answer-seed cue contract: ${cuePlanIssues.join("; ")}`);
+  }
+
   ensureGatewayKey();
   assertGatewayAuthConfigured();
   await enforceQuota();
@@ -330,6 +350,25 @@ export async function runPuzzleAgentGeneration(
           priorFailure = `Answer-first seed mismatch: expected "${params.answerSeed}" but received "${puzzle.answer}"`;
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
           lastError = lastCandidateError;
+          continue;
+        }
+
+        const missingSeedCues = missingAnswerSeedCues({
+          visual: puzzle.visual,
+          cues: params.answerSeedCuePlan,
+        });
+        if (missingSeedCues.length) {
+          priorFailure = `Answer-first visual cue contract failed: ${missingSeedCues.join("; ")}`;
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+            console.warn("[Puzzle Agent] candidate rejected", {
+              modelId,
+              attempt,
+              stage: "answer-seed-cue-contract",
+              reason: priorFailure,
+            });
+          }
           continue;
         }
 
@@ -493,6 +532,9 @@ export async function runPuzzleAgentGeneration(
               funScore: quality.funScore,
               visualStyleId: puzzle.visual?.styleId,
               answerSeed: params.answerSeed,
+              answerSeedCuePlan: params.answerSeedCuePlan
+                ? [...params.answerSeedCuePlan]
+                : undefined,
               generationAttempts: attempt,
               thinkingSummary:
                 output.thinkingSummary ??
@@ -567,6 +609,7 @@ export async function runPuzzleAgentGeneration(
             funScore: quality.funScore,
             visualStyleId: puzzle.visual?.styleId,
             answerSeed: params.answerSeed,
+            answerSeedCuePlan: params.answerSeedCuePlan ? [...params.answerSeedCuePlan] : undefined,
             boardRecognitionConfidence: boardRecognition.perceptions.length
               ? Math.min(
                   ...boardRecognition.perceptions.map((perception) =>

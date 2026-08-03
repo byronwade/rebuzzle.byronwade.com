@@ -1,5 +1,5 @@
 import { INK_PICTOGRAM_EXAMPLE_EYE, INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
-import { phraseBankSize, samplePhraseBank } from "../phrase-bank";
+import { PHRASE_BANK, phraseBankSize, samplePhraseBank } from "../phrase-bank";
 import { scoreRubric, tournamentScore } from "../rubric";
 import { pickWinner, rankCandidates } from "../tournament";
 import type { ApexCandidate } from "../types";
@@ -110,6 +110,35 @@ describe("phrase bank", () => {
       true
     );
     expect(samples.every((sample) => !sample.overused)).toBe(true);
+  });
+
+  it("keeps a reviewed cue plan for every technique family", () => {
+    const covered = new Set(
+      PHRASE_BANK.filter((entry) => !entry.overused && entry.visualCues?.length).flatMap(
+        (entry) => entry.techniqueAffinity
+      )
+    );
+    expect(
+      [
+        "simple_compound",
+        "obvious_emoji_sum",
+        "single_homophone",
+        "basic_positional",
+        "multi_emoji_compound",
+        "positional_phrase",
+        "math_symbol_wordplay",
+        "nested_homophone",
+        "false_lead_visual",
+        "idiom_as_picture",
+        "size_or_case_semantics",
+        "multi_layer_phonetic",
+        "spatial_preposition_play",
+        "triple_layer_composition",
+        "rare_but_fair_idiom",
+        "recursive_visual_pun",
+        "cultural_common_knowledge_plus_twist",
+      ].every((technique) => covered.has(technique))
+    ).toBe(true);
   });
 });
 

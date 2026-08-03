@@ -150,6 +150,7 @@ export async function regenerateTodaysPuzzle(
         generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
         engine: result.metadata.engine ?? "eve",
         answerSeed: result.metadata.answerSeed,
+        answerSeedCuePlan: result.metadata.answerSeedCuePlan,
         learningBaselineDifficulty: difficultyPlan.baseline,
         learningDifficultyDelta: difficultyPlan.delta,
         learningReason: difficultyPlan.reason,

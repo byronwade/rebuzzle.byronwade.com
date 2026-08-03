@@ -91,6 +91,24 @@ const StrictPuzzleVisualSchema = z.object({
   caption: z.string().max(80).nullable(),
 });
 
+const AnswerSeedVisualCueSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("catalog"),
+    concept: z.string().min(1).max(48),
+    role: z.enum(["word-part", "phonetic-anchor", "semantic-anchor", "structural-anchor"]),
+  }),
+  z.object({
+    kind: z.literal("text"),
+    content: z.string().min(1).max(40),
+    role: z.enum(["word-part", "phonetic-anchor", "semantic-anchor", "structural-anchor"]),
+  }),
+  z.object({
+    kind: z.literal("operator"),
+    symbol: z.string().min(1).max(4),
+    role: z.literal("structural-anchor"),
+  }),
+]);
+
 /**
  * The model owns only the creative draft. All publication evidence and scores
  * are computed by Rebuzzle after generation and are intentionally excluded.
@@ -141,6 +159,8 @@ export const PuzzleAgentResultSchema = z.object({
     thinkingSummary: z.string().optional(),
     /** Answer selected by the Apex answer-first contract, when applicable. */
     answerSeed: z.string().optional(),
+    /** Host-owned visual ingredients used to ground an answer-first board. */
+    answerSeedCuePlan: z.array(AnswerSeedVisualCueSchema).max(8).optional(),
     visualStyleId: z.string().optional(),
     /** Calibrated player-sim solve rate (0–1) */
     estimatedSolveRate: z.number().min(0).max(1).optional(),
