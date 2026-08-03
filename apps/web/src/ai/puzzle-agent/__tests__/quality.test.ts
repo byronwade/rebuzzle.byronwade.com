@@ -71,7 +71,29 @@ describe("evaluateVisualForPublish", () => {
     ).toBe(false);
   });
 
-  it("accepts composed pictogram SVG boards with trusted catalog provenance", () => {
+  it("accepts composed pictogram SVG boards with trusted catalog provenance and player-size recognition", () => {
+    expect(
+      evaluateVisualForPublish({
+        mode: "composed",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "eye",
+            svg: catalogEye.svg,
+            source: "catalog",
+            assetId: catalogEye.assetId,
+            recognitionProfiles: [
+              { tileSize: 44, seenAs: "eye", confidence: 0.94 },
+              { tileSize: 72, seenAs: "eye", confidence: 0.96 },
+            ],
+          },
+        ],
+        unicodeFallback: "👁️",
+      }).ok
+    ).toBe(true);
+  });
+
+  it("rejects authentic catalog icons that lack player-size recognition evidence on AI publish", () => {
     expect(
       evaluateVisualForPublish({
         mode: "composed",
@@ -86,6 +108,27 @@ describe("evaluateVisualForPublish", () => {
         ],
         unicodeFallback: "👁️",
       }).ok
+    ).toBe(false);
+  });
+
+  it("allows authentic catalog icons without recognition evidence for offline reserve audits", () => {
+    expect(
+      evaluateVisualForPublish(
+        {
+          mode: "composed",
+          layers: [
+            {
+              kind: "pictogram",
+              concept: "eye",
+              svg: catalogEye.svg,
+              source: "catalog",
+              assetId: catalogEye.assetId,
+            },
+          ],
+          unicodeFallback: "👁️",
+        },
+        { requireCatalogRecognitionEvidence: false }
+      ).ok
     ).toBe(true);
   });
 
@@ -141,7 +184,7 @@ describe("evaluateVisualForPublish", () => {
     ).toBe(true);
   });
 
-  it("accepts an authentic simple catalog silhouette", () => {
+  it("accepts an authentic simple catalog silhouette with recognition evidence", () => {
     const heart = resolveCuratedPictogram("heart")!;
     expect(
       evaluateVisualForPublish({
@@ -153,6 +196,10 @@ describe("evaluateVisualForPublish", () => {
             svg: heart.svg,
             source: "catalog",
             assetId: heart.assetId,
+            recognitionProfiles: [
+              { tileSize: 44, seenAs: "heart", confidence: 0.93 },
+              { tileSize: 72, seenAs: "heart", confidence: 0.95 },
+            ],
           },
         ],
         unicodeFallback: "❤️",

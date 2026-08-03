@@ -9,6 +9,7 @@ import {
   recordGenerationAudit,
   resolveAdaptiveDifficultyForDate,
 } from "@/ai/learning";
+import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
 import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
 import { db } from "@/db";
 import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
@@ -182,19 +183,46 @@ async function getOrGenerateDailyPuzzle(
     });
   }
 
-  if (qualityDrift?.shouldUseReserve) {
+  let humanCalibration: Awaited<ReturnType<typeof loadHumanCalibrationGate>> | null = null;
+  try {
+    humanCalibration = await loadHumanCalibrationGate();
+  } catch (error) {
+    logger.warn("Human calibration telemetry unavailable; retaining automated fail-closed gates", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  const reserveReason = qualityDrift?.shouldUseReserve
+    ? ("Quality SLO circuit breaker" as const)
+    : humanCalibration?.shouldUseReserve
+      ? ("Human calibration circuit breaker" as const)
+      : null;
+
+  if (reserveReason) {
     const puzzleDate = new Date(`${dateString}T00:00:00Z`);
     difficultyPlan = await calculateDailyDifficulty(puzzleDate);
-    logger.warn("Quality SLO circuit breaker halted AI puzzle generation", {
+    logger.warn("Publication circuit breaker halted AI puzzle generation", {
       dateString,
-      contractVersion: qualityDrift.version,
-      status: qualityDrift.status,
-      criticalMetrics: qualityDrift.metrics
-        .filter((metric) => metric.status === "critical")
-        .map((metric) => metric.id),
+      reason: reserveReason,
+      qualityDrift: qualityDrift
+        ? {
+            contractVersion: qualityDrift.version,
+            status: qualityDrift.status,
+            criticalMetrics: qualityDrift.metrics
+              .filter((metric) => metric.status === "critical")
+              .map((metric) => metric.id),
+          }
+        : null,
+      humanCalibration: humanCalibration
+        ? {
+            contractVersion: humanCalibration.version,
+            status: humanCalibration.status,
+            reasons: humanCalibration.reasons.slice(0, 5),
+          }
+        : null,
     });
 
-    const reserve = await persistReservePuzzle(dateString, "Quality SLO circuit breaker");
+    const reserve = await persistReservePuzzle(dateString, reserveReason);
     void recordGenerationAudit({
       dateString,
       puzzleId: reserve.id,
@@ -207,7 +235,10 @@ async function getOrGenerateDailyPuzzle(
       learningReason: difficultyPlan.reason,
       answerKey: normalizeAnswerKey(reserve.answer),
       durationMs: Date.now() - genStarted,
-      error: qualityDrift.recommendation,
+      error:
+        reserveReason === "Quality SLO circuit breaker"
+          ? qualityDrift!.recommendation
+          : humanCalibration!.reasons.join(" · "),
     });
     return reserve;
   }

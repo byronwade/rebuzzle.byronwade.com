@@ -84,7 +84,7 @@ describe("blind human icon-recognition calibration", () => {
 
     expect(fixtures).toHaveLength(196);
     expect(new Set(fixtures.map((fixture) => fixture.fixtureId)).size).toBe(196);
-    expect(new Set(fixtures.map((fixture) => fixture.sizePx))).toEqual(new Set([36, 72]));
+    expect(new Set(fixtures.map((fixture) => fixture.sizePx))).toEqual(new Set([44, 72]));
     for (const fixture of fixtures) {
       expect(fixture.fixtureId).toMatch(/^[a-f0-9]{32}$/);
       expect(fixture.fixtureId).not.toContain(fixture.conceptId);
@@ -268,7 +268,7 @@ describe("blind human icon-recognition calibration", () => {
   it("fails candidate promotion when qualified reviewers miss the hidden controls", () => {
     const fixtures = buildIconRecognitionFixtures("candidates");
     const missedControl = fixtures.find(
-      (fixture) => fixture.role === "control" && fixture.sizePx === 36
+      (fixture) => fixture.role === "control" && fixture.sizePx === 44
     )!;
     const reviews = ["reviewer-1", "reviewer-2", "reviewer-3", "reviewer-4", "reviewer-5"].flatMap(
       (reviewerId) =>
@@ -296,7 +296,7 @@ describe("blind human icon-recognition calibration", () => {
   it("blocks one weak candidate even when the cohort average exceeds 97%", () => {
     const fixtures = buildIconRecognitionFixtures("candidates");
     const weakCandidate = fixtures.find(
-      (fixture) => fixture.conceptId === "soda" && fixture.sizePx === 36
+      (fixture) => fixture.conceptId === "soda" && fixture.sizePx === 44
     )!;
     const reviews = ["reviewer-1", "reviewer-2", "reviewer-3", "reviewer-4", "reviewer-5"].flatMap(
       (reviewerId, reviewerIndex) =>
@@ -312,9 +312,9 @@ describe("blind human icon-recognition calibration", () => {
       panelId: "candidates",
     });
 
-    expect(report.sizeScores.find((score) => score.sizePx === 36)?.accuracy).toBeGreaterThan(0.97);
+    expect(report.sizeScores.find((score) => score.sizePx === 44)?.accuracy).toBeGreaterThan(0.97);
     expect(report.weakFixtures).toEqual([
-      expect.objectContaining({ conceptId: "soda", sizePx: 36, accuracy: 0.6 }),
+      expect.objectContaining({ conceptId: "soda", sizePx: 44, accuracy: 0.6 }),
     ]);
     expect(report.marketLeadingReady).toBe(false);
     expect(report.promotionEligibleConceptIds).not.toContain("soda");
@@ -324,7 +324,7 @@ describe("blind human icon-recognition calibration", () => {
   it("blocks promotion when a single unusable icon is hidden by a 97%+ catalog average", () => {
     const fixtures = buildIconRecognitionFixtures();
     const badFixture = fixtures.find(
-      (fixture) => fixture.conceptId === "car" && fixture.sizePx === 36
+      (fixture) => fixture.conceptId === "car" && fixture.sizePx === 44
     )!;
     const reviews = ["reviewer-1", "reviewer-2", "reviewer-3"].flatMap((reviewerId) =>
       fixtures.map((fixture) =>
@@ -335,9 +335,9 @@ describe("blind human icon-recognition calibration", () => {
     );
     const report = scoreIconRecognitionCalibration({ fixtures, reviews });
 
-    expect(report.sizeScores.find((score) => score.sizePx === 36)?.accuracy).toBeGreaterThan(0.97);
+    expect(report.sizeScores.find((score) => score.sizePx === 44)?.accuracy).toBeGreaterThan(0.97);
     expect(report.weakFixtures).toEqual([
-      expect.objectContaining({ conceptId: "car", sizePx: 36, accuracy: 0 }),
+      expect.objectContaining({ conceptId: "car", sizePx: 44, accuracy: 0 }),
     ]);
     expect(report.releaseReady).toBe(false);
     expect(report.marketLeadingReady).toBe(false);
@@ -346,9 +346,9 @@ describe("blind human icon-recognition calibration", () => {
 
   it("reports semantic confusion pairs and ignores duplicate reviewer rows", () => {
     const fixtures = buildIconRecognitionFixtures();
-    const car36 = fixtures.find((fixture) => fixture.conceptId === "car" && fixture.sizePx === 36)!;
+    const carCompact = fixtures.find((fixture) => fixture.conceptId === "car" && fixture.sizePx === 44)!;
     const wrong = review({
-      fixture: car36,
+      fixture: carCompact,
       reviewerId: "reviewer-1",
       correct: false,
       matchedConceptId: "bus",

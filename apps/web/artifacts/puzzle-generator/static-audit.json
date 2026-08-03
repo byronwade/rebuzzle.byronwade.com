@@ -1,0 +1,912 @@
+{
+  "generatedAt": "2026-08-03T01:59:52.341Z",
+  "report": {
+    "version": "static-puzzle-audit-v2",
+    "benchmarkVersion": "2026-08-03.1",
+    "puzzleCount": 93,
+    "puzzlePassCount": 93,
+    "renderedProfileCount": 279,
+    "expectedRenderedProfileCount": 279,
+    "assetCount": 47,
+    "assetPassCount": 47,
+    "sourceCounts": {
+      "solve-corpus": 24,
+      "reserve": 69
+    },
+    "puzzleItems": [
+      {
+        "id": "literal:sunflower",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:moonlight",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:bookmark",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:keyboard",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:starfish",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:houseboat",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:raindrop",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:firework",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:heartbreak",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:eye-contact",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "literal:time-bomb",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "phonetic:ice-cream",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "phonetic:season",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "phonetic:before",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "phonetic:belief",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "position:mind-over-matter",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "position:head-over-heels",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "position:reading-between-lines",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "position:man-overboard",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "typography:big-deal",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "typography:small-talk",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "typography:broken-promise",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "position:crossroads",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "typography:long-time-no-see",
+        "source": "solve-corpus",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:firetruck",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:birdhouse",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:doghouse",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:catfish",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:mailbox",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:doorbell",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:handbag",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:bedtime",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:moonwalk",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:hotdog",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:watchdog",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:lighthouse",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:starlight",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:cookbook",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:rainforest",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:campfire",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:airmail",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:phonebook",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:songbird",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:toolbox",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:birdbrain",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:brainchild",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:sweetheart",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:heartburn",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:pizza-box",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:eggplant",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:treehouse",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:snowball",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:eyeball",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:fireball",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:clockwork",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:blackmail",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:bluebird",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:newsflash",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:dead-end",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:deadline",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:cold-feet",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:baby-shower",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:brain-drain",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:love-letter",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:junk-mail",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:rain-check",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:hot-shot",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:piece-of-cake",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:handbook",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:bookend",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:housework",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:daydream",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:keychain",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:keyring",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:gemstone",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:doorway",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:rainfall",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:moonbeam",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:notebook",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:textbook",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:storybook",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:dreamboat",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:backdoor",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:blue-moon",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:black-cat",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:red-eye",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:big-fish",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:small-world",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:little-things",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:tricycle",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:i-understand",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:life-after-death",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "id": "reserve:world-under-water",
+        "source": "reserve",
+        "profilesRendered": 3,
+        "passed": true,
+        "failures": []
+      }
+    ],
+    "assetItems": [
+      {
+        "concept": "baby",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "bed",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "bell",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "bird",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "boat",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "book",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "brain",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "camera",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "candy",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "cat",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "clock",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "diamond",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "dog",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "door",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "egg",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "envelope",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "eye",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "fire",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "fish",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "flower",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "footprints",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "globe",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "hand",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "heart",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "house",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "key",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "leaf",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "lightbulb",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "lightning",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "moon",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "music",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "newspaper",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "phone",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "pizza",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "plane",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "puzzle",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "rain",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "skull",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "snowflake",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "sprout",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "star",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "sun",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "trash",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "tree",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "truck",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "watch",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "concept": "wrench",
+        "passed": true,
+        "failures": []
+      }
+    ],
+    "failures": [],
+    "promotion": {
+      "passed": true,
+      "failures": []
+    }
+  }
+}

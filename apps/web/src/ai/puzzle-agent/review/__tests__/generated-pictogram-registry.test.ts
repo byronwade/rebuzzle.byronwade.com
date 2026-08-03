@@ -112,7 +112,7 @@ function automatedInput(concept = "lighthouse") {
     seenAs: concept,
     recognitionConfidence: 0.95,
     recognitionProfiles: [
-      { tileSize: 36, seenAs: concept, confidence: 0.94 },
+      { tileSize: 44, seenAs: concept, confidence: 0.94 },
       { tileSize: 72, seenAs: concept, confidence: 0.97 },
     ],
     now: new Date("2026-08-01T12:00:00.000Z"),
@@ -151,7 +151,7 @@ describe("human-governed generated pictogram registry", () => {
 
     await expect(
       registry.submitCandidate({ ...automatedInput(), recognitionProfiles: [] })
-    ).rejects.toThrow("both player-size");
+    ).rejects.toThrow("player-size recognition profiles");
     expect(store.candidates).toHaveLength(0);
   });
 
@@ -201,6 +201,8 @@ describe("human-governed generated pictogram registry", () => {
       requiredReviewersPerSize: 3,
       size36: { decisions: 3, correct: 3 },
       size72: { decisions: 3, correct: 3 },
+      compactTilePx: 44,
+      largeTilePx: 72,
     });
     await expect(registry.findApproved("lighthouse")).resolves.toMatchObject({
       id: candidate?.id,

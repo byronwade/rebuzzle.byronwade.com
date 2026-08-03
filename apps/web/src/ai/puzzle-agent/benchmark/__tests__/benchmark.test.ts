@@ -43,7 +43,7 @@ describe("puzzle generator benchmark", () => {
 
   it("fails closed when one required size is absent", () => {
     const corpus = buildIconBenchmarkCorpus();
-    const observations = perfectObservations().filter((observation) => observation.tileSize !== 36);
+    const observations = perfectObservations().filter((observation) => observation.tileSize !== 44);
     const report = scoreIconBenchmark({ cases: corpus, observations });
 
     expect(report.coverage).toBe(0.5);
@@ -59,14 +59,14 @@ describe("puzzle generator benchmark", () => {
       (entry) => entry.critical && entry.expected === "accept" && entry.intendedConcept === "car"
     )!;
     const failed = observations.map((observation) =>
-      observation.caseId === critical.id && observation.tileSize === 36
+      observation.caseId === critical.id && observation.tileSize === 44
         ? { ...observation, accepted: false }
         : observation
     );
     const report = scoreIconBenchmark({ cases: corpus, observations: failed });
 
     expect(report.promotion.passed).toBe(false);
-    expect(report.criticalFailures).toContain(`${critical.id}@36`);
+    expect(report.criticalFailures).toContain(`${critical.id}@44`);
   });
 
   it("blocks promotion when a judge disappears even if decisions look correct", () => {

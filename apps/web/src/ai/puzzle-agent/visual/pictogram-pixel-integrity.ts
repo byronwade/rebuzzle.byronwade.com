@@ -1,8 +1,9 @@
 import sharp from "sharp";
+import { PLAYER_ICON_GATE_SIZES } from "./presentation";
 import { PICTOGRAM_CANVAS, rasterizePictogramAtPlayerSize } from "./rasterize-pictogram";
 
-export const PICTOGRAM_PIXEL_INTEGRITY_VERSION = "pictogram-pixels-v1";
-export const PICTOGRAM_PIXEL_INTEGRITY_SIZES = [36, 72] as const;
+export const PICTOGRAM_PIXEL_INTEGRITY_VERSION = "pictogram-pixels-v2";
+export const PICTOGRAM_PIXEL_INTEGRITY_SIZES = PLAYER_ICON_GATE_SIZES;
 
 const REQUIRED_CONTRAST = 3;
 const MIN_FOREGROUND_RATIO = 0.06;

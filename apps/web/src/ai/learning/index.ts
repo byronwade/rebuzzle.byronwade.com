@@ -62,6 +62,12 @@ export {
 } from "./quality-drift";
 export { loadQualityDriftReport } from "./quality-drift-store";
 export {
+  assessHumanCalibrationGate,
+  loadHumanCalibrationGate,
+  type HumanCalibrationGate,
+  type HumanCalibrationStatus,
+} from "./human-calibration-gate";
+export {
   applySimCalibration,
   computeSimCalibrationFromPairs,
   loadSimCalibration,

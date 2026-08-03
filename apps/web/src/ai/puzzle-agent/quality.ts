@@ -13,6 +13,7 @@ import { TECHNIQUE_LIBRARY, type TechniqueId } from "./technique-library";
 import type { PuzzleVisual } from "./visual/composition";
 import { isAuthenticCuratedPictogram } from "./visual/curated-pictograms";
 import { scorePictogramClarity } from "./visual/pictogram-clarity";
+import { PLAYER_ICON_GATE_SIZES } from "./visual/presentation";
 
 export const TECHNIQUE_IDS = Object.keys(TECHNIQUE_LIBRARY) as TechniqueId[];
 
@@ -118,21 +119,32 @@ export type VisualPublishCheck = {
   textLayerCount: number;
 };
 
-export function evaluateVisualForPublish(visual?: {
-  mode?: string;
-  unicodeFallback?: string;
-  layers?: Array<{
-    kind: string;
-    svg?: string;
-    concept?: string;
-    assetId?: string;
-    source?: "catalog" | "generated" | "approved-cache";
-    recognitionProfiles?: Array<{ tileSize: number; seenAs: string; confidence: number }>;
-    src?: string;
-    content?: string;
-    emphasis?: string;
-  }>;
-}): VisualPublishCheck {
+export function evaluateVisualForPublish(
+  visual?: {
+    mode?: string;
+    unicodeFallback?: string;
+    layers?: Array<{
+      kind: string;
+      svg?: string;
+      concept?: string;
+      assetId?: string;
+      source?: "catalog" | "generated" | "approved-cache";
+      recognitionProfiles?: Array<{ tileSize: number; seenAs: string; confidence: number }>;
+      src?: string;
+      content?: string;
+      emphasis?: string;
+    }>;
+  },
+  options?: {
+    /**
+     * AI publication requires blind naming evidence on catalog icons.
+     * Offline reserve/static audits may disable this because they cannot
+     * spend vision judges; they still require authentic catalog provenance.
+     */
+    requireCatalogRecognitionEvidence?: boolean;
+  }
+): VisualPublishCheck {
+  const requireCatalogRecognitionEvidence = options?.requireCatalogRecognitionEvidence !== false;
   if (!visual) {
     return {
       ok: false,
@@ -176,16 +188,15 @@ export function evaluateVisualForPublish(visual?: {
   }
 
   for (const layer of pictogramLayers) {
-    if (
+    const authenticCatalog =
       layer.source === "catalog" &&
       isAuthenticCuratedPictogram({
         concept: layer.concept ?? "",
         assetId: layer.assetId,
         svg: layer.svg,
-      })
-    ) {
-      continue;
-    }
+      });
+    const approvedCache = layer.source === "approved-cache" && Boolean(layer.assetId);
+
     if (layer.source === "generated" || !layer.source) {
       return {
         ok: false,
@@ -198,21 +209,39 @@ export function evaluateVisualForPublish(visual?: {
         textLayerCount,
       };
     }
-    if (
-      layer.source === "approved-cache" &&
-      (!layer.assetId ||
-        ![36, 72].every((size) =>
-          layer.recognitionProfiles?.some((profile) => profile.tileSize === size)
-        ))
-    ) {
+
+    if (!authenticCatalog && !approvedCache) {
       return {
         ok: false,
-        reason: `Approved pictogram "${layer.concept ?? "unknown"}" is missing current player-size evidence`,
+        reason: `Pictogram "${layer.concept ?? "unknown"}" failed catalog authenticity checks`,
         mode: visual.mode,
         pictogramSvgCount,
         textLayerCount,
       };
     }
+
+    // Approved-cache always needs live evidence. Catalog needs it for AI publish.
+    const needsRecognitionEvidence =
+      approvedCache || (authenticCatalog && requireCatalogRecognitionEvidence);
+    if (
+      needsRecognitionEvidence &&
+      !PLAYER_ICON_GATE_SIZES.every((size) =>
+        layer.recognitionProfiles?.some((profile) => profile.tileSize === size)
+      )
+    ) {
+      return {
+        ok: false,
+        reason: `Pictogram "${layer.concept ?? "unknown"}" is missing current player-size recognition evidence`,
+        mode: visual.mode,
+        pictogramSvgCount,
+        textLayerCount,
+      };
+    }
+
+    // Authentic catalog assets are already publication-vetted; clarity re-check
+    // is for approved-cache / regenerated SVGs that may regress.
+    if (authenticCatalog) continue;
+
     const clarity = scorePictogramClarity(layer.svg);
     if (!clarity.ok) {
       return {

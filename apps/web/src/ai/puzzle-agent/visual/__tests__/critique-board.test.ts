@@ -44,7 +44,7 @@ function profile(
     ...result,
     profileId,
     viewportWidth: profileId === "compact-320" ? 320 : 768,
-    tileSize: profileId === "compact-320" ? 36 : 72,
+    tileSize: profileId === "compact-320" ? 44 : 72,
     width: profileId === "compact-320" ? 320 : 768,
     height: 120,
     wrappedRows: 1,

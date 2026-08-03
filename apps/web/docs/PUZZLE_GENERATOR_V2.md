@@ -160,10 +160,10 @@ The first implementation slice now includes:
 
 - a 98-concept publication catalog selected from 118 local Lucide-backed candidates, with 20 benchmark-failing assets quarantined behind exact provenance checks until replacements pass;
 - catalog-first resolution before long-tail SVG generation;
-- 36px and 72px rasterization so evaluators see compact and large player-level detail;
-- a deterministic 36px/72px pixel-integrity gate for contrast, visible-ink occupancy, subject bounds, canvas-edge contact, and rasterization failures, enforced before model calls and on approved-cache reuse;
-- two independent blind vision judges at every icon size;
-- one shared presentation specification used by the React player and server renderer;
+- player-tile rasterization derived from the shared board presentation spec (compact 44px + large 72px) so evaluators see the same sizes as the React player;
+- a deterministic player-tile pixel-integrity gate for contrast, visible-ink occupancy, subject bounds, canvas-edge contact, and rasterization failures, enforced before model calls and on approved-cache reuse;
+- two independent blind vision judges at every player tile size, including curated catalog icons on the publication path (catalog provenance alone is not sufficient);
+- one shared presentation specification used by the React player, server renderer, icon panels, and publish evidence;
 - independent board perception at compact 320px, mobile 375px, and desktop 768px;
 - two-judge visibility consensus for every pictogram, text cue, and operator at its declared multiplicity in every responsive profile;
 - screenshot-only solve tournaments across every production profile, separated from answer-aware hint review;
@@ -176,7 +176,8 @@ The first implementation slice now includes:
 - a frozen 196-specimen publication icon evaluator corpus producing 392 required decisions, plus an opt-in diagnostic lane for quarantined candidates;
 - an admin-only blind human naming panel for all 196 publication catalog/size specimens, with opaque fixture IDs and browser payloads that contain no concept, alias, asset ID, or correctness signal;
 - immutable one-response-per-reviewer/specimen storage, reviewer-specific randomized order, private no-store transport, and results withheld until that reviewer completes the full panel;
-- separate human release (90%) and market-leading (97%) top-1 gates at both 36px and 72px, requiring at least three independent reviewers for every specimen;
+- separate human release (90%) and market-leading (97%) top-1 gates at both player tile sizes, requiring at least three independent reviewers for every specimen;
+- a human-calibration circuit breaker (`human-calibration-gate-v1`) that moves daily publication to reserve only when fully covered icon-panel or playtest release cohorts fail — collecting samples stay watch/insufficient and do not halt AI;
 - a per-specimen two-of-three hard floor so a single unusable icon cannot hide behind a strong catalog average, plus weakest-concept and semantic-confusion reports for replacement decisions;
 - a versioned generated-pictogram registry for long-tail concepts that are not covered by the curated catalog;
 - one pending generated candidate per normalized concept, immutable blind reviews, and unanimous three-reviewer approval at both 36px and 72px before an asset can be reused;

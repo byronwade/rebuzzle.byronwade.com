@@ -13,6 +13,18 @@ export const PUZZLE_BOARD_SIZE_SPECS: Record<PuzzleBoardSize, PuzzleBoardSizeSpe
   large: { tile: 72, fontSize: 44, gap: 12 },
 };
 
+/**
+ * Exact player tile sizes used for icon pixel integrity, blind naming,
+ * human panels, and publish evidence. Always derived from the board specs
+ * so compact/desktop gates match the React player.
+ */
+export const PLAYER_ICON_GATE_SIZES = [
+  PUZZLE_BOARD_SIZE_SPECS.small.tile,
+  PUZZLE_BOARD_SIZE_SPECS.large.tile,
+] as const;
+
+export type PlayerIconGateSize = (typeof PLAYER_ICON_GATE_SIZES)[number];
+
 export const PUZZLE_BOARD_RECOGNITION_PROFILES = [
   {
     id: "compact-320",

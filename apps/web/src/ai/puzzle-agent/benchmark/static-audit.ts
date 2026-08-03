@@ -100,7 +100,11 @@ async function auditPuzzle(puzzle: StaticAuditPuzzle): Promise<StaticPuzzleAudit
     return { id: puzzle.id, source: puzzle.source, profilesRendered: 0, passed: false, failures };
   }
 
-  const visualCheck = evaluateVisualForPublish(puzzle.visual);
+  const visualCheck = evaluateVisualForPublish(puzzle.visual, {
+    // Static audit is no-spend: catalog authenticity + pixel integrity cover
+    // offline inventory. Live blind naming is enforced on AI publish.
+    requireCatalogRecognitionEvidence: false,
+  });
   if (!visualCheck.ok) failures.push(visualCheck.reason ?? "Visual failed publish preflight");
   if (puzzle.rebusPuzzle !== puzzle.visual.unicodeFallback) {
     failures.push("rebusPuzzle does not equal visual.unicodeFallback");

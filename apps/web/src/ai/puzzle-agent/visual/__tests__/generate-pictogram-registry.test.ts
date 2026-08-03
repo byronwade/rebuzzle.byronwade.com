@@ -27,7 +27,7 @@ function recognition(ok = true, seenLabel = "lighthouse") {
     judges: [],
     profileResults: [
       {
-        tileSize: 36,
+        tileSize: 44,
         ok,
         seenLabel,
         confidence: ok ? 0.94 : 0.2,
