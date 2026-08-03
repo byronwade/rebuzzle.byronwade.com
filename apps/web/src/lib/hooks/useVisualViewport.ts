@@ -45,17 +45,6 @@ function roundPx(n: number): number {
   return Math.round(n);
 }
 
-function framesEqual(a: VisualViewportFrame, b: VisualViewportFrame): boolean {
-  return (
-    a.top === b.top &&
-    a.height === b.height &&
-    a.width === b.width &&
-    a.keyboardInset === b.keyboardInset &&
-    a.isKeyboardOpen === b.isKeyboardOpen &&
-    a.isLayoutCompact === b.isLayoutCompact
-  );
-}
-
 function measureRaw(): Omit<VisualViewportFrame, "isKeyboardOpen" | "isLayoutCompact"> {
   if (typeof window === "undefined") {
     return EMPTY_FRAME;
