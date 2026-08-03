@@ -9,8 +9,5 @@ export type AppLinkProps = ComponentProps<typeof NextLink>;
  */
 export function AppLink({ prefetch, ...props }: AppLinkProps) {
   const wantPrefetch = prefetch === true;
-  if (wantPrefetch) {
-    return <NextLink prefetch={true} {...props} />;
-  }
-  return <NextLink prefetch={false} {...props} />;
+  return <NextLink prefetch={false} {...props} {...(wantPrefetch ? { prefetch: true as const } : {})} />;
 }
