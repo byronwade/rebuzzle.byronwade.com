@@ -58,25 +58,37 @@ export async function loadDiversitySnapshot(input?: {
     docs = [];
   }
 
-  const recentAnswers = docs.map((d) => String(d.answer ?? "")).filter(Boolean);
-  const techniques = docs.map((d) => String(d.metadata?.techniqueId ?? "")).filter(Boolean);
-  const categories = docs
-    .map((d) => String(d.metadata?.category ?? d.category ?? ""))
-    .filter(Boolean);
+  const recentAnswers = docs.flatMap((d) => {
+    const answer = String(d.answer ?? "");
+    return answer ? [answer] : [];
+  });
+  const techniques = docs.flatMap((d) => {
+    const technique = String(d.metadata?.techniqueId ?? "");
+    return technique ? [technique] : [];
+  });
+  const categories = docs.flatMap((d) => {
+    const category = String(d.metadata?.category ?? d.category ?? "");
+    return category ? [category] : [];
+  });
 
   const recentTechniques = countBy(techniques);
   const recentCategories = countBy(categories);
 
   const allTierTechniques = new Set(DIFFICULTY_LEVELS.flatMap((l) => l.techniques));
-  const usedRecently = new Set(recentTechniques.filter((t) => t.count >= 2).map((t) => t.id));
-  const overusedTechniques = recentTechniques.filter((t) => t.count >= 3).map((t) => t.id);
+  const usedRecently = new Set(
+    recentTechniques.flatMap((t) => (t.count >= 2 ? [t.id] : []))
+  );
+  const overusedTechniques = recentTechniques.flatMap((t) => (t.count >= 3 ? [t.id] : []));
 
   const underusedTechniques = [...allTierTechniques].filter(
     (id) => !usedRecently.has(id) && TECHNIQUE_IDS.includes(id as never)
   );
 
   const bannedAnswerKeys = [
-    ...new Set(recentAnswers.map((a) => normalizeAnswerKey(a)).filter(Boolean)),
+    ...new Set(recentAnswers.flatMap((a) => {
+      const key = normalizeAnswerKey(a);
+      return key ? [key] : [];
+    })),
   ];
 
   return {

@@ -259,7 +259,11 @@ export function PuzzleVisualBoard({
       {layers.map((layer, index) => (
         <LayerView
           // Layers are ordered composition — index is stable for a given board
-          key={`${layer.kind}-${index}`}
+          key={`${layer.kind}-${"svg" in layer && layer.svg ? layer.svg.slice(0, 48) : ""}${
+            "text" in layer && layer.text ? layer.text : ""
+          }${"src" in layer && layer.src ? layer.src : ""}${
+            "emojiFallback" in layer && layer.emojiFallback ? layer.emojiFallback : ""
+          }`}
           layer={layer}
           index={index}
           size={resolvedSize}

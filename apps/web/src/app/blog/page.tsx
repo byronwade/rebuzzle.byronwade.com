@@ -16,6 +16,7 @@ import {
   generateItemListSchema,
 } from "@/lib/seo/structured-data";
 import { fetchBlogPostsPaginated } from "../actions/blogActions";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
@@ -152,15 +153,15 @@ async function BlogContent() {
   return (
     <Layout>
       <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(itemListSchema) }}
         type="application/ld+json"
       />
       <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
         type="application/ld+json"
       />
       <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
         type="application/ld+json"
       />
 

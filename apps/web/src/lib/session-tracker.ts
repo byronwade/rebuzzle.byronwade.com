@@ -117,7 +117,7 @@ export function endSession(): void {
 /**
  * Update session with user ID (when user logs in)
  */
-export function updateSessionUserId(userId: string): void {
+function updateSessionUserId(userId: string): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -130,7 +130,7 @@ export function updateSessionUserId(userId: string): void {
 /**
  * Get current session data
  */
-export function getCurrentSession(): SessionData | null {
+function getCurrentSession(): SessionData | null {
   if (typeof window === "undefined") {
     return null;
   }

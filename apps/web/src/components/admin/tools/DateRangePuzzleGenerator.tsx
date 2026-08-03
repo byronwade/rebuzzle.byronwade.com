@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -19,6 +20,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 interface DateRangePuzzleGeneratorProps {
   onPuzzlesSaved?: () => void;
@@ -41,47 +43,47 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
   const puzzleTypes = listPuzzleTypes();
 
   const handleGenerate = async () => {
-    setLoading(true);
-    setGeneratedPuzzles([]);
-    setSelectedPuzzles(new Set());
+        await withLoadingFlag(setLoading, async () => {
+      setGeneratedPuzzles([]);
+      setSelectedPuzzles(new Set());
 
-    try {
-      const response = await fetch("/api/admin/puzzles/generate-date-range", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          puzzleType: formData.puzzleType,
-          difficulty: formData.difficulty,
-          category: formData.category || undefined,
-          theme: formData.theme || undefined,
-        }),
-      });
+      try {
+        const response = await fetch("/api/admin/puzzles/generate-date-range", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            puzzleType: formData.puzzleType,
+            difficulty: formData.difficulty,
+            category: formData.category || undefined,
+            theme: formData.theme || undefined,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        fail(data.error || "Failed to generate puzzles");
+        if (!data.success) {
+          fail(data.error || "Failed to generate puzzles");
+        }
+
+        setGeneratedPuzzles(data.puzzles);
+        // Select all by default
+        setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
+
+        toast({
+          title: "Puzzles Generated",
+          description: `Generated ${data.puzzles.length} puzzles for date range. ${data.metadata?.failed || 0} failed.`,
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      setGeneratedPuzzles(data.puzzles);
-      // Select all by default
-      setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
-
-      toast({
-        title: "Puzzles Generated",
-        description: `Generated ${data.puzzles.length} puzzles for date range. ${data.metadata?.failed || 0} failed.`,
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
+    });
 
   };
 
@@ -218,11 +220,13 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {puzzleTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {puzzleTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -300,7 +304,10 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
           <CardContent>
             <div className="space-y-4">
               {generatedPuzzles.map((puzzle, index) => (
-                <div className="flex items-start gap-4 rounded-lg border p-4" key={index}>
+                <div
+                  className="flex items-start gap-4 rounded-lg border p-4"
+                  key={`${puzzle.date || puzzle.publishedAt}-${puzzle.answer}-${puzzle.puzzle.slice(0, 32)}`}
+                >
                   <Checkbox
                     aria-label="Select generated puzzle"
                     checked={selectedPuzzles.has(index)}

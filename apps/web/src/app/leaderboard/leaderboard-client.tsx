@@ -26,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { getLevelProgress as getProgress } from "@/lib/gameSettings";
 import { generateItemListSchema } from "@/lib/seo/structured-data";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 interface LeaderboardEntry {
   rank: number;
@@ -193,7 +194,7 @@ export default function LeaderboardClient({
       {leaderboardSchema && (
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(leaderboardSchema),
+            __html: serializeJsonLd(leaderboardSchema),
           }}
           type="application/ld+json"
         />
@@ -485,14 +486,14 @@ export default function LeaderboardClient({
                           {/* Player Info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="truncate font-semibold text-foreground text-sm sm:text-base">
+                              <p className="truncate font-semibold text-foreground text-sm sm:text-base">
                                 {entry.user.username}
                                 {isCurrentUser && (
                                   <span className="ml-2 font-normal text-warning text-xs">
                                     (You)
                                   </span>
                                 )}
-                              </h3>
+                              </p>
                               {entry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-[11px] sm:text-xs">
                                   <Zap className="size-3" />
@@ -557,10 +558,10 @@ export default function LeaderboardClient({
                           {/* Player Info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <h3 className="truncate font-semibold text-sm md:text-base text-foreground">
+                              <p className="truncate font-semibold text-sm md:text-base text-foreground">
                                 {userEntry.user.username}
                                 <span className="ml-2 text-warning text-xs font-normal">(You)</span>
-                              </h3>
+                              </p>
                               {userEntry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-xs">
                                   <Zap className="size-3" />
@@ -617,9 +618,9 @@ export default function LeaderboardClient({
                     <Sparkles className="size-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-base text-foreground">
+                    <p className="font-semibold text-base text-foreground">
                       Achievements & Levels
-                    </h3>
+                    </p>
                     <p className="text-muted-foreground text-sm">
                       View all 100 achievements and 8 rank tiers
                     </p>

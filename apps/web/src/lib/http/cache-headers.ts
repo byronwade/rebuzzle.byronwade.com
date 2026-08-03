@@ -33,7 +33,7 @@ export function buildCacheControl(options: CacheHeaderOptions = {}): string {
  * Prefer passing headers inline via `buildCacheControl` so static analyzers see
  * the `"Cache-Control"` key in the route module.
  */
-export function withCacheHeaders<T extends NextResponse>(
+function withCacheHeaders<T extends NextResponse>(
   response: T,
   options: CacheHeaderOptions = {}
 ): T {
@@ -42,6 +42,6 @@ export function withCacheHeaders<T extends NextResponse>(
 }
 
 /** Headers object with literal Cache-Control key (doctor-friendly). */
-export function cacheControlHeaders(options: CacheHeaderOptions = {}): { "Cache-Control": string } {
+function cacheControlHeaders(options: CacheHeaderOptions = {}): { "Cache-Control": string } {
   return { "Cache-Control": buildCacheControl(options) };
 }

@@ -75,7 +75,7 @@ export async function archiveTodaysPuzzle(): Promise<{
 }
 
 /** @deprecated Prefer archiveTodaysPuzzle — hard delete destroys uniqueness history */
-export async function deleteTodaysPuzzle(): Promise<{
+async function deleteTodaysPuzzle(): Promise<{
   success: boolean;
   message: string;
 }> {

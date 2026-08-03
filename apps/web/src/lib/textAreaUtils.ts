@@ -54,21 +54,21 @@ export function restoreCursorPosition(
 /**
  * Get text before cursor
  */
-export function getTextBeforeCursor(text: string, cursorPosition: number): string {
+function getTextBeforeCursor(text: string, cursorPosition: number): string {
   return text.slice(0, cursorPosition);
 }
 
 /**
  * Get text after cursor
  */
-export function getTextAfterCursor(text: string, cursorPosition: number): string {
+function getTextAfterCursor(text: string, cursorPosition: number): string {
   return text.slice(cursorPosition);
 }
 
 /**
  * Get current word at cursor position
  */
-export function getCurrentWord(
+function getCurrentWord(
   text: string,
   cursorPosition: number
 ): { word: string; start: number; end: number } | null {
@@ -96,7 +96,7 @@ export function getCurrentWord(
 /**
  * Insert text at cursor position
  */
-export function insertTextAtCursor(
+function insertTextAtCursor(
   text: string,
   cursorPosition: CursorPosition,
   insertText: string
@@ -226,7 +226,7 @@ export interface CharacterValidation {
 /**
  * Validate characters in input against answer
  */
-export function validateCharacters(
+function validateCharacters(
   input: string,
   answer: string,
   fuzzyThreshold = 0.8
@@ -318,7 +318,7 @@ function calculateCharSimilarity(char1: string, char2: string): number {
 /**
  * Split text into words while preserving spaces
  */
-export function splitWordsPreservingSpaces(text: string): Array<{
+function splitWordsPreservingSpaces(text: string): Array<{
   text: string;
   isSpace: boolean;
   index: number;
@@ -359,7 +359,7 @@ export interface TextMetrics {
 /**
  * Get text metrics from a textarea element
  */
-export function getTextMetrics(textarea: HTMLTextAreaElement): TextMetrics {
+function getTextMetrics(textarea: HTMLTextAreaElement): TextMetrics {
   const computed = window.getComputedStyle(textarea);
 
   return {

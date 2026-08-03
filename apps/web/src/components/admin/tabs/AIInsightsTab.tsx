@@ -32,6 +32,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -327,10 +328,12 @@ export function AIInsightsTab() {
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="14d">Last 14 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectGroup>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="14d">Last 14 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
           <Button
@@ -506,8 +509,8 @@ export function AIInsightsTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {analytics.satisfactionTrend.slice(0, 10).map((d, i) => (
-                          <TableRow key={i}>
+                        {analytics.satisfactionTrend.slice(0, 10).map((d) => (
+                          <TableRow key={d.date}>
                             <TableCell>{new Date(d.date).toLocaleDateString()}</TableCell>
                             <TableCell>{d.avgRating.toFixed(1)}</TableCell>
                             <TableCell>{d.avgSatisfaction.toFixed(1)}</TableCell>
@@ -683,10 +686,13 @@ export function AIInsightsTab() {
                   {/* Chain of Thought */}
                   {selectedDecision.chainOfThought?.steps && (
                     <div>
-                      <h4 className="mb-4 font-semibold">Chain of Thought</h4>
+                      <h3 className="mb-4 font-semibold">Chain of Thought</h3>
                       <div className="space-y-4">
-                        {selectedDecision.chainOfThought.steps.map((step, i) => (
-                          <div key={i} className="relative border-l-2 border-primary/30 pl-4">
+                        {selectedDecision.chainOfThought.steps.map((step) => (
+                          <div
+                            key={`${step.stepNumber}-${step.stepType}-${step.description}`}
+                            className="relative border-l-2 border-primary/30 pl-4"
+                          >
                             <div className="absolute -left-2 top-0 h-4 w-4 rounded-full bg-primary" />
                             <div className="mb-1 flex items-center gap-2">
                               <Badge variant="outline">{step.stepType}</Badge>
@@ -705,7 +711,7 @@ export function AIInsightsTab() {
                   {/* Quality Metrics */}
                   {selectedDecision.qualityMetrics && (
                     <div>
-                      <h4 className="mb-2 font-semibold">Quality Metrics</h4>
+                      <h3 className="mb-2 font-semibold">Quality Metrics</h3>
                       <div className="flex items-center gap-4">
                         <div className="text-2xl font-bold">
                           {selectedDecision.qualityMetrics.score}%
@@ -728,7 +734,7 @@ export function AIInsightsTab() {
                   {/* Error */}
                   {selectedDecision.output.error && (
                     <div>
-                      <h4 className="mb-2 font-semibold text-destructive">Error</h4>
+                      <h3 className="mb-2 font-semibold text-destructive">Error</h3>
                       <pre className="overflow-x-auto rounded bg-muted p-4 text-sm">
                         {selectedDecision.output.error}
                       </pre>

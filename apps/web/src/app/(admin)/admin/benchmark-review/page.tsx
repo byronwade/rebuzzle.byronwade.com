@@ -41,6 +41,7 @@ import type {
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 type Queue = {
   items: BenchmarkReviewFixture[];
@@ -107,44 +108,42 @@ export default function BenchmarkReviewPage() {
 
   const loadQueue = useCallback(
     async (requestedPage = page) => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({
-          datasetId: DATASET_ID,
-          status,
-          page: String(requestedPage),
-          limit: "20",
-        });
-        const response = await fetch(`/api/admin/ai/benchmark-reviews?${params}`, {
-          cache: "no-store",
-        });
-        if (response.status === 401) {
-          router.push("/login");
-          setLoading(false);
-          return;
+      await withLoadingFlag(setLoading, async () => {
+        try {
+          const params = new URLSearchParams({
+            datasetId: DATASET_ID,
+            status,
+            page: String(requestedPage),
+            limit: "20",
+          });
+          const response = await fetch(`/api/admin/ai/benchmark-reviews?${params}`, {
+            cache: "no-store",
+          });
+          if (response.status === 401) {
+            router.push("/login");
+            return;
+          }
+          const data = await safeJsonParse<{ success: boolean; queue?: Queue; error?: string }>(
+            response
+          );
+          if (response.status === 404) {
+            setNotImported(true);
+            setQueue(null);
+            return;
+          }
+          if (!response.ok || !data?.queue)
+            fail(data?.error || "Review queue unavailable");
+          setQueue(data.queue);
+          setPage(data.queue.page);
+          setNotImported(false);
+        } catch (error) {
+          toast({
+            title: "Review queue unavailable",
+            description: error instanceof Error ? error.message : "Try again shortly",
+            variant: "destructive",
+          });
         }
-        const data = await safeJsonParse<{ success: boolean; queue?: Queue; error?: string }>(
-          response
-        );
-        if (response.status === 404) {
-          setNotImported(true);
-          setQueue(null);
-          setLoading(false);
-          return;
-        }
-        if (!response.ok || !data?.queue)
-          fail(data?.error || "Review queue unavailable");
-        setQueue(data.queue);
-        setPage(data.queue.page);
-        setNotImported(false);
-      } catch (error) {
-        toast({
-          title: "Review queue unavailable",
-          description: error instanceof Error ? error.message : "Try again shortly",
-          variant: "destructive",
-        });
-      }
-      setLoading(false);
+      });
 
     },
     [page, router, status, toast]
@@ -164,32 +163,32 @@ export default function BenchmarkReviewPage() {
   const submitDecision = useCallback(
     async (action: DecisionAction) => {
       if (!current || saving) return;
-      setSaving(true);
-      try {
-        const decisions = decisionFor(current, action);
-        const response = await fetch("/api/admin/ai/benchmark-reviews", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            id: current.id,
-            expectedVersion: current.version,
-            ...decisions,
-            note,
-          }),
-        });
-        const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
-        if (!response.ok) fail(data?.error || "Decision was not saved");
-        setNote("");
-        await loadQueue(page);
-      } catch (error) {
-        toast({
-          title: "Decision not saved",
-          description: error instanceof Error ? error.message : "Refresh and try again",
-          variant: "destructive",
-        });
-        if (error instanceof Error && error.message.includes("refresh")) await loadQueue(page);
-      }
-      setSaving(false);
+      await withLoadingFlag(setSaving, async () => {
+        try {
+          const decisions = decisionFor(current, action);
+          const response = await fetch("/api/admin/ai/benchmark-reviews", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              id: current.id,
+              expectedVersion: current.version,
+              ...decisions,
+              note,
+            }),
+          });
+          const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
+          if (!response.ok) fail(data?.error || "Decision was not saved");
+          setNote("");
+          await loadQueue(page);
+        } catch (error) {
+          toast({
+            title: "Decision not saved",
+            description: error instanceof Error ? error.message : "Refresh and try again",
+            variant: "destructive",
+          });
+          if (error instanceof Error && error.message.includes("refresh")) await loadQueue(page);
+        }
+      });
 
     },
     [current, loadQueue, note, page, saving, toast]

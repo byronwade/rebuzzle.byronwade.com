@@ -57,7 +57,7 @@ export default function AIQuotaExceededPage() {
 
               {/* Info Box */}
               <div className="rounded-lg border border-border bg-muted p-4 text-left">
-                <h3 className="mb-2 font-semibold text-foreground">Why did this happen?</h3>
+                <h2 className="mb-2 font-semibold text-base text-foreground">Why did this happen?</h2>
                 <p className="text-muted-foreground text-sm">
                   We use Google's free tier AI service (Gemini) which has a limit of 1,500 requests
                   per day. This helps us keep Rebuzzle free for everyone! The quota automatically

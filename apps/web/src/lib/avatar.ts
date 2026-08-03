@@ -120,9 +120,9 @@ export function getAvatarClassName(props: AvatarProps, useDark = false): string 
 }
 
 /** Number of selectable avatar fills — used by the profile colour picker. */
-export const AVATAR_COLOR_COUNT = AVATAR_COLORS.length;
+const AVATAR_COLOR_COUNT = AVATAR_COLORS.length;
 
 /** Class list for a swatch at index, for rendering the picker. */
-export function getAvatarSwatchClassName(index: number): string {
+function getAvatarSwatchClassName(index: number): string {
   return (AVATAR_COLORS[index] ?? AVATAR_COLORS[0]).bg;
 }

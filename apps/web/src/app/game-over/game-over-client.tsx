@@ -456,6 +456,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       {success && showConfetti && <Confetti />}
 
       <div className="mx-auto max-w-lg px-4 py-12 md:py-16">
+        <h1 className="sr-only">{success ? "Puzzle solved" : "Puzzle not solved"}</h1>
         {success ? (
           /* SUCCESS STATE - Minimal & Clean */
           <div className="fade-in-up space-y-10">
@@ -464,7 +465,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-success/25 bg-success/10">
                 <Check className="h-5 w-5 text-success" strokeWidth={2.5} />
               </div>
-              <h1 className="font-semibold text-4xl text-foreground tracking-[-0.045em]">Solved</h1>
+              <p className="font-semibold text-4xl text-foreground tracking-[-0.045em]">Solved</p>
               <p className="text-muted-foreground text-sm">You got today's puzzle</p>
             </div>
 
@@ -616,7 +617,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     const isWinning = index === completionData.guessHistory.length - 1;
                     return (
                       <div
-                        key={index}
+                        key={`guess-${attempt.attemptNumber}-${attempt.text}`}
                         className={cn(
                           "flex items-center gap-3 rounded-lg border p-3",
                           isWinning
@@ -633,9 +634,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                           {isWinning ? <Check className="h-3.5 w-3.5" /> : attempt.attemptNumber}
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          {attempt.wordResults.map((result, wordIndex) => (
+                          {attempt.wordResults.map((result) => (
                             <span
-                              key={wordIndex}
+                              key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                               className={cn(
                                 "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
                                 result.correct
@@ -720,9 +721,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-inset">
                 <X className="h-8 w-8 text-muted-foreground" strokeWidth={2} />
               </div>
-              <h1 className="font-semibold text-4xl text-foreground tracking-[-0.045em]">
+              <p className="font-semibold text-4xl text-foreground tracking-[-0.045em]">
                 Not quite
-              </h1>
+              </p>
               <p className="text-muted-foreground text-sm">Better luck tomorrow</p>
             </div>
 
@@ -825,18 +826,18 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               <div className="space-y-3">
                 <p className="eyebrow text-center">Your Attempts</p>
                 <div className="space-y-2">
-                  {completionData.guessHistory.map((attempt, index) => (
+                  {completionData.guessHistory.map((attempt) => (
                     <div
-                      key={index}
+                      key={`attempt-${attempt.attemptNumber}-${attempt.wordResults.map((r) => r.word).join("-")}`}
                       className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
                     >
                       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-inset font-mono text-[10px] text-subtle">
                         {attempt.attemptNumber}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {attempt.wordResults.map((result, wordIndex) => (
+                        {attempt.wordResults.map((result) => (
                           <span
-                            key={wordIndex}
+                            key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                             className={cn(
                               "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
                               result.correct

@@ -94,7 +94,7 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
  * Decode a JWT token without verification (use with caution)
  * This is useful for reading token data when you don't need to verify
  */
-export function decodeToken(token: string): TokenPayload | null {
+function decodeToken(token: string): TokenPayload | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3 || !parts[1]) {

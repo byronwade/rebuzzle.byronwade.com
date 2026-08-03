@@ -9,6 +9,7 @@ import {
   generateFAQPageSchema,
   generateItemListSchema,
 } from "@/lib/seo/structured-data";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 export const metadata: Metadata = generatePageMetadata({
   title: "Rebuzzle vs Wordle - Which Puzzle Game is Better?",
@@ -145,19 +146,19 @@ export default function RebuzzleVsWordlePage() {
     <Layout>
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbSchema),
+          __html: serializeJsonLd(breadcrumbSchema),
         }}
         type="application/ld+json"
       />
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqSchema),
+          __html: serializeJsonLd(faqSchema),
         }}
         type="application/ld+json"
       />
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(itemListSchema),
+          __html: serializeJsonLd(itemListSchema),
         }}
         type="application/ld+json"
       />
@@ -213,8 +214,8 @@ export default function RebuzzleVsWordlePage() {
                 </tr>
               </thead>
               <tbody className="bg-card">
-                {comparisonFeatures.map((feature, index) => (
-                  <tr className="border-border border-b last:border-b-0" key={index}>
+                {comparisonFeatures.map((feature) => (
+                  <tr className="border-border border-b last:border-b-0" key={feature.feature}>
                     <td className="px-4 py-3 font-medium text-foreground text-sm">
                       {feature.feature}
                     </td>

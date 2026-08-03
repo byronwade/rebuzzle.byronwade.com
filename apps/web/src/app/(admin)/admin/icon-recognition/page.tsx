@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Eye, Loader2, SkipForward } from "lucide-react";
+import { Eye, Loader2, SkipForward } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 type NextResponse = {
   success?: boolean;
@@ -69,29 +70,28 @@ export default function IconRecognitionPage() {
   }, [panelId, router]);
 
   const loadNext = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setReport(null);
-    try {
-      const response = await fetch(`/api/admin/ai/icon-recognition?panel=${panelId}`, {
-        cache: "no-store",
-      });
-      if (response.status === 401) {
-        router.push("/login");
-        setLoading(false);
-        return;
+    await withLoadingFlag(setLoading, async () => {
+      setError(null);
+      setReport(null);
+      try {
+        const response = await fetch(`/api/admin/ai/icon-recognition?panel=${panelId}`, {
+          cache: "no-store",
+        });
+        if (response.status === 401) {
+          router.push("/login");
+          return;
+        }
+        const data = await safeJsonParse<NextResponse>(response);
+        if (!response.ok || !data?.progress) {
+          fail(data?.error || "Failed to load recognition specimen");
+        }
+        setSpecimen(data.specimen ?? null);
+        setProgress(data.progress);
+        if (data.progress.complete) await loadReport();
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load recognition panel");
       }
-      const data = await safeJsonParse<NextResponse>(response);
-      if (!response.ok || !data?.progress) {
-        fail(data?.error || "Failed to load recognition specimen");
-      }
-      setSpecimen(data.specimen ?? null);
-      setProgress(data.progress);
-      if (data.progress.complete) await loadReport();
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load recognition panel");
-    }
-    setLoading(false);
+    });
 
   }, [loadReport, panelId, router]);
 
@@ -110,30 +110,30 @@ export default function IconRecognitionPage() {
       toast({ title: "Enter the object name or choose I don't know", variant: "destructive" });
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/admin/ai/icon-recognition", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          panelId,
-          fixtureId: specimen.fixtureId,
-          guess: input.uncertain ? "" : guess,
-          uncertain: input.uncertain,
-        }),
-      });
-      const data = await safeJsonParse<NextResponse>(response);
-      if (!response.ok) fail(data?.error || "Failed to save response");
-      setGuess("");
-      await loadNext();
-    } catch (saveError) {
-      toast({
-        title: "Response not saved",
-        description: saveError instanceof Error ? saveError.message : "Try again",
-        variant: "destructive",
-      });
-    }
-    setIsSubmitting(false);
+    await withLoadingFlag(setIsSubmitting, async () => {
+      try {
+        const response = await fetch("/api/admin/ai/icon-recognition", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            panelId,
+            fixtureId: specimen.fixtureId,
+            guess: input.uncertain ? "" : guess,
+            uncertain: input.uncertain,
+          }),
+        });
+        const data = await safeJsonParse<NextResponse>(response);
+        if (!response.ok) fail(data?.error || "Failed to save response");
+        setGuess("");
+        await loadNext();
+      } catch (saveError) {
+        toast({
+          title: "Response not saved",
+          description: saveError instanceof Error ? saveError.message : "Try again",
+          variant: "destructive",
+        });
+      }
+    });
 
   };
 
@@ -223,7 +223,6 @@ export default function IconRecognitionPage() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Panel unavailable</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -283,7 +282,6 @@ export default function IconRecognitionPage() {
       {report && (
         <div className="space-y-6">
           <Alert variant={report.marketLeadingReady ? "default" : "destructive"}>
-            <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>Blind panel complete</AlertTitle>
             <AlertDescription>
               Aggregate status: {report.status}. This report includes all independent reviewer

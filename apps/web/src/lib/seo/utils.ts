@@ -19,7 +19,7 @@ export function getCanonicalUrl(path: string): string {
 /**
  * Format a date for SEO metadata (ISO 8601)
  */
-export function formatDateForSEO(date: Date | string): string {
+function formatDateForSEO(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toISOString();
 }
@@ -35,7 +35,7 @@ export function truncateDescription(text: string, maxLength = 160): string {
 /**
  * Generate keywords array from text
  */
-export function generateKeywords(text: string, additional: string[] = []): string[] {
+function generateKeywords(text: string, additional: string[] = []): string[] {
   const words = text
     .toLowerCase()
     .replace(/[^\w\s]/g, " ")
@@ -56,6 +56,6 @@ export function getBaseUrl(): string {
 /**
  * Build a full URL from a path
  */
-export function buildUrl(path: string): string {
+function buildUrl(path: string): string {
   return getCanonicalUrl(path);
 }

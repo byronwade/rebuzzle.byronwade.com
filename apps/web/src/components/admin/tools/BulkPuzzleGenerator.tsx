@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -19,6 +20,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 interface BulkPuzzleGeneratorProps {
   onPuzzlesSaved?: () => void;
@@ -41,47 +43,47 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
   const puzzleTypes = listPuzzleTypes();
 
   const handleGenerate = async () => {
-    setLoading(true);
-    setGeneratedPuzzles([]);
-    setSelectedPuzzles(new Set());
+        await withLoadingFlag(setLoading, async () => {
+      setGeneratedPuzzles([]);
+      setSelectedPuzzles(new Set());
 
-    try {
-      const response = await fetch("/api/admin/puzzles/generate-bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          count: formData.count,
-          puzzleType: formData.puzzleType,
-          difficultyMin: formData.difficultyMin,
-          difficultyMax: formData.difficultyMax,
-          category: formData.category || undefined,
-          theme: formData.theme || undefined,
-        }),
-      });
+      try {
+        const response = await fetch("/api/admin/puzzles/generate-bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            count: formData.count,
+            puzzleType: formData.puzzleType,
+            difficultyMin: formData.difficultyMin,
+            difficultyMax: formData.difficultyMax,
+            category: formData.category || undefined,
+            theme: formData.theme || undefined,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        fail(data.error || "Failed to generate puzzles");
+        if (!data.success) {
+          fail(data.error || "Failed to generate puzzles");
+        }
+
+        setGeneratedPuzzles(data.puzzles);
+        // Select all by default
+        setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
+
+        toast({
+          title: "Puzzles Generated",
+          description: `Generated ${data.puzzles.length} puzzles. ${data.metadata?.failed || 0} failed.`,
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      setGeneratedPuzzles(data.puzzles);
-      // Select all by default
-      setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
-
-      toast({
-        title: "Puzzles Generated",
-        description: `Generated ${data.puzzles.length} puzzles. ${data.metadata?.failed || 0} failed.`,
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
+    });
 
   };
 
@@ -191,11 +193,13 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {puzzleTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {puzzleTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>

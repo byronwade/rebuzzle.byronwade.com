@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -116,9 +117,8 @@ export default function ResetPasswordPage() {
     }
 
     setErrors({});
-    setIsLoading(true);
-
-    try {
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -161,7 +161,7 @@ export default function ResetPasswordPage() {
           });
         }
       }
-    } catch (error) {
+      } catch (error) {
       console.error("Reset password error:", error);
       const errorMessage = "Failed to connect to server. Please try again.";
       setErrors({ form: errorMessage });
@@ -170,9 +170,8 @@ export default function ResetPasswordPage() {
         description: errorMessage,
         variant: "destructive",
       });
-    }
-    setIsLoading(false);
-
+      }
+    });
   };
 
   if (!token) {

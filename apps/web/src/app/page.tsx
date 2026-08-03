@@ -17,6 +17,7 @@ import {
   fetchGameData,
   isPuzzleCompletedForToday,
 } from "./actions/gameActions";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 /**
  * Generate dynamic metadata based on today's puzzle
@@ -296,19 +297,19 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
     <Layout isGamePage>
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(gameSchema),
+          __html: serializeJsonLd(gameSchema),
         }}
         type="application/ld+json"
       />
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqSchema),
+          __html: serializeJsonLd(faqSchema),
         }}
         type="application/ld+json"
       />
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(howToSchema),
+          __html: serializeJsonLd(howToSchema),
         }}
         type="application/ld+json"
       />

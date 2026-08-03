@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, FlaskConical, Loader2, Send, ShieldCheck } from "lucide-react";
+import { FlaskConical, Loader2, Send } from "lucide-react";
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ import type { PuzzlePlaytestFailureReason } from "@/db/models";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 type QueueResponse = {
   success?: boolean;
@@ -51,26 +52,25 @@ export default function PlaytestPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadNext = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/puzzle-playtests", { cache: "no-store" });
-      if (response.status === 401) {
-        router.push("/login?next=/playtest");
-        setLoading(false);
-        return;
+    await withLoadingFlag(setLoading, async () => {
+      setError(null);
+      try {
+        const response = await fetch("/api/puzzle-playtests", { cache: "no-store" });
+        if (response.status === 401) {
+          router.push("/login?next=/playtest");
+          return;
+        }
+        const data = await safeJsonParse<QueueResponse>(response);
+        if (!response.ok || !data?.progress) {
+          fail(data?.error || "Failed to load a playtest puzzle");
+        }
+        setSpecimen(data.specimen ?? null);
+        setProgress(data.progress);
+        setShownAt(Date.now());
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load a playtest puzzle");
       }
-      const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok || !data?.progress) {
-        fail(data?.error || "Failed to load a playtest puzzle");
-      }
-      setSpecimen(data.specimen ?? null);
-      setProgress(data.progress);
-      setShownAt(Date.now());
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load a playtest puzzle");
-    }
-    setLoading(false);
+    });
 
   }, [router]);
 
@@ -93,34 +93,34 @@ export default function PlaytestPage() {
       toast({ title: "Choose why you could not solve it", variant: "destructive" });
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/puzzle-playtests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fixtureId: specimen.fixtureId,
-          guess: gaveUp ? "" : guess,
-          gaveUp,
-          failureReason: gaveUp ? failureReason : undefined,
-          confidence,
-          elapsedMs: Date.now() - shownAt,
-        }),
-      });
-      const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok) fail(data?.error || "Failed to save your response");
-      setGuess("");
-      setConfidence(3);
-      setFailureReason("");
-      await loadNext();
-    } catch (saveError) {
-      toast({
-        title: "Response not saved",
-        description: saveError instanceof Error ? saveError.message : "Try again",
-        variant: "destructive",
-      });
-    }
-    setIsSubmitting(false);
+    await withLoadingFlag(setIsSubmitting, async () => {
+      try {
+        const response = await fetch("/api/puzzle-playtests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fixtureId: specimen.fixtureId,
+            guess: gaveUp ? "" : guess,
+            gaveUp,
+            failureReason: gaveUp ? failureReason : undefined,
+            confidence,
+            elapsedMs: Date.now() - shownAt,
+          }),
+        });
+        const data = await safeJsonParse<QueueResponse>(response);
+        if (!response.ok) fail(data?.error || "Failed to save your response");
+        setGuess("");
+        setConfidence(3);
+        setFailureReason("");
+        await loadNext();
+      } catch (saveError) {
+        toast({
+          title: "Response not saved",
+          description: saveError instanceof Error ? saveError.message : "Try again",
+          variant: "destructive",
+        });
+      }
+    });
 
   };
 
@@ -179,7 +179,6 @@ export default function PlaytestPage() {
       </header>
 
       <Alert>
-        <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Independent quality evidence</AlertTitle>
         <AlertDescription>
           Responses are stored under your account ID for duplicate prevention and used only in
@@ -206,7 +205,6 @@ export default function PlaytestPage() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Playtest unavailable</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -300,7 +298,6 @@ export default function PlaytestPage() {
       ) : (
         !error && (
           <Alert>
-            <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>You completed every available puzzle</AlertTitle>
             <AlertDescription>
               Thank you. New AI-generated boards enter the blind queue after passing automated

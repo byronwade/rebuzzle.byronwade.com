@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -41,9 +42,8 @@ export default function ForgotPasswordPage() {
     }
 
     setError(null);
-    setIsLoading(true);
-
-    try {
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
           });
         }
       }
-    } catch (error) {
+      } catch (error) {
       console.error("Forgot password error:", error);
       const errorMessage = "Failed to connect to server. Please try again.";
       setError(errorMessage);
@@ -86,9 +86,8 @@ export default function ForgotPasswordPage() {
         description: errorMessage,
         variant: "destructive",
       });
-    }
-    setIsLoading(false);
-
+      }
+    });
   };
 
   return (

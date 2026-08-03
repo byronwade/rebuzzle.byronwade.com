@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export function useEmailNotifications() {
   const { isAuthenticated, userId, user } = useAuth();
@@ -64,113 +65,111 @@ export function useEmailNotifications() {
   const subscribe = useCallback(
     async (email?: string) => {
       setError(null);
-      setIsLoading(true);
 
+      return await withLoadingFlag(setIsLoading, async () => {
+        try {
+          // For authenticated users, use their account email if no email provided
+          // For unauthenticated users, email is required
+          let userEmail = email;
+
+          if (!userEmail && isAuthenticated && user?.email) {
+            userEmail = user.email;
+          }
+
+          if (!(userEmail || userId)) {
+            fail("Email address is required");
+          }
+
+          const response = await fetch("/api/notifications/email/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: userEmail,
+              userId,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            fail(data.error || "Failed to enable email notifications");
+          }
+
+          setEnabled(true);
+
+          // Store email in localStorage for guests so we can unsubscribe later
+          if (!isAuthenticated && userEmail) {
+            localStorage.setItem("notification_email", userEmail.toLowerCase().trim());
+          }
+
+          toast({
+            title: "Email reminders on",
+            description: "Daily puzzle email around 4 PM UTC.",
+            duration: 4000,
+          });
+
+          return data.subscriptionId as string | undefined;
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : "Failed to enable notifications";
+          setError(errorMessage);
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          fail(err instanceof Error ? err.message : "Failed to enable notifications");
+        }
+      });
+    },
+    [isAuthenticated, userId, user, toast]
+  );
+
+  const unsubscribe = useCallback(async () => {
+    await withLoadingFlag(setIsLoading, async () => {
       try {
-        // For authenticated users, use their account email if no email provided
-        // For unauthenticated users, email is required
-        let userEmail = email;
+        setError(null);
 
-        if (!userEmail && isAuthenticated && user?.email) {
-          userEmail = user.email;
-        }
+        // For guests, get email from localStorage
+        // For authenticated users, use userId
+        const storedEmail = !isAuthenticated ? localStorage.getItem("notification_email") : null;
 
-        if (!(userEmail || userId)) {
-          fail("Email address is required");
-        }
-
-        const response = await fetch("/api/notifications/email/subscribe", {
+        const response = await fetch("/api/notifications/email/unsubscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: userEmail,
             userId,
+            email: storedEmail || (isAuthenticated && user?.email ? user.email : undefined),
           }),
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-          fail(data.error || "Failed to enable email notifications");
+          fail(data.error || "Failed to disable email notifications");
         }
 
-        setEnabled(true);
+        setEnabled(false);
 
-        // Store email in localStorage for guests so we can unsubscribe later
-        if (!isAuthenticated && userEmail) {
-          localStorage.setItem("notification_email", userEmail.toLowerCase().trim());
+        // Clear stored email for guests
+        if (!isAuthenticated) {
+          localStorage.removeItem("notification_email");
         }
 
         toast({
-          title: "Email reminders on",
-          description: "Daily puzzle email around 4 PM UTC.",
-          duration: 4000,
+          title: "Email reminders off",
+          description: "No more daily puzzle emails.",
+          duration: 3000,
         });
-
-        setIsLoading(false);
-        return data.subscriptionId;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to enable notifications";
+        const errorMessage = err instanceof Error ? err.message : "Failed to disable notifications";
         setError(errorMessage);
         toast({
           title: "Error",
           description: errorMessage,
           variant: "destructive",
         });
-        setIsLoading(false);
-        fail(err instanceof Error ? err.message : "Failed to enable notifications");
       }
-    },
-    [isAuthenticated, userId, user, toast]
-  );
-
-  const unsubscribe = useCallback(async () => {
-    try {
-      setError(null);
-      setIsLoading(true);
-
-      // For guests, get email from localStorage
-      // For authenticated users, use userId
-      const storedEmail = !isAuthenticated ? localStorage.getItem("notification_email") : null;
-
-      const response = await fetch("/api/notifications/email/unsubscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          email: storedEmail || (isAuthenticated && user?.email ? user.email : undefined),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        fail(data.error || "Failed to disable email notifications");
-      }
-
-      setEnabled(false);
-
-      // Clear stored email for guests
-      if (!isAuthenticated) {
-        localStorage.removeItem("notification_email");
-      }
-
-      toast({
-        title: "Email reminders off",
-        description: "No more daily puzzle emails.",
-        duration: 3000,
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to disable notifications";
-      setError(errorMessage);
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-    setIsLoading(false);
-
+    });
   }, [isAuthenticated, userId, user, toast]);
 
   const toggle = useCallback(

@@ -46,7 +46,7 @@ export function toPublicPuzzle<T extends LoosePuzzle>(
   >;
 }
 
-export function stripPuzzleAnswersFromList<T extends LoosePuzzle>(
+function stripPuzzleAnswersFromList<T extends LoosePuzzle>(
   items: Array<{ puzzle: T; [key: string]: unknown }>
 ): Array<{ puzzle: ReturnType<typeof toPublicPuzzle<T>>; [key: string]: unknown }> {
   return items.map((item) => ({
@@ -55,7 +55,7 @@ export function stripPuzzleAnswersFromList<T extends LoosePuzzle>(
   }));
 }
 
-export function hasSecretPuzzleFields(value: unknown): boolean {
+function hasSecretPuzzleFields(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   return Object.keys(value as LoosePuzzle).some((k) => SECRET_KEYS.has(k));
 }

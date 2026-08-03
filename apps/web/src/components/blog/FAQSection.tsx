@@ -19,8 +19,8 @@ export function FAQSection({ faqs, className }: FAQSectionProps) {
     <section className={cn(className)}>
       <h2 className="eyebrow">Frequently asked</h2>
       <Accordion className="mt-2 w-full border-border border-t" collapsible type="single">
-        {faqs.map((faq, index) => (
-          <AccordionItem key={index} value={`faq-${index}`}>
+        {faqs.map((faq) => (
+          <AccordionItem key={faq.question} value={faq.question}>
             <AccordionTrigger>{faq.question}</AccordionTrigger>
             <AccordionContent className="pb-5 pr-8">{faq.answer}</AccordionContent>
           </AccordionItem>

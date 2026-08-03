@@ -56,7 +56,7 @@ export function GameOverPageSkeleton({ className }: { className?: string }) {
 }
 
 /** Profile shell */
-export function ProfilePageSkeleton({ className }: { className?: string }) {
+function ProfilePageSkeleton({ className }: { className?: string }) {
   return (
     <Layout>
       <div
@@ -109,7 +109,7 @@ export function LeaderboardPageSkeleton({ className }: { className?: string }) {
 }
 
 /** Settings shell */
-export function SettingsPageSkeleton({ className }: { className?: string }) {
+function SettingsPageSkeleton({ className }: { className?: string }) {
   return (
     <Layout>
       <div

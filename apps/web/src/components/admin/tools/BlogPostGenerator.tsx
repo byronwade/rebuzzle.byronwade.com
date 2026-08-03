@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -16,6 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { type BlogPostDraft, BlogPostPreview } from "./BlogPostPreview";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 interface BlogPostGeneratorProps {
   onBlogPostSaved?: () => void;
@@ -63,36 +65,36 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       return;
     }
 
-    setLoading(true);
-    setGeneratedPost(null);
+        await withLoadingFlag(setLoading, async () => {
+      setGeneratedPost(null);
 
-    try {
-      const response = await fetch("/api/admin/blogs/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ puzzleId: targetPuzzleId }),
-      });
+      try {
+        const response = await fetch("/api/admin/blogs/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ puzzleId: targetPuzzleId }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        fail(data.error || "Failed to generate blog post");
+        if (!data.success) {
+          fail(data.error || "Failed to generate blog post");
+        }
+
+        setGeneratedPost(data.blogPost);
+        toast({
+          title: "Blog Post Generated",
+          description: "Review the blog post below and open a draft PR when ready.",
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      setGeneratedPost(data.blogPost);
-      toast({
-        title: "Blog Post Generated",
-        description: "Review the blog post below and open a draft PR when ready.",
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
+    });
 
   };
 
@@ -199,11 +201,13 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
                     <SelectValue placeholder="Choose a puzzle" />
                   </SelectTrigger>
                   <SelectContent>
-                    {puzzles.map((puzzle) => (
-                      <SelectItem key={puzzle.id} value={puzzle.id}>
-                        {puzzle.answer} - {puzzle.puzzle?.substring(0, 50)}...
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      {puzzles.map((puzzle) => (
+                        <SelectItem key={puzzle.id} value={puzzle.id}>
+                          {puzzle.answer} - {puzzle.puzzle?.substring(0, 50)}...
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>

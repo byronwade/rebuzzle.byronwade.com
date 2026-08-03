@@ -211,7 +211,7 @@ export function getPuzzleQuestion(puzzleType = "rebus"): string {
   return QUESTIONS[puzzleType] ?? "What is the answer to this puzzle?";
 }
 
-export function PuzzleQuestion({ puzzleType = "rebus", className }: PuzzleQuestionProps) {
+function PuzzleQuestion({ puzzleType = "rebus", className }: PuzzleQuestionProps) {
   const questionText = getPuzzleQuestion(puzzleType);
 
   return <p className={cn("mt-4 text-balance text-subtle text-sm", className)}>{questionText}</p>;

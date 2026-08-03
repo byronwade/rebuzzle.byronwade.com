@@ -264,7 +264,7 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
                   {editedPuzzle.hints.map((hint, index) => (
                     <Textarea
                       aria-label="Puzzle hint"
-                      key={index}
+                      key={`edit-hint-${hint}`}
                       onChange={(e) => {
                         const newHints = [...editedPuzzle.hints];
                         newHints[index] = e.target.value;
@@ -278,7 +278,7 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
               ) : (
                 <div className="mt-2 space-y-2">
                   {editedPuzzle.hints.map((hint, index) => (
-                    <div className="rounded-md border bg-muted/50 p-3 text-sm" key={index}>
+                    <div className="rounded-md border bg-muted/50 p-3 text-sm" key={`view-hint-${hint}`}>
                       <span className="font-medium">Hint {index + 1}:</span> {hint}
                     </div>
                   ))}

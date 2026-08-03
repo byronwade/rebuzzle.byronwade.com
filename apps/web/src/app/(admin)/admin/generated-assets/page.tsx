@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Images, Loader2, ShieldCheck, SkipForward } from "lucide-react";
+import { Images, Loader2, ShieldCheck, SkipForward } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
@@ -19,6 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 type QueueResponse = {
   success?: boolean;
@@ -71,27 +72,25 @@ export default function GeneratedAssetsPage() {
   }, [router]);
 
   const loadNext = useCallback(async () => {
-    setLoading(true);
     setError(null);
-    try {
-      const response = await fetch("/api/admin/ai/generated-pictograms", { cache: "no-store" });
-      if (response.status === 401) {
-        router.push("/login");
-        setLoading(false);
-        return;
+    await withLoadingFlag(setLoading, async () => {
+      try {
+        const response = await fetch("/api/admin/ai/generated-pictograms", { cache: "no-store" });
+        if (response.status === 401) {
+          router.push("/login");
+          return;
+        }
+        const data = await safeJsonParse<QueueResponse>(response);
+        if (!response.ok || !data?.progress) {
+          fail(data?.error || "Failed to load generated-asset specimen");
+        }
+        setSpecimen(data.specimen ?? null);
+        setProgress(data.progress);
+        await loadReport();
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load asset registry");
       }
-      const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok || !data?.progress) {
-        fail(data?.error || "Failed to load generated-asset specimen");
-      }
-      setSpecimen(data.specimen ?? null);
-      setProgress(data.progress);
-      await loadReport();
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load asset registry");
-    }
-    setLoading(false);
-
+    });
   }, [loadReport, router]);
 
   useEffect(() => {
@@ -109,30 +108,29 @@ export default function GeneratedAssetsPage() {
       toast({ title: "Enter the object name or choose I don't know", variant: "destructive" });
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/admin/ai/generated-pictograms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fixtureId: specimen.fixtureId,
-          guess: uncertain ? "" : guess,
-          uncertain,
-        }),
-      });
-      const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok) fail(data?.error || "Failed to save response");
-      setGuess("");
-      await loadNext();
-    } catch (saveError) {
-      toast({
-        title: "Response not saved",
-        description: saveError instanceof Error ? saveError.message : "Try again",
-        variant: "destructive",
-      });
-    }
-    setIsSubmitting(false);
-
+    await withLoadingFlag(setIsSubmitting, async () => {
+      try {
+        const response = await fetch("/api/admin/ai/generated-pictograms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fixtureId: specimen.fixtureId,
+            guess: uncertain ? "" : guess,
+            uncertain,
+          }),
+        });
+        const data = await safeJsonParse<QueueResponse>(response);
+        if (!response.ok) fail(data?.error || "Failed to save response");
+        setGuess("");
+        await loadNext();
+      } catch (saveError) {
+        toast({
+          title: "Response not saved",
+          description: saveError instanceof Error ? saveError.message : "Try again",
+          variant: "destructive",
+        });
+      }
+    });
   };
 
   const onSubmit = (event: FormEvent) => {
@@ -179,7 +177,6 @@ export default function GeneratedAssetsPage() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Registry unavailable</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -237,7 +234,6 @@ export default function GeneratedAssetsPage() {
       ) : (
         !error && (
           <Alert>
-            <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>No generated assets awaiting your review</AlertTitle>
             <AlertDescription>
               New long-tail candidates appear here only after passing the current structural and

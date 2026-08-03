@@ -122,7 +122,7 @@ export function useVisualViewportFrame(): VisualViewportFrame {
 }
 
 /** @deprecated Prefer useVisualViewportFrame — kept for older call sites. */
-export function useVisualViewport() {
+function useVisualViewport() {
   const frame = useVisualViewportFrame();
   return {
     keyboardHeight: frame.keyboardInset,
@@ -132,6 +132,6 @@ export function useVisualViewport() {
   };
 }
 
-export function useIsKeyboardVisible(): boolean {
+function useIsKeyboardVisible(): boolean {
   return useVisualViewportFrame().isKeyboardOpen;
 }

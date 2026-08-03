@@ -103,7 +103,7 @@ export function getDifficultyDescription(name: DifficultyName): string {
   return DESCRIPTIONS[name];
 }
 
-export function getDailyDifficulties(): DifficultyInfo[] {
+function getDailyDifficulties(): DifficultyInfo[] {
   const dailyLevels = [4, 5, 6, 7, 8];
   return dailyLevels.map((level) => {
     const name = getDifficultyName(level);

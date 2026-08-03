@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export type InAppNotificationItem = {
   id: string;
@@ -22,22 +23,21 @@ export function useInAppNotifications(enabled: boolean) {
       setUnreadCount(0);
       return;
     }
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/notifications/in-app", { credentials: "include" });
-      if (!response.ok) {
-        setIsLoading(false);
-        return;
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
+        const response = await fetch("/api/notifications/in-app", { credentials: "include" });
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        if (data.success) {
+          setNotifications(data.notifications ?? []);
+          setUnreadCount(data.unreadCount ?? 0);
+        }
+      } catch {
+        // non-fatal
       }
-      const data = await response.json();
-      if (data.success) {
-        setNotifications(data.notifications ?? []);
-        setUnreadCount(data.unreadCount ?? 0);
-      }
-    } catch {
-      // non-fatal
-    }
-    setIsLoading(false);
+    });
 
   }, [enabled]);
 

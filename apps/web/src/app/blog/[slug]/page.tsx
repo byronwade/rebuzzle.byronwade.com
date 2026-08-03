@@ -23,6 +23,7 @@ import {
   fetchBlogPosts,
   fetchBlogPostWithStats,
 } from "../../actions/blogActions";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 const puzzleTypeLabels: Record<string, string> = {
   rebus: "Rebus",
@@ -205,20 +206,20 @@ async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
   return (
     <Layout>
       <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(articleSchema) }}
         type="application/ld+json"
       />
       <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
         type="application/ld+json"
       />
       <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(howToSchema) }}
         type="application/ld+json"
       />
       {faqSchema && (
         <script
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
           type="application/ld+json"
         />
       )}

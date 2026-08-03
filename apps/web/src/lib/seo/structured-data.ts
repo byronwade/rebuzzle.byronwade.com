@@ -654,7 +654,7 @@ export function generateSpeakableSchema({
  * Event Schema
  * For daily puzzle events
  */
-export function generateEventSchema({
+function generateEventSchema({
   name,
   description,
   startDate,
@@ -714,7 +714,7 @@ export function generateEventSchema({
  * QAPage Schema
  * For Q&A content pages
  */
-export function generateQAPageSchema(
+function generateQAPageSchema(
   qas: Array<{
     question: string;
     answer: string;
@@ -758,7 +758,7 @@ export function generateQAPageSchema(
  * Course Schema
  * For educational content and tutorials
  */
-export function generateCourseSchema({
+function generateCourseSchema({
   name,
   description,
   provider,
@@ -817,7 +817,7 @@ function truncateText(text: string, maxLength: number): string {
 /**
  * Generate all structured data for a page
  */
-export function generatePageStructuredData({
+function generatePageStructuredData({
   organization = true,
   website = true,
   article,

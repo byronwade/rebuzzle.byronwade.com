@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -150,10 +151,12 @@ export function EditPuzzleDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="rebus">Rebus</SelectItem>
-                        <SelectItem value="word-puzzle">Word Puzzle</SelectItem>
-                        <SelectItem value="riddle">Riddle</SelectItem>
-                        <SelectItem value="trivia">Trivia</SelectItem>
+                        <SelectGroup>
+                          <SelectItem value="rebus">Rebus</SelectItem>
+                          <SelectItem value="word-puzzle">Word Puzzle</SelectItem>
+                          <SelectItem value="riddle">Riddle</SelectItem>
+                          <SelectItem value="trivia">Trivia</SelectItem>
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -191,9 +194,11 @@ export function EditPuzzleDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
+                        <SelectGroup>
+                          <SelectItem value="easy">Easy</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="hard">Hard</SelectItem>
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                     <FormMessage />

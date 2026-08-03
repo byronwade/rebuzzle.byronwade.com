@@ -10,6 +10,7 @@ import {
   generateWebPageSchema,
 } from "@/lib/seo/structured-data";
 import { getBaseUrl, getCanonicalUrl } from "@/lib/seo/utils";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { fetchBlogPosts } from "../../actions/blogActions";
 
 // Puzzle type metadata
@@ -196,21 +197,21 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
     <Layout>
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbSchema),
+          __html: serializeJsonLd(breadcrumbSchema),
         }}
         type="application/ld+json"
       />
       {itemListSchema && (
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(itemListSchema),
+            __html: serializeJsonLd(itemListSchema),
           }}
           type="application/ld+json"
         />
       )}
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(webPageSchema),
+          __html: serializeJsonLd(webPageSchema),
         }}
         type="application/ld+json"
       />
@@ -251,8 +252,8 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
             <div className="rounded-lg border border-border bg-inset p-4">
               <h2 className="mb-2 font-medium text-sm">Examples:</h2>
               <ul className="space-y-1 text-muted-foreground text-sm">
-                {puzzleInfo.examples.map((example, idx) => (
-                  <li className="flex items-start gap-2" key={idx}>
+                {puzzleInfo.examples.map((example) => (
+                  <li className="flex items-start gap-2" key={example}>
                     <span className="text-primary">•</span>
                     <span>{example}</span>
                   </li>

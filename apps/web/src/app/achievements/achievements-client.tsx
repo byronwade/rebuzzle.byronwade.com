@@ -26,6 +26,7 @@ import {
 import { AppLink as Link } from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 import Layout from "@/components/Layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,28 +163,26 @@ export default function AchievementsPage() {
 
   useEffect(() => {
     const fetchAchievements = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/achievements");
-        if (!response.ok) {
-          console.error("Failed to load achievements");
-          setLoading(false);
-          return;
-        }
-        const data = await response.json();
+      await withLoadingFlag(setLoading, async () => {
+        try {
+          const response = await fetch("/api/achievements");
+          if (!response.ok) {
+            console.error("Failed to load achievements");
+            return;
+          }
+          const data = await response.json();
 
-        if (data.success) {
-          setAchievements(data.achievements);
-          setProgress(data.progress);
+          if (data.success) {
+            setAchievements(data.achievements);
+            setProgress(data.progress);
+          }
+        } catch (error) {
+          console.error("Error fetching achievements:", error);
         }
-      } catch (error) {
-        console.error("Error fetching achievements:", error);
-      }
-      setLoading(false);
-
+      });
     };
 
-    fetchAchievements();
+    void fetchAchievements();
   }, []);
 
   // Filter achievements by rarity

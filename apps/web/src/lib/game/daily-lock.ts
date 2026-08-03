@@ -22,7 +22,7 @@ export function isArchiveLockKey(key: string): boolean {
   return key.startsWith("archive:");
 }
 
-export function getUtcDayBounds(puzzleDate: string): { start: Date; end: Date } {
+function getUtcDayBounds(puzzleDate: string): { start: Date; end: Date } {
   return {
     start: new Date(`${puzzleDate}T00:00:00.000Z`),
     end: new Date(`${puzzleDate}T23:59:59.999Z`),
@@ -38,11 +38,11 @@ export function getNextUtcMidnight(date: Date = new Date()): Date {
 }
 
 /** Milliseconds until next UTC midnight (0 if already past). */
-export function msUntilNextUtcMidnight(date: Date = new Date()): number {
+function msUntilNextUtcMidnight(date: Date = new Date()): number {
   return Math.max(0, getNextUtcMidnight(date).getTime() - date.getTime());
 }
 
-export function clampAttempts(value: unknown, maxAttempts: number): number {
+function clampAttempts(value: unknown, maxAttempts: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 1;
   return Math.min(Math.max(Math.floor(value), 1), maxAttempts);
 }

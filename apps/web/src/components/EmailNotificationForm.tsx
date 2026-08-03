@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -170,7 +170,7 @@ export function EmailNotificationForm() {
           {/* Error Message */}
           {(emailError || error) && (
             <Alert className="py-2" variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="sr-only">Error</AlertTitle>
               <AlertDescription className="text-sm">{emailError || error}</AlertDescription>
             </Alert>
           )}
@@ -178,7 +178,7 @@ export function EmailNotificationForm() {
           {/* Success Message */}
           {enabled && !emailError && !error && (
             <Alert className="py-2.5" variant="success">
-              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle className="sr-only">Success</AlertTitle>
               <AlertDescription className="text-foreground text-sm">
                 Email notifications are enabled. You'll receive daily reminders around 4 PM UTC.
               </AlertDescription>

@@ -75,7 +75,7 @@ export function triggerHaptic(type: HapticType): boolean {
 /**
  * Hook-friendly wrapper that returns whether haptics are supported
  */
-export function getHapticsSupport(): {
+function getHapticsSupport(): {
   isSupported: boolean;
   trigger: typeof triggerHaptic;
 } {

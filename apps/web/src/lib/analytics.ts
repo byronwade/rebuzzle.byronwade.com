@@ -261,7 +261,7 @@ export function trackPuzzleAbandon(data: {
 /**
  * Track user return (server-side)
  */
-export async function trackUserReturnServerSide(userId: string): Promise<void> {
+async function trackUserReturnServerSide(userId: string): Promise<void> {
   try {
     await fetch("/api/analytics/events", {
       method: "POST",

@@ -101,8 +101,8 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
                 <div className="space-y-2">
                   <h4 className="font-semibold">Rules:</h4>
                   <ul className="list-inside list-disc space-y-1 text-sm">
-                    {howToPlay.rules.map((rule, index) => (
-                      <li key={index}>{rule}</li>
+                    {howToPlay.rules.map((rule) => (
+                      <li key={rule}>{rule}</li>
                     ))}
                   </ul>
                 </div>
@@ -110,8 +110,8 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
                   <div className="space-y-2">
                     <h4 className="font-semibold">Examples:</h4>
                     <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
-                      {howToPlay.examples.map((example, index) => (
-                        <li key={index}>{example}</li>
+                      {howToPlay.examples.map((example) => (
+                        <li key={example}>{example}</li>
                       ))}
                     </ul>
                   </div>

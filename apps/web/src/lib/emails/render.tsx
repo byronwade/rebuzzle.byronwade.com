@@ -10,7 +10,7 @@ import type { ReactElement } from "react";
 /**
  * Render a React Email component to HTML and plain text
  */
-export async function renderEmailTemplate(
+async function renderEmailTemplate(
   component: ReactElement
 ): Promise<{ html: string; text: string }> {
   const [html, text] = await Promise.all([

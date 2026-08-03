@@ -226,7 +226,7 @@ export function calculateGamePoints(
  * Legacy function for backwards compatibility
  * @deprecated Use calculateGamePoints instead
  */
-export function calculateGamePointsLegacy(
+function calculateGamePointsLegacy(
   attempts: number,
   hintsUsed: number,
   streakDays = 0
@@ -261,7 +261,7 @@ export function getPointsForLevel(level: number): number {
 /**
  * Get points needed for the next level
  */
-export function getPointsForNextLevel(currentPoints: number): number {
+function getPointsForNextLevel(currentPoints: number): number {
   const currentLevel = calculateLevel(currentPoints);
   return getPointsForLevel(currentLevel + 1);
 }

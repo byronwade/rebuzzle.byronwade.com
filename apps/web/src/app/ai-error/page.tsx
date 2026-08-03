@@ -59,7 +59,7 @@ export default function AIErrorPage() {
 
               {/* What Happened */}
               <div className="rounded-lg border border-border bg-muted p-4 text-left">
-                <h3 className="mb-2 font-semibold text-foreground">What happened?</h3>
+                <h2 className="mb-2 font-semibold text-foreground text-base">What happened?</h2>
                 <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
                   <li>AI service may be temporarily down</li>
                   <li>Network connection issues</li>

@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  AlertCircle,
   ArchiveRestore,
-  CheckCircle2,
   Gamepad2,
   Loader2,
   Send,
@@ -30,6 +28,7 @@ import type { PuzzlePlaytestFailureReason } from "@/db/models";
 import { useToast } from "@/hooks/use-toast";
 import { safeJsonParse } from "@/lib/utils";
 import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 type QueueResponse = {
   success?: boolean;
@@ -90,26 +89,25 @@ export default function PuzzlePlaytestsPage() {
   }, [router]);
 
   const loadNext = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/admin/ai/puzzle-playtests", { cache: "no-store" });
-      if (response.status === 401) {
-        router.push("/login");
-        setLoading(false);
-        return;
+    await withLoadingFlag(setLoading, async () => {
+      setError(null);
+      try {
+        const response = await fetch("/api/admin/ai/puzzle-playtests", { cache: "no-store" });
+        if (response.status === 401) {
+          router.push("/login");
+          return;
+        }
+        const data = await safeJsonParse<QueueResponse>(response);
+        if (!response.ok || !data?.progress)
+          fail(data?.error || "Failed to load playtest");
+        setSpecimen(data.specimen ?? null);
+        setProgress(data.progress);
+        setShownAt(Date.now());
+        await loadReport();
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle playtests");
       }
-      const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok || !data?.progress)
-        fail(data?.error || "Failed to load playtest");
-      setSpecimen(data.specimen ?? null);
-      setProgress(data.progress);
-      setShownAt(Date.now());
-      await loadReport();
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle playtests");
-    }
-    setLoading(false);
+    });
 
   }, [loadReport, router]);
 
@@ -132,34 +130,34 @@ export default function PuzzlePlaytestsPage() {
       toast({ title: "Choose why the puzzle was not playable", variant: "destructive" });
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/admin/ai/puzzle-playtests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fixtureId: specimen.fixtureId,
-          guess: gaveUp ? "" : guess,
-          gaveUp,
-          failureReason: gaveUp ? failureReason : undefined,
-          confidence,
-          elapsedMs: Date.now() - shownAt,
-        }),
-      });
-      const data = await safeJsonParse<QueueResponse>(response);
-      if (!response.ok) fail(data?.error || "Failed to save playtest");
-      setGuess("");
-      setConfidence(3);
-      setFailureReason("");
-      await loadNext();
-    } catch (saveError) {
-      toast({
-        title: "Playtest not saved",
-        description: saveError instanceof Error ? saveError.message : "Try again",
-        variant: "destructive",
-      });
-    }
-    setIsSubmitting(false);
+    await withLoadingFlag(setIsSubmitting, async () => {
+      try {
+        const response = await fetch("/api/admin/ai/puzzle-playtests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fixtureId: specimen.fixtureId,
+            guess: gaveUp ? "" : guess,
+            gaveUp,
+            failureReason: gaveUp ? failureReason : undefined,
+            confidence,
+            elapsedMs: Date.now() - shownAt,
+          }),
+        });
+        const data = await safeJsonParse<QueueResponse>(response);
+        if (!response.ok) fail(data?.error || "Failed to save playtest");
+        setGuess("");
+        setConfidence(3);
+        setFailureReason("");
+        await loadNext();
+      } catch (saveError) {
+        toast({
+          title: "Playtest not saved",
+          description: saveError instanceof Error ? saveError.message : "Try again",
+          variant: "destructive",
+        });
+      }
+    });
 
   };
 
@@ -170,33 +168,33 @@ export default function PuzzlePlaytestsPage() {
 
   const runBackfill = async (dryRun: boolean) => {
     if (backfillLoading) return;
-    setBackfillLoading(true);
-    try {
-      const response = await fetch("/api/admin/ai/puzzle-playtests/backfill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dryRun, limit: 100 }),
-      });
-      const data = await safeJsonParse<BackfillResponse>(response);
-      if (!response.ok || !data?.report) {
-        fail(data?.error || "Failed to inspect historical puzzles");
-      }
-      setBackfillReport(data.report);
-      if (!dryRun) {
-        toast({
-          title: "Historical calibration queue updated",
-          description: `${data.report.queued} current-pipeline puzzles added.`,
+    await withLoadingFlag(setBackfillLoading, async () => {
+      try {
+        const response = await fetch("/api/admin/ai/puzzle-playtests/backfill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dryRun, limit: 100 }),
         });
-        await loadNext();
+        const data = await safeJsonParse<BackfillResponse>(response);
+        if (!response.ok || !data?.report) {
+          fail(data?.error || "Failed to inspect historical puzzles");
+        }
+        setBackfillReport(data.report);
+        if (!dryRun) {
+          toast({
+            title: "Historical calibration queue updated",
+            description: `${data.report.queued} current-pipeline puzzles added.`,
+          });
+          await loadNext();
+        }
+      } catch (backfillError) {
+        toast({
+          title: dryRun ? "Historical audit failed" : "Historical backfill failed",
+          description: backfillError instanceof Error ? backfillError.message : "Try again",
+          variant: "destructive",
+        });
       }
-    } catch (backfillError) {
-      toast({
-        title: dryRun ? "Historical audit failed" : "Historical backfill failed",
-        description: backfillError instanceof Error ? backfillError.message : "Try again",
-        variant: "destructive",
-      });
-    }
-    setBackfillLoading(false);
+    });
 
   };
 
@@ -286,7 +284,6 @@ export default function PuzzlePlaytestsPage() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Playtest unavailable</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -380,7 +377,6 @@ export default function PuzzlePlaytestsPage() {
       ) : (
         !error && (
           <Alert>
-            <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>No generated puzzles awaiting your review</AlertTitle>
             <AlertDescription>
               New AI-generated rebus boards are sampled automatically after successful publication.

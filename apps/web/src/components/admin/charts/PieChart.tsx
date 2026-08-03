@@ -73,9 +73,15 @@ export function PieChart({
                 nameKey={nameKey}
                 outerRadius={100}
               >
-                {data.map((_entry, index) => (
-                  <Cell fill={colors[index % colors.length]} key={`cell-${index}`} />
-                ))}
+                {data.map((entry, colorIndex) => {
+                  const cellKey = String(
+                    (entry as Record<string, unknown>)[nameKey] ??
+                      (entry as Record<string, unknown>)[dataKey]
+                  );
+                  return (
+                    <Cell fill={colors[colorIndex % colors.length]} key={`cell-${cellKey}`} />
+                  );
+                })}
               </Pie>
               <ChartTooltip content={<ChartTooltipContent />} />
               <ChartLegend content={<ChartLegendContent />} />

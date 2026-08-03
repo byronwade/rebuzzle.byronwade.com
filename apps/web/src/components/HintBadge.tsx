@@ -123,7 +123,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                     isRevealed ? "border-border bg-card" : "border-border bg-inset",
                     isNext && "border-border-strong/50"
                   )}
-                  key={index}
+                  key={hint}
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">

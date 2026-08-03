@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { safeInternalRedirect } from "@/lib/safe-internal-redirect";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -132,9 +133,8 @@ export default function SignupPage() {
     }
 
     setErrors({});
-    setIsLoading(true);
-
-    try {
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -182,7 +182,7 @@ export default function SignupPage() {
           });
         }
       }
-    } catch (error) {
+      } catch (error) {
       console.error("Signup error:", error);
       const errorMessage = "Failed to connect to server. Please try again.";
       setErrors({ form: errorMessage });
@@ -191,9 +191,8 @@ export default function SignupPage() {
         description: errorMessage,
         variant: "destructive",
       });
-    }
-    setIsLoading(false);
-
+      }
+    });
   };
 
   // Focus first error field when it changes
@@ -410,10 +409,10 @@ export default function SignupPage() {
 
             {/* Benefits */}
             <div className="mt-6 rounded-lg border border-border bg-accent/50 p-4">
-              <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+              <h2 className="mb-3 flex items-center gap-2 font-semibold text-base text-foreground">
                 <Check className="h-5 w-5" />
                 What You Get:
-              </h3>
+              </h2>
               <ul className="space-y-2 text-foreground text-sm">
                 <li className="flex items-center gap-2">
                   <Check className="h-3.5 w-3.5 text-success" />

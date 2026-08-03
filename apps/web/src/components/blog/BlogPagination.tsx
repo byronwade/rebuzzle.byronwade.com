@@ -86,8 +86,9 @@ export function BlogPagination({
           size="icon"
           variant="ghost"
         >
-          <Link href={getPageUrl(currentPage - 1)}>
+          <Link aria-label="Previous page" href={getPageUrl(currentPage - 1)}>
             <ChevronLeft className="size-4" data-icon="inline-start" />
+            <span className="sr-only">Previous page</span>
           </Link>
         </Button>
       ) : (
@@ -105,9 +106,10 @@ export function BlogPagination({
       {/* Page numbers */}
       {pages.map((page, index) => {
         if (page === "ellipsis") {
+          const neighbor = pages[index - 1] ?? pages[index + 1] ?? "edge";
           return (
             <span
-              key={`ellipsis-${index}`}
+              key={`ellipsis-after-${neighbor}`}
               className="flex h-9 w-9 items-center justify-center text-muted-foreground"
             >
               <MoreHorizontal className="size-4" />
@@ -143,8 +145,9 @@ export function BlogPagination({
       {/* Next button */}
       {currentPage < totalPages ? (
         <Button aria-label="Next page" asChild className="h-9 w-9" size="icon" variant="ghost">
-          <Link href={getPageUrl(currentPage + 1)}>
+          <Link aria-label="Next page" href={getPageUrl(currentPage + 1)}>
             <ChevronRight className="size-4" data-icon="inline-start" />
+            <span className="sr-only">Next page</span>
           </Link>
         </Button>
       ) : (

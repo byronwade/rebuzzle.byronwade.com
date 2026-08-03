@@ -95,6 +95,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -1534,7 +1535,7 @@ function PuzzlesTab({
                         onClick={() => onDelete(puzzle.id)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                        Delete
+                        Delete…
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1691,10 +1692,10 @@ function BlogsTab({
       ) : (
         <>
           <div className="space-y-4">
-            {blogs.map((blog, index) => (
+            {blogs.map((blog) => (
               <Card
                 className="border p-5 transition-shadow hover:shadow-md"
-                key={blog.id || `blog-${index}`}
+                key={blog.id || blog.slug}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
@@ -1726,7 +1727,7 @@ function BlogsTab({
                         onClick={() => onDelete(blog.id)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                        Delete
+                        Delete…
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -2045,7 +2046,7 @@ function UsersTab({
                               onClick={() => onDelete(user.id)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                              Delete User
+                              Delete… User
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -2146,12 +2147,14 @@ function AnalyticsTab({
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Events</SelectItem>
-            {eventTypes.map((et) => (
-              <SelectItem key={et.type} value={et.type}>
-                {et.type}
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              <SelectItem value="all">All Events</SelectItem>
+              {eventTypes.map((et) => (
+                <SelectItem key={et.type} value={et.type}>
+                  {et.type}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
       </div>

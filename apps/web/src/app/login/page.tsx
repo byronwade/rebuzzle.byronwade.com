@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { safeInternalRedirect } from "@/lib/safe-internal-redirect";
 import { safeJsonParse } from "@/lib/utils";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -94,57 +95,56 @@ export default function LoginPage() {
     }
 
     setErrors({});
-    setIsLoading(true);
 
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // Include cookies in request
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password,
-        }),
-      });
-
-      const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
-
-      if (response.ok && data?.success) {
-        // Cookie is set by server, refresh auth state immediately
-        await refreshAuth();
-
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // Include cookies in request
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            password: formData.password,
+          }),
         });
 
-        const nextPath = safeInternalRedirect(
-          new URLSearchParams(window.location.search).get("next")
-        );
-        setTimeout(() => {
-          router.push(nextPath);
-        }, 1000);
-      } else {
-        const errorMessage = data?.error || "Invalid credentials. Please try again.";
+        const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
+
+        if (response.ok && data?.success) {
+          // Cookie is set by server, refresh auth state immediately
+          await refreshAuth();
+
+          toast({
+            title: "Welcome back!",
+            description: "You've successfully logged in.",
+          });
+
+          const nextPath = safeInternalRedirect(
+            new URLSearchParams(window.location.search).get("next")
+          );
+          setTimeout(() => {
+            router.push(nextPath);
+          }, 1000);
+        } else {
+          const errorMessage = data?.error || "Invalid credentials. Please try again.";
+          setErrors({ form: errorMessage });
+          toast({
+            title: "Login failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
         setErrors({ form: errorMessage });
         toast({
-          title: "Login failed",
+          title: "Error",
           description: errorMessage,
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setErrors({ form: errorMessage });
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-    setIsLoading(false);
-
+    });
   };
 
   // Focus first error field when it changes

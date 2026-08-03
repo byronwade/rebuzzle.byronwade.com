@@ -21,6 +21,7 @@ import {
   generateSoftwareApplicationSchema,
   generateWebSiteSchema,
 } from "@/lib/seo/structured-data";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { VISUAL_THEME_BOOTSTRAP_SCRIPT } from "@/lib/visual-theme";
 
 // Geometric sans carries display, body, button — everything narrative.
@@ -264,37 +265,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* JSON-LD Structured Data */}
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationSchema),
+            __html: serializeJsonLd(organizationSchema),
           }}
           type="application/ld+json"
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(websiteSchema),
+            __html: serializeJsonLd(websiteSchema),
           }}
           type="application/ld+json"
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(softwareApplicationSchema),
+            __html: serializeJsonLd(softwareApplicationSchema),
           }}
           type="application/ld+json"
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(reviewSchema),
+            __html: serializeJsonLd(reviewSchema),
           }}
           type="application/ld+json"
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(educationalUseSchema),
+            __html: serializeJsonLd(educationalUseSchema),
           }}
           type="application/ld+json"
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(accessibilitySchema),
+            __html: serializeJsonLd(accessibilitySchema),
           }}
           type="application/ld+json"
         />
