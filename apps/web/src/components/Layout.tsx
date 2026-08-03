@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Footer } from "./Footer";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
+import { SyncTimezoneCookie } from "./SyncTimezoneCookie";
 import { VisualViewportShell } from "./VisualViewportShell";
 
 const DevToolsPanel = dynamic(() => import("./DevToolsPanel").then((m) => m.DevToolsPanel), {
@@ -98,6 +99,7 @@ function LayoutContent({
         </div>
       ) : null}
 
+      <SyncTimezoneCookie />
       <DevToolsPanel />
     </>
   );

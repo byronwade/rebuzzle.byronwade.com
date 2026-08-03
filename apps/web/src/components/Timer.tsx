@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { getNextLocalMidnight } from "@/lib/game/daily-lock";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export function Timer({ nextPlayTime, className, compact = false }: TimerProps) 
 
   useEffect(() => {
     if (!fallbackTargetRef.current) {
-      fallbackTargetRef.current = getNextUtcMidnight();
+      fallbackTargetRef.current = getNextLocalMidnight();
     }
     const targetTime = nextPlayTime ? new Date(nextPlayTime) : fallbackTargetRef.current;
 
@@ -117,7 +117,7 @@ export function Timer({ nextPlayTime, className, compact = false }: TimerProps) 
             <span className="text-foreground tabular-nums">{timeLeft}</span>
           </div>
         </TooltipTrigger>
-        <TooltipContent>New puzzle available at midnight UTC</TooltipContent>
+        <TooltipContent>New puzzle available at your local midnight</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

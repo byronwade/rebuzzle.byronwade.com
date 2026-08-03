@@ -1,24 +1,27 @@
 import { NextResponse } from "next/server";
-import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { getLocalPuzzleDate, getNextLocalMidnight } from "@/lib/game/daily-lock";
 import { toPublicPuzzle } from "@/lib/game/public-puzzle";
 import { buildCacheControl } from "@/lib/http/cache-headers";
+import { resolveRequestTimeZone } from "@/lib/timezone";
 import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
 
 /**
  * GET /api/puzzle/today
  *
- * Public daily puzzle for clients. Never includes the answer.
- * Scoring goes through POST /api/puzzles/guess.
+ * Public daily puzzle for the caller's local calendar day.
+ * Never includes the answer. Scoring goes through POST /api/puzzles/guess.
+ *
+ * Generation still stores one puzzle per YYYY-MM-DD; this route only chooses
+ * which date key is "today" for the request timezone.
  */
 export async function GET() {
   try {
-    const result = await getTodaysPuzzle();
     const now = new Date();
-    const nextPuzzleTime = getNextUtcMidnight(now).toISOString();
-    const secondsUntilMidnight = Math.max(
-      30,
-      Math.floor((getNextUtcMidnight(now).getTime() - now.getTime()) / 1000)
-    );
+    const timeZone = await resolveRequestTimeZone();
+    const localDateKey = getLocalPuzzleDate(now, timeZone);
+    const nextPuzzleTime = getNextLocalMidnight(now, timeZone).toISOString();
+
+    const result = await getTodaysPuzzle(undefined, localDateKey, { allowAiGenerate: false });
 
     if (result.success && result.puzzle) {
       const raw = result.puzzle as Record<string, unknown>;
@@ -32,7 +35,7 @@ export async function GET() {
             puzzleType: raw.puzzleType ?? "rebus",
             difficulty: raw.difficulty,
             hints: raw.hints ?? [],
-            date: raw.date,
+            date: raw.date ?? localDateKey,
             category: raw.category,
             topic: raw.topic,
             relevanceScore: raw.relevanceScore,
@@ -41,16 +44,14 @@ export async function GET() {
           cached: result.cached,
           generatedAt: result.generatedAt,
           serverTime: now.toISOString(),
+          puzzleDate: localDateKey,
+          timeZone,
           nextPuzzleTime,
         },
         {
           headers: {
-            "Cache-Control": buildCacheControl({
-              public: true,
-              maxAge: 60,
-              sMaxAge: Math.min(300, secondsUntilMidnight),
-              staleWhileRevalidate: 60,
-            }),
+            // Private: nextPuzzleTime / date key are timezone-specific.
+            "Cache-Control": buildCacheControl({ private: true }),
           },
         }
       );
@@ -59,8 +60,10 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to generate puzzle",
+        error: "Failed to load puzzle",
         serverTime: now.toISOString(),
+        puzzleDate: localDateKey,
+        timeZone,
         nextPuzzleTime,
       },
       { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
@@ -73,7 +76,7 @@ export async function GET() {
         success: false,
         error: "Internal server error",
         serverTime: now.toISOString(),
-        nextPuzzleTime: getNextUtcMidnight(now).toISOString(),
+        nextPuzzleTime: getNextLocalMidnight(now).toISOString(),
       },
       { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );

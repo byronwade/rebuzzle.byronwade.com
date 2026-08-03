@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { Timer } from "@/components/Timer";
-import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { getNextLocalMidnight } from "@/lib/game/daily-lock";
 import { getStreakTease } from "@/lib/game/streak-tease";
 import { useLocalStorageJson, useLocalStorageRaw } from "@/lib/hooks/use-local-storage";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
   const eveRaw = useLocalStorageRaw("lastEveClosingLine");
   const eveLine = typeof eveRaw === "string" && eveRaw.trim() ? eveRaw.trim() : null;
 
-  const [nextPlayTime] = useState(() => getNextUtcMidnight());
+  const [nextPlayTime] = useState(() => getNextLocalMidnight());
 
   const tease = getStreakTease(wasSuccessful ? streak : 0, wasSuccessful);
   const resultsHref = wasSuccessful ? "/game-over?success=true" : "/game-over?success=false";

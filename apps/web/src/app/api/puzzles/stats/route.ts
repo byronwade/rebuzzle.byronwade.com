@@ -6,9 +6,10 @@
 
 import { NextResponse } from "next/server";
 import { ensureConnection, getCollection } from "@/db/mongodb";
-import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { buildCacheControl } from "@/lib/http/cache-headers";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
+import { resolveRequestTimeZone } from "@/lib/timezone";
 
 interface PuzzleStats {
   todaySolves: number;
@@ -47,7 +48,8 @@ export async function GET(request: Request) {
     await ensureConnection();
     const attemptsCollection = getCollection("puzzleAttempts");
 
-    const dateKey = getUtcPuzzleDate();
+    const timeZone = await resolveRequestTimeZone();
+    const dateKey = getLocalPuzzleDate(new Date(), timeZone);
     const today = new Date(`${dateKey}T00:00:00.000Z`);
     const tomorrow = new Date(`${dateKey}T23:59:59.999Z`);
 

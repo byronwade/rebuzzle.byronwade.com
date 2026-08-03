@@ -3,7 +3,7 @@
 import { Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { getNextLocalMidnight } from "@/lib/game/daily-lock";
 
 function formatCountdown(diffMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
@@ -16,7 +16,7 @@ function formatCountdown(diffMs: number): string {
 }
 
 /**
- * Counts down to a fixed next UTC midnight (captured once on the client),
+ * Counts down to the player's next local midnight (captured once),
  * then navigates home so today's puzzle can load.
  */
 export function CountdownTimer() {
@@ -27,9 +27,9 @@ export function CountdownTimer() {
   const reloadedRef = useRef(false);
 
   useEffect(() => {
-    // Capture once — calling getNextUtcMidnight() every tick never reaches zero
+    // Capture once — calling getNextLocalMidnight() every tick never reaches zero
     if (!targetRef.current) {
-      targetRef.current = getNextUtcMidnight();
+      targetRef.current = getNextLocalMidnight();
       setNextAt(targetRef.current);
     }
 
@@ -60,8 +60,8 @@ export function CountdownTimer() {
         <div className="font-bold text-3xl tabular-nums">{timeLeft}</div>
         {nextAt && (
           <div className="mt-1 text-[10px] uppercase tracking-wide opacity-75">
-            Resets {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
-            local ({nextAt.toISOString().slice(11, 16)} UTC)
+            Resets at local midnight (
+            {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })})
           </div>
         )}
       </div>
