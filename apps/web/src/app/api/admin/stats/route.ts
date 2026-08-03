@@ -228,16 +228,20 @@ async function fetchAdminStats(dateStart: Date, dateEnd: Date) {
       userId: { $exists: true, $ne: null as any },
     });
 
+    const usersActiveTodaySet = new Set(usersActiveToday);
+    const usersActive7DaysAgoSet = new Set(usersActive7DaysAgo);
+    const usersActive30DaysAgoSet = new Set(usersActive30DaysAgo);
+
     const retention1Day =
       usersActive7DaysAgo.length > 0
-        ? (usersActiveToday.filter((u) => usersActive7DaysAgo.includes(u)).length /
+        ? (usersActiveToday.filter((u) => usersActive7DaysAgoSet.has(u)).length /
             usersActive7DaysAgo.length) *
           100
         : 0;
 
     const retention7Day =
       usersActive30DaysAgo.length > 0
-        ? (usersActive7DaysAgo.filter((u) => usersActive30DaysAgo.includes(u)).length /
+        ? (usersActive7DaysAgo.filter((u) => usersActive30DaysAgoSet.has(u)).length /
             usersActive30DaysAgo.length) *
           100
         : 0;

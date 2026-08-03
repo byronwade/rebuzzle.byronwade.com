@@ -18,13 +18,17 @@ export async function getActiveEmailRecipients(options?: {
   if (options?.sendToAllUsers) {
     const usersCollection = getCollection<User>("users");
     const allUsers = await usersCollection.find({ email: { $exists: true, $ne: "" } }).toArray();
-    return allUsers
-      .filter((u) => !u.isGuest)
-      .map((user) => ({
-        email: user.email,
-        username: user.username,
-        userId: user.id,
-      }));
+    return allUsers.flatMap((user) =>
+      user.isGuest
+        ? []
+        : [
+            {
+              email: user.email,
+              username: user.username,
+              userId: user.id,
+            },
+          ]
+    );
   }
 
   const emailSubscriptionsCollection = getCollection("emailSubscriptions");

@@ -40,21 +40,25 @@ export async function GET(request: NextRequest) {
       getAllAchievementsWithStatus(user.id),
     ]);
 
-    const unlocked = withStatus
-      .filter((row) => row.unlocked)
-      .map((row) => ({
-        id: row.definition.id,
-        achievementId: row.definition.id,
-        unlockedAt: row.unlockedAt,
-        achievement: {
-          name: row.definition.name,
-          description: row.definition.description,
-          icon: row.definition.icon,
-          rarity: row.definition.rarity,
-          points: row.definition.points,
-          category: row.definition.category,
-        },
-      }));
+    const unlocked = withStatus.flatMap((row) =>
+      row.unlocked
+        ? [
+            {
+              id: row.definition.id,
+              achievementId: row.definition.id,
+              unlockedAt: row.unlockedAt,
+              achievement: {
+                name: row.definition.name,
+                description: row.definition.description,
+                icon: row.definition.icon,
+                rarity: row.definition.rarity,
+                points: row.definition.points,
+                category: row.definition.category,
+              },
+            },
+          ]
+        : []
+    );
 
     return NextResponse.json(
       {

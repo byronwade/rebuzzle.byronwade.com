@@ -41,9 +41,11 @@ export function biasTechniquesBySolveRates(input: {
 }): { techniques: TechniqueId[]; notes: string[] } {
   const minSamples = input.minSamples ?? MIN_SAMPLES;
   const rateById = new Map(
-    input.rates
-      .filter((row) => row.sampleSize >= minSamples && Number.isFinite(row.solveRate))
-      .map((row) => [row.techniqueId, row] as const)
+    input.rates.flatMap((row) =>
+      row.sampleSize >= minSamples && Number.isFinite(row.solveRate)
+        ? ([[row.techniqueId, row]] as const)
+        : []
+    )
   );
 
   if (!rateById.size || (!input.tooEasy && !input.tooHard)) {

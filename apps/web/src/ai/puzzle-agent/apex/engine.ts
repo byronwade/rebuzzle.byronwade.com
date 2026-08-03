@@ -225,9 +225,9 @@ export async function runApexGeneration(
       const antiCopySuggestions = brief.phraseSuggestions.filter(
         (entry) => answerFirstSeedKey(entry) !== answerSeed
       );
-      const phraseSlice = antiCopySuggestions
-        .filter((_, i) => i % brief.candidateCount === (slot - 1) % brief.candidateCount)
-        .map((p) => p.answer);
+      const phraseSlice = antiCopySuggestions.flatMap((p, i) =>
+        i % brief.candidateCount === (slot - 1) % brief.candidateCount ? [p.answer] : []
+      );
 
       const result = await runPuzzleAgentGeneration({
         ...params,

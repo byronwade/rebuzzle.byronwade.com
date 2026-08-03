@@ -38,9 +38,9 @@ const puzzleTypeLabels: Record<string, string> = {
 export async function generateStaticParams() {
   try {
     const posts = await fetchBlogPosts();
-    const validSlugs = posts
-      .filter((post) => post.slug.length <= 250)
-      .map((post) => ({ slug: post.slug }));
+    const validSlugs = posts.flatMap((post) =>
+      post.slug.length <= 250 ? [{ slug: post.slug }] : []
+    );
 
     // Cache Components requires ≥1 result for build-time validation.
     if (validSlugs.length === 0) {

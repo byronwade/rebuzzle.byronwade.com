@@ -230,7 +230,9 @@ export async function checkAchievementCriteria(
       const todayAttempts = recentAttempts.filter(
         (a) => a.isCorrect && new Date(a.attemptedAt) >= today
       );
-      const difficulties = new Set(todayAttempts.map((a) => a.difficulty).filter(Boolean));
+      const difficulties = new Set(
+        todayAttempts.flatMap((a) => (a.difficulty ? [a.difficulty] : []))
+      );
       // Include current game difficulty
       if (gameContext.isCorrect) {
         difficulties.add(gameContext.difficulty);

@@ -449,16 +449,16 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
         }),
       ]);
       const completedCandidateIds = new Set(
-        candidates
-          .filter((candidate) => {
-            const sizes = new Set(
-              reviewerReviews
-                .filter((review) => review.candidateId === candidate.id)
-                .map((review) => review.sizePx)
-            );
-            return GENERATED_PICTOGRAM_REVIEW_SIZES.every((size) => sizes.has(size));
-          })
-          .map((candidate) => candidate.id)
+        candidates.flatMap((candidate) => {
+          const sizes = new Set(
+            reviewerReviews.flatMap((review) =>
+              review.candidateId === candidate.id ? [review.sizePx] : []
+            )
+          );
+          return GENERATED_PICTOGRAM_REVIEW_SIZES.every((size) => sizes.has(size))
+            ? [candidate.id]
+            : [];
+        })
       );
       const visible = candidates.filter((candidate) => completedCandidateIds.has(candidate.id));
       const [compactPx, largePx] = GENERATED_PICTOGRAM_REVIEW_SIZES;

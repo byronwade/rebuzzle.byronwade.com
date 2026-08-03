@@ -82,13 +82,16 @@ export async function GET(request: Request) {
     const todaySolves = uniqueUsers.size;
 
     const validTimes = attempts
-      .filter((a) => typeof a.timeSpentSeconds === "number" && a.timeSpentSeconds > 0)
-      .map((a) => a.timeSpentSeconds as number)
+      .flatMap((a) =>
+        typeof a.timeSpentSeconds === "number" && a.timeSpentSeconds > 0
+          ? [a.timeSpentSeconds as number]
+          : []
+      )
       .sort((a, b) => a - b);
 
-    const validAttempts = attempts
-      .filter((a) => typeof a.attemptNumber === "number")
-      .map((a) => a.attemptNumber as number);
+    const validAttempts = attempts.flatMap((a) =>
+      typeof a.attemptNumber === "number" ? [a.attemptNumber as number] : []
+    );
 
     const averageSolveTime =
       validTimes.length > 0

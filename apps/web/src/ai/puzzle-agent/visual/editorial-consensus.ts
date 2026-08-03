@@ -134,9 +134,9 @@ export function summarizeEditorialReviewAttempts(input: {
   );
   const failureKinds = Array.from(
     new Set(
-      confidentAttempts
-        .filter((attempt) => attempt.verdict === "reject")
-        .flatMap((attempt) => attempt.failureKinds)
+      confidentAttempts.flatMap((attempt) =>
+        attempt.verdict === "reject" ? attempt.failureKinds : []
+      )
     )
   );
   const confidence = attempts.length

@@ -95,11 +95,12 @@ export function inspectPuzzleForPlaytestBackfill(puzzle: Puzzle): {
   const expectedProfileIds = PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => profile.id);
   const boardProfiles = puzzle.metadata?.boardRecognitionProfiles ?? [];
   const boardProfileIds = boardProfiles.map((profile) => profile.profileId);
+  const boardProfileIdSet = new Set(boardProfileIds);
   const exactBoardRecognition =
     typeof puzzle.metadata?.boardRecognitionConfidence === "number" &&
     boardProfiles.length === expectedProfileIds.length &&
-    new Set(boardProfileIds).size === expectedProfileIds.length &&
-    expectedProfileIds.every((profileId) => boardProfileIds.includes(profileId)) &&
+    boardProfileIdSet.size === expectedProfileIds.length &&
+    expectedProfileIds.every((profileId) => boardProfileIdSet.has(profileId)) &&
     boardProfiles.every(
       (profile) =>
         new Set(profile.models.map((model) => model.trim().toLowerCase())).size >=
@@ -111,6 +112,7 @@ export function inspectPuzzleForPlaytestBackfill(puzzle: Puzzle): {
   const playability = puzzle.metadata?.playabilityEvidence;
   const observedBlindProfiles = playability?.blind.profiles ?? [];
   const observedBlindProfileIds = observedBlindProfiles.map((profile) => profile.profileId);
+  const observedBlindProfileIdSet = new Set(observedBlindProfileIds);
   const exactBlindProfiles =
     playability !== undefined &&
     playability.blind.profileCount === expectedProfileIds.length &&
@@ -119,8 +121,8 @@ export function inspectPuzzleForPlaytestBackfill(puzzle: Puzzle): {
     playability.blind.profilesWithTopTarget === expectedProfileIds.length &&
     playability.blind.profilesWithDominantTarget === expectedProfileIds.length &&
     observedBlindProfiles.length === expectedProfileIds.length &&
-    new Set(observedBlindProfileIds).size === expectedProfileIds.length &&
-    expectedProfileIds.every((profileId) => observedBlindProfileIds.includes(profileId)) &&
+    observedBlindProfileIdSet.size === expectedProfileIds.length &&
+    expectedProfileIds.every((profileId) => observedBlindProfileIdSet.has(profileId)) &&
     observedBlindProfiles.every(
       (profile) =>
         profile.judgeCount >= playability.blind.requiredVotes &&

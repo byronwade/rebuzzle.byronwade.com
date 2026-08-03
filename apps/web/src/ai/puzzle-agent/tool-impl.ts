@@ -338,23 +338,22 @@ pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, li
     });
 
     const allowed = new Set<string>(techIds);
-    const seeds: ConceptSeedIdea[] = invented.seeds
-      .map((seed) => {
-        const techniqueId = (
-          allowed.has(seed.techniqueId) ? seed.techniqueId : techIds[0] || "simple_compound"
-        ) as TechniqueId;
-        return {
-          workingTitle: seed.workingTitle,
-          answerDirection: seed.answerDirection,
-          category: seed.category,
-          techniqueId,
-          layerPlan: seed.layerPlan,
-          whyItFitsTier: seed.whyItFitsTier,
-          pictogramNouns: seed.pictogramNouns,
-          mechanismOneLiner: seed.mechanismOneLiner,
-        };
-      })
-      .filter((seed) => !avoidKeys.has(normalizeAnswerKey(seed.answerDirection)));
+    const seeds: ConceptSeedIdea[] = invented.seeds.flatMap((seed) => {
+      const techniqueId = (
+        allowed.has(seed.techniqueId) ? seed.techniqueId : techIds[0] || "simple_compound"
+      ) as TechniqueId;
+      const mapped = {
+        workingTitle: seed.workingTitle,
+        answerDirection: seed.answerDirection,
+        category: seed.category,
+        techniqueId,
+        layerPlan: seed.layerPlan,
+        whyItFitsTier: seed.whyItFitsTier,
+        pictogramNouns: seed.pictogramNouns,
+        mechanismOneLiner: seed.mechanismOneLiner,
+      };
+      return avoidKeys.has(normalizeAnswerKey(mapped.answerDirection)) ? [] : [mapped];
+    });
 
     if (seeds.length < 3) return fallback;
 
@@ -721,7 +720,8 @@ export function scorePuzzleQuality(
     visual: input.visual,
   });
   if (!assembly.withinBudget) {
-    issues.push(...assembly.issues.filter((i) => !issues.includes(i)));
+    const existingIssues = new Set(issues);
+    issues.push(...assembly.issues.filter((i) => !existingIssues.has(i)));
   } else {
     strengths.push(`Component budget fits ${level.label}`);
   }

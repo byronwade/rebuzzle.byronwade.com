@@ -368,9 +368,9 @@ export function resolveCuratedPictogram(
 }
 
 export function listCuratedPictogramIds(options: { includeQuarantined?: boolean } = {}): string[] {
-  return CATALOG.filter(
-    (entry) => options.includeQuarantined || !QUARANTINED_IDS.has(entry.id)
-  ).map((entry) => entry.id);
+  return CATALOG.flatMap((entry) =>
+    options.includeQuarantined || !QUARANTINED_IDS.has(entry.id) ? [entry.id] : []
+  );
 }
 
 /** Share the catalog's reviewed synonym ontology with blind-label matching. */

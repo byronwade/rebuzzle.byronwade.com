@@ -549,8 +549,8 @@ export async function fetchAllBlogPosts(options?: {
 
     const posts = await blogPostsCollection.aggregate(pipeline).toArray();
 
-    const databasePosts = posts
-      .map((post: any) => ({
+    const databasePosts = posts.flatMap((post: any) => {
+      const mapped = {
         slug: post.slug,
         date: post.date,
         publishedAt: post.publishedAt,
@@ -564,8 +564,11 @@ export async function fetchAllBlogPosts(options?: {
         sections: post.sections,
         seoMetadata: post.seoMetadata,
         puzzleOrigin: post.puzzleOrigin,
-      }))
-      .filter((post) => post.slug && !post.slug.startsWith("-") && post.slug.length >= 3);
+      };
+      return mapped.slug && !mapped.slug.startsWith("-") && mapped.slug.length >= 3
+        ? [mapped]
+        : [];
+    });
 
     return mergeBlogPosts(repositoryPosts, databasePosts);
   } catch (error) {

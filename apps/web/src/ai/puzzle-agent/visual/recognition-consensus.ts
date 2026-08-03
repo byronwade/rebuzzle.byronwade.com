@@ -71,9 +71,7 @@ export function evaluateRecognitionConsensus(input: {
     isAmbiguous: !ok || judges.some((judge) => judge.isAmbiguous),
     redrawAdvice:
       judges
-        .filter((judge) => !judge.passed)
-        .map((judge) => judge.redrawAdvice)
-        .filter(Boolean)
+        .flatMap((judge) => (!judge.passed && judge.redrawAdvice ? [judge.redrawAdvice] : []))
         .join(" ")
         .slice(0, 200) || "Keep the silhouette chunky and unmistakable.",
     matchesConcept: ok,

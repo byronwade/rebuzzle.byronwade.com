@@ -268,10 +268,16 @@ export async function loadQualityVoteAggregate(input?: {
     }
 
     const likedTechniques = topTechniqueIds(
-      likedPuzzleIds.map((id) => techniqueByPuzzle.get(id) || "").filter(Boolean)
+      likedPuzzleIds.flatMap((id) => {
+        const tech = techniqueByPuzzle.get(id);
+        return tech ? [tech] : [];
+      })
     );
     const dislikedTechniques = topTechniqueIds(
-      dislikedPuzzleIds.map((id) => techniqueByPuzzle.get(id) || "").filter(Boolean)
+      dislikedPuzzleIds.flatMap((id) => {
+        const tech = techniqueByPuzzle.get(id);
+        return tech ? [tech] : [];
+      })
     );
 
     return {
