@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (web)
+        run: pnpm --filter @rebuzzle/web lint
+
+      - name: Typecheck (packages + web)
+        run: >
+          pnpm --filter @rebuzzle/config
+          --filter @rebuzzle/game-logic
+          --filter @rebuzzle/ui
+          --filter @rebuzzle/web
+          typecheck
+
+      - name: Unit tests (web)
+        run: pnpm --filter @rebuzzle/web exec jest --ci --passWithNoTests
+        env:
+          NODE_ENV: test
+          NEXT_PUBLIC_APP_URL: http://localhost:3000

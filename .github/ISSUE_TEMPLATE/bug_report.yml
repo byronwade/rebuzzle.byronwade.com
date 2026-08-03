@@ -1,0 +1,48 @@
+name: Bug report
+description: Report unexpected behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Rebuzzle. For security issues, email hello@byronwade.com instead of opening a public issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: App target
+      options:
+        - Web
+        - Desktop
+        - Mobile
+        - Shared package / tooling
+        - Unsure
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser/OS, Node version, or device as relevant
+      placeholder: e.g. Chrome 131 / macOS, Node 24
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Paste relevant logs (redact secrets) or describe screenshots

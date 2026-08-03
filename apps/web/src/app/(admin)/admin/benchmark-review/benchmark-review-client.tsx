@@ -410,8 +410,8 @@ function BenchmarkReviewPageInner() {
         <Card className="overflow-hidden">
           <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
             <div className="flex min-h-[420px] items-center justify-center bg-[#f4f6f3] p-8">
-              {/* biome-ignore lint/performance/noImgElement: Pinned benchmark images are reference-only and must not be transformed or cached by Next Image. */}
               {/* react-doctor-disable-next-line react-doctor/nextjs-no-img-element -- pinned external benchmark reference must not be transformed by next/image */}
+              {/* biome-ignore lint/performance/noImgElement: Pinned benchmark images are reference-only and must not be transformed or cached by Next Image. */}
               <img
                 alt="External rebus benchmark under review"
                 className="max-h-[520px] max-w-full rounded-md object-contain shadow-sm"
