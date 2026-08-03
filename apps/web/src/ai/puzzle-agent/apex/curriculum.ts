@@ -134,10 +134,10 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       ? `Self-learning: ${learning.difficultyDriftNotes.slice(0, 2).join("; ")}.`
       : null,
     learning.enabled && learning.avoidPatterns.length
-      ? `Learning avoid: ${learning.avoidPatterns.slice(0, 2).join("; ")}.`
+      ? `Learning avoid: ${learning.avoidPatterns.slice(0, 3).join("; ")}.`
       : null,
     learning.enabled && learning.preferPatterns.length
-      ? `Learning prefer: ${learning.preferPatterns.slice(0, 2).join("; ")}.`
+      ? `Learning prefer: ${learning.preferPatterns.slice(0, 3).join("; ")}.`
       : null,
     learning.targetDifficultyDelta !== 0
       ? `Applied difficulty delta: ${learning.targetDifficultyDelta > 0 ? "+" : ""}${learning.targetDifficultyDelta}.`

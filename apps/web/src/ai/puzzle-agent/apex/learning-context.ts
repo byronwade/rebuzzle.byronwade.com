@@ -8,6 +8,7 @@ import {
   loadQualityVoteAggregate,
   qualityVotesToGuidance,
 } from "../../learning/puzzle-quality-vote";
+import { loadRejectionDigest } from "../../learning/rejection-digest";
 import type { LearningDigest } from "./types";
 
 /**
@@ -35,12 +36,13 @@ export async function loadLearningDigest(input?: {
   const lookbackDays = input?.lookbackDays ?? 7;
 
   try {
-    const [window, qualityVotes] = await Promise.all([
+    const [window, qualityVotes, rejectionDigest] = await Promise.all([
       measureWindowPerformance({
         lookbackDays,
         minFinals: 8,
       }),
       loadQualityVoteAggregate({ lookbackDays: Math.max(lookbackDays, 14) }),
+      loadRejectionDigest({ lookbackDays: Math.max(lookbackDays, 14) }),
     ]);
 
     const avoidPatterns: string[] = [];
@@ -86,12 +88,17 @@ export async function loadLearningDigest(input?: {
     avoidPatterns.push(...qualityGuidance.avoidPatterns);
     difficultyDriftNotes.push(...qualityGuidance.notes);
 
+    // Recent Apex/Eve reject modes → "avoid last N failure modes" for the brief.
+    preferPatterns.push(...rejectionDigest.preferPatterns);
+    avoidPatterns.push(...rejectionDigest.avoidPatterns);
+    difficultyDriftNotes.push(...rejectionDigest.notes);
+
     return {
       enabled: true,
       avoidPatterns,
       preferPatterns,
       difficultyDriftNotes,
-      sampleSize: window.finalPlays + qualityVotes.total,
+      sampleSize: window.finalPlays + qualityVotes.total + rejectionDigest.sampleSize,
       targetDifficultyDelta: window.difficultyDelta,
       tooEasy: window.tooEasy,
       tooHard: window.tooHard,

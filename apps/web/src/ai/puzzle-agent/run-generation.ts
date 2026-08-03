@@ -23,6 +23,7 @@ import {
   missingAnswerSeedCues,
 } from "./apex/answer-seed-cues";
 import { toPlayabilityEvidence } from "./apex/blind-solve-consensus";
+import { preflightComposeAnswerSeedCuePlan } from "./apex/cue-plan-preflight";
 import {
   applyPlayerSimHeuristics,
   playerSimPublishBlockers,
@@ -56,10 +57,13 @@ import { verifyPublicationAssets } from "./visual/publication-assets";
 const PUBLICATION_AGENT_TOOLS = [
   "get_puzzle_type_spec",
   "get_difficulty_brief",
+  "get_generation_brief",
   "list_recent_answers",
   "propose_concept_seeds",
   "list_technique_library",
   "list_pictogram_catalog",
+  "inspect_answer_seed_cues",
+  "preflight_compose_cue_plan",
   "compose_puzzle_visual",
   "craft_hint_ladder",
 ] as const;
@@ -134,6 +138,7 @@ function loadInstructions(): string {
     "- techniqueId is required and must be a real library id for the target tier.",
     "- ALWAYS call compose_puzzle_visual — unicode-only boards are rejected at publish.",
     "- Call list_pictogram_catalog before composing and use its exact reviewed concept IDs.",
+    "- When an answer-seed cue contract is present: inspect_answer_seed_cues (or use the host preflight layers) before compose.",
     "- Never call generate_pictogram in publication generation; fresh art belongs in the review lab.",
     "- Use list_recent_answers techniqueId values to choose the least-recently-used allowed technique; never default blindly to the first technique.",
     "- Prefer ≥1 pictogram SVG; styled text (large/strike/stacked) is OK when typography is the joke.",
@@ -149,7 +154,14 @@ function loadInstructions(): string {
   ].join("\n");
 }
 
-function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string): string {
+function buildUserMessage(
+  params: PuzzleGenerationParams,
+  priorFailure?: string,
+  preflight?: {
+    unicodeFallback: string;
+    layerSummary: string;
+  }
+): string {
   const puzzleType = params.puzzleType ?? "rebus";
   const qualityThreshold = params.qualityThreshold ?? AI_CONFIG.puzzleAgent.qualityThreshold;
   const minFun = AI_CONFIG.puzzleAgent.minFunScore;
@@ -188,6 +200,14 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
           "Text/operator cues must remain visibly present and support the named technique. Keep the complete answer hidden as a contiguous phrase.",
         ].join("\n")
       : null,
+    preflight
+      ? [
+          "HOST CUE-PLAN PREFLIGHT (already composed, zero invent): reuse these exact ingredients.",
+          `Preflight unicodeFallback: ${preflight.unicodeFallback}`,
+          `Preflight layers: ${preflight.layerSummary}`,
+          "Call compose_puzzle_visual with the same concepts/text/operators (you may refine layout/emphasis only).",
+        ].join("\n")
+      : null,
     params.phraseSeeds?.length
       ? `Phrase-bank tropes/seeds to avoid copying (invent a different mechanism/answer; cousins of bee/before/sunflower/piece-of-cake are discouraged): ${params.phraseSeeds.join("; ")}.`
       : null,
@@ -209,10 +229,18 @@ function buildUserMessage(params: PuzzleGenerationParams, priorFailure?: string)
     `Quality gates: overall >= ${qualityThreshold}, funScore >= ${minFun}, publishable=true, unique, solvable, in-band, composed visual.`,
     priorFailure ? `Previous attempt failed: ${priorFailure}. Fix that specific issue.` : null,
     "Workflow:",
-    "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_recent_answers + list_pictogram_catalog",
-    "2) propose_concept_seeds + list_technique_library, then pick one catalog-compatible direction",
-    "3) compose_puzzle_visual + craft_hint_ladder",
-    "4) Return the strict puzzle draft with difficultyLevel + techniqueId + visual; the host owns all scoring and retries",
+    params.answerSeedCuePlan?.length
+      ? "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_pictogram_catalog + inspect_answer_seed_cues"
+      : "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_recent_answers + list_pictogram_catalog",
+    params.answerSeedCuePlan?.length
+      ? "2) compose_puzzle_visual using the host cue-plan layers (or preflight_compose_cue_plan), then craft_hint_ladder"
+      : "2) propose_concept_seeds + list_technique_library, then pick one catalog-compatible direction",
+    params.answerSeedCuePlan?.length
+      ? "3) Return the strict puzzle draft with difficultyLevel + techniqueId + visual; the host owns all scoring and retries"
+      : "3) compose_puzzle_visual + craft_hint_ladder",
+    params.answerSeedCuePlan?.length
+      ? null
+      : "4) Return the strict puzzle draft with difficultyLevel + techniqueId + visual; the host owns all scoring and retries",
   ]
     .filter(Boolean)
     .join("\n");
@@ -253,6 +281,45 @@ export async function runPuzzleAgentGeneration(
     throw new Error(`Invalid answer-seed cue contract: ${cuePlanIssues.join("; ")}`);
   }
 
+  // Cheap host preflight: prove cue plan composes before any invent spend.
+  let hostPreflightComposition: CapturedPuzzleComposition | null = null;
+  let hostPreflightPrompt: { unicodeFallback: string; layerSummary: string } | undefined;
+  if (params.answerSeed && params.answerSeedCuePlan?.length) {
+    const preflight = await preflightComposeAnswerSeedCuePlan({
+      answer: params.answerSeed,
+      targetDifficulty: params.targetDifficulty,
+      techniqueId: params.preferredTechniques?.[0],
+      cues: params.answerSeedCuePlan,
+    });
+    if (!preflight.ok || !preflight.composition) {
+      throw new Error(
+        `Cue-plan preflight failed (${preflight.stage}): ${preflight.issues.join("; ")}`
+      );
+    }
+    hostPreflightComposition = {
+      answer: params.answerSeed,
+      visual: preflight.composition.visual,
+    };
+    hostPreflightPrompt = {
+      unicodeFallback: preflight.composition.visual.unicodeFallback,
+      layerSummary: preflight.composition.visual.layers
+        .map((layer) => {
+          if (layer.kind === "pictogram") return `pictogram:${layer.concept}`;
+          if (layer.kind === "text") return `text:${layer.content}`;
+          if (layer.kind === "operator") return `op:${layer.symbol}`;
+          return `image:${layer.concept ?? "scene"}`;
+        })
+        .join(" | "),
+    };
+    if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+      console.log("[Puzzle Agent] cue-plan preflight ok", {
+        answer: params.answerSeed,
+        unicodeFallback: hostPreflightPrompt.unicodeFallback,
+        layers: hostPreflightPrompt.layerSummary,
+      });
+    }
+  }
+
   ensureGatewayKey();
   assertGatewayAuthConfigured();
   await enforceQuota();
@@ -284,7 +351,7 @@ export async function runPuzzleAgentGeneration(
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       let completedSteps = 0;
       const completedTools: string[] = [];
-      let capturedComposition: CapturedPuzzleComposition | null = null;
+      let capturedComposition: CapturedPuzzleComposition | null = hostPreflightComposition;
       try {
         const agent = new ToolLoopAgent({
           model: getAiGateway()(modelId),
@@ -313,7 +380,8 @@ export async function runPuzzleAgentGeneration(
           },
           onToolExecutionEnd: ({ toolCall, toolOutput }) => {
             if (
-              toolCall.toolName !== "compose_puzzle_visual" ||
+              (toolCall.toolName !== "compose_puzzle_visual" &&
+                toolCall.toolName !== "preflight_compose_cue_plan") ||
               toolOutput.type !== "tool-result"
             ) {
               return;
@@ -328,7 +396,7 @@ export async function runPuzzleAgentGeneration(
         });
 
         const result = await agent.generate({
-          prompt: `${buildUserMessage(params, priorFailure)}\n\nModel ${modelId} — attempt ${attempt}/${maxAttempts}.`,
+          prompt: `${buildUserMessage(params, priorFailure, hostPreflightPrompt)}\n\nModel ${modelId} — attempt ${attempt}/${maxAttempts}.`,
           abortSignal: AbortSignal.timeout(AI_CONFIG.timeouts.agent),
         });
 

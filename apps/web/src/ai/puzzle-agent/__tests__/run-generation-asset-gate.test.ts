@@ -60,6 +60,35 @@ jest.mock("../tool-impl", () => ({
   stressTestSolvability,
 }));
 jest.mock("../tools", () => ({ puzzleAgentTools: {} }));
+jest.mock("../apex/cue-plan-preflight", () => ({
+  preflightComposeAnswerSeedCuePlan: jest.fn(async ({ answer }: { answer: string }) => ({
+    ok: true,
+    stage: "cue-presence",
+    issues: [],
+    inspection: { ready: true, issues: [], missingOnBoard: [], layerPlan: [], plan: "" },
+    composition: {
+      issues: [],
+      visual: {
+        styleId: "ink-pictogram-v1",
+        mode: "composed",
+        layout: "row",
+        unicodeFallback: "🔑 BOARD",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "key",
+            emojiFallback: "🔑",
+            svg: "<svg />",
+            source: "catalog",
+          },
+          { kind: "text", content: "BOARD", emphasis: "normal" },
+        ],
+      },
+      // answer echoed for host fallback capture
+      answer,
+    },
+  })),
+}));
 jest.mock("../visual/composition", () => ({
   PuzzleVisualSchema: { safeParse: jest.fn((visual) => ({ success: true, data: visual })) },
 }));

@@ -29,6 +29,13 @@ export {
   recordGenerationAudit,
 } from "./generation-audit";
 export {
+  digestRejectionTexts,
+  loadRejectionDigest,
+  type RejectionBucket,
+  type RejectionDigest,
+  type RejectionTaxonomyCode,
+} from "./rejection-digest";
+export {
   type LearningPolicySnapshot,
   recordFinalAttemptSignal,
   resolveAdaptiveDifficultyForDate,
