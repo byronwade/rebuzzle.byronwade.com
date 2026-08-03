@@ -155,12 +155,82 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   // Global comparison stats
   const [percentile, setPercentile] = useState<number | null>(null);
   const [todaySolves, setTodaySolves] = useState<number | null>(null);
-  const [perception, setPerception] = useState<PerceptionChoice | null>(null);
+  const [perceptionOverride, setPerception] = useState<PerceptionChoice | null>(null);
   const [perceptionSaving, setPerceptionSaving] = useState(false);
-  const [qualityVote, setQualityVote] = useState<QualityVote | null>(null);
+  const [qualityVoteOverride, setQualityVote] = useState<QualityVote | null>(null);
   const [qualityVoteSaving, setQualityVoteSaving] = useState(false);
-  const [qualityReasons, setQualityReasons] = useState<QualityReason[]>([]);
-  const [playtestEligible, setPlaytestEligible] = useState(false);
+  const [qualityReasonsOverride, setQualityReasons] = useState<QualityReason[] | null>(null);
+  const [fetchedPlaytestEligible, setFetchedPlaytestEligible] = useState(false);
+  const canCheckPlaytest = !authLoading && isAuthenticated && !isGuest && Boolean(userId);
+  const playtestEligible = canCheckPlaytest && fetchedPlaytestEligible;
+
+  const puzzleFeedbackKey = gameData.puzzleId || "";
+  const storedFeedback = useSyncExternalStore(
+    (onStoreChange) => {
+      const onStorage = (e: StorageEvent) => {
+        if (
+          e.key === null ||
+          (puzzleFeedbackKey &&
+            (e.key === `difficultyPerception:${puzzleFeedbackKey}` ||
+              e.key === `puzzleQualityVote:${puzzleFeedbackKey}` ||
+              e.key === `puzzleQualityReasons:${puzzleFeedbackKey}`))
+        ) {
+          onStoreChange();
+        }
+      };
+      const onCustom = () => onStoreChange();
+      window.addEventListener("storage", onStorage);
+      window.addEventListener("rebuzzle:game-over-feedback", onCustom);
+      return () => {
+        window.removeEventListener("storage", onStorage);
+        window.removeEventListener("rebuzzle:game-over-feedback", onCustom);
+      };
+    },
+    () => {
+      if (!puzzleFeedbackKey) {
+        return {
+          perception: null as PerceptionChoice | null,
+          qualityVote: null as QualityVote | null,
+          qualityReasons: [] as QualityReason[],
+        };
+      }
+      try {
+        const stored = localStorage.getItem(`difficultyPerception:${puzzleFeedbackKey}`);
+        const perception =
+          stored === "too_easy" || stored === "just_right" || stored === "too_hard"
+            ? stored
+            : null;
+        const qualityStored = localStorage.getItem(`puzzleQualityVote:${puzzleFeedbackKey}`);
+        const qualityVote =
+          qualityStored === "like" || qualityStored === "dislike" ? qualityStored : null;
+        let qualityReasons: QualityReason[] = [];
+        const reasonStored = localStorage.getItem(`puzzleQualityReasons:${puzzleFeedbackKey}`);
+        if (reasonStored) {
+          const parsed = JSON.parse(reasonStored) as unknown;
+          if (Array.isArray(parsed)) {
+            qualityReasons = parsed.filter((reason): reason is QualityReason =>
+              QUALITY_REASON_OPTIONS.some((option) => option.id === reason)
+            );
+          }
+        }
+        return { perception, qualityVote, qualityReasons };
+      } catch {
+        return {
+          perception: null as PerceptionChoice | null,
+          qualityVote: null as QualityVote | null,
+          qualityReasons: [] as QualityReason[],
+        };
+      }
+    },
+    () => ({
+      perception: null as PerceptionChoice | null,
+      qualityVote: null as QualityVote | null,
+      qualityReasons: [] as QualityReason[],
+    })
+  );
+  const perception = perceptionOverride ?? storedFeedback.perception;
+  const qualityVote = qualityVoteOverride ?? storedFeedback.qualityVote;
+  const qualityReasons = qualityReasonsOverride ?? storedFeedback.qualityReasons;
 
   const storedSolution = useSyncExternalStore(
     () => () => {},
@@ -191,23 +261,20 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       : (storedSolution ?? { answer: "", explanation: "" });
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || isGuest || !userId) {
-      setPlaytestEligible(false);
-      return;
-    }
+    if (!canCheckPlaytest) return;
     const controller = new AbortController();
     void fetch("/api/puzzle-playtests?mode=eligibility", {
       cache: "no-store",
       signal: controller.signal,
     })
       .then((response) => {
-        if (!controller.signal.aborted) setPlaytestEligible(response.ok);
+        if (!controller.signal.aborted) setFetchedPlaytestEligible(response.ok);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setPlaytestEligible(false);
+        if (!controller.signal.aborted) setFetchedPlaytestEligible(false);
       });
     return () => controller.abort();
-  }, [authLoading, isAuthenticated, isGuest, userId]);
+  }, [canCheckPlaytest]);
 
   useEffect(() => {
     async function loadClientExtras() {
@@ -294,36 +361,6 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     }
   }
 
-  useEffect(() => {
-    const puzzleId = gameData.puzzleId;
-    if (!puzzleId || typeof window === "undefined") return;
-    try {
-      const key = `difficultyPerception:${puzzleId}`;
-      const stored = localStorage.getItem(key);
-      if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
-        setPerception(stored);
-      }
-      const qualityKey = `puzzleQualityVote:${puzzleId}`;
-      const qualityStored = localStorage.getItem(qualityKey);
-      if (qualityStored === "like" || qualityStored === "dislike") {
-        setQualityVote(qualityStored);
-      }
-      const reasonStored = localStorage.getItem(`puzzleQualityReasons:${puzzleId}`);
-      if (reasonStored) {
-        const parsed = JSON.parse(reasonStored) as unknown;
-        if (Array.isArray(parsed)) {
-          setQualityReasons(
-            parsed.filter((reason): reason is QualityReason =>
-              QUALITY_REASON_OPTIONS.some((option) => option.id === reason)
-            )
-          );
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, [gameData.puzzleId]);
-
   async function submitPerception(choice: PerceptionChoice) {
     const puzzleId = resolvePuzzleId();
 
@@ -400,6 +437,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
     const alreadyCelebrated = consumeJustSolvedSessionFlag();
     if (!alreadyCelebrated) {
+      // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- one-shot celebration kickoff after solve
       setShowConfetti(true);
       haptics.celebration();
     }

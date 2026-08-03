@@ -80,7 +80,7 @@ function useCountUp(
   useEffect(() => {
     if (!shouldAnimate) return;
 
-    // react-doctor-disable-next-line react-doctor/set-state-in-effect -- animation frame loop needs an initial done=false reset
+    // react-doctor-disable-next-line react-doctor/set-state-in-effect, react-hooks-js/set-state-in-effect -- animation frame loop needs an initial done=false reset
     setDone(false);
     let frame = 0;
     const started = performance.now();

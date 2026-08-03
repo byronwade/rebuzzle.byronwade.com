@@ -4,7 +4,7 @@ import { FlaskConical, Loader2, Send } from "lucide-react";
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import type {
   BlindPuzzlePlaytestSpecimen,
   PuzzlePlaytestProgress,
@@ -51,34 +51,43 @@ export default function PlaytestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadNext = useCallback(async () => {
-    await withLoadingFlag(setLoading, async () => {
-      setError(null);
-      try {
-        const response = await fetch("/api/puzzle-playtests", { cache: "no-store" });
-        if (response.status === 401) {
-          router.push("/login?next=/playtest");
-          return;
-        }
-        const data = await safeJsonParse<QueueResponse>(response);
-        if (!response.ok || !data?.progress) {
-          fail(data?.error || "Failed to load a playtest puzzle");
-        }
-        setSpecimen(data.specimen ?? null);
-        setProgress(data.progress);
-        shownAtRef.current = Date.now();
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Failed to load a playtest puzzle");
-      }
-    });
-
-  }, [router]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (authLoading) return;
     if (!(isAuthenticated && !isGuest)) return;
-    void loadNext();
-  }, [authLoading, isAuthenticated, isGuest, loadNext]);
+    let cancelled = false;
+    void (async () => {
+      await withLoadingFlag(setLoading, async () => {
+        if (cancelled) return;
+        setError(null);
+        try {
+          const response = await fetch("/api/puzzle-playtests", { cache: "no-store" });
+          if (cancelled) return;
+          if (response.status === 401) {
+            router.push("/login?next=/playtest");
+            return;
+          }
+          const data = await safeJsonParse<QueueResponse>(response);
+          if (cancelled) return;
+          if (!response.ok || !data?.progress) {
+            fail(data?.error || "Failed to load a playtest puzzle");
+          }
+          setSpecimen(data.specimen ?? null);
+          setProgress(data.progress);
+          shownAtRef.current = Date.now();
+        } catch (loadError) {
+          if (cancelled) return;
+          setError(
+            loadError instanceof Error ? loadError.message : "Failed to load a playtest puzzle"
+          );
+        }
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, isAuthenticated, isGuest, reloadKey, router]);
 
   const showLoading = authLoading || ((isAuthenticated && !isGuest) && loading);
 
@@ -111,7 +120,7 @@ export default function PlaytestPage() {
         setGuess("");
         setConfidence(3);
         setFailureReason("");
-        await loadNext();
+        setReloadKey((key) => key + 1);
       } catch (saveError) {
         toast({
           title: "Response not saved",

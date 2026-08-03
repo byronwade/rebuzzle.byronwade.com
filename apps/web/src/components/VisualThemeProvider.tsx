@@ -3,9 +3,7 @@
 import {
   createContext,
   type ReactNode,
-  useCallback,
   useContext,
-  useMemo,
   useSyncExternalStore,
 } from "react";
 import {
@@ -65,18 +63,15 @@ export function VisualThemeProvider({ children }: { children: ReactNode }) {
     () => false
   );
 
-  const setVisualTheme = useCallback((theme: VisualTheme) => {
+  const setVisualTheme = (theme: VisualTheme) => {
     setStoredVisualTheme(theme);
     applyVisualTheme(theme);
     window.dispatchEvent(
       new CustomEvent("rebuzzle:visual-theme", { detail: { theme } })
     );
-  }, []);
+  };
 
-  const value = useMemo(
-    () => ({ visualTheme, setVisualTheme, mounted }),
-    [visualTheme, setVisualTheme, mounted]
-  );
+  const value = { visualTheme, setVisualTheme, mounted };
 
   return <VisualThemeContext.Provider value={value}>{children}</VisualThemeContext.Provider>;
 }

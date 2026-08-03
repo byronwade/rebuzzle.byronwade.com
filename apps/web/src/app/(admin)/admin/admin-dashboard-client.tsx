@@ -365,10 +365,11 @@ export default function AdminPage() {
 
     if (isAuthenticated) {
       checkAdmin();
-    } else {
-      setLoading(false);
     }
+    // When unauthenticated, loading clears via derive below (avoid sync setState in effect)
   }, [isAuthenticated, router, toast]);
+
+  const effectiveLoading = isAuthenticated ? loading : false;
 
   // Fetch functions
   const fetchStats = useCallback(async (startDate?: Date | null, endDate?: Date | null) => {
@@ -730,7 +731,7 @@ export default function AdminPage() {
     }
   };
 
-  if (loading) {
+  if (effectiveLoading) {
     return (
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:px-6">
         <div className="space-y-2">

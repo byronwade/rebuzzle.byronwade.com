@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -173,10 +173,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [gameState, dispatch] = useReducer(gameReducer, undefined, createInitialGameState);
 
   // Get puzzle display - support both new (puzzle) and legacy (rebusPuzzle) fields
-  const puzzleDisplay = useMemo(
-    () => gameData.puzzle || gameData.rebusPuzzle || "",
-    [gameData.puzzle, gameData.rebusPuzzle]
-  );
+  const puzzleDisplay = gameData.puzzle || gameData.rebusPuzzle || "";
   const puzzleType = gameData.puzzleType || "rebus";
   const currentEventPuzzle = gameData;
   const [userStats, setUserStats] = useState<UserStats>({
@@ -228,7 +225,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const pendingCelebrationRef = useRef(false);
   const wasChatLockedRef = useRef(false);
 
-  const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
+  const patchTurn = (id: number, patch: Partial<ThreadTurn>) => {
     let persistQuip: string | null = null;
     setTurns((prev) =>
       prev.map((turn) => {
@@ -251,7 +248,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         // Ignore quota / private mode.
       }
     }
-  }, []);
+  };
 
   /**
    * Ask Eve for a riff on a guess and type it into a second bubble.
@@ -264,8 +261,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
    * before the chat dock locks. A short timeout keeps a slow model from
    * holding the input open forever.
    */
-  const streamQuip = useCallback(
-    async (id: number, guess: string, tier: ReactionTier) => {
+  const streamQuip = async (id: number, guess: string, tier: ReactionTier) => {
       patchTurn(id, { quipPending: true });
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 4500);
@@ -305,10 +301,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         patchTurn(id, { quipPending: false });
       }
       window.clearTimeout(timeoutId);
-
-    },
-    [gameData.id, patchTurn]
-  );
+  };
   const { userId, isLoading: authLoading } = useAuth();
   const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
   // PrefetchGuestClient warms the session in idle time; board stays interactive.
@@ -414,14 +407,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     });
   }, [gameData.id, gameData.difficulty, puzzleType, guestReady]);
 
-  const dismissKeyboard = useCallback(() => {
+  const dismissKeyboard = () => {
     if (typeof document !== "undefined") {
       (document.activeElement as HTMLElement | null)?.blur?.();
     }
-  }, []);
+  };
 
-  const setCompletionState = useCallback(
-    (
+  const setCompletionState = (
       success: boolean,
       finalGuess: string,
       attempts: number,
@@ -494,43 +486,34 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       } else if (!success) {
         haptics.error();
       }
-    },
-    [
-      dismissKeyboard,
-      endGame,
-      gameState.startTime,
-      gameState.hintsUsed,
-      userStats.streak,
-      gameData.difficulty,
-    ]
-  );
+  };
 
-  const handleIncorrectGuess = useCallback(
-    (_attemptsLeft: number, similarity?: number, tier?: ReactionTier) => {
-      const resolvedTier =
-        tier ??
-        (similarity !== undefined && similarity >= engagementConfig.nearMissThreshold
-          ? "close"
-          : similarity !== undefined && similarity >= 40
-            ? "warm"
-            : "cold");
+  const handleIncorrectGuess = (
+    _attemptsLeft: number,
+    similarity?: number,
+    tier?: ReactionTier
+  ) => {
+    const resolvedTier =
+      tier ??
+      (similarity !== undefined && similarity >= engagementConfig.nearMissThreshold
+        ? "close"
+        : similarity !== undefined && similarity >= 40
+          ? "warm"
+          : "cold");
 
-      if (resolvedTier === "close") {
-        haptics.warning();
-        void playInterfaceSound("near-miss");
-      } else if (resolvedTier === "warm") {
-        haptics.warm();
-        void playInterfaceSound("incorrect", { playbackRate: 1.02 });
-      } else {
-        haptics.error();
-        void playInterfaceSound("incorrect", { playbackRate: 0.94 });
-      }
-    },
-    []
-  );
+    if (resolvedTier === "close") {
+      haptics.warning();
+      void playInterfaceSound("near-miss");
+    } else if (resolvedTier === "warm") {
+      haptics.warm();
+      void playInterfaceSound("incorrect", { playbackRate: 1.02 });
+    } else {
+      haptics.error();
+      void playInterfaceSound("incorrect", { playbackRate: 0.94 });
+    }
+  };
 
-  const handleGuess = useCallback(
-    async (guessValue?: string) => {
+  const handleGuess = async (guessValue?: string) => {
       const guess = guessValue?.trim() ?? "";
 
       if (gameState.gameOver || !currentEventPuzzle || !guess || gameState.isSubmitting) {
@@ -946,44 +929,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         });
       }
       dispatch({ type: "SET_IS_SUBMITTING", payload: false });
+  };
 
-    },
-    [
-      gameState.gameOver,
-      gameState.attemptsLeft,
-      gameState.isSubmitting,
-      gameState.lastSubmittedGuess,
-      gameState.startTime,
-      gameState.guessHistory,
-      gameState.hintsUsed,
-      currentEventPuzzle,
-      setCompletionState,
-      userStats,
-      userId,
-      ensureGuest,
-      gameData.id,
-      puzzleType,
-      gameData.difficulty,
-      handleIncorrectGuess,
-      streamQuip,
-    ]
-  );
-
-  const resultsHref = useMemo(() => {
-    if (!gameState.gameOver) return "/game-over";
-    return buildGameOverHref({
-      success: gameState.wasSuccessful,
-      guess: gameState.finalGuess || "",
-      attempts: gameState.wasSuccessful ? gameState.finalAttempts : gameSettings.maxAttempts,
-      timeTakenSeconds: gameState.timeTakenSeconds,
-    });
-  }, [
-    gameState.gameOver,
-    gameState.wasSuccessful,
-    gameState.finalGuess,
-    gameState.finalAttempts,
-    gameState.timeTakenSeconds,
-  ]);
+  const resultsHref = !gameState.gameOver
+    ? "/game-over"
+    : buildGameOverHref({
+        success: gameState.wasSuccessful,
+        guess: gameState.finalGuess || "",
+        attempts: gameState.wasSuccessful ? gameState.finalAttempts : gameSettings.maxAttempts,
+        timeTakenSeconds: gameState.timeTakenSeconds,
+      });
 
   // Keep the answer bar open until Eve's closing riff settles.
   const awaitingClosingQuip = turns.some(
@@ -1090,7 +1045,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     };
   }, [chatLocked, gameState.wasSuccessful, gameState.timeTakenSeconds, gameData.id]);
 
-  const stageCaption = useMemo(() => {
+  const stageCaption = (() => {
     const base = getPuzzleQuestion(puzzleType);
     if (hasThread || gameState.gameOver) return base;
     if (fromChallenge) return "Shared with you · one puzzle";
@@ -1106,15 +1061,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       return `Day ${userStats.streak} · one puzzle`;
     }
     return base;
-  }, [
-    puzzleType,
-    hasThread,
-    gameState.gameOver,
-    userStats.streak,
-    isReturner,
-    isComeback,
-    fromChallenge,
-  ]);
+  })();
 
   const resultCard = chatLocked ? (
     <SolveResultCard

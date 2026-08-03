@@ -2,7 +2,7 @@
 
 import { Eye, Loader2, SkipForward } from "lucide-react";
 import Image from "next/image";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useReducer, useState } from "react";
 import type {
   BlindIconRecognitionSpecimen,
   IconRecognitionCalibrationReport,
@@ -17,8 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { safeJsonParse } from "@/lib/utils";
 import { fail } from "@/lib/fail";
+import { safeJsonParse } from "@/lib/utils";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 type NextResponse = {
@@ -35,6 +35,74 @@ type ReportResponse = {
   error?: string;
 };
 
+type PanelState = {
+  panelId: IconRecognitionPanelId;
+  specimen: BlindIconRecognitionSpecimen | null;
+  progress: IconRecognitionProgress | null;
+  report: IconRecognitionCalibrationReport | null;
+  guess: string;
+  error: string | null;
+};
+
+type PanelAction =
+  | { type: "select-panel"; panelId: IconRecognitionPanelId }
+  | { type: "load-start" }
+  | {
+      type: "load-success";
+      specimen: BlindIconRecognitionSpecimen | null;
+      progress: IconRecognitionProgress;
+    }
+  | {
+      type: "load-report";
+      report: IconRecognitionCalibrationReport;
+      progress?: IconRecognitionProgress;
+    }
+  | { type: "load-error"; error: string }
+  | { type: "set-guess"; guess: string }
+  | { type: "clear-guess" };
+
+const initialPanelState: PanelState = {
+  panelId: "publication",
+  specimen: null,
+  progress: null,
+  report: null,
+  guess: "",
+  error: null,
+};
+
+function panelReducer(state: PanelState, action: PanelAction): PanelState {
+  switch (action.type) {
+    case "select-panel":
+      return {
+        ...initialPanelState,
+        panelId: action.panelId,
+      };
+    case "load-start":
+      return { ...state, error: null, report: null };
+    case "load-success":
+      return {
+        ...state,
+        specimen: action.specimen,
+        progress: action.progress,
+        error: null,
+      };
+    case "load-report":
+      return {
+        ...state,
+        report: action.report,
+        progress: action.progress ?? state.progress,
+      };
+    case "load-error":
+      return { ...state, error: action.error };
+    case "set-guess":
+      return { ...state, guess: action.guess };
+    case "clear-guess":
+      return { ...state, guess: "" };
+    default:
+      return state;
+  }
+}
+
 function percent(value: number | null): string {
   return value === null ? "No data" : `${(value * 100).toFixed(1)}%`;
 }
@@ -49,59 +117,73 @@ export default function IconRecognitionPage() {
 
 function IconRecognitionPageInner() {
   const { toast } = useToast();
-  const [panelId, setPanelId] = useState<IconRecognitionPanelId>("publication");
-  const [specimen, setSpecimen] = useState<BlindIconRecognitionSpecimen | null>(null);
-  const [progress, setProgress] = useState<IconRecognitionProgress | null>(null);
-  const [report, setReport] = useState<IconRecognitionCalibrationReport | null>(null);
-  const [guess, setGuess] = useState("");
+  const [state, dispatch] = useReducer(panelReducer, initialPanelState);
+  const { panelId, specimen, progress, report, guess, error } = state;
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadReport = useCallback(async () => {
-    const response = await fetch(`/api/admin/ai/icon-recognition?mode=report&panel=${panelId}`, {
-      cache: "no-store",
-    });
-    if (response.status === 401) {
-      window.location.assign("/login");
-      return;
-    }
-    const data = await safeJsonParse<ReportResponse>(response);
-    if (!response.ok || !data?.report) {
-      fail(data?.error || "Failed to load calibration report");
-    }
-    setReport(data.report);
-    if (data.reviewerProgress) setProgress(data.reviewerProgress);
-  }, [panelId]);
-
-  const loadNext = useCallback(async () => {
-    await withLoadingFlag(setLoading, async () => {
-      setError(null);
-      setReport(null);
-      try {
-        const response = await fetch(`/api/admin/ai/icon-recognition?panel=${panelId}`, {
-          cache: "no-store",
-        });
-        if (response.status === 401) {
-          window.location.assign("/login");
-          return;
-        }
-        const data = await safeJsonParse<NextResponse>(response);
-        if (!response.ok || !data?.progress) {
-          fail(data?.error || "Failed to load recognition specimen");
-        }
-        setSpecimen(data.specimen ?? null);
-        setProgress(data.progress);
-        if (data.progress.complete) await loadReport();
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Failed to load recognition panel");
-      }
-    });
-  }, [panelId, loadReport]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    void loadNext();
-  }, [loadNext]);
+    let cancelled = false;
+    void (async () => {
+      await withLoadingFlag(setLoading, async () => {
+        if (cancelled) return;
+        dispatch({ type: "load-start" });
+        try {
+          const response = await fetch(`/api/admin/ai/icon-recognition?panel=${panelId}`, {
+            cache: "no-store",
+          });
+          if (cancelled) return;
+          if (response.status === 401) {
+            window.location.assign("/login");
+            return;
+          }
+          const data = await safeJsonParse<NextResponse>(response);
+          if (cancelled) return;
+          if (!response.ok || !data?.progress) {
+            fail(data?.error || "Failed to load recognition specimen");
+          }
+          dispatch({
+            type: "load-success",
+            specimen: data.specimen ?? null,
+            progress: data.progress,
+          });
+          if (data.progress.complete) {
+            const reportResponse = await fetch(
+              `/api/admin/ai/icon-recognition?mode=report&panel=${panelId}`,
+              { cache: "no-store" }
+            );
+            if (cancelled) return;
+            if (reportResponse.status === 401) {
+              window.location.assign("/login");
+              return;
+            }
+            const reportData = await safeJsonParse<ReportResponse>(reportResponse);
+            if (cancelled) return;
+            if (!reportResponse.ok || !reportData?.report) {
+              fail(reportData?.error || "Failed to load calibration report");
+            }
+            dispatch({
+              type: "load-report",
+              report: reportData.report,
+              progress: reportData.reviewerProgress,
+            });
+          }
+        } catch (loadError) {
+          if (cancelled) return;
+          dispatch({
+            type: "load-error",
+            error:
+              loadError instanceof Error ? loadError.message : "Failed to load recognition panel",
+          });
+        }
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [panelId, reloadKey]);
 
   const submit = async (input: { uncertain: boolean }) => {
     if (!specimen || isSubmitting) return;
@@ -123,8 +205,8 @@ function IconRecognitionPageInner() {
         });
         const data = await safeJsonParse<NextResponse>(response);
         if (!response.ok) fail(data?.error || "Failed to save response");
-        setGuess("");
-        await loadNext();
+        dispatch({ type: "clear-guess" });
+        setReloadKey((key) => key + 1);
       } catch (saveError) {
         toast({
           title: "Response not saved",
@@ -133,7 +215,6 @@ function IconRecognitionPageInner() {
         });
       }
     });
-
   };
 
   const onSubmit = (event: FormEvent) => {
@@ -143,11 +224,7 @@ function IconRecognitionPageInner() {
 
   const selectPanel = (nextPanelId: IconRecognitionPanelId) => {
     if (nextPanelId === panelId) return;
-    setSpecimen(null);
-    setProgress(null);
-    setReport(null);
-    setGuess("");
-    setPanelId(nextPanelId);
+    dispatch({ type: "select-panel", panelId: nextPanelId });
   };
 
   if (loading) {
@@ -254,7 +331,7 @@ function IconRecognitionPageInner() {
                 autoFocus
                 disabled={isSubmitting}
                 maxLength={100}
-                onChange={(event) => setGuess(event.target.value)}
+                onChange={(event) => dispatch({ type: "set-guess", guess: event.target.value })}
                 placeholder="e.g. bicycle"
                 spellCheck={false}
                 value={guess}

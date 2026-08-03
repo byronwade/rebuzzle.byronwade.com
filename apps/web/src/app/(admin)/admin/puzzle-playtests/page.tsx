@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
 import type {
   BlindPuzzlePlaytestSpecimen,
@@ -78,46 +78,54 @@ function PuzzlePlaytestsPageInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const loadReport = useCallback(async () => {
-    const response = await fetch("/api/admin/ai/puzzle-playtests?mode=report", {
-      cache: "no-store",
-    });
-    if (response.status === 401) {
-      window.location.assign("/login");
-      return;
-    }
-    const data = await safeJsonParse<ReportResponse>(response);
-    if (!response.ok || !data?.report)
-      fail(data?.error || "Failed to load playtest report");
-    setReport(data.report);
-  }, []);
-
-  const loadNext = useCallback(async () => {
-    await withLoadingFlag(setLoading, async () => {
-      setError(null);
-      try {
-        const response = await fetch("/api/admin/ai/puzzle-playtests", { cache: "no-store" });
-        if (response.status === 401) {
-          window.location.assign("/login");
-          return;
-        }
-        const data = await safeJsonParse<QueueResponse>(response);
-        if (!response.ok || !data?.progress)
-          fail(data?.error || "Failed to load playtest");
-        setSpecimen(data.specimen ?? null);
-        setProgress(data.progress);
-        shownAtRef.current = Date.now();
-        await loadReport();
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle playtests");
-      }
-    });
-  }, [loadReport]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    void loadNext();
-  }, [loadNext]);
+    let cancelled = false;
+    void (async () => {
+      await withLoadingFlag(setLoading, async () => {
+        if (cancelled) return;
+        setError(null);
+        try {
+          const response = await fetch("/api/admin/ai/puzzle-playtests", { cache: "no-store" });
+          if (cancelled) return;
+          if (response.status === 401) {
+            window.location.assign("/login");
+            return;
+          }
+          const data = await safeJsonParse<QueueResponse>(response);
+          if (cancelled) return;
+          if (!response.ok || !data?.progress)
+            fail(data?.error || "Failed to load playtest");
+          setSpecimen(data.specimen ?? null);
+          setProgress(data.progress);
+          shownAtRef.current = Date.now();
+
+          const reportResponse = await fetch("/api/admin/ai/puzzle-playtests?mode=report", {
+            cache: "no-store",
+          });
+          if (cancelled) return;
+          if (reportResponse.status === 401) {
+            window.location.assign("/login");
+            return;
+          }
+          const reportData = await safeJsonParse<ReportResponse>(reportResponse);
+          if (cancelled) return;
+          if (!reportResponse.ok || !reportData?.report)
+            fail(reportData?.error || "Failed to load playtest report");
+          setReport(reportData.report);
+        } catch (loadError) {
+          if (cancelled) return;
+          setError(
+            loadError instanceof Error ? loadError.message : "Failed to load puzzle playtests"
+          );
+        }
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   const submit = async (gaveUp: boolean) => {
     if (!specimen || isSubmitting) return;
@@ -148,7 +156,7 @@ function PuzzlePlaytestsPageInner() {
         setGuess("");
         setConfidence(3);
         setFailureReason("");
-        await loadNext();
+        setReloadKey((key) => key + 1);
       } catch (saveError) {
         toast({
           title: "Playtest not saved",
@@ -184,7 +192,7 @@ function PuzzlePlaytestsPageInner() {
             title: "Historical calibration queue updated",
             description: `${data.report.queued} current-pipeline puzzles added.`,
           });
-          await loadNext();
+          setReloadKey((key) => key + 1);
         }
       } catch (backfillError) {
         toast({

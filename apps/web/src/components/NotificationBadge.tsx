@@ -2,7 +2,7 @@
 
 import { Bell, BellRing, Check, Loader2, Mail, Sparkles } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,18 +55,15 @@ export function NotificationBadge() {
     }
   }, [isOpen, isAuthenticated, refreshInbox]);
 
-  // Validate email format
-  const validateEmail = useCallback((emailValue: string): boolean => {
+  const validateEmail = (emailValue: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(emailValue);
-  }, []);
+  };
 
-  const handleEnableClick = useCallback(async () => {
-    // Prevent rapid clicks
+  const handleEnableClick = async () => {
     if (isSubmitting || emailLoading) return;
 
     if (isAuthenticated && user?.email) {
-      // Authenticated user - subscribe directly
       setIsSubmitting(true);
       try {
         await subscribe(user.email);
@@ -75,13 +72,11 @@ export function NotificationBadge() {
       }
       setIsSubmitting(false);
     } else {
-      // Guest - need to collect email
       setShowEmailDialog(true);
     }
-  }, [isAuthenticated, user, subscribe, isSubmitting, emailLoading]);
+  };
 
-  const handleDisableClick = useCallback(async () => {
-    // Prevent rapid clicks
+  const handleDisableClick = async () => {
     if (isSubmitting || emailLoading) return;
 
     setIsSubmitting(true);
@@ -91,14 +86,11 @@ export function NotificationBadge() {
       // Error handled in hook
     }
     setIsSubmitting(false);
+  };
 
-  }, [unsubscribe, isSubmitting, emailLoading]);
-
-  const handleEmailSubmit = useCallback(async () => {
-    // Clear previous errors
+  const handleEmailSubmit = async () => {
     setEmailError(null);
 
-    // Validate email
     if (!guestEmail.trim()) {
       setEmailError("Email address is required");
       return;
@@ -116,14 +108,12 @@ export function NotificationBadge() {
       setGuestEmail("");
       setEmailError(null);
     } catch (err) {
-      // Error handled in hook, but set local error for dialog
       if (err instanceof Error) {
         setEmailError(err.message);
       }
     }
     setIsSubmitting(false);
-
-  }, [guestEmail, validateEmail, subscribe]);
+  };
 
   const getBellIcon = () => {
     if (emailLoading) {

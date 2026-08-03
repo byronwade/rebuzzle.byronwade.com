@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { AppLink } from "@/components/AppLink";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import type { ExternalCorpusReadinessReport } from "@/ai/puzzle-agent/benchmark/external-corpus";
 import { AuthGate } from "@/components/AuthGate";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -111,19 +111,23 @@ function BenchmarkReviewPageInner() {
   const [notImported, setNotImported] = useState(false);
   const [note, setNote] = useState("");
 
-  const loadQueue = useCallback(
-    async (requestedPage = page) => {
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
       await withLoadingFlag(setLoading, async () => {
         try {
           const params = new URLSearchParams({
             datasetId: DATASET_ID,
             status,
-            page: String(requestedPage),
+            page: String(page),
             limit: "20",
           });
           const response = await fetch(`/api/admin/ai/benchmark-reviews?${params}`, {
             cache: "no-store",
           });
+          if (cancelled) return;
           if (response.status === 401) {
             window.location.assign("/login");
             return;
@@ -131,6 +135,7 @@ function BenchmarkReviewPageInner() {
           const data = await safeJsonParse<{ success: boolean; queue?: Queue; error?: string }>(
             response
           );
+          if (cancelled) return;
           if (response.status === 404) {
             setNotImported(true);
             setQueue(null);
@@ -142,6 +147,7 @@ function BenchmarkReviewPageInner() {
           setPage(data.queue.page);
           setNotImported(false);
         } catch (error) {
+          if (cancelled) return;
           toast({
             title: "Review queue unavailable",
             description: error instanceof Error ? error.message : "Try again shortly",
@@ -149,73 +155,70 @@ function BenchmarkReviewPageInner() {
           });
         }
       });
-    },
-    [page, status, toast]
-  );
-
-  useEffect(() => {
-    void loadQueue();
-  }, [loadQueue]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, status, reloadKey, toast]);
 
   const current = queue?.items[0];
 
-  const submitDecision = useCallback(
-    async (action: DecisionAction) => {
-      if (!current || saving) return;
-      await withLoadingFlag(setSaving, async () => {
-        try {
-          const decisions = decisionFor(current, action);
-          const response = await fetch("/api/admin/ai/benchmark-reviews", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              id: current.id,
-              expectedVersion: current.version,
-              ...decisions,
-              note,
-            }),
-          });
-          const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
-          if (!response.ok) fail(data?.error || "Decision was not saved");
-          setNote("");
-          await loadQueue(page);
-        } catch (error) {
-          toast({
-            title: "Decision not saved",
-            description: error instanceof Error ? error.message : "Refresh and try again",
-            variant: "destructive",
-          });
-          if (error instanceof Error && error.message.includes("refresh")) await loadQueue(page);
+  const submitDecision = async (action: DecisionAction) => {
+    if (!current || saving) return;
+    await withLoadingFlag(setSaving, async () => {
+      try {
+        const decisions = decisionFor(current, action);
+        const response = await fetch("/api/admin/ai/benchmark-reviews", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            id: current.id,
+            expectedVersion: current.version,
+            ...decisions,
+            note,
+          }),
+        });
+        const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
+        if (!response.ok) fail(data?.error || "Decision was not saved");
+        setNote("");
+        setReloadKey((key) => key + 1);
+      } catch (error) {
+        toast({
+          title: "Decision not saved",
+          description: error instanceof Error ? error.message : "Refresh and try again",
+          variant: "destructive",
+        });
+        if (error instanceof Error && error.message.includes("refresh")) {
+          setReloadKey((key) => key + 1);
         }
-      });
-    },
-    [current, saving, note, loadQueue, page, toast]
-  );
+      }
+    });
+  };
 
-  const skipCurrent = useCallback(() => {
+  const skipCurrent = () => {
     setQueue((existing) =>
       existing && existing.items.length > 1
         ? { ...existing, items: [...existing.items.slice(1), existing.items[0]!] }
         : existing
     );
     setNote("");
-  }, []);
+  };
 
-  const submitDecisionRef = useRef(submitDecision);
-  const skipCurrentRef = useRef(skipCurrent);
-  useEffect(() => {
-    submitDecisionRef.current = submitDecision;
-    skipCurrentRef.current = skipCurrent;
-  }, [submitDecision, skipCurrent]);
+  const onKeyboardDecision = useEffectEvent((action: DecisionAction) => {
+    void submitDecision(action);
+  });
+  const onKeyboardSkip = useEffectEvent(() => {
+    skipCurrent();
+  });
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select, [contenteditable=true]")) return;
-      if (event.key.toLowerCase() === "a") void submitDecisionRef.current("approve");
-      if (event.key.toLowerCase() === "r") void submitDecisionRef.current("reject-rights");
-      if (event.key.toLowerCase() === "w") void submitDecisionRef.current("reject-answer");
-      if (event.key.toLowerCase() === "s") skipCurrentRef.current();
+      if (event.key.toLowerCase() === "a") void onKeyboardDecision("approve");
+      if (event.key.toLowerCase() === "r") void onKeyboardDecision("reject-rights");
+      if (event.key.toLowerCase() === "w") void onKeyboardDecision("reject-answer");
+      if (event.key.toLowerCase() === "s") onKeyboardSkip();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -246,7 +249,7 @@ function BenchmarkReviewPageInner() {
         description: `${data?.inserted ?? 0} new fixtures; ${data?.existing ?? 0} already present.`,
       });
       setPage(1);
-      await loadQueue(1);
+      setReloadKey((key) => key + 1);
     } catch (error) {
       toast({
         title: "Import rejected",
@@ -372,7 +375,12 @@ function BenchmarkReviewPageInner() {
             </SelectGroup>
           </SelectContent>
         </Select>
-        <Button disabled={loading} onClick={() => void loadQueue()} size="sm" variant="ghost">
+        <Button
+          disabled={loading}
+          onClick={() => setReloadKey((key) => key + 1)}
+          size="sm"
+          variant="ghost"
+        >
           <RefreshCw
             className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
             data-icon="inline-start"

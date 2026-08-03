@@ -43,6 +43,31 @@ export default defineConfig({
         ],
         rules: ["react-doctor/async-await-in-loop"],
       },
+      {
+        // Intentional large page shells / admin dashboards — prior automated splits broke types;
+        // keep cohesive until targeted extractions are designed. Prefer ignore over brittle shells.
+        // Use ** globs: parentheses in (admin) route groups break literal path matching.
+        files: [
+          "**/admin-dashboard-client.tsx",
+          "**/benchmark-review/page.tsx",
+          "**/icon-recognition/page.tsx",
+          "**/puzzle-playtests/page.tsx",
+          "**/achievements-client.tsx",
+          "**/game-over-client.tsx",
+          "**/leaderboard-client.tsx",
+          "**/login/page.tsx",
+          "**/settings-client.tsx",
+          "**/signup/page.tsx",
+          "**/DevToolsPanel.tsx",
+          "**/DevVisualLab.tsx",
+          "**/GameBoard.tsx",
+          "**/NotificationBadge.tsx",
+          "**/SolveResultCard.tsx",
+          "**/AIInsightsTab.tsx",
+          "**/StatsTab.tsx",
+        ],
+        rules: ["react-doctor/no-giant-component"],
+      },
     ],
   },
 });

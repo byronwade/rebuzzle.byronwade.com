@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Badge } from "@/components/ui/badge";
@@ -91,10 +91,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
       sections?.puzzleHistory
   );
 
-  const { safe, spoiler } = useMemo(
-    () => splitSafeAndSpoilerContent(post.content || ""),
-    [post.content]
-  );
+  const { safe, spoiler } = splitSafeAndSpoilerContent(post.content || "");
 
   useEffect(() => {
     trackEvent(analyticsEvents.BLOG_POST_VIEW, {

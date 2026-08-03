@@ -7,7 +7,7 @@
 
 import { FlaskConical, Loader2, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useReducer, useState, useSyncExternalStore } from "react";
 import { PuzzleContainer, PuzzleDisplay } from "@/components/PuzzleDisplay";
 import { Button } from "@/components/ui/button";
 import { isDevModeEnabled } from "@/lib/dev-mode";
@@ -99,6 +99,62 @@ type LabResult = {
 
 type QualityVote = "like" | "dislike";
 
+type RunState = {
+  mode: string;
+  busy: boolean;
+  error: string;
+  result: LabResult | null;
+  puzzleId: string | null;
+  vote: QualityVote | null;
+};
+
+type RunAction =
+  | { type: "select-mode"; mode: string }
+  | { type: "generate-start"; mode: string }
+  | { type: "generate-success"; result: LabResult; puzzleId: string | null }
+  | { type: "generate-error"; error: string }
+  | { type: "generate-done" }
+  | { type: "set-vote"; vote: QualityVote | null };
+
+const initialRunState: RunState = {
+  mode: "pictogram",
+  busy: false,
+  error: "",
+  result: null,
+  puzzleId: null,
+  vote: null,
+};
+
+function runReducer(state: RunState, action: RunAction): RunState {
+  switch (action.type) {
+    case "select-mode":
+      return { ...state, mode: action.mode };
+    case "generate-start":
+      return {
+        mode: action.mode,
+        busy: true,
+        error: "",
+        result: null,
+        puzzleId: null,
+        vote: null,
+      };
+    case "generate-success":
+      return {
+        ...state,
+        result: action.result,
+        puzzleId: action.puzzleId,
+      };
+    case "generate-error":
+      return { ...state, error: action.error };
+    case "generate-done":
+      return { ...state, busy: false };
+    case "set-vote":
+      return { ...state, vote: action.vote };
+    default:
+      return state;
+  }
+}
+
 const FALLBACK_MODES: ModeMeta[] = [
   {
     id: "pictogram",
@@ -174,49 +230,44 @@ export function DevVisualLab() {
   );
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [modes, setModes] = useState<ModeMeta[]>(FALLBACK_MODES);
-  const [mode, setMode] = useState("pictogram");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<LabResult | null>(null);
-  const [puzzleId, setPuzzleId] = useState<string | null>(null);
-  const [vote, setVote] = useState<QualityVote | null>(null);
+  const [run, dispatch] = useReducer(runReducer, initialRunState);
+  const { mode, busy, error, result, puzzleId, vote } = run;
   const [voteSaving, setVoteSaving] = useState(false);
 
-  const loadModes = useCallback(async () => {
-    try {
-      const res = await fetch("/api/dev/visual-lab", { credentials: "include" });
-      if (!res.ok) {
-        setAllowed(false);
-        return;
-      }
-      const data = (await res.json()) as {
-        allowed?: boolean;
-        modes?: ModeMeta[];
-        error?: string;
-      };
-      if (!data.allowed) {
-        setAllowed(false);
-        return;
-      }
-      setAllowed(true);
-      if (data.modes?.length) setModes(data.modes);
-    } catch {
-      setAllowed(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (devOn) void loadModes();
-  }, [devOn, loadModes]);
+    if (!devOn) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/dev/visual-lab", { credentials: "include" });
+        if (!res.ok) {
+          if (!cancelled) setAllowed(false);
+          return;
+        }
+        const data = (await res.json()) as {
+          allowed?: boolean;
+          modes?: ModeMeta[];
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!data.allowed) {
+          setAllowed(false);
+          return;
+        }
+        setAllowed(true);
+        if (data.modes?.length) setModes(data.modes);
+      } catch {
+        if (!cancelled) setAllowed(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [devOn]);
 
   const generate = async (nextMode?: string) => {
     const selected = nextMode || mode;
-    setMode(selected);
-    setBusy(true);
-    setError("");
-    setResult(null);
-    setPuzzleId(null);
-    setVote(null);
+    dispatch({ type: "generate-start", mode: selected });
     try {
       const res = await fetch("/api/dev/visual-lab", {
         method: "POST",
@@ -240,23 +291,28 @@ export function DevVisualLab() {
         if (!data.success || !data.result) {
           fail(data.error || "Generation failed");
         }
-        setResult(data.result);
-        setPuzzleId(data.puzzleId || null);
+        dispatch({
+          type: "generate-success",
+          result: data.result,
+          puzzleId: data.puzzleId || null,
+        });
       } else {
         const errBody = (await res.json().catch(() => ({}))) as { error?: string };
         fail(errBody.error || "Generation failed");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
+      dispatch({
+        type: "generate-error",
+        error: err instanceof Error ? err.message : "Generation failed",
+      });
     }
-    setBusy(false);
-
+    dispatch({ type: "generate-done" });
   };
 
   const submitVote = async (next: QualityVote) => {
     if (!puzzleId || voteSaving) return;
     setVoteSaving(true);
-    setVote(next);
+    dispatch({ type: "set-vote", vote: next });
     try {
       await fetch("/api/puzzles/rating", {
         method: "POST",
@@ -328,7 +384,7 @@ export function DevVisualLab() {
               key={m.id}
               type="button"
               disabled={busy || allowed === false}
-              onClick={() => setMode(m.id)}
+              onClick={() => dispatch({ type: "select-mode", mode: m.id })}
               className={cn(
                 "rounded-lg border p-3 text-left transition-colors",
                 "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
