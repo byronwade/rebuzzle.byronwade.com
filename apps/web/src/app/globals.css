@@ -1027,6 +1027,32 @@
   animation: lock-seat 280ms var(--ease) both;
 }
 
+/* Near-level flicker — only when within ~15% of the next level. */
+.level-rim {
+  position: relative;
+  overflow: hidden;
+}
+
+.level-rim::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--level-progress, 85%);
+  background: hsl(var(--warning) / 0.75);
+  animation: level-flicker 1.4s var(--ease) infinite;
+}
+
+@keyframes level-flicker {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 @keyframes lock-seat {
   from {
     transform: scale(0.88);
@@ -1045,7 +1071,8 @@
   .reaction-heat-bubble,
   .heart-fragile,
   .streak-lock-in,
-  .chat-lock-icon {
+  .chat-lock-icon,
+  .level-rim::after {
     animation: none !important;
   }
 }

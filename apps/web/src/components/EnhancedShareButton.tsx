@@ -106,7 +106,11 @@ export function EnhancedShareButton({
     let message = `Rebuzzle ${today} · ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
 
     if (success) {
-      if (nearMiss) {
+      if (attempts === 1) {
+        message += `First guess.`;
+      } else if (attempts >= maxAttempts) {
+        message += `Clutch — last heart.`;
+      } else if (nearMiss) {
         message += `Almost had it → got it.`;
       } else {
         message += `Solved today's puzzle.`;
@@ -138,7 +142,10 @@ export function EnhancedShareButton({
 
     let tweet = `Rebuzzle ${today} ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
     if (success) {
-      tweet += nearMiss ? `Almost → got it. ` : `Solved. `;
+      if (attempts === 1) tweet += `First guess. `;
+      else if (attempts >= maxAttempts) tweet += `Clutch. `;
+      else if (nearMiss) tweet += `Almost → got it. `;
+      else tweet += `Solved. `;
       if (streak > 0) tweet += `🔥 ${streak} `;
     } else if (nearMiss) {
       tweet += `So close. `;

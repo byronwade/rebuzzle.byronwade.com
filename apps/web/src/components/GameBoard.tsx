@@ -13,11 +13,12 @@ import {
 import { fireConfetti } from "@/lib/confetti";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
-import { recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
+import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
+  checkStreakGracePeriod,
   engagementConfig,
   gameSettings,
   getDailyBonusMultiplier,
@@ -52,6 +53,8 @@ interface UserStats {
   level: number;
   lastPlayDate: string | null;
   dailyChallengeStreak: number;
+  noHintStreak: number;
+  fastestSolveSeconds: number | null;
 }
 
 interface GameBoardProps {
@@ -180,6 +183,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     level: 1,
     lastPlayDate: null,
     dailyChallengeStreak: 0,
+    noHintStreak: 0,
+    fastestSolveSeconds: null,
   });
   const [error, setError] = useState<{
     message: string;
@@ -203,14 +208,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [unlockedAchievementName, setUnlockedAchievementName] = useState<string | null>(null);
   const [dayRank, setDayRank] = useState<number | null>(null);
   const [showGuestSave, setShowGuestSave] = useState(false);
+  const [dayBonusMultiplier, setDayBonusMultiplier] = useState<number | null>(null);
+  const [paceLabel, setPaceLabel] = useState<string | null>(null);
+  const [previousBestSeconds, setPreviousBestSeconds] = useState<number | null>(null);
   const consecutiveColdRef = useRef(0);
   const [isReturner, setIsReturner] = useState(false);
+  const [isComeback, setIsComeback] = useState(false);
   /** Celebrate when the locked dock + result card land — not at guess submit. */
   const pendingCelebrationRef = useRef(false);
   const wasChatLockedRef = useRef(false);
 
   useEffect(() => {
     setIsReturner(isReturningUser());
+    setIsComeback(isComebackVisit());
   }, []);
 
   const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
@@ -316,6 +326,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               level: data.stats.level || 1,
               lastPlayDate: data.stats.lastPlayDate || null,
               dailyChallengeStreak: data.stats.dailyChallengeStreak || 0,
+              noHintStreak: data.stats.noHintStreak || 0,
+              fastestSolveSeconds:
+                typeof data.stats.fastestSolveSeconds === "number"
+                  ? data.stats.fastestSolveSeconds
+                  : null,
             });
           }
         }
@@ -412,14 +427,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               )
             : 0;
 
-      if (success && !(typeof serverScore === "number" && serverScore > 0)) {
-        const luckyResult = rollLuckySolve();
+      if (success) {
         const dailyBonus = getDailyBonusMultiplier();
-        if (luckyResult.isLucky) {
-          score = Math.round(score * luckyResult.multiplier);
-          setIsLuckySolve(true);
-        } else if (dailyBonus.hasBonus) {
-          score = Math.round(score * dailyBonus.multiplier);
+        if (dailyBonus.hasBonus) {
+          setDayBonusMultiplier(dailyBonus.multiplier);
+        }
+        if (!(typeof serverScore === "number" && serverScore > 0)) {
+          const luckyResult = rollLuckySolve();
+          if (luckyResult.isLucky) {
+            score = Math.round(score * luckyResult.multiplier);
+            setIsLuckySolve(true);
+          } else if (dailyBonus.hasBonus) {
+            score = Math.round(score * dailyBonus.multiplier);
+          }
         }
       }
 
@@ -470,10 +490,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         void playInterfaceSound("near-miss");
       } else if (resolvedTier === "warm") {
         haptics.warm();
-        void playInterfaceSound("incorrect");
+        void playInterfaceSound("incorrect", { playbackRate: 1.02 });
       } else {
         haptics.error();
-        void playInterfaceSound("incorrect");
+        void playInterfaceSound("incorrect", { playbackRate: 0.94 });
       }
     },
     []
@@ -646,11 +666,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             void streamQuip(turnId, guessToCheck, reaction.tier);
           }
 
+          const previousBest = userStats.fastestSolveSeconds;
+          setPreviousBestSeconds(
+            typeof previousBest === "number" && previousBest > 0 ? previousBest : null
+          );
+
           setCompletionState(true, guessToCheck, attempts, {
             serverScore: earnedPoints,
             celebrate: true,
           });
 
+          const cleanWin = gameState.hintsUsed === 0;
           const newStats = { ...userStats };
           newStats.totalGames += 1;
           newStats.wins += 1;
@@ -659,6 +685,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           newStats.points += earnedPoints;
           newStats.level = Math.floor(newStats.points / 1000) + 1;
           newStats.lastPlayDate = new Date().toISOString();
+          newStats.noHintStreak = cleanWin ? (userStats.noHintStreak || 0) + 1 : 0;
+          if (previousBest == null || previousBest <= 0 || timeTaken < previousBest) {
+            newStats.fastestSolveSeconds = timeTaken;
+          }
           setUserStats(newStats);
 
           trackPuzzleCompletion({
@@ -746,6 +776,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           const newStats = { ...userStats };
           newStats.totalGames += 1;
           newStats.streak = 0;
+          newStats.noHintStreak = 0;
           newStats.lastPlayDate = new Date().toISOString();
           setUserStats(newStats);
 
@@ -913,14 +944,65 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     };
   }, [chatLocked, gameState.wasSuccessful]);
 
+  // Pace murmur from today's solve-time percentiles.
+  useEffect(() => {
+    if (!(chatLocked && gameState.wasSuccessful)) return;
+    const elapsed = gameState.timeTakenSeconds;
+    if (elapsed <= 0) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/puzzles/stats?puzzleId=${encodeURIComponent(gameData.id)}`,
+          { credentials: "include" }
+        );
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          percentiles?: { p25?: number; p50?: number; p75?: number };
+        };
+        const p = data.percentiles;
+        if (!p?.p50 || p.p50 <= 0 || cancelled) return;
+        if (typeof p.p25 === "number" && elapsed <= p.p25) {
+          setPaceLabel("Faster than most");
+        } else if (elapsed <= p.p50) {
+          setPaceLabel("Around the middle");
+        } else if (typeof p.p75 === "number" && elapsed <= p.p75) {
+          setPaceLabel("A bit slower today");
+        } else {
+          setPaceLabel("Took your time");
+        }
+      } catch {
+        // optional murmur
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatLocked, gameState.wasSuccessful, gameState.timeTakenSeconds, gameData.id]);
+
   const stageCaption = useMemo(() => {
     const base = getPuzzleQuestion(puzzleType);
     if (hasThread || gameState.gameOver) return base;
+    if (isComeback) return "Welcome back · one puzzle";
+    try {
+      if (checkStreakGracePeriod().inGracePeriod && userStats.streak > 0) {
+        return "Grace window · streak safe";
+      }
+    } catch {
+      // ignore
+    }
     if (isReturner && userStats.streak > 0) {
       return `Day ${userStats.streak} · one puzzle`;
     }
     return base;
-  }, [puzzleType, hasThread, gameState.gameOver, userStats.streak, isReturner]);
+  }, [
+    puzzleType,
+    hasThread,
+    gameState.gameOver,
+    userStats.streak,
+    isReturner,
+    isComeback,
+  ]);
 
   const resultCard = chatLocked ? (
     <SolveResultCard
@@ -934,13 +1016,18 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       nextPlayTime={gameState.nextPlayTime}
       nearMiss={hadNearMiss}
       isLucky={isLuckySolve}
+      dayBonusMultiplier={dayBonusMultiplier}
       unlockedAchievementName={unlockedAchievementName}
       closestSimilarity={closestSimilarity > 0 ? closestSimilarity : null}
       maxStreak={userStats.maxStreak}
       dayRank={dayRank}
       hintsUsed={gameState.hintsUsed}
+      noHintStreak={userStats.noHintStreak}
       puzzleId={gameData.id}
       timeTakenSeconds={gameState.timeTakenSeconds}
+      previousBestSeconds={previousBestSeconds}
+      paceLabel={paceLabel}
+      totalPoints={userStats.points}
       showGuestSave={showGuestSave}
     />
   ) : null;

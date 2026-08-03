@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 interface TimerProps {
@@ -83,7 +84,19 @@ export function Timer({ nextPlayTime, className, compact = false }: TimerProps) 
         intervalRef.current = null;
       }
     };
-  }, [nextPlayTime, router]);
+  }, [nextPlayTime, router, compact]);
+
+  // Tab-return itch: one soft tap when coming back under an hour to midnight.
+  useEffect(() => {
+    if (!underHour) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        haptics.tap();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [underHour]);
 
   return (
     <TooltipProvider delayDuration={300}>

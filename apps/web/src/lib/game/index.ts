@@ -34,4 +34,10 @@ export {
   type ReactionTier,
 } from "./reactions";
 export { getStreakTease } from "./streak-tease";
-export { getPlayDayCount, recordPlayDay, shouldPromptGuestSave } from "./play-days";
+export {
+  getLastPlayDay,
+  getPlayDayCount,
+  isComebackVisit,
+  recordPlayDay,
+  shouldPromptGuestSave,
+} from "./play-days";

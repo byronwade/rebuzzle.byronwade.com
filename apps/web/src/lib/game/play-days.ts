@@ -41,3 +41,27 @@ export function getPlayDayCount(): number {
 export function shouldPromptGuestSave(): boolean {
   return getPlayDayCount() >= 2;
 }
+
+export function getLastPlayDay(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const days = raw ? (JSON.parse(raw) as string[]) : [];
+    if (!Array.isArray(days) || days.length === 0) return null;
+    const sorted = [...days].sort();
+    return sorted[sorted.length - 1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** True when the player has history but last play was before yesterday (gap ≥ 2 days). */
+export function isComebackVisit(): boolean {
+  const last = getLastPlayDay();
+  if (!last) return false;
+  const lastMs = Date.parse(`${last}T00:00:00.000Z`);
+  const todayMs = Date.parse(`${todayKey()}T00:00:00.000Z`);
+  if (Number.isNaN(lastMs) || Number.isNaN(todayMs)) return false;
+  const gapDays = Math.round((todayMs - lastMs) / (24 * 60 * 60 * 1000));
+  return gapDays >= 2;
+}

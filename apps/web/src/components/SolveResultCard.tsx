@@ -8,6 +8,7 @@ import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import { Timer } from "@/components/Timer";
 import { Button } from "@/components/ui/button";
 import { getStreakTease } from "@/lib/game/streak-tease";
+import { getLevelProgress } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -30,16 +31,21 @@ export interface SolveResultCardProps {
   nextPlayTime?: Date | null;
   nearMiss?: boolean;
   isLucky?: boolean;
-  /** Fresh achievement name from the guess response. */
+  dayBonusMultiplier?: number | null;
   unlockedAchievementName?: string | null;
-  /** Best similarity across the day's guesses (0–100). */
   closestSimilarity?: number | null;
   maxStreak?: number;
   dayRank?: number | null;
   hintsUsed?: number;
+  noHintStreak?: number;
   puzzleId?: string;
   timeTakenSeconds?: number;
-  /** Gate guest signup until day 2+. */
+  /** Previous best solve time in seconds (before this win). */
+  previousBestSeconds?: number | null;
+  /** Pace label from today's percentiles. */
+  paceLabel?: string | null;
+  /** Total points for level-rim (after this solve). */
+  totalPoints?: number;
   showGuestSave?: boolean;
   className?: string;
 }
@@ -88,6 +94,21 @@ function useCountUp(
   return { value, done };
 }
 
+function pbLabel(
+  success: boolean,
+  timeTakenSeconds: number,
+  previousBestSeconds: number | null | undefined
+): string | null {
+  if (!success || timeTakenSeconds <= 0) return null;
+  if (previousBestSeconds == null || previousBestSeconds <= 0) return "PB";
+  if (timeTakenSeconds < previousBestSeconds) {
+    const delta = previousBestSeconds - timeTakenSeconds;
+    return `−${delta}s vs best`;
+  }
+  if (timeTakenSeconds === previousBestSeconds) return "PB tied";
+  return null;
+}
+
 /**
  * In-thread result panel after the day locks — keeps the win/loss moment
  * inside the chat instead of hard-cutting to a separate page.
@@ -103,13 +124,18 @@ export function SolveResultCard({
   nextPlayTime = null,
   nearMiss = false,
   isLucky = false,
+  dayBonusMultiplier = null,
   unlockedAchievementName = null,
   closestSimilarity = null,
   maxStreak = 0,
   dayRank = null,
   hintsUsed = 0,
+  noHintStreak = 0,
   puzzleId,
   timeTakenSeconds = 0,
+  previousBestSeconds = null,
+  paceLabel = null,
+  totalPoints = 0,
   showGuestSave = false,
   className,
 }: SolveResultCardProps) {
@@ -125,7 +151,11 @@ export function SolveResultCard({
   const [perceptionSaving, setPerceptionSaving] = useState(false);
   const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
   const cleanSolve = success && hintsUsed === 0;
+  const clutchSolve = success && attempts >= maxAttempts;
   const showBestGhost = !success && maxStreak > 0;
+  const personalBest = pbLabel(success, timeTakenSeconds, previousBestSeconds);
+  const levelProgress = success && totalPoints > 0 ? getLevelProgress(totalPoints) : 0;
+  const showLevelRim = success && scoreDone && levelProgress >= 85;
 
   useEffect(() => {
     if (!scoreDone) return;
@@ -232,68 +262,97 @@ export function SolveResultCard({
         </div>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-3 divide-x divide-border/80 overflow-hidden rounded-xl border border-border/70 bg-background/60 py-3 text-center">
-        <div>
-          <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
-            {attempts}
-          </p>
-          <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-            {attempts === 1 ? "Guess" : "Guesses"}
-          </p>
-          {cleanSolve && scoreDone ? (
-            <p className="mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] animate-in fade-in duration-300">
-              No hints
+      <div className="mt-4 overflow-hidden rounded-xl border border-border/70 bg-background/60">
+        <div className="grid grid-cols-3 divide-x divide-border/80 py-3 text-center">
+          <div>
+            <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
+              {attempts}
             </p>
-          ) : null}
+            <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+              {attempts === 1 ? "Guess" : "Guesses"}
+            </p>
+            {cleanSolve && scoreDone ? (
+              <p className="mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] animate-in fade-in duration-300">
+                {noHintStreak > 1 ? `No hints · ${noHintStreak}` : "No hints"}
+              </p>
+            ) : null}
+            {clutchSolve && scoreDone ? (
+              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
+                Clutch
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
+              {displayScore}
+            </p>
+            <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+              Points
+            </p>
+            {isLucky && scoreDone ? (
+              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
+                ×2 lucky
+              </p>
+            ) : null}
+            {!isLucky && dayBonusMultiplier && dayBonusMultiplier > 1 && scoreDone ? (
+              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
+                ×{dayBonusMultiplier} day
+              </p>
+            ) : null}
+            {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
+              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
+                Day · #{dayRank}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <p
+              className={cn(
+                "flex items-center justify-center gap-1 font-semibold text-foreground text-xl tabular-nums tracking-tight",
+                streakLocked && "streak-lock-in"
+              )}
+            >
+              {streak > 0 ? (
+                <>
+                  <span className="text-warning">{streak}</span>
+                  <Flame
+                    className={cn(
+                      "h-3.5 w-3.5 text-warning",
+                      isMilestone && streakLocked && "opacity-100"
+                    )}
+                  />
+                </>
+              ) : (
+                "0"
+              )}
+            </p>
+            <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+              Streak
+            </p>
+            {showBestGhost ? (
+              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                Best {maxStreak}
+              </p>
+            ) : null}
+            {personalBest && scoreDone ? (
+              <p className="mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] animate-in fade-in duration-300">
+                {personalBest}
+              </p>
+            ) : null}
+            {paceLabel && scoreDone ? (
+              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
+                {paceLabel}
+              </p>
+            ) : null}
+          </div>
         </div>
-        <div>
-          <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
-            {displayScore}
-          </p>
-          <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-            Points
-          </p>
-          {isLucky && scoreDone ? (
-            <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
-              ×2 lucky
-            </p>
-          ) : null}
-          {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
-            <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
-              Day · #{dayRank}
-            </p>
-          ) : null}
-        </div>
-        <div>
-          <p
-            className={cn(
-              "flex items-center justify-center gap-1 font-semibold text-foreground text-xl tabular-nums tracking-tight",
-              streakLocked && "streak-lock-in"
-            )}
-          >
-            {streak > 0 ? (
-              <>
-                <span className="text-warning">{streak}</span>
-                <Flame
-                  className={cn(
-                    "h-3.5 w-3.5 text-warning",
-                    isMilestone && streakLocked && "opacity-100"
-                  )}
-                />
-              </>
-            ) : (
-              "0"
-            )}
-          </p>
-          <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-            Streak
-          </p>
-          {showBestGhost ? (
-            <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-              Best {maxStreak}
-            </p>
-          ) : null}
-        </div>
+        {showLevelRim ? (
+          <div
+            aria-hidden
+            className="level-rim h-0.5 w-full bg-border/60"
+            style={{ ["--level-progress" as string]: `${levelProgress}%` }}
+          />
+        ) : null}
       </div>
 
       {puzzleId ? (
@@ -346,7 +405,12 @@ export function SolveResultCard({
           streak={streak}
           nearMiss={nearMiss}
         />
-        <Button asChild className="flex-1" size="sm" variant={success || showAnswer ? "outline" : "default"}>
+        <Button
+          asChild
+          className="flex-1"
+          size="sm"
+          variant={success || showAnswer ? "outline" : "default"}
+        >
           <Link href={resultsHref}>
             {success || showAnswer ? "Full results" : "See the answer"}
           </Link>

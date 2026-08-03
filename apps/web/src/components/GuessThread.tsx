@@ -44,26 +44,32 @@ const TIER_LABEL: Record<ReactionTier, string> = {
   out: "Out of guesses",
 };
 
+const NEAR_WORD_THRESHOLD = 70;
+
 function ExactWordTicks({ words }: { words: WordResult[] }) {
   if (words.length < 2) return null;
-  const anyCorrect = words.some((w) => w.correct);
-  if (!anyCorrect) return null;
+  const anySignal = words.some((w) => w.correct || w.similarity >= NEAR_WORD_THRESHOLD);
+  if (!anySignal) return null;
 
   return (
     <p className="mt-2 flex flex-wrap gap-1.5 font-mono text-[11px] uppercase tracking-[0.06em]">
-      {words.map((word, index) => (
-        <span
-          className={cn(
-            "rounded px-1.5 py-0.5",
-            word.correct
-              ? "bg-success/15 text-success"
-              : "bg-muted text-subtle line-through decoration-border-strong/60"
-          )}
-          key={`${word.word}-${index}`}
-        >
-          {word.correct ? `✓ ${word.word}` : word.word}
-        </span>
-      ))}
+      {words.map((word, index) => {
+        const near = !word.correct && word.similarity >= NEAR_WORD_THRESHOLD;
+        return (
+          <span
+            className={cn(
+              "rounded px-1.5 py-0.5",
+              word.correct && "bg-success/15 text-success",
+              near && "bg-warning/15 text-warning",
+              !(word.correct || near) &&
+                "bg-muted text-subtle line-through decoration-border-strong/60"
+            )}
+            key={`${word.word}-${index}`}
+          >
+            {word.correct ? `✓ ${word.word}` : near ? `~ ${word.word}` : word.word}
+          </span>
+        );
+      })}
     </p>
   );
 }
