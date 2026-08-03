@@ -15,7 +15,7 @@ interface PuzzleStageProps {
   /**
    * `hero` before the first guess — the puzzle owns the screen.
    * `docked` once the thread starts — it shrinks and pins to the top.
-   * `compact` while the mobile keyboard is open — full puzzle, smaller plate.
+   * `compact` while the mobile keyboard is open — full puzzle, top-pinned plate.
    */
   state: StageState;
   question?: string;
