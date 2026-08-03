@@ -2,8 +2,14 @@
  * Apex — next-gen puzzle generation engine.
  */
 
-export { buildGenerationBrief } from "./curriculum";
+export {
+  AnswerFirstSeedUnavailableError,
+  answerFirstSeedKey,
+  selectAnswerFirstSeed,
+  selectAnswerFirstSeeds,
+} from "./answer-first";
 export { critiqueCandidate } from "./critique";
+export { buildGenerationBrief } from "./curriculum";
 export { loadDiversitySnapshot } from "./diversity-memory";
 export { runApexGeneration } from "./engine";
 export { loadLearningDigest } from "./learning-context";

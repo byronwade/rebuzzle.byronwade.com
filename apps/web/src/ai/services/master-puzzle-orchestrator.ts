@@ -59,6 +59,7 @@ export interface GeneratedPuzzleResult {
     generationTimeMs: number;
     aiThinking: { summary?: string };
     engine?: "apex" | "eve";
+    answerSeed?: string;
     estimatedSolveRate?: number;
     playabilityEvidence?: PuzzleAgentResult["metadata"]["playabilityEvidence"];
     simCalibrationBias?: number;
@@ -127,6 +128,7 @@ function toGeneratedResult(
       generationTimeMs,
       aiThinking: { summary: result.metadata.thinkingSummary },
       engine,
+      answerSeed: result.metadata.answerSeed,
       estimatedSolveRate: result.metadata.estimatedSolveRate,
       playabilityEvidence: result.metadata.playabilityEvidence,
       simCalibrationBias: result.metadata.simCalibrationBias,

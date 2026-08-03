@@ -1,4 +1,9 @@
-import { answerFirstSeedKey, selectAnswerFirstSeed } from "../answer-first";
+import {
+  AnswerFirstSeedUnavailableError,
+  answerFirstSeedKey,
+  selectAnswerFirstSeed,
+  selectAnswerFirstSeeds,
+} from "../answer-first";
 import type { PhraseBankEntry } from "../types";
 
 const entries: PhraseBankEntry[] = [
@@ -63,5 +68,24 @@ describe("answer-first seed selection", () => {
 
   it("normalizes the answer for collision tracking", () => {
     expect(answerFirstSeedKey(entries[2])).toBe("undertheweather");
+  });
+
+  it("reserves distinct seeds for every tournament slot", () => {
+    expect(
+      selectAnswerFirstSeeds({
+        entries,
+        techniqueIds: ["simple_compound", "spatial_preposition_play"],
+        count: 2,
+      }).map((entry) => entry.answer)
+    ).toEqual(["moonlight", "under the weather"]);
+  });
+
+  it("exposes a typed fail-closed error when inventory cannot cover the tournament", () => {
+    const error = new AnswerFirstSeedUnavailableError({ requestedCount: 2, selectedCount: 1 });
+    expect(error).toMatchObject({
+      code: "APEX_ANSWER_FIRST_SEED_UNAVAILABLE",
+      requestedCount: 2,
+      selectedCount: 1,
+    });
   });
 });

@@ -57,7 +57,13 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   // Prefer underused techniques from this tier; avoid overused ones.
   // When players are finishing too quickly, bias toward harder techniques in-band.
   const harderBias = learning.tooEasy
-    ? (["false_lead_visual", "nested_homophone", "multi_layer_phonetic", "triple_layer_composition", "rare_but_fair_idiom"] as TechniqueId[])
+    ? ([
+        "false_lead_visual",
+        "nested_homophone",
+        "multi_layer_phonetic",
+        "triple_layer_composition",
+        "rare_but_fair_idiom",
+      ] as TechniqueId[])
     : [];
 
   const preferredTechniques = (
@@ -84,7 +90,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     bannedAnswerKeys: banned,
     theme: input.theme,
     category: input.category,
-    limit: 8,
+    limit: Math.max(8, candidateCount * 3),
   });
 
   const briefSummary = [
@@ -95,11 +101,11 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       : "Technique diversity looks healthy.",
     `Ban ${banned.size} archived+recent answers (never reuse).`,
     phraseSuggestions.length
-      ? `Phrase tropes/seeds to avoid copying (invent a fresher mechanism): ${phraseSuggestions
+      ? `Answer-first candidates available for grounded composition: ${phraseSuggestions
           .slice(0, 4)
           .map((p) => p.answer)
           .join("; ")}.`
-      : "Invent a fresh answer outside the ban list.",
+      : "No answer-first candidates are available; Apex must fail closed and use the validated reserve inventory.",
     learning.enabled && learning.difficultyDriftNotes.length
       ? `Self-learning: ${learning.difficultyDriftNotes.slice(0, 2).join("; ")}.`
       : null,
