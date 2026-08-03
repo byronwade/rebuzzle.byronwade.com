@@ -61,7 +61,10 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   // unrelated compound answer.
   const freshSeedTechniques = new Set(
     PHRASE_BANK.filter(
-      (entry) => !entry.overused && !banned.has(normalizeAnswerKey(entry.answer))
+      (entry) =>
+        !entry.overused &&
+        Boolean(entry.visualCues?.length) &&
+        !banned.has(normalizeAnswerKey(entry.answer))
     ).flatMap((entry) => entry.techniqueAffinity)
   );
   const supportedTierTechniques = level.techniques.filter((technique) =>
@@ -110,6 +113,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     category: input.category,
     limit: Math.max(8, candidateCount * 3),
     excludeOverused: true,
+    requireVisualCuePlan: true,
   });
 
   const briefSummary = [
@@ -118,7 +122,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     avoidTechniques.length
       ? `Avoid overused/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`
       : "Technique diversity looks healthy.",
-    `Fresh answer seeds cover ${supportedTierTechniques.length}/${level.techniques.length} techniques in this tier.`,
+    `Fresh answer seeds with explicit visual cue plans cover ${supportedTierTechniques.length}/${level.techniques.length} techniques in this tier.`,
     `Ban ${banned.size} archived+recent answers (never reuse).`,
     phraseSuggestions.length
       ? `Answer-first candidates available for grounded composition: ${phraseSuggestions

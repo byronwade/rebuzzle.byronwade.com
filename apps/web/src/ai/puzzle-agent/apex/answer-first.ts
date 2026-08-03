@@ -30,13 +30,19 @@ export function selectAnswerFirstSeed(input: {
   entries: readonly PhraseBankEntry[];
   techniqueId: string;
   usedAnswerKeys?: Iterable<string>;
+  requireVisualCuePlan?: boolean;
 }): PhraseBankEntry | undefined {
   const used = new Set(
     Array.from(input.usedAnswerKeys ?? [], (answer) => normalizeAnswerKey(answer)).filter(Boolean)
   );
   const fresh = input.entries.filter((entry) => {
     const answerKey = normalizeAnswerKey(entry.answer);
-    return Boolean(answerKey) && !entry.overused && !used.has(answerKey);
+    return (
+      Boolean(answerKey) &&
+      !entry.overused &&
+      !used.has(answerKey) &&
+      (!input.requireVisualCuePlan || Boolean(entry.visualCues?.length))
+    );
   });
   if (!fresh.length) return undefined;
 
@@ -56,6 +62,7 @@ export function selectAnswerFirstSeeds(input: {
   techniqueIds: readonly string[];
   count: number;
   usedAnswerKeys?: Iterable<string>;
+  requireVisualCuePlan?: boolean;
 }): PhraseBankEntry[] {
   const used = new Set(
     Array.from(input.usedAnswerKeys ?? [], (answer) => normalizeAnswerKey(answer)).filter(Boolean)
@@ -69,6 +76,7 @@ export function selectAnswerFirstSeeds(input: {
       entries: input.entries,
       techniqueId,
       usedAnswerKeys: used,
+      requireVisualCuePlan: input.requireVisualCuePlan,
     });
     const key = answerFirstSeedKey(seed);
     if (!seed || !key) break;

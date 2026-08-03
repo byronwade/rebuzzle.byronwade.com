@@ -4,7 +4,24 @@
  */
 
 import type { TechniqueId } from "../technique-library";
-import type { PhraseBankEntry } from "./types";
+import { resolveCuratedPictogram } from "../visual/curated-pictograms";
+import type { AnswerSeedVisualCue, AnswerSeedVisualCueRole, PhraseBankEntry } from "./types";
+
+const catalogCue = (
+  concept: string,
+  role: AnswerSeedVisualCueRole = "word-part"
+): AnswerSeedVisualCue => ({ kind: "catalog", concept, role });
+
+const textCue = (
+  content: string,
+  role: AnswerSeedVisualCueRole = "word-part"
+): AnswerSeedVisualCue => ({ kind: "text", content, role });
+
+const operatorCue = (symbol: string): AnswerSeedVisualCue => ({
+  kind: "operator",
+  symbol,
+  role: "structural-anchor",
+});
 
 export const PHRASE_BANK: readonly PhraseBankEntry[] = [
   // Compounds
@@ -13,6 +30,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "compound",
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    visualCues: [catalogCue("sun"), catalogCue("flower")],
     overused: true,
   },
   {
@@ -20,54 +38,63 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "compound",
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "multi_emoji_compound"],
+    visualCues: [catalogCue("moon"), catalogCue("lightbulb")],
   },
   {
     answer: "butterfly",
     category: "compound",
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound"],
+    visualCues: [textCue("BUTTER"), textCue("FLY")],
   },
   {
     answer: "firefly",
     category: "compound",
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "multi_emoji_compound"],
+    visualCues: [catalogCue("fire"), textCue("FLY")],
   },
   {
     answer: "rainbow",
     category: "compound",
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "basic_positional"],
+    visualCues: [textCue("RAIN"), textCue("BOW")],
   },
   {
     answer: "bookmark",
     category: "compound",
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "idiom_as_picture"],
+    visualCues: [catalogCue("book"), textCue("MARK")],
   },
   {
     answer: "hotdog",
     category: "compound",
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "false_lead_visual"],
+    visualCues: [textCue("HOT"), catalogCue("dog")],
   },
   {
     answer: "skylight",
     category: "compound",
     difficultyHint: 6,
     techniqueAffinity: ["simple_compound", "positional_phrase"],
+    visualCues: [textCue("SKY"), catalogCue("lightbulb")],
   },
   {
     answer: "handshake",
     category: "compound",
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "idiom_as_picture"],
+    visualCues: [catalogCue("hand"), textCue("SHAKE")],
   },
   {
     answer: "waterfall",
     category: "compound",
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "basic_positional"],
+    visualCues: [textCue("WATER"), textCue("FALL")],
   },
   {
     answer: "flowerpot",
@@ -75,6 +102,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "flower + pot",
+    visualCues: [catalogCue("flower"), catalogCue("cooking-pot")],
   },
   {
     answer: "houseboat",
@@ -82,6 +110,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "house + boat",
+    visualCues: [catalogCue("house"), catalogCue("boat")],
   },
   {
     answer: "starfish",
@@ -89,6 +118,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "star + fish",
+    visualCues: [catalogCue("star"), catalogCue("fish")],
   },
   {
     answer: "seashell",
@@ -96,6 +126,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "sea + shell",
+    visualCues: [textCue("SEA"), textCue("SHELL")],
   },
   {
     answer: "cupcake",
@@ -103,6 +134,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "cup + cake",
+    visualCues: [textCue("CUP"), textCue("CAKE")],
   },
   {
     answer: "dogfish",
@@ -110,6 +142,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "dog + fish",
+    visualCues: [catalogCue("dog"), catalogCue("fish")],
   },
   {
     answer: "musicbox",
@@ -117,6 +150,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "music + box",
+    visualCues: [catalogCue("music"), textCue("BOX")],
   },
   {
     answer: "firehouse",
@@ -124,6 +158,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "fire + house",
+    visualCues: [catalogCue("fire"), catalogCue("house")],
   },
   {
     answer: "coffeehouse",
@@ -131,6 +166,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 4,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "coffee + house",
+    visualCues: [textCue("COFFEE"), catalogCue("house")],
   },
   {
     answer: "flowerbox",
@@ -138,6 +174,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "flower + box",
+    visualCues: [catalogCue("flower"), textCue("BOX")],
   },
   {
     answer: "fishcake",
@@ -145,6 +182,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
     notes: "fish + cake",
+    visualCues: [catalogCue("fish"), textCue("CAKE")],
   },
 
   // Phonetic
@@ -154,6 +192,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["obvious_emoji_sum", "single_homophone"],
     notes: "bee + four",
+    visualCues: [textCue("BEE", "phonetic-anchor"), textCue("FOUR", "phonetic-anchor")],
     overused: true,
   },
   {
@@ -162,6 +201,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 6,
     techniqueAffinity: ["nested_homophone", "multi_layer_phonetic"],
     notes: "bee + leaf",
+    visualCues: [textCue("B", "phonetic-anchor"), catalogCue("leaf", "phonetic-anchor")],
     overused: true,
   },
   {
@@ -170,6 +210,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 6,
     techniqueAffinity: ["nested_homophone", "multi_layer_phonetic"],
     notes: "sea + son",
+    visualCues: [textCue("SEA", "phonetic-anchor"), textCue("SON", "phonetic-anchor")],
   },
   {
     answer: "ice cream",
@@ -177,6 +218,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["single_homophone", "idiom_as_picture"],
     notes: "I scream",
+    visualCues: [catalogCue("snowflake", "phonetic-anchor"), textCue("CREAM")],
   },
   {
     answer: "see you later",
@@ -190,6 +232,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 7,
     techniqueAffinity: ["nested_homophone", "multi_layer_phonetic"],
     notes: "four + give / for + give",
+    visualCues: [textCue("FOUR", "phonetic-anchor"), catalogCue("gift", "phonetic-anchor")],
   },
   {
     answer: "knight",
@@ -197,6 +240,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["single_homophone"],
     notes: "night / knight",
+    visualCues: [catalogCue("sword", "semantic-anchor"), textCue("NIGHT", "phonetic-anchor")],
   },
   {
     answer: "flower",
@@ -204,6 +248,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["single_homophone"],
     notes: "flour / flower",
+    visualCues: [catalogCue("wheat", "phonetic-anchor"), textCue("FLOUR", "phonetic-anchor")],
   },
   {
     answer: "pair",
@@ -211,6 +256,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["single_homophone"],
     notes: "pear / pair",
+    visualCues: [textCue("PEAR", "phonetic-anchor")],
   },
 
   // Positional / spatial
@@ -219,6 +265,11 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "positional",
     difficultyHint: 6,
     techniqueAffinity: ["positional_phrase", "spatial_preposition_play"],
+    visualCues: [
+      catalogCue("book", "semantic-anchor"),
+      textCue("BETWEEN", "structural-anchor"),
+      textCue("LINES", "word-part"),
+    ],
     overused: true,
   },
   {
@@ -226,48 +277,72 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "positional",
     difficultyHint: 6,
     techniqueAffinity: ["math_symbol_wordplay", "positional_phrase"],
+    visualCues: [
+      catalogCue("brain", "semantic-anchor"),
+      textCue("OVER", "structural-anchor"),
+      textCue("MATTER"),
+    ],
   },
   {
     answer: "head over heels",
     category: "positional",
     difficultyHint: 7,
     techniqueAffinity: ["positional_phrase", "spatial_preposition_play"],
+    visualCues: [
+      textCue("HEAD", "semantic-anchor"),
+      textCue("OVER", "structural-anchor"),
+      catalogCue("footprints", "semantic-anchor"),
+    ],
   },
   {
     answer: "down to earth",
     category: "positional",
     difficultyHint: 6,
     techniqueAffinity: ["basic_positional", "spatial_preposition_play"],
+    visualCues: [
+      textCue("DOWN", "structural-anchor"),
+      textCue("TO"),
+      catalogCue("globe", "semantic-anchor"),
+    ],
   },
   {
     answer: "up in the air",
     category: "positional",
     difficultyHint: 5,
     techniqueAffinity: ["basic_positional", "idiom_as_picture"],
+    visualCues: [
+      textCue("UP", "structural-anchor"),
+      textCue("IN", "structural-anchor"),
+      textCue("AIR"),
+    ],
   },
   {
     answer: "on cloud nine",
     category: "positional",
     difficultyHint: 6,
     techniqueAffinity: ["positional_phrase", "idiom_as_picture"],
+    visualCues: [textCue("ON", "structural-anchor"), textCue("NINE"), textCue("CLOUD")],
   },
   {
     answer: "under the weather",
     category: "positional",
     difficultyHint: 6,
     techniqueAffinity: ["spatial_preposition_play", "idiom_as_picture"],
+    visualCues: [textCue("UNDER", "structural-anchor"), catalogCue("rain", "semantic-anchor")],
   },
   {
     answer: "beside the point",
     category: "positional",
     difficultyHint: 7,
     techniqueAffinity: ["spatial_preposition_play", "false_lead_visual"],
+    visualCues: [textCue("BESIDE", "structural-anchor"), textCue("POINT")],
   },
   {
     answer: "crossroads",
     category: "positional",
     difficultyHint: 5,
     techniqueAffinity: ["basic_positional", "simple_compound"],
+    visualCues: [textCue("CROSS"), textCue("ROADS")],
   },
 
   // Idioms
@@ -276,6 +351,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "idiom",
     difficultyHint: 4,
     techniqueAffinity: ["idiom_as_picture", "simple_compound"],
+    visualCues: [textCue("PIECE"), textCue("CAKE")],
     overused: true,
   },
   {
@@ -283,30 +359,39 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "idiom",
     difficultyHint: 5,
     techniqueAffinity: ["idiom_as_picture"],
+    visualCues: [textCue("WATER", "semantic-anchor"), textCue("SPILL"), textCue("BEANS")],
   },
   {
     answer: "break the ice",
     category: "idiom",
     difficultyHint: 5,
     techniqueAffinity: ["idiom_as_picture"],
+    visualCues: [catalogCue("snowflake", "semantic-anchor"), textCue("BREAK"), textCue("THE")],
   },
   {
     answer: "hit the nail on the head",
     category: "idiom",
     difficultyHint: 7,
     techniqueAffinity: ["idiom_as_picture", "triple_layer_composition"],
+    visualCues: [catalogCue("hammer", "semantic-anchor"), textCue("NAIL"), textCue("HEAD")],
   },
   {
     answer: "barking up the wrong tree",
     category: "idiom",
     difficultyHint: 7,
     techniqueAffinity: ["rare_but_fair_idiom", "false_lead_visual"],
+    visualCues: [
+      catalogCue("dog", "semantic-anchor"),
+      textCue("UP", "structural-anchor"),
+      catalogCue("tree"),
+    ],
   },
   {
     answer: "once in a blue moon",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture", "multi_emoji_compound"],
+    visualCues: [textCue("ONCE"), textCue("BLUE"), catalogCue("moon", "semantic-anchor")],
     overused: true,
   },
   {
@@ -314,6 +399,11 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture", "multi_emoji_compound"],
+    visualCues: [
+      textCue("COST"),
+      catalogCue("hand", "semantic-anchor"),
+      catalogCue("footprints", "semantic-anchor"),
+    ],
   },
   {
     answer: "let the cat out of the bag",
@@ -326,24 +416,28 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "idiom",
     difficultyHint: 7,
     techniqueAffinity: ["rare_but_fair_idiom", "idiom_as_picture"],
+    visualCues: [textCue("BALL"), textCue("COURT"), textCue("IN", "structural-anchor")],
   },
   {
     answer: "bite the bullet",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture"],
+    visualCues: [textCue("BITE"), textCue("BULLET")],
   },
   {
     answer: "cold shoulder",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture", "size_or_case_semantics"],
+    visualCues: [catalogCue("snowflake", "semantic-anchor"), textCue("SHOULDER")],
   },
   {
     answer: "silver lining",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture", "multi_emoji_compound"],
+    visualCues: [catalogCue("diamond", "semantic-anchor"), textCue("LINING")],
   },
 
   // Typography / size
@@ -352,6 +446,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "typography",
     difficultyHint: 5,
     techniqueAffinity: ["size_or_case_semantics"],
+    visualCues: [textCue("BIG"), textCue("DEAL")],
     overused: true,
   },
   {
@@ -359,24 +454,28 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "typography",
     difficultyHint: 5,
     techniqueAffinity: ["size_or_case_semantics"],
+    visualCues: [textCue("SMALL"), textCue("TALK")],
   },
   {
     answer: "long shot",
     category: "typography",
     difficultyHint: 6,
     techniqueAffinity: ["size_or_case_semantics", "idiom_as_picture"],
+    visualCues: [textCue("LONG"), catalogCue("camera", "semantic-anchor")],
   },
   {
     answer: "mixed feelings",
     category: "typography",
     difficultyHint: 7,
     techniqueAffinity: ["size_or_case_semantics", "false_lead_visual"],
+    visualCues: [textCue("MIXED", "structural-anchor"), catalogCue("heart", "semantic-anchor")],
   },
   {
     answer: "growing concern",
     category: "typography",
     difficultyHint: 7,
     techniqueAffinity: ["size_or_case_semantics", "triple_layer_composition"],
+    visualCues: [catalogCue("sprout", "structural-anchor"), textCue("CONCERN")],
   },
 
   // Math / operators
@@ -385,18 +484,21 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "math",
     difficultyHint: 6,
     techniqueAffinity: ["math_symbol_wordplay"],
+    visualCues: [operatorCue("×"), textCue("SQUARE")],
   },
   {
     answer: "split second",
     category: "math",
     difficultyHint: 7,
     techniqueAffinity: ["math_symbol_wordplay", "size_or_case_semantics"],
+    visualCues: [catalogCue("scissors", "structural-anchor"), textCue("SECOND")],
   },
   {
     answer: "countdown",
     category: "math",
     difficultyHint: 5,
     techniqueAffinity: ["math_symbol_wordplay", "basic_positional"],
+    visualCues: [textCue("COUNT"), textCue("DOWN", "structural-anchor")],
   },
 
   // Cultural / twist
@@ -405,30 +507,40 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "cultural",
     difficultyHint: 8,
     techniqueAffinity: ["cultural_common_knowledge_plus_twist", "rare_but_fair_idiom"],
+    visualCues: [
+      textCue("JACK"),
+      textCue("ALL"),
+      catalogCue("wrench", "semantic-anchor"),
+      textCue("TRADES"),
+    ],
   },
   {
     answer: "pandora's box",
     category: "cultural",
     difficultyHint: 7,
     techniqueAffinity: ["cultural_common_knowledge_plus_twist", "idiom_as_picture"],
+    visualCues: [textCue("PANDORA"), textCue("BOX")],
   },
   {
     answer: "trojan horse",
     category: "cultural",
     difficultyHint: 7,
     techniqueAffinity: ["cultural_common_knowledge_plus_twist", "false_lead_visual"],
+    visualCues: [textCue("TROJAN"), textCue("HORSE")],
   },
   {
     answer: "achilles heel",
     category: "cultural",
     difficultyHint: 7,
     techniqueAffinity: ["cultural_common_knowledge_plus_twist"],
+    visualCues: [textCue("ACHILLES"), catalogCue("footprints", "semantic-anchor")],
   },
   {
     answer: "catch-22",
     category: "cultural",
     difficultyHint: 8,
     techniqueAffinity: ["recursive_visual_pun", "cultural_common_knowledge_plus_twist"],
+    visualCues: [textCue("CATCH"), textCue("22")],
   },
 
   // Evil / impossible lean
@@ -437,62 +549,89 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "meta",
     difficultyHint: 8,
     techniqueAffinity: ["recursive_visual_pun", "triple_layer_composition"],
+    visualCues: [
+      catalogCue("book", "semantic-anchor"),
+      textCue("HISTORY"),
+      textCue("REPEAT", "structural-anchor"),
+    ],
   },
   {
     answer: "a blessing in disguise",
     category: "idiom",
     difficultyHint: 8,
     techniqueAffinity: ["rare_but_fair_idiom", "false_lead_visual"],
+    visualCues: [catalogCue("gift", "semantic-anchor"), textCue("DISGUISE", "structural-anchor")],
   },
   {
     answer: "the tip of the iceberg",
     category: "idiom",
     difficultyHint: 7,
     techniqueAffinity: ["idiom_as_picture", "spatial_preposition_play"],
+    visualCues: [textCue("TIP", "structural-anchor"), catalogCue("snowflake", "semantic-anchor")],
   },
   {
     answer: "walking on eggshells",
     category: "idiom",
     difficultyHint: 7,
     techniqueAffinity: ["idiom_as_picture", "multi_layer_phonetic"],
+    visualCues: [catalogCue("footprints", "semantic-anchor"), catalogCue("egg"), textCue("SHELLS")],
   },
   {
     answer: "elephant in the room",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture", "positional_phrase"],
+    visualCues: [textCue("ELEPHANT", "semantic-anchor"), textCue("ROOM", "structural-anchor")],
   },
   {
     answer: "needle in a haystack",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["idiom_as_picture", "false_lead_visual"],
+    visualCues: [textCue("NEEDLE", "semantic-anchor"), catalogCue("wheat", "semantic-anchor")],
   },
   {
     answer: "two peas in a pod",
     category: "idiom",
     difficultyHint: 5,
     techniqueAffinity: ["idiom_as_picture", "multi_emoji_compound"],
+    visualCues: [textCue("TWO"), textCue("PEAS"), textCue("POD")],
   },
   {
     answer: "back to square one",
     category: "idiom",
     difficultyHint: 7,
     techniqueAffinity: ["math_symbol_wordplay", "positional_phrase"],
+    visualCues: [textCue("BACK", "structural-anchor"), textCue("SQUARE"), textCue("ONE")],
   },
   {
     answer: "out of the blue",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["spatial_preposition_play", "idiom_as_picture"],
+    visualCues: [textCue("OUT", "structural-anchor"), textCue("BLUE")],
   },
   {
     answer: "in the same boat",
     category: "idiom",
     difficultyHint: 6,
     techniqueAffinity: ["positional_phrase", "idiom_as_picture"],
+    visualCues: [textCue("SAME", "structural-anchor"), catalogCue("boat", "semantic-anchor")],
   },
 ] as const;
+
+const phraseBankCuePlanIssues = PHRASE_BANK.flatMap((entry) =>
+  (entry.visualCues ?? []).flatMap((cue) => {
+    if (cue.kind !== "catalog") return [];
+    return resolveCuratedPictogram(cue.concept)
+      ? []
+      : [`${entry.answer}: ${cue.concept} is not an approved catalog cue`];
+  })
+);
+
+if (phraseBankCuePlanIssues.length) {
+  throw new Error(`Invalid phrase-bank visual cue plan: ${phraseBankCuePlanIssues.join("; ")}`);
+}
 
 function normalize(answer: string): string {
   return answer.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -510,6 +649,8 @@ export function samplePhraseBank(input: {
   limit?: number;
   /** Keep answer-first prompts free of classic tropes. */
   excludeOverused?: boolean;
+  /** Keep strict answer-first prompts grounded by a host-owned cue plan. */
+  requireVisualCuePlan?: boolean;
 }): PhraseBankEntry[] {
   const limit = input.limit ?? 8;
   const bandMin = Math.max(3, input.targetDifficulty - 2);
@@ -523,6 +664,9 @@ export function samplePhraseBank(input: {
       return { entry, score: -Infinity };
     }
     if (input.excludeOverused && entry.overused) {
+      return { entry, score: -Infinity };
+    }
+    if (input.requireVisualCuePlan && !entry.visualCues?.length) {
       return { entry, score: -Infinity };
     }
     let score = 0;

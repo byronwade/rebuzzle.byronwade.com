@@ -158,4 +158,23 @@ describe("runPuzzleAgentGeneration asset gate", () => {
     expect(checkUniqueness).not.toHaveBeenCalled();
     expect(evaluatePublishGates).not.toHaveBeenCalled();
   });
+
+  it("rejects an authoritative board that omits a required seed cue before asset checks", async () => {
+    await expect(
+      runPuzzleAgentGeneration({
+        targetDifficulty: 5,
+        maxAttempts: 1,
+        modelChainLimit: 1,
+        answerSeed: "keyboard",
+        answerSeedCuePlan: [
+          { kind: "catalog", concept: "key", role: "word-part" },
+          { kind: "text", content: "BOARD", role: "word-part" },
+        ],
+      })
+    ).rejects.toBeInstanceOf(PuzzleCandidateRejectedError);
+
+    expect(verifyPublicationAssets).not.toHaveBeenCalled();
+    expect(checkUniqueness).not.toHaveBeenCalled();
+    expect(evaluatePublishGates).not.toHaveBeenCalled();
+  });
 });

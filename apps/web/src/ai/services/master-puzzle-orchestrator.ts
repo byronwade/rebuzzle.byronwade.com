@@ -13,6 +13,7 @@ import {
   playerSimPublishBlockers,
   simulatePlayerSolve,
 } from "../puzzle-agent/apex/player-sim";
+import type { AnswerSeedVisualCue } from "../puzzle-agent/apex/types";
 import {
   type PuzzleGenerationParams,
   runPuzzleAgentGeneration,
@@ -60,6 +61,7 @@ export interface GeneratedPuzzleResult {
     aiThinking: { summary?: string };
     engine?: "apex" | "eve";
     answerSeed?: string;
+    answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
     estimatedSolveRate?: number;
     playabilityEvidence?: PuzzleAgentResult["metadata"]["playabilityEvidence"];
     simCalibrationBias?: number;
@@ -129,6 +131,7 @@ function toGeneratedResult(
       aiThinking: { summary: result.metadata.thinkingSummary },
       engine,
       answerSeed: result.metadata.answerSeed,
+      answerSeedCuePlan: result.metadata.answerSeedCuePlan,
       estimatedSolveRate: result.metadata.estimatedSolveRate,
       playabilityEvidence: result.metadata.playabilityEvidence,
       simCalibrationBias: result.metadata.simCalibrationBias,

@@ -5,6 +5,7 @@
 
 import { getCollection } from "@/db/mongodb";
 import { logger } from "@/lib/logger";
+import type { AnswerSeedVisualCue } from "../puzzle-agent/apex/types";
 
 export type GenerationAuditRecord = {
   id: string;
@@ -25,6 +26,8 @@ export type GenerationAuditRecord = {
   answerKey?: string;
   /** Exact Apex seed contract used to ground the candidate, when applicable. */
   answerSeed?: string;
+  /** Exact host-owned visual ingredients required by that seed contract. */
+  answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
   estimatedSolveRate?: number;
   simCalibrationBias?: number;
   candidateCount?: number;

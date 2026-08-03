@@ -89,12 +89,44 @@ export const PlayerSimSchema = z.object({
 
 export type PlayerSimResult = z.infer<typeof PlayerSimSchema>;
 
+export type AnswerSeedVisualCueRole =
+  | "word-part"
+  | "phonetic-anchor"
+  | "semantic-anchor"
+  | "structural-anchor";
+
+/**
+ * Host-owned visual ingredients for an answer-first seed.
+ *
+ * Catalog cues are exact reviewed pictogram IDs. Text/operator cues are
+ * intentionally narrow fallbacks for word parts that do not have a safe
+ * reviewed icon (for example FLOUR or the word-part BOX).
+ */
+export type AnswerSeedVisualCue =
+  | {
+      kind: "catalog";
+      concept: string;
+      role: AnswerSeedVisualCueRole;
+    }
+  | {
+      kind: "text";
+      content: string;
+      role: AnswerSeedVisualCueRole;
+    }
+  | {
+      kind: "operator";
+      symbol: string;
+      role: "structural-anchor";
+    };
+
 export type PhraseBankEntry = {
   answer: string;
   category: string;
   difficultyHint: number;
   techniqueAffinity: TechniqueId[];
   notes?: string;
+  /** Required ingredients for strict Apex answer-first composition. */
+  visualCues?: readonly AnswerSeedVisualCue[];
   /** Classic trope — fine as anti-inspiration, bad to copy */
   overused?: boolean;
 };
@@ -164,6 +196,7 @@ export type ApexCandidate = {
   qualityOverall: number;
   funScore: number;
   answerSeed?: string;
+  answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
   boardRecognitionConfidence?: number;
   boardRecognitionModels?: string[];
   boardConceptVotes?: Record<string, number>;
