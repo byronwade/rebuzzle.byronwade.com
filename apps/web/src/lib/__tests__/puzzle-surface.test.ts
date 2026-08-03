@@ -13,6 +13,7 @@ function visual(layers: PuzzleVisual["layers"]): PuzzleVisual {
     mode: "composed",
     layout: "row",
     layers,
+    unicodeFallback: "puzzle",
   };
 }
 
