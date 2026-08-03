@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Footer } from "./Footer";
 import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
+import { VisualViewportShell } from "./VisualViewportShell";
 
 const DevToolsPanel = dynamic(
   () => import("./DevToolsPanel").then((m) => m.DevToolsPanel),
@@ -34,6 +35,9 @@ interface LayoutProps {
  * - Header with navigation
  * - Main content area
  * - Four-column footer on scrolling pages
+ *
+ * Game pages pin to the Visual Viewport so iOS/Android keyboards don't
+ * shove the puzzle off-screen.
  */
 export default function Layout({
   children,
@@ -65,15 +69,8 @@ function LayoutContent({
 }: LayoutProps) {
   const { gameState } = useGameContext();
 
-  return (
-    <div
-      className={cn(
-        "relative flex flex-col bg-background",
-        // Game page: fixed height, no scroll
-        isGamePage ? "h-dvh overflow-hidden" : "min-h-screen"
-      )}
-    >
-      {/* Skip to main content link for accessibility */}
+  const chrome = (
+    <>
       <a
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:font-medium focus:text-background focus:text-sm"
         href="#main-content"
@@ -88,7 +85,6 @@ function LayoutContent({
       <main
         className={cn(
           "relative z-10 flex min-h-0 flex-1 flex-col",
-          // Game page: no page scroll — the chat scroller owns overflow.
           isGamePage && "overflow-hidden",
           className
         )}
@@ -97,23 +93,23 @@ function LayoutContent({
         {children}
       </main>
 
-      {!isGamePage && (
+      {!isGamePage ? (
         <div className="relative z-10">
           <Footer />
         </div>
-      )}
+      ) : null}
 
-      {/* Temporary Dev Mode tools — enable in Settings */}
       <DevToolsPanel />
-    </div>
+    </>
   );
+
+  if (isGamePage) {
+    return <VisualViewportShell className="game-vv-shell">{chrome}</VisualViewportShell>;
+  }
+
+  return <div className="relative flex min-h-screen flex-col bg-background">{chrome}</div>;
 }
 
-/**
- * The brand mesh, used once per page at hero scale behind the top band, plus a
- * faint engineered grid. Both sit at very low opacity so the ink stays the
- * loudest thing on the page.
- */
 function AtmosphericBackdrop() {
   return (
     <div

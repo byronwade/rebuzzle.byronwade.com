@@ -2,115 +2,136 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-interface VisualViewportState {
-  keyboardHeight: number;
-  isKeyboardVisible: boolean;
-  visualViewportHeight: number;
-  visualViewportWidth: number;
+export interface VisualViewportFrame {
+  /** visualViewport.offsetTop — iOS pans this when the keyboard opens */
+  top: number;
+  /** visualViewport.height — visible area above the keyboard */
+  height: number;
+  width: number;
+  /** Layout-viewport overlap under the keyboard (≈0 when resizes-content works) */
+  keyboardInset: number;
+  isKeyboardOpen: boolean;
 }
 
-const KEYBOARD_THRESHOLD = 120;
+const KEYBOARD_THRESHOLD = 80;
 
-function isTouchDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  return "ontouchstart" in window || navigator.maxTouchPoints > 0;
-}
+function readFrame(): VisualViewportFrame {
+  if (typeof window === "undefined") {
+    return { top: 0, height: 0, width: 0, keyboardInset: 0, isKeyboardOpen: false };
+  }
 
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target.isContentEditable
-  );
+  const vv = window.visualViewport;
+  const layoutHeight = document.documentElement.clientHeight || window.innerHeight;
+  const layoutWidth = document.documentElement.clientWidth || window.innerWidth;
+
+  if (!vv) {
+    return {
+      top: 0,
+      height: layoutHeight,
+      width: layoutWidth,
+      keyboardInset: 0,
+      isKeyboardOpen: false,
+    };
+  }
+
+  const top = vv.offsetTop;
+  const height = vv.height;
+  const width = vv.width;
+  // True overlap of the keyboard with the layout viewport (accounts for iOS pan).
+  const keyboardInset = Math.max(0, layoutHeight - height - top);
+  const isKeyboardOpen = keyboardInset > KEYBOARD_THRESHOLD || top > KEYBOARD_THRESHOLD;
+
+  return { top, height, width, keyboardInset, isKeyboardOpen };
 }
 
 /**
- * Detect virtual keyboard via Visual Viewport + optimistic input focus on touch.
+ * Sync layout to the Visual Viewport.
+ *
+ * On iOS Safari the layout viewport does NOT shrink for the keyboard — the
+ * visual viewport pans/resizes instead. Consumers should pin a fixed shell with
+ * `top` + `height` from this hook (not `bottom` / translateY).
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Visual_Viewport_API
  */
-export function useVisualViewport(): VisualViewportState {
-  const [state, setState] = useState<VisualViewportState>(() => ({
-    keyboardHeight: 0,
-    isKeyboardVisible: false,
-    visualViewportHeight: typeof window !== "undefined" ? window.innerHeight : 0,
-    visualViewportWidth: typeof window !== "undefined" ? window.innerWidth : 0,
-  }));
-  const [focusArmed, setFocusArmed] = useState(false);
+export function useVisualViewportFrame(): VisualViewportFrame {
+  // Start empty for SSR/hydration parity — first client effect fills real VV metrics.
+  const [frame, setFrame] = useState<VisualViewportFrame>({
+    top: 0,
+    height: 0,
+    width: 0,
+    keyboardInset: 0,
+    isKeyboardOpen: false,
+  });
 
-  const updateViewportState = useCallback((opts?: { focusArmed?: boolean }) => {
-    if (typeof window === "undefined") return;
-
-    const viewport = window.visualViewport;
-    const touch = isTouchDevice();
-    const armed = opts?.focusArmed ?? false;
-
-    if (!viewport) {
-      setState({
-        keyboardHeight: 0,
-        isKeyboardVisible: touch && armed,
-        visualViewportHeight: window.innerHeight,
-        visualViewportWidth: window.innerWidth,
-      });
-      return;
-    }
-
-    const heightDifference = Math.max(0, window.innerHeight - viewport.height);
-    const viewportSaysOpen = touch && heightDifference > KEYBOARD_THRESHOLD;
-    const isKeyboardVisible = viewportSaysOpen || (touch && armed);
-
-    setState({
-      keyboardHeight: viewportSaysOpen ? heightDifference : armed ? Math.max(heightDifference, 280) : 0,
-      isKeyboardVisible,
-      visualViewportHeight: viewport.height,
-      visualViewportWidth: viewport.width,
-    });
+  const sync = useCallback(() => {
+    setFrame(readFrame());
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const viewport = window.visualViewport;
-    updateViewportState({ focusArmed });
+    const vv = window.visualViewport;
+    sync();
 
-    const onResize = () => updateViewportState({ focusArmed });
-    if (viewport) {
-      viewport.addEventListener("resize", onResize);
-      viewport.addEventListener("scroll", onResize);
-    }
-    window.addEventListener("resize", onResize);
-
-    const handleFocusIn = (e: FocusEvent) => {
-      if (!isEditableTarget(e.target) || !isTouchDevice()) return;
-      setFocusArmed(true);
-      updateViewportState({ focusArmed: true });
-      window.setTimeout(() => updateViewportState({ focusArmed: true }), 80);
-      window.setTimeout(() => updateViewportState({ focusArmed: true }), 240);
+    vv?.addEventListener("resize", sync);
+    vv?.addEventListener("scroll", sync);
+    window.addEventListener("resize", sync);
+    // Focus can precede the first VV resize on iOS — remeasure shortly after.
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        (t instanceof HTMLElement && t.isContentEditable)
+      ) {
+        window.requestAnimationFrame(sync);
+        window.setTimeout(sync, 50);
+        window.setTimeout(sync, 200);
+      }
     };
-
-    const handleFocusOut = () => {
-      setFocusArmed(false);
-      window.setTimeout(() => updateViewportState({ focusArmed: false }), 80);
-      window.setTimeout(() => updateViewportState({ focusArmed: false }), 280);
+    const onFocusOut = () => {
+      window.setTimeout(sync, 50);
+      window.setTimeout(sync, 250);
     };
-
-    document.addEventListener("focusin", handleFocusIn);
-    document.addEventListener("focusout", handleFocusOut);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
 
     return () => {
-      if (viewport) {
-        viewport.removeEventListener("resize", onResize);
-        viewport.removeEventListener("scroll", onResize);
-      }
-      window.removeEventListener("resize", onResize);
-      document.removeEventListener("focusin", handleFocusIn);
-      document.removeEventListener("focusout", handleFocusOut);
+      vv?.removeEventListener("resize", sync);
+      vv?.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
     };
-  }, [focusArmed, updateViewportState]);
+  }, [sync]);
 
-  return state;
+  // While the keyboard is open, kill document scroll jumps (iOS Safari).
+  useEffect(() => {
+    if (!frame.isKeyboardOpen) return;
+    const lock = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+    lock();
+    window.addEventListener("scroll", lock, { passive: true });
+    return () => window.removeEventListener("scroll", lock);
+  }, [frame.isKeyboardOpen]);
+
+  return frame;
+}
+
+/** @deprecated Prefer useVisualViewportFrame — kept for older call sites. */
+export function useVisualViewport() {
+  const frame = useVisualViewportFrame();
+  return {
+    keyboardHeight: frame.keyboardInset,
+    isKeyboardVisible: frame.isKeyboardOpen,
+    visualViewportHeight: frame.height,
+    visualViewportWidth: frame.width,
+  };
 }
 
 export function useIsKeyboardVisible(): boolean {
-  const { isKeyboardVisible } = useVisualViewport();
-  return isKeyboardVisible;
+  return useVisualViewportFrame().isKeyboardOpen;
 }

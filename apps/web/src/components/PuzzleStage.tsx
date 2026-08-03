@@ -15,7 +15,7 @@ interface PuzzleStageProps {
   /**
    * `hero` before the first guess — the puzzle owns the screen.
    * `docked` once the thread starts — it shrinks and pins to the top.
-   * `compact` while the mobile keyboard is open — full puzzle, smaller plate.
+   * `compact` while the mobile keyboard is open — full puzzle, top-pinned plate.
    */
   state: StageState;
   question?: string;
@@ -36,8 +36,9 @@ export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: Puz
   const composed = hasComposedVisual(visual);
   const surface = useMemo(() => resolvePuzzleSurface(visual), [visual]);
   const onPaper = surface.mode === "paper";
+  // Compact (keyboard) keeps large tiles — chrome is hidden, so match hero scale.
   const size =
-    state === "compact" || SMALL_TEXT_TYPES.has(puzzleType)
+    SMALL_TEXT_TYPES.has(puzzleType)
       ? "small"
       : state === "docked"
         ? "medium"

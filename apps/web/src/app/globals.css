@@ -828,17 +828,24 @@
   --stage-radius: 12px;
 }
 
-/* Keyboard-open: real small tiles (no transform shrink that clips glyphs). */
+/* Keyboard-open: near-hero plate, top-pinned — chrome is gone, use the room. */
 .puzzle-stage[data-state="compact"] {
-  --stage-pad: 0.5rem;
-  --stage-min: 0px;
-  --stage-scale: 1;
-  --stage-radius: 12px;
+  --stage-pad: clamp(0.9rem, 3.5vh, 1.5rem);
+  --stage-min: clamp(120px, 22vh, 200px);
+  --stage-scale: 1.05;
+  --stage-radius: 16px;
 }
 
 .puzzle-stage[data-state="compact"] .puzzle-stage-plate {
-  min-height: 0;
   overflow: visible;
+}
+
+.puzzle-stage[data-state="compact"] .puzzle-stage-content {
+  transform-origin: top center;
+}
+
+.puzzle-stage[data-state="compact"] .puzzle-container-responsive {
+  padding: clamp(0.35rem, 1.2vh, 0.75rem) clamp(0.75rem, 3vw, 1.25rem);
 }
 
 .puzzle-stage-plate {
@@ -1111,14 +1118,12 @@
 }
 
 /* ============================================================
-   KEYBOARD-AWARE LAYOUT
+   KEYBOARD / VISUAL VIEWPORT SHELL
+   Shell is position:fixed to visualViewport (top + height).
+   Do not use body { position:fixed } hacks — they fight iOS pan.
    ============================================================ */
 
 @supports (-webkit-touch-callout: none) {
-  .keyboard-aware-container {
-    height: -webkit-fill-available;
-  }
-
   /* Stop iOS zooming the viewport on input focus */
   input,
   textarea,
@@ -1127,13 +1132,16 @@
   }
 }
 
+.visual-viewport-shell {
+  overscroll-behavior: none;
+}
+
 .keyboard-aware-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  transition: height 0.2s ease-out;
 }
 
 .keyboard-visible .puzzle-area {
@@ -1146,23 +1154,9 @@
   flex: 0 0 auto;
 }
 
-.keyboard-visible .play-dock {
-  padding-top: 0.75rem;
-  padding-bottom: max(env(safe-area-inset-bottom), 12px);
-}
-
-.input-area-keyboard-transition {
-  transition:
-    padding 240ms var(--ease),
-    transform 240ms var(--ease);
-  will-change: padding, transform;
-}
-
-.keyboard-layout-active {
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-  height: 100%;
+/* Free vertical space for the puzzle while typing. */
+.visual-viewport-shell.keyboard-open .play-chrome {
+  display: none;
 }
 
 /* ============================================================

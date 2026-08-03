@@ -1052,7 +1052,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   className={cn(
                     "play-stage flex min-h-0 flex-1 flex-col items-center overflow-hidden px-4 md:px-6",
                     keyboardOpen
-                      ? "justify-start py-2"
+                      ? "justify-start gap-1.5 pt-0 pb-1"
                       : hasThread
                         ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
                         : "justify-center py-[clamp(0.5rem,2vh,1rem)]"
@@ -1086,32 +1086,34 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     </div>
                   ) : null}
 
-                  <section aria-label="Puzzle" className="w-full max-w-2xl shrink-0">
-                    <PuzzleStage
-                      puzzle={puzzleDisplay}
-                      puzzleType={puzzleType}
-                      question={keyboardOpen ? undefined : stageCaption}
-                      state={stageState}
-                      visual={gameData.visual}
-                    />
-                  </section>
+                  <div className="flex w-full max-w-2xl shrink-0 flex-col items-center">
+                    <section aria-label="Puzzle" className="w-full shrink-0">
+                      <PuzzleStage
+                        puzzle={puzzleDisplay}
+                        puzzleType={puzzleType}
+                        question={keyboardOpen ? undefined : stageCaption}
+                        state={stageState}
+                        visual={gameData.visual}
+                      />
+                    </section>
 
-                  {keyboardOpen && lastTurn ? (
-                    <p
-                      className={cn(
-                        "mt-1.5 w-full max-w-2xl truncate text-center text-xs leading-5",
-                        lastTurn.tier === "close" || lastTurn.tier === "warm"
-                          ? "text-warning"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                        {lastTurn.text}
-                      </span>
-                      <span className="mx-1.5 text-border-strong">·</span>
-                      Eve · {lastTurn.line}
-                    </p>
-                  ) : null}
+                    {keyboardOpen && lastTurn ? (
+                      <p
+                        className={cn(
+                          "mt-1.5 w-full truncate text-center text-xs leading-5",
+                          lastTurn.tier === "close" || lastTurn.tier === "warm"
+                            ? "text-warning"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                          {lastTurn.text}
+                        </span>
+                        <span className="mx-1.5 text-border-strong">·</span>
+                        Eve · {lastTurn.line}
+                      </p>
+                    ) : null}
+                  </div>
 
                   {hasThread && !keyboardOpen ? (
                     <GuessThread
@@ -1160,7 +1162,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       ? "Eve finishing"
                       : "Answer input"
                 }
-                className="input-area input-area-keyboard-transition play-dock z-30 shrink-0 px-4 pt-5 pb-safe-lg md:px-6"
+                className={cn(
+                  "input-area play-dock z-30 shrink-0 px-4 md:px-6",
+                  keyboardOpen ? "pt-2 pb-2" : "pt-5 pb-safe-lg"
+                )}
               >
                 <div className="mx-auto max-w-2xl">
                   {chatLocked ? (
