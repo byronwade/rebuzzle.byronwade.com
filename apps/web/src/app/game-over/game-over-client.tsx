@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Confetti } from "@/components/Confetti";
 import { CountdownTimer } from "@/components/CountdownTimer";
@@ -162,44 +162,33 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   const [qualityReasons, setQualityReasons] = useState<QualityReason[]>([]);
   const [playtestEligible, setPlaytestEligible] = useState(false);
 
-  const [solution, setSolution] = useState({
-    answer: gameData.answer || "",
-    explanation: gameData.explanation || "",
-  });
-
-  useEffect(() => {
-    // Server lock is authoritative — never unlock results from localStorage alone
-    if (!gameData.locked) {
-      setSolution({ answer: "", explanation: "" });
-      return;
-    }
-
-    if (gameData.answer) {
-      setSolution({ answer: gameData.answer, explanation: gameData.explanation });
-      return;
-    }
-
-    // Locked but answer not in RSC payload — use today's guess reveal only
-    try {
-      const todayKey = new Date().toISOString().slice(0, 10);
-      const stored = (localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution"));
-      if (stored) {
-        const parsed = JSON.parse(stored) as {
+  const storedSolution = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        const raw =
+          localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution");
+        if (!raw) return null;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const parsed = JSON.parse(raw) as {
           answer?: string;
           explanation?: string;
           puzzleDate?: string;
         };
         if (parsed.answer && (!parsed.puzzleDate || parsed.puzzleDate === todayKey)) {
-          setSolution({
-            answer: parsed.answer,
-            explanation: parsed.explanation || "",
-          });
+          return { answer: parsed.answer, explanation: parsed.explanation || "" };
         }
-      }
-    } catch {
-      // ignore
-    }
-  }, [gameData.answer, gameData.explanation, gameData.locked]);
+      } catch {}
+      return null;
+    },
+    () => null
+  );
+
+  const solution = !gameData.locked
+    ? { answer: "", explanation: "" }
+    : gameData.answer
+      ? { answer: gameData.answer, explanation: gameData.explanation || "" }
+      : (storedSolution ?? { answer: "", explanation: "" });
 
   useEffect(() => {
     if (authLoading || !isAuthenticated || isGuest || !userId) {

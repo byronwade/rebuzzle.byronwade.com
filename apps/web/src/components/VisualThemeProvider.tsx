@@ -5,9 +5,8 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
 } from "react";
 import {
   applyVisualTheme,
@@ -33,40 +32,45 @@ export function useVisualTheme() {
   return useContext(VisualThemeContext);
 }
 
+function subscribeVisualTheme(onStoreChange: () => void) {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === VISUAL_THEME_STORAGE_KEY || e.key === null) {
+      onStoreChange();
+    }
+  };
+  const onCustom = () => onStoreChange();
+  window.addEventListener("storage", onStorage);
+  window.addEventListener("rebuzzle:visual-theme", onCustom);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener("rebuzzle:visual-theme", onCustom);
+  };
+}
+
+function getClientTheme(): VisualTheme {
+  const theme = getStoredVisualTheme();
+  applyVisualTheme(theme);
+  return theme;
+}
+
 export function VisualThemeProvider({ children }: { children: ReactNode }) {
-  const [visualTheme, setThemeState] = useState<VisualTheme>("default");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const initial = getStoredVisualTheme();
-    setThemeState(initial);
-    applyVisualTheme(initial);
-    setMounted(true);
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === VISUAL_THEME_STORAGE_KEY || e.key === null) {
-        const next = getStoredVisualTheme();
-        setThemeState(next);
-        applyVisualTheme(next);
-      }
-    };
-    const onCustom = (e: Event) => {
-      const detail = (e as CustomEvent<{ theme?: VisualTheme }>).detail;
-      if (detail?.theme) {
-        setThemeState(detail.theme);
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("rebuzzle:visual-theme", onCustom);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("rebuzzle:visual-theme", onCustom);
-    };
-  }, []);
+  const visualTheme = useSyncExternalStore(
+    subscribeVisualTheme,
+    getClientTheme,
+    () => "default" as VisualTheme
+  );
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const setVisualTheme = useCallback((theme: VisualTheme) => {
-    setThemeState(theme);
     setStoredVisualTheme(theme);
+    applyVisualTheme(theme);
+    window.dispatchEvent(
+      new CustomEvent("rebuzzle:visual-theme", { detail: { theme } })
+    );
   }, []);
 
   const value = useMemo(

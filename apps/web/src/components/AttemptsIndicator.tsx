@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ export function AttemptsIndicator({
   className,
 }: AttemptsIndicatorProps) {
   const [animatingIndex, setAnimatingIndex] = useState<number | null>(null);
-  const [prevAttempts, setPrevAttempts] = useState(currentAttempts);
+  const prevAttemptsRef = useRef(currentAttempts);
 
   const remainingAttempts = maxAttempts - currentAttempts;
   const isLastAttempt = remainingAttempts === 1;
@@ -36,6 +36,7 @@ export function AttemptsIndicator({
   // Animate heart break when attempts increase (haptics live on the guess path —
   // keep this visual-only so we don't double-buzz).
   useEffect(() => {
+    const prevAttempts = prevAttemptsRef.current;
     if (animateOnChange && currentAttempts > prevAttempts) {
       const brokenHeartIndex = maxAttempts - currentAttempts;
       setAnimatingIndex(brokenHeartIndex);
@@ -44,11 +45,11 @@ export function AttemptsIndicator({
         setAnimatingIndex(null);
       }, 600);
 
-      setPrevAttempts(currentAttempts);
+      prevAttemptsRef.current = currentAttempts;
       return () => clearTimeout(timeout);
     }
-    setPrevAttempts(currentAttempts);
-  }, [currentAttempts, prevAttempts, maxAttempts, animateOnChange]);
+    prevAttemptsRef.current = currentAttempts;
+  }, [currentAttempts, maxAttempts, animateOnChange]);
 
   // One soft warning when the last heart becomes fragile.
   useEffect(() => {

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
 import type {
   BlindPuzzlePlaytestSpecimen,
@@ -73,7 +73,7 @@ function PuzzlePlaytestsPageInner() {
   const [guess, setGuess] = useState("");
   const [confidence, setConfidence] = useState(3);
   const [failureReason, setFailureReason] = useState<PuzzlePlaytestFailureReason | "">("");
-  const [shownAt, setShownAt] = useState(() => Date.now());
+  const shownAtRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backfillLoading, setBackfillLoading] = useState(false);
@@ -107,7 +107,7 @@ function PuzzlePlaytestsPageInner() {
           fail(data?.error || "Failed to load playtest");
         setSpecimen(data.specimen ?? null);
         setProgress(data.progress);
-        setShownAt(Date.now());
+        shownAtRef.current = Date.now();
         await loadReport();
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle playtests");
@@ -141,7 +141,7 @@ function PuzzlePlaytestsPageInner() {
             gaveUp,
             failureReason: gaveUp ? failureReason : undefined,
             confidence,
-            elapsedMs: Date.now() - shownAt,
+            elapsedMs: Date.now() - shownAtRef.current,
           }),
         });
         const data = await safeJsonParse<QueueResponse>(response);

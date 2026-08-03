@@ -3,6 +3,7 @@
 import { Bell, BellRing, Check, Loader2, Mail, Sparkles } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useCallback, useEffect, useState } from "react";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,7 +30,7 @@ import { useAuth } from "./AuthProvider";
 export function NotificationBadge() {
   const { isAuthenticated, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -47,10 +48,6 @@ export function NotificationBadge() {
     refresh: refreshInbox,
     markRead,
   } = useInAppNotifications(isAuthenticated);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (isOpen && isAuthenticated) {

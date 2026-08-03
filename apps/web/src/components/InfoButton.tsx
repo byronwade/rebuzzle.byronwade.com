@@ -1,7 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { getPuzzleTypeConfig } from "@/ai/config/puzzle-types";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,34 +12,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 
 interface InfoButtonProps {
   puzzleType?: string;
 }
 
+function subscribeMobile(onStoreChange: () => void) {
+  window.addEventListener("resize", onStoreChange);
+  return () => window.removeEventListener("resize", onStoreChange);
+}
+
+function getIsMobile() {
+  return window.innerWidth <= 768;
+}
+
 export function InfoButton({ puzzleType }: InfoButtonProps) {
   const [showInfoDialog, setShowInfoDialog] = useState(false);
-  const [_isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-
-    // Check if we're on a mobile device
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    // Initial check
-    checkMobile();
-
-    // Add resize listener
-    window.addEventListener("resize", checkMobile);
-
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-    };
-  }, []);
+  const isMounted = useIsClient();
+  const _isMobile = useSyncExternalStore(subscribeMobile, getIsMobile, () => false);
 
   // Get puzzle-specific config if puzzleType is provided
   let puzzleConfig = null;

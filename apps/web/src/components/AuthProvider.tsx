@@ -210,10 +210,6 @@ export function AuthProvider({
     await checkAuth();
   }, [checkAuth]);
 
-  useEffect(() => {
-    setAuthState((prev) => ({ ...prev, refreshAuth }));
-  }, [refreshAuth]);
-
   const seedSession = useCallback((session: ServerSession | null) => {
     const next = sessionToState(session);
     setAuthState((prev) => ({
@@ -227,9 +223,14 @@ export function AuthProvider({
     initialCheckComplete.current = true;
   }, []);
 
+  const authValue: AuthState = {
+    ...authState,
+    refreshAuth,
+  };
+
   return (
     <AuthSeedContext.Provider value={seedSession}>
-      <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>
+      <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
     </AuthSeedContext.Provider>
   );
 }

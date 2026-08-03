@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -149,7 +149,7 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
   }
 };
 
-const initialState: GameState = {
+const createInitialGameState = (): GameState => ({
   gameOver: false,
   nextPlayTime: null,
   attemptsLeft: gameSettings.maxAttempts,
@@ -164,11 +164,13 @@ const initialState: GameState = {
   startTime: Date.now(),
   hintsUsed: 0,
   currentHintIndex: 0,
-};
+});
+
+const emptySubscribe = () => () => {};
 
 export default function GameBoard({ gameData }: GameBoardProps) {
   // Consolidated game state using reducer
-  const [gameState, dispatch] = useReducer(gameReducer, initialState);
+  const [gameState, dispatch] = useReducer(gameReducer, undefined, createInitialGameState);
 
   // Get puzzle display - support both new (puzzle) and legacy (rebusPuzzle) fields
   const puzzleDisplay = useMemo(
@@ -212,7 +214,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   /** Variable-reward lucky solve (client roll when server points absent). */
   const [isLuckySolve, setIsLuckySolve] = useState(false);
   const [streakFrozen, setStreakFrozen] = useState(false);
-  const [fromChallenge, setFromChallenge] = useState(false);
   const [closestSimilarity, setClosestSimilarity] = useState(0);
   const [unlockedAchievementName, setUnlockedAchievementName] = useState<string | null>(null);
   const [dayRank, setDayRank] = useState<number | null>(null);
@@ -221,37 +222,35 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [paceLabel, setPaceLabel] = useState<string | null>(null);
   const [previousBestSeconds, setPreviousBestSeconds] = useState<number | null>(null);
   const consecutiveColdRef = useRef(0);
-  const [isReturner, setIsReturner] = useState(false);
-  const [isComeback, setIsComeback] = useState(false);
+  const isReturner = useSyncExternalStore(emptySubscribe, isReturningUser, () => false);
+  const isComeback = useSyncExternalStore(emptySubscribe, isComebackVisit, () => false);
   /** Celebrate when the locked dock + result card land — not at guess submit. */
   const pendingCelebrationRef = useRef(false);
   const wasChatLockedRef = useRef(false);
 
-  useEffect(() => {
-    setIsReturner(isReturningUser());
-    setIsComeback(isComebackVisit());
-  }, []);
-
   const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
+    let persistQuip: string | null = null;
     setTurns((prev) =>
       prev.map((turn) => {
         if (turn.id !== id) return turn;
         const next = { ...turn, ...patch };
-        // Persist Eve's closing line for the soft revisit landing.
         if (
           (next.tier === "correct" || next.tier === "out") &&
           typeof next.quip === "string" &&
           next.quip.trim()
         ) {
-          try {
-            localStorage.setItem("lastEveClosingLine", next.quip.trim());
-          } catch {
-            // Ignore quota / private mode.
-          }
+          persistQuip = next.quip.trim();
         }
         return next;
       })
     );
+    if (persistQuip) {
+      try {
+        localStorage.setItem("lastEveClosingLine", persistQuip);
+      } catch {
+        // Ignore quota / private mode.
+      }
+    }
   }, []);
 
   /**
@@ -319,45 +318,47 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   // Load stats after auth — cookie identity, no userId query param
   useEffect(() => {
     if (!userId) return;
+    let cancelled = false;
 
     const loadUserStats = async () => {
       try {
         const response = await fetch("/api/user/stats");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.stats) {
-            setUserStats({
-              points: data.stats.points || 0,
-              streak: data.stats.streak || 0,
-              maxStreak: data.stats.maxStreak || 0,
-              totalGames: data.stats.totalGames || 0,
-              wins: data.stats.wins || 0,
-              achievements: [],
-              level: data.stats.level || 1,
-              lastPlayDate: data.stats.lastPlayDate || null,
-              dailyChallengeStreak: data.stats.dailyChallengeStreak || 0,
-              noHintStreak: data.stats.noHintStreak || 0,
-              fastestSolveSeconds:
-                typeof data.stats.fastestSolveSeconds === "number"
-                  ? data.stats.fastestSolveSeconds
-                  : null,
-              streakFreezes:
-                typeof data.stats.streakFreezes === "number" ? data.stats.streakFreezes : 1,
-              guessDistribution: Array.isArray(data.stats.guessDistribution)
-                ? data.stats.guessDistribution
-                : [0, 0, 0],
-              recentPlayDates: Array.isArray(data.stats.recentPlayDates)
-                ? data.stats.recentPlayDates
-                : [],
-            });
-          }
-        }
+        if (!response.ok || cancelled) return;
+        const data = await response.json();
+        if (cancelled || !data.stats) return;
+        setUserStats({
+          points: data.stats.points || 0,
+          streak: data.stats.streak || 0,
+          maxStreak: data.stats.maxStreak || 0,
+          totalGames: data.stats.totalGames || 0,
+          wins: data.stats.wins || 0,
+          achievements: [],
+          level: data.stats.level || 1,
+          lastPlayDate: data.stats.lastPlayDate || null,
+          dailyChallengeStreak: data.stats.dailyChallengeStreak || 0,
+          noHintStreak: data.stats.noHintStreak || 0,
+          fastestSolveSeconds:
+            typeof data.stats.fastestSolveSeconds === "number"
+              ? data.stats.fastestSolveSeconds
+              : null,
+          streakFreezes:
+            typeof data.stats.streakFreezes === "number" ? data.stats.streakFreezes : 1,
+          guessDistribution: Array.isArray(data.stats.guessDistribution)
+            ? data.stats.guessDistribution
+            : [0, 0, 0],
+          recentPlayDates: Array.isArray(data.stats.recentPlayDates)
+            ? data.stats.recentPlayDates
+            : [],
+        });
       } catch (err) {
         console.error("Failed to load user stats:", err);
       }
     };
 
-    loadUserStats();
+    void loadUserStats();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   // Sync game state with context for header display.
@@ -1001,11 +1002,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   }, [chatLocked, gameState.wasSuccessful]);
 
   // Share deep link → one quiet stage caption, not a banner.
+  const fromChallenge = useSyncExternalStore(
+    emptySubscribe,
+    () => {
+      const { challengerId, fromShare } = parseBeatMeChallenge(window.location.search);
+      return Boolean(fromShare && challengerId && challengerId !== userId);
+    },
+    () => false
+  );
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const { challengerId, fromShare } = parseBeatMeChallenge(window.location.search);
-    if (!fromShare || !challengerId || challengerId === userId) return;
-    setFromChallenge(true);
+    if (!fromChallenge) return;
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete("beat");
@@ -1014,7 +1021,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     } catch {
       // ignore
     }
-  }, [userId]);
+  }, [fromChallenge]);
 
   // Soft lock click when the day closes — ritualizes "come back tomorrow".
   useEffect(() => {

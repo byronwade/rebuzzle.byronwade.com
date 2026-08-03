@@ -9,26 +9,23 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 
 export function EmailNotificationForm() {
   const { isAuthenticated, user } = useAuth();
   const { enabled, isLoading, error, subscribe, unsubscribe, toggle, checkStatus } =
     useEmailNotifications();
-  const [email, setEmail] = useState("");
+  const authEmail = isAuthenticated && user?.email ? user.email : "";
+  const [emailOverride, setEmailOverride] = useState<string | null>(null);
+  const email = emailOverride ?? authEmail;
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
-  // Get user's email from auth context if authenticated
   useEffect(() => {
-    setMounted(true);
-    if (isAuthenticated && user?.email) {
-      setEmail(user.email);
-    }
-    // Check subscription status on mount
     void checkStatus();
-  }, [isAuthenticated, user, checkStatus]);
+  }, [checkStatus]);
 
   // Validate email format
   const validateEmail = (emailValue: string): boolean => {
@@ -38,7 +35,7 @@ export function EmailNotificationForm() {
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
-    setEmail(value);
+    setEmailOverride(value);
     setEmailError(null);
 
     // Real-time validation

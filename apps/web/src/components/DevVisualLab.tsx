@@ -7,7 +7,7 @@
 
 import { FlaskConical, Loader2, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { PuzzleContainer, PuzzleDisplay } from "@/components/PuzzleDisplay";
 import { Button } from "@/components/ui/button";
 import { isDevModeEnabled } from "@/lib/dev-mode";
@@ -159,7 +159,19 @@ const FALLBACK_MODES: ModeMeta[] = [
 ];
 
 export function DevVisualLab() {
-  const [devOn, setDevOn] = useState(false);
+  const devOn = useSyncExternalStore(
+    (onStoreChange) => {
+      const handler = () => onStoreChange();
+      window.addEventListener("rebuzzle:dev-mode", handler);
+      window.addEventListener("storage", handler);
+      return () => {
+        window.removeEventListener("rebuzzle:dev-mode", handler);
+        window.removeEventListener("storage", handler);
+      };
+    },
+    isDevModeEnabled,
+    () => false
+  );
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [modes, setModes] = useState<ModeMeta[]>(FALLBACK_MODES);
   const [mode, setMode] = useState("pictogram");
@@ -169,10 +181,6 @@ export function DevVisualLab() {
   const [puzzleId, setPuzzleId] = useState<string | null>(null);
   const [vote, setVote] = useState<QualityVote | null>(null);
   const [voteSaving, setVoteSaving] = useState(false);
-
-  useEffect(() => {
-    setDevOn(isDevModeEnabled());
-  }, []);
 
   const loadModes = useCallback(async () => {
     try {

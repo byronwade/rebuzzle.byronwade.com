@@ -1,4 +1,5 @@
 "use client";
+// react-doctor-disable-file react-doctor/prefer-dynamic-import -- loaded only via next/dynamic parent wrapper
 
 import { Cell, Pie, PieChart as RechartsPieChart } from "recharts";
 

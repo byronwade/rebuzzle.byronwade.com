@@ -1,10 +1,11 @@
 "use client";
 
 import { AppLink as Link } from "@/components/AppLink";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Timer } from "@/components/Timer";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { getStreakTease } from "@/lib/game/streak-tease";
+import { useLocalStorageJson, useLocalStorageRaw } from "@/lib/hooks/use-local-storage";
 import { cn } from "@/lib/utils";
 
 interface AlreadyPlayedPanelProps {
@@ -25,35 +26,23 @@ interface StoredSolution {
  * language instead of a hard-cut status page.
  */
 export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
-  const [streak, setStreak] = useState(0);
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [eveLine, setEveLine] = useState<string | null>(null);
-  const [nextPlayTime] = useState(() => getNextUtcMidnight());
+  const completionV1 = useLocalStorageJson<StoredCompletion | null>("lastGameCompletion:v1", null);
+  const completionLegacy = useLocalStorageJson<StoredCompletion | null>("lastGameCompletion", null);
+  const completion = completionV1 ?? completionLegacy;
+  const streak = typeof completion?.streak === "number" ? completion.streak : 0;
 
-  useEffect(() => {
-    try {
-      const completionRaw = (localStorage.getItem("lastGameCompletion:v1") ?? localStorage.getItem("lastGameCompletion"));
-      if (completionRaw) {
-        const completion = JSON.parse(completionRaw) as StoredCompletion;
-        if (typeof completion.streak === "number") {
-          setStreak(completion.streak);
-        }
-      }
-      const solutionRaw = (localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution"));
-      if (solutionRaw) {
-        const solution = JSON.parse(solutionRaw) as StoredSolution;
-        if (typeof solution.answer === "string" && solution.answer.trim()) {
-          setAnswer(solution.answer.trim());
-        }
-      }
-      const eveRaw = localStorage.getItem("lastEveClosingLine");
-      if (typeof eveRaw === "string" && eveRaw.trim()) {
-        setEveLine(eveRaw.trim());
-      }
-    } catch {
-      // Ignore corrupt local storage — panel still works without extras.
-    }
-  }, []);
+  const solutionV1 = useLocalStorageJson<StoredSolution | null>("lastGameSolution:v1", null);
+  const solutionLegacy = useLocalStorageJson<StoredSolution | null>("lastGameSolution", null);
+  const solution = solutionV1 ?? solutionLegacy;
+  const answer =
+    typeof solution?.answer === "string" && solution.answer.trim()
+      ? solution.answer.trim()
+      : null;
+
+  const eveRaw = useLocalStorageRaw("lastEveClosingLine");
+  const eveLine = typeof eveRaw === "string" && eveRaw.trim() ? eveRaw.trim() : null;
+
+  const [nextPlayTime] = useState(() => getNextUtcMidnight());
 
   const tease = getStreakTease(wasSuccessful ? streak : 0, wasSuccessful);
   const resultsHref = wasSuccessful ? "/game-over?success=true" : "/game-over?success=false";

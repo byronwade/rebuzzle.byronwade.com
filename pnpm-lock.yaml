@@ -323,6 +323,9 @@ importers:
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
+      '@shadscan/cli':
+        specifier: 0.8.0
+        version: 0.8.0
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6
@@ -3957,6 +3960,11 @@ packages:
   '@shaderfrog/glsl-parser@7.0.1':
     resolution: {integrity: sha512-8mpfsoPeRhesY3pOrzNZBL8uG6N5GVX1EHLBYbd4gzKs+c7vaEIqpTNK5VrffU33qQN4cwpP2v3u4aPPBU32sw==}
     engines: {node: '>=16'}
+
+  '@shadscan/cli@0.8.0':
+    resolution: {integrity: sha512-5yyuSJp5EBCCgQYtiRFeHsGrkwrzJViKVvZlo5gpy28LmALPyxY0A2nBKcRicPoiFgkRnoGYYQGkg8dlJxc3Rw==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -13694,6 +13702,15 @@ snapshots:
       react: 19.2.8
 
   '@shaderfrog/glsl-parser@7.0.1': {}
+
+  '@shadscan/cli@0.8.0':
+    dependencies:
+      cross-spawn: 7.0.6
+      jsonc-parser: 3.3.1
+      picocolors: 1.1.1
+      tinyglobby: 0.2.15
+      typescript: 5.9.3
+      zod: 4.1.13
 
   '@sinclair/typebox@0.27.8': {}
 

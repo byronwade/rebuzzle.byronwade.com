@@ -2,8 +2,8 @@
 
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 import { format as formatDateFns } from "date-fns";
 
@@ -37,19 +37,8 @@ const puzzleTypeLabels: Record<string, string> = {
 };
 
 export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
-  const [isToday, setIsToday] = useState(false);
-  const [isYesterday, setIsYesterday] = useState(false);
-
-  useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const postDate = new Date(post.date);
-    postDate.setHours(0, 0, 0, 0);
-    setIsToday(today.getTime() === postDate.getTime());
-    setIsYesterday(yesterday.getTime() === postDate.getTime());
-  }, [post.date]);
+  const isToday = useIsLocalCalendarDay(post.date, 0);
+  const isYesterday = useIsLocalCalendarDay(post.date, -1);
 
   const formatDate = (dateString: string) => formatDateFns(new Date(dateString), "MMMM d, yyyy");
 

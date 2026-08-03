@@ -31,7 +31,9 @@ export default function SignupPage() {
     confirmPassword?: string;
     form?: string;
   }>({});
-  const [firstErrorField, setFirstErrorField] = useState<string | null>(null);
+  const focusField = (id: string | null) => {
+    if (id) document.getElementById(id)?.focus();
+  };
 
   const validateField = (
     name: string,
@@ -126,7 +128,7 @@ export default function SignupPage() {
       // Focus first error field
       const firstError = Object.keys(newErrors)[0];
       if (firstError) {
-        setFirstErrorField(firstError);
+        focusField(firstError);
         document.getElementById(firstError)?.focus();
       }
       return;
@@ -195,16 +197,6 @@ export default function SignupPage() {
     });
   };
 
-  // Focus first error field when it changes
-  React.useEffect(() => {
-    if (firstErrorField) {
-      const element = document.getElementById(firstErrorField);
-      if (element) {
-        element.focus();
-        setFirstErrorField(null);
-      }
-    }
-  }, [firstErrorField]);
 
   return (
     <Layout>

@@ -1,4 +1,5 @@
 "use client";
+// react-doctor-disable-file react-doctor/prefer-dynamic-import -- loaded only via next/dynamic parent wrapper
 
 import { format } from "date-fns";
 import { Area, CartesianGrid, AreaChart as RechartsAreaChart, XAxis, YAxis } from "recharts";

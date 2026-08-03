@@ -19,7 +19,7 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+  const token = searchParams.get("token");
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
@@ -32,18 +32,14 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const tokenParam = searchParams.get("token");
-    if (tokenParam) {
-      setToken(tokenParam);
-    } else {
-      toast({
-        title: "Invalid Link",
-        description: "No reset token provided. Please request a new password reset.",
-        variant: "destructive",
-      });
-      window.location.assign("/forgot-password");
-    }
-  }, [searchParams, router, toast]);
+    if (token) return;
+    toast({
+      title: "Invalid Link",
+      description: "No reset token provided. Please request a new password reset.",
+      variant: "destructive",
+    });
+    window.location.assign("/forgot-password");
+  }, [token, toast]);
 
   const validateField = (
     name: string,

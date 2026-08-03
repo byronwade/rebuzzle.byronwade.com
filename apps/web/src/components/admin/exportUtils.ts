@@ -41,4 +41,5 @@ export function exportToCSV<T extends Record<string, any>>(
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

@@ -31,7 +31,9 @@ export default function LoginPage() {
     password?: string;
     form?: string;
   }>({});
-  const [firstErrorField, setFirstErrorField] = useState<string | null>(null);
+  const focusField = (id: string | null) => {
+    if (id) document.getElementById(id)?.focus();
+  };
 
   const validateField = (name: string, value: string): string | undefined => {
     if (name === "email") {
@@ -88,7 +90,7 @@ export default function LoginPage() {
       // Focus first error field
       const firstError = Object.keys(newErrors)[0];
       if (firstError) {
-        setFirstErrorField(firstError);
+        focusField(firstError);
         document.getElementById(firstError)?.focus();
       }
       return;
@@ -147,16 +149,6 @@ export default function LoginPage() {
     });
   };
 
-  // Focus first error field when it changes
-  React.useEffect(() => {
-    if (firstErrorField) {
-      const element = document.getElementById(firstErrorField);
-      if (element) {
-        element.focus();
-        setFirstErrorField(null);
-      }
-    }
-  }, [firstErrorField]);
 
   const handleGuestPlay = () => {
     // Set guest mode in localStorage

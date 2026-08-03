@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { BlogPostSections } from "@/db/models";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
+import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
 import { format as formatDateFns } from "date-fns";
@@ -79,8 +80,8 @@ function SectionBlock({ title, body }: { title: string; body: string }) {
 
 export default function BlogPostContent({ post }: BlogPostContentProps) {
   const [isRevealed, setIsRevealed] = useState(false);
-  const [isToday, setIsToday] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const isToday = useIsLocalCalendarDay(post.date, 0);
+  const isCompleted = false;
 
   const sections = post.sections;
   const hasStructured = Boolean(
@@ -96,22 +97,11 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
   );
 
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const postDate = new Date(post.date);
-    postDate.setHours(0, 0, 0, 0);
-    const isCurrentPuzzle = today.getTime() === postDate.getTime();
-    setIsToday(isCurrentPuzzle);
-
-    if (isCurrentPuzzle) {
-      setIsCompleted(false);
-    }
-
     trackEvent(analyticsEvents.BLOG_POST_VIEW, {
       slug: post.slug,
       title: post.title,
     });
-  }, [post.slug, post.title, post.date]);
+  }, [post.slug, post.title]);
 
   const handleRevealClick = () => {
     if (isToday && !isCompleted) return;

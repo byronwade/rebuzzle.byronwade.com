@@ -4,7 +4,7 @@ import { FlaskConical, Loader2, Send } from "lucide-react";
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type {
   BlindPuzzlePlaytestSpecimen,
   PuzzlePlaytestProgress,
@@ -46,7 +46,7 @@ export default function PlaytestPage() {
   const [guess, setGuess] = useState("");
   const [confidence, setConfidence] = useState(3);
   const [failureReason, setFailureReason] = useState<PuzzlePlaytestFailureReason | "">("");
-  const [shownAt, setShownAt] = useState(() => Date.now());
+  const shownAtRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export default function PlaytestPage() {
         }
         setSpecimen(data.specimen ?? null);
         setProgress(data.progress);
-        setShownAt(Date.now());
+        shownAtRef.current = Date.now();
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to load a playtest puzzle");
       }
@@ -76,12 +76,11 @@ export default function PlaytestPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!(isAuthenticated && !isGuest)) {
-      setLoading(false);
-      return;
-    }
+    if (!(isAuthenticated && !isGuest)) return;
     void loadNext();
   }, [authLoading, isAuthenticated, isGuest, loadNext]);
+
+  const showLoading = authLoading || ((isAuthenticated && !isGuest) && loading);
 
   const submit = async (gaveUp: boolean) => {
     if (!specimen || isSubmitting) return;
@@ -104,7 +103,7 @@ export default function PlaytestPage() {
             gaveUp,
             failureReason: gaveUp ? failureReason : undefined,
             confidence,
-            elapsedMs: Date.now() - shownAt,
+            elapsedMs: Date.now() - shownAtRef.current,
           }),
         });
         const data = await safeJsonParse<QueueResponse>(response);
@@ -129,7 +128,7 @@ export default function PlaytestPage() {
     void submit(false);
   };
 
-  if (authLoading || loading) {
+  if (showLoading) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

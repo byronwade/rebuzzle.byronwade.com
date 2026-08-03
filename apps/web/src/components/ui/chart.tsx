@@ -1,5 +1,5 @@
 "use client";
-
+// react-doctor-disable-file react-doctor/prefer-dynamic-import -- only imported from dynamically loaded chart impls
 import * as React from "react";
 import {
   Legend,

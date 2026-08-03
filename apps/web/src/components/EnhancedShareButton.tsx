@@ -11,7 +11,7 @@ import {
   Share2,
   Twitter,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { beatMeShareLine, buildBeatMeUrl } from "@/lib/game/share-challenge";
 import { haptics } from "@/lib/haptics";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 
@@ -53,13 +54,11 @@ export function EnhancedShareButton({
 }: EnhancedShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [hasNativeShare, setHasNativeShare] = useState(false);
+  const isClient = useIsClient();
+  const hasNativeShare =
+    isClient && typeof navigator !== "undefined" && typeof navigator.share === "function";
   const { userId } = useAuth();
   const hasTrackedShare = useRef(false);
-
-  useEffect(() => {
-    setHasNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
-  }, []);
 
   const trackShare = async () => {
     if (!userId || hasTrackedShare.current) return;

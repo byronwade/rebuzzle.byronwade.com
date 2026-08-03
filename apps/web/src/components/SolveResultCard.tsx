@@ -2,7 +2,7 @@
 
 import { Check, Flame, Lock, Trophy } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import { Timer } from "@/components/Timer";
@@ -165,10 +165,25 @@ export function SolveResultCard({
   const winCount = Math.max(wins, 0);
   const winRate = played > 0 ? Math.round((winCount / played) * 100) : 0;
   const showAnswer = Boolean(answer) && !success;
-  const [streakLocked, setStreakLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [perception, setPerception] = useState<PerceptionChoice | null>(null);
+  const [perceptionOverride, setPerceptionOverride] = useState<PerceptionChoice | null>(null);
   const [perceptionSaving, setPerceptionSaving] = useState(false);
+  const storedPerception = useSyncExternalStore(
+    () => () => {},
+    () => {
+      if (!puzzleId) return null;
+      try {
+        const stored = localStorage.getItem(`difficultyPerception:${puzzleId}`);
+        if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
+          return stored as PerceptionChoice;
+        }
+      } catch {}
+      return null;
+    },
+    () => null
+  );
+  const perception = perceptionOverride ?? storedPerception;
+  const streakLocked = Boolean(scoreDone && success && streak > 0);
   const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
   const cleanSolve = success && hintsUsed === 0;
   const clutchSolve = success && attempts >= maxAttempts;
@@ -180,27 +195,14 @@ export function SolveResultCard({
   useEffect(() => {
     if (!scoreDone) return;
     if (success && streak > 0) {
-      setStreakLocked(true);
       haptics.tap();
     }
   }, [scoreDone, success, streak]);
 
-  useEffect(() => {
-    if (!puzzleId) return;
-    try {
-      const stored = localStorage.getItem(`difficultyPerception:${puzzleId}`);
-      if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
-        setPerception(stored);
-      }
-    } catch {
-      // ignore
-    }
-  }, [puzzleId]);
-
   async function submitPerception(choice: PerceptionChoice) {
     if (!puzzleId || perceptionSaving || perception) return;
     setPerceptionSaving(true);
-    setPerception(choice);
+    setPerceptionOverride(choice);
     haptics.tap();
     try {
       localStorage.setItem(`difficultyPerception:${puzzleId}`, choice);

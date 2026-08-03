@@ -109,20 +109,9 @@ async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
 
   await connection();
 
-  let postWithStats;
-  let adjacentPosts;
-  let allPosts;
+  let postWithStats: Awaited<ReturnType<typeof fetchBlogPostWithStats>>;
   try {
     postWithStats = await fetchBlogPostWithStats(slug);
-
-    if (!postWithStats) {
-      notFound();
-    }
-
-    [adjacentPosts, allPosts] = await Promise.all([
-      fetchAdjacentPosts(postWithStats.date),
-      fetchBlogPosts(),
-    ]);
   } catch (_error) {
     return (
       <Layout>
@@ -148,6 +137,15 @@ async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
       </Layout>
     );
   }
+
+  if (!postWithStats) {
+    notFound();
+  }
+
+  const [adjacentPosts, allPosts] = await Promise.all([
+    fetchAdjacentPosts(postWithStats.date),
+    fetchBlogPosts(),
+  ]);
 
   const post = postWithStats;
 

@@ -34,7 +34,13 @@ export function SmartAnswerInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<CursorPosition | null>(null);
-  const undoRedoManager = useRef(new UndoRedoManager());
+  const undoRedoManagerRef = useRef<UndoRedoManager | null>(null);
+  const getUndoRedo = () => {
+    if (!undoRedoManagerRef.current) {
+      undoRedoManagerRef.current = new UndoRedoManager();
+    }
+    return undoRedoManagerRef.current;
+  };
   /** One arming tap per focus session — commitment cue, not every keystroke. */
   const armedHapticRef = useRef(false);
 
@@ -57,12 +63,12 @@ export function SmartAnswerInput({
     haptics.tap();
     onSubmit(trimmed);
     setValue("");
-    undoRedoManager.current = new UndoRedoManager();
+    undoRedoManagerRef.current = new UndoRedoManager();
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const cursor = { start: e.target.selectionStart, end: e.target.selectionEnd };
-    undoRedoManager.current.saveState(e.target.value, cursor);
+    getUndoRedo().saveState(e.target.value, cursor);
     cursorPositionRef.current = cursor;
     setValue(e.target.value);
   };
@@ -86,8 +92,8 @@ export function SmartAnswerInput({
       const cursor = cursorPositionRef.current || { start: 0, end: 0 };
       applyHistoryEntry(
         e.shiftKey
-          ? undoRedoManager.current.redo(value, cursor)
-          : undoRedoManager.current.undo(value, cursor)
+          ? getUndoRedo().redo(value, cursor)
+          : getUndoRedo().undo(value, cursor)
       );
     }
   };

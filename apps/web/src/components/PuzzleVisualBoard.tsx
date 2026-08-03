@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { type CSSProperties } from "react";
 import {
   PUZZLE_BOARD_SIZE_SPECS,
@@ -148,13 +149,32 @@ function ImageTile({
   if (!safe) return null;
 
   // data: URLs from AI Gateway aren't a fit for next/image
+  if (src.startsWith("data:image/")) {
+    return (
+      <img
+        src={src}
+        alt={layer.alt}
+        width={sizePx}
+        height={sizePx}
+        className="rb-enter puzzle-image-tile inline-block shrink-0 rounded-md object-cover "
+        style={{
+          width: sizePx,
+          height: sizePx,
+          animationDelay: `${Math.min(index, 6) * 45}ms`,
+        }}
+        draggable={false}
+      />
+    );
+  }
+
   return (
-    <img
+    <Image
       src={src}
       alt={layer.alt}
       width={sizePx}
       height={sizePx}
- className="rb-enter puzzle-image-tile inline-block shrink-0 rounded-md object-cover "
+      unoptimized
+      className="rb-enter puzzle-image-tile inline-block shrink-0 rounded-md object-cover "
       style={{
         width: sizePx,
         height: sizePx,

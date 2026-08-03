@@ -6,7 +6,7 @@
  */
 
 import { AI_CONFIG } from "../config";
-import { runApexGeneration } from "../puzzle-agent/apex";
+import { runApexGeneration } from "../puzzle-agent/apex/engine";
 import { toPlayabilityEvidence } from "../puzzle-agent/apex/blind-solve-consensus";
 import {
   applyPlayerSimHeuristics,

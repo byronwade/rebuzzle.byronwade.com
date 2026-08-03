@@ -35,8 +35,8 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [puzzleType, setPuzzleType] = useState(searchParams.get("type") || "all");
+  const [query, setQuery] = useState(() => searchParams.get("q") || "");
+  const [puzzleType, setPuzzleType] = useState(() => searchParams.get("type") || "all");
 
   const handleSearch = () => {
     if (!query.trim() && puzzleType === "all") {

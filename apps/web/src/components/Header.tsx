@@ -11,6 +11,7 @@ import {
   getDifficultyName,
   getGroupedDailyDifficulties,
 } from "@/lib/difficulty";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 import { AttemptsIndicator } from "./AttemptsIndicator";
 import { useAuth } from "./AuthProvider";
@@ -41,14 +42,9 @@ const NAV_LINKS = [
 
 export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderProps) {
   const { isAuthenticated } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavId = useId();
-
-  // Prevent hydration mismatch by only rendering client-side state after mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
