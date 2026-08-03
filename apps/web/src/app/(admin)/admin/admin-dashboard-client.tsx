@@ -355,9 +355,9 @@ export default function AdminPage() {
           variant: "destructive",
         });
         router.push("/");
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
+
     };
 
     if (isAuthenticated) {
@@ -386,9 +386,9 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Failed to fetch stats:", error);
-    } finally {
-      setStatsLoading(false);
     }
+    setStatsLoading(false);
+
   }, []);
 
   const fetchPuzzles = async (page = 1) => {
@@ -409,9 +409,9 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Failed to fetch puzzles:", error);
-    } finally {
-      setPuzzlesLoading(false);
     }
+    setPuzzlesLoading(false);
+
   };
 
   const fetchBlogs = async (page = 1) => {
@@ -432,9 +432,9 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Failed to fetch blogs:", error);
-    } finally {
-      setBlogsLoading(false);
     }
+    setBlogsLoading(false);
+
   };
 
   const fetchUsers = async (page = 1) => {
@@ -455,9 +455,9 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
-    } finally {
-      setUsersLoading(false);
     }
+    setUsersLoading(false);
+
   };
 
   const fetchAnalytics = async () => {
@@ -470,9 +470,9 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Failed to fetch analytics:", error);
-    } finally {
-      setAnalyticsLoading(false);
     }
+    setAnalyticsLoading(false);
+
   };
 
   // Load data when tab changes

@@ -94,56 +94,61 @@ export default function LeaderboardClient({
         const response = await fetch(
           `/api/leaderboard?limit=25&timeframe=${timeframe}&sortBy=${sortBy}`
         );
-        const data = await response.json();
-
-        if (data.success) {
-          setLeaderboard(data.leaderboard);
-        } else {
-          console.error("Failed to fetch leaderboard:", data.error);
+        if (!response.ok) {
+          console.error("Failed to fetch leaderboard:", response.status);
           setLeaderboard([]);
-        }
+        } else {
+          const data = await response.json();
 
-        if (isAuthenticated && userId) {
-          const userResponse = await fetch(
-            `/api/user/stats?userId=${userId}&timeframe=${timeframe}`
-          );
-          const userData = await userResponse.json();
-          if (userData.success) {
-            if (userData.rank) {
-              setUserRank(userData.rank);
-            }
-            const userInLeaderboard = data.leaderboard.find(
-              (entry: LeaderboardEntry) => entry.user.id === userId
+          if (data.success) {
+            setLeaderboard(data.leaderboard);
+          } else {
+            console.error("Failed to fetch leaderboard:", data.error);
+            setLeaderboard([]);
+          }
+
+          if (isAuthenticated && userId) {
+            const userResponse = await fetch(
+              `/api/user/stats?userId=${userId}&timeframe=${timeframe}`
             );
-            if (userInLeaderboard) {
-              setUserEntry(userInLeaderboard);
-            } else if (userData.user && userData.stats && userData.rank) {
-              const userEntry: LeaderboardEntry = {
-                rank: userData.rank,
-                user: {
-                  id: userData.user.id,
-                  username: userData.user.username,
-                  email: userData.user.email,
-                },
-                stats: {
-                  points: userData.stats.points || 0,
-                  streak: userData.stats.streak || 0,
-                  totalGames: userData.stats.totalGames || 0,
-                  wins: userData.stats.wins || 0,
-                  level: userData.stats.level || 0,
-                  dailyChallengeStreak: userData.stats.dailyChallengeStreak || 0,
-                  completionRate: userData.stats.completionRate,
-                },
-              };
-              setUserEntry(userEntry);
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              if (userData.success) {
+                if (userData.rank) {
+                  setUserRank(userData.rank);
+                }
+                const userInLeaderboard = data.leaderboard.find(
+                  (entry: LeaderboardEntry) => entry.user.id === userId
+                );
+                if (userInLeaderboard) {
+                  setUserEntry(userInLeaderboard);
+                } else if (userData.user && userData.stats && userData.rank) {
+                  const userEntry: LeaderboardEntry = {
+                    rank: userData.rank,
+                    user: {
+                      id: userData.user.id,
+                      username: userData.user.username,
+                      email: userData.user.email,
+                    },
+                    stats: {
+                      points: userData.stats.points || 0,
+                      streak: userData.stats.streak || 0,
+                      totalGames: userData.stats.totalGames || 0,
+                      wins: userData.stats.wins || 0,
+                      level: userData.stats.level || 0,
+                      dailyChallengeStreak: userData.stats.dailyChallengeStreak || 0,
+                      completionRate: userData.stats.completionRate,
+                    },
+                  };
+                  setUserEntry(userEntry);
+                }
+              }
             }
           }
-        }
-      } catch (error) {
+        }      } catch (error) {
         console.error("Error fetching leaderboard:", error);
       }
       setLoading(false);
-
     };
 
     fetchLeaderboard();

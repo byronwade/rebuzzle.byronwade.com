@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { ExternalCorpusReadinessReport } from "@/ai/puzzle-agent/benchmark/external-corpus";
 import { useAuth } from "@/components/AuthProvider";
@@ -271,9 +272,9 @@ export default function BenchmarkReviewPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <a href="/api/admin/ai/benchmark-reviews/export">
+            <Link href="/api/admin/ai/benchmark-reviews/export" prefetch={false}>
               <Download className="mr-2 h-4 w-4" data-icon="inline-start" /> Export reviews
-            </a>
+            </Link>
           </Button>
           <Button asChild variant="outline">
             <label className="cursor-pointer">

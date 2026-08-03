@@ -58,6 +58,12 @@ export function DevToolsPanel() {
   const refreshStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/dev/session", { credentials: "include" });
+      if (!res.ok) {
+        setAllowed(false);
+        setLockInfo("Sign in as guest or account to use Dev Mode actions");
+        setGatewayInfo("");
+        return;
+      }
       const data = (await res.json()) as {
         allowed?: boolean;
         lock?: { hasAttempt?: boolean; wasSuccessful?: boolean };
@@ -70,7 +76,7 @@ export function DevToolsPanel() {
           likelyConfigured?: boolean;
         };
       };
-      if (!res.ok || !data.allowed) {
+      if (!data.allowed) {
         setAllowed(false);
         setLockInfo("Sign in as guest or account to use Dev Mode actions");
         setGatewayInfo("");
@@ -118,8 +124,12 @@ export function DevToolsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        fail(data.error || "Action failed");
+      }
       const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         fail(data.error || "Action failed");
       }
       clearDevClientGameState();

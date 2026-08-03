@@ -32,23 +32,22 @@ export interface UserPuzzleProfile {
  * @returns User puzzle profile
  */
 export async function buildUserPuzzleProfile(userId: string): Promise<UserPuzzleProfile> {
-  // Get user stats
-  const userStats = await userStatsOps.findByUserId(userId);
-
-  // Get user attempts
-  const attempts = await puzzleAttemptOps.getUserAttempts(userId, 200);
-
-  // Calculate skill level
-  const skillLevel = await estimateUserSkillLevel(userId);
-
-  // Get preferred difficulty
-  const preferredDifficulty = await calculateUserDifficultyPreference(userId);
-
-  // Get favorite categories
-  const favoriteCategories = await identifyUserCategories(userId);
-
-  // Get preferred puzzle types
-  const preferredPuzzleTypes = await identifyUserPuzzleTypes(userId);
+  // Parallelize independent profile lookups
+  const [
+    userStats,
+    attempts,
+    skillLevel,
+    preferredDifficulty,
+    favoriteCategories,
+    preferredPuzzleTypes,
+  ] = await Promise.all([
+    userStatsOps.findByUserId(userId),
+    puzzleAttemptOps.getUserAttempts(userId, 200),
+    estimateUserSkillLevel(userId),
+    calculateUserDifficultyPreference(userId),
+    identifyUserCategories(userId),
+    identifyUserPuzzleTypes(userId),
+  ]);
 
   // Calculate metrics
   const totalAttempts = attempts.length;
@@ -223,8 +222,10 @@ export async function estimateUserSkillLevel(userId: string): Promise<{
   level: "beginner" | "intermediate" | "advanced" | "expert";
   confidence: number;
 }> {
-  const attempts = await puzzleAttemptOps.getUserAttempts(userId, 100);
-  const userStats = await userStatsOps.findByUserId(userId);
+  const [attempts, userStats] = await Promise.all([
+    puzzleAttemptOps.getUserAttempts(userId, 100),
+    userStatsOps.findByUserId(userId),
+  ]);
 
   if (attempts.length < 5) {
     return { level: "beginner", confidence: 0.3 };

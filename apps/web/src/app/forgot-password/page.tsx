@@ -50,15 +50,8 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: email.trim() }),
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSuccess(true);
-        toast({
-          title: "Email sent!",
-          description: "Check your inbox for password reset instructions.",
-        });
-      } else {
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({} as { error?: string }));
         const errorMessage = data.error || "Failed to send reset email. Please try again.";
         setError(errorMessage);
         toast({
@@ -66,6 +59,23 @@ export default function ForgotPasswordPage() {
           description: errorMessage,
           variant: "destructive",
         });
+      } else {
+        const data = await response.json();
+        if (data.success) {
+          setSuccess(true);
+          toast({
+            title: "Email sent!",
+            description: "Check your inbox for password reset instructions.",
+          });
+        } else {
+          const errorMessage = data.error || "Failed to send reset email. Please try again.";
+          setError(errorMessage);
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Forgot password error:", error);

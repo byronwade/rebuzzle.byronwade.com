@@ -497,16 +497,18 @@ export const puzzleAttemptOps = {
   /** Dev tools: wipe a user's guesses for a UTC day so they can replay. */
   async clearAttemptsForDate(userId: string, puzzleDate: string): Promise<number> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
-    const result = await collection.deleteMany({ userId, puzzleDate });
-    // Also clear legacy rows keyed only by attemptedAt window
-    const legacy = await collection.deleteMany({
-      userId,
-      puzzleDate: { $exists: false },
-      attemptedAt: {
-        $gte: new Date(`${puzzleDate}T00:00:00.000Z`),
-        $lt: new Date(`${puzzleDate}T23:59:59.999Z`),
-      },
-    });
+    const [result, legacy] = await Promise.all([
+      collection.deleteMany({ userId, puzzleDate }),
+      // Also clear legacy rows keyed only by attemptedAt window
+      collection.deleteMany({
+        userId,
+        puzzleDate: { $exists: false },
+        attemptedAt: {
+          $gte: new Date(`${puzzleDate}T00:00:00.000Z`),
+          $lt: new Date(`${puzzleDate}T23:59:59.999Z`),
+        },
+      }),
+    ]);
     return (result.deletedCount ?? 0) + (legacy.deletedCount ?? 0);
   },
 

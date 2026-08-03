@@ -1,6 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Timer } from "@/components/Timer";
@@ -85,13 +86,13 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
                   {subscribing ? "Saving…" : dailyReminderOptInCta()}
                 </button>
               ) : (
-                <a
+                <Link
                   className="text-foreground underline-offset-2 hover:underline"
                   href="/settings"
                   onClick={dismissNudge}
                 >
                   {dailyReminderOptInCta()}
-                </a>
+                </Link>
               )}
               <span className="text-subtle"> · </span>
               <button

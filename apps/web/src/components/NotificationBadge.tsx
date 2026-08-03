@@ -81,7 +81,7 @@ export function NotificationBadge() {
       // Guest - need to collect email
       setShowEmailDialog(true);
     }
-  }, [isAuthenticated, user?.email, subscribe, isSubmitting, emailLoading]);
+  }, [isAuthenticated, user, subscribe, isSubmitting, emailLoading]);
 
   const handleDisableClick = useCallback(async () => {
     // Prevent rapid clicks

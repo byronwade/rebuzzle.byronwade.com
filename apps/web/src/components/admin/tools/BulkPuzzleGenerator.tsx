@@ -308,6 +308,7 @@ function VirtualizedPuzzleList({
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // react-doctor-disable-next-line react-hooks-js/incompatible-library -- @tanstack/react-virtual; isolated in child list
   const virtualizer = useVirtualizer({
     count: generatedPuzzles.length,
     getScrollElement: () => parentRef.current,

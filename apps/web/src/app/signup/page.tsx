@@ -145,24 +145,8 @@ export default function SignupPage() {
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast({
-          title: "Account created!",
-          description: "Your account has been created successfully. Redirecting to login…",
-        });
-
-        // Store user data temporarily
-        localStorage.setItem("username", formData.username.trim());
-
-        const nextPath = safeInternalRedirect(
-          new URLSearchParams(window.location.search).get("next")
-        );
-        setTimeout(() => {
-          router.push(`/login?next=${encodeURIComponent(nextPath)}`);
-        }, 1500);
-      } else {
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({} as { error?: string }));
         const errorMessage = data.error || "Something went wrong. Please try again.";
         setErrors({ form: errorMessage });
         toast({
@@ -170,6 +154,33 @@ export default function SignupPage() {
           description: errorMessage,
           variant: "destructive",
         });
+      } else {
+        const data = await response.json();
+
+        if (data.success) {
+          toast({
+            title: "Account created!",
+            description: "Your account has been created successfully. Redirecting to login…",
+          });
+
+          // Store user data temporarily
+          localStorage.setItem("username", formData.username.trim());
+
+          const nextPath = safeInternalRedirect(
+            new URLSearchParams(window.location.search).get("next")
+          );
+          setTimeout(() => {
+            router.push(`/login?next=${encodeURIComponent(nextPath)}`);
+          }, 1500);
+        } else {
+          const errorMessage = data.error || "Something went wrong. Please try again.";
+          setErrors({ form: errorMessage });
+          toast({
+            title: "Signup failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Signup error:", error);

@@ -128,20 +128,8 @@ export default function ResetPasswordPage() {
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSuccess(true);
-        toast({
-          title: "Password Reset!",
-          description: "Your password has been reset successfully.",
-        });
-
-        // Redirect to login after 2 seconds
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
-      } else {
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({} as { error?: string }));
         const errorMessage = data.error || "Failed to reset password. Please try again.";
         setErrors({ form: errorMessage });
         toast({
@@ -149,6 +137,29 @@ export default function ResetPasswordPage() {
           description: errorMessage,
           variant: "destructive",
         });
+      } else {
+        const data = await response.json();
+
+        if (data.success) {
+          setSuccess(true);
+          toast({
+            title: "Password Reset!",
+            description: "Your password has been reset successfully.",
+          });
+
+          // Redirect to login after 2 seconds
+          setTimeout(() => {
+            router.push("/login");
+          }, 2000);
+        } else {
+          const errorMessage = data.error || "Failed to reset password. Please try again.";
+          setErrors({ form: errorMessage });
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Reset password error:", error);

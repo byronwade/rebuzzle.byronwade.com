@@ -165,6 +165,11 @@ export default function AchievementsPage() {
       try {
         setLoading(true);
         const response = await fetch("/api/achievements");
+        if (!response.ok) {
+          console.error("Failed to load achievements");
+          setLoading(false);
+          return;
+        }
         const data = await response.json();
 
         if (data.success) {
