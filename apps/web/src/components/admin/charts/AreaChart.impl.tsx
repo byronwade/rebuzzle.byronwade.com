@@ -18,7 +18,7 @@ interface AreaChartDataPoint {
   [key: string]: string | number;
 }
 
-interface AreaChartProps {
+export interface AreaChartProps {
   title: string;
   description?: string;
   data: AreaChartDataPoint[];

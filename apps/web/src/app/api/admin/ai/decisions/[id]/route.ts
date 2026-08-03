@@ -41,10 +41,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
-    return NextResponse.json({
-      decision,
-      relatedDecisions,
-    });
+    return NextResponse.json(
+      {
+        decision,
+        relatedDecisions,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-store",
+        },
+      }
+    );
   } catch (error) {
     console.error("AI Decision detail API error:", error);
     return NextResponse.json({ error: "Failed to fetch AI decision" }, { status: 500 });

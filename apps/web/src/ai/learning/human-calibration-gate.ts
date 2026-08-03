@@ -64,11 +64,11 @@ export function assessHumanCalibrationGate(input: {
             ? `Human icon panel failed release (${icon.weakFixtureCount} weak specimens)`
             : "Human icon recognition release gate failed"
         );
-      } else if (status !== "halt") {
+      } else if (status === "insufficient" || status === "watch") {
         status = "healthy";
       }
     } else if (icon.coverageRate > 0) {
-      if (status !== "halt") status = "watch";
+      if (status === "insufficient") status = "watch";
       reasons.push(
         `Human icon panel collecting (${Math.round(icon.coverageRate * 100)}% specimen coverage)`
       );
@@ -84,11 +84,11 @@ export function assessHumanCalibrationGate(input: {
             ? playtest.releaseFailures.slice(0, 3)
             : ["Human playtest release gate failed"])
         );
-      } else if (status !== "halt") {
+      } else if (status === "insufficient" || status === "watch") {
         status = "healthy";
       }
     } else if (playtest.completedCandidates > 0) {
-      if (status !== "halt") status = "watch";
+      if (status === "insufficient") status = "watch";
       reasons.push(
         `Human playtest collecting (${playtest.completedCandidates}/${PLAYTEST_RELEASE_COMPLETED_FLOOR} completed puzzles)`
       );

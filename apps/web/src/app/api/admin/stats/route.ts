@@ -868,7 +868,11 @@ export async function GET(request: Request) {
 
     // Authentication and request parsing stay outside the shared cache boundary.
     const result = await fetchCachedAdminStats(dateStart.toISOString(), dateEnd.toISOString());
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": "private, no-store",
+      },
+    });
   } catch (error) {
     console.error("Admin stats GET error:", error);
     return NextResponse.json(

@@ -581,7 +581,7 @@ export async function setupDatabaseIndexes(): Promise<{
 
     if (result.failures.length > 0) {
       console.warn(`[DB Indexes] ${result.collection}: ${result.failures.length} errors`);
-      for (const error of result.errors) {
+      for (const error of result.failures) {
         console.warn(`  - ${error}`);
       }
     } else if (result.created > 0) {

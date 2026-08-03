@@ -18,7 +18,7 @@ interface TimeSeriesDataPoint {
   [key: string]: string | number;
 }
 
-interface TimeSeriesChartProps {
+export interface TimeSeriesChartProps {
   title: string;
   description?: string;
   data: TimeSeriesDataPoint[];

@@ -19,7 +19,7 @@ interface PieChartDataPoint {
   [key: string]: string | number;
 }
 
-interface PieChartProps {
+export interface PieChartProps {
   title: string;
   description?: string;
   data: PieChartDataPoint[];

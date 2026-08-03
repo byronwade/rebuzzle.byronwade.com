@@ -8,6 +8,5 @@ export type AppLinkProps = ComponentProps<typeof NextLink>;
  * prefetch storms (Fast Origin Transfer). Pass `prefetch` for critical CTAs.
  */
 export function AppLink({ prefetch, ...props }: AppLinkProps) {
-  const wantPrefetch = prefetch === true;
-  return <NextLink prefetch={false} {...props} {...(wantPrefetch ? { prefetch: true as const } : {})} />;
+  return <NextLink {...props} prefetch={prefetch === true} />;
 }

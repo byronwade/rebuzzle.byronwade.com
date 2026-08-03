@@ -15,7 +15,7 @@ interface BarChartDataPoint {
   [key: string]: string | number;
 }
 
-interface BarChartProps {
+export interface BarChartProps {
   title: string;
   description?: string;
   data: BarChartDataPoint[];
