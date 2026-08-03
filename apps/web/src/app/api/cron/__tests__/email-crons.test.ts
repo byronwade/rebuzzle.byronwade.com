@@ -69,7 +69,12 @@ describe("email cron routes", () => {
           enabled: true,
         },
       ])
-      .mockResolvedValueOnce([{ id: "u1", email: "player@example.com", username: "Player" }]);
+      .mockResolvedValueOnce([{ id: "u1", email: "player@example.com", username: "Player" }])
+      // In-app recipients: signed-in players (not email-gated)
+      .mockResolvedValueOnce([
+        { id: "u1" },
+        { id: "u2" },
+      ]);
     mockedSendDaily.mockResolvedValue({ success: true, messageId: "msg-1" });
 
     const res = await getPuzzleEmails(
@@ -87,7 +92,8 @@ describe("email cron routes", () => {
       expect.objectContaining({ username: "Player" })
     );
     expect(updateOne).toHaveBeenCalled();
-    expect(insertOne).toHaveBeenCalled();
+    expect(insertOne).toHaveBeenCalledTimes(2);
+    expect(body.results.inApp.created).toBe(2);
   });
 
   it("GET /api/cron/send-blog-emails sends the latest Eve post", async () => {

@@ -133,8 +133,12 @@ const loadAchievementsFromAPI = async (): Promise<ProfileAchievement[]> => {
     const response = await fetch("/api/user/achievements", { credentials: "include" });
     if (!response.ok) return [];
     const data = await response.json();
-    const recent = Array.isArray(data.recentUnlocks) ? data.recentUnlocks : [];
-    return recent.slice(0, 8).map(
+    const rows = Array.isArray(data.unlocked)
+      ? data.unlocked
+      : Array.isArray(data.recentUnlocks)
+        ? data.recentUnlocks
+        : [];
+    return rows.map(
       (item: {
         id?: string;
         achievementId?: string;

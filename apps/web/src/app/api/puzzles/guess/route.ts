@@ -236,6 +236,7 @@ export async function POST(request: Request) {
     let streakFrozen = false;
     let streakFreezesLeft = 0;
     let guessDistribution: number[] | undefined;
+    let recentPlayDates: string[] | undefined;
     let maxStreak = 0;
     let currentStreak = 0;
 
@@ -277,6 +278,7 @@ export async function POST(request: Request) {
         maxStreak = update.maxStreak;
         streakFreezesLeft = update.streakFreezes;
         guessDistribution = update.guessDistribution;
+        recentPlayDates = update.recentPlayDates;
 
         const score = pointsEarned;
         const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
@@ -323,6 +325,7 @@ export async function POST(request: Request) {
         currentStreak = lossUpdate.streak;
         maxStreak = lossUpdate.maxStreak;
         guessDistribution = lossUpdate.guessDistribution;
+        recentPlayDates = lossUpdate.recentPlayDates;
         // Freeze feedback stays on the result card — quiet, not an inbox alert.
       } catch (error) {
         console.error("[guess] sync loss update failed:", error);
@@ -416,6 +419,7 @@ export async function POST(request: Request) {
             streakFreezes: streakFreezesLeft,
             streakFrozen,
             guessDistribution,
+            recentPlayDates,
             ...(unlockedAchievement ? { unlockedAchievement } : {}),
           }
         : {}),

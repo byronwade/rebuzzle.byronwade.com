@@ -597,6 +597,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           streakFreezes?: number;
           streakFrozen?: boolean;
           guessDistribution?: number[];
+          recentPlayDates?: string[];
           error?: string;
         };
 
@@ -737,6 +738,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           if (Array.isArray(result.guessDistribution)) {
             newStats.guessDistribution = result.guessDistribution;
           }
+          if (Array.isArray(result.recentPlayDates)) {
+            newStats.recentPlayDates = result.recentPlayDates;
+          }
           if (previousBest == null || previousBest <= 0 || timeTaken < previousBest) {
             newStats.fastestSolveSeconds = timeTaken;
           }
@@ -844,6 +848,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           }
           if (Array.isArray(result.guessDistribution)) {
             newStats.guessDistribution = result.guessDistribution;
+          }
+          if (Array.isArray(result.recentPlayDates)) {
+            newStats.recentPlayDates = result.recentPlayDates;
           }
           setUserStats(newStats);
 

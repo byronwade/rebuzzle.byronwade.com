@@ -70,8 +70,8 @@ export async function POST(req: Request) {
 
     // Prepare the test notification payload
     const notificationPayload = {
-      title: "🧩 Test Notification - Rebuzzle",
-      body: "Great! You'll now receive daily puzzle reminders at 8 AM. Happy puzzling! 🎉",
+      title: "Rebuzzle",
+      body: "You're set. Daily puzzle emails go out around 4 PM UTC.",
       icon: "/icon-192x192.png",
       badge: "/icon-192x192.png",
       data: {
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       actions: [
         {
           action: "play",
-          title: "🎮 Play Now",
+          title: "Open puzzle",
           icon: "/icon-192x192.png",
         },
       ],

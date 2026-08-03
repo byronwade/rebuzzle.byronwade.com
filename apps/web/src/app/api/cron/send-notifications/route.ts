@@ -4,7 +4,10 @@ import { getCollection } from "@/db/mongodb";
 import { authorizeCron } from "@/lib/cron/auth";
 import { getAppUrl } from "@/lib/env";
 import { sendDailyPuzzleEmail } from "@/lib/notifications/email-service";
-import { getActiveEmailRecipients } from "@/lib/notifications/subscribers";
+import {
+  getActiveEmailRecipients,
+  getInAppPuzzleRecipientIds,
+} from "@/lib/notifications/subscribers";
 
 /**
  * Afternoon puzzle-ready emails for the notification list.
@@ -101,9 +104,8 @@ async function handleSendPuzzleEmails() {
 
   const notificationsCollection = getCollection<NewInAppNotification>("inAppNotifications");
   const inAppResults = { created: 0, failed: 0 };
-  const userIds = new Set(
-    recipients.map((r) => r.userId).filter((id): id is string => Boolean(id))
-  );
+  // Inbox is for signed-in players — not gated on email opt-in.
+  const userIds = new Set(await getInAppPuzzleRecipientIds());
 
   for (const userId of userIds) {
     try {
@@ -111,8 +113,8 @@ async function handleSendPuzzleEmails() {
         id: crypto.randomUUID(),
         userId,
         type: "puzzle_ready",
-        title: "New Puzzle Available!",
-        message: "Today's Rebuzzle is ready to solve. Can you crack it?",
+        title: "Today's puzzle",
+        message: "Ready when you are.",
         link: puzzleUrl,
         read: false,
         createdAt: new Date(),
