@@ -828,16 +828,15 @@
   --stage-radius: 12px;
 }
 
-/* Keyboard-open: real small tiles (no transform shrink that clips glyphs). */
+/* Keyboard-open: medium tiles, top-pinned — header is hidden so use the room. */
 .puzzle-stage[data-state="compact"] {
-  --stage-pad: 0.5rem;
-  --stage-min: 0px;
+  --stage-pad: clamp(0.65rem, 1.8vh, 1rem);
+  --stage-min: clamp(88px, 14vh, 132px);
   --stage-scale: 1;
-  --stage-radius: 12px;
+  --stage-radius: 14px;
 }
 
 .puzzle-stage[data-state="compact"] .puzzle-stage-plate {
-  min-height: 0;
   overflow: visible;
 }
 

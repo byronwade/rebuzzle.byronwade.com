@@ -1052,7 +1052,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   className={cn(
                     "play-stage flex min-h-0 flex-1 flex-col items-center overflow-hidden px-4 md:px-6",
                     keyboardOpen
-                      ? "justify-between gap-2 py-2"
+                      ? "justify-start gap-2 pt-1 pb-2"
                       : hasThread
                         ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
                         : "justify-center py-[clamp(0.5rem,2vh,1rem)]"
@@ -1086,12 +1086,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     </div>
                   ) : null}
 
-                  <div
-                    className={cn(
-                      "flex w-full max-w-2xl flex-col items-center",
-                      keyboardOpen ? "min-h-0 flex-1 justify-center" : "shrink-0"
-                    )}
-                  >
+                  <div className="flex w-full max-w-2xl shrink-0 flex-col items-center">
                     <section aria-label="Puzzle" className="w-full shrink-0">
                       <PuzzleStage
                         puzzle={puzzleDisplay}
