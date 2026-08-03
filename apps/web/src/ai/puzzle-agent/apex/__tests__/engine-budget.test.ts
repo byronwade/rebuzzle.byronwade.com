@@ -64,6 +64,10 @@ function puzzleResult(answer: string) {
       funScore: 82,
       visualStyleId: "ink-pictogram-v1" as const,
       answerSeed: answer,
+      answerSeedCuePlan: [
+        { kind: "catalog" as const, concept: "key", role: "word-part" as const },
+        { kind: "text" as const, content: "BOARD", role: "word-part" as const },
+      ],
       thinkingSummary: "test",
     },
     status: "success" as const,
@@ -219,8 +223,14 @@ describe("Apex spending-cap behavior", () => {
     expect(runPuzzleAgentGeneration.mock.calls[2][0]).toMatchObject({
       maxAttempts: 1,
       modelChainLimit: 1,
+      repairMode: "critique-locked",
       revisionInstructions: ["Replace the abstract icon with a concrete silhouette"],
       answerSeed: "top",
+      answerSeedCuePlan: [
+        { kind: "catalog", concept: "key", role: "word-part" },
+        { kind: "text", content: "BOARD", role: "word-part" },
+      ],
+      phraseSeeds: [],
       bannedAnswerKeys: [],
       candidateIndex: undefined,
       candidateCount: undefined,

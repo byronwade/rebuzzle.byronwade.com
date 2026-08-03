@@ -33,6 +33,8 @@ export type GenerationAuditRecord = {
   candidateCount?: number;
   durationMs?: number;
   error?: string;
+  /** Structured reject taxonomy strings when the host captured gate failures. */
+  rejectReasons?: string[];
   attemptedGeneration?: boolean;
   createdAt: Date;
 };

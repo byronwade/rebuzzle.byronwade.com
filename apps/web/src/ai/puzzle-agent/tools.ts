@@ -5,10 +5,14 @@
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
 import { critiqueCandidate } from "./apex/critique";
+import {
+  inspectAnswerSeedCuePlan,
+  preflightComposeAnswerSeedCuePlan,
+} from "./apex/cue-plan-preflight";
 import { buildGenerationBrief } from "./apex/curriculum";
 import { applyPlayerSimHeuristics, simulatePlayerSolve } from "./apex/player-sim";
 import { scoreRubric } from "./apex/rubric";
-import type { ApexCandidate } from "./apex/types";
+import type { AnswerSeedVisualCue, ApexCandidate } from "./apex/types";
 import { isKnownTechniqueId } from "./quality";
 import { CandidatePuzzleSchema } from "./schemas";
 import type { TechniqueId } from "./technique-library";
@@ -129,6 +133,107 @@ export const puzzleAgentTools: ToolSet = {
       concepts: listCuratedPictogramIds(),
       rule: "Publication compositions must use these exact concept IDs or an existing approved-cache asset.",
     }),
+  }),
+
+  inspect_answer_seed_cues: tool({
+    description:
+      "Inspect a host-owned answer-seed cue contract: catalog validity, draft layers, and whether a board is missing required cues. Call before compose when an answer-first seed is reserved.",
+    inputSchema: z.object({
+      cues: z
+        .array(
+          z.discriminatedUnion("kind", [
+            z.object({
+              kind: z.literal("catalog"),
+              concept: z.string(),
+              role: z.enum([
+                "word-part",
+                "phonetic-anchor",
+                "semantic-anchor",
+                "structural-anchor",
+              ]),
+            }),
+            z.object({
+              kind: z.literal("text"),
+              content: z.string(),
+              role: z.enum([
+                "word-part",
+                "phonetic-anchor",
+                "semantic-anchor",
+                "structural-anchor",
+              ]),
+            }),
+            z.object({
+              kind: z.literal("operator"),
+              symbol: z.string(),
+              role: z.literal("structural-anchor"),
+            }),
+          ])
+        )
+        .optional(),
+      visual: PuzzleVisualSchema.optional(),
+    }),
+    execute: async (input) =>
+      inspectAnswerSeedCuePlan({
+        cues: input.cues as AnswerSeedVisualCue[] | undefined,
+        visual: input.visual,
+      }),
+  }),
+
+  preflight_compose_cue_plan: tool({
+    description:
+      "Cheap host preflight: compose a board deterministically from an answer-seed cue plan (no invent). Use to prove catalog cues compose before a creative rewrite.",
+    inputSchema: z.object({
+      answer: z.string(),
+      targetDifficulty: z.number(),
+      techniqueId: z.string().optional(),
+      layout: z.enum(["row", "stack", "grid", "overlay"]).optional(),
+      cues: z.array(
+        z.discriminatedUnion("kind", [
+          z.object({
+            kind: z.literal("catalog"),
+            concept: z.string(),
+            role: z.enum([
+              "word-part",
+              "phonetic-anchor",
+              "semantic-anchor",
+              "structural-anchor",
+            ]),
+          }),
+          z.object({
+            kind: z.literal("text"),
+            content: z.string(),
+            role: z.enum([
+              "word-part",
+              "phonetic-anchor",
+              "semantic-anchor",
+              "structural-anchor",
+            ]),
+          }),
+          z.object({
+            kind: z.literal("operator"),
+            symbol: z.string(),
+            role: z.literal("structural-anchor"),
+          }),
+        ])
+      ),
+    }),
+    execute: async (input) => {
+      const result = await preflightComposeAnswerSeedCuePlan({
+        ...input,
+        cues: input.cues as AnswerSeedVisualCue[],
+      });
+      if (!result.ok) {
+        throw new Error(
+          `Cue-plan preflight failed (${result.stage}): ${result.issues.join("; ")}`
+        );
+      }
+      return {
+        ...result,
+        publicationReady: true,
+        visual: result.composition?.visual,
+        unicodeFallback: result.composition?.visual.unicodeFallback,
+      };
+    },
   }),
 
   compose_puzzle_visual: tool({

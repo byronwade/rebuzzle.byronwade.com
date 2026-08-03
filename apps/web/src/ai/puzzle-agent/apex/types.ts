@@ -85,6 +85,12 @@ export const PlayerSimSchema = z.object({
   editorialConfidence: z.number().min(0).max(1).optional(),
   editorialFailureKinds: z.array(z.string().max(40)).max(8).optional(),
   editorialReasons: z.array(z.string().max(320)).max(8).optional(),
+  /** Progressive-hint vision (early hints only) — optional spend-gated evidence. */
+  hintedAttempted: z.boolean().optional(),
+  hintedTopTargetFoundBy: z.number().int().nonnegative().optional(),
+  hintedEstimatedSolveRate: z.number().min(0).max(1).optional(),
+  hintedConfidence: z.number().min(0).max(1).optional(),
+  hintedUnlocksVisualSolve: z.boolean().optional(),
 });
 
 export type PlayerSimResult = z.infer<typeof PlayerSimSchema>;

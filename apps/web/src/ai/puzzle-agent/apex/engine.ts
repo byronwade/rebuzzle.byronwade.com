@@ -10,7 +10,7 @@
 
 import { AI_CONFIG } from "../../config";
 import { isHardAIBudgetError, parseAIError } from "../../errors";
-import { isKnownTechniqueId, normalizeAnswerKey } from "../quality";
+import { isKnownTechniqueId } from "../quality";
 import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-generation";
 import type { PuzzleAgentResult } from "../schemas";
 import type { TechniqueId } from "../technique-library";
@@ -22,6 +22,7 @@ import {
 } from "./answer-first";
 import { toPlayabilityEvidence } from "./blind-solve-consensus";
 import { critiqueCandidate } from "./critique";
+import { buildCritiqueRepairParams, critiqueRepairIssues } from "./critique-repair";
 import { buildGenerationBrief } from "./curriculum";
 import { selectQualifiedFinalist } from "./finalist-selection";
 import { qualifyRenderedCandidate } from "./rendered-qualification";
@@ -322,31 +323,35 @@ export async function runApexGeneration(
     maxRevisions: 1,
     revise: async (candidate) => {
       try {
-        const result = await runPuzzleAgentGeneration({
-          ...params,
-          maxAttempts: 1,
-          modelChainLimit: 1,
-          qualityThreshold: brief.qualityThreshold,
-          briefSummary: brief.briefSummary,
-          preferredTechniques: [
-            candidate.techniqueId,
-            ...brief.preferredTechniques.filter((technique) => technique !== candidate.techniqueId),
-          ],
-          avoidTechniques: brief.avoidTechniques,
-          phraseSeeds: brief.phraseSuggestions
-            .filter(
-              (phrase) => normalizeAnswerKey(phrase.answer) !== normalizeAnswerKey(candidate.answer)
-            )
-            .slice(0, 3)
-            .map((phrase) => phrase.answer),
-          answerSeed: candidate.answer,
+        const repairIssues = critiqueRepairIssues({
+          answer: candidate.answer,
           answerSeedCuePlan: candidate.answerSeedCuePlan,
-          bannedAnswerKeys: Array.from(new Set(brief.diversity.bannedAnswerKeys)),
-          candidateIndex: undefined,
-          candidateCount: undefined,
-          deferRenderedEvaluation: true,
-          revisionInstructions: candidate.critique?.reviseInstructions,
+          reviseInstructions: candidate.critique?.reviseInstructions,
         });
+        if (repairIssues.length) {
+          failures.push(`Critique repair skipped: ${repairIssues.join("; ")}`);
+          return null;
+        }
+        const result = await runPuzzleAgentGeneration(
+          buildCritiqueRepairParams(
+            {
+              answer: candidate.answer,
+              answerSeedCuePlan: candidate.answerSeedCuePlan,
+              techniqueId: candidate.techniqueId,
+              reviseInstructions: candidate.critique?.reviseInstructions ?? [],
+              preferredTechniques: brief.preferredTechniques,
+              avoidTechniques: brief.avoidTechniques,
+              bannedAnswerKeys: Array.from(new Set(brief.diversity.bannedAnswerKeys)),
+              briefSummary: brief.briefSummary,
+              qualityThreshold: brief.qualityThreshold,
+              targetDifficulty: params.targetDifficulty,
+              puzzleType: params.puzzleType,
+              category: params.category,
+              theme: params.theme,
+            },
+            params
+          )
+        );
         return toCandidate(result, brief, brief.candidateCount + 1);
       } catch (error) {
         if (isHardAIBudgetError(error)) throw parseAIError(error);
