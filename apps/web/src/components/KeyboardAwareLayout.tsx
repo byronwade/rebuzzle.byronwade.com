@@ -20,6 +20,9 @@ interface KeyboardAwareLayoutProps {
 /**
  * Fills the VisualViewportShell and reports keyboard state to children.
  * Height ownership is the shell's job; this is just a flex column + state.
+ *
+ * `isKeyboardVisible` is the *settled* compact latch so GameBoard doesn't
+ * thrash chrome/puzzle layout while the OSK is still animating.
  */
 export function KeyboardAwareLayout({ children, className }: KeyboardAwareLayoutProps) {
   const frame = useVisualViewportFrame();
@@ -28,12 +31,12 @@ export function KeyboardAwareLayout({ children, className }: KeyboardAwareLayout
     <div
       className={cn(
         "keyboard-aware-container flex h-full min-h-0 flex-col overflow-hidden",
-        frame.isKeyboardOpen && "keyboard-visible",
+        frame.isLayoutCompact && "keyboard-visible",
         className
       )}
     >
       {children({
-        isKeyboardVisible: frame.isKeyboardOpen,
+        isKeyboardVisible: frame.isLayoutCompact,
         keyboardHeight: frame.keyboardInset,
         visualViewportHeight: frame.height,
       })}
