@@ -9,11 +9,10 @@ async function GameOverContent({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const [, params, solution] = await Promise.all([
-    connection(),
-    searchParams,
-    fetchGameOverSolution(),
-  ]);
+  // Must await connection() before Date/cookie-dependent server actions.
+  // Parallelizing it with fetchGameOverSolution() races prerender and fails the build.
+  await connection();
+  const [params, solution] = await Promise.all([searchParams, fetchGameOverSolution()]);
 
   return (
     <GameOverClient
