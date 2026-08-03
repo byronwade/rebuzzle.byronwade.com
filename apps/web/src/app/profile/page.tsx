@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Calendar, Clock, Edit, Flame, Target, TrendingUp, Trophy } from "lucide-react";
+import { Award, Calendar, Clock, Edit, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -11,17 +11,29 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { WordleStatsPanel } from "@/components/WordleStatsPanel";
 import { type AvatarPreferences, generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
 
 type UserStats = {
   level: number;
   points: number;
   streak: number;
+  maxStreak: number;
   totalGames: number;
   wins: number;
   achievements: string[];
   lastPlayDate: string | null;
   dailyChallengeStreak: number;
+  streakFreezes: number;
+  guessDistribution: number[];
+  recentPlayDates: string[];
+};
+
+type ProfileAchievement = {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
 };
 
 const POINTS_PER_LEVEL = 1000;
@@ -67,15 +79,19 @@ const createDefaultStats = (): UserStats => ({
   level: MIN_LEVEL,
   points: 0,
   streak: 0,
+  maxStreak: 0,
   totalGames: 0,
   wins: 0,
   achievements: [],
   lastPlayDate: null,
   dailyChallengeStreak: 0,
+  streakFreezes: 1,
+  guessDistribution: [0, 0, 0],
+  recentPlayDates: [],
 });
 
 // Helper function to load stats from API
-const loadStatsFromAPI = async (userId: string): Promise<UserStats | null> => {
+const loadStatsFromAPI = async (_userId: string): Promise<UserStats | null> => {
   try {
     const response = await fetch("/api/user/stats", {
       credentials: "include",
@@ -88,11 +104,20 @@ const loadStatsFromAPI = async (userId: string): Promise<UserStats | null> => {
           level: data.stats.level || MIN_LEVEL,
           points: data.stats.points || 0,
           streak: data.stats.streak || 0,
+          maxStreak: data.stats.maxStreak || 0,
           totalGames: data.stats.totalGames || 0,
           wins: data.stats.wins || 0,
           achievements: [],
           lastPlayDate: data.stats.lastPlayDate || null,
           dailyChallengeStreak: data.stats.dailyChallengeStreak || 0,
+          streakFreezes:
+            typeof data.stats.streakFreezes === "number" ? data.stats.streakFreezes : 1,
+          guessDistribution: Array.isArray(data.stats.guessDistribution)
+            ? data.stats.guessDistribution
+            : [0, 0, 0],
+          recentPlayDates: Array.isArray(data.stats.recentPlayDates)
+            ? data.stats.recentPlayDates
+            : [],
         };
       }
     }
@@ -101,6 +126,29 @@ const loadStatsFromAPI = async (userId: string): Promise<UserStats | null> => {
   }
 
   return null;
+};
+
+const loadAchievementsFromAPI = async (): Promise<ProfileAchievement[]> => {
+  try {
+    const response = await fetch("/api/user/achievements", { credentials: "include" });
+    if (!response.ok) return [];
+    const data = await response.json();
+    const recent = Array.isArray(data.recentUnlocks) ? data.recentUnlocks : [];
+    return recent.slice(0, 8).map(
+      (item: {
+        id?: string;
+        achievementId?: string;
+        achievement?: { name?: string; description?: string; icon?: string };
+      }) => ({
+        id: item.id || item.achievementId || "achievement",
+        name: item.achievement?.name || "Achievement",
+        description: item.achievement?.description || "Unlocked",
+        icon: item.achievement?.icon,
+      })
+    );
+  } catch {
+    return [];
+  }
 };
 
 // Helper function to load stats from localStorage
@@ -124,6 +172,7 @@ export default function ProfilePage() {
     return loadStatsFromLocalStorage() || createDefaultStats();
   });
   const [avatarPreferences, setAvatarPreferences] = useState<AvatarPreferences | null>(null);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<ProfileAchievement[]>([]);
 
   // Get username from auth context
   const username = user?.username ?? "Guest";
@@ -146,16 +195,20 @@ export default function ProfilePage() {
 
     const loadStats = async () => {
       if (isAuthenticated && user) {
-        const apiStats = await loadStatsFromAPI(user.id);
+        const [apiStats, achievements] = await Promise.all([
+          loadStatsFromAPI(user.id),
+          loadAchievementsFromAPI(),
+        ]);
         if (apiStats) {
           setStats(apiStats);
-          return;
         }
+        setUnlockedAchievements(achievements);
+        if (apiStats) return;
       }
 
       const localStats = loadStatsFromLocalStorage();
       if (localStats) {
-        setStats(localStats);
+        setStats({ ...createDefaultStats(), ...localStats });
       }
     };
 
@@ -190,43 +243,10 @@ export default function ProfilePage() {
   const { currentLevel, nextLevelThreshold, progressToNextLevel, pointsToNextLevel } =
     levelProgress;
 
-  // Calculate win rate
-  const calculateWinRate = (userStats: UserStats) => {
-    if (userStats.totalGames === 0) {
-      return 0;
-    }
-    return Math.round((userStats.wins / userStats.totalGames) * PERCENTAGE_MULTIPLIER);
-  };
-
-  const winRate = calculateWinRate(stats);
-
-  const achievementDetails = {
-    first_win: {
-      name: "First Victory",
-      icon: "🏆",
-      description: "Won your first puzzle",
-    },
-    streak_3: {
-      name: "3-Day Streak",
-      icon: "🔥",
-      description: "Played 3 days in a row",
-    },
-    streak_7: {
-      name: "Week Warrior",
-      icon: "⚡",
-      description: "Played 7 days in a row",
-    },
-    games_10: {
-      name: "Puzzle Explorer",
-      icon: "🎯",
-      description: "Played 10 games",
-    },
-    games_30: {
-      name: "Puzzle Master",
-      icon: "👑",
-      description: "Played 30 games",
-    },
-  };
+  const winRate =
+    stats.totalGames === 0
+      ? 0
+      : Math.round((stats.wins / stats.totalGames) * PERCENTAGE_MULTIPLIER);
 
   return (
     <Layout>
@@ -293,34 +313,18 @@ export default function ProfilePage() {
 
               <Separator />
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-                  <Target className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-semibold text-2xl text-foreground">{stats.totalGames}</div>
-                  <div className="text-muted-foreground text-xs">Games Played</div>
-                </div>
+              <WordleStatsPanel
+                stats={{
+                  played: stats.totalGames,
+                  winRate,
+                  currentStreak: stats.streak,
+                  maxStreak: Math.max(stats.maxStreak, stats.streak),
+                  guessDistribution: stats.guessDistribution,
+                  recentPlayDates: stats.recentPlayDates,
+                  streakFreezes: stats.streakFreezes,
+                }}
+              />
 
-                <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-                  <Trophy className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-semibold text-2xl text-foreground">{stats.wins}</div>
-                  <div className="text-muted-foreground text-xs">Puzzles Solved</div>
-                </div>
-
-                <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-                  <Flame className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-semibold text-2xl text-foreground">{stats.streak}</div>
-                  <div className="text-muted-foreground text-xs">Current Streak</div>
-                </div>
-
-                <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-                  <TrendingUp className="mb-2 h-6 w-6 text-primary" />
-                  <div className="font-semibold text-2xl text-foreground">{winRate}%</div>
-                  <div className="text-muted-foreground text-xs">Win Rate</div>
-                </div>
-              </div>
-
-              {/* Last Played */}
               {stats.lastPlayDate && (
                 <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm">
                   <Clock className="h-4 w-4" />
@@ -330,35 +334,41 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          {/* Achievements */}
+          {/* Achievements — catalog-backed from /api/user/achievements */}
           <Card className="p-6">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-base md:text-lg">
-              <Award className="h-5 w-5 text-primary" />
-              Achievements ({stats.achievements.length})
-            </h2>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 font-semibold text-base md:text-lg">
+                <Award className="h-5 w-5 text-primary" />
+                Achievements ({unlockedAchievements.length})
+              </h2>
+              <Link
+                className="font-medium text-primary text-xs underline-offset-2 hover:underline"
+                href="/achievements"
+              >
+                View all
+              </Link>
+            </div>
 
-            {stats.achievements.length > 0 ? (
+            {unlockedAchievements.length > 0 ? (
               <div className="space-y-3">
-                {stats.achievements.map((achievement) => {
-                  const details =
-                    achievementDetails[achievement as keyof typeof achievementDetails];
-                  return (
-                    <div
-                      className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:bg-muted/50"
-                      key={achievement}
-                    >
-                      <div className="text-3xl">{details?.icon || "🏅"}</div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-foreground text-sm">
-                          {details?.name || achievement}
-                        </div>
-                        <div className="text-muted-foreground text-xs">
-                          {details?.description || "Achievement unlocked!"}
-                        </div>
+                {unlockedAchievements.map((achievement) => (
+                  <div
+                    className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                    key={achievement.id}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-lg">
+                      {achievement.icon || "🏅"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-semibold text-foreground text-sm">
+                        {achievement.name}
+                      </div>
+                      <div className="line-clamp-2 text-muted-foreground text-xs">
+                        {achievement.description}
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="py-8 text-center">

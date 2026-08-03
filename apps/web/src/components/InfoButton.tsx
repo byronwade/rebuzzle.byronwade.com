@@ -128,7 +128,7 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
                   <ul className="list-inside list-disc space-y-1 text-sm">
                     <li>You have unlimited attempts to solve the puzzle</li>
                     <li>Use hints if you're stuck - they guide you progressively</li>
-                    <li>A new puzzle is available each day at 8 AM</li>
+                    <li>A new puzzle publishes each day at UTC midnight</li>
                     <li>Each puzzle type has its own unique solving approach</li>
                   </ul>
                 </div>
@@ -136,7 +136,8 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
             )}
             <div className="border-t pt-4">
               <p className="text-muted-foreground text-xs">
-                A new puzzle is available each day at 8 AM. Use the notification bell in the header
+                A new puzzle publishes each day at UTC midnight. Email reminders go out around 4 PM
+                UTC. Use the notification bell in the header
                 to get daily reminders.
               </p>
             </div>

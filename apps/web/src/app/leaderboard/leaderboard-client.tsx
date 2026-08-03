@@ -196,21 +196,23 @@ export default function LeaderboardClient({
 
       <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
-        <header className="mb-8 text-center">
+        <header className="mb-8 text-center md:mb-10">
           <p className="eyebrow">Standings</p>
-          <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Leaderboard.</h1>
-          <p className="mt-3 text-muted-foreground text-sm">
+          <h1 className="mt-3 font-semibold text-3xl tracking-[-0.045em] sm:text-4xl">
+            Leaderboard.
+          </h1>
+          <p className="mx-auto mt-3 max-w-md text-muted-foreground text-sm leading-relaxed">
             The best puzzle solvers today, ranked.
           </p>
         </header>
 
         {/* Sort By Toggle - Points vs Streaks */}
-        <div className="mb-4 flex justify-center gap-2">
+        <div className="mb-5 flex justify-center gap-2">
           <Button
             variant={sortBy === "points" ? "default" : "outline"}
             size="sm"
             onClick={() => setSortBy("points")}
-            className="gap-1.5"
+            className="h-10 min-w-[7.5rem] gap-1.5 px-4"
           >
             <Trophy className="size-4" />
             Points
@@ -219,7 +221,7 @@ export default function LeaderboardClient({
             variant={sortBy === "streak" ? "default" : "outline"}
             size="sm"
             onClick={() => setSortBy("streak")}
-            className="gap-1.5"
+            className="h-10 min-w-[7.5rem] gap-1.5 px-4"
           >
             <Flame className="size-4" />
             Streaks
@@ -234,18 +236,18 @@ export default function LeaderboardClient({
               onValueChange={(value) => setTimeframe(value as typeof timeframe)}
               className="w-full max-w-md"
             >
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="today" className="font-medium text-sm">
+              <TabsList className="grid h-11 w-full grid-cols-4">
+                <TabsTrigger value="today" className="px-1 font-medium text-xs sm:text-sm">
                   Today
                 </TabsTrigger>
-                <TabsTrigger value="week" className="font-medium text-sm">
+                <TabsTrigger value="week" className="px-1 font-medium text-xs sm:text-sm">
                   Week
                 </TabsTrigger>
-                <TabsTrigger value="month" className="font-medium text-sm">
+                <TabsTrigger value="month" className="px-1 font-medium text-xs sm:text-sm">
                   Month
                 </TabsTrigger>
-                <TabsTrigger value="allTime" className="font-medium text-sm">
-                  All Time
+                <TabsTrigger value="allTime" className="px-1 font-medium text-xs sm:text-sm">
+                  All
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -457,17 +459,17 @@ export default function LeaderboardClient({
                         ${isCurrentUser ? "bg-warning/[0.06] border-l-2 border-l-warning" : ""}
                       `}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3 md:gap-4">
+                      <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+                        <div className="flex items-center gap-3 sm:gap-4">
                           {/* Rank Display */}
-                          <div className="flex-shrink-0 w-8 text-center">
-                            <span className="font-semibold text-base text-muted-foreground">
+                          <div className="w-9 shrink-0 text-center sm:w-10">
+                            <span className="font-semibold text-muted-foreground text-sm tabular-nums sm:text-base">
                               {actualRank}
                             </span>
                           </div>
 
                           {/* Avatar */}
-                          <Avatar className="size-10 flex-shrink-0">
+                          <Avatar className="size-11 shrink-0 sm:size-12">
                             <AvatarImage
                               src={getAvatarFallback(entry.user.username)}
                               alt={entry.user.username}
@@ -477,31 +479,31 @@ export default function LeaderboardClient({
 
                           {/* Player Info */}
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="truncate font-semibold text-sm md:text-base text-foreground">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="truncate font-semibold text-foreground text-sm sm:text-base">
                                 {entry.user.username}
                                 {isCurrentUser && (
-                                  <span className="ml-2 text-warning text-xs font-normal">
+                                  <span className="ml-2 font-normal text-warning text-xs">
                                     (You)
                                   </span>
                                 )}
                               </h3>
                               {entry.stats.level > 0 && (
-                                <Badge variant="outline" className="gap-1 text-xs">
+                                <Badge variant="outline" className="gap-1 text-[11px] sm:text-xs">
                                   <Zap className="size-3" />
                                   Lvl {entry.stats.level}
                                 </Badge>
                               )}
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs mt-1">
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
                               <span className="flex items-center gap-1">
-                                <Target className="size-3" />
+                                <Target className="size-3.5" />
                                 {entry.stats.totalGames} games
                               </span>
                               {entry.stats.streak > 0 && (
                                 <span className="flex items-center gap-1 text-warning">
-                                  <Flame className="size-3" />
+                                  <Flame className="size-3.5" />
                                   {entry.stats.streak} day streak
                                 </span>
                               )}
@@ -509,8 +511,8 @@ export default function LeaderboardClient({
                           </div>
 
                           {/* Score Display */}
-                          <div className="flex-shrink-0 text-right">
-                            <div className="font-semibold text-lg text-foreground tabular-nums">
+                          <div className="min-w-[4.5rem] shrink-0 text-right sm:min-w-[5.5rem]">
+                            <div className="font-semibold text-foreground text-lg tabular-nums sm:text-xl">
                               {entry.stats.points.toLocaleString()}
                             </div>
                             <div className="text-muted-foreground text-xs">points</div>

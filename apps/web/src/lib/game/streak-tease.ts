@@ -5,8 +5,18 @@
 
 const MILESTONES = [3, 7, 14, 30, 100] as const;
 
-export function getStreakTease(streak: number, success: boolean): string {
+export function getStreakTease(
+  streak: number,
+  success: boolean,
+  options?: { streakFrozen?: boolean; freezesLeft?: number }
+): string {
   if (!success) {
+    if (options?.streakFrozen && streak > 0) {
+      const left = options.freezesLeft ?? 0;
+      return left > 0
+        ? `Streak freeze saved your ${streak}-day chain. ${left} freeze left.`
+        : `Streak freeze saved your ${streak}-day chain. Come back tomorrow.`;
+    }
     return streak > 0
       ? "Streak reset. Tomorrow is a clean start — one puzzle."
       : "Start a streak tomorrow. One puzzle a day.";

@@ -1,10 +1,12 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Timer } from "@/components/Timer";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/AuthProvider";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
+import { dailyReminderOptInCta, PUZZLE_PUBLISH_COPY } from "@/lib/game/reminder-copy";
 import { cn } from "@/lib/utils";
 
 interface ChatLockedDockProps {
@@ -20,8 +22,10 @@ const NUDGE_DISMISS_KEY = "rebuzzleEmailNudgeDismissed";
  * SolveResultCard so there's a single primary CTA in the completion beat.
  */
 export function ChatLockedDock({ success, nextPlayTime = null, className }: ChatLockedDockProps) {
-  const { enabled: notificationsEnabled, isLoading } = useEmailNotifications();
+  const { isAuthenticated, user } = useAuth();
+  const { enabled: notificationsEnabled, isLoading, subscribe } = useEmailNotifications();
   const [showNudge, setShowNudge] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   useEffect(() => {
     if (isLoading || notificationsEnabled) {
@@ -48,6 +52,19 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
     setShowNudge(false);
   };
 
+  const handleOptIn = async () => {
+    if (!isAuthenticated || !user?.email || subscribing) return;
+    setSubscribing(true);
+    try {
+      await subscribe(user.email);
+      dismissNudge();
+    } catch {
+      // hook surfaces error
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
   return (
     <div className={cn("play-dock-panel w-full", className)}>
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3.5">
@@ -59,26 +76,37 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
             {success ? "Chat locked · puzzle solved" : "Chat locked · day over"}
           </p>
           {showNudge ? (
-            <p className="truncate text-muted-foreground text-xs">
-              <Link
-                className="text-foreground underline-offset-2 hover:underline"
-                href="/settings"
-                onClick={dismissNudge}
-              >
-                Email me at midnight
-              </Link>
-              <span className="text-subtle"> · </span>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {isAuthenticated && user?.email ? (
+                <Button
+                  className="h-8 px-3 text-xs"
+                  disabled={subscribing}
+                  onClick={() => void handleOptIn()}
+                  size="sm"
+                  type="button"
+                >
+                  {subscribing ? "Enabling…" : dailyReminderOptInCta()}
+                </Button>
+              ) : (
+                <a
+                  className="font-medium text-foreground text-xs underline-offset-2 hover:underline"
+                  href="/settings"
+                  onClick={dismissNudge}
+                >
+                  {dailyReminderOptInCta()}
+                </a>
+              )}
               <button
-                className="text-subtle underline-offset-2 hover:underline"
+                className="text-subtle text-xs underline-offset-2 hover:underline"
                 onClick={dismissNudge}
                 type="button"
               >
                 Not now
               </button>
-            </p>
+            </div>
           ) : (
             <p className="truncate text-muted-foreground text-xs">
-              Come back after UTC midnight for tomorrow's puzzle.
+              Come back after {PUZZLE_PUBLISH_COPY} for tomorrow&apos;s puzzle.
             </p>
           )}
         </div>

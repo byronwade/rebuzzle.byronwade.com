@@ -14,6 +14,10 @@ import {
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
 import { buildGuessReaction } from "@/lib/game/reactions";
+import {
+  composePointsMultiplier,
+  rollEngagementMultipliers,
+} from "@/lib/game/retention-stats";
 import { calculateGamePoints } from "@/lib/gameSettings";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 
@@ -119,7 +123,13 @@ export async function POST(request: Request) {
 
     const isArchive = !isDaily;
     const lockKey = isArchive ? getArchiveLockKey(puzzle.id) : todayKey;
-    const pointsMultiplier = isArchive ? ARCHIVE_POINTS_MULTIPLIER : 1;
+    const basePointsMultiplier = isArchive ? ARCHIVE_POINTS_MULTIPLIER : 1;
+    // Engagement rolls are server-authoritative (lucky + shared daily bonus day).
+    const engagement = rollEngagementMultipliers();
+    let pointsMultiplier = basePointsMultiplier;
+    let isLucky = false;
+    let hasDailyBonus = false;
+    let dailyBonusMultiplier = 1;
 
     const context = await db.puzzleAttemptOps.getTodayGuessContext(user.userId, lockKey);
     const maxAttempts = gameSettings.maxAttempts;
@@ -223,11 +233,11 @@ export async function POST(request: Request) {
     }
 
     let pointsEarned = 0;
-    if (isFinal && isCorrect) {
-      pointsEarned = Math.floor(
-        calculateGamePoints(attemptNumber, timeSpentSeconds, 1, difficultyLevel) * pointsMultiplier
-      );
-    }
+    let streakFrozen = false;
+    let streakFreezesLeft = 0;
+    let guessDistribution: number[] | undefined;
+    let maxStreak = 0;
+    let currentStreak = 0;
 
     // Award wins before responding so the client can whisper the unlock in-thread.
     let unlockedAchievement: { name: string } | undefined;
@@ -236,8 +246,20 @@ export async function POST(request: Request) {
     >["newlyUnlocked"] = [];
 
     if (isFinal && isCorrect) {
+      isLucky = !isArchive && engagement.isLucky;
+      hasDailyBonus = !isArchive && engagement.hasDailyBonus;
+      dailyBonusMultiplier = hasDailyBonus ? engagement.dailyBonusMultiplier : 1;
+      pointsMultiplier = composePointsMultiplier(basePointsMultiplier, engagement, true);
+      // Archive keeps half-points only — no lucky/daily stacking.
+      if (isArchive) {
+        pointsMultiplier = basePointsMultiplier;
+        isLucky = false;
+        hasDailyBonus = false;
+        dailyBonusMultiplier = 1;
+      }
+
       try {
-        await updateUserStats(user.userId, {
+        const update = await updateUserStats(user.userId, {
           won: true,
           attempts: attemptNumber,
           timeSpent: timeSpentSeconds,
@@ -246,17 +268,17 @@ export async function POST(request: Request) {
           hintsUsed,
           pointsMultiplier,
           affectsStreak: !isArchive,
+          isLucky,
+          hasDailyBonus,
+          dailyBonusMultiplier,
         });
+        pointsEarned = update.pointsEarned;
+        currentStreak = update.streak;
+        maxStreak = update.maxStreak;
+        streakFreezesLeft = update.streakFreezes;
+        guessDistribution = update.guessDistribution;
 
-        const stats = await db.userStatsOps.findByUserId(user.userId);
-        const score = Math.floor(
-          calculateGamePoints(
-            attemptNumber,
-            timeSpentSeconds,
-            stats?.streak ?? 1,
-            difficultyLevel
-          ) * pointsMultiplier
-        );
+        const score = pointsEarned;
         const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
         const { newlyUnlocked } = await checkAndAwardAchievements(user.userId, {
           puzzleId: puzzle.id,
@@ -272,8 +294,77 @@ export async function POST(request: Request) {
         if (newlyUnlocked[0]?.name) {
           unlockedAchievement = { name: newlyUnlocked[0].name };
         }
+
+        // Surface achievement unlocks in the in-app inbox too.
+        if (newlyUnlocked.length > 0) {
+          try {
+            const { getCollection } = await import("@/db/mongodb");
+            const notifications = getCollection("inAppNotifications");
+            const top = newlyUnlocked[0];
+            if (top) {
+              await notifications.insertOne({
+                id: crypto.randomUUID(),
+                userId: user.userId,
+                type: "achievement",
+                title: "Achievement unlocked",
+                message: top.name,
+                link: "/achievements",
+                read: false,
+                createdAt: new Date(),
+              });
+            }
+          } catch (notifyError) {
+            console.error("[guess] in-app achievement notify failed:", notifyError);
+          }
+        }
       } catch (error) {
         console.error("[guess] sync win update failed:", error);
+        pointsEarned = Math.floor(
+          calculateGamePoints(attemptNumber, timeSpentSeconds, 1, difficultyLevel) *
+            pointsMultiplier
+        );
+      }
+    }
+
+    // Apply loss stats synchronously so streak-freeze feedback reaches the client.
+    if (isFinal && !isCorrect) {
+      try {
+        const lossUpdate = await updateUserStats(user.userId, {
+          won: false,
+          attempts: attemptNumber,
+          timeSpent: timeSpentSeconds,
+          difficulty: difficultyLevel,
+          maxAttempts,
+          hintsUsed,
+          pointsMultiplier: basePointsMultiplier,
+          affectsStreak: !isArchive,
+        });
+        streakFrozen = lossUpdate.streakFrozen;
+        streakFreezesLeft = lossUpdate.streakFreezes;
+        currentStreak = lossUpdate.streak;
+        maxStreak = lossUpdate.maxStreak;
+        guessDistribution = lossUpdate.guessDistribution;
+
+        if (streakFrozen) {
+          try {
+            const { getCollection } = await import("@/db/mongodb");
+            const notifications = getCollection("inAppNotifications");
+            await notifications.insertOne({
+              id: crypto.randomUUID(),
+              userId: user.userId,
+              type: "streak_milestone",
+              title: "Streak freeze used",
+              message: `Your ${currentStreak}-day streak was saved.`,
+              link: "/",
+              read: false,
+              createdAt: new Date(),
+            });
+          } catch (notifyError) {
+            console.error("[guess] streak-freeze notify failed:", notifyError);
+          }
+        }
+      } catch (error) {
+        console.error("[guess] sync loss update failed:", error);
       }
     }
 
@@ -283,7 +374,6 @@ export async function POST(request: Request) {
       const emailUnlocks = unlockedForEmail;
       after(async () => {
         try {
-          // Self-learning pulse — fast solves raise tomorrow's difficulty
           const { recordFinalAttemptSignal } = await import("@/ai/learning");
           await recordFinalAttemptSignal({
             puzzleId: pid,
@@ -295,21 +385,6 @@ export async function POST(request: Request) {
             isArchive,
           });
 
-          // Wins already updated stats above; losses still need the streak reset.
-          if (!isCorrect) {
-            await updateUserStats(uid, {
-              won: false,
-              attempts: attemptNumber,
-              timeSpent: timeSpentSeconds,
-              difficulty: difficultyLevel,
-              maxAttempts,
-              hintsUsed,
-              pointsMultiplier,
-              affectsStreak: !isArchive,
-            });
-          }
-
-          // Email non-guest users about freshly unlocked badges (Resend)
           if (isCorrect && emailUnlocks.length > 0) {
             const dbUser = await db.userOps.findById(uid);
             if (dbUser && !dbUser.isGuest && dbUser.email) {
@@ -372,6 +447,14 @@ export async function POST(request: Request) {
             explanation: puzzle.explanation || "",
             pointsEarned,
             wasSuccessful: isCorrect,
+            isLucky,
+            hasDailyBonus,
+            dailyBonusMultiplier: hasDailyBonus ? dailyBonusMultiplier : 1,
+            streak: currentStreak,
+            maxStreak,
+            streakFreezes: streakFreezesLeft,
+            streakFrozen,
+            guessDistribution,
             ...(unlockedAchievement ? { unlockedAchievement } : {}),
           }
         : {}),

@@ -8,6 +8,11 @@
 import { db } from "@/db";
 import type { UserStats } from "@/db/models";
 import { getAchievementDifficultyCategory } from "@/lib/difficulty";
+import {
+  applyStreakProtection,
+  bumpGuessDistribution,
+  recordRecentPlayDate,
+} from "@/lib/game/retention-stats";
 import { calculateGamePoints, calculateLevel } from "@/lib/gameSettings";
 
 export type AuthUser = {
@@ -21,12 +26,20 @@ export type AuthUser = {
 export type UserStatsData = {
   points: number;
   streak: number;
+  maxStreak?: number;
   totalGames: number;
   wins: number;
   level: number;
   dailyChallengeStreak: number;
   lastPlayDate?: Date;
   completionRate?: number; // Optional completion rate from analytics
+  streakFreezes?: number;
+  streakShields?: number;
+  guessDistribution?: number[];
+  recentPlayDates?: string[];
+  fastestSolveSeconds?: number;
+  noHintStreak?: number;
+  luckySolveCount?: number;
 };
 
 /**
@@ -57,11 +70,19 @@ export async function getUserWithStats(userId: string): Promise<{
         ? {
             points: stats.points,
             streak: stats.streak,
+            maxStreak: stats.maxStreak,
             totalGames: stats.totalGames,
             wins: stats.wins,
             level: stats.level,
             dailyChallengeStreak: stats.dailyChallengeStreak,
             lastPlayDate: stats.lastPlayDate || undefined,
+            streakFreezes: stats.streakFreezes,
+            streakShields: stats.streakShields,
+            guessDistribution: stats.guessDistribution,
+            recentPlayDates: stats.recentPlayDates,
+            fastestSolveSeconds: stats.fastestSolveSeconds,
+            noHintStreak: stats.noHintStreak,
+            luckySolveCount: stats.luckySolveCount,
           }
         : null,
     };
@@ -107,65 +128,36 @@ function calculatePointsEarned(
   return Math.floor(base * multiplier);
 }
 
-/**
- * Calculate streak after a game.
- * - Loss always resets streak to 0
- * - Win on a new day increments streak
- * - Win on same day keeps current streak (already counted today)
- */
-function calculateStreak(
+export type GameResultInput = {
+  won: boolean;
+  attempts: number;
+  timeSpent?: number;
+  difficulty?: number;
+  maxAttempts?: number;
+  hintsUsed?: number;
+  /** 1 = full daily points; 0.5 = archive replay; may include engagement multipliers */
+  pointsMultiplier?: number;
+  /** When false (archive), streaks and lastPlayDate stay untouched */
+  affectsStreak?: boolean;
+  isLucky?: boolean;
+  hasDailyBonus?: boolean;
+  dailyBonusMultiplier?: number;
+};
+
+export type CalculatedStatsPatch = Omit<ReturnType<typeof buildStatsPatch>, "_meta">;
+
+export type CalculatedStatsResult = {
+  stats: CalculatedStatsPatch;
+  pointsEarned: number;
+  streakFrozen: boolean;
+  freezeSource: "freeze" | "shield" | null;
+};
+
+function buildStatsPatch(
   currentStats: UserStats | null,
-  gameResult: { won: boolean },
-  isNewDay: boolean
-): number {
-  // Loss always resets streak
-  if (!gameResult.won) {
-    return 0;
-  }
-
-  const currentStreak = currentStats?.streak || 0;
-
-  // Only increment on a new day to prevent multiple daily increments
-  // If same day, keep current streak (player already earned it today)
-  return isNewDay ? currentStreak + 1 : currentStreak;
-}
-
-/**
- * Calculate daily challenge streak.
- * - Loss resets daily streak to 0 (you broke your daily habit)
- * - Win on a new day increments daily streak
- * - Win on same day keeps current daily streak
- */
-function calculateDailyStreak(
-  currentStats: UserStats | null,
-  gameResult: { won: boolean },
-  isNewDay: boolean
-): number {
-  // Loss resets daily streak - you broke the daily chain
-  if (!gameResult.won) {
-    return 0;
-  }
-
-  const currentDailyStreak = currentStats?.dailyChallengeStreak || 0;
-  return isNewDay ? currentDailyStreak + 1 : currentDailyStreak;
-}
-
-function calculateNewStats(
-  currentStats: UserStats | null,
-  gameResult: {
-    won: boolean;
-    attempts: number;
-    timeSpent?: number;
-    difficulty?: number;
-    maxAttempts?: number;
-    hintsUsed?: number;
-    /** 1 = full daily points; 0.5 = archive replay */
-    pointsMultiplier?: number;
-    /** When false (archive), streaks and lastPlayDate stay untouched */
-    affectsStreak?: boolean;
-  }
+  gameResult: GameResultInput,
+  now: Date
 ) {
-  const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const lastPlayDate = currentStats?.lastPlayDate
     ? new Date(
@@ -178,27 +170,43 @@ function calculateNewStats(
   const isNewDay = !lastPlayDate || lastPlayDate.getTime() !== today.getTime();
   const affectsStreak = gameResult.affectsStreak !== false;
 
-  // Archive plays never break or advance the daily streak
-  const newStreak = affectsStreak
-    ? calculateStreak(currentStats, gameResult, isNewDay)
-    : currentStats?.streak || 0;
+  const priorStreak = currentStats?.streak || 0;
+  const priorDaily = currentStats?.dailyChallengeStreak || 0;
+
+  // Win: increment on a new day. Loss: protect or reset via streak freezes/shields.
+  let tentativeStreak = priorStreak;
+  let tentativeDaily = priorDaily;
+  if (affectsStreak && gameResult.won) {
+    tentativeStreak = isNewDay ? priorStreak + 1 : priorStreak;
+    tentativeDaily = isNewDay ? priorDaily + 1 : priorDaily;
+  }
+
+  const protection = applyStreakProtection({
+    won: gameResult.won,
+    affectsStreak,
+    currentStreak: gameResult.won ? tentativeStreak : priorStreak,
+    currentDailyStreak: gameResult.won ? tentativeDaily : priorDaily,
+    streakFreezes: currentStats?.streakFreezes ?? 1,
+    streakShields: currentStats?.streakShields ?? 0,
+    streakFreezeWeekStart: currentStats?.streakFreezeWeekStart,
+    now,
+  });
+
+  const newStreak = protection.streak;
+  const newDailyStreak = protection.dailyChallengeStreak;
   const maxStreak = Math.max(currentStats?.maxStreak || 0, newStreak);
 
-  // Pass streak to points calculation for streak bonus (archive uses current streak for scoring)
-  const streakForPoints = affectsStreak ? newStreak : currentStats?.streak || 0;
+  const streakForPoints = affectsStreak
+    ? gameResult.won
+      ? newStreak
+      : priorStreak
+    : currentStats?.streak || 0;
   const pointsEarned = calculatePointsEarned(gameResult, streakForPoints);
   const newPoints = (currentStats?.points || 0) + pointsEarned;
   const newWins = (currentStats?.wins || 0) + (gameResult.won ? 1 : 0);
   const newTotalGames = (currentStats?.totalGames || 0) + 1;
-
-  const newDailyStreak = affectsStreak
-    ? calculateDailyStreak(currentStats, gameResult, isNewDay)
-    : currentStats?.dailyChallengeStreak || 0;
-
-  // Use centralized level calculation from gameSettings
   const newLevel = calculateLevel(newPoints);
 
-  // Achievement tracking calculations
   const maxAttempts = gameResult.maxAttempts ?? 3;
   const isPerfectSolve = gameResult.won && gameResult.attempts === 1;
   const isClutchSolve = gameResult.won && gameResult.attempts === maxAttempts;
@@ -207,14 +215,12 @@ function calculateNewStats(
   const isNoHint = !gameResult.hintsUsed || gameResult.hintsUsed === 0;
   const isWeekend = now.getDay() === 0 || now.getDay() === 6;
 
-  // Difficulty categorization (use ?? to handle 0 correctly)
   const difficultyLevel = gameResult.difficulty ?? 5;
   const difficultyCategory = getAchievementDifficultyCategory(difficultyLevel);
   const isEasy = difficultyCategory === "easy";
   const isMedium = difficultyCategory === "medium";
   const isHard = difficultyCategory === "hard";
 
-  // Update achievement counters
   const perfectSolves = (currentStats?.perfectSolves || 0) + (isPerfectSolve ? 1 : 0);
   const clutchSolves = (currentStats?.clutchSolves || 0) + (isClutchSolve ? 1 : 0);
   const speedSolves = (currentStats?.speedSolves || 0) + (isSpeedSolve ? 1 : 0);
@@ -227,7 +233,6 @@ function calculateNewStats(
   const hardPuzzlesSolved =
     (currentStats?.hardPuzzlesSolved || 0) + (gameResult.won && isHard ? 1 : 0);
 
-  // Update fastest solve time
   let fastestSolveSeconds = currentStats?.fastestSolveSeconds;
   if (gameResult.won && gameResult.timeSpent !== undefined) {
     if (!fastestSolveSeconds || gameResult.timeSpent < fastestSolveSeconds) {
@@ -235,26 +240,27 @@ function calculateNewStats(
     }
   }
 
-  // Update no-hint streak
   let noHintStreak = currentStats?.noHintStreak || 0;
   if (gameResult.won && isNoHint) {
     noHintStreak++;
   } else if (gameResult.won) {
-    noHintStreak = 0; // Reset if hints were used
+    noHintStreak = 0;
   }
   const maxNoHintStreak = Math.max(currentStats?.maxNoHintStreak || 0, noHintStreak);
 
-  // Update consecutive perfect streak
   let consecutivePerfect = currentStats?.consecutivePerfect || 0;
   if (isPerfectSolve) {
     consecutivePerfect++;
   } else if (gameResult.won) {
-    consecutivePerfect = 0; // Reset on non-perfect win
+    consecutivePerfect = 0;
   }
   const maxConsecutivePerfect = Math.max(
     currentStats?.maxConsecutivePerfect || 0,
     consecutivePerfect
   );
+
+  const luckySolveCount =
+    (currentStats?.luckySolveCount ?? 0) + (gameResult.won && gameResult.isLucky ? 1 : 0);
 
   return {
     points: newPoints,
@@ -265,7 +271,6 @@ function calculateNewStats(
     level: newLevel,
     dailyChallengeStreak: newDailyStreak,
     lastPlayDate: affectsStreak ? now : currentStats?.lastPlayDate || now,
-    // Achievement tracking fields
     perfectSolves,
     clutchSolves,
     speedSolves,
@@ -280,47 +285,116 @@ function calculateNewStats(
     mediumPuzzlesSolved,
     hardPuzzlesSolved,
     sharedResults: currentStats?.sharedResults || 0,
-    // Psychological engagement fields - preserve existing or initialize
-    streakFreezes: currentStats?.streakFreezes ?? 1,
-    streakShields: currentStats?.streakShields ?? 0,
-    luckySolveCount: currentStats?.luckySolveCount ?? 0,
+    streakFreezes: protection.streakFreezes,
+    streakShields: protection.streakShields,
+    lastFreezeUsed: protection.lastFreezeUsed ?? currentStats?.lastFreezeUsed,
+    streakFreezeWeekStart:
+      protection.streakFreezeWeekStart ?? currentStats?.streakFreezeWeekStart,
+    luckySolveCount,
+    lastLuckySolve:
+      gameResult.won && gameResult.isLucky ? now : currentStats?.lastLuckySolve,
+    lastBonusMultiplier:
+      gameResult.won && gameResult.hasDailyBonus
+        ? gameResult.dailyBonusMultiplier
+        : currentStats?.lastBonusMultiplier,
+    lastBonusDate:
+      gameResult.won && gameResult.hasDailyBonus ? now : currentStats?.lastBonusDate,
+    guessDistribution: bumpGuessDistribution(
+      currentStats?.guessDistribution,
+      gameResult.attempts,
+      gameResult.won,
+      Math.min(3, Math.max(1, maxAttempts))
+    ),
+    recentPlayDates: recordRecentPlayDate(
+      currentStats?.recentPlayDates,
+      now,
+      affectsStreak
+    ),
+    _meta: {
+      pointsEarned,
+      streakFrozen: protection.streakFrozen,
+      freezeSource: protection.freezeSource,
+    },
   };
 }
 
+/** Pure stats calculator — exported for unit tests. */
+export function calculateNewStats(
+  currentStats: UserStats | null,
+  gameResult: GameResultInput,
+  now: Date = new Date()
+): CalculatedStatsResult {
+  const patch = buildStatsPatch(currentStats, gameResult, now);
+  const { _meta, ...stats } = patch;
+  return {
+    stats,
+    pointsEarned: _meta.pointsEarned,
+    streakFrozen: _meta.streakFrozen,
+    freezeSource: _meta.freezeSource,
+  };
+}
+
+export type UpdateUserStatsResult = {
+  ok: boolean;
+  pointsEarned: number;
+  streak: number;
+  maxStreak: number;
+  streakFreezes: number;
+  streakFrozen: boolean;
+  freezeSource: "freeze" | "shield" | null;
+  guessDistribution: number[];
+  recentPlayDates: string[];
+};
+
 export async function updateUserStats(
   userId: string,
-  gameResult: {
-    won: boolean;
-    attempts: number;
-    timeSpent?: number;
-    difficulty?: number;
-    maxAttempts?: number;
-    hintsUsed?: number;
-    pointsMultiplier?: number;
-    affectsStreak?: boolean;
-  }
-): Promise<boolean> {
+  gameResult: GameResultInput
+): Promise<UpdateUserStatsResult> {
+  const empty: UpdateUserStatsResult = {
+    ok: false,
+    pointsEarned: 0,
+    streak: 0,
+    maxStreak: 0,
+    streakFreezes: 0,
+    streakFrozen: false,
+    freezeSource: null,
+    guessDistribution: [0, 0, 0],
+    recentPlayDates: [],
+  };
   try {
     const currentStats = await db.userStatsOps.findByUserId(userId);
-    const newStats = calculateNewStats(currentStats, gameResult);
+    const { stats, pointsEarned, streakFrozen, freezeSource } = calculateNewStats(
+      currentStats,
+      gameResult
+    );
 
     if (currentStats) {
-      await db.userStatsOps.updateStats(userId, newStats);
+      await db.userStatsOps.updateStats(userId, stats);
     } else {
       await db.userStatsOps.create({
         id: crypto.randomUUID(),
         userId,
-        ...newStats,
+        ...stats,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
     }
 
-    return true;
+    return {
+      ok: true,
+      pointsEarned,
+      streak: stats.streak,
+      maxStreak: stats.maxStreak,
+      streakFreezes: stats.streakFreezes,
+      streakFrozen,
+      freezeSource,
+      guessDistribution: stats.guessDistribution,
+      recentPlayDates: stats.recentPlayDates,
+    };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Error updating user stats:", error);
-    return false;
+    return empty;
   }
 }
 

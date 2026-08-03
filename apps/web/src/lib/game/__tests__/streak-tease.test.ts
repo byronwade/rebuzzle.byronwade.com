@@ -6,6 +6,12 @@ describe("getStreakTease", () => {
     expect(getStreakTease(4, false)).toMatch(/Streak reset/i);
   });
 
+  it("celebrates a streak freeze save", () => {
+    expect(getStreakTease(7, false, { streakFrozen: true, freezesLeft: 0 })).toMatch(
+      /Streak freeze saved/i
+    );
+  });
+
   it("celebrates milestone streaks", () => {
     expect(getStreakTease(7, true)).toMatch(/7-day streak locked in/i);
   });

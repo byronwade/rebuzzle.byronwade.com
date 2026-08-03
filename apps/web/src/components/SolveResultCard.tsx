@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import { Timer } from "@/components/Timer";
 import { Button } from "@/components/ui/button";
+import { WordleStatsPanel } from "@/components/WordleStatsPanel";
 import { getStreakTease } from "@/lib/game/streak-tease";
 import { getLevelProgress } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
@@ -47,6 +48,12 @@ export interface SolveResultCardProps {
   /** Total points for level-rim (after this solve). */
   totalPoints?: number;
   showGuestSave?: boolean;
+  streakFrozen?: boolean;
+  streakFreezes?: number;
+  guessDistribution?: number[];
+  recentPlayDates?: string[];
+  totalGames?: number;
+  wins?: number;
   className?: string;
 }
 
@@ -137,6 +144,12 @@ export function SolveResultCard({
   paceLabel = null,
   totalPoints = 0,
   showGuestSave = false,
+  streakFrozen = false,
+  streakFreezes = 0,
+  guessDistribution,
+  recentPlayDates,
+  totalGames = 0,
+  wins = 0,
   className,
 }: SolveResultCardProps) {
   const { isGuest, userId } = useAuth();
@@ -144,7 +157,13 @@ export function SolveResultCard({
     success ? score : 0,
     success && score > 0
   );
-  const streakTease = getStreakTease(streak, success);
+  const streakTease = getStreakTease(streak, success, {
+    streakFrozen,
+    freezesLeft: streakFreezes,
+  });
+  const played = Math.max(totalGames, 0);
+  const winCount = Math.max(wins, 0);
+  const winRate = played > 0 ? Math.round((winCount / played) * 100) : 0;
   const showAnswer = Boolean(answer) && !success;
   const [streakLocked, setStreakLocked] = useState(false);
   const [perception, setPerception] = useState<PerceptionChoice | null>(null);
@@ -395,6 +414,23 @@ export function SolveResultCard({
           nextPlayTime={nextPlayTime}
         />
       </div>
+
+      {scoreDone && (guessDistribution || played > 0) ? (
+        <div className="mt-4 rounded-xl border border-border/70 bg-background/50 px-3 py-3">
+          <WordleStatsPanel
+            compact
+            stats={{
+              played,
+              winRate,
+              currentStreak: streak,
+              maxStreak: Math.max(maxStreak, streak),
+              guessDistribution: guessDistribution ?? [0, 0, 0],
+              recentPlayDates,
+              streakFreezes,
+            }}
+          />
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-stretch">
         <EnhancedShareButton
