@@ -68,6 +68,9 @@ export interface UserStats {
   // Bonus multiplier tracking
   lastBonusMultiplier?: number; // Last bonus multiplier received
   lastBonusDate?: Date; // Date of last bonus
+  // Wordle-style retention stats
+  guessDistribution?: number[]; // wins by attempt count [1, 2, 3]
+  recentPlayDates?: string[]; // UTC YYYY-MM-DD keys, newest first
 }
 
 /** Generative board layers (Ink Pictogram v1 + text + optional images). */
@@ -521,6 +524,8 @@ export interface NewUserStats {
   // Bonus multiplier tracking
   lastBonusMultiplier?: number;
   lastBonusDate?: Date;
+  guessDistribution?: number[];
+  recentPlayDates?: string[];
 }
 
 export interface NewPuzzle {

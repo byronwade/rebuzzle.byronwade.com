@@ -53,3 +53,18 @@ export async function getActiveEmailRecipients(options?: {
 
   return recipients;
 }
+
+/**
+ * Signed-in players who should get a quiet in-app "puzzle ready" row.
+ * Guests are excluded — they have no persistent inbox.
+ */
+export async function getInAppPuzzleRecipientIds(): Promise<string[]> {
+  const usersCollection = getCollection<User>("users");
+  const users = await usersCollection
+    .find(
+      { $or: [{ isGuest: false }, { isGuest: { $exists: false } }] },
+      { projection: { id: 1 } }
+    )
+    .toArray();
+  return users.map((u) => u.id).filter((id): id is string => Boolean(id));
+}

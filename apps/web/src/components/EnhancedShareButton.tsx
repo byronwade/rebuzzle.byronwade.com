@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { beatMeShareLine, buildBeatMeUrl } from "@/lib/game/share-challenge";
 import { haptics } from "@/lib/haptics";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
@@ -92,8 +93,10 @@ export function EnhancedShareButton({
     return "https://rebuzzle.com";
   };
 
+  const generateShareUrl = () => buildBeatMeUrl(getBaseUrl(), userId);
+
   const generateShareText = () => {
-    const url = getBaseUrl();
+    const url = generateShareUrl();
     const today = new Date().toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -115,23 +118,20 @@ export function EnhancedShareButton({
       } else {
         message += `Solved today's puzzle.`;
       }
-      if (streak > 0) {
-        message += ` 🔥 ${streak}-day streak`;
-      }
-      message += `\n\nPlay free at ${url}`;
+      const invite = beatMeShareLine(streak, true);
+      if (invite) message += ` ${invite}`;
+      message += `\n\n${url}`;
     } else if (nearMiss) {
-      message += `So close. Can you get it?\n\nPlay free at ${url}`;
+      message += `So close.\n\n${url}`;
     } else {
-      message += `Today's puzzle got me. Your turn?\n\nPlay free at ${url}`;
+      message += `Today's puzzle.\n\n${url}`;
     }
 
     return message;
   };
 
-  const generateShareUrl = () => getBaseUrl();
-
   const generateTwitterText = () => {
-    const url = getBaseUrl();
+    const url = generateShareUrl();
     const today = new Date().toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -146,11 +146,11 @@ export function EnhancedShareButton({
       else if (attempts >= maxAttempts) tweet += `Clutch. `;
       else if (nearMiss) tweet += `Almost → got it. `;
       else tweet += `Solved. `;
-      if (streak > 0) tweet += `🔥 ${streak} `;
+      if (streak > 0) tweet += `🔥${streak} `;
     } else if (nearMiss) {
       tweet += `So close. `;
     }
-    tweet += `${url}`;
+    tweet += url;
     return tweet;
   };
 

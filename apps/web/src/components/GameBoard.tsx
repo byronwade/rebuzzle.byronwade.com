@@ -16,6 +16,7 @@ import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import type { GameData } from "@/lib/gameSettings";
+import { parseBeatMeChallenge } from "@/lib/game/share-challenge";
 import {
   calculateGamePoints,
   checkStreakGracePeriod,
@@ -54,6 +55,9 @@ interface UserStats {
   dailyChallengeStreak: number;
   noHintStreak: number;
   fastestSolveSeconds: number | null;
+  streakFreezes: number;
+  guessDistribution: number[];
+  recentPlayDates: string[];
 }
 
 interface GameBoardProps {
@@ -184,6 +188,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     dailyChallengeStreak: 0,
     noHintStreak: 0,
     fastestSolveSeconds: null,
+    streakFreezes: 1,
+    guessDistribution: [0, 0, 0],
+    recentPlayDates: [],
   });
   const [error, setError] = useState<{
     message: string;
@@ -203,6 +210,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [hadNearMiss, setHadNearMiss] = useState(false);
   /** Variable-reward lucky solve (client roll when server points absent). */
   const [isLuckySolve, setIsLuckySolve] = useState(false);
+  const [streakFrozen, setStreakFrozen] = useState(false);
+  const [fromChallenge, setFromChallenge] = useState(false);
   const [closestSimilarity, setClosestSimilarity] = useState(0);
   const [unlockedAchievementName, setUnlockedAchievementName] = useState<string | null>(null);
   const [dayRank, setDayRank] = useState<number | null>(null);
@@ -330,6 +339,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 typeof data.stats.fastestSolveSeconds === "number"
                   ? data.stats.fastestSolveSeconds
                   : null,
+              streakFreezes:
+                typeof data.stats.streakFreezes === "number" ? data.stats.streakFreezes : 1,
+              guessDistribution: Array.isArray(data.stats.guessDistribution)
+                ? data.stats.guessDistribution
+                : [0, 0, 0],
+              recentPlayDates: Array.isArray(data.stats.recentPlayDates)
+                ? data.stats.recentPlayDates
+                : [],
             });
           }
         }
@@ -405,7 +422,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       success: boolean,
       finalGuess: string,
       attempts: number,
-      opts?: { serverScore?: number; celebrate?: boolean }
+      opts?: {
+        serverScore?: number;
+        celebrate?: boolean;
+        isLucky?: boolean;
+        dailyBonusMultiplier?: number;
+      }
     ) => {
       const tomorrow = getNextUtcMidnight();
       const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
@@ -427,11 +449,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             : 0;
 
       if (success) {
-        const dailyBonus = getDailyBonusMultiplier();
-        if (dailyBonus.hasBonus) {
-          setDayBonusMultiplier(dailyBonus.multiplier);
-        }
-        if (!(typeof serverScore === "number" && serverScore > 0)) {
+        if (typeof opts?.isLucky === "boolean" || typeof opts?.dailyBonusMultiplier === "number") {
+          setIsLuckySolve(Boolean(opts.isLucky));
+          if (opts.dailyBonusMultiplier && opts.dailyBonusMultiplier > 1) {
+            setDayBonusMultiplier(opts.dailyBonusMultiplier);
+          }
+        } else if (!(typeof serverScore === "number" && serverScore > 0)) {
+          // Offline / no server score only — never invent lucky when server authored points.
+          const dailyBonus = getDailyBonusMultiplier();
+          if (dailyBonus.hasBonus) {
+            setDayBonusMultiplier(dailyBonus.multiplier);
+          }
           const luckyResult = rollLuckySolve();
           if (luckyResult.isLucky) {
             score = Math.round(score * luckyResult.multiplier);
@@ -561,6 +589,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           pointsEarned?: number;
           reaction?: GuessReaction;
           unlockedAchievement?: { name?: string };
+          isLucky?: boolean;
+          hasDailyBonus?: boolean;
+          dailyBonusMultiplier?: number;
+          streak?: number;
+          maxStreak?: number;
+          streakFreezes?: number;
+          streakFrozen?: boolean;
+          guessDistribution?: number[];
+          recentPlayDates?: string[];
           error?: string;
         };
 
@@ -673,18 +710,37 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           setCompletionState(true, guessToCheck, attempts, {
             serverScore: earnedPoints,
             celebrate: true,
+            isLucky: Boolean(result.isLucky),
+            dailyBonusMultiplier:
+              typeof result.dailyBonusMultiplier === "number"
+                ? result.dailyBonusMultiplier
+                : undefined,
           });
 
           const cleanWin = gameState.hintsUsed === 0;
+          const serverStreak =
+            typeof result.streak === "number" ? result.streak : userStats.streak + 1;
           const newStats = { ...userStats };
           newStats.totalGames += 1;
           newStats.wins += 1;
-          newStats.streak += 1;
-          newStats.maxStreak = Math.max(newStats.maxStreak, newStats.streak);
+          newStats.streak = serverStreak;
+          newStats.maxStreak = Math.max(
+            newStats.maxStreak,
+            typeof result.maxStreak === "number" ? result.maxStreak : serverStreak
+          );
           newStats.points += earnedPoints;
           newStats.level = Math.floor(newStats.points / 1000) + 1;
           newStats.lastPlayDate = new Date().toISOString();
           newStats.noHintStreak = cleanWin ? (userStats.noHintStreak || 0) + 1 : 0;
+          if (typeof result.streakFreezes === "number") {
+            newStats.streakFreezes = result.streakFreezes;
+          }
+          if (Array.isArray(result.guessDistribution)) {
+            newStats.guessDistribution = result.guessDistribution;
+          }
+          if (Array.isArray(result.recentPlayDates)) {
+            newStats.recentPlayDates = result.recentPlayDates;
+          }
           if (previousBest == null || previousBest <= 0 || timeTaken < previousBest) {
             newStats.fastestSolveSeconds = timeTaken;
           }
@@ -771,12 +827,31 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           }
 
           setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
+          setStreakFrozen(Boolean(result.streakFrozen));
 
           const newStats = { ...userStats };
           newStats.totalGames += 1;
-          newStats.streak = 0;
+          newStats.streak =
+            typeof result.streak === "number"
+              ? result.streak
+              : result.streakFrozen
+                ? userStats.streak
+                : 0;
+          newStats.maxStreak = Math.max(
+            newStats.maxStreak,
+            typeof result.maxStreak === "number" ? result.maxStreak : newStats.maxStreak
+          );
           newStats.noHintStreak = 0;
           newStats.lastPlayDate = new Date().toISOString();
+          if (typeof result.streakFreezes === "number") {
+            newStats.streakFreezes = result.streakFreezes;
+          }
+          if (Array.isArray(result.guessDistribution)) {
+            newStats.guessDistribution = result.guessDistribution;
+          }
+          if (Array.isArray(result.recentPlayDates)) {
+            newStats.recentPlayDates = result.recentPlayDates;
+          }
           setUserStats(newStats);
 
           trackPuzzleAbandon({
@@ -903,7 +978,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const chatLocked = gameState.gameOver && !awaitingClosingQuip;
   const lastTurn = turns.at(-1);
 
-  // Confetti + celebration haptic land with the result card / locked dock.
+  // Quiet confetti only — no fullscreen celebration chrome.
   useEffect(() => {
     if (!chatLocked || !gameState.wasSuccessful || !pendingCelebrationRef.current) return;
     pendingCelebrationRef.current = false;
@@ -912,6 +987,22 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       void fireConfetti();
     });
   }, [chatLocked, gameState.wasSuccessful]);
+
+  // Share deep link → one quiet stage caption, not a banner.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const { challengerId, fromShare } = parseBeatMeChallenge(window.location.search);
+    if (!fromShare || !challengerId || challengerId === userId) return;
+    setFromChallenge(true);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("beat");
+      url.searchParams.delete("from");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    } catch {
+      // ignore
+    }
+  }, [userId]);
 
   // Soft lock click when the day closes — ritualizes "come back tomorrow".
   useEffect(() => {
@@ -982,6 +1073,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const stageCaption = useMemo(() => {
     const base = getPuzzleQuestion(puzzleType);
     if (hasThread || gameState.gameOver) return base;
+    if (fromChallenge) return "Shared with you · one puzzle";
     if (isComeback) return "Welcome back · one puzzle";
     try {
       if (checkStreakGracePeriod().inGracePeriod && userStats.streak > 0) {
@@ -1001,6 +1093,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     userStats.streak,
     isReturner,
     isComeback,
+    fromChallenge,
   ]);
 
   const resultCard = chatLocked ? (
@@ -1028,6 +1121,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       paceLabel={paceLabel}
       totalPoints={userStats.points}
       showGuestSave={showGuestSave}
+      streakFrozen={streakFrozen}
+      streakFreezes={userStats.streakFreezes}
+      guessDistribution={userStats.guessDistribution}
+      recentPlayDates={userStats.recentPlayDates}
+      totalGames={userStats.totalGames}
+      wins={userStats.wins}
     />
   ) : null;
 

@@ -123,7 +123,7 @@ export function EmailNotificationForm() {
       <div className="space-y-4">
         {/* Description */}
         <p className="text-muted-foreground text-sm">
-          Receive daily puzzle reminders at 8 AM via email. We'll never spam you or share your
+          Receive daily puzzle reminders around 4 PM UTC via email. We'll never spam you or share your
           email.
           {isAuthenticated && user?.email && (
             <span className="mt-1 block text-xs">
@@ -180,7 +180,7 @@ export function EmailNotificationForm() {
             <Alert className="py-2.5" variant="success">
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription className="text-foreground text-sm">
-                Email notifications are enabled. You'll receive daily reminders at 8 AM.
+                Email notifications are enabled. You'll receive daily reminders around 4 PM UTC.
               </AlertDescription>
             </Alert>
           )}

@@ -41,8 +41,8 @@ export function NotificationWelcomeEmail({
           What to Expect
         </Heading>
         <Text style={tipsTextStyle}>
-          You'll receive an email each morning when a new puzzle is ready. We
-          typically send notifications around 8 AM in your timezone.
+          You'll get an email when a new puzzle is ready — typically around 4 PM
+          UTC. The puzzle itself publishes at UTC midnight.
         </Text>
         <Text style={tipsTextStyle}>
           You can manage your notification preferences or unsubscribe at any

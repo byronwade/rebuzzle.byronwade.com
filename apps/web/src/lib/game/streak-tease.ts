@@ -5,15 +5,22 @@
 
 const MILESTONES = [3, 7, 14, 30, 100] as const;
 
-export function getStreakTease(streak: number, success: boolean): string {
+export function getStreakTease(
+  streak: number,
+  success: boolean,
+  options?: { streakFrozen?: boolean; freezesLeft?: number }
+): string {
   if (!success) {
+    if (options?.streakFrozen && streak > 0) {
+      return `Streak held at ${streak}. Same time tomorrow.`;
+    }
     return streak > 0
       ? "Streak reset. Tomorrow is a clean start — one puzzle."
       : "Start a streak tomorrow. One puzzle a day.";
   }
 
   if ((MILESTONES as readonly number[]).includes(streak)) {
-    return `${streak}-day streak locked in. Don't break it tomorrow.`;
+    return `${streak}-day streak. See you tomorrow.`;
   }
 
   const next = MILESTONES.find((milestone) => milestone > streak);
@@ -21,8 +28,8 @@ export function getStreakTease(streak: number, success: boolean): string {
     const left = next - streak;
     return left === 1
       ? `One more day for a ${next}-day streak.`
-      : `${left} days to a ${next}-day streak. Protect it tomorrow.`;
+      : `${left} days to a ${next}-day streak.`;
   }
 
-  return `${streak}-day streak. Keep the chain going tomorrow.`;
+  return `${streak}-day streak.`;
 }

@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import { Timer } from "@/components/Timer";
 import { Button } from "@/components/ui/button";
+import { WordleStatsPanel } from "@/components/WordleStatsPanel";
 import { getStreakTease } from "@/lib/game/streak-tease";
 import { getLevelProgress } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
@@ -47,6 +48,12 @@ export interface SolveResultCardProps {
   /** Total points for level-rim (after this solve). */
   totalPoints?: number;
   showGuestSave?: boolean;
+  streakFrozen?: boolean;
+  streakFreezes?: number;
+  guessDistribution?: number[];
+  recentPlayDates?: string[];
+  totalGames?: number;
+  wins?: number;
   className?: string;
 }
 
@@ -137,6 +144,12 @@ export function SolveResultCard({
   paceLabel = null,
   totalPoints = 0,
   showGuestSave = false,
+  streakFrozen = false,
+  streakFreezes = 0,
+  guessDistribution,
+  recentPlayDates,
+  totalGames = 0,
+  wins = 0,
   className,
 }: SolveResultCardProps) {
   const { isGuest, userId } = useAuth();
@@ -144,9 +157,16 @@ export function SolveResultCard({
     success ? score : 0,
     success && score > 0
   );
-  const streakTease = getStreakTease(streak, success);
+  const streakTease = getStreakTease(streak, success, {
+    streakFrozen,
+    freezesLeft: streakFreezes,
+  });
+  const played = Math.max(totalGames, 0);
+  const winCount = Math.max(wins, 0);
+  const winRate = played > 0 ? Math.round((winCount / played) * 100) : 0;
   const showAnswer = Boolean(answer) && !success;
   const [streakLocked, setStreakLocked] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [perception, setPerception] = useState<PerceptionChoice | null>(null);
   const [perceptionSaving, setPerceptionSaving] = useState(false);
   const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
@@ -290,13 +310,13 @@ export function SolveResultCard({
               Points
             </p>
             {isLucky && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
-                ×2 lucky
+              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                ×2
               </p>
             ) : null}
             {!isLucky && dayBonusMultiplier && dayBonusMultiplier > 1 && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
-                ×{dayBonusMultiplier} day
+              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                ×{dayBonusMultiplier}
               </p>
             ) : null}
             {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
@@ -395,6 +415,34 @@ export function SolveResultCard({
           nextPlayTime={nextPlayTime}
         />
       </div>
+
+      {scoreDone && (guessDistribution || played > 0) ? (
+        <div className="mt-3">
+          <button
+            className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em] underline-offset-2 hover:text-foreground hover:underline"
+            onClick={() => setShowStats((open) => !open)}
+            type="button"
+          >
+            {showStats ? "Hide stats" : "Stats"}
+          </button>
+          {showStats ? (
+            <div className="mt-2 rounded-xl border border-border/50 bg-background/40 px-3 py-3">
+              <WordleStatsPanel
+                compact
+                stats={{
+                  played,
+                  winRate,
+                  currentStreak: streak,
+                  maxStreak: Math.max(maxStreak, streak),
+                  guessDistribution: guessDistribution ?? [0, 0, 0],
+                  recentPlayDates,
+                  streakFreezes,
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-stretch">
         <EnhancedShareButton

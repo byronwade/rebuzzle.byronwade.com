@@ -7,7 +7,12 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { userAchievementOps, userOps } from "@/db/operations";
-import { ALL_ACHIEVEMENTS, awardAchievement, getUserAchievementProgress } from "@/lib/achievements";
+import {
+  ALL_ACHIEVEMENTS,
+  awardAchievement,
+  getAllAchievementsWithStatus,
+  getUserAchievementProgress,
+} from "@/lib/achievements";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
@@ -25,14 +30,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const [progress, recentUnlocks] = await Promise.all([
+    const [progress, recentUnlocks, withStatus] = await Promise.all([
       getUserAchievementProgress(user.id),
       userAchievementOps.getRecentUnlocks(user.id, 10),
+      getAllAchievementsWithStatus(user.id),
     ]);
+
+    const unlocked = withStatus
+      .filter((row) => row.unlocked)
+      .map((row) => ({
+        id: row.definition.id,
+        achievementId: row.definition.id,
+        unlockedAt: row.unlockedAt,
+        achievement: {
+          name: row.definition.name,
+          description: row.definition.description,
+          icon: row.definition.icon,
+          rarity: row.definition.rarity,
+          points: row.definition.points,
+          category: row.definition.category,
+        },
+      }));
 
     return NextResponse.json({
       success: true,
       progress,
+      unlocked,
       recentUnlocks: recentUnlocks.map((u) => ({
         id: u.id,
         achievementId: u.achievementId,

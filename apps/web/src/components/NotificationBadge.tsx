@@ -17,6 +17,12 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
+import { useInAppNotifications } from "@/hooks/useInAppNotifications";
+import {
+  dailyReminderDialogBlurb,
+  dailyReminderEnabledBlurb,
+  PUZZLE_EMAIL_REMINDER_SHORT,
+} from "@/lib/game/reminder-copy";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 
@@ -35,10 +41,22 @@ export function NotificationBadge() {
     subscribe,
     unsubscribe,
   } = useEmailNotifications();
+  const {
+    notifications: inbox,
+    unreadCount,
+    refresh: refreshInbox,
+    markRead,
+  } = useInAppNotifications(isAuthenticated);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
+      void refreshInbox();
+    }
+  }, [isOpen, isAuthenticated, refreshInbox]);
 
   // Validate email format
   const validateEmail = useCallback((emailValue: string): boolean => {
@@ -125,12 +143,15 @@ export function NotificationBadge() {
 
   const getBellTooltip = () => {
     if (!mounted) {
-      return "Email Reminders";
+      return "Notifications";
+    }
+    if (unreadCount > 0) {
+      return `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`;
     }
     if (notificationsEnabled) {
-      return "Daily reminders enabled - Click to manage";
+      return "Notifications · daily email on";
     }
-    return "Get daily puzzle reminders - Click to sign up";
+    return "Notifications · get daily email reminders";
   };
 
   if (!mounted) {
@@ -150,10 +171,8 @@ export function NotificationBadge() {
               <Button
                 aria-label={getBellTooltip()}
                 className={cn(
-                  "relative h-9 w-9 rounded-full transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
-                  notificationsEnabled
-                    ? "text-warning hover:bg-muted"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  "relative h-9 w-9 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
+                  "text-muted-foreground hover:bg-muted hover:text-foreground",
                   emailLoading && "cursor-not-allowed opacity-50"
                 )}
                 disabled={emailLoading}
@@ -161,138 +180,118 @@ export function NotificationBadge() {
                 variant="ghost"
               >
                 {getBellIcon()}
-                {notificationsEnabled && (
-                  <span className="-top-0.5 -right-0.5 absolute flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
-                  </span>
-                )}
+                {unreadCount > 0 ? (
+                  <span className="-top-0.5 -right-0.5 absolute h-1.5 w-1.5 rounded-full bg-foreground/70" />
+                ) : null}
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent>{getBellTooltip()}</TooltipContent>
         </Tooltip>
-        <PopoverContent align="end" className="w-96 p-0">
-          {notificationsEnabled ? (
-            // Enabled state - show confirmation and manage option
-            <div className="p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Check className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-sm">Reminders Enabled</h3>
-                  <p className="text-muted-foreground text-xs">
-                    You'll receive daily puzzle reminders at 8 AM
-                  </p>
-                </div>
-              </div>
-              {isAuthenticated && user?.email && (
-                <p className="mb-4 rounded-md bg-muted p-2 text-muted-foreground text-xs">
-                  Sending to: {user.email}
-                </p>
-              )}
-              <Button
-                className="w-full"
-                disabled={emailLoading}
-                onClick={handleDisableClick}
-                size="sm"
-                variant="outline"
-              >
-                {emailLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Disabling...
-                  </>
-                ) : (
-                  <>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Disable Reminders
-                  </>
-                )}
-              </Button>
-            </div>
-          ) : (
-            // Not enabled - show signup/engagement content
-            <div className="p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-sm">Never Miss a Puzzle</h3>
-                  <p className="text-muted-foreground text-xs">Get daily reminders to play</p>
-                </div>
-              </div>
+        <PopoverContent align="end" className="w-[min(24rem,calc(100vw-1.5rem))] p-0">
+          <div className="border-border border-b px-4 py-3">
+            <h3 className="font-medium text-sm">Inbox</h3>
+            <p className="mt-0.5 text-muted-foreground text-xs">{dailyReminderEnabledBlurb()}</p>
+          </div>
 
-              <div className="mb-4 space-y-2 rounded-lg bg-muted/50 p-3">
-                <div className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <p className="text-muted-foreground text-xs">Daily puzzle reminders at 8 AM</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <p className="text-muted-foreground text-xs">
-                    Build your streak and compete on leaderboards
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <p className="text-muted-foreground text-xs">
-                    Track your progress and achievements
-                  </p>
-                </div>
-              </div>
-
-              {isAuthenticated ? (
-                // Authenticated user - simple enable button
-                <>
-                  {user?.email && (
-                    <p className="mb-4 text-muted-foreground text-xs">
-                      We'll send reminders to: {user.email}
-                    </p>
-                  )}
-                  <Button
-                    className="w-full"
-                    disabled={emailLoading}
-                    onClick={handleEnableClick}
-                    size="sm"
-                  >
-                    {emailLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Enabling...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="mr-2 h-4 w-4" />
-                        Enable Daily Reminders
-                      </>
-                    )}
-                  </Button>
-                </>
+          {isAuthenticated && (
+            <div className="max-h-48 overflow-y-auto border-border border-b">
+              {inbox.length === 0 ? (
+                <p className="px-4 py-4 text-muted-foreground text-xs">Nothing new.</p>
               ) : (
-                // Guest - show signup CTA
-                <>
-                  <Button
-                    className="mb-3 w-full"
-                    disabled={emailLoading}
-                    onClick={handleEnableClick}
-                    size="sm"
-                  >
-                    {emailLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Enabling...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="mr-2 h-4 w-4" />
-                        Get Daily Reminders
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-center text-muted-foreground text-xs">
+                <ul className="divide-y divide-border">
+                  {inbox.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        className="flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                        onClick={() => {
+                          void markRead(item.id);
+                          if (item.link) {
+                            window.location.href = item.link;
+                          }
+                        }}
+                        type="button"
+                      >
+                        <span className="font-medium text-foreground text-xs">{item.title}</span>
+                        <span className="line-clamp-2 text-muted-foreground text-xs">
+                          {item.message}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          <div className="p-4">
+            {notificationsEnabled ? (
+              <>
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                    <Check className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm">Email reminders on</p>
+                    <p className="text-muted-foreground text-xs">
+                      Around {PUZZLE_EMAIL_REMINDER_SHORT}
+                      {user?.email ? ` · ${user.email}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={emailLoading}
+                  onClick={handleDisableClick}
+                  size="sm"
+                  variant="outline"
+                >
+                  {emailLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Disabling...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Disable email reminders
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm">Never miss a puzzle</p>
+                    <p className="text-muted-foreground text-xs">
+                      Daily email around {PUZZLE_EMAIL_REMINDER_SHORT}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={emailLoading}
+                  onClick={handleEnableClick}
+                  size="sm"
+                >
+                  {emailLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enabling...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Enable daily reminders
+                    </>
+                  )}
+                </Button>
+                {!isAuthenticated && (
+                  <p className="mt-3 text-center text-muted-foreground text-xs">
                     Or{" "}
                     <Link
                       className="font-medium text-primary hover:underline"
@@ -300,13 +299,12 @@ export function NotificationBadge() {
                       onClick={() => setIsOpen(false)}
                     >
                       create an account
-                    </Link>{" "}
-                    to track your progress
+                    </Link>
                   </p>
-                </>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
 
@@ -318,9 +316,7 @@ export function NotificationBadge() {
               <Mail className="h-5 w-5" />
               Enable Daily Reminders
             </DialogTitle>
-            <DialogDescription>
-              Enter your email to receive daily puzzle notifications at 8 AM.
-            </DialogDescription>
+            <DialogDescription>{dailyReminderDialogBlurb()}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

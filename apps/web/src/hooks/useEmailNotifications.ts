@@ -102,7 +102,7 @@ export function useEmailNotifications() {
 
         toast({
           title: "✅ Email Notifications Enabled!",
-          description: "You'll receive daily puzzle reminders at 8 AM via email.",
+          description: "You'll receive daily puzzle reminders around 4 PM UTC via email.",
           duration: 5000,
         });
 
