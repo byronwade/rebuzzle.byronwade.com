@@ -1,4 +1,5 @@
 import type { Puzzle } from "@/db/models";
+import { BLIND_SOLVE_REQUIRED_VOTES } from "../quality-contract";
 import { PuzzleVisualSchema } from "../visual/composition";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
 import { PUZZLE_PLAYTEST_CONTRACT_VERSION } from "./puzzle-playtest-service";
@@ -11,6 +12,7 @@ export type PuzzlePlaytestBackfillExclusion =
   | "not-rebus"
   | "reserve-or-lab"
   | "missing-composed-visual"
+  | "missing-board-recognition-evidence"
   | "missing-responsive-blind-evidence"
   | "missing-editorial-evidence"
   | "missing-structural-novelty"
@@ -53,6 +55,7 @@ const EXCLUSIONS: readonly PuzzlePlaytestBackfillExclusion[] = [
   "not-rebus",
   "reserve-or-lab",
   "missing-composed-visual",
+  "missing-board-recognition-evidence",
   "missing-responsive-blind-evidence",
   "missing-editorial-evidence",
   "missing-structural-novelty",
@@ -89,15 +92,52 @@ export function inspectPuzzleForPlaytestBackfill(puzzle: Puzzle): {
   if (!visual.success || visual.data.mode !== "composed") {
     return { eligible: false, reason: "missing-composed-visual" };
   }
+  const expectedProfileIds = PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => profile.id);
+  const boardProfiles = puzzle.metadata?.boardRecognitionProfiles ?? [];
+  const boardProfileIds = boardProfiles.map((profile) => profile.profileId);
+  const exactBoardRecognition =
+    typeof puzzle.metadata?.boardRecognitionConfidence === "number" &&
+    boardProfiles.length === expectedProfileIds.length &&
+    new Set(boardProfileIds).size === expectedProfileIds.length &&
+    expectedProfileIds.every((profileId) => boardProfileIds.includes(profileId)) &&
+    boardProfiles.every(
+      (profile) =>
+        new Set(profile.models.map((model) => model.trim().toLowerCase())).size >=
+        BLIND_SOLVE_REQUIRED_VOTES
+    );
+  if (!exactBoardRecognition) {
+    return { eligible: false, reason: "missing-board-recognition-evidence" };
+  }
   const playability = puzzle.metadata?.playabilityEvidence;
-  if (
-    !playability ||
-    playability.blind.profileCount < PUZZLE_BOARD_RECOGNITION_PROFILES.length ||
-    playability.blind.profiles.length < PUZZLE_BOARD_RECOGNITION_PROFILES.length
-  ) {
+  const observedBlindProfiles = playability?.blind.profiles ?? [];
+  const observedBlindProfileIds = observedBlindProfiles.map((profile) => profile.profileId);
+  const exactBlindProfiles =
+    playability !== undefined &&
+    playability.blind.profileCount === expectedProfileIds.length &&
+    playability.blind.requiredVotes >= BLIND_SOLVE_REQUIRED_VOTES &&
+    playability.blind.profilesWithTarget === expectedProfileIds.length &&
+    playability.blind.profilesWithTopTarget === expectedProfileIds.length &&
+    playability.blind.profilesWithDominantTarget === expectedProfileIds.length &&
+    observedBlindProfiles.length === expectedProfileIds.length &&
+    new Set(observedBlindProfileIds).size === expectedProfileIds.length &&
+    expectedProfileIds.every((profileId) => observedBlindProfileIds.includes(profileId)) &&
+    observedBlindProfiles.every(
+      (profile) =>
+        profile.judgeCount >= playability.blind.requiredVotes &&
+        profile.targetFoundBy >= playability.blind.requiredVotes &&
+        profile.topTargetFoundBy >= playability.blind.requiredVotes &&
+        profile.dominantTargetFoundBy >= playability.blind.requiredVotes &&
+        profile.dominantTargetFoundBy <= profile.topTargetFoundBy &&
+        profile.topTargetFoundBy <= profile.targetFoundBy &&
+        profile.targetFoundBy <= profile.judgeCount
+    );
+  if (!exactBlindProfiles) {
     return { eligible: false, reason: "missing-responsive-blind-evidence" };
   }
-  if (playability.editorial.acceptedProfiles < PUZZLE_BOARD_RECOGNITION_PROFILES.length) {
+  if (
+    playability.editorial.profileCount !== expectedProfileIds.length ||
+    playability.editorial.acceptedProfiles !== expectedProfileIds.length
+  ) {
     return { eligible: false, reason: "missing-editorial-evidence" };
   }
   if (puzzle.metadata?.noveltyEvidence?.version !== "structural-v1") {
