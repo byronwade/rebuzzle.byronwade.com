@@ -10,6 +10,8 @@ The Apex/Eve pipeline began with strong conceptual machinery—multiple candidat
 
 That original blind spot is now guarded by deterministic player-pixel checks, blind multi-model icon naming, responsive board perception, screenshot-only solving, answer-aware rejection, and human calibration workflows. The remaining market-readiness gap is empirical: the implemented gates still need sufficient qualified-player evidence and credentialed frozen-benchmark results. A green automated pipeline remains screening evidence, not proof that every intended “car” looks like a car to players.
 
+The Apex invent path now adds an answer-first contract before model composition. Each tournament slot selects a fresh, non-overused phrase-bank answer compatible with its technique focus, asks the model to backform one catalog-grounded visual mechanism, and rejects any returned answer that drifts from the selected seed before asset, novelty, or model-judge work begins. This turns the highest-risk failure mode—an attractive explanation for the wrong board—into a cheap deterministic retry while preserving technique and answer diversity across slots. If no fresh seed is available, the pipeline remains explicit about falling back to the existing free-invention path rather than fabricating evidence.
+
 ## Non-negotiable publish contract
 
 A candidate may publish only when all of these are true:
@@ -34,6 +36,7 @@ The implementation owns these internal stages:
 
 ```text
 curriculum brief
+  -> fresh answer-first seed per tournament slot
   -> concept candidates
   -> grounded visual plan
   -> authoritative composition

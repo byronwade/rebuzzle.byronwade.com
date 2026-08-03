@@ -15,6 +15,7 @@ import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-ge
 import type { PuzzleAgentResult } from "../schemas";
 import type { TechniqueId } from "../technique-library";
 import { stableId } from "../tool-impl";
+import { answerFirstSeedKey, selectAnswerFirstSeed } from "./answer-first";
 import { toPlayabilityEvidence } from "./blind-solve-consensus";
 import { critiqueCandidate } from "./critique";
 import { buildGenerationBrief } from "./curriculum";
@@ -82,6 +83,7 @@ function toCandidate(
     solvable: true,
     qualityOverall: result.metadata.qualityScore,
     funScore: result.metadata.funScore ?? 0,
+    answerSeed: result.metadata.answerSeed,
     boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
     boardRecognitionModels: result.metadata.boardRecognitionModels,
     boardConceptVotes: result.metadata.boardConceptVotes,
@@ -191,6 +193,7 @@ export async function runApexGeneration(
   const generateStarted = Date.now();
   const candidates: ApexCandidate[] = [];
   const failures: string[] = [];
+  const usedAnswerSeeds = new Set<string>();
 
   // Sequential slots — safer for gateway quota; each slot gets a distinct brief nudge
   for (let slot = 1; slot <= brief.candidateCount; slot++) {
@@ -198,7 +201,17 @@ export async function runApexGeneration(
       // Rotate preferred technique focus per slot
       const focusTechnique =
         brief.preferredTechniques[(slot - 1) % Math.max(1, brief.preferredTechniques.length)];
-      const phraseSlice = brief.phraseSuggestions
+      const answerSeedEntry = selectAnswerFirstSeed({
+        entries: brief.phraseSuggestions,
+        techniqueId: focusTechnique,
+        usedAnswerKeys: usedAnswerSeeds,
+      });
+      const answerSeed = answerFirstSeedKey(answerSeedEntry);
+      if (answerSeed) usedAnswerSeeds.add(answerSeed);
+      const antiCopySuggestions = brief.phraseSuggestions.filter(
+        (entry) => answerFirstSeedKey(entry) !== answerSeed
+      );
+      const phraseSlice = antiCopySuggestions
         .filter((_, i) => i % brief.candidateCount === (slot - 1) % brief.candidateCount)
         .map((p) => p.answer);
 
@@ -215,7 +228,8 @@ export async function runApexGeneration(
         avoidTechniques: brief.avoidTechniques,
         phraseSeeds: phraseSlice.length
           ? phraseSlice
-          : brief.phraseSuggestions.slice(0, 3).map((p) => p.answer),
+          : antiCopySuggestions.slice(0, 3).map((p) => p.answer),
+        answerSeed: answerSeedEntry?.answer,
         bannedAnswerKeys: brief.diversity.bannedAnswerKeys,
         candidateIndex: slot,
         candidateCount: brief.candidateCount,
@@ -433,6 +447,7 @@ async function finalizeWinner(
       generationAttempts: ranked.length,
       thinkingSummary,
       visualStyleId: chosen.visual.styleId,
+      answerSeed: chosen.answerSeed,
       estimatedSolveRate: chosen.playerSim?.estimatedSolveRate,
       playabilityEvidence: chosen.playerSim ? toPlayabilityEvidence(chosen.playerSim) : undefined,
       boardRecognitionConfidence: chosen.boardRecognitionConfidence,

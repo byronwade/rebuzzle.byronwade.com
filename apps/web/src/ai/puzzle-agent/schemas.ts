@@ -139,6 +139,8 @@ export const PuzzleAgentResultSchema = z.object({
     funScore: z.number().optional(),
     generationAttempts: z.number().optional(),
     thinkingSummary: z.string().optional(),
+    /** Answer selected by the Apex answer-first contract, when applicable. */
+    answerSeed: z.string().optional(),
     visualStyleId: z.string().optional(),
     /** Calibrated player-sim solve rate (0–1) */
     estimatedSolveRate: z.number().min(0).max(1).optional(),
