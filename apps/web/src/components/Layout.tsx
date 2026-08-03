@@ -8,10 +8,9 @@ import { GameProvider, useGameContext } from "./GameContext";
 import Header from "./Header";
 import { VisualViewportShell } from "./VisualViewportShell";
 
-const DevToolsPanel = dynamic(
-  () => import("./DevToolsPanel").then((m) => m.DevToolsPanel),
-  { ssr: false }
-);
+const DevToolsPanel = dynamic(() => import("./DevToolsPanel").then((m) => m.DevToolsPanel), {
+  ssr: false,
+});
 
 interface LayoutProps {
   children: ReactNode;

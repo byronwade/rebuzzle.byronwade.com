@@ -123,8 +123,8 @@ export function EmailNotificationForm() {
       <div className="space-y-4">
         {/* Description */}
         <p className="text-muted-foreground text-sm">
-          Receive daily puzzle reminders around 4 PM UTC via email. We'll never spam you or share your
-          email.
+          Receive daily puzzle reminders around 4 PM UTC via email. We'll never spam you or share
+          your email.
           {isAuthenticated && user?.email && (
             <span className="mt-1 block text-xs">
               Your account email ({user.email}) is pre-filled, but you can use a different email if

@@ -46,7 +46,10 @@ export function PuzzleSkeleton({ variant = "full", className }: PuzzleSkeletonPr
           <Skeleton className="mx-auto h-4 w-40" />
         </section>
 
-        <div className="mt-[clamp(0.75rem,2.5vh,1.5rem)] w-full max-w-2xl space-y-2" aria-hidden="true">
+        <div
+          className="mt-[clamp(0.75rem,2.5vh,1.5rem)] w-full max-w-2xl space-y-2"
+          aria-hidden="true"
+        >
           <Skeleton className="h-8 w-2/3 rounded-full" />
         </div>
       </main>

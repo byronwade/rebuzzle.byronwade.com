@@ -55,9 +55,7 @@ describe("cue-plan preflight", () => {
     });
 
     expect(inspection.ready).toBe(false);
-    expect(inspection.issues).toEqual([
-      "Answer-seed cue is not an approved catalog concept: box",
-    ]);
+    expect(inspection.issues).toEqual(["Answer-seed cue is not an approved catalog concept: box"]);
   });
 
   it("composes a catalog-backed board without invent when cues are valid", async () => {

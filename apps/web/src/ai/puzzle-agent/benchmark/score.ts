@@ -64,8 +64,7 @@ export function scoreIconBenchmark(input: {
   const [compactTile = 44, largeTile = 72] = ICON_BENCHMARK_TILE_SIZES;
   const compactPositive = scoreSlice(
     validObservations,
-    (observation) =>
-      observation.expected === "accept" && observation.tileSize === compactTile
+    (observation) => observation.expected === "accept" && observation.tileSize === compactTile
   );
   const largePositive = scoreSlice(
     validObservations,

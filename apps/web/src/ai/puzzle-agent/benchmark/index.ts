@@ -54,8 +54,8 @@ export {
   STATIC_PUZZLE_AUDIT_VERSION,
   type StaticAssetAuditItem,
   type StaticAuditPuzzle,
-  type StaticPuzzleAuditOptions,
   type StaticPuzzleAuditItem,
+  type StaticPuzzleAuditOptions,
   type StaticPuzzleAuditReport,
 } from "./static-audit";
 export {

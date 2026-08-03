@@ -4,8 +4,8 @@ import { type CSSProperties, useMemo } from "react";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
 import { cn } from "@/lib/utils";
-import { hasComposedVisual } from "./PuzzleVisualBoard";
 import { PuzzleDisplay } from "./PuzzleDisplay";
+import { hasComposedVisual } from "./PuzzleVisualBoard";
 
 export type StageState = "hero" | "docked" | "compact";
 
@@ -37,12 +37,7 @@ export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: Puz
   const surface = useMemo(() => resolvePuzzleSurface(visual), [visual]);
   const onPaper = surface.mode === "paper";
   // Compact (keyboard) keeps large tiles — chrome is hidden, so match hero scale.
-  const size =
-    SMALL_TEXT_TYPES.has(puzzleType)
-      ? "small"
-      : state === "docked"
-        ? "medium"
-        : "large";
+  const size = SMALL_TEXT_TYPES.has(puzzleType) ? "small" : state === "docked" ? "medium" : "large";
 
   return (
     <div className="puzzle-stage w-full" data-state={state} data-surface={surface.mode}>
@@ -70,9 +65,7 @@ export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: Puz
         </div>
       </div>
 
-      {question && state !== "compact" ? (
-        <p className="puzzle-stage-caption">{question}</p>
-      ) : null}
+      {question && state !== "compact" ? <p className="puzzle-stage-caption">{question}</p> : null}
     </div>
   );
 }

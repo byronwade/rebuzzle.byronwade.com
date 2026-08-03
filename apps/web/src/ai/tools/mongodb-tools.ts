@@ -2,7 +2,7 @@
  * MongoDB Tools for AI Agents (AI SDK tool() + Gateway-compatible)
  */
 
-import { tool, type Tool, type ToolSet } from "ai";
+import { type Tool, type ToolSet, tool } from "ai";
 import { z } from "zod";
 import { puzzleAttemptOps, puzzleOps } from "@/db/operations";
 import { analyzePuzzlePerformance, calculateActualDifficulty } from "../services/puzzle-learning";
@@ -10,8 +10,7 @@ import { findSimilarPuzzles, searchPuzzlesByConcept } from "../services/semantic
 import { buildUserPuzzleProfile } from "../services/user-profiler";
 
 export const findSimilarPuzzlesTool: Tool = tool({
-  description:
-    "Find puzzles similar to a given puzzle ID using semantic similarity.",
+  description: "Find puzzles similar to a given puzzle ID using semantic similarity.",
   inputSchema: z.object({
     puzzleId: z.string().describe("The ID of the puzzle to find similar ones for"),
     limit: z.number().optional().default(5),

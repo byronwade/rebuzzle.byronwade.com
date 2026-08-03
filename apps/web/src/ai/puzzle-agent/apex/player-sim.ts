@@ -218,8 +218,7 @@ export async function simulatePlayerSolve(input: {
     return {
       ...hintReview,
       unfairReasons,
-      hintUnlockOrderLooksFair:
-        hintReview.hintUnlockOrderLooksFair && hintedUnlocksVisualSolve,
+      hintUnlockOrderLooksFair: hintReview.hintUnlockOrderLooksFair && hintedUnlocksVisualSolve,
       firstWrongParses: blind.wrongParses,
       likelySolvePath: blind.likelySolvePath,
       estimatedSolveRate: blind.estimatedSolveRate,

@@ -19,25 +19,9 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { MetricCard } from "@/components/admin/MetricCard";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +36,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ============================================================================
 // TYPES
@@ -547,9 +541,7 @@ export function AIInsightsTab() {
                       <TableBody>
                         {analytics.topErrorPatterns.map((pattern) => (
                           <TableRow key={pattern.errorCode}>
-                            <TableCell className="font-mono text-sm">
-                              {pattern.errorCode}
-                            </TableCell>
+                            <TableCell className="font-mono text-sm">{pattern.errorCode}</TableCell>
                             <TableCell>{pattern.count}</TableCell>
                             <TableCell>
                               <Badge
@@ -592,9 +584,7 @@ export function AIInsightsTab() {
           <Card>
             <CardHeader>
               <CardTitle>Recent AI Decisions</CardTitle>
-              <CardDescription>
-                View chain-of-thought reasoning for AI operations
-              </CardDescription>
+              <CardDescription>View chain-of-thought reasoning for AI operations</CardDescription>
             </CardHeader>
             <CardContent>
               {decisions.length > 0 ? (
@@ -628,9 +618,7 @@ export function AIInsightsTab() {
                           {decision.model.split("/").pop()}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={decision.output.success ? "default" : "destructive"}
-                          >
+                          <Badge variant={decision.output.success ? "default" : "destructive"}>
                             {decision.output.success ? "Success" : "Failed"}
                           </Badge>
                         </TableCell>
@@ -639,9 +627,7 @@ export function AIInsightsTab() {
                         <TableCell>{formatCost(decision.tokens.cost)}</TableCell>
                         <TableCell>
                           {decision.qualityMetrics ? (
-                            <span className="font-medium">
-                              {decision.qualityMetrics.score}%
-                            </span>
+                            <span className="font-medium">{decision.qualityMetrics.score}%</span>
                           ) : (
                             "-"
                           )}
@@ -657,26 +643,19 @@ export function AIInsightsTab() {
                   </TableBody>
                 </Table>
               ) : (
-                <p className="py-8 text-center text-muted-foreground">
-                  No decisions recorded yet
-                </p>
+                <p className="py-8 text-center text-muted-foreground">No decisions recorded yet</p>
               )}
             </CardContent>
           </Card>
 
           {/* Decision Detail Dialog */}
-          <Dialog
-            open={!!selectedDecision}
-            onOpenChange={() => setSelectedDecision(null)}
-          >
+          <Dialog open={!!selectedDecision} onOpenChange={() => setSelectedDecision(null)}>
             <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {selectedDecision?.decisionType.replace(/_/g, " ")} Decision
                 </DialogTitle>
-                <DialogDescription>
-                  {selectedDecision?.id}
-                </DialogDescription>
+                <DialogDescription>{selectedDecision?.id}</DialogDescription>
               </DialogHeader>
 
               {selectedDecision && (
@@ -707,10 +686,7 @@ export function AIInsightsTab() {
                       <h4 className="mb-4 font-semibold">Chain of Thought</h4>
                       <div className="space-y-4">
                         {selectedDecision.chainOfThought.steps.map((step, i) => (
-                          <div
-                            key={i}
-                            className="relative border-l-2 border-primary/30 pl-4"
-                          >
+                          <div key={i} className="relative border-l-2 border-primary/30 pl-4">
                             <div className="absolute -left-2 top-0 h-4 w-4 rounded-full bg-primary" />
                             <div className="mb-1 flex items-center gap-2">
                               <Badge variant="outline">{step.stepType}</Badge>
@@ -719,9 +695,7 @@ export function AIInsightsTab() {
                               </span>
                             </div>
                             <p className="font-medium">{step.description}</p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {step.reasoning}
-                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">{step.reasoning}</p>
                           </div>
                         ))}
                       </div>
@@ -790,9 +764,7 @@ export function AIInsightsTab() {
                   <TableBody>
                     {errors.map((error) => (
                       <TableRow key={error.id}>
-                        <TableCell className="font-mono text-sm">
-                          {error.errorCode}
-                        </TableCell>
+                        <TableCell className="font-mono text-sm">{error.errorCode}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{error.errorType}</Badge>
                         </TableCell>
@@ -810,9 +782,7 @@ export function AIInsightsTab() {
                           </Badge>
                         </TableCell>
                         <TableCell>{error.provider}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {error.message}
-                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{error.message}</TableCell>
                         <TableCell>
                           <Badge variant={error.resolved ? "default" : "outline"}>
                             {error.resolved ? "Resolved" : "Open"}
@@ -826,9 +796,7 @@ export function AIInsightsTab() {
                   </TableBody>
                 </Table>
               ) : (
-                <p className="py-8 text-center text-muted-foreground">
-                  No errors recorded
-                </p>
+                <p className="py-8 text-center text-muted-foreground">No errors recorded</p>
               )}
             </CardContent>
           </Card>
@@ -839,16 +807,13 @@ export function AIInsightsTab() {
           <Card>
             <CardHeader>
               <CardTitle>User Feedback</CardTitle>
-              <CardDescription>
-                Feedback on AI-generated puzzles and hints
-              </CardDescription>
+              <CardDescription>Feedback on AI-generated puzzles and hints</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
                 <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  Feedback collection is enabled. Data will appear here as users
-                  provide ratings.
+                  Feedback collection is enabled. Data will appear here as users provide ratings.
                 </p>
               </div>
             </CardContent>
@@ -1018,9 +983,7 @@ export function AIInsightsTab() {
                       <TableBody>
                         {generationHealth.recentAudits.map((audit) => (
                           <TableRow key={audit.id}>
-                            <TableCell className="font-mono text-xs">
-                              {audit.dateString}
-                            </TableCell>
+                            <TableCell className="font-mono text-xs">{audit.dateString}</TableCell>
                             <TableCell>
                               <Badge variant="outline">{audit.engine}</Badge>
                             </TableCell>
@@ -1069,8 +1032,8 @@ export function AIInsightsTab() {
                 <div className="text-center">
                   <Sparkles className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                   <p className="text-muted-foreground">
-                    Generation health unavailable. Confirm admin access and that audits are
-                    being written.
+                    Generation health unavailable. Confirm admin access and that audits are being
+                    written.
                   </p>
                 </div>
               </CardContent>
@@ -1083,16 +1046,14 @@ export function AIInsightsTab() {
           <Card>
             <CardHeader>
               <CardTitle>AI Configuration</CardTitle>
-              <CardDescription>
-                Manage AI parameters, prompts, and A/B tests
-              </CardDescription>
+              <CardDescription>Manage AI parameters, prompts, and A/B tests</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Settings className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  Configuration editor coming soon. You&apos;ll be able to adjust
-                  prompts, thresholds, and run A/B tests.
+                  Configuration editor coming soon. You&apos;ll be able to adjust prompts,
+                  thresholds, and run A/B tests.
                 </p>
               </div>
             </CardContent>

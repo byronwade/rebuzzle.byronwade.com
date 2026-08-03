@@ -14,10 +14,7 @@ export async function POST(request: Request) {
   // Rate limit analytics events to prevent abuse
   const rateLimitResult = await rateLimiters.api(request);
   if (rateLimitResult && !rateLimitResult.success) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429 }
-    );
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   try {

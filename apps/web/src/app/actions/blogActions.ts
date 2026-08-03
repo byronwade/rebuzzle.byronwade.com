@@ -1,10 +1,14 @@
 "use server";
 
 import { cacheLife, cacheTag, revalidateTag } from "next/cache";
+import { cookies } from "next/headers";
 import type { BlogPostPuzzleOrigin, BlogPostSEOMetadata, BlogPostSections } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { isAdmin } from "@/lib/admin-auth";
 import { loadRepositoryBlogPosts } from "@/lib/blog/repository-posts";
+import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
 import { getAppUrl } from "@/lib/env";
+import { verifyToken } from "@/lib/jwt";
 
 // Blog post response type (matches the structure returned from database)
 export interface BlogPostResponse {
@@ -231,6 +235,21 @@ export async function fetchBlogPost(slug: string): Promise<BlogPostResponse | nu
   }
 }
 
+async function requireAdminUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const authToken =
+      cookieStore.get(AUTH_COOKIE_NAME)?.value || cookieStore.get(LEGACY_AUTH_COOKIE_NAME)?.value;
+    if (!authToken) return null;
+    const payload = await verifyToken(authToken);
+    const userId = payload?.userId;
+    if (!userId) return null;
+    return (await isAdmin(userId)) ? userId : null;
+  } catch {
+    return null;
+  }
+}
+
 // Function for creating blog posts with database integration
 export async function createBlogPost(postData: {
   title: string;
@@ -247,6 +266,15 @@ export async function createBlogPost(postData: {
   postId?: string;
 }> {
   try {
+    const adminUserId = await requireAdminUserId();
+    if (!adminUserId) {
+      return {
+        success: false,
+        message: "Admin access required",
+        error: "Unauthorized",
+      };
+    }
+
     // Create blog post in database
     const blogPostsCollection = getCollection("blogPosts");
 

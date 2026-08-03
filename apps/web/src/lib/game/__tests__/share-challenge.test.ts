@@ -1,8 +1,4 @@
-import {
-  beatMeShareLine,
-  buildBeatMeUrl,
-  parseBeatMeChallenge,
-} from "../share-challenge";
+import { beatMeShareLine, buildBeatMeUrl, parseBeatMeChallenge } from "../share-challenge";
 
 describe("share-challenge", () => {
   it("builds a beat-me deep link with sharer id", () => {

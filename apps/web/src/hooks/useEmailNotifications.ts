@@ -101,9 +101,9 @@ export function useEmailNotifications() {
         }
 
         toast({
-          title: "✅ Email Notifications Enabled!",
-          description: "You'll receive daily puzzle reminders around 4 PM UTC via email.",
-          duration: 5000,
+          title: "Email reminders on",
+          description: "Daily puzzle email around 4 PM UTC.",
+          duration: 4000,
         });
 
         return data.subscriptionId;
@@ -155,8 +155,8 @@ export function useEmailNotifications() {
       }
 
       toast({
-        title: "Email Notifications Disabled",
-        description: "You won't receive daily puzzle reminders anymore.",
+        title: "Email reminders off",
+        description: "No more daily puzzle emails.",
         duration: 3000,
       });
     } catch (err) {
@@ -170,7 +170,7 @@ export function useEmailNotifications() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, userId, user?.email, toast]);
+  }, [isAuthenticated, userId, user, toast]);
 
   const toggle = useCallback(
     async (email?: string) => {

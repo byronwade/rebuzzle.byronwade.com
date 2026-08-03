@@ -23,9 +23,7 @@ function countBy(values: string[]): Array<{ id: string; count: number }> {
     if (!v) continue;
     map.set(v, (map.get(v) ?? 0) + 1);
   }
-  return [...map.entries()]
-    .map(([id, count]) => ({ id, count }))
-    .sort((a, b) => b.count - a.count);
+  return [...map.entries()].map(([id, count]) => ({ id, count })).sort((a, b) => b.count - a.count);
 }
 
 /**
@@ -61,9 +59,7 @@ export async function loadDiversitySnapshot(input?: {
   }
 
   const recentAnswers = docs.map((d) => String(d.answer ?? "")).filter(Boolean);
-  const techniques = docs
-    .map((d) => String(d.metadata?.techniqueId ?? ""))
-    .filter(Boolean);
+  const techniques = docs.map((d) => String(d.metadata?.techniqueId ?? "")).filter(Boolean);
   const categories = docs
     .map((d) => String(d.metadata?.category ?? d.category ?? ""))
     .filter(Boolean);
@@ -71,9 +67,7 @@ export async function loadDiversitySnapshot(input?: {
   const recentTechniques = countBy(techniques);
   const recentCategories = countBy(categories);
 
-  const allTierTechniques = new Set(
-    DIFFICULTY_LEVELS.flatMap((l) => l.techniques)
-  );
+  const allTierTechniques = new Set(DIFFICULTY_LEVELS.flatMap((l) => l.techniques));
   const usedRecently = new Set(recentTechniques.filter((t) => t.count >= 2).map((t) => t.id));
   const overusedTechniques = recentTechniques.filter((t) => t.count >= 3).map((t) => t.id);
 

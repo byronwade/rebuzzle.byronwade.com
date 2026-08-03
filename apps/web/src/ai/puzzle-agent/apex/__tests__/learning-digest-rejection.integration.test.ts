@@ -55,9 +55,7 @@ describe("learning digest ← rejection digester integration", () => {
       sampleSize: 5,
       buckets: [{ code: "missing_seed_cues", count: 5, examples: [] }],
       avoidPatterns: ["Composing boards that omit host-owned answer-seed cues"],
-      preferPatterns: [
-        "Place every mandatory catalog/text/operator cue before returning a draft",
-      ],
+      preferPatterns: ["Place every mandatory catalog/text/operator cue before returning a draft"],
       notes: ["Recent reject mode missing_seed_cues ×5"],
     });
 
@@ -66,9 +64,7 @@ describe("learning digest ← rejection digester integration", () => {
     expect(loadRejectionDigest).toHaveBeenCalled();
     expect(digest.enabled).toBe(true);
     expect(digest.avoidPatterns).toEqual(
-      expect.arrayContaining([
-        "Composing boards that omit host-owned answer-seed cues",
-      ])
+      expect.arrayContaining(["Composing boards that omit host-owned answer-seed cues"])
     );
     expect(digest.preferPatterns).toEqual(
       expect.arrayContaining([
@@ -91,9 +87,7 @@ describe("learning digest ← rejection digester integration", () => {
 
     const digest = await loadLearningDigest();
     expect(digest.avoidPatterns).not.toEqual(
-      expect.arrayContaining([
-        "Composing boards that omit host-owned answer-seed cues",
-      ])
+      expect.arrayContaining(["Composing boards that omit host-owned answer-seed cues"])
     );
   });
 

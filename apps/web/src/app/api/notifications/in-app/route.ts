@@ -177,10 +177,7 @@ export async function POST(req: Request) {
     // Sanitize inputs
     const sanitizedUserId = sanitizeId(userId);
     if (!sanitizedUserId) {
-      return NextResponse.json(
-        { success: false, error: "Invalid user ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Invalid user ID" }, { status: 400 });
     }
 
     const notificationsCollection = getCollection<NewInAppNotification>("inAppNotifications");

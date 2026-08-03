@@ -123,11 +123,7 @@ function OperatorTile({
 }) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center justify-center opacity-75",
-        sizeClass,
-        "font-medium"
-      )}
+      className={cn("inline-flex items-center justify-center opacity-75", sizeClass, "font-medium")}
       style={{ color: "var(--rb-mist, var(--rb-ink))" }}
       aria-hidden
     >

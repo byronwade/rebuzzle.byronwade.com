@@ -93,10 +93,7 @@ export async function POST(request: Request) {
     if (body.persist !== false && answer) {
       try {
         const persisted = await persistLabPuzzle({
-          puzzleDisplay:
-            result.puzzle?.rebusPuzzle ||
-            result.visual?.unicodeFallback ||
-            "◆",
+          puzzleDisplay: result.puzzle?.rebusPuzzle || result.visual?.unicodeFallback || "◆",
           answer,
           difficulty: result.puzzle?.difficulty ?? result.seed?.difficulty ?? 5,
           difficultyLevel: result.puzzle?.difficultyLevel,

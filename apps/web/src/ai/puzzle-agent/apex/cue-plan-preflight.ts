@@ -5,8 +5,8 @@
  * paying for a creative invent loop. Failures here fail closed with zero model spend.
  */
 
-import type { PuzzleVisual, VisualLayer } from "../visual/composition";
 import type { ComposePuzzleVisualResult } from "../visual/compose-visual";
+import type { PuzzleVisual, VisualLayer } from "../visual/composition";
 import { resolveCuratedPictogram } from "../visual/curated-pictograms";
 import {
   answerSeedCuePlanIssues,
@@ -17,16 +17,17 @@ import type { AnswerSeedVisualCue } from "./types";
 
 function emojiForConcept(concept: string): string {
   // Share-string placeholder only — compose fills reviewed SVG + real fallback.
-  const cleaned = concept.replace(/[^a-z0-9]+/gi, "").slice(0, 2).toUpperCase();
+  const cleaned = concept
+    .replace(/[^a-z0-9]+/gi, "")
+    .slice(0, 2)
+    .toUpperCase();
   return cleaned || "◆";
 }
 
 /**
  * Deterministic layer plan from host-owned answer-seed cues.
  */
-export function layersFromAnswerSeedCues(
-  cues: readonly AnswerSeedVisualCue[]
-): VisualLayer[] {
+export function layersFromAnswerSeedCues(cues: readonly AnswerSeedVisualCue[]): VisualLayer[] {
   return cues.map((cue): VisualLayer => {
     if (cue.kind === "catalog") {
       const resolved = resolveCuratedPictogram(cue.concept);
@@ -79,16 +80,18 @@ export function inspectAnswerSeedCuePlan(input: {
   const cues = input.cues ?? [];
   const issues = answerSeedCuePlanIssues(cues);
   const layerPlan = issues.length ? [] : layersFromAnswerSeedCues(cues);
-  const missingOnBoard = input.visual
-    ? missingAnswerSeedCues({ visual: input.visual, cues })
-    : [];
+  const missingOnBoard = input.visual ? missingAnswerSeedCues({ visual: input.visual, cues }) : [];
   const catalogConcepts = cues
-    .filter((cue): cue is Extract<AnswerSeedVisualCue, { kind: "catalog" }> => cue.kind === "catalog")
+    .filter(
+      (cue): cue is Extract<AnswerSeedVisualCue, { kind: "catalog" }> => cue.kind === "catalog"
+    )
     .map((cue) => cue.concept);
 
   const guidance: string[] = [];
   if (!cues.length) {
-    guidance.push("No cue plan provided — invent only when the host has not reserved an answer-first seed");
+    guidance.push(
+      "No cue plan provided — invent only when the host has not reserved an answer-first seed"
+    );
   }
   if (issues.length) {
     guidance.push("Fix cue-plan issues before compose_puzzle_visual");
@@ -134,9 +137,7 @@ export async function preflightComposeAnswerSeedCuePlan(input: {
     return {
       ok: false,
       stage: "cue-plan",
-      issues: inspection.issues.length
-        ? inspection.issues
-        : ["Answer-seed cue plan is empty"],
+      issues: inspection.issues.length ? inspection.issues : ["Answer-seed cue plan is empty"],
       inspection,
       composition: null,
     };

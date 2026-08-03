@@ -43,8 +43,7 @@ export function getFeatureFlags(): AIFeatureFlags {
       process.env.AI_ENABLE_SEMANTIC_CACHE !== "0",
 
     // Apex: multi-candidate tournament with critique + player sim (default on)
-    apexEngine:
-      process.env.EVE_APEX_ENGINE !== "false" && process.env.EVE_APEX_ENGINE !== "0",
+    apexEngine: process.env.EVE_APEX_ENGINE !== "false" && process.env.EVE_APEX_ENGINE !== "0",
   };
 
   // In development, enable all features by default (including agent orchestration)

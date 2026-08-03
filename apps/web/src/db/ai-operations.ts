@@ -174,7 +174,11 @@ export const aiDecisionOps = {
           _id: {
             year: { $year: "$timestamp" },
             ...(interval === "hour"
-              ? { month: { $month: "$timestamp" }, day: { $dayOfMonth: "$timestamp" }, hour: { $hour: "$timestamp" } }
+              ? {
+                  month: { $month: "$timestamp" },
+                  day: { $dayOfMonth: "$timestamp" },
+                  hour: { $hour: "$timestamp" },
+                }
               : interval === "day"
                 ? { month: { $month: "$timestamp" }, day: { $dayOfMonth: "$timestamp" } }
                 : { week: { $week: "$timestamp" } }),
@@ -191,12 +195,7 @@ export const aiDecisionOps = {
     const results = await collection.aggregate(pipeline).toArray();
 
     return results.map((r) => ({
-      date: new Date(
-        r._id.year,
-        (r._id.month || 1) - 1,
-        r._id.day || 1,
-        r._id.hour || 0
-      ),
+      date: new Date(r._id.year, (r._id.month || 1) - 1, r._id.day || 1, r._id.hour || 0),
       count: r.count,
       successCount: r.successCount,
       avgDuration: r.avgDuration,
@@ -303,10 +302,7 @@ export const aiErrorOps = {
     }));
   },
 
-  async resolve(
-    id: string,
-    resolution: NonNullable<AIError["resolution"]>
-  ): Promise<void> {
+  async resolve(id: string, resolution: NonNullable<AIError["resolution"]>): Promise<void> {
     const collection = getCollection<AIError>("aiErrors");
     await collection.updateOne(
       { id },
@@ -363,15 +359,9 @@ export const aiFeedbackOps = {
     return await collection.countDocuments({ processedForLearning: false });
   },
 
-  async markProcessed(
-    id: string,
-    learningImpact?: AIFeedback["learningImpact"]
-  ): Promise<void> {
+  async markProcessed(id: string, learningImpact?: AIFeedback["learningImpact"]): Promise<void> {
     const collection = getCollection<AIFeedback>("aiFeedback");
-    await collection.updateOne(
-      { id },
-      { $set: { processedForLearning: true, learningImpact } }
-    );
+    await collection.updateOne({ id }, { $set: { processedForLearning: true, learningImpact } });
   },
 
   async getAggregate(
@@ -499,7 +489,10 @@ export const aiConfigOps = {
     if (includeArchived) {
       return await collection.find({}).sort({ createdAt: -1 }).toArray();
     }
-    return await collection.find({ status: { $ne: "archived" as const } }).sort({ createdAt: -1 }).toArray();
+    return await collection
+      .find({ status: { $ne: "archived" as const } })
+      .sort({ createdAt: -1 })
+      .toArray();
   },
 
   async findByABTest(testId: string): Promise<AIConfiguration[]> {
@@ -524,7 +517,9 @@ export const aiConfigOps = {
     // Activate this one
     await collection.updateOne(
       { id },
-      { $set: { status: "active", isDefault: true, activatedAt: new Date(), updatedAt: new Date() } }
+      {
+        $set: { status: "active", isDefault: true, activatedAt: new Date(), updatedAt: new Date() },
+      }
     );
   },
 

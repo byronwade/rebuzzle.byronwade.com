@@ -9,9 +9,9 @@ export {
   selectAnswerFirstSeeds,
 } from "./answer-first";
 export {
+  answerSeedCuePlanIssues,
   formatAnswerSeedCuePlan,
   missingAnswerSeedCues,
-  answerSeedCuePlanIssues,
 } from "./answer-seed-cues";
 export { critiqueCandidate } from "./critique";
 export {

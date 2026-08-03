@@ -9,21 +9,12 @@
  * so Jest never loads the AI SDK ESM graph through critique/client.
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { digestRejectionTexts } from "../../learning/rejection-digest";
-import {
-  answerSeedCuePlanIssues,
-  missingAnswerSeedCues,
-} from "../apex/answer-seed-cues";
-import {
-  buildCritiqueRepairParams,
-  critiqueRepairIssues,
-} from "../apex/critique-repair";
-import {
-  inspectAnswerSeedCuePlan,
-  layersFromAnswerSeedCues,
-} from "../apex/cue-plan-preflight";
+import { answerSeedCuePlanIssues, missingAnswerSeedCues } from "../apex/answer-seed-cues";
+import { buildCritiqueRepairParams, critiqueRepairIssues } from "../apex/critique-repair";
+import { inspectAnswerSeedCuePlan, layersFromAnswerSeedCues } from "../apex/cue-plan-preflight";
 import {
   progressiveHintPublishBlockers,
   shouldRunProgressiveHintVision,
@@ -89,9 +80,7 @@ describe("efficiency pipeline contracts", () => {
       expect(resolveCuratedPictogram("key")).not.toBeNull();
       expect(answerSeedCuePlanIssues(validCues)).toEqual([]);
       expect(
-        answerSeedCuePlanIssues([
-          { kind: "catalog", concept: "box", role: "word-part" },
-        ])
+        answerSeedCuePlanIssues([{ kind: "catalog", concept: "box", role: "word-part" }])
       ).not.toEqual([]);
     });
 
@@ -188,11 +177,7 @@ describe("efficiency pipeline contracts", () => {
 
   describe("technique calibration contracts", () => {
     it("reorders techniques under too-easy and too-hard pressure only", () => {
-      const preferred = [
-        "simple_compound",
-        "false_lead_visual",
-        "positional_phrase",
-      ] as const;
+      const preferred = ["simple_compound", "false_lead_visual", "positional_phrase"] as const;
       const rates = [
         { techniqueId: "simple_compound", sampleSize: 10, solveRate: 0.9 },
         { techniqueId: "false_lead_visual", sampleSize: 10, solveRate: 0.3 },

@@ -60,7 +60,8 @@ export function normalizeGuessDistribution(raw?: number[] | null): GuessDistribu
   if (!raw?.length) return base;
   for (let i = 0; i < GUESS_DISTRIBUTION_SLOTS; i++) {
     const value = raw[i];
-    base[i] = typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+    base[i] =
+      typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
   }
   return base;
 }
@@ -104,7 +105,7 @@ export function recordRecentPlayDate(
 export function applyStreakProtection(input: StreakProtectionInput): StreakProtectionResult {
   const now = input.now ?? new Date();
   let streakFreezes = Math.max(0, input.streakFreezes);
-  let streakShields = Math.max(0, input.streakShields);
+  const streakShields = Math.max(0, input.streakShields);
   let streakFreezeWeekStart = input.streakFreezeWeekStart;
 
   if (shouldResetStreakFreeze(streakFreezeWeekStart)) {

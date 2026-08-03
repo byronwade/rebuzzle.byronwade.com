@@ -61,10 +61,7 @@ export async function getActiveEmailRecipients(options?: {
 export async function getInAppPuzzleRecipientIds(): Promise<string[]> {
   const usersCollection = getCollection<User>("users");
   const users = await usersCollection
-    .find(
-      { $or: [{ isGuest: false }, { isGuest: { $exists: false } }] },
-      { projection: { id: 1 } }
-    )
+    .find({ $or: [{ isGuest: false }, { isGuest: { $exists: false } }] }, { projection: { id: 1 } })
     .toArray();
   return users.map((u) => u.id).filter((id): id is string => Boolean(id));
 }

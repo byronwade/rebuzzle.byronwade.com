@@ -8,7 +8,7 @@
  * 4. localStorage backup (client-side only)
  */
 
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import type { User } from "@/db/models";
 import { userOps } from "@/db/operations";
 
@@ -73,8 +73,7 @@ export function extractClientIp(request: Request): string {
   const realIp = request.headers.get("x-real-ip");
   const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
-  const ip =
-    forwardedFor?.split(",")[0]?.trim() || realIp || cfConnectingIp || "unknown";
+  const ip = forwardedFor?.split(",")[0]?.trim() || realIp || cfConnectingIp || "unknown";
 
   return ip;
 }

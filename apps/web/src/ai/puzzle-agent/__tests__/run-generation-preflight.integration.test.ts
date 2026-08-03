@@ -12,7 +12,10 @@ const enforceQuota = jest.fn(async () => undefined);
 
 jest.mock("ai", () => ({
   Output: { object: jest.fn(() => ({})) },
-  ToolLoopAgent: jest.fn().mockImplementation(function MockToolLoopAgent(this: unknown, options: unknown) {
+  ToolLoopAgent: jest.fn().mockImplementation(function MockToolLoopAgent(
+    this: unknown,
+    options: unknown
+  ) {
     ToolLoopAgent(options);
     return {
       generate: (...args: unknown[]) => generate(options, ...args),

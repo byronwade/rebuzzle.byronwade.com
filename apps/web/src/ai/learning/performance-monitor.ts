@@ -163,10 +163,8 @@ export async function measureWindowPerformance(input?: {
     let difficultyDelta = 0;
 
     // Too easy: fast solves + high completion
-    const veryFast =
-      medianSolveSeconds !== null && medianSolveSeconds < 35 && solveRate >= 0.7;
-    const fast =
-      medianSolveSeconds !== null && medianSolveSeconds < 70 && solveRate >= 0.75;
+    const veryFast = medianSolveSeconds !== null && medianSolveSeconds < 35 && solveRate >= 0.7;
+    const fast = medianSolveSeconds !== null && medianSolveSeconds < 70 && solveRate >= 0.75;
     const fewAttempts =
       avgAttemptsOnSolve !== null && avgAttemptsOnSolve <= 1.35 && solveRate >= 0.7;
     const fewHints = avgHintsOnFinal !== null && avgHintsOnFinal < 0.4 && solveRate >= 0.75;
@@ -207,10 +205,7 @@ export async function measureWindowPerformance(input?: {
       const perception = aggregatePerceptionDelta(votes);
       if (perception.delta !== 0) {
         // Soft blend: perception can nudge ±1 beyond behavioral delta
-        const blended = Math.max(
-          -2,
-          Math.min(2, difficultyDelta + Math.sign(perception.delta))
-        );
+        const blended = Math.max(-2, Math.min(2, difficultyDelta + Math.sign(perception.delta)));
         if (blended !== difficultyDelta) {
           difficultyDelta = blended;
           notes.push(...perception.notes);

@@ -154,6 +154,19 @@ export function EnhancedShareButton({
     return tweet;
   };
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(generateShareText());
+      setCopied(true);
+      haptics.tap();
+      void playInterfaceSound("notification");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      void playInterfaceSound("failure");
+    }
+  };
+
   const handleShare = async (platform: string) => {
     setIsSharing(true);
     const url = generateShareUrl();
@@ -165,9 +178,7 @@ export function EnhancedShareButton({
         case "native": {
           if (navigator.share) {
             await navigator.share({
-              title: success
-                ? `Rebuzzle — solved in ${attempts}`
-                : "Rebuzzle — daily puzzle",
+              title: success ? `Rebuzzle — solved in ${attempts}` : "Rebuzzle — daily puzzle",
               text: generateShareText(),
               url,
             });
@@ -203,9 +214,7 @@ export function EnhancedShareButton({
           break;
         }
         case "reddit": {
-          const title = success
-            ? `Rebuzzle ${attempts}/${maxAttempts}`
-            : "Rebuzzle — daily puzzle";
+          const title = success ? `Rebuzzle ${attempts}/${maxAttempts}` : "Rebuzzle — daily puzzle";
           window.open(
             `https://reddit.com/submit?url=${encodedUrl}&title=${encodeURIComponent(title)}`,
             "_blank",
@@ -217,7 +226,8 @@ export function EnhancedShareButton({
           const subject = success
             ? `I solved today's Rebuzzle in ${attempts} attempts`
             : "Try today's Rebuzzle";
-          window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(generateShareText())}`;
+          const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(generateShareText())}`;
+          window.open(mailto, "_self");
           break;
         }
         case "copy": {
@@ -236,24 +246,14 @@ export function EnhancedShareButton({
     }
   };
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(generateShareText());
-      setCopied(true);
-      haptics.tap();
-      void playInterfaceSound("notification");
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy:", error);
-      void playInterfaceSound("failure");
-    }
-  };
-
   const moreMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className={cn(hasNativeShare || !success ? "flex-1" : "w-full", !hasNativeShare && "w-full")}
+          className={cn(
+            hasNativeShare || !success ? "flex-1" : "w-full",
+            !hasNativeShare && "w-full"
+          )}
           disabled={isSharing}
           size={size}
           variant={hasNativeShare ? "outline" : "default"}
@@ -320,7 +320,12 @@ export function EnhancedShareButton({
         {!hasNativeShare ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button className="flex-1" onClick={() => void handleCopy()} size={size} variant="outline">
+              <Button
+                className="flex-1"
+                onClick={() => void handleCopy()}
+                size={size}
+                variant="outline"
+              >
                 {copied ? <Check className="mr-2 h-4 w-4" /> : <Link2 className="mr-2 h-4 w-4" />}
                 {copied ? "Copied" : "Copy"}
               </Button>

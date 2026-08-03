@@ -35,9 +35,7 @@ const CINEMA: PuzzleSurface = {
   usesMeaningColors: false,
 };
 
-const PALETTE_HEX = new Set(
-  Object.values(INK_PICTOGRAM_PALETTE).map((hex) => normalizeHex(hex))
-);
+const PALETTE_HEX = new Set(Object.values(INK_PICTOGRAM_PALETTE).map((hex) => normalizeHex(hex)));
 
 const HEX_RE = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
 const RGB_RE = /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/gi;

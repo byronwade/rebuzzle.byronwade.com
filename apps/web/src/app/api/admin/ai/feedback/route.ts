@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
 import { aiFeedbackOps } from "@/db/ai-operations";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 import { parseDate, sanitizeId } from "@/lib/api-validation";
 
 /**
@@ -23,17 +23,15 @@ export async function GET(request: Request) {
 
     // Validate groupBy parameter
     const validGroupByValues = ["puzzleType", "difficulty", "category", "feedbackType"] as const;
-    const groupBy = groupByParam && validGroupByValues.includes(groupByParam as typeof validGroupByValues[number])
-      ? (groupByParam as typeof validGroupByValues[number])
-      : null;
+    const groupBy =
+      groupByParam &&
+      validGroupByValues.includes(groupByParam as (typeof validGroupByValues)[number])
+        ? (groupByParam as (typeof validGroupByValues)[number])
+        : null;
 
     // If groupBy is specified, return aggregated data
     if (groupBy) {
-      const aggregate = await aiFeedbackOps.getAggregate(
-        groupBy,
-        startDate,
-        endDate
-      );
+      const aggregate = await aiFeedbackOps.getAggregate(groupBy, startDate, endDate);
 
       return NextResponse.json({ aggregate, groupBy });
     }
@@ -55,11 +53,7 @@ export async function GET(request: Request) {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const [trend, unprocessedCount] = await Promise.all([
-      aiFeedbackOps.getSatisfactionTrend(
-        "day",
-        startDate ?? thirtyDaysAgo,
-        endDate ?? now
-      ),
+      aiFeedbackOps.getSatisfactionTrend("day", startDate ?? thirtyDaysAgo, endDate ?? now),
       aiFeedbackOps.countUnprocessed(),
     ]);
 
@@ -69,9 +63,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("AI Feedback API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI feedback" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI feedback" }, { status: 500 });
   }
 }

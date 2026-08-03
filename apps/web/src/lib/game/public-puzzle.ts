@@ -30,12 +30,14 @@ export function toPublicPuzzle<T extends LoosePuzzle>(
   const publicRest: LoosePuzzle = { ...rest };
 
   // Nested metadata may still carry keyword/seo
-  if (publicRest.metadata && typeof publicRest.metadata === "object" && publicRest.metadata !== null) {
+  if (
+    publicRest.metadata &&
+    typeof publicRest.metadata === "object" &&
+    publicRest.metadata !== null
+  ) {
     const meta = { ...(publicRest.metadata as LoosePuzzle) };
-    delete meta.keyword;
-    delete meta.seoMetadata;
-    delete meta.answer;
-    publicRest.metadata = meta;
+    const { keyword: _keyword, seoMetadata: _seo, answer: _answer, ...safeMeta } = meta;
+    publicRest.metadata = safeMeta;
   }
 
   return publicRest as Omit<

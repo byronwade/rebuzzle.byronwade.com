@@ -5,10 +5,7 @@
 import { aiLearningEventOps } from "@/db/ai-operations";
 import { getCollection } from "@/db/mongodb";
 import { logger } from "@/lib/logger";
-import {
-  type AdaptiveDifficultyResult,
-  computeAdaptiveDifficulty,
-} from "./adaptive-difficulty";
+import { type AdaptiveDifficultyResult, computeAdaptiveDifficulty } from "./adaptive-difficulty";
 import {
   measurePuzzlePerformance,
   measureWindowPerformance,

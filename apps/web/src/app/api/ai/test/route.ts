@@ -43,11 +43,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const keyValidation = validateApiKeys();
-    const gatewayKeyPresent = Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
+    const gatewayKeyPresent = Boolean(
+      process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN
+    );
     const startTime = Date.now();
 
-    let result: { text: string; usage?: unknown; finishReason?: string; modelUsed?: string } | null =
-      null;
+    let result: {
+      text: string;
+      usage?: unknown;
+      finishReason?: string;
+      modelUsed?: string;
+    } | null = null;
     let lastError: Error | null = null;
 
     try {
@@ -70,9 +76,7 @@ export async function GET(request: NextRequest) {
             provider: keyValidation.provider,
             model: AI_CONFIG.models.gateway.fast,
           },
-          lastError: lastError
-            ? { name: lastError.name, message: lastError.message }
-            : null,
+          lastError: lastError ? { name: lastError.name, message: lastError.message } : null,
         },
         { status: 500 }
       );

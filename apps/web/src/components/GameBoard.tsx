@@ -15,8 +15,8 @@ import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
-import type { GameData } from "@/lib/gameSettings";
 import { parseBeatMeChallenge } from "@/lib/game/share-challenge";
+import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
   checkStreakGracePeriod,
@@ -604,9 +604,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         // Already locked / replay blocked — stay in-thread, don't hard-cut away
         if (response.status === 409 || result.locked) {
           void playInterfaceSound("notification");
-          setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts, {
-            celebrate: false,
-          });
+          setCompletionState(
+            Boolean(result.wasSuccessful),
+            guessToCheck,
+            gameSettings.maxAttempts,
+            {
+              celebrate: false,
+            }
+          );
           toast({
             title: result.wasSuccessful ? "Already solved today" : "Day already locked",
             description: "Chat is locked. Open full results from the card below.",
@@ -1255,11 +1260,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
               <section
                 aria-label={
-                  chatLocked
-                    ? "Day locked"
-                    : awaitingClosingQuip
-                      ? "Eve finishing"
-                      : "Answer input"
+                  chatLocked ? "Day locked" : awaitingClosingQuip ? "Eve finishing" : "Answer input"
                 }
                 className={cn(
                   "input-area play-dock z-30 shrink-0 px-4 md:px-6",

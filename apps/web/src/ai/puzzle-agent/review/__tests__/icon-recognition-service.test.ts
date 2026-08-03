@@ -346,7 +346,9 @@ describe("blind human icon-recognition calibration", () => {
 
   it("reports semantic confusion pairs and ignores duplicate reviewer rows", () => {
     const fixtures = buildIconRecognitionFixtures();
-    const carCompact = fixtures.find((fixture) => fixture.conceptId === "car" && fixture.sizePx === 44)!;
+    const carCompact = fixtures.find(
+      (fixture) => fixture.conceptId === "car" && fixture.sizePx === 44
+    )!;
     const wrong = review({
       fixture: carCompact,
       reviewerId: "reviewer-1",
