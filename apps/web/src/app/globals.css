@@ -799,11 +799,16 @@
   animation-delay: 160ms;
 }
 
-/* Momentum scrolling that stops at its own edges rather than dragging the page. */
+/* Momentum scrolling that stops at its own edges rather than dragging the page.
+   When the day is locked, .play-stage becomes overflow-y:auto (see GameBoard). */
 .play-stage,
 .input-area {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.play-stage.touch-pan-y {
+  touch-action: pan-y;
 }
 
 .guess-chip {
