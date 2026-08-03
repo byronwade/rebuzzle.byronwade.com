@@ -3,12 +3,15 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { AppCommandMenu } from "@/components/AppCommandMenu";
 import { AuthProvider } from "@/components/AuthProvider";
 import { AuthSessionSeed } from "@/components/AuthSessionSeed";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ThemeProviderWrapper } from "@/components/ThemeProviderWrapper";
+import { ThemeHotkey } from "@/components/ThemeHotkey";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { VisualThemeProvider } from "@/components/VisualThemeProvider";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getServerSession } from "@/lib/auth/get-server-session";
 import {
   generateAccessibilitySchema,
@@ -338,22 +341,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <ErrorBoundary>
-          <ThemeProviderWrapper
+          <ThemeProvider
             attribute="class"
             defaultTheme="system"
             disableTransitionOnChange
             enableSystem
           >
+            <ThemeHotkey />
+            <AppCommandMenu />
             <VisualThemeProvider>
               <AuthProvider initialSession={null}>
-                <Suspense fallback={null}>
+                <Suspense
+                  fallback={
+                    <div
+                      aria-busy="true"
+                      aria-label="Loading session"
+                      className="flex items-center gap-2 px-4 py-2"
+                      role="status"
+                    >
+                      <Skeleton className="h-2 w-24" />
+                      <span className="text-muted-foreground text-xs">Loading…</span>
+                    </div>
+                  }
+                >
                   <AuthSessionLoader />
                 </Suspense>
                 {children}
                 <Toaster />
               </AuthProvider>
             </VisualThemeProvider>
-          </ThemeProviderWrapper>
+          </ThemeProvider>
         </ErrorBoundary>
       </body>
     </html>
