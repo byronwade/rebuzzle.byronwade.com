@@ -43,7 +43,7 @@ export function MetricCard({
   return (
     <Card
       className={cn(
-        "relative overflow-hidden border transition-all hover:shadow-md",
+        "relative overflow-hidden border transition-[box-shadow,border-color,colors] hover:shadow-md",
         "bg-gradient-to-br from-card to-card/50",
         className
       )}

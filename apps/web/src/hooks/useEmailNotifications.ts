@@ -89,11 +89,12 @@ export function useEmailNotifications() {
             }),
           });
 
-          const data = await response.json();
-
           if (!response.ok) {
+            const data = (await response.json().catch(() => ({}))) as { error?: string };
             fail(data.error || "Failed to enable email notifications");
           }
+
+          const data = await response.json();
 
           setEnabled(true);
 
@@ -142,11 +143,12 @@ export function useEmailNotifications() {
           }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
+          const data = (await response.json().catch(() => ({}))) as { error?: string };
           fail(data.error || "Failed to disable email notifications");
         }
+
+        const data = await response.json();
 
         setEnabled(false);
 

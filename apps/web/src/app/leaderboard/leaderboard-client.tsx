@@ -292,7 +292,7 @@ export default function LeaderboardClient({
                         </div>
                         <div className="h-1 overflow-hidden rounded-full bg-inset">
                           <div
-                            className="h-full bg-warning rounded-full transition-all duration-500"
+                            className="h-full bg-warning rounded-full transition-[width,colors] duration-500"
                             style={{
                               width: `${getLevelProgress(userEntry.stats.level, userEntry.stats.points)}%`,
                             }}

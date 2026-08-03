@@ -182,7 +182,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     // Locked but answer not in RSC payload — use today's guess reveal only
     try {
       const todayKey = new Date().toISOString().slice(0, 10);
-      const stored = localStorage.getItem("lastGameSolution");
+      const stored = (localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution"));
       if (stored) {
         const parsed = JSON.parse(stored) as {
           answer?: string;
@@ -224,7 +224,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
     async function loadClientExtras() {
       // Load completion data from localStorage
       try {
-        const storedData = localStorage.getItem("lastGameCompletion");
+        const storedData = (localStorage.getItem("lastGameCompletion:v1") ?? localStorage.getItem("lastGameCompletion"));
         if (storedData) {
           const parsed = JSON.parse(storedData) as CompletionData;
           setCompletionData(parsed);
@@ -258,7 +258,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           const stats = await statsResponse.json();
           setTodaySolves(stats.todaySolves || 0);
 
-          const storedData = localStorage.getItem("lastGameCompletion");
+          const storedData = (localStorage.getItem("lastGameCompletion:v1") ?? localStorage.getItem("lastGameCompletion"));
           if (storedData && stats.percentiles) {
             const parsed = JSON.parse(storedData) as CompletionData;
             const userTime = parsed.timeTaken;
@@ -294,7 +294,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   function resolvePuzzleId(): string {
     if (gameData.puzzleId) return gameData.puzzleId;
     try {
-      const stored = localStorage.getItem("lastGameSolution");
+      const stored = (localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution"));
       if (!stored) return "";
       const parsed = JSON.parse(stored) as { puzzleId?: string };
       return parsed.puzzleId || "";
@@ -519,7 +519,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
             {/* Global Comparison Badge - Social proof */}
             {percentile !== null && percentile > 50 && (
-              <div className="fade-in-50 mx-auto flex w-fit animate-in items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 duration-500">
+ <div className="rb-enter  mx-auto flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 ">
                 <TrendingUp className="h-3.5 w-3.5 text-success" />
                 <span className="font-medium text-success text-sm">
                   Faster than {percentile}% of players today

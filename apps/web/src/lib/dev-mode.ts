@@ -31,8 +31,8 @@ export function setDevModeEnabled(enabled: boolean): void {
 export function clearDevClientGameState(): void {
   if (typeof window === "undefined") return;
   const keys = [
-    "lastGameCompletion",
-    "lastGameSolution",
+    "lastGameCompletion:v1",
+    "lastGameSolution:v1",
     "lastEveClosingLine",
     "rebuzzlePlayDays",
     "rebuzzleEmailNudgeDismissed",

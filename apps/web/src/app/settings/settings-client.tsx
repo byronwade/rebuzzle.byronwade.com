@@ -251,11 +251,12 @@ export default function SettingsPage() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
         fail(data.error || "Failed to change password");
       }
+
+      const data = await response.json();
 
       // Clear form
       setPasswordForm({

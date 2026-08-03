@@ -15,10 +15,10 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { AppLink } from "@/components/AppLink";
+import { useEffect, useState } from "react";
 import type { ExternalCorpusReadinessReport } from "@/ai/puzzle-agent/benchmark/external-corpus";
-import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,8 +94,15 @@ function decisionBadge(value: BenchmarkReviewDecision) {
 }
 
 export default function BenchmarkReviewPage() {
+  return (
+    <AuthGate>
+      <BenchmarkReviewPageInner />
+    </AuthGate>
+  );
+}
+
+function BenchmarkReviewPageInner() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [queue, setQueue] = useState<Queue | null>(null);
   const [status, setStatus] = useState<FilterStatus>("pending");
@@ -106,7 +113,7 @@ export default function BenchmarkReviewPage() {
   const [notImported, setNotImported] = useState(false);
   const [note, setNote] = useState("");
 
-  const loadQueue = useCallback(
+  const loadQueue = 
     async (requestedPage = page) => {
       await withLoadingFlag(setLoading, async () => {
         try {
@@ -120,7 +127,7 @@ export default function BenchmarkReviewPage() {
             cache: "no-store",
           });
           if (response.status === 401) {
-            router.push("/login");
+            window.location.assign("/login");
             return;
           }
           const data = await safeJsonParse<{ success: boolean; queue?: Queue; error?: string }>(
@@ -145,22 +152,15 @@ export default function BenchmarkReviewPage() {
         }
       });
 
-    },
-    [page, router, status, toast]
-  );
+    };
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
     void loadQueue();
-  }, [authLoading, isAuthenticated, loadQueue, router]);
+  }, [loadQueue]);
 
   const current = queue?.items[0];
 
-  const submitDecision = useCallback(
+  const submitDecision = 
     async (action: DecisionAction) => {
       if (!current || saving) return;
       await withLoadingFlag(setSaving, async () => {
@@ -190,18 +190,16 @@ export default function BenchmarkReviewPage() {
         }
       });
 
-    },
-    [current, loadQueue, note, page, saving, toast]
-  );
+    };
 
-  const skipCurrent = useCallback(() => {
+  const skipCurrent = () => {
     setQueue((existing) =>
       existing && existing.items.length > 1
         ? { ...existing, items: [...existing.items.slice(1), existing.items[0]!] }
         : existing
     );
     setNote("");
-  }, []);
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -271,9 +269,9 @@ export default function BenchmarkReviewPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link href="/api/admin/ai/benchmark-reviews/export" prefetch={false}>
+            <AppLink href="/api/admin/ai/benchmark-reviews/export" prefetch={false}>
               <Download className="mr-2 h-4 w-4" data-icon="inline-start" /> Export reviews
-            </Link>
+            </AppLink>
           </Button>
           <Button asChild variant="outline">
             <label className="cursor-pointer">

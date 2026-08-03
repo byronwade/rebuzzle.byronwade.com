@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUp, CornerDownLeft } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { haptics } from "@/lib/haptics";
 import {
   type CursorPosition,
@@ -40,7 +40,7 @@ export function SmartAnswerInput({
 
   const trimmed = value.trim();
   const canSubmit = trimmed.length > 0 && !(disabled || isSubmitting);
-  const letterCount = useMemo(() => trimmed.replace(/[^\p{L}\p{N}]/gu, "").length, [trimmed]);
+  const letterCount = trimmed.replace(/[^\p{L}\p{N}]/gu, "").length;
 
   useEffect(() => {
     if (letterCount > 0 && !armedHapticRef.current && !disabled) {
@@ -52,55 +52,49 @@ export function SmartAnswerInput({
     }
   }, [letterCount, disabled]);
 
-  const submit = useCallback(() => {
+  const submit = () => {
     if (!canSubmit) return;
     haptics.tap();
     onSubmit(trimmed);
     setValue("");
     undoRedoManager.current = new UndoRedoManager();
-  }, [canSubmit, onSubmit, trimmed]);
+  };
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const cursor = { start: e.target.selectionStart, end: e.target.selectionEnd };
     undoRedoManager.current.saveState(e.target.value, cursor);
     cursorPositionRef.current = cursor;
     setValue(e.target.value);
-  }, []);
+  };
 
-  const applyHistoryEntry = useCallback(
-    (entry: { text: string; cursorPosition: CursorPosition } | null) => {
-      if (!entry) return;
-      setValue(entry.text);
-      cursorPositionRef.current = entry.cursorPosition;
-      setTimeout(() => restoreCursorPosition(textareaRef.current, entry.cursorPosition), 0);
-    },
-    []
-  );
+  const applyHistoryEntry = (entry: { text: string; cursorPosition: CursorPosition } | null) => {
+    if (!entry) return;
+    setValue(entry.text);
+    cursorPositionRef.current = entry.cursorPosition;
+    setTimeout(() => restoreCursorPosition(textareaRef.current, entry.cursorPosition), 0);
+  };
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        submit();
-        return;
-      }
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+      return;
+    }
 
-      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
-        e.preventDefault();
-        const cursor = cursorPositionRef.current || { start: 0, end: 0 };
-        applyHistoryEntry(
-          e.shiftKey
-            ? undoRedoManager.current.redo(value, cursor)
-            : undoRedoManager.current.undo(value, cursor)
-        );
-      }
-    },
-    [value, submit, applyHistoryEntry]
-  );
+    if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+      e.preventDefault();
+      const cursor = cursorPositionRef.current || { start: 0, end: 0 };
+      applyHistoryEntry(
+        e.shiftKey
+          ? undoRedoManager.current.redo(value, cursor)
+          : undoRedoManager.current.undo(value, cursor)
+      );
+    }
+  };
 
-  const handleBlur = useCallback(() => {
+  const handleBlur = () => {
     cursorPositionRef.current = saveCursorPosition(textareaRef.current);
-  }, []);
+  };
 
   useEffect(() => {
     const textarea = textareaRef.current;

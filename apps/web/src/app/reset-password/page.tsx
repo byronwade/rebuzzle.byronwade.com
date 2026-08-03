@@ -41,7 +41,7 @@ export default function ResetPasswordPage() {
         description: "No reset token provided. Please request a new password reset.",
         variant: "destructive",
       });
-      router.push("/forgot-password");
+      window.location.assign("/forgot-password");
     }
   }, [searchParams, router, toast]);
 

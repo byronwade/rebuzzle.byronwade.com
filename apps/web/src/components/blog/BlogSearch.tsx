@@ -2,7 +2,7 @@
 
 import { Search, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,7 +38,7 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [puzzleType, setPuzzleType] = useState(searchParams.get("type") || "all");
 
-  const handleSearch = useCallback(() => {
+  const handleSearch = () => {
     if (!query.trim() && puzzleType === "all") {
       router.push("/blog");
       return;
@@ -55,22 +55,19 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
     startTransition(() => {
       router.push(`/blog/search?${params.toString()}`);
     });
-  }, [query, puzzleType, router]);
+  };
 
-  const handleClear = useCallback(() => {
+  const handleClear = () => {
     setQuery("");
     setPuzzleType("all");
     router.push("/blog");
-  }, [router]);
+  };
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") {
-        handleSearch();
-      }
-    },
-    [handleSearch]
-  );
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
 
   return (
     <div className={className}>

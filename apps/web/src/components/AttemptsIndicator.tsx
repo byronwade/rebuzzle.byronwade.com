@@ -81,7 +81,7 @@ export function AttemptsIndicator({
                   <Heart
                     aria-hidden="true"
                     className={cn(
-                      "h-3.5 w-3.5 transition-all duration-300",
+                      "h-3.5 w-3.5 transition-[opacity,transform,colors] duration-300",
                       isFilled &&
                         isLastAttempt &&
                         "heart-fragile fill-destructive text-destructive",

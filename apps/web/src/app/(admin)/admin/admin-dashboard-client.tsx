@@ -319,7 +319,7 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAdmin = async () => {
       if (!isAuthenticated) {
-        router.push("/login");
+        window.location.assign("/login");
         return;
       }
 
@@ -337,7 +337,7 @@ export default function AdminPage() {
               description: "You must be an admin to access this page.",
               variant: "destructive",
             });
-            router.push("/");
+            window.location.assign("/");
           }
         } else {
           // Not an admin or not authenticated
@@ -346,7 +346,7 @@ export default function AdminPage() {
             description: "You must be an admin to access this page.",
             variant: "destructive",
           });
-          router.push("/");
+          window.location.assign("/");
         }
       } catch (error) {
         console.error("Admin check failed:", error);
@@ -355,7 +355,7 @@ export default function AdminPage() {
           description: "Failed to verify admin access",
           variant: "destructive",
         });
-        router.push("/");
+        window.location.assign("/");
       }
       setLoading(false);
 

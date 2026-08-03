@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, type ReactNode, useCallback, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import { gameSettings } from "@/lib/gameSettings";
 
 interface GameStateContext {
@@ -28,32 +28,32 @@ export function GameProvider({ children }: { children: ReactNode }) {
     isPlaying: false,
   });
 
-  const setGameState = useCallback((state: Partial<GameStateContext>) => {
+  const setGameState = (state: Partial<GameStateContext>) => {
     setGameStateInternal((prev) => ({ ...prev, ...state }));
-  }, []);
+  };
 
-  const startGame = useCallback((difficulty: number) => {
+  const startGame = (difficulty: number) => {
     setGameStateInternal({
       difficulty,
       currentAttempts: 0,
       maxAttempts: gameSettings.maxAttempts,
       isPlaying: true,
     });
-  }, []);
+  };
 
-  const recordAttempt = useCallback(() => {
+  const recordAttempt = () => {
     setGameStateInternal((prev) => ({
       ...prev,
       currentAttempts: prev.currentAttempts + 1,
     }));
-  }, []);
+  };
 
-  const endGame = useCallback(() => {
+  const endGame = () => {
     setGameStateInternal((prev) => ({
       ...prev,
       isPlaying: false,
     }));
-  }, []);
+  };
 
   return (
     <GameContext.Provider

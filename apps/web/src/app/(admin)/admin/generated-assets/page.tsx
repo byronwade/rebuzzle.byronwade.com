@@ -3,13 +3,13 @@
 import { Images, Loader2, ShieldCheck, SkipForward } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type {
   BlindGeneratedPictogramSpecimen,
   GeneratedPictogramPanelProgress,
   GeneratedPictogramRegistryReport,
 } from "@/ai/puzzle-agent/review/generated-pictogram-registry";
-import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,8 +45,15 @@ function confidence(value: number | undefined): string {
 }
 
 export default function GeneratedAssetsPage() {
+  return (
+    <AuthGate>
+      <GeneratedAssetsPageInner />
+    </AuthGate>
+  );
+}
+
+function GeneratedAssetsPageInner() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [specimen, setSpecimen] = useState<BlindGeneratedPictogramSpecimen | null>(null);
   const [progress, setProgress] = useState<GeneratedPictogramPanelProgress | null>(null);
@@ -56,12 +63,12 @@ export default function GeneratedAssetsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReport = useCallback(async () => {
+  const loadReport = async () => {
     const response = await fetch("/api/admin/ai/generated-pictograms?mode=report", {
       cache: "no-store",
     });
     if (response.status === 401) {
-      router.push("/login");
+      window.location.assign("/login");
       return;
     }
     const data = await safeJsonParse<ReportResponse>(response);
@@ -69,15 +76,15 @@ export default function GeneratedAssetsPage() {
       fail(data?.error || "Failed to load generated-asset report");
     }
     setReport(data.report);
-  }, [router]);
+  };
 
-  const loadNext = useCallback(async () => {
+  const loadNext = async () => {
     setError(null);
     await withLoadingFlag(setLoading, async () => {
       try {
         const response = await fetch("/api/admin/ai/generated-pictograms", { cache: "no-store" });
         if (response.status === 401) {
-          router.push("/login");
+          window.location.assign("/login");
           return;
         }
         const data = await safeJsonParse<QueueResponse>(response);
@@ -91,16 +98,11 @@ export default function GeneratedAssetsPage() {
         setError(loadError instanceof Error ? loadError.message : "Failed to load asset registry");
       }
     });
-  }, [loadReport, router]);
+  };
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
     void loadNext();
-  }, [authLoading, isAuthenticated, loadNext, router]);
+  }, [loadNext]);
 
   const submit = async (uncertain: boolean) => {
     if (!specimen || isSubmitting) return;
@@ -138,7 +140,7 @@ export default function GeneratedAssetsPage() {
     void submit(false);
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

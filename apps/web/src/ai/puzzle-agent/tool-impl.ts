@@ -289,9 +289,11 @@ export async function proposeConceptSeeds(input: {
   const fallback = proposeConceptSeedsFallback(input);
 
   try {
-    const { z } = await import("zod");
-    const { generateAIObject } = await import("@/ai/client");
-    const { OVERUSED_REBUS_TROPES } = await import("./visual/icon-features");
+    const [{ z }, { generateAIObject }, { OVERUSED_REBUS_TROPES }] = await Promise.all([
+      import("zod"),
+      import("@/ai/client"),
+      import("./visual/icon-features"),
+    ]);
 
     const SeedSchema = z.object({
       seeds: z

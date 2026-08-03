@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useMemo } from "react";
+import { type CSSProperties } from "react";
 import {
   PUZZLE_BOARD_SIZE_SPECS,
   type PuzzleBoardSize,
@@ -53,12 +53,12 @@ function PictogramTile({
   sizePx: number;
   index: number;
 }) {
-  const safeSvg = useMemo(() => (layer.svg ? sanitizePictogramSvg(layer.svg) : null), [layer.svg]);
+  const safeSvg = layer.svg ? sanitizePictogramSvg(layer.svg) : null;
 
   if (safeSvg) {
     return (
       <span
-        className="puzzle-pictogram inline-flex shrink-0 items-center justify-center animate-in fade-in zoom-in-95 duration-500 fill-mode-both motion-reduce:animate-none"
+ className="rb-enter puzzle-pictogram inline-flex shrink-0 items-center justify-center "
         style={{
           width: sizePx,
           height: sizePx,
@@ -99,7 +99,7 @@ function TextTile({
   return (
     <span
       className={cn(
-        "puzzle-text-layer inline-block animate-in fade-in slide-in-from-bottom-1 duration-500 fill-mode-both motion-reduce:animate-none",
+ "puzzle-text-layer inline-block ",
         sizeClass,
         textEmphasisClass(layer.emphasis),
         stacked && "whitespace-pre text-center"
@@ -154,7 +154,7 @@ function ImageTile({
       alt={layer.alt}
       width={sizePx}
       height={sizePx}
-      className="puzzle-image-tile inline-block shrink-0 rounded-md object-cover animate-in fade-in zoom-in-95 duration-700 fill-mode-both motion-reduce:animate-none"
+ className="rb-enter puzzle-image-tile inline-block shrink-0 rounded-md object-cover "
       style={{
         width: sizePx,
         height: sizePx,
@@ -271,25 +271,12 @@ export function PuzzleVisualBoard({
       ))}
       {visual.caption ? (
         <p
-          className="basis-full mt-2 text-center text-sm opacity-70 animate-in fade-in duration-700 delay-200 motion-reduce:animate-none"
+ className="rb-enter basis-full mt-2 text-center text-sm opacity-70 "
           style={{ color: "var(--rb-ink)" }}
         >
           {visual.caption}
         </p>
       ) : null}
     </div>
-  );
-}
-
-/** True when the visual has something richer than a plain emoji string. */
-export function hasComposedVisual(visual?: PuzzleVisual | null): boolean {
-  if (!visual?.layers?.length) return false;
-  if (visual.mode === "unicode") return false;
-  return visual.layers.some(
-    (l) =>
-      (l.kind === "pictogram" && (l.svg || l.emojiFallback)) ||
-      l.kind === "text" ||
-      (l.kind === "image" && l.src) ||
-      l.kind === "operator"
   );
 }

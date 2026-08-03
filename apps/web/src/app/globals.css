@@ -601,6 +601,28 @@
   }
 }
 
+
+@keyframes rb-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rb-enter {
+  animation: rb-enter 400ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-enter {
+    animation: none;
+  }
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;

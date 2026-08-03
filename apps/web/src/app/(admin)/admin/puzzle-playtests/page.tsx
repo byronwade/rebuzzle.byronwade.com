@@ -10,14 +10,14 @@ import {
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
 import type {
   BlindPuzzlePlaytestSpecimen,
   PuzzlePlaytestProgress,
   PuzzlePlaytestReport,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
-import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,8 +58,15 @@ function percent(value: number | null): string {
 }
 
 export default function PuzzlePlaytestsPage() {
+  return (
+    <AuthGate>
+      <PuzzlePlaytestsPageInner />
+    </AuthGate>
+  );
+}
+
+function PuzzlePlaytestsPageInner() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [specimen, setSpecimen] = useState<BlindPuzzlePlaytestSpecimen | null>(null);
   const [progress, setProgress] = useState<PuzzlePlaytestProgress | null>(null);
@@ -74,27 +81,27 @@ export default function PuzzlePlaytestsPage() {
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReport = useCallback(async () => {
+  const loadReport = async () => {
     const response = await fetch("/api/admin/ai/puzzle-playtests?mode=report", {
       cache: "no-store",
     });
     if (response.status === 401) {
-      router.push("/login");
+      window.location.assign("/login");
       return;
     }
     const data = await safeJsonParse<ReportResponse>(response);
     if (!response.ok || !data?.report)
       fail(data?.error || "Failed to load playtest report");
     setReport(data.report);
-  }, [router]);
+  };
 
-  const loadNext = useCallback(async () => {
+  const loadNext = async () => {
     await withLoadingFlag(setLoading, async () => {
       setError(null);
       try {
         const response = await fetch("/api/admin/ai/puzzle-playtests", { cache: "no-store" });
         if (response.status === 401) {
-          router.push("/login");
+          window.location.assign("/login");
           return;
         }
         const data = await safeJsonParse<QueueResponse>(response);
@@ -109,16 +116,11 @@ export default function PuzzlePlaytestsPage() {
       }
     });
 
-  }, [loadReport, router]);
+  };
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
     void loadNext();
-  }, [authLoading, isAuthenticated, loadNext, router]);
+  }, [loadNext]);
 
   const submit = async (gaveUp: boolean) => {
     if (!specimen || isSubmitting) return;
@@ -198,7 +200,7 @@ export default function PuzzlePlaytestsPage() {
 
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

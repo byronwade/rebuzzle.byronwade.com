@@ -7,7 +7,7 @@
  * not on initial page load. This keeps stats clean and reduces spam.
  */
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 
 interface LazyGuestResult {
@@ -21,7 +21,7 @@ export function useLazyGuest(): LazyGuestResult {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const ensureGuest = useCallback(async (): Promise<boolean> => {
+  const ensureGuest = async (): Promise<boolean> => {
     // Already authenticated (either registered or guest)
     if (isAuthenticated && userId) {
       return true;
@@ -80,7 +80,7 @@ export function useLazyGuest(): LazyGuestResult {
       setIsCreating(false);
       return false;
     }
-  }, [isAuthenticated, userId, refreshAuth]);
+  };
 
   return { ensureGuest, isCreating, error };
 }

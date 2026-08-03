@@ -3,14 +3,14 @@
 import { Eye, Loader2, SkipForward } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type {
   BlindIconRecognitionSpecimen,
   IconRecognitionCalibrationReport,
   IconRecognitionPanelId,
   IconRecognitionProgress,
 } from "@/ai/puzzle-agent/review/icon-recognition-service";
-import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,8 +41,15 @@ function percent(value: number | null): string {
 }
 
 export default function IconRecognitionPage() {
+  return (
+    <AuthGate>
+      <IconRecognitionPageInner />
+    </AuthGate>
+  );
+}
+
+function IconRecognitionPageInner() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [panelId, setPanelId] = useState<IconRecognitionPanelId>("publication");
   const [specimen, setSpecimen] = useState<BlindIconRecognitionSpecimen | null>(null);
@@ -53,12 +60,12 @@ export default function IconRecognitionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReport = useCallback(async () => {
+  const loadReport = async () => {
     const response = await fetch(`/api/admin/ai/icon-recognition?mode=report&panel=${panelId}`, {
       cache: "no-store",
     });
     if (response.status === 401) {
-      router.push("/login");
+      window.location.assign("/login");
       return;
     }
     const data = await safeJsonParse<ReportResponse>(response);
@@ -67,9 +74,9 @@ export default function IconRecognitionPage() {
     }
     setReport(data.report);
     if (data.reviewerProgress) setProgress(data.reviewerProgress);
-  }, [panelId, router]);
+  };
 
-  const loadNext = useCallback(async () => {
+  const loadNext = async () => {
     await withLoadingFlag(setLoading, async () => {
       setError(null);
       setReport(null);
@@ -78,7 +85,7 @@ export default function IconRecognitionPage() {
           cache: "no-store",
         });
         if (response.status === 401) {
-          router.push("/login");
+          window.location.assign("/login");
           return;
         }
         const data = await safeJsonParse<NextResponse>(response);
@@ -93,16 +100,11 @@ export default function IconRecognitionPage() {
       }
     });
 
-  }, [loadReport, panelId, router]);
+  };
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
     void loadNext();
-  }, [authLoading, isAuthenticated, loadNext, router]);
+  }, [loadNext]);
 
   const submit = async (input: { uncertain: boolean }) => {
     if (!specimen || isSubmitting) return;
@@ -151,7 +153,7 @@ export default function IconRecognitionPage() {
     setPanelId(nextPanelId);
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -32,14 +32,14 @@ export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
 
   useEffect(() => {
     try {
-      const completionRaw = localStorage.getItem("lastGameCompletion");
+      const completionRaw = (localStorage.getItem("lastGameCompletion:v1") ?? localStorage.getItem("lastGameCompletion"));
       if (completionRaw) {
         const completion = JSON.parse(completionRaw) as StoredCompletion;
         if (typeof completion.streak === "number") {
           setStreak(completion.streak);
         }
       }
-      const solutionRaw = localStorage.getItem("lastGameSolution");
+      const solutionRaw = (localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution"));
       if (solutionRaw) {
         const solution = JSON.parse(solutionRaw) as StoredSolution;
         if (typeof solution.answer === "string" && solution.answer.trim()) {

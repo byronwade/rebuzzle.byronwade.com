@@ -145,7 +145,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                   </div>
                   <div
                     className={cn(
-                      "text-sm leading-relaxed transition-all duration-300 motion-reduce:transition-none",
+                      "text-sm leading-relaxed transition-[opacity,transform,colors] duration-300 motion-reduce:transition-none",
                       isRevealed ? "text-foreground" : "text-muted-foreground"
                     )}
                   >

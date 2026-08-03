@@ -38,7 +38,7 @@ import { useGameContext } from "./GameContext";
 import { GuessThread, type ThreadTurn } from "./GuessThread";
 import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
-import { getPuzzleQuestion } from "./PuzzleDisplay";
+import { getPuzzleQuestion } from "@/lib/puzzle-questions";
 import { PuzzleStage } from "./PuzzleStage";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 import { SolveResultCard } from "./SolveResultCard";
@@ -777,7 +777,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           // Persist solution + completion for game-over (server reveals only after lock)
           if (result.answer || result.explanation) {
             localStorage.setItem(
-              "lastGameSolution",
+              "lastGameSolution:v1",
               JSON.stringify({
                 answer: result.answer,
                 explanation: result.explanation,
@@ -787,7 +787,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             );
           }
           localStorage.setItem(
-            "lastGameCompletion",
+            "lastGameCompletion:v1",
             JSON.stringify({
               guessHistory: winningHistory,
               timeTaken,
@@ -877,7 +877,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
           if (result.answer || result.explanation) {
             localStorage.setItem(
-              "lastGameSolution",
+              "lastGameSolution:v1",
               JSON.stringify({
                 answer: result.answer,
                 explanation: result.explanation,
@@ -902,7 +902,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             streak: 0,
             score: 0,
           };
-          localStorage.setItem("lastGameCompletion", JSON.stringify(completionData));
+          localStorage.setItem("lastGameCompletion:v1", JSON.stringify(completionData));
 
           return;
         }
@@ -1241,7 +1241,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               {/* Error display - positioned above input area */}
               {error && (
                 <div
-                  className="mx-4 mb-2 flex justify-center slide-in-from-bottom-2 fade-in-up animate-in duration-300 motion-reduce:animate-none"
+                  className="rb-enter mx-4 mb-2 flex justify-center"
                   role="alert"
                 >
                   <div className="rounded-lg border border-destructive/25 bg-card p-4 text-center shadow-lg">

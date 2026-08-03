@@ -136,17 +136,19 @@ export async function loadHumanCalibrationGate(): Promise<HumanCalibrationGate> 
   let playtest: Parameters<typeof assessHumanCalibrationGate>[0]["playtest"] = null;
 
   try {
-    const {
-      HUMAN_ICON_RECOGNITION_CONTRACT_VERSION,
-      buildIconRecognitionFixtures,
-      scoreIconRecognitionCalibration,
-    } = await import("@/ai/puzzle-agent/review/icon-recognition-service");
-    const { CURATED_PICTOGRAM_CATALOG_VERSION } = await import(
-      "@/ai/puzzle-agent/visual/curated-pictograms"
-    );
-    const { createMongoIconRecognitionRepository } = await import(
-      "@/ai/puzzle-agent/review/mongo-icon-recognition-repository"
-    );
+    const [
+      {
+        HUMAN_ICON_RECOGNITION_CONTRACT_VERSION,
+        buildIconRecognitionFixtures,
+        scoreIconRecognitionCalibration,
+      },
+      { CURATED_PICTOGRAM_CATALOG_VERSION },
+      { createMongoIconRecognitionRepository },
+    ] = await Promise.all([
+      import("@/ai/puzzle-agent/review/icon-recognition-service"),
+      import("@/ai/puzzle-agent/visual/curated-pictograms"),
+      import("@/ai/puzzle-agent/review/mongo-icon-recognition-repository"),
+    ]);
     const fixtures = buildIconRecognitionFixtures("publication");
     const reviews = await createMongoIconRecognitionRepository().listCalibrationDecisions({
       contractVersion: HUMAN_ICON_RECOGNITION_CONTRACT_VERSION,

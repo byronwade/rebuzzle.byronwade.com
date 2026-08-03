@@ -105,11 +105,7 @@ self.addEventListener("fetch", (event) => {
             }
 
             // Only cache successful GET/HEAD responses
-            if (
-              !response ||
-              response.status !== 200 ||
-              response.type === "error"
-            ) {
+            if (!response || !response.ok || response.type === "error") {
               return response;
             }
 

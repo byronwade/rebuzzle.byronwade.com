@@ -207,26 +207,26 @@ async function fetchAdminStats(dateStart: Date, dateEnd: Date) {
     const thirtyDaysAgoRetention = new Date();
     thirtyDaysAgoRetention.setDate(thirtyDaysAgoRetention.getDate() - 30);
 
-    const usersActiveToday = await analyticsEventsCollection.distinct("userId", {
-      timestamp: { $gte: oneDayAgo },
-      userId: { $exists: true, $ne: null as any },
-    });
-
-    const usersActive7DaysAgo = await analyticsEventsCollection.distinct("userId", {
-      timestamp: {
-        $gte: new Date(sevenDaysAgoRetention.getTime() - 24 * 60 * 60 * 1000),
-        $lte: sevenDaysAgoRetention,
-      },
-      userId: { $exists: true, $ne: null as any },
-    });
-
-    const usersActive30DaysAgo = await analyticsEventsCollection.distinct("userId", {
-      timestamp: {
-        $gte: new Date(thirtyDaysAgoRetention.getTime() - 24 * 60 * 60 * 1000),
-        $lte: thirtyDaysAgoRetention,
-      },
-      userId: { $exists: true, $ne: null as any },
-    });
+    const [usersActiveToday, usersActive7DaysAgo, usersActive30DaysAgo] = await Promise.all([
+      analyticsEventsCollection.distinct("userId", {
+        timestamp: { $gte: oneDayAgo },
+        userId: { $exists: true, $ne: null as any },
+      }),
+      analyticsEventsCollection.distinct("userId", {
+        timestamp: {
+          $gte: new Date(sevenDaysAgoRetention.getTime() - 24 * 60 * 60 * 1000),
+          $lte: sevenDaysAgoRetention,
+        },
+        userId: { $exists: true, $ne: null as any },
+      }),
+      analyticsEventsCollection.distinct("userId", {
+        timestamp: {
+          $gte: new Date(thirtyDaysAgoRetention.getTime() - 24 * 60 * 60 * 1000),
+          $lte: thirtyDaysAgoRetention,
+        },
+        userId: { $exists: true, $ne: null as any },
+      }),
+    ]);
 
     const usersActiveTodaySet = new Set(usersActiveToday);
     const usersActive7DaysAgoSet = new Set(usersActive7DaysAgo);

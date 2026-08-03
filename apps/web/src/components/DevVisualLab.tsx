@@ -177,12 +177,16 @@ export function DevVisualLab() {
   const loadModes = useCallback(async () => {
     try {
       const res = await fetch("/api/dev/visual-lab", { credentials: "include" });
+      if (!res.ok) {
+        setAllowed(false);
+        return;
+      }
       const data = (await res.json()) as {
         allowed?: boolean;
         modes?: ModeMeta[];
         error?: string;
       };
-      if (!res.ok || !data.allowed) {
+      if (!data.allowed) {
         setAllowed(false);
         return;
       }
@@ -217,6 +221,10 @@ export function DevVisualLab() {
           persist: true,
         }),
       });
+      if (!res.ok) {
+        const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+        fail(errBody.error || "Generation failed");
+      }
       const data = (await res.json()) as {
         success?: boolean;
         result?: LabResult;
@@ -224,7 +232,7 @@ export function DevVisualLab() {
         persisted?: boolean;
         error?: string;
       };
-      if (!res.ok || !data.success || !data.result) {
+      if (!data.success || !data.result) {
         fail(data.error || "Generation failed");
       }
       setResult(data.result);
