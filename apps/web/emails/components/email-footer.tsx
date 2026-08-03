@@ -1,101 +1,97 @@
-import { Container, Hr, Link, Section, Text } from "@react-email/components";
+import { Link, Section, Text } from "@react-email/components";
+import { appBaseUrl, colors, fonts } from "./theme";
 
 interface EmailFooterProps {
   unsubscribeUrl?: string;
   showUnsubscribe?: boolean;
 }
 
-export function EmailFooter({
-  unsubscribeUrl,
-  showUnsubscribe = true,
-}: EmailFooterProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+export function EmailFooter({ unsubscribeUrl, showUnsubscribe = true }: EmailFooterProps) {
+  const baseUrl = appBaseUrl();
 
   return (
     <Section style={footerStyle}>
-      <Container style={containerStyle}>
-        <Hr style={hrStyle} />
-        <Text style={footerTextStyle}>
-          © {new Date().getFullYear()} Rebuzzle. All rights reserved.
+      <Text style={brandNoteStyle}>One board a day. Local midnight unlock.</Text>
+      <Text style={navStyle}>
+        <Link href={baseUrl} style={linkStyle}>
+          Play
+        </Link>
+        {" · "}
+        <Link href={`${baseUrl}/how-it-works`} style={linkStyle}>
+          How it works
+        </Link>
+        {" · "}
+        <Link href={`${baseUrl}/blog`} style={linkStyle}>
+          Blog
+        </Link>
+        {" · "}
+        <Link href={`${baseUrl}/settings`} style={linkStyle}>
+          Preferences
+        </Link>
+      </Text>
+      <Text style={legalStyle}>
+        <Link href={`${baseUrl}/privacy`} style={mutedLinkStyle}>
+          Privacy
+        </Link>
+        {" · "}
+        <Link href={`${baseUrl}/terms`} style={mutedLinkStyle}>
+          Terms
+        </Link>
+        {" · "}© {new Date().getFullYear()} Rebuzzle
+      </Text>
+      {showUnsubscribe && unsubscribeUrl ? (
+        <Text style={unsubStyle}>
+          <Link href={unsubscribeUrl} style={mutedLinkStyle}>
+            Unsubscribe
+          </Link>
         </Text>
-        <Text style={footerLinkStyle}>
-          <Link href={`${baseUrl}/settings`} style={linkStyle}>
-            Manage Preferences
-          </Link>
-          {" • "}
-          <Link href={`${baseUrl}/leaderboard`} style={linkStyle}>
-            Leaderboard
-          </Link>
-          {" • "}
-          <Link href={`${baseUrl}/blog`} style={linkStyle}>
-            Blog
-          </Link>
-        </Text>
-        <Text style={footerLinkStyle}>
-          <Link href={`${baseUrl}/privacy`} style={linkStyle}>
-            Privacy Policy
-          </Link>
-          {" • "}
-          <Link href={`${baseUrl}/terms`} style={linkStyle}>
-            Terms of Service
-          </Link>
-        </Text>
-        {showUnsubscribe && unsubscribeUrl && (
-          <Text style={unsubscribeTextStyle}>
-            <Link href={unsubscribeUrl} style={unsubscribeLinkStyle}>
-              Unsubscribe from these emails
-            </Link>
-          </Text>
-        )}
-      </Container>
+      ) : null}
     </Section>
   );
 }
 
 const footerStyle = {
-  backgroundColor: "#f9fafb",
-  padding: "30px 0",
-  marginTop: "40px",
-};
-
-const containerStyle = {
-  maxWidth: "600px",
-  margin: "0 auto",
-  padding: "0 20px",
-};
-
-const hrStyle = {
-  borderColor: "#e5e7eb",
-  margin: "20px 0",
-};
-
-const footerTextStyle = {
-  fontSize: "12px",
-  color: "#6b7280",
+  backgroundColor: colors.inset,
+  borderTop: `1px solid ${colors.line}`,
+  padding: "22px 28px 26px",
   textAlign: "center" as const,
-  margin: "10px 0",
 };
 
-const footerLinkStyle = {
+const brandNoteStyle = {
+  margin: "0 0 12px",
+  fontFamily: fonts.mono,
+  fontSize: "11px",
+  letterSpacing: "0.12em",
+  textTransform: "uppercase" as const,
+  color: colors.subtle,
+};
+
+const navStyle = {
+  margin: "0 0 10px",
+  fontSize: "13px",
+  color: colors.muted,
+};
+
+const legalStyle = {
+  margin: "0",
   fontSize: "12px",
-  color: "#6b7280",
-  textAlign: "center" as const,
-  margin: "10px 0",
+  color: colors.subtle,
+};
+
+const unsubStyle = {
+  margin: "14px 0 0",
+  fontSize: "12px",
+  color: colors.subtle,
 };
 
 const linkStyle = {
-  color: "#8b5cf6",
+  color: colors.ink,
   textDecoration: "underline",
+  textUnderlineOffset: "2px",
 };
 
-const unsubscribeTextStyle = {
-  fontSize: "12px",
-  color: "#9ca3af",
-  textAlign: "center" as const,
-  margin: "20px 0 10px",
-};
-
-const unsubscribeLinkStyle = {
-  color: "#9ca3af",
+const mutedLinkStyle = {
+  color: colors.subtle,
   textDecoration: "underline",
+  textUnderlineOffset: "2px",
 };

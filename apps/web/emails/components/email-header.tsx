@@ -1,48 +1,55 @@
-import { Container, Heading, Link, Section } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
+import { appBaseUrl, colors, fonts, styles } from "./theme";
 
 interface EmailHeaderProps {
-  logoUrl?: string;
   appName?: string;
+  kicker?: string;
 }
 
-export function EmailHeader({
-  logoUrl = "https://byronwade.com/logo.png",
-  appName = "Rebuzzle",
-}: EmailHeaderProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+export function EmailHeader({ appName = "Rebuzzle", kicker }: EmailHeaderProps) {
+  const baseUrl = appBaseUrl();
 
   return (
     <Section style={headerStyle}>
-      <Container style={containerStyle}>
-        <Link href={baseUrl} style={logoLinkStyle}>
-          <Heading style={headingStyle}>🧩 {appName}</Heading>
-        </Link>
-      </Container>
+      <Link href={baseUrl} style={logoLinkStyle}>
+        <Heading as="h1" style={wordmarkStyle}>
+          {appName}
+        </Heading>
+      </Link>
+      {kicker ? <Text style={styles.eyebrow}>{kicker}</Text> : null}
+      <Text style={taglineStyle}>See it. Say it. Solve it.</Text>
     </Section>
   );
 }
 
 const headerStyle = {
-  backgroundColor: "#ffffff",
-  padding: "20px 0",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const containerStyle = {
-  maxWidth: "600px",
-  margin: "0 auto",
-  padding: "0 20px",
+  backgroundColor: colors.ink,
+  color: colors.paper,
+  padding: "28px 28px 24px",
+  textAlign: "center" as const,
 };
 
 const logoLinkStyle = {
   textDecoration: "none",
   color: "inherit",
+  display: "inline-block",
 };
 
-const headingStyle = {
+const wordmarkStyle = {
+  margin: "0 0 8px",
+  fontFamily: fonts.serif,
+  fontSize: "32px",
+  fontWeight: "700" as const,
+  letterSpacing: "-0.03em",
+  color: colors.paper,
+  lineHeight: "1.1",
+};
+
+const taglineStyle = {
   margin: "0",
-  fontSize: "24px",
-  fontWeight: "600",
-  color: "#8b5cf6",
-  textAlign: "center" as const,
+  fontFamily: fonts.mono,
+  fontSize: "11px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase" as const,
+  color: "rgba(255, 252, 247, 0.55)",
 };

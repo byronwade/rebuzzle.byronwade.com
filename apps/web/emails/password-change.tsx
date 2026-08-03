@@ -1,5 +1,6 @@
-import { Heading, Section, Text } from "@react-email/components";
+import { Button, Heading, Link, Section, Text } from "@react-email/components";
 import { BaseEmail } from "./components/base-email";
+import { appBaseUrl, colors, styles } from "./components/theme";
 
 interface PasswordChangeEmailProps {
   username: string;
@@ -7,12 +8,8 @@ interface PasswordChangeEmailProps {
   ipAddress?: string;
 }
 
-export function PasswordChangeEmail({
-  username,
-  timestamp,
-  ipAddress,
-}: PasswordChangeEmailProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+export function PasswordChangeEmail({ username, timestamp, ipAddress }: PasswordChangeEmailProps) {
+  const baseUrl = appBaseUrl();
   const formattedDate = timestamp.toLocaleString("en-US", {
     dateStyle: "long",
     timeStyle: "short",
@@ -21,131 +18,52 @@ export function PasswordChangeEmail({
 
   return (
     <BaseEmail
-      preview="Your Rebuzzle password has been changed"
+      kicker="Account security"
+      preview="Your Rebuzzle password was changed"
       showUnsubscribe={false}
     >
-      <Heading style={headingStyle}>Password Changed Successfully</Heading>
+      <Text style={styles.eyebrow}>Password updated</Text>
+      <Heading style={styles.h1}>Your password just changed.</Heading>
 
-      <Text style={textStyle}>Hi {username},</Text>
-
-      <Text style={textStyle}>
-        This email confirms that your Rebuzzle password was successfully
-        changed.
+      <Text style={styles.p}>Hi {username},</Text>
+      <Text style={styles.p}>
+        This confirms a successful password change on your Rebuzzle account. If that was you,
+        you&apos;re done — you can ignore the rest.
       </Text>
 
-      <Section style={infoBoxStyle}>
-        <Text style={infoTextStyle}>
-          <strong>Change Details:</strong>
-        </Text>
-        <Text style={infoTextStyle}>• Date & Time: {formattedDate}</Text>
-        {ipAddress && (
-          <Text style={infoTextStyle}>• IP Address: {ipAddress}</Text>
+      <Section style={styles.panel}>
+        <Text style={styles.h3}>Details</Text>
+        <Text style={styles.pSmall}>When: {formattedDate}</Text>
+        {ipAddress ? (
+          <Text style={{ ...styles.pSmall, marginBottom: 0 }}>Approx. IP: {ipAddress}</Text>
+        ) : (
+          <Text style={{ ...styles.pSmall, marginBottom: 0 }}>IP unavailable for this event.</Text>
         )}
       </Section>
 
-      <Section style={warningBoxStyle}>
-        <Text style={warningTextStyle}>
-          <strong>⚠️ Security Notice:</strong>
-        </Text>
-        <Text style={warningTextStyle}>
-          If you did not make this change, your account may be compromised.
-          Please take immediate action:
-        </Text>
-        <Text style={warningTextStyle}>
-          1. Reset your password immediately by clicking{" "}
-          <a href={resetPasswordUrl} style={linkStyle}>
-            reset your password
-          </a>
-        </Text>
-        <Text style={warningTextStyle}>
-          2. Review your account settings for any unauthorized changes
-        </Text>
-        <Text style={warningTextStyle}>
-          3. Contact our support team if you notice any suspicious activity
+      <Section style={styles.panelDanger}>
+        <Text style={styles.h3}>Wasn&apos;t you?</Text>
+        <Text style={dangerTextStyle}>
+          Reset the password immediately and review{" "}
+          <Link href={`${baseUrl}/settings`} style={{ ...styles.link, color: colors.dangerInk }}>
+            account settings
+          </Link>{" "}
+          for anything unexpected.
         </Text>
       </Section>
 
-      <Text style={textStyle}>
-        If you made this change, you can safely ignore this email. Your new
-        password is now active and you can use it to log in to your account.
-      </Text>
-
-      <Text style={textStyle}>For security reasons, we recommend:</Text>
-      <ul style={listStyle}>
-        <li style={listItemStyle}>Using a strong, unique password</li>
-        <li style={listItemStyle}>Not sharing your password with anyone</li>
-        <li style={listItemStyle}>
-          Enabling two-factor authentication if available
-        </li>
-        <li style={listItemStyle}>Regularly reviewing your account activity</li>
-      </ul>
-
-      <Text style={textStyle}>
-        If you have any questions or concerns, please contact our support team.
-      </Text>
+      <Section style={styles.ctaWrap}>
+        <Button href={resetPasswordUrl} style={styles.cta}>
+          Reset password now
+        </Button>
+      </Section>
     </BaseEmail>
   );
 }
 
-const headingStyle = {
-  fontSize: "28px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 20px",
-  textAlign: "center" as const,
-};
-
-const textStyle = {
-  fontSize: "16px",
-  lineHeight: "1.6",
-  color: "#374151",
-  margin: "0 0 16px",
-};
-
-const infoBoxStyle = {
-  backgroundColor: "#f0f9ff",
-  borderLeft: "4px solid #3b82f6",
-  borderRadius: "4px",
-  padding: "16px 20px",
-  margin: "24px 0",
-};
-
-const infoTextStyle = {
+const dangerTextStyle = {
+  margin: "0",
   fontSize: "14px",
-  lineHeight: "1.6",
-  color: "#1e40af",
-  margin: "4px 0",
+  lineHeight: "1.55",
+  color: colors.dangerInk,
 };
-
-const warningBoxStyle = {
-  backgroundColor: "#fef2f2",
-  borderLeft: "4px solid #ef4444",
-  borderRadius: "4px",
-  padding: "16px 20px",
-  margin: "24px 0",
-};
-
-const warningTextStyle = {
-  fontSize: "14px",
-  lineHeight: "1.6",
-  color: "#991b1b",
-  margin: "4px 0",
-};
-
-const linkStyle = {
-  color: "#8b5cf6",
-  textDecoration: "underline",
-};
-
-const listStyle = {
-  margin: "16px 0",
-  paddingLeft: "24px",
-};
-
-const listItemStyle = {
-  fontSize: "16px",
-  lineHeight: "1.6",
-  color: "#374151",
-  margin: "8px 0",
-};
-

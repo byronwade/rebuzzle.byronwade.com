@@ -1,5 +1,6 @@
 import { Button, Heading, Link, Section, Text } from "@react-email/components";
 import { BaseEmail } from "./components/base-email";
+import { appBaseUrl, colors, fonts, styles } from "./components/theme";
 
 interface DailyPuzzleEmailProps {
   username?: string;
@@ -16,139 +17,78 @@ export function DailyPuzzleEmail({
   difficulty,
   unsubscribeUrl,
 }: DailyPuzzleEmailProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
-  const greeting = username ? `Hi ${username},` : "Hi there,";
+  const baseUrl = appBaseUrl();
+  const greeting = username ? `${username},` : "Friend,";
 
   return (
     <BaseEmail
-      preview="🎯 Today's Rebuzzle is ready! Start solving now."
-      showUnsubscribe={true}
+      kicker="Daily puzzle"
+      preview="Today's Rebuzzle is live — one board, local midnight to local midnight."
+      showUnsubscribe
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Heading style={headingStyle}>🎯 Today's Rebuzzle is Ready!</Heading>
+      <Text style={styles.eyebrow}>Ready when you are</Text>
+      <Heading style={styles.h1}>Today&apos;s board is waiting.</Heading>
 
-      <Text style={textStyle}>{greeting}</Text>
-
-      <Text style={textStyle}>
-        A fresh puzzle is waiting for you! Start your day with a brain-teasing
-        challenge.
+      <Text style={styles.p}>
+        {greeting} a fresh visual puzzle just unlocked. Same rules as always: see it, say it, solve
+        it — before your next local midnight.
       </Text>
 
-      <Section style={infoBoxStyle}>
-        <Heading as="h3" style={infoHeadingStyle}>
-          Today's Challenge:
-        </Heading>
-        {puzzleType && (
-          <Text style={infoTextStyle}>
-            <strong>Type:</strong> {puzzleType}
+      <Section style={styles.panel}>
+        <Text style={styles.h3}>Today&apos;s challenge</Text>
+        {puzzleType ? (
+          <Text style={metaRowStyle}>
+            <span style={metaLabelStyle}>Type</span> {puzzleType}
           </Text>
-        )}
-        {difficulty && (
-          <Text style={infoTextStyle}>
-            <strong>Difficulty:</strong> {difficulty}
+        ) : null}
+        {difficulty ? (
+          <Text style={metaRowStyle}>
+            <span style={metaLabelStyle}>Feel</span> {difficulty}
           </Text>
-        )}
-        <Text style={infoTextStyle}>• New puzzle every day</Text>
-        <Text style={infoTextStyle}>• Unlimited attempts</Text>
-        <Text style={infoTextStyle}>• Compare your time with others</Text>
+        ) : null}
+        <Text style={{ ...styles.pSmall, marginBottom: 0 }}>
+          Progressive hints if you need them. Spoiler-free sharing when you finish.
+        </Text>
       </Section>
 
-      <Section style={buttonSectionStyle}>
-        <Button href={puzzleUrl} style={buttonStyle}>
-          🎮 Play Now
+      <Section style={styles.ctaWrap}>
+        <Button href={puzzleUrl} style={styles.cta}>
+          Open today&apos;s puzzle
         </Button>
       </Section>
 
-      <Section style={linksSectionStyle}>
-        <Link href={`${baseUrl}/leaderboard`} style={linkStyle}>
-          View Leaderboard
+      <Text style={{ ...styles.pSmall, textAlign: "center" as const, marginTop: "18px" }}>
+        <Link href={`${baseUrl}/leaderboard`} style={styles.link}>
+          Leaderboard
         </Link>
-        {" • "}
-        <Link href={`${baseUrl}/blog`} style={linkStyle}>
-          Read Blog
+        {" · "}
+        <Link href={`${baseUrl}/profile`} style={styles.link}>
+          Your stats
         </Link>
-        {" • "}
-        <Link href={`${baseUrl}/profile`} style={linkStyle}>
-          Your Profile
+        {" · "}
+        <Link href={`${baseUrl}/blog`} style={styles.link}>
+          Blog
         </Link>
-      </Section>
-
-      <Text style={footerNoteStyle}>
-        Keep your streak alive by solving today's puzzle! 🔥
       </Text>
     </BaseEmail>
   );
 }
 
-const headingStyle = {
-  fontSize: "28px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 20px",
-  textAlign: "center" as const,
-};
-
-const textStyle = {
-  fontSize: "16px",
-  lineHeight: "1.6",
-  color: "#374151",
-  margin: "0 0 16px",
-};
-
-const infoBoxStyle = {
-  backgroundColor: "#f3f4f6",
-  borderRadius: "8px",
-  padding: "20px",
-  margin: "24px 0",
-};
-
-const infoHeadingStyle = {
-  fontSize: "20px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 12px",
-};
-
-const infoTextStyle = {
+const metaRowStyle = {
+  margin: "0 0 6px",
   fontSize: "15px",
-  lineHeight: "1.6",
-  color: "#4b5563",
-  margin: "4px 0",
+  lineHeight: "1.5",
+  color: colors.inkSoft,
 };
 
-const buttonSectionStyle = {
-  textAlign: "center" as const,
-  margin: "32px 0",
-};
-
-const buttonStyle = {
-  backgroundColor: "#8b5cf6",
-  color: "#ffffff",
-  padding: "14px 28px",
-  borderRadius: "6px",
-  textDecoration: "none",
-  fontWeight: "600",
-  fontSize: "16px",
+const metaLabelStyle = {
   display: "inline-block",
+  minWidth: "48px",
+  fontFamily: fonts.mono,
+  fontSize: "11px",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase" as const,
+  color: colors.subtle,
+  marginRight: "10px",
 };
-
-const linksSectionStyle = {
-  textAlign: "center" as const,
-  margin: "24px 0",
-  fontSize: "14px",
-};
-
-const linkStyle = {
-  color: "#8b5cf6",
-  textDecoration: "underline",
-};
-
-const footerNoteStyle = {
-  fontSize: "14px",
-  lineHeight: "1.6",
-  color: "#6b7280",
-  textAlign: "center" as const,
-  margin: "24px 0 0",
-  fontStyle: "italic",
-};
-
