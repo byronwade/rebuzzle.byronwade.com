@@ -18,8 +18,9 @@ import { NextResponse } from "next/server";
 import { streamAIText } from "@/ai/client";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
-import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
+import { resolveRequestTimeZone } from "@/lib/timezone";
 
 /** Mid-game tiers only while the day is still open. */
 const MID_GAME_TIERS = ["close", "warm", "cold"] as const;
@@ -106,7 +107,9 @@ export async function POST(request: Request) {
     }
 
     // Day already locked — only the closing win/loss riff may still spend credits.
-    const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, getUtcPuzzleDate());
+    const timeZone = await resolveRequestTimeZone();
+    const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
+    const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, localDateKey);
     if (lock.hasAttempt && !isFinalTier(tier)) {
       return NextResponse.json(
         { success: false, error: "Puzzle already finished for today" },

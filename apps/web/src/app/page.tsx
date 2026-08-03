@@ -145,7 +145,7 @@ function NoPuzzleDisplay() {
         secondaryAction={{ href: "/blog", label: "Read the blog while you wait" }}
         title="Today's puzzle isn't live."
       >
-        A new puzzle lands every day at midnight. Check back shortly.
+        A new puzzle unlocks every day at your local midnight. Check back shortly.
       </StatusPanel>
     </Layout>
   );

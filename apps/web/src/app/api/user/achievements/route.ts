@@ -14,10 +14,11 @@ import {
   getUserAchievementProgress,
 } from "@/lib/achievements";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
-import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { buildCacheControl } from "@/lib/http/cache-headers";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { sendAchievementUnlockedEmail } from "@/lib/notifications/email-service";
+import { resolveRequestTimeZone } from "@/lib/timezone";
 
 /** Achievements that may be claimed from the client (everything else is server-only). */
 const CLIENT_AWARDABLE = new Set(["share_first"]);
@@ -157,7 +158,9 @@ export async function POST(request: NextRequest) {
     // share_first: require today's puzzle to be finished first
     if (achievementId === "share_first") {
       const { puzzleAttemptOps } = await import("@/db/operations");
-      const lock = await puzzleAttemptOps.hasTodayAttempt(user.id, getUtcPuzzleDate());
+      const timeZone = await resolveRequestTimeZone();
+      const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
+      const lock = await puzzleAttemptOps.hasTodayAttempt(user.id, localDateKey);
       if (!lock.hasAttempt) {
         return NextResponse.json(
           { success: false, error: "Finish today's puzzle before sharing for achievements" },

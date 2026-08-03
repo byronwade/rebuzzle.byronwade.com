@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 import { db } from "@/db";
 import { isAdmin } from "@/lib/admin-auth";
 import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
-import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { verifyToken } from "@/lib/jwt";
+import { resolveRequestTimeZone } from "@/lib/timezone";
 import type { GameData, PuzzleMetadata, PuzzleType, PuzzleVisual } from "../../lib/gameSettings";
 import { getTodaysPuzzle } from "./puzzleGenerationActions";
 
@@ -66,7 +67,9 @@ export async function isPuzzleCompletedForToday(): Promise<AttemptStatus> {
       return { hasAttempt: false, wasSuccessful: false };
     }
 
-    const result = await db.puzzleAttemptOps.hasTodayAttempt(userId, getUtcPuzzleDate());
+    const timeZone = await resolveRequestTimeZone();
+    const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
+    const result = await db.puzzleAttemptOps.hasTodayAttempt(userId, localDateKey);
     return {
       hasAttempt: result.hasAttempt,
       wasSuccessful: result.wasSuccessful,
@@ -129,7 +132,12 @@ export async function fetchGameOverSolution(): Promise<{
   puzzleId?: string;
 }> {
   try {
-    const [userId, puzzleResult] = await Promise.all([getCurrentUserId(), getTodaysPuzzle()]);
+    const timeZone = await resolveRequestTimeZone();
+    const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
+    const [userId, puzzleResult] = await Promise.all([
+      getCurrentUserId(),
+      getTodaysPuzzle(undefined, localDateKey, { allowAiGenerate: false }),
+    ]);
     const puzzle = (puzzleResult.success ? puzzleResult.puzzle : null) as TodaysPuzzle | null;
 
     if (!puzzle) {
@@ -138,7 +146,7 @@ export async function fetchGameOverSolution(): Promise<{
 
     let locked = false;
     if (userId) {
-      const status = await db.puzzleAttemptOps.hasTodayAttempt(userId, getUtcPuzzleDate());
+      const status = await db.puzzleAttemptOps.hasTodayAttempt(userId, localDateKey);
       locked = status.hasAttempt;
     }
 
@@ -163,7 +171,11 @@ export async function fetchGameOverSolution(): Promise<{
 export async function fetchGameData(_isPreview = false): Promise<PublicGameData> {
   try {
     // Never run Eve/AI on the interactive board path — cron owns generation.
-    const result = await getTodaysPuzzle(undefined, undefined, { allowAiGenerate: false });
+    // Serve the puzzle for the player's *local* calendar day (generated once
+    // under that YYYY-MM-DD publication key, unlocked after local midnight).
+    const timeZone = await resolveRequestTimeZone();
+    const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
+    const result = await getTodaysPuzzle(undefined, localDateKey, { allowAiGenerate: false });
     const puzzle = (result.success ? result.puzzle : null) as TodaysPuzzle | null;
 
     if (!puzzle) {

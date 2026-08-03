@@ -12,7 +12,7 @@ import {
 } from "@/lib/analytics";
 import { fireConfetti } from "@/lib/confetti";
 import { fail } from "@/lib/fail";
-import { getNextUtcMidnight } from "@/lib/game/daily-lock";
+import { getLocalPuzzleDate, getNextLocalMidnight } from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
@@ -381,7 +381,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         finalGuess: "",
         wasSuccessful: false,
         attempts: gameSettings.maxAttempts,
-        nextPlayTime: getNextUtcMidnight(),
+        nextPlayTime: getNextLocalMidnight(),
         score: 0,
         timeTakenSeconds: 0,
       },
@@ -424,7 +424,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       dailyBonusMultiplier?: number;
     }
   ) => {
-    const tomorrow = getNextUtcMidnight();
+    const tomorrow = getNextLocalMidnight();
     const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
     const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
     const serverScore = opts?.serverScore;
@@ -766,7 +766,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               answer: result.answer,
               explanation: result.explanation,
               puzzleId: gameData.id,
-              puzzleDate: new Date().toISOString().slice(0, 10),
+              puzzleDate: getLocalPuzzleDate(),
             })
           );
         }
@@ -866,7 +866,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               answer: result.answer,
               explanation: result.explanation,
               puzzleId: gameData.id,
-              puzzleDate: new Date().toISOString().slice(0, 10),
+              puzzleDate: getLocalPuzzleDate(),
             })
           );
         }

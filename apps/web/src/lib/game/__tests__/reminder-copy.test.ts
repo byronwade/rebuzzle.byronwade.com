@@ -16,7 +16,7 @@ describe("reminder-copy", () => {
       PUZZLE_PUBLISH_COPY,
     ].join(" ");
     expect(blobs).not.toMatch(/8\s*AM/i);
-    expect(blobs).toMatch(/4 PM UTC|UTC midnight/);
+    expect(blobs).toMatch(/4 PM UTC|local midnight/);
   });
 
   it("keeps the opt-in CTA short and quiet", () => {

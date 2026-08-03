@@ -11,12 +11,14 @@ import {
   clampHints,
   clampTimeSpent,
   getArchiveLockKey,
+  getLocalPuzzleDate,
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
 import { buildGuessReaction } from "@/lib/game/reactions";
 import { composePointsMultiplier, rollEngagementMultipliers } from "@/lib/game/retention-stats";
 import { calculateGamePoints } from "@/lib/gameSettings";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
+import { resolveRequestTimeZone } from "@/lib/timezone";
 
 const guessRateLimit = rateLimit({
   windowMs: 60 * 1000,
@@ -94,23 +96,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Guess is too long" }, { status: 400 });
     }
 
-    const todayKey = getUtcPuzzleDate();
+    // Player's local calendar day — unlocks at their midnight; generation still
+    // uses one YYYY-MM-DD publication key per puzzle.
+    const timeZone = await resolveRequestTimeZone();
+    const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
 
     const [puzzle, todays] = await Promise.all([
       db.puzzleOps.findById(puzzleId),
-      db.puzzleOps.findTodaysPuzzle(),
+      db.puzzleOps.findByDate(localDateKey),
     ]);
 
     if (!puzzle?.answer) {
       return NextResponse.json({ success: false, error: "Puzzle not found" }, { status: 404 });
     }
 
-    const isDaily = Boolean(todays && todays.id === puzzle.id);
     const publishedKey = puzzle.publishedAt ? getUtcPuzzleDate(new Date(puzzle.publishedAt)) : null;
+    const isDaily = Boolean(todays && todays.id === puzzle.id && publishedKey === localDateKey);
 
-    // Archive: any published puzzle that is not today's daily
+    // Archive: any published puzzle before the player's local today
     if (!isDaily) {
-      if (!publishedKey || publishedKey >= todayKey) {
+      if (!publishedKey || publishedKey >= localDateKey) {
         return NextResponse.json(
           { success: false, error: "This puzzle is not playable yet" },
           { status: 403 }
@@ -119,7 +124,8 @@ export async function POST(request: Request) {
     }
 
     const isArchive = !isDaily;
-    const lockKey = isArchive ? getArchiveLockKey(puzzle.id) : todayKey;
+    // Lock by publication key so the same daily puzzle can't be replayed after TZ travel.
+    const lockKey = isArchive ? getArchiveLockKey(puzzle.id) : (publishedKey ?? localDateKey);
     const basePointsMultiplier = isArchive ? ARCHIVE_POINTS_MULTIPLIER : 1;
     // Engagement rolls are server-authoritative (lucky + shared daily bonus day).
     const engagement = rollEngagementMultipliers();
@@ -194,7 +200,7 @@ export async function POST(request: Request) {
 
     const write = await db.puzzleAttemptOps.createAtomicDailyAttempt(
       user.userId,
-      new Date(`${todayKey}T00:00:00.000Z`),
+      new Date(`${localDateKey}T00:00:00.000Z`),
       {
         id: crypto.randomUUID(),
         userId: user.userId,
