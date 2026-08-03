@@ -229,22 +229,23 @@ export function DevVisualLab() {
           persist: true,
         }),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        const data = (await res.json()) as {
+          success?: boolean;
+          result?: LabResult;
+          puzzleId?: string;
+          persisted?: boolean;
+          error?: string;
+        };
+        if (!data.success || !data.result) {
+          fail(data.error || "Generation failed");
+        }
+        setResult(data.result);
+        setPuzzleId(data.puzzleId || null);
+      } else {
         const errBody = (await res.json().catch(() => ({}))) as { error?: string };
         fail(errBody.error || "Generation failed");
       }
-      const data = (await res.json()) as {
-        success?: boolean;
-        result?: LabResult;
-        puzzleId?: string;
-        persisted?: boolean;
-        error?: string;
-      };
-      if (!data.success || !data.result) {
-        fail(data.error || "Generation failed");
-      }
-      setResult(data.result);
-      setPuzzleId(data.puzzleId || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed");
     }

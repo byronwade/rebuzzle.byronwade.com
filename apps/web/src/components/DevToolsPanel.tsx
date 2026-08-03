@@ -124,21 +124,22 @@ export function DevToolsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      if (!res.ok) {
-        fail((await res.text().catch(() => "")) || "Action failed");
-      }
-      const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
-      if (!data.success) {
-        fail(data.error || "Action failed");
-      }
-      clearDevClientGameState();
-      setStatus(data.message || "Done");
-      await refreshStatus();
-      if (thenNavigate) {
-        router.push(thenNavigate);
-        router.refresh();
+      if (res.ok) {
+        const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
+        if (!data.success) {
+          fail(data.error || "Action failed");
+        }
+        clearDevClientGameState();
+        setStatus(data.message || "Done");
+        await refreshStatus();
+        if (thenNavigate) {
+          router.push(thenNavigate);
+          router.refresh();
+        } else {
+          router.refresh();
+        }
       } else {
-        router.refresh();
+        fail((await res.text().catch(() => "")) || "Action failed");
       }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed");

@@ -394,7 +394,7 @@ export default function AdminPage() {
 
   }, []);
 
-  const fetchPuzzles = async (page = 1) => {
+  const fetchPuzzles = useCallback(async (page = 1) => {
     setPuzzlesLoading(true);
     try {
       const response = await fetch(`/api/admin/puzzles?page=${page}&limit=20`);
@@ -414,10 +414,9 @@ export default function AdminPage() {
       console.error("Failed to fetch puzzles:", error);
     }
     setPuzzlesLoading(false);
+  }, []);
 
-  };
-
-  const fetchBlogs = async (page = 1) => {
+  const fetchBlogs = useCallback(async (page = 1) => {
     setBlogsLoading(true);
     try {
       const response = await fetch(`/api/admin/blogs?page=${page}&limit=20`);
@@ -437,10 +436,9 @@ export default function AdminPage() {
       console.error("Failed to fetch blogs:", error);
     }
     setBlogsLoading(false);
+  }, []);
 
-  };
-
-  const fetchUsers = async (page = 1) => {
+  const fetchUsers = useCallback(async (page = 1) => {
     setUsersLoading(true);
     try {
       const response = await fetch(`/api/admin/users?page=${page}&limit=20`);
@@ -460,10 +458,9 @@ export default function AdminPage() {
       console.error("Failed to fetch users:", error);
     }
     setUsersLoading(false);
+  }, []);
 
-  };
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
       const response = await fetch("/api/admin/analytics/events?limit=100");
@@ -475,8 +472,7 @@ export default function AdminPage() {
       console.error("Failed to fetch analytics:", error);
     }
     setAnalyticsLoading(false);
-
-  };
+  }, []);
 
   // Load data when tab changes
   useEffect(() => {
@@ -947,10 +943,10 @@ function _StatsTabOld({
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
     end: Date | null;
-  }>({
+  }>(() => ({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     end: new Date(),
-  });
+  }));
   const [_selectedPreset, setSelectedPreset] = useState<DateRangePreset>("30d");
 
   useEffect(() => {

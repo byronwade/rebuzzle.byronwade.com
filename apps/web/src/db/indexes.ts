@@ -534,9 +534,9 @@ async function createCollectionIndexes(
   const failures: string[] = [];
   let created = 0;
 
-  // react-doctor-sequential: intentional — order/rate-limit required
   for (const indexDef of definition.indexes) {
     try {
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: MongoDB index creation is sequential to avoid lock contention
       await collection.createIndex(indexDef.spec, {
         ...indexDef.options,
         background: true, // Don't block operations
@@ -574,6 +574,7 @@ export async function setupDatabaseIndexes(): Promise<{
   console.log("[DB Indexes] Starting index setup...");
 
   for (const definition of INDEX_DEFINITIONS) {
+    // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: MongoDB index creation is sequential to avoid lock contention
     const result = await createCollectionIndexes(db, definition);
     results.push(result);
     totalCreated += result.created;
@@ -613,6 +614,7 @@ export async function listAllIndexes(): Promise<
 
   for (const collInfo of collections) {
     const collection = db.collection(collInfo.name);
+    // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: listing indexes per collection is sequential to bound Mongo load
     const indexes = await collection.indexes();
     indexMap.set(
       collInfo.name,
@@ -644,6 +646,7 @@ export async function dropAllCustomIndexes(): Promise<{
   for (const collInfo of collections) {
     try {
       const collection = db.collection(collInfo.name);
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: listing indexes per collection is sequential to bound Mongo load
       const indexes = await collection.indexes();
 
       for (const index of indexes) {
@@ -651,6 +654,7 @@ export async function dropAllCustomIndexes(): Promise<{
         if (index.name === "_id_") continue;
 
         try {
+          // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: dropping indexes is sequential to avoid lock contention
           await collection.dropIndex(index.name!);
           dropped++;
         } catch (error) {

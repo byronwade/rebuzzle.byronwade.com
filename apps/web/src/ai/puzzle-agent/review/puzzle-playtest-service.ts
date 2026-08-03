@@ -500,6 +500,7 @@ export function createPuzzlePlaytestService(
       if (existingPuzzleIds.has(puzzleId)) continue;
       foundMissingControl = true;
       const visual = PuzzleVisualSchema.parse(control.visual);
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: control corpus inserts stay sequential for deterministic ids
       await repository.insertCandidate({
         id: `puzzle-playtest-control:${sha256(`${control.id}:${control.answer}:${JSON.stringify(visual)}`).slice(0, 32)}`,
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
@@ -585,6 +586,7 @@ export function createPuzzlePlaytestService(
     const evidence = await loadEvidence();
     for (const candidate of evidence.candidates) {
       if (candidate.evidenceRole === "generated" && candidate.status === "open") {
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: playtest evaluations are sequential to bound concurrent LLM spend
         await evaluateCandidate(candidate, evidence);
       }
     }

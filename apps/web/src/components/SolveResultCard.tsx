@@ -57,30 +57,30 @@ export interface SolveResultCardProps {
   className?: string;
 }
 
+function subscribeReducedMotion(onStoreChange: () => void) {
+  const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mql.addEventListener("change", onStoreChange);
+  return () => mql.removeEventListener("change", onStoreChange);
+}
+
 function useCountUp(
   target: number,
   enabled: boolean,
   durationMs = 700
 ): { value: number; done: boolean } {
-  const [value, setValue] = useState(enabled ? 0 : target);
-  const [done, setDone] = useState(!enabled || target <= 0);
+  const reduceMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false
+  );
+  const shouldAnimate = enabled && target > 0 && !reduceMotion;
+  const [value, setValue] = useState(shouldAnimate ? 0 : target);
+  const [done, setDone] = useState(!shouldAnimate);
 
   useEffect(() => {
-    if (!enabled || target <= 0) {
-      setValue(target);
-      setDone(true);
-      return;
-    }
+    if (!shouldAnimate) return;
 
-    const reduceMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) {
-      setValue(target);
-      setDone(true);
-      return;
-    }
-
+    // react-doctor-disable-next-line react-doctor/set-state-in-effect -- animation frame loop needs an initial done=false reset
     setDone(false);
     let frame = 0;
     const started = performance.now();
@@ -96,7 +96,11 @@ function useCountUp(
     };
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
-  }, [target, enabled, durationMs]);
+  }, [target, shouldAnimate, durationMs]);
+
+  if (!shouldAnimate) {
+    return { value: target, done: true };
+  }
 
   return { value, done };
 }

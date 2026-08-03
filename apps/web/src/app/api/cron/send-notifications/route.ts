@@ -56,7 +56,6 @@ async function handleSendPuzzleEmails() {
   const BATCH_SIZE = 10;
   const BATCH_DELAY_MS = 1000;
 
-  // react-doctor-sequential: intentional — order/rate-limit required
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     const batch = recipients.slice(i, i + BATCH_SIZE);
 
@@ -112,6 +111,7 @@ async function handleSendPuzzleEmails() {
 
   for (const userId of userIds) {
     try {
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: email/in-app batching is sequential to respect provider rate limits
       await notificationsCollection.insertOne({
         id: crypto.randomUUID(),
         userId,

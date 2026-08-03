@@ -2,7 +2,7 @@
 
 import { Images, Loader2, ShieldCheck, SkipForward } from "lucide-react";
 import Image from "next/image";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type {
   BlindGeneratedPictogramSpecimen,
   GeneratedPictogramPanelProgress,
@@ -61,7 +61,7 @@ function GeneratedAssetsPageInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     const response = await fetch("/api/admin/ai/generated-pictograms?mode=report", {
       cache: "no-store",
     });
@@ -74,9 +74,9 @@ function GeneratedAssetsPageInner() {
       fail(data?.error || "Failed to load generated-asset report");
     }
     setReport(data.report);
-  };
+  }, []);
 
-  const loadNext = async () => {
+  const loadNext = useCallback(async () => {
     setError(null);
     await withLoadingFlag(setLoading, async () => {
       try {
@@ -96,7 +96,7 @@ function GeneratedAssetsPageInner() {
         setError(loadError instanceof Error ? loadError.message : "Failed to load asset registry");
       }
     });
-  };
+  }, [loadReport]);
 
   useEffect(() => {
     void loadNext();

@@ -272,6 +272,7 @@ function safeGenerationError(error: unknown): string {
 export async function runPuzzleAgentGeneration(
   params: PuzzleGenerationParams
 ): Promise<PuzzleAgentResult> {
+  const generatorTrace = process.env.REBUZZLE_GENERATOR_TRACE === "1";
   const cuePlanIssues = answerSeedCuePlanIssues(params.answerSeedCuePlan);
   if (cuePlanIssues.length) {
     throw new Error(`Invalid answer-seed cue contract: ${cuePlanIssues.join("; ")}`);
@@ -307,7 +308,7 @@ export async function runPuzzleAgentGeneration(
         })
         .join(" | "),
     };
-    if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+    if (generatorTrace) {
       console.log("[Puzzle Agent] cue-plan preflight ok", {
         answer: params.answerSeed,
         unicodeFallback: hostPreflightPrompt.unicodeFallback,
@@ -365,7 +366,7 @@ export async function runPuzzleAgentGeneration(
           onStepEnd: ({ toolCalls }) => {
             completedSteps += 1;
             completedTools.push(...toolCalls.map((toolCall) => toolCall.toolName));
-            if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+            if (generatorTrace) {
               console.log("[Puzzle Agent] step", {
                 modelId,
                 attempt,
@@ -425,7 +426,7 @@ export async function runPuzzleAgentGeneration(
           priorFailure = `Answer-first visual cue contract failed: ${missingSeedCues.join("; ")}`;
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
           lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+          if (generatorTrace) {
             console.warn("[Puzzle Agent] candidate rejected", {
               modelId,
               attempt,
@@ -444,7 +445,7 @@ export async function runPuzzleAgentGeneration(
           priorFailure = assetApproval.reason;
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
           lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+          if (generatorTrace) {
             console.warn("[Puzzle Agent] candidate rejected", {
               modelId,
               attempt,
@@ -468,7 +469,7 @@ export async function runPuzzleAgentGeneration(
           priorFailure = `Semantic alignment failed (${semanticAlignment.rule}): ${semanticAlignment.blockers.join("; ")}`;
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
           lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+          if (generatorTrace) {
             console.warn("[Puzzle Agent] candidate rejected", {
               modelId,
               attempt,
@@ -553,7 +554,7 @@ export async function runPuzzleAgentGeneration(
           priorFailure = gate.reason;
           lastCandidateError = new PuzzleCandidateRejectedError(gate.reason, puzzle);
           lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+          if (generatorTrace) {
             console.warn("[Puzzle Agent] candidate rejected", {
               modelId,
               attempt,
@@ -614,7 +615,7 @@ export async function runPuzzleAgentGeneration(
           priorFailure = boardRecognition.reason ?? "Rendered board recognition failed";
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
           lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+          if (generatorTrace) {
             console.warn("[Puzzle Agent] candidate rejected", {
               modelId,
               attempt,
@@ -644,7 +645,7 @@ export async function runPuzzleAgentGeneration(
           priorFailure = `Rendered screenshot playability failed: ${playabilityBlockers.join(" | ")}`;
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
           lastError = lastCandidateError;
-          if (process.env.REBUZZLE_GENERATOR_TRACE === "1") {
+          if (generatorTrace) {
             console.warn("[Puzzle Agent] candidate rejected", {
               modelId,
               attempt,

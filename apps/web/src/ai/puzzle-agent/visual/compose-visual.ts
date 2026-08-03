@@ -67,7 +67,6 @@ export async function composePuzzleVisual(
   let claritySum = 0;
   let clarityCount = 0;
 
-  // react-doctor-sequential: intentional — order/rate-limit required
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
       if (layer.svg?.includes("<svg")) {
@@ -88,6 +87,7 @@ export async function composePuzzleVisual(
           `Ignored unverified inline SVG for "${layer.concept}" and resolved it through the approved asset pipeline`
         );
       }
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: image composition layers are sequential for deterministic layout
       const pic = await generatePictogram({
         concept: layer.concept,
         role: layer.role,

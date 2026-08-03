@@ -75,11 +75,11 @@ export async function POST(request: Request) {
     const failures: string[] = [];
 
     // Generate blog posts sequentially
-    // react-doctor-sequential: intentional — order/rate-limit required
     for (let i = 0; i < limitedPuzzles.length; i++) {
       const puzzle = limitedPuzzles[i];
       if (!puzzle) continue;
       try {
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: bulk blog generation is sequential for billable LLM rate limits
         const generatedPost = await generateBlogPost(puzzle as any);
 
         blogPosts.push({

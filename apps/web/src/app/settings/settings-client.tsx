@@ -37,6 +37,7 @@ import {
 } from "@/lib/app-settings";
 import type { AvatarPreferences } from "@/lib/avatar";
 import { isDevModeEnabled, setDevModeEnabled } from "@/lib/dev-mode";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 import { VISUAL_THEME_META, VISUAL_THEMES, type VisualTheme } from "@/lib/visual-theme";
@@ -48,13 +49,36 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { visualTheme, setVisualTheme, mounted: themeMounted } = useVisualTheme();
   const { user, isAuthenticated } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [devMode, setDevMode] = useState(false);
-  const [settings, setSettings] = useState<AppSettings>(() =>
-    createDefaultAppSettings(theme === "dark")
+  const [settings, setSettings] = useState<AppSettings>(() => createDefaultAppSettings(false));
+  const [savedSettings, setSavedSettings] = useState<AppSettings>(() =>
+    createDefaultAppSettings(false)
   );
-  const [savedSettings, setSavedSettings] = useState(settings);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [prevTheme, setPrevTheme] = useState(theme);
+
+  // Hydrate from localStorage once after mount (no effect-driven setState)
+  if (mounted && !hydrated) {
+    const initial = readAppSettings(
+      localStorage,
+      createDefaultAppSettings(theme === "dark")
+    );
+    setSettings(initial);
+    setSavedSettings(initial);
+    setDevMode(isDevModeEnabled());
+    setHydrated(true);
+  }
+
+  // Sync darkMode when next-themes resolves/changes
+  if (theme !== prevTheme) {
+    setPrevTheme(theme);
+    if (theme === "dark" || theme === "light") {
+      setSettings((prev) => ({ ...prev, darkMode: theme === "dark" }));
+    }
+  }
+
+  const hasUnsavedChanges = JSON.stringify(settings) !== JSON.stringify(savedSettings);
 
   // Password change state
   const [passwordForm, setPasswordForm] = useState({
@@ -80,11 +104,6 @@ export default function SettingsPage() {
   }>({});
   const [_isUpdatingProfile, _setIsUpdatingProfile] = useState(false);
   const [_avatarPreferences, setAvatarPreferences] = useState<AvatarPreferences | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-    setDevMode(isDevModeEnabled());
-  }, []);
 
   // Load profile data
   useEffect(() => {
@@ -119,28 +138,6 @@ export default function SettingsPage() {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    if (mounted && theme) {
-      setSettings((prev) => ({ ...prev, darkMode: theme === "dark" }));
-    }
-  }, [theme, mounted]);
-
-  useEffect(() => {
-    // Load settings from localStorage
-    const storedSettings = readAppSettings(
-      localStorage,
-      createDefaultAppSettings(theme === "dark")
-    );
-    setSettings(storedSettings);
-    setSavedSettings(storedSettings);
-  }, []);
-
-  useEffect(() => {
-    // Check if settings have changed
-    const changed = JSON.stringify(settings) !== JSON.stringify(savedSettings);
-    setHasUnsavedChanges(changed);
-  }, [settings, savedSettings]);
-
-  useEffect(() => {
     // Warn before leaving page with unsaved changes
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -156,7 +153,6 @@ export default function SettingsPage() {
   const handleSave = () => {
     writeAppSettings(settings);
     setSavedSettings(settings);
-    setHasUnsavedChanges(false);
     void playInterfaceSound("notification");
     toast({
       title: "Settings Saved",
@@ -169,7 +165,6 @@ export default function SettingsPage() {
       const defaultSettings = createDefaultAppSettings();
       setSettings(defaultSettings);
       setSavedSettings(defaultSettings);
-      setHasUnsavedChanges(false);
       writeAppSettings(defaultSettings);
       void playInterfaceSound("sound-on", { ignorePreference: true });
       toast({
@@ -254,8 +249,6 @@ export default function SettingsPage() {
       if (!response.ok) {
         fail("Failed to change password");
       }
-
-      const data = await response.json();
 
       // Clear form
       setPasswordForm({

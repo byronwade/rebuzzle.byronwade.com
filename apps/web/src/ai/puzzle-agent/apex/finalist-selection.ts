@@ -157,10 +157,13 @@ export async function selectQualifiedFinalist(input: {
         (value) => evaluatedById.get(value.id) ?? preparedById.get(value.id) ?? value
       );
       const withoutReplacedDraft = ranked.filter((value) => value.id !== draft.id);
-      const outputRanked = [rescored, ...withoutReplacedDraft].filter(
-        (value, index, values) =>
-          values.findIndex((candidate) => candidate.id === value.id) === index
-      );
+      const seenIds = new Set<string>();
+      const outputRanked: typeof ranked = [];
+      for (const value of [rescored, ...withoutReplacedDraft]) {
+        if (seenIds.has(value.id)) continue;
+        seenIds.add(value.id);
+        outputRanked.push(value);
+      }
       return { winner: rescored, ranked: outputRanked, failures, revisionAttempts };
     }
 

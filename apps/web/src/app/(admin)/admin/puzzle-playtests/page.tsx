@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { AppLink as Link } from "@/components/AppLink";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
 import type {
   BlindPuzzlePlaytestSpecimen,
@@ -79,7 +79,7 @@ function PuzzlePlaytestsPageInner() {
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     const response = await fetch("/api/admin/ai/puzzle-playtests?mode=report", {
       cache: "no-store",
     });
@@ -91,9 +91,9 @@ function PuzzlePlaytestsPageInner() {
     if (!response.ok || !data?.report)
       fail(data?.error || "Failed to load playtest report");
     setReport(data.report);
-  };
+  }, []);
 
-  const loadNext = async () => {
+  const loadNext = useCallback(async () => {
     await withLoadingFlag(setLoading, async () => {
       setError(null);
       try {
@@ -113,8 +113,7 @@ function PuzzlePlaytestsPageInner() {
         setError(loadError instanceof Error ? loadError.message : "Failed to load puzzle playtests");
       }
     });
-
-  };
+  }, [loadReport]);
 
   useEffect(() => {
     void loadNext();

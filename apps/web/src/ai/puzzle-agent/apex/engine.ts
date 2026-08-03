@@ -215,7 +215,6 @@ export async function runApexGeneration(
 
   // Sequential slots — safer for gateway quota; each slot has a reserved answer
   // contract and a distinct brief nudge.
-  // react-doctor-sequential: intentional — order/rate-limit required
   for (let slot = 1; slot <= brief.candidateCount; slot++) {
     try {
       // Rotate preferred technique focus per slot
@@ -230,6 +229,7 @@ export async function runApexGeneration(
         i % brief.candidateCount === (slot - 1) % brief.candidateCount ? [p.answer] : []
       );
 
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: billable LLM candidate slots must stay sequential for gateway quota
       const result = await runPuzzleAgentGeneration({
         ...params,
         // Host-side quality gates remain strict; do not pay for a second full

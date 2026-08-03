@@ -29,6 +29,7 @@ export async function runPuzzleEditorialTournament(input: {
   const settled = await Promise.allSettled(
     renderedProfiles.flatMap((rendered) =>
       AI_CONFIG.visualRecognition.models.map(async (modelId) => {
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: editorial review LLM calls already settled via Promise.allSettled; keep map body sequential per model
         const review = await generateAIObjectFromImage({
           operation: "vision-editorial",
           modelId,

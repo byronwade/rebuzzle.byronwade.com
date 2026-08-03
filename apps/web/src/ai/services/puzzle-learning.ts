@@ -211,6 +211,7 @@ export async function identifyProblematicPuzzles(minAttempts = 5): Promise<
 
   for (const countDoc of attemptCounts) {
     const puzzleId = countDoc._id as string;
+    // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: learning analysis is sequential to avoid conflicting DB reads/writes
     const performance = await analyzePuzzlePerformance(puzzleId);
     const puzzle = await puzzleOps.findById(puzzleId);
 

@@ -577,11 +577,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           }),
         });
 
-        if (!(response.ok || response.status === 409)) {
-          fail(`Guess failed (${response.status})`);
-        }
-
-        const result = (await response.json()) as {
+        let result: {
           success?: boolean;
           correct?: boolean;
           similarity?: number;
@@ -607,6 +603,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           recentPlayDates?: string[];
           error?: string;
         };
+        if (response.ok || response.status === 409) {
+          result = (await response.json()) as typeof result;
+        } else {
+          fail(`Guess failed (${response.status})`);
+        }
 
         // Already locked / replay blocked — stay in-thread, don't hard-cut away
         if (response.status === 409 || result.locked) {

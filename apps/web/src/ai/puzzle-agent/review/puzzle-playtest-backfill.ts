@@ -191,6 +191,7 @@ export function createPuzzlePlaytestBackfillService(
       let queued = 0;
       if (!dryRun) {
         for (const puzzle of selected) {
+          // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: playtest backfill is sequential to bound memory and API rate
           await submitCandidate({
             puzzleId: puzzle.id,
             answer: puzzle.answer,

@@ -211,14 +211,18 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
   useEffect(() => {
     async function loadClientExtras() {
-      // Load completion data from localStorage
+      // Load completion data from localStorage once
+      let completionRaw: string | null = null;
+      let parsedCompletion: CompletionData | null = null;
       try {
-        const storedData = (localStorage.getItem("lastGameCompletion:v1") ?? localStorage.getItem("lastGameCompletion"));
-        if (storedData) {
-          const parsed = JSON.parse(storedData) as CompletionData;
-          setCompletionData(parsed);
-          if (parsed.streak) {
-            setStreak(parsed.streak);
+        completionRaw =
+          localStorage.getItem("lastGameCompletion:v1") ??
+          localStorage.getItem("lastGameCompletion");
+        if (completionRaw) {
+          parsedCompletion = JSON.parse(completionRaw) as CompletionData;
+          setCompletionData(parsedCompletion);
+          if (parsedCompletion.streak) {
+            setStreak(parsedCompletion.streak);
           }
         }
       } catch (e) {
@@ -247,10 +251,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           const stats = await statsResponse.json();
           setTodaySolves(stats.todaySolves || 0);
 
-          const storedData = (localStorage.getItem("lastGameCompletion:v1") ?? localStorage.getItem("lastGameCompletion"));
-          if (storedData && stats.percentiles) {
-            const parsed = JSON.parse(storedData) as CompletionData;
-            const userTime = parsed.timeTaken;
+          if (parsedCompletion && stats.percentiles) {
+            const userTime = parsedCompletion.timeTaken;
             // Approximate "faster than X%" from aggregate percentile buckets
             let pct = 50;
             if (userTime <= stats.percentiles.p25) pct = 75;

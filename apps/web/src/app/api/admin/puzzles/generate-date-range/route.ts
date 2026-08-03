@@ -63,7 +63,6 @@ export async function POST(request: Request) {
     const failures: string[] = [];
 
     // Generate puzzles for each date
-    // react-doctor-sequential: intentional — order/rate-limit required
     for (let i = 0; i < dates.length; i++) {
       const date = dates[i];
       if (!date) continue;
@@ -76,6 +75,7 @@ export async function POST(request: Request) {
           maxAttempts: 2,
         };
 
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: date-range puzzle generation is sequential for billable LLM rate limits
         const result = await generateMasterPuzzle(params);
 
         if (result.status === "success") {

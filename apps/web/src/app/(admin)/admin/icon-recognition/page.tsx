@@ -2,7 +2,7 @@
 
 import { Eye, Loader2, SkipForward } from "lucide-react";
 import Image from "next/image";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import type {
   BlindIconRecognitionSpecimen,
   IconRecognitionCalibrationReport,
@@ -58,7 +58,7 @@ function IconRecognitionPageInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     const response = await fetch(`/api/admin/ai/icon-recognition?mode=report&panel=${panelId}`, {
       cache: "no-store",
     });
@@ -72,9 +72,9 @@ function IconRecognitionPageInner() {
     }
     setReport(data.report);
     if (data.reviewerProgress) setProgress(data.reviewerProgress);
-  };
+  }, [panelId]);
 
-  const loadNext = async () => {
+  const loadNext = useCallback(async () => {
     await withLoadingFlag(setLoading, async () => {
       setError(null);
       setReport(null);
@@ -97,8 +97,7 @@ function IconRecognitionPageInner() {
         setError(loadError instanceof Error ? loadError.message : "Failed to load recognition panel");
       }
     });
-
-  };
+  }, [panelId, loadReport]);
 
   useEffect(() => {
     void loadNext();

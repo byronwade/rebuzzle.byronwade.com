@@ -91,24 +91,24 @@ export function useEmailNotifications() {
 
           if (!response.ok) {
             fail("Failed to enable email notifications");
+          } else {
+            const data = await response.json();
+
+            setEnabled(true);
+
+            // Store email in localStorage for guests so we can unsubscribe later
+            if (!isAuthenticated && userEmail) {
+              localStorage.setItem("notification_email", userEmail.toLowerCase().trim());
+            }
+
+            toast({
+              title: "Email reminders on",
+              description: "Daily puzzle email around 4 PM UTC.",
+              duration: 4000,
+            });
+
+            return data.subscriptionId as string | undefined;
           }
-
-          const data = await response.json();
-
-          setEnabled(true);
-
-          // Store email in localStorage for guests so we can unsubscribe later
-          if (!isAuthenticated && userEmail) {
-            localStorage.setItem("notification_email", userEmail.toLowerCase().trim());
-          }
-
-          toast({
-            title: "Email reminders on",
-            description: "Daily puzzle email around 4 PM UTC.",
-            duration: 4000,
-          });
-
-          return data.subscriptionId as string | undefined;
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : "Failed to enable notifications";
           setError(errorMessage);
@@ -145,8 +145,6 @@ export function useEmailNotifications() {
         if (!response.ok) {
           fail("Failed to disable email notifications");
         }
-
-        const data = await response.json();
 
         setEnabled(false);
 

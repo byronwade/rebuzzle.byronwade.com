@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { AppLink } from "@/components/AppLink";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ExternalCorpusReadinessReport } from "@/ai/puzzle-agent/benchmark/external-corpus";
 import { AuthGate } from "@/components/AuthGate";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -111,7 +111,7 @@ function BenchmarkReviewPageInner() {
   const [notImported, setNotImported] = useState(false);
   const [note, setNote] = useState("");
 
-  const loadQueue = 
+  const loadQueue = useCallback(
     async (requestedPage = page) => {
       await withLoadingFlag(setLoading, async () => {
         try {
@@ -149,8 +149,9 @@ function BenchmarkReviewPageInner() {
           });
         }
       });
-
-    };
+    },
+    [page, status, toast]
+  );
 
   useEffect(() => {
     void loadQueue();
@@ -158,7 +159,7 @@ function BenchmarkReviewPageInner() {
 
   const current = queue?.items[0];
 
-  const submitDecision = 
+  const submitDecision = useCallback(
     async (action: DecisionAction) => {
       if (!current || saving) return;
       await withLoadingFlag(setSaving, async () => {
@@ -187,30 +188,38 @@ function BenchmarkReviewPageInner() {
           if (error instanceof Error && error.message.includes("refresh")) await loadQueue(page);
         }
       });
+    },
+    [current, saving, note, loadQueue, page, toast]
+  );
 
-    };
-
-  const skipCurrent = () => {
+  const skipCurrent = useCallback(() => {
     setQueue((existing) =>
       existing && existing.items.length > 1
         ? { ...existing, items: [...existing.items.slice(1), existing.items[0]!] }
         : existing
     );
     setNote("");
-  };
+  }, []);
+
+  const submitDecisionRef = useRef(submitDecision);
+  const skipCurrentRef = useRef(skipCurrent);
+  useEffect(() => {
+    submitDecisionRef.current = submitDecision;
+    skipCurrentRef.current = skipCurrent;
+  }, [submitDecision, skipCurrent]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select, [contenteditable=true]")) return;
-      if (event.key.toLowerCase() === "a") void submitDecision("approve");
-      if (event.key.toLowerCase() === "r") void submitDecision("reject-rights");
-      if (event.key.toLowerCase() === "w") void submitDecision("reject-answer");
-      if (event.key.toLowerCase() === "s") skipCurrent();
+      if (event.key.toLowerCase() === "a") void submitDecisionRef.current("approve");
+      if (event.key.toLowerCase() === "r") void submitDecisionRef.current("reject-rights");
+      if (event.key.toLowerCase() === "w") void submitDecisionRef.current("reject-answer");
+      if (event.key.toLowerCase() === "s") skipCurrentRef.current();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [skipCurrent, submitDecision]);
+  }, []);
 
   const importArtifact = async (file: File) => {
     if (file.size > 15 * 1024 * 1024) {
@@ -396,6 +405,7 @@ function BenchmarkReviewPageInner() {
           <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
             <div className="flex min-h-[420px] items-center justify-center bg-[#f4f6f3] p-8">
               {/* biome-ignore lint/performance/noImgElement: Pinned benchmark images are reference-only and must not be transformed or cached by Next Image. */}
+              {/* react-doctor-disable-next-line react-doctor/nextjs-no-img-element -- pinned external benchmark reference must not be transformed by next/image */}
               <img
                 alt="External rebus benchmark under review"
                 className="max-h-[520px] max-w-full rounded-md object-contain shadow-sm"
