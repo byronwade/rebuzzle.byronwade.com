@@ -199,19 +199,23 @@ export default function GameBoard({ gameData }: GameBoardProps) {
    * Never blocks feedback: the instant line is already on screen by the time
    * this is called, and if the stream fails the riff bubble simply never
    * appears. The route is not given the answer, so it can't leak one.
+   *
+   * Final win/loss tiers are allowed so Eve can still close the conversation
+   * before the chat dock locks. A short timeout keeps a slow model from
+   * holding the input open forever.
    */
   const streamQuip = useCallback(
     async (id: number, guess: string, tier: ReactionTier) => {
-      // Never spend credits after the day is locked, or on the winning turn.
-      if (tier === "correct" || tier === "out") return;
-
       patchTurn(id, { quipPending: true });
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 4500);
       try {
         const response = await fetch("/api/puzzles/quip", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ puzzleId: gameData.id, guess, tier }),
+          signal: controller.signal,
         });
 
         if (!(response.ok && response.body)) {
@@ -238,6 +242,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       } catch (_error) {
         // A missing riff is not worth surfacing — the instant line stands.
         patchTurn(id, { quipPending: false });
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     },
     [gameData.id, patchTurn]
@@ -278,15 +284,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     loadUserStats();
   }, [userId]);
 
-  // Sync game state with context for header display
+  // Sync game state with context for header display.
+  // Stop (and don't restart) once the day is locked in-thread.
   useEffect(() => {
-    if (!gameData.isCompleted) {
+    if (!(gameData.isCompleted || gameState.gameOver)) {
       startGame(typeof gameData.difficulty === "number" ? gameData.difficulty : 5);
     }
     return () => {
       endGame();
     };
-  }, [gameData.difficulty, gameData.isCompleted, startGame, endGame]);
+  }, [gameData.difficulty, gameData.isCompleted, gameState.gameOver, startGame, endGame]);
 
   // Sync attempts with context
   useEffect(() => {
@@ -337,10 +344,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   }, []);
 
   const setCompletionState = useCallback(
-    (success: boolean, finalGuess: string, attempts: number, serverScore?: number) => {
+    (
+      success: boolean,
+      finalGuess: string,
+      attempts: number,
+      opts?: { serverScore?: number; celebrate?: boolean }
+    ) => {
       const tomorrow = getNextUtcMidnight();
       const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
       const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
+      const serverScore = opts?.serverScore;
 
       // Prefer authoritative server points; fall back to local estimate for UX only
       let score =
@@ -378,17 +391,23 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         },
       });
 
+      // Clear header difficulty / attempts rail — stay-in-thread solve used to leave them up.
+      endGame();
       dismissKeyboard();
-      if (success) {
+      if (success && opts?.celebrate) {
         haptics.celebration();
         markJustSolvedInSession();
-        void fireConfetti();
-      } else {
+        // Wait a frame so the lock UI has painted before the canvas mounts.
+        window.requestAnimationFrame(() => {
+          void fireConfetti();
+        });
+      } else if (!success) {
         haptics.error();
       }
     },
     [
       dismissKeyboard,
+      endGame,
       gameState.startTime,
       gameState.hintsUsed,
       userStats.streak,
@@ -474,7 +493,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         // Already locked / replay blocked — stay in-thread, don't hard-cut away
         if (response.status === 409 || result.locked) {
           void playInterfaceSound("notification");
-          setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts);
+          setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts, {
+            celebrate: false,
+          });
           toast({
             title: result.wasSuccessful ? "Already solved today" : "Day already locked",
             description: "Chat is locked. Open full results anytime from the dock.",
@@ -534,7 +555,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             },
           });
 
-          setCompletionState(true, guessToCheck, attempts, earnedPoints);
+          // Start Eve's closing riff before lock UI so the dock waits on it.
+          if (reaction) {
+            void streamQuip(turnId, guessToCheck, reaction.tier);
+          }
+
+          setCompletionState(true, guessToCheck, attempts, {
+            serverScore: earnedPoints,
+            celebrate: true,
+          });
 
           const newStats = { ...userStats };
           newStats.totalGames += 1;
@@ -608,6 +637,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
         if (result.gameOver || newAttemptsLeft <= 0) {
           void playInterfaceSound("failure");
+
+          // Start Eve's closing riff before lock UI so the dock waits on it.
+          if (reaction) {
+            void streamQuip(turnId, guessToCheck, reaction.tier);
+          }
+
           setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
 
           const newStats = { ...userStats };
@@ -658,7 +693,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           };
           localStorage.setItem("lastGameCompletion", JSON.stringify(completionData));
 
-          // Stay in the thread — chat stays locked.
           return;
         }
 
@@ -681,7 +715,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         handleIncorrectGuess(newAttemptsLeft, overallSimilarity);
 
         // Eve's riff arrives behind the instant line, in its own bubble.
-        // Never request a quip after the day locks — that burns AI credits.
         if (reaction) {
           void streamQuip(turnId, guessToCheck, reaction.tier);
         }
@@ -735,7 +768,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     gameState.timeTakenSeconds,
   ]);
 
-  const resultCard = gameState.gameOver ? (
+  // Keep the answer bar open (disabled) until Eve's closing riff settles.
+  const awaitingClosingQuip = turns.some(
+    (turn) => (turn.tier === "correct" || turn.tier === "out") && Boolean(turn.quipPending)
+  );
+  const chatLocked = gameState.gameOver && !awaitingClosingQuip;
+
+  const resultCard = chatLocked ? (
     <SolveResultCard
       success={gameState.wasSuccessful}
       score={gameState.finalScore}
@@ -783,27 +822,29 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       hasThread ? "justify-start" : "justify-center"
                     )}
                   >
-                    <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
-                      <DifficultyBadge
-                        className="play-fade-in"
-                        difficulty={currentEventPuzzle?.difficulty}
-                        showDescription={!hasThread}
-                      />
-                      {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
-                        <HintBadge
-                          hints={gameData.hints}
-                          gameId={gameData.id}
-                          onHintReveal={(hintIndex) => {
-                            dispatch({ type: "REVEAL_HINT" });
-                            void playInterfaceSound("hint");
-                            trackEvent(analyticsEvents.HINT_USED, {
-                              puzzleId: gameData.id || "unknown",
-                              hintIndex,
-                            });
-                          }}
+                    {!gameState.gameOver ? (
+                      <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
+                        <DifficultyBadge
+                          className="play-fade-in"
+                          difficulty={currentEventPuzzle?.difficulty}
+                          showDescription={!hasThread}
                         />
-                      )}
-                    </div>
+                        {gameData.hints && gameData.hints.length > 0 ? (
+                          <HintBadge
+                            hints={gameData.hints}
+                            gameId={gameData.id}
+                            onHintReveal={(hintIndex) => {
+                              dispatch({ type: "REVEAL_HINT" });
+                              void playInterfaceSound("hint");
+                              trackEvent(analyticsEvents.HINT_USED, {
+                                puzzleId: gameData.id || "unknown",
+                                hintIndex,
+                              });
+                            }}
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     <section aria-label="Puzzle" className="w-full max-w-2xl">
                       <PuzzleStage
@@ -854,15 +895,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               )}
 
               <section
-                aria-label={gameState.gameOver ? "Day locked" : "Answer input"}
+                aria-label={chatLocked ? "Day locked" : "Answer input"}
                 className="input-area input-area-keyboard-transition play-dock z-30 shrink-0 px-4 pt-5 pb-safe-lg md:px-6"
               >
                 <div className="mx-auto max-w-2xl">
-                  {gameState.gameOver ? (
+                  {chatLocked ? (
                     <ChatLockedDock success={gameState.wasSuccessful} resultsHref={resultsHref} />
                   ) : (
                     <SmartAnswerInput
-                      disabled={gameState.isSubmitting || (!userId && isCreatingGuest)}
+                      disabled={
+                        gameState.gameOver ||
+                        gameState.isSubmitting ||
+                        (!userId && isCreatingGuest)
+                      }
                       isSubmitting={gameState.isSubmitting || isCreatingGuest}
                       onSubmit={handleGuess}
                     />

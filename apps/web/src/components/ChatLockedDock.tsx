@@ -12,8 +12,8 @@ interface ChatLockedDockProps {
 }
 
 /**
- * Replaces the answer bar once the day is locked so it is obvious
- * the conversation is closed (and AI quips cannot be requested again).
+ * Replaces the answer bar once the day is locked and Eve's closing
+ * riff has landed (or timed out), so the conversation clearly ends.
  */
 export function ChatLockedDock({ success, resultsHref, className }: ChatLockedDockProps) {
   return (

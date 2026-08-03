@@ -6,8 +6,9 @@
  * client never needs the answer to know how badly it missed.
  *
  * These lines are the floor, not the ceiling: /api/puzzles/quip streams a
- * written-fresh line over the top when the model is available. If it isn't,
- * these stand on their own and nobody can tell the difference.
+ * written-fresh line over the top when the model is available — including a
+ * closing win/loss riff before chat locks. If it isn't, these stand on their
+ * own and nobody can tell the difference.
  */
 
 export type ReactionTier = "correct" | "close" | "warm" | "cold" | "out";

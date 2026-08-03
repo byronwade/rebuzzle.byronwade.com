@@ -21,18 +21,28 @@ import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 
-/** Mid-game tiers only — win/loss use the deterministic reaction line (no AI). */
+/** Mid-game tiers only while the day is still open. */
 const MID_GAME_TIERS = ["close", "warm", "cold"] as const;
-type MidGameTier = (typeof MID_GAME_TIERS)[number];
+/** Final tiers allowed even after today's attempt is written. */
+const FINAL_TIERS = ["correct", "out"] as const;
+const ALL_TIERS = [...MID_GAME_TIERS, ...FINAL_TIERS] as const;
 
-const TIER_BRIEF: Record<MidGameTier, string> = {
+type QuipTier = (typeof ALL_TIERS)[number];
+
+const TIER_BRIEF: Record<QuipTier, string> = {
   close: "They are one small step away. Say so without hinting at what to change.",
   warm: "Part of their thinking is on track. Acknowledge it, don't guide it.",
   cold: "They are nowhere near. Be funny about the distance, never about them.",
+  correct: "They solved it. Celebrate briefly — never restate or hint at the answer.",
+  out: "They are out of guesses. Empathize briefly — never reveal or hint at the answer.",
 };
 
-function isMidGameTier(value: unknown): value is MidGameTier {
-  return typeof value === "string" && (MID_GAME_TIERS as readonly string[]).includes(value);
+function isQuipTier(value: unknown): value is QuipTier {
+  return typeof value === "string" && (ALL_TIERS as readonly string[]).includes(value);
+}
+
+function isFinalTier(tier: QuipTier): boolean {
+  return (FINAL_TIERS as readonly string[]).includes(tier);
 }
 
 const SYSTEM = `You are Eve, the author of Rebuzzle's daily puzzle, reacting to a player's guess.
@@ -86,18 +96,18 @@ export async function POST(request: Request) {
 
     const puzzleId = typeof body.puzzleId === "string" ? body.puzzleId.trim() : "";
     const guess = typeof body.guess === "string" ? body.guess.trim().slice(0, 200) : "";
-    const tier = isMidGameTier(body.tier) ? body.tier : null;
+    const tier = isQuipTier(body.tier) ? body.tier : null;
 
     if (!(puzzleId && guess && tier)) {
       return NextResponse.json(
-        { success: false, error: "puzzleId, guess and a mid-game tier are required" },
+        { success: false, error: "puzzleId, guess and a valid reaction tier are required" },
         { status: 400 }
       );
     }
 
-    // Day already locked — refuse further AI spend.
+    // Day already locked — only the closing win/loss riff may still spend credits.
     const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, getUtcPuzzleDate());
-    if (lock.hasAttempt) {
+    if (lock.hasAttempt && !isFinalTier(tier)) {
       return NextResponse.json(
         { success: false, error: "Puzzle already finished for today" },
         { status: 409 }
