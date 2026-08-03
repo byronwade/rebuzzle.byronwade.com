@@ -108,6 +108,12 @@ export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
           </Link>
           <Link
             className="text-center text-muted-foreground text-sm transition-colors hover:text-foreground"
+            href="/blog"
+          >
+            Yesterday’s aha →
+          </Link>
+          <Link
+            className="text-center text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/leaderboard"
           >
             Check the leaderboard

@@ -53,6 +53,8 @@ export async function POST(request: Request) {
         guess?: string;
         timeSpentSeconds?: number;
         hintsUsed?: number;
+        /** Prior consecutive cold misses this session (for sharper Eve lines). */
+        consecutiveCold?: number;
       }>,
     ]);
 
@@ -227,9 +229,58 @@ export async function POST(request: Request) {
       );
     }
 
+    // Award wins before responding so the client can whisper the unlock in-thread.
+    let unlockedAchievement: { name: string } | undefined;
+    let unlockedForEmail: Awaited<
+      ReturnType<(typeof import("@/lib/achievements/service"))["checkAndAwardAchievements"]>
+    >["newlyUnlocked"] = [];
+
+    if (isFinal && isCorrect) {
+      try {
+        await updateUserStats(user.userId, {
+          won: true,
+          attempts: attemptNumber,
+          timeSpent: timeSpentSeconds,
+          difficulty: difficultyLevel,
+          maxAttempts,
+          hintsUsed,
+          pointsMultiplier,
+          affectsStreak: !isArchive,
+        });
+
+        const stats = await db.userStatsOps.findByUserId(user.userId);
+        const score = Math.floor(
+          calculateGamePoints(
+            attemptNumber,
+            timeSpentSeconds,
+            stats?.streak ?? 1,
+            difficultyLevel
+          ) * pointsMultiplier
+        );
+        const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
+        const { newlyUnlocked } = await checkAndAwardAchievements(user.userId, {
+          puzzleId: puzzle.id,
+          attempts: attemptNumber,
+          maxAttempts,
+          timeTaken: timeSpentSeconds,
+          hintsUsed,
+          difficulty: getAchievementDifficultyCategory(difficultyLevel),
+          isCorrect: true,
+          score,
+        });
+        unlockedForEmail = newlyUnlocked;
+        if (newlyUnlocked[0]?.name) {
+          unlockedAchievement = { name: newlyUnlocked[0].name };
+        }
+      } catch (error) {
+        console.error("[guess] sync win update failed:", error);
+      }
+    }
+
     if (isFinal) {
       const uid = user.userId;
       const pid = puzzle.id;
+      const emailUnlocks = unlockedForEmail;
       after(async () => {
         try {
           // Self-learning pulse — fast solves raise tomorrow's difficulty
@@ -244,60 +295,40 @@ export async function POST(request: Request) {
             isArchive,
           });
 
-          await updateUserStats(uid, {
-            won: isCorrect,
-            attempts: attemptNumber,
-            timeSpent: timeSpentSeconds,
-            difficulty: difficultyLevel,
-            maxAttempts,
-            hintsUsed,
-            pointsMultiplier,
-            affectsStreak: !isArchive,
-          });
-
-          if (isCorrect) {
-            const stats = await db.userStatsOps.findByUserId(uid);
-            const score = Math.floor(
-              calculateGamePoints(
-                attemptNumber,
-                timeSpentSeconds,
-                stats?.streak ?? 1,
-                difficultyLevel
-              ) * pointsMultiplier
-            );
-            const { checkAndAwardAchievements } = await import("@/lib/achievements/service");
-            const { newlyUnlocked } = await checkAndAwardAchievements(uid, {
-              puzzleId: pid,
+          // Wins already updated stats above; losses still need the streak reset.
+          if (!isCorrect) {
+            await updateUserStats(uid, {
+              won: false,
               attempts: attemptNumber,
+              timeSpent: timeSpentSeconds,
+              difficulty: difficultyLevel,
               maxAttempts,
-              timeTaken: timeSpentSeconds,
               hintsUsed,
-              difficulty: getAchievementDifficultyCategory(difficultyLevel),
-              isCorrect: true,
-              score,
+              pointsMultiplier,
+              affectsStreak: !isArchive,
             });
+          }
 
-            // Email non-guest users about freshly unlocked badges (Resend)
-            if (newlyUnlocked.length > 0) {
-              const dbUser = await db.userOps.findById(uid);
-              if (dbUser && !dbUser.isGuest && dbUser.email) {
-                const { getUserAchievementProgress } = await import("@/lib/achievements/service");
-                const { sendAchievementUnlockedEmail } = await import(
-                  "@/lib/notifications/email-service"
-                );
-                const progress = await getUserAchievementProgress(uid);
-                for (const achievement of newlyUnlocked.slice(0, 3)) {
-                  await sendAchievementUnlockedEmail(dbUser.email, {
-                    username: dbUser.username,
-                    achievementName: achievement.name,
-                    achievementDescription: achievement.description,
-                    achievementRarity: achievement.rarity,
-                    achievementPoints: achievement.points,
-                    achievementIcon: achievement.icon,
-                    totalUnlocked: progress.unlocked,
-                    totalAchievements: progress.total,
-                  });
-                }
+          // Email non-guest users about freshly unlocked badges (Resend)
+          if (isCorrect && emailUnlocks.length > 0) {
+            const dbUser = await db.userOps.findById(uid);
+            if (dbUser && !dbUser.isGuest && dbUser.email) {
+              const { getUserAchievementProgress } = await import("@/lib/achievements/service");
+              const { sendAchievementUnlockedEmail } = await import(
+                "@/lib/notifications/email-service"
+              );
+              const progress = await getUserAchievementProgress(uid);
+              for (const achievement of emailUnlocks.slice(0, 3)) {
+                await sendAchievementUnlockedEmail(dbUser.email, {
+                  username: dbUser.username,
+                  achievementName: achievement.name,
+                  achievementDescription: achievement.description,
+                  achievementRarity: achievement.rarity,
+                  achievementPoints: achievement.points,
+                  achievementIcon: achievement.icon,
+                  totalUnlocked: progress.unlocked,
+                  totalAchievements: progress.total,
+                });
               }
             }
           }
@@ -308,6 +339,10 @@ export async function POST(request: Request) {
     }
 
     const similarity = Math.round((validation.confidence ?? 0) * 100);
+    const consecutiveCold =
+      typeof body.consecutiveCold === "number" && body.consecutiveCold > 0
+        ? Math.min(Math.floor(body.consecutiveCold), 10)
+        : 0;
 
     return NextResponse.json({
       success: true,
@@ -320,6 +355,7 @@ export async function POST(request: Request) {
         similarity,
         attemptsLeft,
         guess,
+        consecutiveCold,
       }),
       method: validation.method,
       attemptNumber,
@@ -336,6 +372,7 @@ export async function POST(request: Request) {
             explanation: puzzle.explanation || "",
             pointsEarned,
             wasSuccessful: isCorrect,
+            ...(unlockedAchievement ? { unlockedAchievement } : {}),
           }
         : {}),
     });

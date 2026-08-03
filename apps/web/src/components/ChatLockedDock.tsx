@@ -1,7 +1,10 @@
 "use client";
 
 import { Lock } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Timer } from "@/components/Timer";
+import { useEmailNotifications } from "@/hooks/useEmailNotifications";
 import { cn } from "@/lib/utils";
 
 interface ChatLockedDockProps {
@@ -10,11 +13,41 @@ interface ChatLockedDockProps {
   className?: string;
 }
 
+const NUDGE_DISMISS_KEY = "rebuzzleEmailNudgeDismissed";
+
 /**
  * Status-only dock after Eve's closing riff. Results / answer live on the
  * SolveResultCard so there's a single primary CTA in the completion beat.
  */
 export function ChatLockedDock({ success, nextPlayTime = null, className }: ChatLockedDockProps) {
+  const { enabled: notificationsEnabled, isLoading } = useEmailNotifications();
+  const [showNudge, setShowNudge] = useState(false);
+
+  useEffect(() => {
+    if (isLoading || notificationsEnabled) {
+      setShowNudge(false);
+      return;
+    }
+    try {
+      if (localStorage.getItem(NUDGE_DISMISS_KEY) === "1") {
+        setShowNudge(false);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setShowNudge(true);
+  }, [isLoading, notificationsEnabled]);
+
+  const dismissNudge = () => {
+    try {
+      localStorage.setItem(NUDGE_DISMISS_KEY, "1");
+    } catch {
+      // ignore
+    }
+    setShowNudge(false);
+  };
+
   return (
     <div className={cn("play-dock-panel w-full", className)}>
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3.5">
@@ -25,9 +58,29 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
           <p className="font-medium text-foreground text-sm">
             {success ? "Chat locked · puzzle solved" : "Chat locked · day over"}
           </p>
-          <p className="truncate text-muted-foreground text-xs">
-            Come back after UTC midnight for tomorrow's puzzle.
-          </p>
+          {showNudge ? (
+            <p className="truncate text-muted-foreground text-xs">
+              <Link
+                className="text-foreground underline-offset-2 hover:underline"
+                href="/settings"
+                onClick={dismissNudge}
+              >
+                Email me at midnight
+              </Link>
+              <span className="text-subtle"> · </span>
+              <button
+                className="text-subtle underline-offset-2 hover:underline"
+                onClick={dismissNudge}
+                type="button"
+              >
+                Not now
+              </button>
+            </p>
+          ) : (
+            <p className="truncate text-muted-foreground text-xs">
+              Come back after UTC midnight for tomorrow's puzzle.
+            </p>
+          )}
         </div>
         <Timer
           className="shrink-0 font-mono text-foreground text-xs tabular-nums"

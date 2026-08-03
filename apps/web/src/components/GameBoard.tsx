@@ -13,6 +13,7 @@ import {
 import { fireConfetti } from "@/lib/confetti";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
+import { recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import type { GameData } from "@/lib/gameSettings";
 import {
@@ -25,6 +26,7 @@ import {
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { playInterfaceSound } from "@/lib/interface-sounds";
+import { isReturningUser } from "@/lib/session-tracker";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 import { ChatClosingDock } from "./ChatClosingDock";
@@ -43,6 +45,7 @@ import { SolveResultCard } from "./SolveResultCard";
 interface UserStats {
   points: number;
   streak: number;
+  maxStreak: number;
   totalGames: number;
   wins: number;
   achievements: string[];
@@ -170,6 +173,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [userStats, setUserStats] = useState<UserStats>({
     points: 0,
     streak: 0,
+    maxStreak: 0,
     totalGames: 0,
     wins: 0,
     achievements: [],
@@ -195,9 +199,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [hadNearMiss, setHadNearMiss] = useState(false);
   /** Variable-reward lucky solve (client roll when server points absent). */
   const [isLuckySolve, setIsLuckySolve] = useState(false);
+  const [closestSimilarity, setClosestSimilarity] = useState(0);
+  const [unlockedAchievementName, setUnlockedAchievementName] = useState<string | null>(null);
+  const [dayRank, setDayRank] = useState<number | null>(null);
+  const [showGuestSave, setShowGuestSave] = useState(false);
+  const consecutiveColdRef = useRef(0);
+  const [isReturner, setIsReturner] = useState(false);
   /** Celebrate when the locked dock + result card land — not at guess submit. */
   const pendingCelebrationRef = useRef(false);
   const wasChatLockedRef = useRef(false);
+
+  useEffect(() => {
+    setIsReturner(isReturningUser());
+  }, []);
 
   const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
     setTurns((prev) =>
@@ -295,6 +309,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             setUserStats({
               points: data.stats.points || 0,
               streak: data.stats.streak || 0,
+              maxStreak: data.stats.maxStreak || 0,
               totalGames: data.stats.totalGames || 0,
               wins: data.stats.wins || 0,
               achievements: [],
@@ -508,6 +523,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             guess: guessToCheck,
             timeSpentSeconds: timeTaken,
             hintsUsed: gameState.hintsUsed,
+            consecutiveCold: consecutiveColdRef.current,
           }),
         });
 
@@ -525,6 +541,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           explanation?: string;
           pointsEarned?: number;
           reaction?: GuessReaction;
+          unlockedAchievement?: { name?: string };
           error?: string;
         };
 
@@ -549,6 +566,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         const attemptNumber =
           result.attemptNumber ?? gameSettings.maxAttempts - previousAttemptsLeft + 1;
 
+        if (typeof result.similarity === "number") {
+          setClosestSimilarity((prev) => Math.max(prev, result.similarity ?? 0));
+        }
+
         // Post the turn the moment the server answers. The reaction is derived
         // from the similarity score server-side, so this is instant.
         const reaction = result.reaction;
@@ -556,6 +577,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         if (reaction) {
           if (reaction.tier === "close") {
             setHadNearMiss(true);
+          }
+          if (reaction.tier === "cold") {
+            consecutiveColdRef.current += 1;
+          } else {
+            consecutiveColdRef.current = 0;
           }
           setTurns((prev) => [
             ...prev,
@@ -565,6 +591,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               attemptNumber,
               tier: reaction.tier,
               line: reaction.line,
+              wordResults: wordResults.map((w) => ({
+                word: w.word,
+                correct: w.correct,
+                similarity: w.similarity ?? 0,
+              })),
             },
           ]);
         }
@@ -599,6 +630,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           if (typeof result.answer === "string" && result.answer.trim()) {
             setRevealedAnswer(result.answer.trim());
           }
+          if (result.unlockedAchievement?.name) {
+            setUnlockedAchievementName(result.unlockedAchievement.name);
+          }
+          recordPlayDay();
+          setShowGuestSave(shouldPromptGuestSave());
 
           // Start Eve's closing riff before lock UI so the dock waits on it.
           if (reaction) {
@@ -619,6 +655,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           newStats.totalGames += 1;
           newStats.wins += 1;
           newStats.streak += 1;
+          newStats.maxStreak = Math.max(newStats.maxStreak, newStats.streak);
           newStats.points += earnedPoints;
           newStats.level = Math.floor(newStats.points / 1000) + 1;
           newStats.lastPlayDate = new Date().toISOString();
@@ -691,6 +728,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           if (typeof result.answer === "string" && result.answer.trim()) {
             setRevealedAnswer(result.answer.trim());
           }
+          recordPlayDay();
+          setShowGuestSave(shouldPromptGuestSave());
 
           // Start Eve's closing riff before lock UI so the dock waits on it.
           if (reaction) {
@@ -853,6 +892,36 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     wasChatLockedRef.current = chatLocked;
   }, [chatLocked]);
 
+  // Quiet day-rank murmur after a win — social proof without leaving the thread.
+  useEffect(() => {
+    if (!(chatLocked && gameState.wasSuccessful)) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/user/stats?timeframe=today");
+        if (!response.ok) return;
+        const data = (await response.json()) as { rank?: number };
+        if (!cancelled && typeof data.rank === "number" && data.rank > 0) {
+          setDayRank(data.rank);
+        }
+      } catch {
+        // Non-blocking
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatLocked, gameState.wasSuccessful]);
+
+  const stageCaption = useMemo(() => {
+    const base = getPuzzleQuestion(puzzleType);
+    if (hasThread || gameState.gameOver) return base;
+    if (isReturner && userStats.streak > 0) {
+      return `Day ${userStats.streak} · one puzzle`;
+    }
+    return base;
+  }, [puzzleType, hasThread, gameState.gameOver, userStats.streak, isReturner]);
+
   const resultCard = chatLocked ? (
     <SolveResultCard
       success={gameState.wasSuccessful}
@@ -865,6 +934,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       nextPlayTime={gameState.nextPlayTime}
       nearMiss={hadNearMiss}
       isLucky={isLuckySolve}
+      unlockedAchievementName={unlockedAchievementName}
+      closestSimilarity={closestSimilarity > 0 ? closestSimilarity : null}
+      maxStreak={userStats.maxStreak}
+      dayRank={dayRank}
+      hintsUsed={gameState.hintsUsed}
+      puzzleId={gameData.id}
+      timeTakenSeconds={gameState.timeTakenSeconds}
+      showGuestSave={showGuestSave}
     />
   ) : null;
 
@@ -951,7 +1028,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       <PuzzleStage
                         puzzle={puzzleDisplay}
                         puzzleType={puzzleType}
-                        question={getPuzzleQuestion(puzzleType)}
+                        question={stageCaption}
                         state={hasThread ? "docked" : "hero"}
                         visual={gameData.visual}
                       />

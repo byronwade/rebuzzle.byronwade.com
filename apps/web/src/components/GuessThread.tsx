@@ -9,6 +9,7 @@ import {
   MessageRow,
   MessageTyping,
 } from "@/components/ui/message";
+import type { WordResult } from "@/lib/game/build-word-results";
 import { REACTION_TONE, type ReactionTier } from "@/lib/game/reactions";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,8 @@ export interface ThreadTurn {
   quip?: string;
   /** True between requesting the riff and the first token landing. */
   quipPending?: boolean;
+  /** Per-word ticks for multi-word guesses (exact matches only). */
+  wordResults?: WordResult[];
 }
 
 interface GuessThreadProps {
@@ -41,6 +44,30 @@ const TIER_LABEL: Record<ReactionTier, string> = {
   out: "Out of guesses",
 };
 
+function ExactWordTicks({ words }: { words: WordResult[] }) {
+  if (words.length < 2) return null;
+  const anyCorrect = words.some((w) => w.correct);
+  if (!anyCorrect) return null;
+
+  return (
+    <p className="mt-2 flex flex-wrap gap-1.5 font-mono text-[11px] uppercase tracking-[0.06em]">
+      {words.map((word, index) => (
+        <span
+          className={cn(
+            "rounded px-1.5 py-0.5",
+            word.correct
+              ? "bg-success/15 text-success"
+              : "bg-muted text-subtle line-through decoration-border-strong/60"
+          )}
+          key={`${word.word}-${index}`}
+        >
+          {word.correct ? `✓ ${word.word}` : word.word}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function AgentReply({ turn }: { turn: ThreadTurn }) {
   const tone = REACTION_TONE[turn.tier];
   const showRiff = Boolean(turn.quipPending || turn.quip);
@@ -48,7 +75,6 @@ function AgentReply({ turn }: { turn: ThreadTurn }) {
   const staggerBody = turn.tier === "close" || turn.tier === "warm";
   const [showBody, setShowBody] = useState(!staggerBody);
 
-  // Near-miss beat: meta lands first, then the line — sells "almost" better than more copy.
   useEffect(() => {
     if (!staggerBody) return;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -76,6 +102,7 @@ function AgentReply({ turn }: { turn: ThreadTurn }) {
             tone={tone}
           >
             <p>{turn.line}</p>
+            {turn.wordResults ? <ExactWordTicks words={turn.wordResults} /> : null}
             {showRiff ? (
               <div className="mt-2 border-border/70 border-t pt-2 text-muted-foreground">
                 {turn.quip ? turn.quip : <MessageTyping />}
@@ -104,7 +131,6 @@ export function GuessThread({ turns, footer, className }: GuessThreadProps) {
   const hasFooter = Boolean(footer);
   const lastTier = turns.at(-1)?.tier;
 
-  // Follow the conversation the way a chat does — including as a riff grows.
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     endRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
@@ -113,8 +139,6 @@ export function GuessThread({ turns, footer, className }: GuessThreadProps) {
   if (turns.length === 0) return null;
 
   return (
-    // role="log" carries an implicit polite live region, and unlike a bare div
-    // it actually accepts the label.
     <ol
       aria-label="Your guesses and Eve's replies"
       className={cn("guess-thread flex w-full flex-col gap-5 overflow-y-auto", className)}

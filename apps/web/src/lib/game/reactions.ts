@@ -24,6 +24,8 @@ interface ReactionInput {
   similarity: number;
   attemptsLeft: number;
   guess: string;
+  /** Prior consecutive cold misses this session (before this guess). */
+  consecutiveCold?: number;
 }
 
 /**
@@ -68,6 +70,15 @@ const LINES: Record<ReactionTier, readonly string[]> = {
   ],
 };
 
+/** Sharper colds after a streak of misses — still affectionate, never mean. */
+const COLD_ESCALATED: readonly string[] = [
+  "Still cold. The puzzle isn't moving — you are.",
+  "Two swings, same thin air. Reset and look again.",
+  "We're collecting misses. Charming collection.",
+  "Persistence noted. Accuracy pending.",
+  "Cold streak. Break it with a smaller thought.",
+];
+
 /** Stable small hash so the same guess always gets the same line. */
 function hash(input: string): number {
   let h = 0;
@@ -82,7 +93,7 @@ export function getReactionTier({
   correct,
   similarity,
   attemptsLeft,
-}: Omit<ReactionInput, "guess">): ReactionTier {
+}: Omit<ReactionInput, "guess" | "consecutiveCold">): ReactionTier {
   if (correct) return "correct";
   if (attemptsLeft <= 0) return "out";
   if (similarity >= 70) return "close";
@@ -92,7 +103,8 @@ export function getReactionTier({
 
 export function buildGuessReaction(input: ReactionInput): GuessReaction {
   const tier = getReactionTier(input);
-  const pool = LINES[tier];
+  const escalateCold = tier === "cold" && (input.consecutiveCold ?? 0) >= 2;
+  const pool = escalateCold ? COLD_ESCALATED : LINES[tier];
   const line = pool[hash(input.guess.toLowerCase()) % pool.length] ?? pool[0];
   return { tier, line: line as string };
 }

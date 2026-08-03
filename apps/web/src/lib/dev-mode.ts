@@ -34,6 +34,8 @@ export function clearDevClientGameState(): void {
     "lastGameCompletion",
     "lastGameSolution",
     "lastEveClosingLine",
+    "rebuzzlePlayDays",
+    "rebuzzleEmailNudgeDismissed",
     "gameCompletion",
     "userStats",
   ];

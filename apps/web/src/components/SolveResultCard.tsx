@@ -11,6 +11,14 @@ import { getStreakTease } from "@/lib/game/streak-tease";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
+type PerceptionChoice = "too_easy" | "just_right" | "too_hard";
+
+const PERCEPTION_OPTIONS: { id: PerceptionChoice; label: string }[] = [
+  { id: "too_easy", label: "Too easy" },
+  { id: "just_right", label: "Just right" },
+  { id: "too_hard", label: "Brutal" },
+];
+
 export interface SolveResultCardProps {
   success: boolean;
   score: number;
@@ -18,13 +26,21 @@ export interface SolveResultCardProps {
   attempts: number;
   maxAttempts: number;
   resultsHref: string;
-  /** Revealed on loss (and optionally win) once the day is locked. */
   answer?: string | null;
   nextPlayTime?: Date | null;
-  /** Brushed a close miss during the day. */
   nearMiss?: boolean;
-  /** Variable-reward lucky solve echo. */
   isLucky?: boolean;
+  /** Fresh achievement name from the guess response. */
+  unlockedAchievementName?: string | null;
+  /** Best similarity across the day's guesses (0–100). */
+  closestSimilarity?: number | null;
+  maxStreak?: number;
+  dayRank?: number | null;
+  hintsUsed?: number;
+  puzzleId?: string;
+  timeTakenSeconds?: number;
+  /** Gate guest signup until day 2+. */
+  showGuestSave?: boolean;
   className?: string;
 }
 
@@ -87,6 +103,14 @@ export function SolveResultCard({
   nextPlayTime = null,
   nearMiss = false,
   isLucky = false,
+  unlockedAchievementName = null,
+  closestSimilarity = null,
+  maxStreak = 0,
+  dayRank = null,
+  hintsUsed = 0,
+  puzzleId,
+  timeTakenSeconds = 0,
+  showGuestSave = false,
   className,
 }: SolveResultCardProps) {
   const { isGuest, userId } = useAuth();
@@ -97,9 +121,12 @@ export function SolveResultCard({
   const streakTease = getStreakTease(streak, success);
   const showAnswer = Boolean(answer) && !success;
   const [streakLocked, setStreakLocked] = useState(false);
+  const [perception, setPerception] = useState<PerceptionChoice | null>(null);
+  const [perceptionSaving, setPerceptionSaving] = useState(false);
   const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
+  const cleanSolve = success && hintsUsed === 0;
+  const showBestGhost = !success && maxStreak > 0;
 
-  // Streak lock-in + tease land after the numbers settle.
   useEffect(() => {
     if (!scoreDone) return;
     if (success && streak > 0) {
@@ -107,6 +134,45 @@ export function SolveResultCard({
       haptics.tap();
     }
   }, [scoreDone, success, streak]);
+
+  useEffect(() => {
+    if (!puzzleId) return;
+    try {
+      const stored = localStorage.getItem(`difficultyPerception:${puzzleId}`);
+      if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
+        setPerception(stored);
+      }
+    } catch {
+      // ignore
+    }
+  }, [puzzleId]);
+
+  async function submitPerception(choice: PerceptionChoice) {
+    if (!puzzleId || perceptionSaving || perception) return;
+    setPerceptionSaving(true);
+    setPerception(choice);
+    haptics.tap();
+    try {
+      localStorage.setItem(`difficultyPerception:${puzzleId}`, choice);
+      await fetch("/api/puzzles/difficulty-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          puzzleId,
+          perception: choice,
+          solved: success,
+          timeSpentSeconds: timeTakenSeconds,
+          hintsUsed,
+          attemptNumber: attempts,
+        }),
+      });
+    } catch {
+      // Non-blocking — local selection still stands
+    } finally {
+      setPerceptionSaving(false);
+    }
+  }
 
   return (
     <div
@@ -139,12 +205,24 @@ export function SolveResultCard({
           >
             {streakTease}
           </p>
+          {unlockedAchievementName && scoreDone ? (
+            <p className="mt-1 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              Unlocked · {unlockedAchievementName}
+            </p>
+          ) : null}
         </div>
       </div>
 
       {showAnswer ? (
         <div className="mt-4 rounded-xl border border-border/70 bg-background/70 px-3.5 py-3">
-          <p className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">Answer</p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">Answer</p>
+            {typeof closestSimilarity === "number" && closestSimilarity > 0 ? (
+              <p className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                Closest · {closestSimilarity}%
+              </p>
+            ) : null}
+          </div>
           <p className="mt-1 font-semibold text-foreground text-lg tracking-tight">{answer}</p>
           <Button asChild className="mt-2.5" size="sm" variant="link">
             <Link className="h-auto px-0" href={resultsHref}>
@@ -162,6 +240,11 @@ export function SolveResultCard({
           <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
             {attempts === 1 ? "Guess" : "Guesses"}
           </p>
+          {cleanSolve && scoreDone ? (
+            <p className="mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              No hints
+            </p>
+          ) : null}
         </div>
         <div>
           <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
@@ -173,6 +256,11 @@ export function SolveResultCard({
           {isLucky && scoreDone ? (
             <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
               ×2 lucky
+            </p>
+          ) : null}
+          {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
+            <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              Day · #{dayRank}
             </p>
           ) : null}
         </div>
@@ -200,8 +288,45 @@ export function SolveResultCard({
           <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
             Streak
           </p>
+          {showBestGhost ? (
+            <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+              Best {maxStreak}
+            </p>
+          ) : null}
         </div>
       </div>
+
+      {puzzleId ? (
+        <div className="mt-3">
+          <p className="mb-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+            How was it?
+          </p>
+          <div className="flex gap-1.5">
+            {PERCEPTION_OPTIONS.map((option) => {
+              const selected = perception === option.id;
+              return (
+                <button
+                  className={cn(
+                    "flex-1 rounded-lg border px-2 py-1.5 font-medium text-xs transition-colors",
+                    selected
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background/50 text-muted-foreground hover:text-foreground"
+                  )}
+                  disabled={Boolean(perception) || perceptionSaving}
+                  key={option.id}
+                  onClick={() => void submitPerception(option.id)}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          {perception ? (
+            <p className="mt-1.5 text-center text-[11px] text-subtle">Tunes tomorrow.</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
         <p className="min-w-0 truncate text-muted-foreground text-xs">Next puzzle</p>
@@ -221,22 +346,14 @@ export function SolveResultCard({
           streak={streak}
           nearMiss={nearMiss}
         />
-        {success ? (
-          <Button asChild className="flex-1" size="sm" variant="outline">
-            <Link href={resultsHref}>Full results</Link>
-          </Button>
-        ) : showAnswer ? (
-          <Button asChild className="flex-1" size="sm" variant="outline">
-            <Link href={resultsHref}>Full results</Link>
-          </Button>
-        ) : (
-          <Button asChild className="flex-1" size="sm" variant="default">
-            <Link href={resultsHref}>See the answer</Link>
-          </Button>
-        )}
+        <Button asChild className="flex-1" size="sm" variant={success || showAnswer ? "outline" : "default"}>
+          <Link href={resultsHref}>
+            {success || showAnswer ? "Full results" : "See the answer"}
+          </Link>
+        </Button>
       </div>
 
-      {(isGuest || !userId) && success ? (
+      {showGuestSave && (isGuest || !userId) && success ? (
         <div className="mt-3 rounded-xl border border-border/70 bg-background/50 px-3 py-3">
           <p className="flex items-center gap-1.5 font-medium text-foreground text-sm">
             <Trophy className="h-3.5 w-3.5 text-muted-foreground" />
