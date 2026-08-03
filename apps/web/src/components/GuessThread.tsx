@@ -42,6 +42,11 @@ interface GuessThreadProps {
   /** Optional footer after the last turn (e.g. solve result card). */
   footer?: ReactNode;
   className?: string;
+  /**
+   * `scroll` — contained MessageScroller (active play).
+   * `stack` — natural-height list for an outer page scroller (day locked).
+   */
+  layout?: "scroll" | "stack";
 }
 
 const TIER_LABEL: Record<ReactionTier, string> = {
@@ -137,11 +142,39 @@ function AgentReply({ turn }: { turn: ThreadTurn }) {
   );
 }
 
+function ThreadTurnBlock({ turn }: { turn: ThreadTurn }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <MessageRow from="user">
+        <MessageBubble from="user">{turn.text}</MessageBubble>
+      </MessageRow>
+      <AgentReply turn={turn} />
+    </div>
+  );
+}
+
 /**
- * The conversation — shadcn MessageScroller owns scroll / anchor / jump-to-latest.
+ * The conversation — MessageScroller while playing; natural stack when the
+ * outer play-stage owns scroll (solved / locked day).
  */
-export function GuessThread({ turns, footer, className }: GuessThreadProps) {
+export function GuessThread({ turns, footer, className, layout = "scroll" }: GuessThreadProps) {
   if (turns.length === 0) return null;
+
+  if (layout === "stack") {
+    return (
+      <div
+        aria-label="Your guesses and Eve's replies"
+        aria-live="polite"
+        className={cn("guess-thread flex w-full flex-none flex-col gap-5 px-0.5 pb-3", className)}
+        role="log"
+      >
+        {turns.map((turn) => (
+          <ThreadTurnBlock key={turn.id} turn={turn} />
+        ))}
+        {footer ? <div className="pt-1">{footer}</div> : null}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("guess-thread flex min-h-0 w-full flex-1 flex-col", className)}>
@@ -150,16 +183,8 @@ export function GuessThread({ turns, footer, className }: GuessThreadProps) {
           <MessageScrollerViewport aria-label="Your guesses and Eve's replies">
             <MessageScrollerContent className="px-0.5 pb-3" role="log" aria-live="polite">
               {turns.map((turn) => (
-                <MessageScrollerItem
-                  key={turn.id}
-                  messageId={`guess-${turn.id}`}
-                  scrollAnchor
-                  className="flex flex-col gap-3"
-                >
-                  <MessageRow from="user">
-                    <MessageBubble from="user">{turn.text}</MessageBubble>
-                  </MessageRow>
-                  <AgentReply turn={turn} />
+                <MessageScrollerItem key={turn.id} messageId={`guess-${turn.id}`} scrollAnchor>
+                  <ThreadTurnBlock turn={turn} />
                 </MessageScrollerItem>
               ))}
 
