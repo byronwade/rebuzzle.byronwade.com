@@ -39,6 +39,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: "#0f766e",
+  // Android/Chrome: shrink the layout viewport with the keyboard so flex shells
+  // and dvh track the visible band. iOS Safari ignores this (no-op) and we pin
+  // to visualViewport in VisualViewportShell instead.
+  // https://developer.chrome.com/blog/viewport-resize-behavior
+  interactiveWidget: "resizes-content",
 };
 
 interface SearchParams {
