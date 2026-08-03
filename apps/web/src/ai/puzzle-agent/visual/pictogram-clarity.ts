@@ -111,7 +111,7 @@ export function scorePictogramClarity(svg: string | null | undefined): Pictogram
   return { score: finalScore, ok, reasons };
 }
 
-export function passesPictogramClarity(svg: string | null | undefined): boolean {
+function passesPictogramClarity(svg: string | null | undefined): boolean {
   return scorePictogramClarity(svg).ok;
 }
 

@@ -1,11 +1,13 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { AppLink } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import { Timer } from "@/components/Timer";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
 import { dailyReminderOptInCta, PUZZLE_PUBLISH_COPY } from "@/lib/game/reminder-copy";
+import { notifyLocalStorage, writeLocalStorage } from "@/lib/hooks/use-local-storage";
 import { cn } from "@/lib/utils";
 
 interface ChatLockedDockProps {
@@ -16,38 +18,42 @@ interface ChatLockedDockProps {
 
 const NUDGE_DISMISS_KEY = "rebuzzleEmailNudgeDismissed";
 
+function subscribeNudge(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === NUDGE_DISMISS_KEY || event.key === null) onStoreChange();
+  };
+  const onCustom = () => onStoreChange();
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(`rebuzzle:storage:${NUDGE_DISMISS_KEY}`, onCustom);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(`rebuzzle:storage:${NUDGE_DISMISS_KEY}`, onCustom);
+  };
+}
+
+function readNudgeDismissed(): boolean {
+  try {
+    return localStorage.getItem(NUDGE_DISMISS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Status-only dock after Eve's closing riff. Quiet habit cue — never a hard sell.
  */
 export function ChatLockedDock({ success, nextPlayTime = null, className }: ChatLockedDockProps) {
   const { isAuthenticated, user } = useAuth();
   const { enabled: notificationsEnabled, isLoading, subscribe } = useEmailNotifications();
-  const [showNudge, setShowNudge] = useState(false);
+  const dismissed = useSyncExternalStore(subscribeNudge, readNudgeDismissed, () => true);
   const [subscribing, setSubscribing] = useState(false);
 
-  useEffect(() => {
-    if (isLoading || notificationsEnabled) {
-      setShowNudge(false);
-      return;
-    }
-    try {
-      if (localStorage.getItem(NUDGE_DISMISS_KEY) === "1") {
-        setShowNudge(false);
-        return;
-      }
-    } catch {
-      // ignore
-    }
-    setShowNudge(true);
-  }, [isLoading, notificationsEnabled]);
+  // Derive nudge visibility during render — no effect sync.
+  const showNudge = !(isLoading || notificationsEnabled || dismissed);
 
   const dismissNudge = () => {
-    try {
-      localStorage.setItem(NUDGE_DISMISS_KEY, "1");
-    } catch {
-      // ignore
-    }
-    setShowNudge(false);
+    writeLocalStorage(NUDGE_DISMISS_KEY, "1");
+    notifyLocalStorage(NUDGE_DISMISS_KEY);
   };
 
   const handleOptIn = async () => {
@@ -58,9 +64,8 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
       dismissNudge();
     } catch {
       // hook surfaces error
-    } finally {
-      setSubscribing(false);
     }
+    setSubscribing(false);
   };
 
   return (
@@ -85,13 +90,13 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
                   {subscribing ? "Saving…" : dailyReminderOptInCta()}
                 </button>
               ) : (
-                <a
+                <AppLink
                   className="text-foreground underline-offset-2 hover:underline"
                   href="/settings"
                   onClick={dismissNudge}
                 >
                   {dailyReminderOptInCta()}
-                </a>
+                </AppLink>
               )}
               <span className="text-subtle"> · </span>
               <button

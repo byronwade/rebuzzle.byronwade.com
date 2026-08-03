@@ -12,12 +12,15 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 interface DateRangePuzzleGeneratorProps {
   onPuzzlesSaved?: () => void;
@@ -28,60 +31,59 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
   const [loading, setLoading] = useState(false);
   const [generatedPuzzles, setGeneratedPuzzles] = useState<any[]>([]);
   const [selectedPuzzles, setSelectedPuzzles] = useState<Set<number>>(new Set());
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     startDate: format(new Date(), "yyyy-MM-dd"),
     endDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
     puzzleType: "rebus",
     difficulty: 7,
     category: "",
     theme: "",
-  });
+  }));
 
   const puzzleTypes = listPuzzleTypes();
 
   const handleGenerate = async () => {
-    setLoading(true);
-    setGeneratedPuzzles([]);
-    setSelectedPuzzles(new Set());
+    await withLoadingFlag(setLoading, async () => {
+      setGeneratedPuzzles([]);
+      setSelectedPuzzles(new Set());
 
-    try {
-      const response = await fetch("/api/admin/puzzles/generate-date-range", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          puzzleType: formData.puzzleType,
-          difficulty: formData.difficulty,
-          category: formData.category || undefined,
-          theme: formData.theme || undefined,
-        }),
-      });
+      try {
+        const response = await fetch("/api/admin/puzzles/generate-date-range", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            puzzleType: formData.puzzleType,
+            difficulty: formData.difficulty,
+            category: formData.category || undefined,
+            theme: formData.theme || undefined,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to generate puzzles");
+        if (!data.success) {
+          fail(data.error || "Failed to generate puzzles");
+        }
+
+        setGeneratedPuzzles(data.puzzles);
+        // Select all by default
+        setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
+
+        toast({
+          title: "Puzzles Generated",
+          description: `Generated ${data.puzzles.length} puzzles for date range. ${data.metadata?.failed || 0} failed.`,
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      setGeneratedPuzzles(data.puzzles);
-      // Select all by default
-      setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
-
-      toast({
-        title: "Puzzles Generated",
-        description: `Generated ${data.puzzles.length} puzzles for date range. ${data.metadata?.failed || 0} failed.`,
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const toggleSelection = (index: number) => {
@@ -213,15 +215,17 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
                 onValueChange={(value) => setFormData({ ...formData, puzzleType: value })}
                 value={formData.puzzleType}
               >
-                <SelectTrigger id="puzzle-type">
+                <SelectTrigger aria-label="Date range option" id="puzzle-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {puzzleTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {puzzleTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -266,12 +270,12 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Puzzles for {days} Day{days !== 1 ? "s" : ""}
                 </>
               )}
@@ -291,7 +295,7 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
                 </CardDescription>
               </div>
               <Button disabled={selectedPuzzles.size === 0} onClick={handleSaveSelected}>
-                <Save className="mr-2 h-4 w-4" />
+                <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
                 Save Selected ({selectedPuzzles.size})
               </Button>
             </div>
@@ -299,8 +303,12 @@ export function DateRangePuzzleGenerator({ onPuzzlesSaved }: DateRangePuzzleGene
           <CardContent>
             <div className="space-y-4">
               {generatedPuzzles.map((puzzle, index) => (
-                <div className="flex items-start gap-4 rounded-lg border p-4" key={index}>
+                <div
+                  className="flex items-start gap-4 rounded-lg border p-4"
+                  key={`${puzzle.date || puzzle.publishedAt}-${puzzle.answer}-${puzzle.puzzle.slice(0, 32)}`}
+                >
                   <Checkbox
+                    aria-label="Select generated puzzle"
                     checked={selectedPuzzles.has(index)}
                     className="mt-1"
                     onCheckedChange={() => toggleSelection(index)}

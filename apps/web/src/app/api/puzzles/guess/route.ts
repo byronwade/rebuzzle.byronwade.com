@@ -354,18 +354,21 @@ export async function POST(request: Request) {
                 "@/lib/notifications/email-service"
               );
               const progress = await getUserAchievementProgress(uid);
-              for (const achievement of emailUnlocks.slice(0, 3)) {
-                await sendAchievementUnlockedEmail(dbUser.email, {
-                  username: dbUser.username,
-                  achievementName: achievement.name,
-                  achievementDescription: achievement.description,
-                  achievementRarity: achievement.rarity,
-                  achievementPoints: achievement.points,
-                  achievementIcon: achievement.icon,
-                  totalUnlocked: progress.unlocked,
-                  totalAchievements: progress.total,
-                });
-              }
+              // Parallel: independent transactional emails
+              await Promise.all(
+                emailUnlocks.slice(0, 3).map((achievement) =>
+                  sendAchievementUnlockedEmail(dbUser.email, {
+                    username: dbUser.username,
+                    achievementName: achievement.name,
+                    achievementDescription: achievement.description,
+                    achievementRarity: achievement.rarity,
+                    achievementPoints: achievement.points,
+                    achievementIcon: achievement.icon,
+                    totalUnlocked: progress.unlocked,
+                    totalAchievements: progress.total,
+                  })
+                )
+              );
             }
           }
         } catch (error) {

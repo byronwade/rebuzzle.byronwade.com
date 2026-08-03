@@ -1,8 +1,9 @@
 import { Check, Puzzle, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePageMetadata } from "@/lib/seo/metadata";
 import {
   generateBreadcrumbSchema,
@@ -145,19 +146,19 @@ export default function RebuzzleVsWordlePage() {
     <Layout>
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbSchema),
+          __html: serializeJsonLd(breadcrumbSchema),
         }}
         type="application/ld+json"
       />
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqSchema),
+          __html: serializeJsonLd(faqSchema),
         }}
         type="application/ld+json"
       />
       <script
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(itemListSchema),
+          __html: serializeJsonLd(itemListSchema),
         }}
         type="application/ld+json"
       />
@@ -213,8 +214,8 @@ export default function RebuzzleVsWordlePage() {
                 </tr>
               </thead>
               <tbody className="bg-card">
-                {comparisonFeatures.map((feature, index) => (
-                  <tr className="border-border border-b last:border-b-0" key={index}>
+                {comparisonFeatures.map((feature) => (
+                  <tr className="border-border border-b last:border-b-0" key={feature.feature}>
                     <td className="px-4 py-3 font-medium text-foreground text-sm">
                       {feature.feature}
                     </td>

@@ -557,13 +557,14 @@ export const aiConfigOps = {
     const testMap = new Map<string, { testName: string; variants: AIConfiguration[] }>();
     for (const config of configs) {
       if (config.abTest) {
-        if (!testMap.has(config.abTest.testId)) {
-          testMap.set(config.abTest.testId, {
-            testName: config.abTest.testName,
+        const { testId, testName } = config.abTest;
+        if (!testMap.has(testId)) {
+          testMap.set(testId, {
+            testName,
             variants: [],
           });
         }
-        testMap.get(config.abTest.testId)!.variants.push(config);
+        testMap.get(testId)!.variants.push(config);
       }
     }
 

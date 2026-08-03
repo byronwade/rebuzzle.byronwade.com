@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCollection } from "@/db/mongodb";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 
 export async function GET(req: Request) {
   try {
@@ -11,22 +12,31 @@ export async function GET(req: Request) {
     if (!(userId || email)) {
       return NextResponse.json(
         { success: false, error: "User ID or email is required" },
-        { status: 400 }
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
     // Security: Verify authentication - user can only check their own subscription
     const authUser = await getAuthenticatedUser(req);
     if (!authUser) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     // Verify the requested userId/email matches the authenticated user
     if (userId && authUser.userId !== userId) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
     if (email && authUser.email.toLowerCase() !== email.toLowerCase().trim()) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     const subscriptionsCollection = getCollection("emailSubscriptions");
@@ -41,11 +51,14 @@ export async function GET(req: Request) {
 
     const subscription = await subscriptionsCollection.findOne(query);
 
-    return NextResponse.json({
-      success: true,
-      enabled: subscription?.enabled,
-      subscriptionId: subscription?.id,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        enabled: subscription?.enabled,
+        subscriptionId: subscription?.id,
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("[Notifications] Status check error:", error);
     return NextResponse.json(
@@ -53,7 +66,7 @@ export async function GET(req: Request) {
         success: false,
         error: "Failed to check subscription status",
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }

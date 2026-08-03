@@ -157,7 +157,7 @@ export async function measureWindowPerformance(input?: {
     const avgSolveSeconds = avg(solveTimes);
     const avgAttemptsOnSolve = avg(attemptOnSolve);
     const avgHintsOnFinal = avg(hints);
-    const puzzleCount = new Set(finals.map((f) => f.puzzleId).filter(Boolean)).size;
+    const puzzleCount = new Set(finals.flatMap((f) => (f.puzzleId ? [f.puzzleId] : []))).size;
 
     const notes: string[] = [];
     let difficultyDelta = 0;

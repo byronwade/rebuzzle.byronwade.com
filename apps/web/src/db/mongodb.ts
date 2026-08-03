@@ -241,7 +241,7 @@ export const checkDatabaseHealth = async (): Promise<{
 
       return { healthy: true, latency };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const failureText = error instanceof Error ? error.message : "Unknown error";
 
       if (attempt < maxRetries) {
         // Wait before retrying
@@ -250,10 +250,10 @@ export const checkDatabaseHealth = async (): Promise<{
       }
 
       // All retries failed
-      console.error("[DB Health Check] Failed after retries:", errorMessage);
+      console.error("[DB Health Check] Failed after retries:", failureText);
       return {
         healthy: false,
-        error: errorMessage,
+        error: failureText,
       };
     }
   }

@@ -15,6 +15,7 @@ import {
 } from "@/lib/achievements";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { sendAchievementUnlockedEmail } from "@/lib/notifications/email-service";
 
@@ -27,7 +28,10 @@ export async function GET(request: NextRequest) {
     const user = authUser ? await userOps.findById(authUser.userId) : null;
 
     if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     const [progress, recentUnlocks, withStatus] = await Promise.all([
@@ -36,45 +40,52 @@ export async function GET(request: NextRequest) {
       getAllAchievementsWithStatus(user.id),
     ]);
 
-    const unlocked = withStatus
-      .filter((row) => row.unlocked)
-      .map((row) => ({
-        id: row.definition.id,
-        achievementId: row.definition.id,
-        unlockedAt: row.unlockedAt,
-        achievement: {
-          name: row.definition.name,
-          description: row.definition.description,
-          icon: row.definition.icon,
-          rarity: row.definition.rarity,
-          points: row.definition.points,
-          category: row.definition.category,
-        },
-      }));
+    const unlocked = withStatus.flatMap((row) =>
+      row.unlocked
+        ? [
+            {
+              id: row.definition.id,
+              achievementId: row.definition.id,
+              unlockedAt: row.unlockedAt,
+              achievement: {
+                name: row.definition.name,
+                description: row.definition.description,
+                icon: row.definition.icon,
+                rarity: row.definition.rarity,
+                points: row.definition.points,
+                category: row.definition.category,
+              },
+            },
+          ]
+        : []
+    );
 
-    return NextResponse.json({
-      success: true,
-      progress,
-      unlocked,
-      recentUnlocks: recentUnlocks.map((u) => ({
-        id: u.id,
-        achievementId: u.achievementId,
-        unlockedAt: u.unlockedAt,
-        achievement: {
-          name: u.achievement.name,
-          description: u.achievement.description,
-          icon: u.achievement.icon,
-          rarity: u.achievement.rarity,
-          points: u.achievement.pointsAwarded,
-          category: u.achievement.category,
-        },
-      })),
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        progress,
+        unlocked,
+        recentUnlocks: recentUnlocks.map((u) => ({
+          id: u.id,
+          achievementId: u.achievementId,
+          unlockedAt: u.unlockedAt,
+          achievement: {
+            name: u.achievement.name,
+            description: u.achievement.description,
+            icon: u.achievement.icon,
+            rarity: u.achievement.rarity,
+            points: u.achievement.pointsAwarded,
+            category: u.achievement.category,
+          },
+        })),
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("Error fetching user achievements:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch user achievements" },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }
@@ -85,12 +96,18 @@ export async function POST(request: NextRequest) {
     const user = authUser ? await userOps.findById(authUser.userId) : null;
 
     if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     const limit = await rateLimiters.api(request);
     if (limit && !limit.success) {
-      return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
+      return NextResponse.json(
+        { success: false, error: "Too many requests" },
+        { status: 429, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     const body = await request.json();
@@ -103,23 +120,29 @@ export async function POST(request: NextRequest) {
           success: false,
           error: "Game achievements are awarded automatically via /api/puzzles/guess",
         },
-        { status: 403 }
+        { status: 403, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
     if (!manualAward) {
-      return NextResponse.json({ success: false, error: "Missing manualAward" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Missing manualAward" },
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     const { achievementId } = manualAward;
     if (!achievementId || typeof achievementId !== "string") {
-      return NextResponse.json({ success: false, error: "Invalid achievementId" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Invalid achievementId" },
+        { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      );
     }
 
     if (!CLIENT_AWARDABLE.has(achievementId)) {
       return NextResponse.json(
         { success: false, error: "This achievement cannot be claimed from the client" },
-        { status: 403 }
+        { status: 403, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -127,7 +150,7 @@ export async function POST(request: NextRequest) {
     if (!achievement) {
       return NextResponse.json(
         { success: false, error: `Achievement not found: ${achievementId}` },
-        { status: 404 }
+        { status: 404, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -138,7 +161,7 @@ export async function POST(request: NextRequest) {
       if (!lock.hasAttempt) {
         return NextResponse.json(
           { success: false, error: "Finish today's puzzle before sharing for achievements" },
-          { status: 403 }
+          { status: 403, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
         );
       }
     }
@@ -159,16 +182,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      awarded,
-      achievementId,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        awarded,
+        achievementId,
+      },
+      { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   } catch (error) {
     console.error("Error checking achievements:", error);
     return NextResponse.json(
       { success: false, error: "Failed to check achievements" },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { format as formatDateFns } from "date-fns";
 import {
   ArrowLeft,
   ArrowRight,
@@ -12,14 +13,15 @@ import {
   Lock,
   Sparkles,
 } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { AppLink as Link } from "@/components/AppLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { BlogPostSections } from "@/db/models";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
+import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
 
@@ -78,8 +80,8 @@ function SectionBlock({ title, body }: { title: string; body: string }) {
 
 export default function BlogPostContent({ post }: BlogPostContentProps) {
   const [isRevealed, setIsRevealed] = useState(false);
-  const [isToday, setIsToday] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const isToday = useIsLocalCalendarDay(post.date, 0);
+  const isCompleted = false;
 
   const sections = post.sections;
   const hasStructured = Boolean(
@@ -89,28 +91,14 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
       sections?.puzzleHistory
   );
 
-  const { safe, spoiler } = useMemo(
-    () => splitSafeAndSpoilerContent(post.content || ""),
-    [post.content]
-  );
+  const { safe, spoiler } = splitSafeAndSpoilerContent(post.content || "");
 
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const postDate = new Date(post.date);
-    postDate.setHours(0, 0, 0, 0);
-    const isCurrentPuzzle = today.getTime() === postDate.getTime();
-    setIsToday(isCurrentPuzzle);
-
-    if (isCurrentPuzzle) {
-      setIsCompleted(false);
-    }
-
     trackEvent(analyticsEvents.BLOG_POST_VIEW, {
       slug: post.slug,
       title: post.title,
     });
-  }, [post.slug, post.title, post.date]);
+  }, [post.slug, post.title]);
 
   const handleRevealClick = () => {
     if (isToday && !isCompleted) return;
@@ -118,14 +106,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
     trackEvent(analyticsEvents.BLOG_ANSWER_REVEALED, { slug: post.slug });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const formatDate = (dateString: string) => formatDateFns(new Date(dateString), "MMMM d, yyyy");
 
   const typeLabel = post.puzzleType
     ? puzzleTypeLabels[post.puzzleType] || post.puzzleType
@@ -239,7 +220,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
 
             <div className="border-border border-t bg-inset px-5 py-3">
               <Button onClick={() => setIsRevealed(false)} size="sm" variant="ghost">
-                <EyeOff className="size-3.5" />
+                <EyeOff className="size-3.5" data-icon="inline-start" />
                 Hide solution
               </Button>
             </div>
@@ -254,12 +235,12 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             >
               {canReveal ? (
                 <>
-                  <Eye className="size-4" />
+                  <Eye className="size-4" data-icon="inline-end" />
                   Reveal solution
                 </>
               ) : (
                 <>
-                  <Lock className="size-4" />
+                  <Lock className="size-4" data-icon="inline-end" />
                   Complete the puzzle first
                 </>
               )}

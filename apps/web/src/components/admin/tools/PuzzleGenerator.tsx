@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -17,6 +18,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 import { PuzzlePreview } from "./PuzzlePreview";
 
 interface PuzzleGeneratorProps {
@@ -38,43 +41,42 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
   const puzzleTypes = listPuzzleTypes();
 
   const handleGenerate = async () => {
-    setLoading(true);
-    setGeneratedPuzzle(null);
+    await withLoadingFlag(setLoading, async () => {
+      setGeneratedPuzzle(null);
 
-    try {
-      const response = await fetch("/api/admin/puzzles/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          puzzleType: formData.puzzleType,
-          difficulty: formData.difficulty,
-          category: formData.category || undefined,
-          theme: formData.theme || undefined,
-          targetDate: formData.targetDate || undefined,
-        }),
-      });
+      try {
+        const response = await fetch("/api/admin/puzzles/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            puzzleType: formData.puzzleType,
+            difficulty: formData.difficulty,
+            category: formData.category || undefined,
+            theme: formData.theme || undefined,
+            targetDate: formData.targetDate || undefined,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to generate puzzle");
+        if (!data.success) {
+          fail(data.error || "Failed to generate puzzle");
+        }
+
+        setGeneratedPuzzle(data.puzzle);
+        toast({
+          title: "Puzzle Generated",
+          description: "Review the puzzle below and save when ready.",
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      setGeneratedPuzzle(data.puzzle);
-      toast({
-        title: "Puzzle Generated",
-        description: "Review the puzzle below and save when ready.",
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const handleSave = async (puzzle: any) => {
@@ -102,7 +104,7 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Failed to save puzzle");
+        fail(data.error || "Failed to save puzzle");
       }
 
       toast({
@@ -147,15 +149,17 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
                 onValueChange={(value) => setFormData({ ...formData, puzzleType: value })}
                 value={formData.puzzleType}
               >
-                <SelectTrigger id="puzzle-type">
+                <SelectTrigger aria-label="Puzzle generation option" id="puzzle-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {puzzleTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {puzzleTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -210,12 +214,12 @@ export function PuzzleGenerator({ onPuzzleSaved }: PuzzleGeneratorProps) {
             <Button className="w-full" disabled={loading} onClick={handleGenerate}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Puzzle
                 </>
               )}

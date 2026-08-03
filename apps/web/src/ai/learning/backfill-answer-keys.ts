@@ -27,20 +27,20 @@ export async function backfillAnswerKeys(input?: {
       .limit(limit)
       .toArray();
 
-    for (const doc of docs) {
-      scanned += 1;
-      const key = normalizeAnswerKey(String(doc.answer ?? ""));
-      if (!key) {
-        skipped += 1;
-        continue;
-      }
-      const result = await getCollection("puzzles").updateOne(
-        { id: doc.id },
-        { $set: { "metadata.answerKey": key } }
-      );
-      if (result.modifiedCount > 0) updated += 1;
-      else skipped += 1;
-    }
+    const outcomes = await Promise.all(
+      docs.map(async (doc) => {
+        const key = normalizeAnswerKey(String(doc.answer ?? ""));
+        if (!key) return "skipped" as const;
+        const result = await getCollection("puzzles").updateOne(
+          { id: doc.id },
+          { $set: { "metadata.answerKey": key } }
+        );
+        return result.modifiedCount > 0 ? ("updated" as const) : ("skipped" as const);
+      })
+    );
+    scanned = docs.length;
+    updated = outcomes.filter((o) => o === "updated").length;
+    skipped = outcomes.filter((o) => o === "skipped").length;
 
     logger.info("Backfilled answer keys", { scanned, updated, skipped });
   } catch (error) {

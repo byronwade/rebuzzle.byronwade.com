@@ -130,8 +130,8 @@ export function loadRepositoryBlogPosts(
   if (!existsSync(directory)) return [];
 
   return readdirSync(directory)
-    .filter((name) => name.endsWith(".json"))
-    .map((name) => {
+    .flatMap((name) => {
+      if (!name.endsWith(".json")) return [];
       const path = join(directory, name);
       let value: unknown;
 
@@ -152,7 +152,7 @@ export function loadRepositoryBlogPosts(
       if (`${parsed.data.slug}.json` !== name) {
         throw new Error(`Repository blog filename must match its slug: ${parsed.data.slug}.json`);
       }
-      return toBlogPost(parsed.data);
+      return [toBlogPost(parsed.data)];
     })
     .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
 }

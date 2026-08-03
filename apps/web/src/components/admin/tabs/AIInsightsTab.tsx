@@ -1,5 +1,6 @@
 "use client";
 
+import { format as formatDateFns } from "date-fns";
 import {
   Activity,
   AlertTriangle,
@@ -32,6 +33,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -196,10 +198,10 @@ export function AIInsightsTab() {
   const [generationHealth, setGenerationHealth] = useState<GenerationHealthPayload | null>(null);
   const [generationLoading, setGenerationLoading] = useState(false);
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => ({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     to: new Date(),
-  });
+  }));
 
   // Fetch analytics data
   const fetchAnalytics = useCallback(async () => {
@@ -217,9 +219,8 @@ export function AIInsightsTab() {
       }
     } catch (error) {
       console.error("Failed to fetch AI analytics:", error);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [dateRange]);
 
   // Fetch decisions
@@ -272,9 +273,8 @@ export function AIInsightsTab() {
       }
     } catch (error) {
       console.error("Failed to fetch generation health:", error);
-    } finally {
-      setGenerationLoading(false);
     }
+    setGenerationLoading(false);
   }, []);
 
   useEffect(() => {
@@ -323,14 +323,16 @@ export function AIInsightsTab() {
         </div>
         <div className="flex items-center gap-4">
           <Select onValueChange={handlePresetChange} defaultValue="7d">
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger aria-label="Filter insights" className="w-[180px]">
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="14d">Last 14 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectGroup>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="14d">Last 14 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
           <Button
@@ -343,7 +345,7 @@ export function AIInsightsTab() {
               fetchGenerationHealth();
             }}
           >
-            <RefreshCw className="mr-2 h-4 w-4" />
+            <RefreshCw data-icon="inline-start" className="mr-2 h-4 w-4" />
             Refresh
           </Button>
         </div>
@@ -353,27 +355,27 @@ export function AIInsightsTab() {
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">
-            <Activity className="mr-2 h-4 w-4" />
+            <Activity data-icon="inline-start" className="mr-2 h-4 w-4" />
             Overview
           </TabsTrigger>
           <TabsTrigger value="decisions">
-            <Brain className="mr-2 h-4 w-4" />
+            <Brain data-icon="inline-start" className="mr-2 h-4 w-4" />
             Chain of Thought
           </TabsTrigger>
           <TabsTrigger value="errors">
-            <AlertTriangle className="mr-2 h-4 w-4" />
+            <AlertTriangle data-icon="inline-start" className="mr-2 h-4 w-4" />
             Errors
           </TabsTrigger>
           <TabsTrigger value="feedback">
-            <ThumbsUp className="mr-2 h-4 w-4" />
+            <ThumbsUp data-icon="inline-start" className="mr-2 h-4 w-4" />
             Feedback
           </TabsTrigger>
           <TabsTrigger value="learning">
-            <Sparkles className="mr-2 h-4 w-4" />
+            <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
             Generation
           </TabsTrigger>
           <TabsTrigger value="config">
-            <Settings className="mr-2 h-4 w-4" />
+            <Settings data-icon="inline-start" className="mr-2 h-4 w-4" />
             Config
           </TabsTrigger>
         </TabsList>
@@ -392,7 +394,7 @@ export function AIInsightsTab() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <MetricCard
                   title="Total AI Decisions"
-                  value={analytics.overview.totalDecisions.toLocaleString()}
+                  value={analytics.overview.totalDecisions.toLocaleString("en-US")}
                   icon={<Cpu className="h-4 w-4" />}
                   subtitle="API calls made"
                 />
@@ -506,9 +508,9 @@ export function AIInsightsTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {analytics.satisfactionTrend.slice(0, 10).map((d, i) => (
-                          <TableRow key={i}>
-                            <TableCell>{new Date(d.date).toLocaleDateString()}</TableCell>
+                        {analytics.satisfactionTrend.slice(0, 10).map((d) => (
+                          <TableRow key={d.date}>
+                            <TableCell>{formatDateFns(new Date(d.date), "MMM d, yyyy")}</TableCell>
                             <TableCell>{d.avgRating.toFixed(1)}</TableCell>
                             <TableCell>{d.avgSatisfaction.toFixed(1)}</TableCell>
                             <TableCell>{d.count}</TableCell>
@@ -560,7 +562,10 @@ export function AIInsightsTab() {
                               {pattern.resolvedCount}/{pattern.count}
                             </TableCell>
                             <TableCell>
-                              {new Date(pattern.recentOccurrence).toLocaleString()}
+                              {formatDateFns(
+                                new Date(pattern.recentOccurrence),
+                                "MMM d, yyyy h:mm a"
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -623,7 +628,7 @@ export function AIInsightsTab() {
                           </Badge>
                         </TableCell>
                         <TableCell>{formatDuration(decision.durationMs)}</TableCell>
-                        <TableCell>{decision.tokens.total.toLocaleString()}</TableCell>
+                        <TableCell>{decision.tokens.total.toLocaleString("en-US")}</TableCell>
                         <TableCell>{formatCost(decision.tokens.cost)}</TableCell>
                         <TableCell>
                           {decision.qualityMetrics ? (
@@ -633,7 +638,7 @@ export function AIInsightsTab() {
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {new Date(decision.timestamp).toLocaleTimeString()}
+                          {formatDateFns(new Date(decision.timestamp), "h:mm a")}
                         </TableCell>
                         <TableCell>
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -672,7 +677,7 @@ export function AIInsightsTab() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Tokens</p>
-                      <p>{selectedDecision.tokens.total.toLocaleString()}</p>
+                      <p>{selectedDecision.tokens.total.toLocaleString("en-US")}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Cost</p>
@@ -683,10 +688,13 @@ export function AIInsightsTab() {
                   {/* Chain of Thought */}
                   {selectedDecision.chainOfThought?.steps && (
                     <div>
-                      <h4 className="mb-4 font-semibold">Chain of Thought</h4>
+                      <h3 className="mb-4 font-semibold">Chain of Thought</h3>
                       <div className="space-y-4">
-                        {selectedDecision.chainOfThought.steps.map((step, i) => (
-                          <div key={i} className="relative border-l-2 border-primary/30 pl-4">
+                        {selectedDecision.chainOfThought.steps.map((step) => (
+                          <div
+                            key={`${step.stepNumber}-${step.stepType}-${step.description}`}
+                            className="relative border-l-2 border-primary/30 pl-4"
+                          >
                             <div className="absolute -left-2 top-0 h-4 w-4 rounded-full bg-primary" />
                             <div className="mb-1 flex items-center gap-2">
                               <Badge variant="outline">{step.stepType}</Badge>
@@ -705,7 +713,7 @@ export function AIInsightsTab() {
                   {/* Quality Metrics */}
                   {selectedDecision.qualityMetrics && (
                     <div>
-                      <h4 className="mb-2 font-semibold">Quality Metrics</h4>
+                      <h3 className="mb-2 font-semibold">Quality Metrics</h3>
                       <div className="flex items-center gap-4">
                         <div className="text-2xl font-bold">
                           {selectedDecision.qualityMetrics.score}%
@@ -728,7 +736,7 @@ export function AIInsightsTab() {
                   {/* Error */}
                   {selectedDecision.output.error && (
                     <div>
-                      <h4 className="mb-2 font-semibold text-destructive">Error</h4>
+                      <h3 className="mb-2 font-semibold text-destructive">Error</h3>
                       <pre className="overflow-x-auto rounded bg-muted p-4 text-sm">
                         {selectedDecision.output.error}
                       </pre>
@@ -749,7 +757,7 @@ export function AIInsightsTab() {
             </CardHeader>
             <CardContent>
               {errors.length > 0 ? (
-                <Table>
+                <Table role="alert">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Error Code</TableHead>
@@ -789,7 +797,7 @@ export function AIInsightsTab() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {new Date(error.timestamp).toLocaleString()}
+                          {formatDateFns(new Date(error.timestamp), "MMM d, yyyy h:mm a")}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -9,6 +9,8 @@ import {
   getInAppPuzzleRecipientIds,
 } from "@/lib/notifications/subscribers";
 
+const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" } as const;
+
 /**
  * Afternoon puzzle-ready emails for the notification list.
  * Vercel cron uses GET — export both methods.
@@ -28,7 +30,7 @@ async function handleSendPuzzleEmails() {
     console.error("[Notifications] No puzzle found for today");
     return NextResponse.json(
       { success: false, error: "No puzzle found for today" },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 
@@ -48,7 +50,7 @@ async function handleSendPuzzleEmails() {
   const emailResults = {
     sent: 0,
     failed: 0,
-    errors: [] as string[],
+    failures: [] as string[],
   };
 
   const BATCH_SIZE = 10;
@@ -87,13 +89,13 @@ async function handleSendPuzzleEmails() {
           emailResults.sent++;
         } else {
           emailResults.failed++;
-          emailResults.errors.push(`${result.value.email}: ${result.value.error}`);
+          emailResults.failures.push(`${result.value.email}: ${result.value.error}`);
         }
       } else {
         emailResults.failed++;
-        const errorMessage =
+        const failureText =
           result.reason instanceof Error ? result.reason.message : "Unknown error";
-        emailResults.errors.push(`Batch item failed: ${errorMessage}`);
+        emailResults.failures.push(`Batch item failed: ${failureText}`);
       }
     }
 
@@ -109,6 +111,7 @@ async function handleSendPuzzleEmails() {
 
   for (const userId of userIds) {
     try {
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: email/in-app batching is sequential to respect provider rate limits
       await notificationsCollection.insertOne({
         id: crypto.randomUUID(),
         userId,
@@ -131,11 +134,14 @@ async function handleSendPuzzleEmails() {
     inApp: inAppResults,
   });
 
-  return NextResponse.json({
-    success: true,
-    message: "Puzzle notifications sent",
-    results: { emails: emailResults, inApp: inAppResults },
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      message: "Puzzle notifications sent",
+      results: { emails: emailResults, inApp: inAppResults },
+    },
+    { headers: PRIVATE_NO_STORE }
+  );
 }
 
 export async function GET(request: Request) {
@@ -151,7 +157,7 @@ export async function GET(request: Request) {
         error: "Failed to send notifications",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 }

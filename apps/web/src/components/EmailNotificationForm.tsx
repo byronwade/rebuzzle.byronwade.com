@@ -1,34 +1,31 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 
 export function EmailNotificationForm() {
   const { isAuthenticated, user } = useAuth();
   const { enabled, isLoading, error, subscribe, unsubscribe, toggle, checkStatus } =
     useEmailNotifications();
-  const [email, setEmail] = useState("");
+  const authEmail = isAuthenticated && user?.email ? user.email : "";
+  const [emailOverride, setEmailOverride] = useState<string | null>(null);
+  const email = emailOverride ?? authEmail;
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
 
-  // Get user's email from auth context if authenticated
   useEffect(() => {
-    setMounted(true);
-    if (isAuthenticated && user?.email) {
-      setEmail(user.email);
-    }
-    // Check subscription status on mount
     void checkStatus();
-  }, [isAuthenticated, user, checkStatus]);
+  }, [checkStatus]);
 
   // Validate email format
   const validateEmail = (emailValue: string): boolean => {
@@ -38,7 +35,7 @@ export function EmailNotificationForm() {
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
-    setEmail(value);
+    setEmailOverride(value);
     setEmailError(null);
 
     // Real-time validation
@@ -72,9 +69,8 @@ export function EmailNotificationForm() {
       if (err instanceof Error) {
         setEmailError(err.message);
       }
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   };
 
   const handleUnsubscribe = async () => {
@@ -83,9 +79,8 @@ export function EmailNotificationForm() {
       await unsubscribe();
     } catch (_err) {
       // Error handled by hook
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   };
 
   const _handleToggle = async () => {
@@ -170,7 +165,7 @@ export function EmailNotificationForm() {
           {/* Error Message */}
           {(emailError || error) && (
             <Alert className="py-2" variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="sr-only">Error</AlertTitle>
               <AlertDescription className="text-sm">{emailError || error}</AlertDescription>
             </Alert>
           )}
@@ -178,7 +173,7 @@ export function EmailNotificationForm() {
           {/* Success Message */}
           {enabled && !emailError && !error && (
             <Alert className="py-2.5" variant="success">
-              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle className="sr-only">Success</AlertTitle>
               <AlertDescription className="text-foreground text-sm">
                 Email notifications are enabled. You'll receive daily reminders around 4 PM UTC.
               </AlertDescription>
@@ -187,7 +182,7 @@ export function EmailNotificationForm() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 pt-2">
+        <div aria-live="polite" className="flex gap-2 pt-2">
           {enabled ? (
             <Button
               className="flex-1"
@@ -197,12 +192,12 @@ export function EmailNotificationForm() {
             >
               {isSubmitting || isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Disabling...
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Disable Notifications
                 </>
               )}
@@ -215,12 +210,12 @@ export function EmailNotificationForm() {
             >
               {isSubmitting || isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Enabling...
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Enable Notifications
                 </>
               )}

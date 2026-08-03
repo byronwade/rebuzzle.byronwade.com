@@ -54,7 +54,7 @@ export function PasswordChangeEmail({
         <Text style={warningTextStyle}>
           1. Reset your password immediately by clicking{" "}
           <a href={resetPasswordUrl} style={linkStyle}>
-            here
+            reset your password
           </a>
         </Text>
         <Text style={warningTextStyle}>

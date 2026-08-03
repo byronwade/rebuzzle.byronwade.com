@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const emailResults = {
       sent: 0,
       failed: 0,
-      errors: [] as string[],
+      failures: [] as string[],
     };
 
     const BATCH_SIZE = 10;
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
             return { success: true, email: recipient.email };
           }
           emailResults.failed++;
-          emailResults.errors.push(`${recipient.email}: ${result.error}`);
+          emailResults.failures.push(`${recipient.email}: ${result.error}`);
           return {
             success: false,
             email: recipient.email,
@@ -86,12 +86,12 @@ export async function POST(request: Request) {
           };
         } catch (error) {
           emailResults.failed++;
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
-          emailResults.errors.push(`${recipient.email}: ${errorMessage}`);
+          const failureText = error instanceof Error ? error.message : "Unknown error";
+          emailResults.failures.push(`${recipient.email}: ${failureText}`);
           return {
             success: false,
             email: recipient.email,
-            error: errorMessage,
+            error: failureText,
           };
         }
       });

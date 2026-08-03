@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 interface BulkBlogPostGeneratorProps {
   onBlogPostsSaved?: () => void;
@@ -26,53 +28,52 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
   const [puzzleIds, setPuzzleIds] = useState("");
 
   const handleGenerate = async () => {
-    setLoading(true);
-    setGeneratedPosts([]);
-    setSelectedPosts(new Set());
+    await withLoadingFlag(setLoading, async () => {
+      setGeneratedPosts([]);
+      setSelectedPosts(new Set());
 
-    try {
-      const body: any = { mode };
+      try {
+        const body: any = { mode };
 
-      if (mode === "date-range") {
-        body.startDate = startDate;
-        body.endDate = endDate;
-      } else if (mode === "puzzle-ids") {
-        body.puzzleIds = puzzleIds
-          .split(",")
-          .map((id) => id.trim())
-          .filter((id) => id.length > 0);
+        if (mode === "date-range") {
+          body.startDate = startDate;
+          body.endDate = endDate;
+        } else if (mode === "puzzle-ids") {
+          body.puzzleIds = puzzleIds
+            .split(",")
+            .map((id) => id.trim())
+            .filter((id) => id.length > 0);
+        }
+
+        const response = await fetch("/api/admin/blogs/generate-bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          fail(data.error || "Failed to generate blog posts");
+        }
+
+        setGeneratedPosts(data.blogPosts);
+        // Select all by default
+        setSelectedPosts(new Set(data.blogPosts.map((_: any, i: number) => i)));
+
+        toast({
+          title: "Blog Posts Generated",
+          description: `Generated ${data.blogPosts.length} blog posts. ${data.metadata?.failed || 0} failed.`,
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      const response = await fetch("/api/admin/blogs/generate-bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to generate blog posts");
-      }
-
-      setGeneratedPosts(data.blogPosts);
-      // Select all by default
-      setSelectedPosts(new Set(data.blogPosts.map((_: any, i: number) => i)));
-
-      toast({
-        title: "Blog Posts Generated",
-        description: `Generated ${data.blogPosts.length} blog posts. ${data.metadata?.failed || 0} failed.`,
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const toggleSelection = (index: number) => {
@@ -152,6 +153,7 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
             <div>
               <Label>Generation Mode</Label>
               <RadioGroup
+                aria-label="Generation mode"
                 className="mt-2"
                 onValueChange={(value) =>
                   setMode(value as "without-blogs" | "date-range" | "puzzle-ids")
@@ -225,12 +227,12 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <FileText className="mr-2 h-4 w-4" />
+                  <FileText data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Blog Posts
                 </>
               )}
@@ -250,7 +252,7 @@ export function BulkBlogPostGenerator({ onBlogPostsSaved }: BulkBlogPostGenerato
                 </CardDescription>
               </div>
               <Button disabled={selectedPosts.size === 0} onClick={handleSaveSelected}>
-                <Save className="mr-2 h-4 w-4" />
+                <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
                 Save Selected ({selectedPosts.size})
               </Button>
             </div>
@@ -282,6 +284,7 @@ function VirtualizedBlogPostList({
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // react-doctor-disable-next-line react-hooks-js/incompatible-library -- @tanstack/react-virtual; isolated in child list
   const virtualizer = useVirtualizer({
     count: generatedPosts.length,
     getScrollElement: () => parentRef.current,
@@ -315,6 +318,7 @@ function VirtualizedBlogPostList({
             >
               <div className="flex items-start gap-4 rounded-lg border p-4">
                 <Checkbox
+                  aria-label="Select generated blog post"
                   checked={selectedPosts.has(index)}
                   className="mt-1"
                   onCheckedChange={() => toggleSelection(index)}

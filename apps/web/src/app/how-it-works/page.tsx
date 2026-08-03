@@ -8,7 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AppLink } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
 import {
@@ -149,7 +149,7 @@ export default function HowItWorksPage() {
               backwards—from what you see to the thought hiding underneath.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-5">
-              <Link
+              <AppLink
                 className="group inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 font-medium text-background text-sm transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
                 href="/"
               >
@@ -158,7 +158,7 @@ export default function HowItWorksPage() {
                   aria-hidden
                   className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                 />
-              </Link>
+              </AppLink>
               <a
                 className="text-muted-foreground text-sm underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
                 href="#decode-rules"
@@ -364,7 +364,7 @@ export default function HowItWorksPage() {
           <p className="mx-auto mt-6 max-w-xl text-pretty text-muted-foreground leading-7">
             Look closely, trust the wordplay, and send the answer that makes everything click.
           </p>
-          <Link
+          <AppLink
             className="group mx-auto mt-9 inline-flex h-12 items-center gap-2 rounded-md bg-foreground px-6 font-medium text-background transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
             href="/"
           >
@@ -373,7 +373,7 @@ export default function HowItWorksPage() {
               aria-hidden
               className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
             />
-          </Link>
+          </AppLink>
         </section>
       </div>
     </Layout>

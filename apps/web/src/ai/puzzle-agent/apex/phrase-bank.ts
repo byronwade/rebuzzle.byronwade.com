@@ -659,15 +659,15 @@ export function samplePhraseBank(input: {
   const theme = input.theme?.toLowerCase();
   const category = input.category?.toLowerCase();
 
-  const scored = PHRASE_BANK.map((entry) => {
+  const scored = PHRASE_BANK.flatMap((entry) => {
     if (input.bannedAnswerKeys.has(normalize(entry.answer))) {
-      return { entry, score: -Infinity };
+      return [];
     }
     if (input.excludeOverused && entry.overused) {
-      return { entry, score: -Infinity };
+      return [];
     }
     if (input.requireVisualCuePlan && !entry.visualCues?.length) {
-      return { entry, score: -Infinity };
+      return [];
     }
     let score = 0;
     if (entry.difficultyHint >= bandMin && entry.difficultyHint <= bandMax) score += 4;
@@ -684,10 +684,8 @@ export function samplePhraseBank(input: {
 
     // Mild randomness so dailies don't always pick the same top seeds
     score += Math.random() * 1.5;
-    return { entry, score };
-  })
-    .filter((s) => s.score > -Infinity)
-    .sort((a, b) => b.score - a.score);
+    return [{ entry, score }];
+  }).sort((a, b) => b.score - a.score);
 
   // Keep the prompt useful for strict answer-first reservation: each
   // technique gets a representative seed before we spend the remaining

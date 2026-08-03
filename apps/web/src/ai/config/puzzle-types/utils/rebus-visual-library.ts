@@ -1134,7 +1134,7 @@ export function getAllVisualElements(): string[] {
 /**
  * Get visual elements by category
  */
-export function getVisualElementsByCategory(category: keyof typeof EMOJI_CATEGORIES): string[] {
+function getVisualElementsByCategory(category: keyof typeof EMOJI_CATEGORIES): string[] {
   return EMOJI_CATEGORIES[category] || [];
 }
 
@@ -1143,7 +1143,7 @@ const DEFAULT_RANDOM_COUNT = 10;
 /**
  * Get random visual elements for inspiration
  */
-export function getRandomVisualElements(count: number = DEFAULT_RANDOM_COUNT): string[] {
+function getRandomVisualElements(count: number = DEFAULT_RANDOM_COUNT): string[] {
   const all = getAllVisualElements();
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);

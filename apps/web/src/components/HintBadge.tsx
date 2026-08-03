@@ -90,7 +90,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                 )}
                 variant="warning"
               >
-                <LightbulbIcon className="mr-1.5 h-3.5 w-3.5" />
+                <LightbulbIcon data-icon="inline-start" className="mr-1.5 h-3.5 w-3.5" />
                 <span className="hidden sm:inline">
                   Need a hint? ({hints.length - revealedHints} left)
                 </span>
@@ -123,7 +123,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                     isRevealed ? "border-border bg-card" : "border-border bg-inset",
                     isNext && "border-border-strong/50"
                   )}
-                  key={index}
+                  key={hint}
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                   </div>
                   <div
                     className={cn(
-                      "text-sm leading-relaxed transition-all duration-300 motion-reduce:transition-none",
+                      "text-sm leading-relaxed transition-[opacity,transform,colors] duration-300 motion-reduce:transition-none",
                       isRevealed ? "text-foreground" : "text-muted-foreground"
                     )}
                   >
@@ -163,7 +163,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                   size="lg"
                   variant="outline"
                 >
-                  <LightbulbIcon className="h-4 w-4" />
+                  <LightbulbIcon className="h-4 w-4" data-icon="inline-start" />
                   Reveal hint {revealedHints + 1}
                 </Button>
                 <p className="mt-3 px-2 text-center text-subtle text-xs leading-relaxed">

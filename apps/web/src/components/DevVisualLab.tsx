@@ -6,11 +6,12 @@
  */
 
 import { FlaskConical, Loader2, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useReducer, useState, useSyncExternalStore } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { PuzzleContainer, PuzzleDisplay } from "@/components/PuzzleDisplay";
 import { Button } from "@/components/ui/button";
 import { isDevModeEnabled } from "@/lib/dev-mode";
+import { fail } from "@/lib/fail";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 import { cn } from "@/lib/utils";
 
@@ -98,6 +99,62 @@ type LabResult = {
 
 type QualityVote = "like" | "dislike";
 
+type RunState = {
+  mode: string;
+  busy: boolean;
+  error: string;
+  result: LabResult | null;
+  puzzleId: string | null;
+  vote: QualityVote | null;
+};
+
+type RunAction =
+  | { type: "select-mode"; mode: string }
+  | { type: "generate-start"; mode: string }
+  | { type: "generate-success"; result: LabResult; puzzleId: string | null }
+  | { type: "generate-error"; error: string }
+  | { type: "generate-done" }
+  | { type: "set-vote"; vote: QualityVote | null };
+
+const initialRunState: RunState = {
+  mode: "pictogram",
+  busy: false,
+  error: "",
+  result: null,
+  puzzleId: null,
+  vote: null,
+};
+
+function runReducer(state: RunState, action: RunAction): RunState {
+  switch (action.type) {
+    case "select-mode":
+      return { ...state, mode: action.mode };
+    case "generate-start":
+      return {
+        mode: action.mode,
+        busy: true,
+        error: "",
+        result: null,
+        puzzleId: null,
+        vote: null,
+      };
+    case "generate-success":
+      return {
+        ...state,
+        result: action.result,
+        puzzleId: action.puzzleId,
+      };
+    case "generate-error":
+      return { ...state, error: action.error };
+    case "generate-done":
+      return { ...state, busy: false };
+    case "set-vote":
+      return { ...state, vote: action.vote };
+    default:
+      return state;
+  }
+}
+
 const FALLBACK_MODES: ModeMeta[] = [
   {
     id: "pictogram",
@@ -158,52 +215,59 @@ const FALLBACK_MODES: ModeMeta[] = [
 ];
 
 export function DevVisualLab() {
-  const [devOn, setDevOn] = useState(false);
+  const devOn = useSyncExternalStore(
+    (onStoreChange) => {
+      const handler = () => onStoreChange();
+      window.addEventListener("rebuzzle:dev-mode", handler);
+      window.addEventListener("storage", handler);
+      return () => {
+        window.removeEventListener("rebuzzle:dev-mode", handler);
+        window.removeEventListener("storage", handler);
+      };
+    },
+    isDevModeEnabled,
+    () => false
+  );
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [modes, setModes] = useState<ModeMeta[]>(FALLBACK_MODES);
-  const [mode, setMode] = useState("pictogram");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<LabResult | null>(null);
-  const [puzzleId, setPuzzleId] = useState<string | null>(null);
-  const [vote, setVote] = useState<QualityVote | null>(null);
+  const [run, dispatch] = useReducer(runReducer, initialRunState);
+  const { mode, busy, error, result, puzzleId, vote } = run;
   const [voteSaving, setVoteSaving] = useState(false);
 
   useEffect(() => {
-    setDevOn(isDevModeEnabled());
-  }, []);
-
-  const loadModes = useCallback(async () => {
-    try {
-      const res = await fetch("/api/dev/visual-lab", { credentials: "include" });
-      const data = (await res.json()) as {
-        allowed?: boolean;
-        modes?: ModeMeta[];
-        error?: string;
-      };
-      if (!res.ok || !data.allowed) {
-        setAllowed(false);
-        return;
+    if (!devOn) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/dev/visual-lab", { credentials: "include" });
+        if (!res.ok) {
+          if (!cancelled) setAllowed(false);
+          return;
+        }
+        const data = (await res.json()) as {
+          allowed?: boolean;
+          modes?: ModeMeta[];
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!data.allowed) {
+          setAllowed(false);
+          return;
+        }
+        setAllowed(true);
+        if (data.modes?.length) setModes(data.modes);
+      } catch {
+        if (!cancelled) setAllowed(false);
       }
-      setAllowed(true);
-      if (data.modes?.length) setModes(data.modes);
-    } catch {
-      setAllowed(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (devOn) void loadModes();
-  }, [devOn, loadModes]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [devOn]);
 
   const generate = async (nextMode?: string) => {
     const selected = nextMode || mode;
-    setMode(selected);
-    setBusy(true);
-    setError("");
-    setResult(null);
-    setPuzzleId(null);
-    setVote(null);
+    dispatch({ type: "generate-start", mode: selected });
     try {
       const res = await fetch("/api/dev/visual-lab", {
         method: "POST",
@@ -216,29 +280,39 @@ export function DevVisualLab() {
           persist: true,
         }),
       });
-      const data = (await res.json()) as {
-        success?: boolean;
-        result?: LabResult;
-        puzzleId?: string;
-        persisted?: boolean;
-        error?: string;
-      };
-      if (!res.ok || !data.success || !data.result) {
-        throw new Error(data.error || "Generation failed");
+      if (res.ok) {
+        const data = (await res.json()) as {
+          success?: boolean;
+          result?: LabResult;
+          puzzleId?: string;
+          persisted?: boolean;
+          error?: string;
+        };
+        if (!data.success || !data.result) {
+          fail(data.error || "Generation failed");
+        }
+        dispatch({
+          type: "generate-success",
+          result: data.result,
+          puzzleId: data.puzzleId || null,
+        });
+      } else {
+        const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+        fail(errBody.error || "Generation failed");
       }
-      setResult(data.result);
-      setPuzzleId(data.puzzleId || null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setBusy(false);
+      dispatch({
+        type: "generate-error",
+        error: err instanceof Error ? err.message : "Generation failed",
+      });
     }
+    dispatch({ type: "generate-done" });
   };
 
   const submitVote = async (next: QualityVote) => {
     if (!puzzleId || voteSaving) return;
     setVoteSaving(true);
-    setVote(next);
+    dispatch({ type: "set-vote", vote: next });
     try {
       await fetch("/api/puzzles/rating", {
         method: "POST",
@@ -253,9 +327,8 @@ export function DevVisualLab() {
       });
     } catch {
       // keep local selection
-    } finally {
-      setVoteSaving(false);
     }
+    setVoteSaving(false);
   };
 
   if (!devOn) {
@@ -310,7 +383,7 @@ export function DevVisualLab() {
               key={m.id}
               type="button"
               disabled={busy || allowed === false}
-              onClick={() => setMode(m.id)}
+              onClick={() => dispatch({ type: "select-mode", mode: m.id })}
               className={cn(
                 "rounded-lg border p-3 text-left transition-colors",
                 "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -335,7 +408,11 @@ export function DevVisualLab() {
           onClick={() => void generate()}
           className="gap-2"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-end" />
+          ) : (
+            <Sparkles className="h-4 w-4" data-icon="inline-end" />
+          )}
           Generate {modes.find((m) => m.id === mode)?.label ?? mode}
         </Button>
         <Button asChild variant="outline" disabled={busy}>
@@ -400,7 +477,7 @@ export function DevVisualLab() {
                     vote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
                   Like
                 </Button>
                 <Button
@@ -413,7 +490,7 @@ export function DevVisualLab() {
                     vote === "dislike" && "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
                 >
-                  <ThumbsDown className="h-4 w-4" />
+                  <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
                   Dislike
                 </Button>
               </div>

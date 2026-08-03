@@ -1,10 +1,10 @@
 "use client";
 
 import { Check, Lock, Mail, User, UserPlus } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import * as React from "react";
+import type * as React from "react";
 import { useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { safeInternalRedirect } from "@/lib/safe-internal-redirect";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -30,7 +31,9 @@ export default function SignupPage() {
     confirmPassword?: string;
     form?: string;
   }>({});
-  const [firstErrorField, setFirstErrorField] = useState<string | null>(null);
+  const focusField = (id: string | null) => {
+    if (id) document.getElementById(id)?.focus();
+  };
 
   const validateField = (
     name: string,
@@ -125,76 +128,74 @@ export default function SignupPage() {
       // Focus first error field
       const firstError = Object.keys(newErrors)[0];
       if (firstError) {
-        setFirstErrorField(firstError);
+        focusField(firstError);
         document.getElementById(firstError)?.focus();
       }
       return;
     }
 
     setErrors({});
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username.trim(),
-          email: formData.email.trim(),
-          password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast({
-          title: "Account created!",
-          description: "Your account has been created successfully. Redirecting to login…",
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: formData.username.trim(),
+            email: formData.email.trim(),
+            password: formData.password,
+          }),
         });
 
-        // Store user data temporarily
-        localStorage.setItem("username", formData.username.trim());
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}) as { error?: string });
+          const errorMessage = data.error || "Something went wrong. Please try again.";
+          setErrors({ form: errorMessage });
+          toast({
+            title: "Signup failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else {
+          const data = await response.json();
 
-        const nextPath = safeInternalRedirect(
-          new URLSearchParams(window.location.search).get("next")
-        );
-        setTimeout(() => {
-          router.push(`/login?next=${encodeURIComponent(nextPath)}`);
-        }, 1500);
-      } else {
-        const errorMessage = data.error || "Something went wrong. Please try again.";
+          if (data.success) {
+            toast({
+              title: "Account created!",
+              description: "Your account has been created successfully. Redirecting to login…",
+            });
+
+            // Store user data temporarily
+            localStorage.setItem("username", formData.username.trim());
+
+            const nextPath = safeInternalRedirect(
+              new URLSearchParams(window.location.search).get("next")
+            );
+            setTimeout(() => {
+              router.push(`/login?next=${encodeURIComponent(nextPath)}`);
+            }, 1500);
+          } else {
+            const errorMessage = data.error || "Something went wrong. Please try again.";
+            setErrors({ form: errorMessage });
+            toast({
+              title: "Signup failed",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Signup error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
         setErrors({ form: errorMessage });
         toast({
-          title: "Signup failed",
+          title: "Error",
           description: errorMessage,
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Signup error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setErrors({ form: errorMessage });
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
-
-  // Focus first error field when it changes
-  React.useEffect(() => {
-    if (firstErrorField) {
-      const element = document.getElementById(firstErrorField);
-      if (element) {
-        element.focus();
-        setFirstErrorField(null);
-      }
-    }
-  }, [firstErrorField]);
 
   return (
     <Layout>
@@ -390,7 +391,7 @@ export default function SignupPage() {
                   </>
                 ) : (
                   <>
-                    <UserPlus aria-hidden="true" className="h-4 w-4" />
+                    <UserPlus aria-hidden="true" className="h-4 w-4" data-icon="inline-end" />
                     Create account
                   </>
                 )}
@@ -399,10 +400,10 @@ export default function SignupPage() {
 
             {/* Benefits */}
             <div className="mt-6 rounded-lg border border-border bg-accent/50 p-4">
-              <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+              <h2 className="mb-3 flex items-center gap-2 font-semibold text-base text-foreground">
                 <Check className="h-5 w-5" />
                 What You Get:
-              </h3>
+              </h2>
               <ul className="space-y-2 text-foreground text-sm">
                 <li className="flex items-center gap-2">
                   <Check className="h-3.5 w-3.5 text-success" />

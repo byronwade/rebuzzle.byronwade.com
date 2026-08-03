@@ -13,8 +13,8 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { getLevelProgress as getProgress } from "@/lib/gameSettings";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generateItemListSchema } from "@/lib/seo/structured-data";
 
 interface LeaderboardEntry {
@@ -94,56 +95,62 @@ export default function LeaderboardClient({
         const response = await fetch(
           `/api/leaderboard?limit=25&timeframe=${timeframe}&sortBy=${sortBy}`
         );
-        const data = await response.json();
-
-        if (data.success) {
-          setLeaderboard(data.leaderboard);
-        } else {
-          console.error("Failed to fetch leaderboard:", data.error);
+        if (!response.ok) {
+          console.error("Failed to fetch leaderboard:", response.status);
           setLeaderboard([]);
-        }
+        } else {
+          const data = await response.json();
 
-        if (isAuthenticated && userId) {
-          const userResponse = await fetch(
-            `/api/user/stats?userId=${userId}&timeframe=${timeframe}`
-          );
-          const userData = await userResponse.json();
-          if (userData.success) {
-            if (userData.rank) {
-              setUserRank(userData.rank);
-            }
-            const userInLeaderboard = data.leaderboard.find(
-              (entry: LeaderboardEntry) => entry.user.id === userId
+          if (data.success) {
+            setLeaderboard(data.leaderboard);
+          } else {
+            console.error("Failed to fetch leaderboard:", data.error);
+            setLeaderboard([]);
+          }
+
+          if (isAuthenticated && userId) {
+            const userResponse = await fetch(
+              `/api/user/stats?userId=${userId}&timeframe=${timeframe}`
             );
-            if (userInLeaderboard) {
-              setUserEntry(userInLeaderboard);
-            } else if (userData.user && userData.stats && userData.rank) {
-              const userEntry: LeaderboardEntry = {
-                rank: userData.rank,
-                user: {
-                  id: userData.user.id,
-                  username: userData.user.username,
-                  email: userData.user.email,
-                },
-                stats: {
-                  points: userData.stats.points || 0,
-                  streak: userData.stats.streak || 0,
-                  totalGames: userData.stats.totalGames || 0,
-                  wins: userData.stats.wins || 0,
-                  level: userData.stats.level || 0,
-                  dailyChallengeStreak: userData.stats.dailyChallengeStreak || 0,
-                  completionRate: userData.stats.completionRate,
-                },
-              };
-              setUserEntry(userEntry);
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              if (userData.success) {
+                if (userData.rank) {
+                  setUserRank(userData.rank);
+                }
+                const userInLeaderboard = data.leaderboard.find(
+                  (entry: LeaderboardEntry) => entry.user.id === userId
+                );
+                if (userInLeaderboard) {
+                  setUserEntry(userInLeaderboard);
+                } else if (userData.user && userData.stats && userData.rank) {
+                  const userEntry: LeaderboardEntry = {
+                    rank: userData.rank,
+                    user: {
+                      id: userData.user.id,
+                      username: userData.user.username,
+                      email: userData.user.email,
+                    },
+                    stats: {
+                      points: userData.stats.points || 0,
+                      streak: userData.stats.streak || 0,
+                      totalGames: userData.stats.totalGames || 0,
+                      wins: userData.stats.wins || 0,
+                      level: userData.stats.level || 0,
+                      dailyChallengeStreak: userData.stats.dailyChallengeStreak || 0,
+                      completionRate: userData.stats.completionRate,
+                    },
+                  };
+                  setUserEntry(userEntry);
+                }
+              }
             }
           }
         }
       } catch (error) {
         console.error("Error fetching leaderboard:", error);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     fetchLeaderboard();
@@ -188,7 +195,7 @@ export default function LeaderboardClient({
       {leaderboardSchema && (
         <script
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(leaderboardSchema),
+            __html: serializeJsonLd(leaderboardSchema),
           }}
           type="application/ld+json"
         />
@@ -212,18 +219,18 @@ export default function LeaderboardClient({
             variant={sortBy === "points" ? "default" : "outline"}
             size="sm"
             onClick={() => setSortBy("points")}
-            className="h-10 min-w-[7.5rem] gap-1.5 px-4"
+            className="h-10 gap-1.5 px-4"
           >
-            <Trophy className="size-4" />
+            <Trophy className="size-4" data-icon="inline-start" />
             Points
           </Button>
           <Button
             variant={sortBy === "streak" ? "default" : "outline"}
             size="sm"
             onClick={() => setSortBy("streak")}
-            className="h-10 min-w-[7.5rem] gap-1.5 px-4"
+            className="h-10 gap-1.5 px-4"
           >
-            <Flame className="size-4" />
+            <Flame className="size-4" data-icon="inline-start" />
             Streaks
           </Button>
         </div>
@@ -286,7 +293,7 @@ export default function LeaderboardClient({
                         </div>
                         <div className="h-1 overflow-hidden rounded-full bg-inset">
                           <div
-                            className="h-full bg-warning rounded-full transition-all duration-500"
+                            className="h-full bg-warning rounded-full transition-[width,colors] duration-500"
                             style={{
                               width: `${getLevelProgress(userEntry.stats.level, userEntry.stats.points)}%`,
                             }}
@@ -304,7 +311,7 @@ export default function LeaderboardClient({
                       size="sm"
                       className="gap-1.5 font-medium text-sm"
                     >
-                      <ArrowDown className="size-3.5" />
+                      <ArrowDown className="size-3.5" data-icon="inline-start" />
                       Find me
                     </Button>
                   )}
@@ -351,9 +358,9 @@ export default function LeaderboardClient({
               <p className="text-muted-foreground text-sm mb-4">
                 Be the first to solve a puzzle and claim the top spot!
               </p>
-              <Link href="/">
-                <Button>Start Playing</Button>
-              </Link>
+              <Button asChild>
+                <Link href="/">Start Playing</Link>
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -480,14 +487,14 @@ export default function LeaderboardClient({
                           {/* Player Info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="truncate font-semibold text-foreground text-sm sm:text-base">
+                              <p className="truncate font-semibold text-foreground text-sm sm:text-base">
                                 {entry.user.username}
                                 {isCurrentUser && (
                                   <span className="ml-2 font-normal text-warning text-xs">
                                     (You)
                                   </span>
                                 )}
-                              </h3>
+                              </p>
                               {entry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-[11px] sm:text-xs">
                                   <Zap className="size-3" />
@@ -511,7 +518,7 @@ export default function LeaderboardClient({
                           </div>
 
                           {/* Score Display */}
-                          <div className="min-w-[4.5rem] shrink-0 text-right sm:min-w-[5.5rem]">
+                          <div className="shrink-0 text-right tabular-nums">
                             <div className="font-semibold text-foreground text-lg tabular-nums sm:text-xl">
                               {entry.stats.points.toLocaleString()}
                             </div>
@@ -552,10 +559,10 @@ export default function LeaderboardClient({
                           {/* Player Info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <h3 className="truncate font-semibold text-sm md:text-base text-foreground">
+                              <p className="truncate font-semibold text-sm md:text-base text-foreground">
                                 {userEntry.user.username}
                                 <span className="ml-2 text-warning text-xs font-normal">(You)</span>
-                              </h3>
+                              </p>
                               {userEntry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-xs">
                                   <Zap className="size-3" />
@@ -597,11 +604,9 @@ export default function LeaderboardClient({
 
         {/* Call to Action */}
         <div className="mt-8 text-center">
-          <Link href="/">
-            <Button size="lg" className="font-medium">
-              Play Today's Puzzle
-            </Button>
-          </Link>
+          <Button asChild size="lg" className="font-medium">
+            <Link href="/">Play Today's Puzzle</Link>
+          </Button>
         </div>
 
         {/* Achievements & Levels Link */}
@@ -614,9 +619,7 @@ export default function LeaderboardClient({
                     <Sparkles className="size-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-base text-foreground">
-                      Achievements & Levels
-                    </h3>
+                    <p className="font-semibold text-base text-foreground">Achievements & Levels</p>
                     <p className="text-muted-foreground text-sm">
                       View all 100 achievements and 8 rank tiers
                     </p>

@@ -100,12 +100,11 @@ export async function loadSimCalibration(lookbackDays = 45): Promise<SimCalibrat
       metadata?: { estimatedSolveRate?: number; liveSolveRate?: number };
     }>;
 
-    const pairs = docs
-      .map((d) => ({
-        estimated: d.metadata?.estimatedSolveRate ?? Number.NaN,
-        live: d.metadata?.liveSolveRate ?? Number.NaN,
-      }))
-      .filter((p) => Number.isFinite(p.estimated) && Number.isFinite(p.live));
+    const pairs = docs.flatMap((d) => {
+      const estimated = d.metadata?.estimatedSolveRate ?? Number.NaN;
+      const live = d.metadata?.liveSolveRate ?? Number.NaN;
+      return Number.isFinite(estimated) && Number.isFinite(live) ? [{ estimated, live }] : [];
+    });
 
     return computeSimCalibrationFromPairs(pairs);
   } catch {

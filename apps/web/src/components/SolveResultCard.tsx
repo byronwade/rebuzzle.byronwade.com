@@ -1,8 +1,8 @@
 "use client";
 
 import { Check, Flame, Lock, Trophy } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import { Timer } from "@/components/Timer";
@@ -57,30 +57,30 @@ export interface SolveResultCardProps {
   className?: string;
 }
 
+function subscribeReducedMotion(onStoreChange: () => void) {
+  const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mql.addEventListener("change", onStoreChange);
+  return () => mql.removeEventListener("change", onStoreChange);
+}
+
 function useCountUp(
   target: number,
   enabled: boolean,
   durationMs = 700
 ): { value: number; done: boolean } {
-  const [value, setValue] = useState(enabled ? 0 : target);
-  const [done, setDone] = useState(!enabled || target <= 0);
+  const reduceMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false
+  );
+  const shouldAnimate = enabled && target > 0 && !reduceMotion;
+  const [value, setValue] = useState(shouldAnimate ? 0 : target);
+  const [done, setDone] = useState(!shouldAnimate);
 
   useEffect(() => {
-    if (!enabled || target <= 0) {
-      setValue(target);
-      setDone(true);
-      return;
-    }
+    if (!shouldAnimate) return;
 
-    const reduceMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) {
-      setValue(target);
-      setDone(true);
-      return;
-    }
-
+    // react-doctor-disable-next-line react-doctor/set-state-in-effect, react-hooks-js/set-state-in-effect -- animation frame loop needs an initial done=false reset
     setDone(false);
     let frame = 0;
     const started = performance.now();
@@ -96,7 +96,11 @@ function useCountUp(
     };
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
-  }, [target, enabled, durationMs]);
+  }, [target, shouldAnimate, durationMs]);
+
+  if (!shouldAnimate) {
+    return { value: target, done: true };
+  }
 
   return { value, done };
 }
@@ -165,10 +169,25 @@ export function SolveResultCard({
   const winCount = Math.max(wins, 0);
   const winRate = played > 0 ? Math.round((winCount / played) * 100) : 0;
   const showAnswer = Boolean(answer) && !success;
-  const [streakLocked, setStreakLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [perception, setPerception] = useState<PerceptionChoice | null>(null);
+  const [perceptionOverride, setPerceptionOverride] = useState<PerceptionChoice | null>(null);
   const [perceptionSaving, setPerceptionSaving] = useState(false);
+  const storedPerception = useSyncExternalStore(
+    () => () => {},
+    () => {
+      if (!puzzleId) return null;
+      try {
+        const stored = localStorage.getItem(`difficultyPerception:${puzzleId}`);
+        if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
+          return stored as PerceptionChoice;
+        }
+      } catch {}
+      return null;
+    },
+    () => null
+  );
+  const perception = perceptionOverride ?? storedPerception;
+  const streakLocked = Boolean(scoreDone && success && streak > 0);
   const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
   const cleanSolve = success && hintsUsed === 0;
   const clutchSolve = success && attempts >= maxAttempts;
@@ -180,27 +199,14 @@ export function SolveResultCard({
   useEffect(() => {
     if (!scoreDone) return;
     if (success && streak > 0) {
-      setStreakLocked(true);
       haptics.tap();
     }
   }, [scoreDone, success, streak]);
 
-  useEffect(() => {
-    if (!puzzleId) return;
-    try {
-      const stored = localStorage.getItem(`difficultyPerception:${puzzleId}`);
-      if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
-        setPerception(stored);
-      }
-    } catch {
-      // ignore
-    }
-  }, [puzzleId]);
-
   async function submitPerception(choice: PerceptionChoice) {
     if (!puzzleId || perceptionSaving || perception) return;
     setPerceptionSaving(true);
-    setPerception(choice);
+    setPerceptionOverride(choice);
     haptics.tap();
     try {
       localStorage.setItem(`difficultyPerception:${puzzleId}`, choice);
@@ -219,9 +225,8 @@ export function SolveResultCard({
       });
     } catch {
       // Non-blocking — local selection still stands
-    } finally {
-      setPerceptionSaving(false);
     }
+    setPerceptionSaving(false);
   }
 
   return (
@@ -256,7 +261,7 @@ export function SolveResultCard({
             {streakTease}
           </p>
           {unlockedAchievementName && scoreDone ? (
-            <p className="mt-1 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
+            <p className="rb-enter mt-1 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] ">
               Unlocked · {unlockedAchievementName}
             </p>
           ) : null}
@@ -292,12 +297,12 @@ export function SolveResultCard({
               {attempts === 1 ? "Guess" : "Guesses"}
             </p>
             {cleanSolve && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
                 {noHintStreak > 1 ? `No hints · ${noHintStreak}` : "No hints"}
               </p>
             ) : null}
             {clutchSolve && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] ">
                 Clutch
               </p>
             ) : null}
@@ -320,7 +325,7 @@ export function SolveResultCard({
               </p>
             ) : null}
             {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
                 Day · #{dayRank}
               </p>
             ) : null}
@@ -355,12 +360,12 @@ export function SolveResultCard({
               </p>
             ) : null}
             {personalBest && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
                 {personalBest}
               </p>
             ) : null}
             {paceLabel && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] animate-in fade-in duration-300">
+              <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
                 {paceLabel}
               </p>
             ) : null}

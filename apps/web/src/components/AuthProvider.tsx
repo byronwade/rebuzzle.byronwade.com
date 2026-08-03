@@ -1,15 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { trackUserSession } from "@/lib/analytics";
 import type { ServerSession } from "@/lib/auth/get-server-session";
 import { setupSessionTracking } from "@/lib/session-tracker";
@@ -98,7 +90,6 @@ export function AuthProvider({
     isLoading: initialSession === undefined,
     refreshAuth: async () => {},
   });
-  const [, startTransition] = useTransition();
 
   const checkAuth = useCallback(async () => {
     try {
@@ -203,9 +194,7 @@ export function AuthProvider({
       return;
     }
 
-    startTransition(() => {
-      void checkAuth();
-    });
+    void checkAuth();
   }, [pathname, checkAuth, authState.isLoading]);
 
   const refreshAuth = useCallback(async () => {
@@ -213,10 +202,6 @@ export function AuthProvider({
     // (guest warm-up, post-login, etc.). Keep the current shell painted.
     await checkAuth();
   }, [checkAuth]);
-
-  useEffect(() => {
-    setAuthState((prev) => ({ ...prev, refreshAuth }));
-  }, [refreshAuth]);
 
   const seedSession = useCallback((session: ServerSession | null) => {
     const next = sessionToState(session);
@@ -231,9 +216,14 @@ export function AuthProvider({
     initialCheckComplete.current = true;
   }, []);
 
+  const authValue: AuthState = {
+    ...authState,
+    refreshAuth,
+  };
+
   return (
     <AuthSeedContext.Provider value={seedSession}>
-      <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>
+      <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
     </AuthSeedContext.Provider>
   );
 }

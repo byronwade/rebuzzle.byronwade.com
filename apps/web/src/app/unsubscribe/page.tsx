@@ -1,6 +1,6 @@
 import { CheckCircle2, Mail, XCircle } from "lucide-react";
-import Link from "next/link";
 import { connection } from "next/server";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -65,12 +65,13 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
       <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
         <div className="flex justify-center">
           <Card className="w-full max-w-[400px] p-8" variant="float">
+            <h1 className="sr-only">Email unsubscribe</h1>
             {status === "success" && (
               <div className="text-center">
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
                   <CheckCircle2 className="h-5 w-5 text-success" />
                 </div>
-                <h1 className="font-semibold text-2xl tracking-[-0.04em]">Unsubscribed</h1>
+                <p className="font-semibold text-2xl tracking-[-0.04em]">Unsubscribed</p>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
                   {email ? (
                     <>
@@ -101,9 +102,9 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
                   <XCircle className="h-5 w-5 text-destructive" />
                 </div>
-                <h1 className="font-semibold text-2xl tracking-[-0.04em]">
+                <p className="font-semibold text-2xl tracking-[-0.04em]">
                   Unsubscribe didn&apos;t go through
-                </h1>
+                </p>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
                   We couldn&apos;t process your unsubscribe request. This might be because the link
                   has expired or is invalid.
@@ -124,7 +125,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <h1 className="font-semibold text-2xl tracking-[-0.04em]">Missing email</h1>
+                <p className="font-semibold text-2xl tracking-[-0.04em]">Missing email</p>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
                   This unsubscribe link is missing an email address. Open the link from your
                   notification email, or manage preferences in settings.

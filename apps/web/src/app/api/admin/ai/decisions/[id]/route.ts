@@ -25,22 +25,33 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (decision.operationId) {
       const allInOperation = await aiDecisionOps.findByOperationId(decision.operationId);
       if (allInOperation.length > 1) {
-        relatedDecisions = allInOperation
-          .filter((d) => d.id !== id)
-          .map((d) => ({
-            id: d.id,
-            decisionType: d.decisionType,
-            timestamp: d.timestamp,
-            success: d.output.success,
-            durationMs: d.durationMs,
-          }));
+        relatedDecisions = allInOperation.flatMap((d) =>
+          d.id !== id
+            ? [
+                {
+                  id: d.id,
+                  decisionType: d.decisionType,
+                  timestamp: d.timestamp,
+                  success: d.output.success,
+                  durationMs: d.durationMs,
+                },
+              ]
+            : []
+        );
       }
     }
 
-    return NextResponse.json({
-      decision,
-      relatedDecisions,
-    });
+    return NextResponse.json(
+      {
+        decision,
+        relatedDecisions,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-store",
+        },
+      }
+    );
   } catch (error) {
     console.error("AI Decision detail API error:", error);
     return NextResponse.json({ error: "Failed to fetch AI decision" }, { status: 500 });

@@ -60,21 +60,24 @@ export function WordleStatsPanel({ stats, className, compact = false }: WordleSt
           Guess distribution
         </p>
         <div className="space-y-1.5">
-          {distribution.map((count, index) => (
-            <div className="flex items-center gap-2" key={`guess-${index + 1}`}>
-              <span className="w-3 font-mono text-muted-foreground text-xs tabular-nums">
-                {index + 1}
-              </span>
-              <div className="h-5 flex-1 overflow-hidden rounded-sm bg-muted/60">
-                <div
-                  className="flex h-full min-w-[1.25rem] items-center justify-end bg-primary px-1.5 font-mono text-[11px] text-primary-foreground tabular-nums transition-[width]"
-                  style={{ width: `${Math.max(12, (count / maxBucket) * 100)}%` }}
-                >
-                  {count}
+          {distribution.map((count, guessNumber) => {
+            const bucketLabel = `Guess ${guessNumber + 1}`;
+            return (
+              <div className="flex items-center gap-2" key={bucketLabel}>
+                <span className="w-3 font-mono text-muted-foreground text-xs tabular-nums">
+                  {guessNumber + 1}
+                </span>
+                <div className="h-5 flex-1 overflow-hidden rounded-sm bg-muted/60">
+                  <div
+                    className="flex h-full min-w-[1.25rem] items-center justify-end bg-primary px-1.5 font-mono text-[11px] text-primary-foreground tabular-nums transition-[width]"
+                    style={{ width: `${Math.max(12, (count / maxBucket) * 100)}%` }}
+                  >
+                    {count}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

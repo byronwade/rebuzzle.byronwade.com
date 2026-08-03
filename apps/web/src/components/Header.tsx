@@ -1,8 +1,8 @@
 "use client";
 
-import { Heart, Info } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Heart, Info, Menu, X } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import {
   getDifficultyName,
   getGroupedDailyDifficulties,
 } from "@/lib/difficulty";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 import { AttemptsIndicator } from "./AttemptsIndicator";
 import { useAuth } from "./AuthProvider";
@@ -41,12 +42,18 @@ const NAV_LINKS = [
 
 export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderProps) {
   const { isAuthenticated } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const mobileNavId = useId();
 
-  // Prevent hydration mismatch by only rendering client-side state after mount
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!mobileNavOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
 
   const isPlaying = Boolean(gameState?.isPlaying);
 
@@ -62,8 +69,8 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
               Rebuzzle
             </Link>
 
-            {/* Always show site nav — home starts a game which used to hide these */}
-            <nav className="hidden items-center gap-1 md:flex">
+            {/* Desktop site nav */}
+            <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
               {NAV_LINKS.map((link) => (
                 <Link
                   className="rounded-md px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
@@ -77,6 +84,24 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
           </div>
 
           <div className="flex items-center gap-1.5">
+            <Button
+              aria-controls={mobileNavId}
+              aria-expanded={mobileNavOpen}
+              aria-label="Menu"
+              className="md:hidden"
+              onClick={() => setMobileNavOpen((open) => !open)}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              {mobileNavOpen ? (
+                <X className="h-4 w-4" data-icon="inline-end" />
+              ) : (
+                <Menu className="h-4 w-4" data-icon="inline-end" />
+              )}
+              <span className="sr-only">Menu</span>
+            </Button>
+
             {mounted && <NotificationBadge />}
             <InfoButton puzzleType={puzzleType} />
             <Tooltip>
@@ -88,7 +113,8 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
                     rel="noopener noreferrer"
                     target="_blank"
                   >
-                    <Heart className="h-4 w-4" />
+                    <Heart className="h-4 w-4" data-icon="inline-start" />
+                    <span className="sr-only">Support the developer</span>
                   </Link>
                 </Button>
               </TooltipTrigger>
@@ -100,6 +126,27 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
             <UserMenu isAuthenticated={isAuthenticated} />
           </div>
         </div>
+
+        {/* Mobile nav panel */}
+        <nav
+          aria-label="Primary mobile"
+          className={cn("border-border border-t md:hidden", mobileNavOpen ? "block" : "hidden")}
+          id={mobileNavId}
+        >
+          <ul className="mx-auto flex max-w-page flex-col gap-0.5 px-4 py-3">
+            {NAV_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link
+                  className="block rounded-md px-2.5 py-2.5 text-foreground text-sm transition-colors hover:bg-muted"
+                  href={link.href}
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
         {/* Status rail — difficulty, countdown and attempts, in the mono voice */}
         <div className="border-border border-t">

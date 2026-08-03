@@ -1,11 +1,11 @@
 "use client";
 
-import { type CSSProperties, useMemo } from "react";
+import type { CSSProperties } from "react";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
+import { hasComposedVisual } from "@/lib/puzzle-visual";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
-import { hasComposedVisual } from "./PuzzleVisualBoard";
 
 export type StageState = "hero" | "docked" | "compact";
 
@@ -34,7 +34,7 @@ const SMALL_TEXT_TYPES = new Set(["riddle", "trivia", "logic-grid", "cryptic-cro
  */
 export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: PuzzleStageProps) {
   const composed = hasComposedVisual(visual);
-  const surface = useMemo(() => resolvePuzzleSurface(visual), [visual]);
+  const surface = resolvePuzzleSurface(visual);
   const onPaper = surface.mode === "paper";
   // Compact (keyboard) keeps large tiles — chrome is hidden, so match hero scale.
   const size = SMALL_TEXT_TYPES.has(puzzleType) ? "small" : state === "docked" ? "medium" : "large";

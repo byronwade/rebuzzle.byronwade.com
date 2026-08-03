@@ -124,10 +124,10 @@ export async function recommendNextPuzzle(
     return null;
   }
 
-  const profile = await buildUserPuzzleProfile(userId);
-
-  // Find similar puzzles that are slightly harder or in same category
-  const { findSimilarPuzzles } = await import("./semantic-search");
+  const [profile, { findSimilarPuzzles }] = await Promise.all([
+    buildUserPuzzleProfile(userId),
+    import("./semantic-search"),
+  ]);
   const similar = await findSimilarPuzzles(currentPuzzleId, 10, 0.6);
 
   if (similar.length === 0) {
@@ -172,10 +172,10 @@ export async function getAdaptiveDifficulty(userId: string): Promise<{
   range: { min: number; max: number };
   reasoning: string;
 }> {
-  const profile = await buildUserPuzzleProfile(userId);
-
-  // Adjust difficulty based on recent performance
-  const { puzzleAttemptOps } = await import("@/db/operations");
+  const [profile, { puzzleAttemptOps }] = await Promise.all([
+    buildUserPuzzleProfile(userId),
+    import("@/db/operations"),
+  ]);
   const recentAttempts = await puzzleAttemptOps.getUserAttempts(userId, 10);
 
   if (recentAttempts.length < 3) {

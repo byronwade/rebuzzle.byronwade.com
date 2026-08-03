@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -57,7 +57,9 @@ export default function AIQuotaExceededPage() {
 
               {/* Info Box */}
               <div className="rounded-lg border border-border bg-muted p-4 text-left">
-                <h3 className="mb-2 font-semibold text-foreground">Why did this happen?</h3>
+                <h2 className="mb-2 font-semibold text-base text-foreground">
+                  Why did this happen?
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   We use Google's free tier AI service (Gemini) which has a limit of 1,500 requests
                   per day. This helps us keep Rebuzzle free for everyone! The quota automatically
@@ -67,16 +69,12 @@ export default function AIQuotaExceededPage() {
 
               {/* Actions */}
               <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
-                <Link href="/">
-                  <Button className="w-full sm:w-auto" size="lg">
-                    Play Today's Puzzle
-                  </Button>
-                </Link>
-                <Link href="/blog">
-                  <Button className="w-full sm:w-auto" size="lg" variant="outline">
-                    Read Puzzle Tips
-                  </Button>
-                </Link>
+                <Button asChild className="w-full sm:w-auto" size="lg">
+                  <Link href="/">Play Today's Puzzle</Link>
+                </Button>
+                <Button asChild className="w-full sm:w-auto" size="lg" variant="outline">
+                  <Link href="/blog">Read Puzzle Tips</Link>
+                </Button>
               </div>
 
               {/* Additional Info */}

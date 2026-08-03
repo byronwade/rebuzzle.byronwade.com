@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
@@ -25,7 +24,6 @@ function formatCountdown(diffMs: number): string {
 }
 
 export function Timer({ nextPlayTime, className, compact = false }: TimerProps) {
-  const router = useRouter();
   const [timeLeft, setTimeLeft] = useState("--:--:--");
   const [underHour, setUnderHour] = useState(false);
   const [minuteTick, setMinuteTick] = useState(false);
@@ -47,7 +45,7 @@ export function Timer({ nextPlayTime, className, compact = false }: TimerProps) 
       if (difference <= 0) {
         if (!reloadedRef.current) {
           reloadedRef.current = true;
-          router.replace("/");
+          window.location.assign("/");
         }
         setUnderHour(false);
         return "00:00:00";
@@ -84,7 +82,7 @@ export function Timer({ nextPlayTime, className, compact = false }: TimerProps) 
         intervalRef.current = null;
       }
     };
-  }, [nextPlayTime, router, compact]);
+  }, [nextPlayTime, compact]);
 
   // Tab-return itch: one soft tap when coming back under an hour to midnight.
   useEffect(() => {

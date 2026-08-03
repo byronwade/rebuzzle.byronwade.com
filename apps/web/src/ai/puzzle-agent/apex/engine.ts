@@ -225,10 +225,11 @@ export async function runApexGeneration(
       const antiCopySuggestions = brief.phraseSuggestions.filter(
         (entry) => answerFirstSeedKey(entry) !== answerSeed
       );
-      const phraseSlice = antiCopySuggestions
-        .filter((_, i) => i % brief.candidateCount === (slot - 1) % brief.candidateCount)
-        .map((p) => p.answer);
+      const phraseSlice = antiCopySuggestions.flatMap((p, i) =>
+        i % brief.candidateCount === (slot - 1) % brief.candidateCount ? [p.answer] : []
+      );
 
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: billable LLM candidate slots must stay sequential for gateway quota
       const result = await runPuzzleAgentGeneration({
         ...params,
         // Host-side quality gates remain strict; do not pay for a second full

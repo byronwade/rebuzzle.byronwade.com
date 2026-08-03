@@ -17,22 +17,22 @@ import { z } from "zod";
 // =============================================================================
 
 /** Threshold for immediate acceptance without AI (near-exact match) */
-export const QUICK_ACCEPT_THRESHOLD = 0.98;
+const QUICK_ACCEPT_THRESHOLD = 0.98;
 
 /** Minimum similarity to even attempt AI validation */
-export const AI_MINIMUM_SIMILARITY = 0.3;
+const AI_MINIMUM_SIMILARITY = 0.3;
 
 /** Maximum time to wait for AI validation before falling back */
-export const AI_TIMEOUT_MS = 5000;
+const AI_TIMEOUT_MS = 5000;
 
 /** Maximum typo ratio allowed (typos / total chars) */
-export const MAX_TYPO_RATIO = 0.15;
+const MAX_TYPO_RATIO = 0.15;
 
 // =============================================================================
 // ZOD SCHEMAS
 // =============================================================================
 
-export const AnswerValidationConfigSchema = z.object({
+const AnswerValidationConfigSchema = z.object({
   enabled: z.boolean().default(true),
   alwaysUseAI: z.boolean().default(true),
   quickAcceptThreshold: z.number().min(0).max(1).default(0.98),
@@ -155,7 +155,7 @@ export const CONTRACTION_MAP: Record<string, string> = {
  * Groups of words that can be considered semantically equivalent
  * in certain contexts.
  */
-export const EQUIVALENT_WORD_GROUPS: string[][] = [
+const EQUIVALENT_WORD_GROUPS: string[][] = [
   ["hi", "hello", "hey"],
   ["bye", "goodbye", "farewell"],
   ["yeah", "yes", "yep", "yup"],
@@ -167,7 +167,7 @@ export const EQUIVALENT_WORD_GROUPS: string[][] = [
 /**
  * Words that can often be ignored without changing meaning.
  */
-export const IGNORABLE_WORDS: string[] = ["a", "an", "the"];
+const IGNORABLE_WORDS: string[] = ["a", "an", "the"];
 
 // =============================================================================
 // MAIN CONFIG EXPORT

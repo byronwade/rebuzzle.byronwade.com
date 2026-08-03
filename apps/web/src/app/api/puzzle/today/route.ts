@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { toPublicPuzzle } from "@/lib/game/public-puzzle";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
 
 /**
@@ -14,29 +15,45 @@ export async function GET() {
     const result = await getTodaysPuzzle();
     const now = new Date();
     const nextPuzzleTime = getNextUtcMidnight(now).toISOString();
+    const secondsUntilMidnight = Math.max(
+      30,
+      Math.floor((getNextUtcMidnight(now).getTime() - now.getTime()) / 1000)
+    );
 
     if (result.success && result.puzzle) {
       const raw = result.puzzle as Record<string, unknown>;
-      return NextResponse.json({
-        success: true,
-        puzzle: toPublicPuzzle({
-          id: raw.id,
-          puzzle: raw.puzzle ?? raw.rebusPuzzle,
-          rebusPuzzle: raw.rebusPuzzle,
-          puzzleType: raw.puzzleType ?? "rebus",
-          difficulty: raw.difficulty,
-          hints: raw.hints ?? [],
-          date: raw.date,
-          category: raw.category,
-          topic: raw.topic,
-          relevanceScore: raw.relevanceScore,
-          aiGenerated: raw.aiGenerated ?? false,
-        }),
-        cached: result.cached,
-        generatedAt: result.generatedAt,
-        serverTime: now.toISOString(),
-        nextPuzzleTime,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          puzzle: toPublicPuzzle({
+            id: raw.id,
+            puzzle: raw.puzzle ?? raw.rebusPuzzle,
+            rebusPuzzle: raw.rebusPuzzle,
+            puzzleType: raw.puzzleType ?? "rebus",
+            difficulty: raw.difficulty,
+            hints: raw.hints ?? [],
+            date: raw.date,
+            category: raw.category,
+            topic: raw.topic,
+            relevanceScore: raw.relevanceScore,
+            aiGenerated: raw.aiGenerated ?? false,
+          }),
+          cached: result.cached,
+          generatedAt: result.generatedAt,
+          serverTime: now.toISOString(),
+          nextPuzzleTime,
+        },
+        {
+          headers: {
+            "Cache-Control": buildCacheControl({
+              public: true,
+              maxAge: 60,
+              sMaxAge: Math.min(300, secondsUntilMidnight),
+              staleWhileRevalidate: 60,
+            }),
+          },
+        }
+      );
     }
 
     return NextResponse.json(
@@ -46,7 +63,7 @@ export async function GET() {
         serverTime: now.toISOString(),
         nextPuzzleTime,
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   } catch (error) {
     console.error("Error in puzzle API:", error);
@@ -58,7 +75,7 @@ export async function GET() {
         serverTime: now.toISOString(),
         nextPuzzleTime: getNextUtcMidnight(now).toISOString(),
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }

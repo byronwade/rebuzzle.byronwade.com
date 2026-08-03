@@ -379,9 +379,11 @@ function reportFailures(input: {
       `Failed-control reviewer rate 95% upper bound ${input.reviewerExclusionEvidence.upper.toFixed(3)} above ${input.maximumReviewerExclusionRate} (observed ${observed(input.reviewerExclusionEvidence)})`
     );
   }
-  const undercoveredDifficultyTiers = input.difficultyTierScores
-    .filter((score) => score.candidates < input.minimumCandidatesPerDifficultyTier)
-    .map((score) => `${score.id} ${score.candidates}/${input.minimumCandidatesPerDifficultyTier}`);
+  const undercoveredDifficultyTiers = input.difficultyTierScores.flatMap((score) =>
+    score.candidates < input.minimumCandidatesPerDifficultyTier
+      ? [`${score.id} ${score.candidates}/${input.minimumCandidatesPerDifficultyTier}`]
+      : []
+  );
   if (undercoveredDifficultyTiers.length) {
     failures.push(`Difficulty-tier coverage incomplete: ${undercoveredDifficultyTiers.join(", ")}`);
   }
@@ -498,6 +500,7 @@ export function createPuzzlePlaytestService(
       if (existingPuzzleIds.has(puzzleId)) continue;
       foundMissingControl = true;
       const visual = PuzzleVisualSchema.parse(control.visual);
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: control corpus inserts stay sequential for deterministic ids
       await repository.insertCandidate({
         id: `puzzle-playtest-control:${sha256(`${control.id}:${control.answer}:${JSON.stringify(visual)}`).slice(0, 32)}`,
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
@@ -557,7 +560,7 @@ export function createPuzzlePlaytestService(
     if (candidate.evidenceRole === "control" || candidate.status === "complete") return candidate;
     const current = evidence ?? (await loadEvidence());
     const controlIds = new Set(
-      current.candidates.filter((row) => row.evidenceRole === "control").map((row) => row.id)
+      current.candidates.flatMap((row) => (row.evidenceRole === "control" ? [row.id] : []))
     );
     const qualifications = reviewerQualificationMap(current.reviews, controlIds);
     const qualifiedReviews = current.reviews.filter(
@@ -583,6 +586,7 @@ export function createPuzzlePlaytestService(
     const evidence = await loadEvidence();
     for (const candidate of evidence.candidates) {
       if (candidate.evidenceRole === "generated" && candidate.status === "open") {
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: playtest evaluations are sequential to bound concurrent LLM spend
         await evaluateCandidate(candidate, evidence);
       }
     }
@@ -814,18 +818,18 @@ export function createPuzzlePlaytestService(
       const controlIds = new Set(controlCandidates.map((candidate) => candidate.id));
       const qualifications = reviewerQualificationMap(reviews, controlIds);
       const qualifiedReviewerIds = new Set(
-        [...qualifications]
-          .filter(([, qualification]) => qualification.status === "qualified")
-          .map(([id]) => id)
+        [...qualifications].flatMap(([id, qualification]) =>
+          qualification.status === "qualified" ? [id] : []
+        )
       );
       const generatedReviews = reviews.filter((review) => !controlIds.has(review.candidateId));
       const qualifiedGeneratedReviews = generatedReviews.filter((review) =>
         qualifiedReviewerIds.has(review.reviewerId)
       );
       const completeIds = new Set(
-        generatedCandidates
-          .filter((candidate) => candidate.status === "complete")
-          .map((candidate) => candidate.id)
+        generatedCandidates.flatMap((candidate) =>
+          candidate.status === "complete" ? [candidate.id] : []
+        )
       );
       const completedReviews = qualifiedGeneratedReviews.filter((review) =>
         completeIds.has(review.candidateId)
@@ -1130,9 +1134,9 @@ export function createPuzzlePlaytestService(
         ])
       ) as Record<PuzzlePlaytestFailureReason, number>;
       const visibleIds = new Set(reviewerReviews.map((review) => review.candidateId));
-      const visibleCandidates = generatedCandidates
-        .filter((candidate) => visibleIds.has(candidate.id))
-        .map((candidate): PuzzlePlaytestCandidateReport => {
+      const visibleCandidates = generatedCandidates.flatMap(
+        (candidate): PuzzlePlaytestCandidateReport[] => {
+          if (!visibleIds.has(candidate.id)) return [];
           const rows = qualifiedGeneratedReviews.filter(
             (review) => review.candidateId === candidate.id
           );
@@ -1142,24 +1146,27 @@ export function createPuzzlePlaytestService(
             rows.length,
             candidate.difficultyScore
           );
-          return {
-            candidateId: candidate.id,
-            puzzleId: candidate.puzzleId,
-            answer: candidate.answer,
-            status: candidate.status,
-            difficultyScore: candidate.difficultyScore,
-            techniqueId: candidate.techniqueId,
-            decisions: rows.length,
-            correct,
-            solveRate: ratio(correct, rows.length),
-            solveRateLowerBound: solveEvidence.lower,
-            expectedSolveFloor: expectedHumanSolveFloor(candidate.difficultyScore),
-            ambiguityRate: ratio(
-              rows.filter((review) => review.failureReason === "multiple-answers").length,
-              rows.length
-            ),
-          };
-        });
+          return [
+            {
+              candidateId: candidate.id,
+              puzzleId: candidate.puzzleId,
+              answer: candidate.answer,
+              status: candidate.status,
+              difficultyScore: candidate.difficultyScore,
+              techniqueId: candidate.techniqueId,
+              decisions: rows.length,
+              correct,
+              solveRate: ratio(correct, rows.length),
+              solveRateLowerBound: solveEvidence.lower,
+              expectedSolveFloor: expectedHumanSolveFloor(candidate.difficultyScore),
+              ambiguityRate: ratio(
+                rows.filter((review) => review.failureReason === "multiple-answers").length,
+                rows.length
+              ),
+            },
+          ];
+        }
+      );
       return {
         contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
         readinessVersion: PUZZLE_PLAYTEST_READINESS_VERSION,

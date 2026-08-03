@@ -208,9 +208,9 @@ async function getOrGenerateDailyPuzzle(
         ? {
             contractVersion: qualityDrift.version,
             status: qualityDrift.status,
-            criticalMetrics: qualityDrift.metrics
-              .filter((metric) => metric.status === "critical")
-              .map((metric) => metric.id),
+            criticalMetrics: qualityDrift.metrics.flatMap((metric) =>
+              metric.status === "critical" ? [metric.id] : []
+            ),
           }
         : null,
       humanCalibration: humanCalibration

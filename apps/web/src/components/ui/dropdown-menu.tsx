@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  * feedback at all between touching a row and the menu closing.
  */
 const menuItemClass = cn(
-  "relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm outline-none transition-colors",
+  "relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm focus-ring transition-colors",
   "focus:bg-muted focus:text-foreground",
   "active:bg-muted active:text-foreground",
   "data-[state=open]:bg-muted data-[state=open]:text-foreground",
@@ -65,7 +65,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto size-4 shrink-0 opacity-60" />
+    <ChevronRight data-icon="inline-end" className="ml-auto size-4 shrink-0 opacity-60" />
   </DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;

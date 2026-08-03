@@ -87,6 +87,7 @@ export async function composePuzzleVisual(
           `Ignored unverified inline SVG for "${layer.concept}" and resolved it through the approved asset pipeline`
         );
       }
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: image composition layers are sequential for deterministic layout
       const pic = await generatePictogram({
         concept: layer.concept,
         role: layer.role,

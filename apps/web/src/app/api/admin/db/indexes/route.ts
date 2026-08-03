@@ -11,6 +11,7 @@ import { dropAllCustomIndexes, listAllIndexes, setupDatabaseIndexes } from "@/db
 import { userOps } from "@/db/operations";
 import { verifyToken } from "@/lib/jwt";
 
+const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" } as const;
 /**
  * Verify admin authentication
  */
@@ -47,7 +48,7 @@ async function verifyAdmin(request: NextRequest): Promise<{ isAdmin: boolean; er
 export async function GET(request: NextRequest) {
   const auth = await verifyAdmin(request);
   if (!auth.isAdmin) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
+    return NextResponse.json({ error: auth.error }, { status: 401, headers: PRIVATE_NO_STORE });
   }
 
   try {
@@ -59,11 +60,14 @@ export async function GET(request: NextRequest) {
       indexesObject[collection] = collIndexes;
     }
 
-    return NextResponse.json({
-      success: true,
-      indexes: indexesObject,
-      totalCollections: indexes.size,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        indexes: indexesObject,
+        totalCollections: indexes.size,
+      },
+      { headers: PRIVATE_NO_STORE }
+    );
   } catch (error) {
     console.error("[Admin API] Error listing indexes:", error);
     return NextResponse.json(
@@ -71,7 +75,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Failed to list indexes",
       },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 }
@@ -84,21 +88,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await verifyAdmin(request);
   if (!auth.isAdmin) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
+    return NextResponse.json({ error: auth.error }, { status: 401, headers: PRIVATE_NO_STORE });
   }
 
   try {
     const result = await setupDatabaseIndexes();
 
-    return NextResponse.json({
-      success: result.success,
-      message: result.success
-        ? `Successfully created ${result.totalCreated} indexes`
-        : `Created ${result.totalCreated} indexes with ${result.totalErrors} errors`,
-      results: result.results,
-      totalCreated: result.totalCreated,
-      totalErrors: result.totalErrors,
-    });
+    return NextResponse.json(
+      {
+        success: result.success,
+        message: result.success
+          ? `Successfully created ${result.totalCreated} indexes`
+          : `Created ${result.totalCreated} indexes with ${result.totalErrors} errors`,
+        results: result.results,
+        totalCreated: result.totalCreated,
+        totalErrors: result.totalErrors,
+      },
+      { headers: PRIVATE_NO_STORE }
+    );
   } catch (error) {
     console.error("[Admin API] Error creating indexes:", error);
     return NextResponse.json(
@@ -106,7 +113,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Failed to create indexes",
       },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 }
@@ -119,7 +126,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const auth = await verifyAdmin(request);
   if (!auth.isAdmin) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
+    return NextResponse.json({ error: auth.error }, { status: 401, headers: PRIVATE_NO_STORE });
   }
 
   // Require confirmation parameter to prevent accidental deletion
@@ -132,21 +139,24 @@ export async function DELETE(request: NextRequest) {
         success: false,
         error: "Add ?confirm=true to confirm index deletion. This can cause performance issues.",
       },
-      { status: 400 }
+      { status: 400, headers: PRIVATE_NO_STORE }
     );
   }
 
   try {
     const result = await dropAllCustomIndexes();
 
-    return NextResponse.json({
-      success: result.success,
-      message: result.success
-        ? `Successfully dropped ${result.dropped} indexes`
-        : `Dropped ${result.dropped} indexes with ${result.errors.length} errors`,
-      dropped: result.dropped,
-      errors: result.errors,
-    });
+    return NextResponse.json(
+      {
+        success: result.success,
+        message: result.success
+          ? `Successfully dropped ${result.dropped} indexes`
+          : `Dropped ${result.dropped} indexes with ${result.failures.length} errors`,
+        dropped: result.dropped,
+        failures: result.failures,
+      },
+      { headers: PRIVATE_NO_STORE }
+    );
   } catch (error) {
     console.error("[Admin API] Error dropping indexes:", error);
     return NextResponse.json(
@@ -154,7 +164,7 @@ export async function DELETE(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Failed to drop indexes",
       },
-      { status: 500 }
+      { status: 500, headers: PRIVATE_NO_STORE }
     );
   }
 }

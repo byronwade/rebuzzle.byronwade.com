@@ -2,13 +2,13 @@
 
 import { Check, Gamepad2, Moon, Palette, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useVisualTheme } from "@/components/VisualThemeProvider";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 import { VISUAL_THEME_META, VISUAL_THEMES, type VisualTheme } from "@/lib/visual-theme";
 
@@ -24,11 +24,7 @@ const THEME_ICONS: Record<VisualTheme, typeof Palette> = {
 export function VisualThemeMenuItems() {
   const { visualTheme, setVisualTheme, mounted: visualMounted } = useVisualTheme();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [colorMounted, setColorMounted] = useState(false);
-
-  useEffect(() => {
-    setColorMounted(true);
-  }, []);
+  const colorMounted = useIsClient();
 
   const handleColorToggle = () => {
     if (!colorMounted) return;

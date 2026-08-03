@@ -1,8 +1,9 @@
 "use client";
 
+import { format as formatDateFns } from "date-fns";
 import { Award, Calendar, Clock, Edit, Trophy } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -276,17 +277,17 @@ export default function ProfilePage() {
                     Level {currentLevel}
                   </Badge>
                   <Badge variant="outline" className="font-medium text-xs">
-                    {stats.points.toLocaleString()} points
+                    {stats.points.toLocaleString("en-US", { useGrouping: true })} points
                   </Badge>
                 </div>
               </div>
             </div>
-            <Link href="/settings">
-              <Button size="sm" variant="outline" className="font-medium text-sm">
-                <Edit className="mr-2 h-4 w-4" />
+            <Button asChild size="sm" variant="outline" className="font-medium text-sm">
+              <Link href="/settings">
+                <Edit data-icon="inline-start" className="mr-2 h-4 w-4" />
                 Edit Profile
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -304,13 +305,14 @@ export default function ProfilePage() {
                 <div className="mb-2 flex justify-between text-sm">
                   <span className="text-muted-foreground">Level Progress</span>
                   <span className="font-semibold text-foreground">
-                    {stats.points.toLocaleString()} / {nextLevelThreshold.toLocaleString()}
+                    {stats.points.toLocaleString("en-US", { useGrouping: true })} /{" "}
+                    {nextLevelThreshold.toLocaleString("en-US", { useGrouping: true })}
                   </span>
                 </div>
                 <Progress className="h-3" value={progressToNextLevel} />
                 <p className="mt-1.5 text-muted-foreground text-xs">
                   {pointsToNextLevel > 0
-                    ? `${pointsToNextLevel.toLocaleString()} points to Level ${currentLevel + 1}`
+                    ? `${pointsToNextLevel.toLocaleString("en-US", { useGrouping: true })} points to Level ${currentLevel + 1}`
                     : "Max level reached!"}
                 </p>
               </div>
@@ -332,7 +334,9 @@ export default function ProfilePage() {
               {stats.lastPlayDate && (
                 <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm">
                   <Clock className="h-4 w-4" />
-                  <span>Last played: {new Date(stats.lastPlayDate).toLocaleDateString()}</span>
+                  <span>
+                    Last played: {formatDateFns(new Date(stats.lastPlayDate), "MMM d, yyyy")}
+                  </span>
                 </div>
               )}
             </div>
@@ -399,7 +403,7 @@ export default function ProfilePage() {
             <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
               <div className="mb-1 text-muted-foreground text-sm">Total Points</div>
               <div className="font-semibold text-2xl text-foreground">
-                {stats.points.toLocaleString()}
+                {stats.points.toLocaleString("en-US", { useGrouping: true })}
               </div>
             </div>
 
@@ -419,16 +423,21 @@ export default function ProfilePage() {
 
         {/* Actions */}
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
-          <Link href="/" className="w-full sm:w-auto">
-            <Button size="lg" className="w-full font-medium text-sm sm:w-auto">
+          <Button asChild size="lg" className="w-full font-medium text-sm sm:w-auto">
+            <Link href="/" className="w-full sm:w-auto">
               Play Today's Puzzle
-            </Button>
-          </Link>
-          <Link href="/leaderboard" className="w-full sm:w-auto">
-            <Button size="lg" variant="outline" className="w-full font-medium text-sm sm:w-auto">
+            </Link>
+          </Button>
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="w-full font-medium text-sm sm:w-auto"
+          >
+            <Link href="/leaderboard" className="w-full sm:w-auto">
               View Leaderboard
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
     </Layout>

@@ -8,7 +8,7 @@ import type { PuzzleNoveltyEvidence } from "../novelty";
 import type { TechniqueId } from "../technique-library";
 import type { PuzzleVisual } from "../visual/composition";
 
-export const RubricScoresSchema = z.object({
+const RubricScoresSchema = z.object({
   ahaMoment: z.number().min(0).max(100),
   fairness: z.number().min(0).max(100),
   novelty: z.number().min(0).max(100),
@@ -50,7 +50,7 @@ export const CritiqueProviderSchema = CritiqueSchema.extend({
 
 export type CritiqueResult = z.infer<typeof CritiqueSchema>;
 
-export const PlayerSimSchema = z.object({
+const PlayerSimSchema = z.object({
   firstWrongParses: z.array(z.string()).max(5),
   likelySolvePath: z.string(),
   hintUnlockOrderLooksFair: z.boolean(),

@@ -115,7 +115,7 @@ const SelectItem = React.forwardRef<
     className={cn(
       // Mirrors the dropdown item recipe, `active:` included — a select on a
       // touch device has the same no-hover problem a menu does.
-      "relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pr-8 pl-2 text-muted-foreground text-sm outline-none transition-colors focus:bg-muted focus:text-foreground active:bg-muted active:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[state=checked]:text-foreground",
+      "relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pr-8 pl-2 text-muted-foreground text-sm focus-ring transition-colors focus:bg-muted focus:text-foreground active:bg-muted active:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[state=checked]:text-foreground",
       className
     )}
     ref={ref}

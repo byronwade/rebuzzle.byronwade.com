@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   MessageAvatar,
   MessageBubble,
@@ -82,20 +82,26 @@ function ExactWordTicks({ words }: { words: WordResult[] }) {
   );
 }
 
+function subscribeReducedMotion(onStoreChange: () => void) {
+  const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mql.addEventListener("change", onStoreChange);
+  return () => mql.removeEventListener("change", onStoreChange);
+}
+
 function AgentReply({ turn }: { turn: ThreadTurn }) {
   const tone = REACTION_TONE[turn.tier];
   const showRiff = Boolean(turn.quipPending || turn.quip);
   const isClose = turn.tier === "close";
-  const staggerBody = turn.tier === "close" || turn.tier === "warm";
+  const reduceMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false
+  );
+  const staggerBody = (turn.tier === "close" || turn.tier === "warm") && !reduceMotion;
   const [showBody, setShowBody] = useState(!staggerBody);
 
   useEffect(() => {
     if (!staggerBody) return;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) {
-      setShowBody(true);
-      return;
-    }
     const delay = turn.tier === "close" ? 110 : 70;
     const id = window.setTimeout(() => setShowBody(true), delay);
     return () => window.clearTimeout(id);

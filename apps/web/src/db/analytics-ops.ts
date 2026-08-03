@@ -314,13 +314,15 @@ export const analyticsQueries = {
     const averagePuzzlesPerSession = sessions.length > 0 ? totalPuzzles / sessions.length : 0;
 
     // Average hints per puzzle
-    const hintEvents = await eventsCollection.find({ eventType: "HINT_USED" }).toArray();
-    const puzzleStarts = await eventsCollection.find({ eventType: "PUZZLE_START" }).toArray();
+    const [hintEvents, puzzleStarts, guessEvents] = await Promise.all([
+      eventsCollection.find({ eventType: "HINT_USED" }).toArray(),
+      eventsCollection.find({ eventType: "PUZZLE_START" }).toArray(),
+      eventsCollection.find({ eventType: "GUESS_SUBMITTED" }).toArray(),
+    ]);
     const averageHintsPerPuzzle =
       puzzleStarts.length > 0 ? hintEvents.length / puzzleStarts.length : 0;
 
     // Average attempts per puzzle
-    const guessEvents = await eventsCollection.find({ eventType: "GUESS_SUBMITTED" }).toArray();
     const averageAttemptsPerPuzzle =
       puzzleStarts.length > 0 ? guessEvents.length / puzzleStarts.length : 0;
 
@@ -513,8 +515,10 @@ export const analyticsQueries = {
     }
 
     // Get completions with solve times
-    const completions = await collection.find(completionQuery).toArray();
-    const starts = await collection.find(startQuery).toArray();
+    const [completions, starts] = await Promise.all([
+      collection.find(completionQuery).toArray(),
+      collection.find(startQuery).toArray(),
+    ]);
 
     const totalAttempts = starts.length;
     const completedCount = completions.length;

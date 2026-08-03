@@ -72,13 +72,14 @@ export async function POST(request: Request) {
     console.log(`[Admin] Generating blog posts for ${limitedPuzzles.length} puzzles...`);
 
     const blogPosts: any[] = [];
-    const errors: string[] = [];
+    const failures: string[] = [];
 
     // Generate blog posts sequentially
     for (let i = 0; i < limitedPuzzles.length; i++) {
       const puzzle = limitedPuzzles[i];
       if (!puzzle) continue;
       try {
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: bulk blog generation is sequential for billable LLM rate limits
         const generatedPost = await generateBlogPost(puzzle as any);
 
         blogPosts.push({
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
             : new Date().toISOString(),
         });
       } catch (error) {
-        errors.push(
+        failures.push(
           `Puzzle ${puzzle.id}: ${error instanceof Error ? error.message : "Unknown error"}`
         );
       }
@@ -104,8 +105,8 @@ export async function POST(request: Request) {
       metadata: {
         requested: limitedPuzzles.length,
         generated: blogPosts.length,
-        failed: errors.length,
-        errors: errors.length > 0 ? errors : undefined,
+        failed: failures.length,
+        errors: failures.length > 0 ? failures : undefined,
       },
     });
   } catch (error) {

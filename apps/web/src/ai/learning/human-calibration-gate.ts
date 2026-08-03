@@ -64,11 +64,11 @@ export function assessHumanCalibrationGate(input: {
             ? `Human icon panel failed release (${icon.weakFixtureCount} weak specimens)`
             : "Human icon recognition release gate failed"
         );
-      } else if (status !== "halt") {
+      } else if (status === "insufficient" || status === "watch") {
         status = "healthy";
       }
     } else if (icon.coverageRate > 0) {
-      if (status !== "halt") status = "watch";
+      if (status === "insufficient") status = "watch";
       reasons.push(
         `Human icon panel collecting (${Math.round(icon.coverageRate * 100)}% specimen coverage)`
       );
@@ -84,11 +84,11 @@ export function assessHumanCalibrationGate(input: {
             ? playtest.releaseFailures.slice(0, 3)
             : ["Human playtest release gate failed"])
         );
-      } else if (status !== "halt") {
+      } else if (status === "insufficient" || status === "watch") {
         status = "healthy";
       }
     } else if (playtest.completedCandidates > 0) {
-      if (status !== "halt") status = "watch";
+      if (status === "insufficient") status = "watch";
       reasons.push(
         `Human playtest collecting (${playtest.completedCandidates}/${PLAYTEST_RELEASE_COMPLETED_FLOOR} completed puzzles)`
       );
@@ -136,17 +136,19 @@ export async function loadHumanCalibrationGate(): Promise<HumanCalibrationGate> 
   let playtest: Parameters<typeof assessHumanCalibrationGate>[0]["playtest"] = null;
 
   try {
-    const {
-      HUMAN_ICON_RECOGNITION_CONTRACT_VERSION,
-      buildIconRecognitionFixtures,
-      scoreIconRecognitionCalibration,
-    } = await import("@/ai/puzzle-agent/review/icon-recognition-service");
-    const { CURATED_PICTOGRAM_CATALOG_VERSION } = await import(
-      "@/ai/puzzle-agent/visual/curated-pictograms"
-    );
-    const { createMongoIconRecognitionRepository } = await import(
-      "@/ai/puzzle-agent/review/mongo-icon-recognition-repository"
-    );
+    const [
+      {
+        HUMAN_ICON_RECOGNITION_CONTRACT_VERSION,
+        buildIconRecognitionFixtures,
+        scoreIconRecognitionCalibration,
+      },
+      { CURATED_PICTOGRAM_CATALOG_VERSION },
+      { createMongoIconRecognitionRepository },
+    ] = await Promise.all([
+      import("@/ai/puzzle-agent/review/icon-recognition-service"),
+      import("@/ai/puzzle-agent/visual/curated-pictograms"),
+      import("@/ai/puzzle-agent/review/mongo-icon-recognition-repository"),
+    ]);
     const fixtures = buildIconRecognitionFixtures("publication");
     const reviews = await createMongoIconRecognitionRepository().listCalibrationDecisions({
       contractVersion: HUMAN_ICON_RECOGNITION_CONTRACT_VERSION,

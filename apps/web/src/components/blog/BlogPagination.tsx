@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -78,30 +78,26 @@ export function BlogPagination({
       aria-label="Pagination"
     >
       {/* Previous button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9"
-        asChild={currentPage > 1}
-        disabled={currentPage === 1}
-      >
-        {currentPage > 1 ? (
-          <Link href={getPageUrl(currentPage - 1)} aria-label="Previous page">
-            <ChevronLeft className="size-4" />
+      {currentPage > 1 ? (
+        <Button aria-label="Previous page" asChild className="h-9 w-9" size="icon" variant="ghost">
+          <Link aria-label="Previous page" href={getPageUrl(currentPage - 1)}>
+            <ChevronLeft className="size-4" data-icon="inline-start" />
+            <span className="sr-only">Previous page</span>
           </Link>
-        ) : (
-          <span>
-            <ChevronLeft className="size-4" />
-          </span>
-        )}
-      </Button>
+        </Button>
+      ) : (
+        <Button aria-label="Previous page" className="h-9 w-9" disabled size="icon" variant="ghost">
+          <ChevronLeft className="size-4" data-icon="inline-start" />
+        </Button>
+      )}
 
       {/* Page numbers */}
       {pages.map((page, index) => {
         if (page === "ellipsis") {
+          const neighbor = pages[index - 1] ?? pages[index + 1] ?? "edge";
           return (
             <span
-              key={`ellipsis-${index}`}
+              key={`ellipsis-after-${neighbor}`}
               className="flex h-9 w-9 items-center justify-center text-muted-foreground"
             >
               <MoreHorizontal className="size-4" />
@@ -110,38 +106,43 @@ export function BlogPagination({
         }
 
         const isActive = page === currentPage;
+        if (isActive) {
+          return (
+            <Button
+              aria-current="page"
+              aria-label={`Page ${page}`}
+              className="h-9 w-9"
+              key={page}
+              size="icon"
+              variant="default"
+            >
+              <span>{page}</span>
+            </Button>
+          );
+        }
+
         return (
-          <Button
-            key={page}
-            variant={isActive ? "default" : "ghost"}
-            size="icon"
-            className="h-9 w-9"
-            asChild={!isActive}
-            aria-current={isActive ? "page" : undefined}
-          >
-            {isActive ? <span>{page}</span> : <Link href={getPageUrl(page)}>{page}</Link>}
+          <Button asChild className="h-9 w-9" key={page} size="icon" variant="ghost">
+            <Link aria-label={`Page ${page}`} href={getPageUrl(page)}>
+              {page}
+            </Link>
           </Button>
         );
       })}
 
       {/* Next button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9"
-        asChild={currentPage < totalPages}
-        disabled={currentPage === totalPages}
-      >
-        {currentPage < totalPages ? (
-          <Link href={getPageUrl(currentPage + 1)} aria-label="Next page">
-            <ChevronRight className="size-4" />
+      {currentPage < totalPages ? (
+        <Button aria-label="Next page" asChild className="h-9 w-9" size="icon" variant="ghost">
+          <Link aria-label="Next page" href={getPageUrl(currentPage + 1)}>
+            <ChevronRight className="size-4" data-icon="inline-start" />
+            <span className="sr-only">Next page</span>
           </Link>
-        ) : (
-          <span>
-            <ChevronRight className="size-4" />
-          </span>
-        )}
-      </Button>
+        </Button>
+      ) : (
+        <Button aria-label="Next page" className="h-9 w-9" disabled size="icon" variant="ghost">
+          <ChevronRight className="size-4" data-icon="inline-start" />
+        </Button>
+      )}
     </nav>
   );
 }

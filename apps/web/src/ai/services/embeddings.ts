@@ -35,8 +35,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     });
   } catch (error) {
     console.error("[Embeddings] Failed to generate embedding:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Embedding generation failed: ${errorMessage}`);
+    const failureText = error instanceof Error ? error.message : String(error);
+    throw new Error(`Embedding generation failed: ${failureText}`);
   }
 }
 

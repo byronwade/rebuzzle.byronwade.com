@@ -5,10 +5,11 @@
  * readability. Each puzzle type has optimized display settings.
  */
 
-import { useMemo } from "react";
 import type { PuzzleType, PuzzleVisual } from "@/lib/gameSettings";
+import { getPuzzleQuestion } from "@/lib/puzzle-questions";
+import { hasComposedVisual } from "@/lib/puzzle-visual";
 import { cn } from "@/lib/utils";
-import { hasComposedVisual, PuzzleVisualBoard } from "./PuzzleVisualBoard";
+import { PuzzleVisualBoard } from "./PuzzleVisualBoard";
 
 type DisplaySize = "small" | "medium" | "large";
 
@@ -84,7 +85,7 @@ export function PuzzleDisplay({
   size = "large",
   visual,
 }: PuzzleDisplayProps) {
-  const category = useMemo(() => getPuzzleCategory(puzzleType), [puzzleType]);
+  const category = getPuzzleCategory(puzzleType);
   const composed = hasComposedVisual(visual);
 
   const isTextBased = category === "text";
@@ -92,15 +93,12 @@ export function PuzzleDisplay({
   const isVisual = category === "visual";
   const isRebus = puzzleType === "rebus";
 
-  const inlineStyles = useMemo(
-    () => ({
-      fontFeatureSettings: isVisual ? '"liga" 1, "calt" 1' : undefined,
-      lineHeight: LINE_HEIGHT[category],
-      overflowWrap: "anywhere" as const,
-      wordBreak: (isRebus ? "break-all" : "break-word") as "break-all" | "break-word",
-    }),
-    [category, isVisual, isRebus]
-  );
+  const inlineStyles = {
+    fontFeatureSettings: isVisual ? '"liga" 1, "calt" 1' : undefined,
+    lineHeight: LINE_HEIGHT[category],
+    overflowWrap: "anywhere" as const,
+    wordBreak: (isRebus ? "break-all" : "break-word") as "break-all" | "break-word",
+  };
 
   if (composed && visual) {
     return (
@@ -193,25 +191,7 @@ interface PuzzleQuestionProps {
   className?: string;
 }
 
-/** The prompt shown under the puzzle, per type. */
-const QUESTIONS: Record<string, string> = {
-  rebus: "What does this rebus puzzle represent?",
-  "word-puzzle": "What is the answer to this word puzzle?",
-  riddle: "What is the answer to this riddle?",
-  "logic-grid": "Use deductive reasoning to solve this logic grid puzzle",
-  "number-sequence": "What comes next in this number sequence?",
-  "caesar-cipher": "Decode this encrypted message",
-  "word-ladder": "Transform the start word into the end word",
-  "pattern-recognition": "What pattern comes next?",
-  trivia: "What is the answer to this trivia question?",
-  "cryptic-crossword": "Solve this cryptic crossword clue",
-};
-
-export function getPuzzleQuestion(puzzleType = "rebus"): string {
-  return QUESTIONS[puzzleType] ?? "What is the answer to this puzzle?";
-}
-
-export function PuzzleQuestion({ puzzleType = "rebus", className }: PuzzleQuestionProps) {
+function PuzzleQuestion({ puzzleType = "rebus", className }: PuzzleQuestionProps) {
   const questionText = getPuzzleQuestion(puzzleType);
 
   return <p className={cn("mt-4 text-balance text-subtle text-sm", className)}>{questionText}</p>;

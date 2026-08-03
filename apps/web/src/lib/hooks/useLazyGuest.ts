@@ -7,7 +7,7 @@
  * not on initial page load. This keeps stats clean and reduces spam.
  */
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 
 interface LazyGuestResult {
@@ -21,7 +21,7 @@ export function useLazyGuest(): LazyGuestResult {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const ensureGuest = useCallback(async (): Promise<boolean> => {
+  const ensureGuest = async (): Promise<boolean> => {
     // Already authenticated (either registered or guest)
     if (isAuthenticated && userId) {
       return true;
@@ -58,26 +58,29 @@ export function useLazyGuest(): LazyGuestResult {
           }
           // Refresh auth context to pick up new / existing session
           await refreshAuth();
+          setIsCreating(false);
           return true;
         }
         // Legacy response shape — cookie already present
         if (data.alreadyAuthenticated || data.isAuthenticated) {
           await refreshAuth();
+          setIsCreating(false);
           return true;
         }
         setError(data.error || "Failed to create guest session");
+        setIsCreating(false);
         return false;
       }
 
       setError("Failed to create guest session");
+      setIsCreating(false);
       return false;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
-      return false;
-    } finally {
       setIsCreating(false);
+      return false;
     }
-  }, [isAuthenticated, userId, refreshAuth]);
+  };
 
   return { ensureGuest, isCreating, error };
 }

@@ -1,16 +1,17 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -41,25 +42,44 @@ export default function ForgotPasswordPage() {
     }
 
     setError(null);
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSuccess(true);
-        toast({
-          title: "Email sent!",
-          description: "Check your inbox for password reset instructions.",
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
+        const response = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim() }),
         });
-      } else {
-        const errorMessage = data.error || "Failed to send reset email. Please try again.";
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}) as { error?: string });
+          const errorMessage = data.error || "Failed to send reset email. Please try again.";
+          setError(errorMessage);
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else {
+          const data = await response.json();
+          if (data.success) {
+            setSuccess(true);
+            toast({
+              title: "Email sent!",
+              description: "Check your inbox for password reset instructions.",
+            });
+          } else {
+            const errorMessage = data.error || "Failed to send reset email. Please try again.";
+            setError(errorMessage);
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Forgot password error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
         setError(errorMessage);
         toast({
           title: "Error",
@@ -67,18 +87,7 @@ export default function ForgotPasswordPage() {
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Forgot password error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setError(errorMessage);
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   return (
@@ -101,7 +110,7 @@ export default function ForgotPasswordPage() {
 
             {success ? (
               <div className="space-y-4">
-                <div className="rounded-lg bg-accent/50 p-4 text-center">
+                <div className="rounded-lg bg-accent/50 p-4 text-center" role="status">
                   <p className="text-foreground text-sm">
                     If an account exists with this email, a password reset link has been sent. Check
                     your inbox and follow the instructions.
@@ -128,6 +137,7 @@ export default function ForgotPasswordPage() {
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
+                    autoComplete="email"
                     autoFocus
                     disabled={isLoading}
                     id="email"
@@ -145,7 +155,11 @@ export default function ForgotPasswordPage() {
                     type="email"
                     value={email}
                   />
-                  {error && <p className="mt-1.5 text-destructive text-xs">{error}</p>}
+                  {error && (
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
+                      {error}
+                    </p>
+                  )}
                 </div>
 
                 <Button className="w-full" disabled={isLoading} type="submit">

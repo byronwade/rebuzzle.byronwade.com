@@ -9,11 +9,14 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 import { type BlogPostDraft, BlogPostPreview } from "./BlogPostPreview";
 
 interface BlogPostGeneratorProps {
@@ -45,9 +48,8 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       }
     } catch (error) {
       console.error("Search error:", error);
-    } finally {
-      setSearching(false);
     }
+    setSearching(false);
   };
 
   const handleGenerate = async () => {
@@ -62,37 +64,36 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       return;
     }
 
-    setLoading(true);
-    setGeneratedPost(null);
+    await withLoadingFlag(setLoading, async () => {
+      setGeneratedPost(null);
 
-    try {
-      const response = await fetch("/api/admin/blogs/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ puzzleId: targetPuzzleId }),
-      });
+      try {
+        const response = await fetch("/api/admin/blogs/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ puzzleId: targetPuzzleId }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to generate blog post");
+        if (!data.success) {
+          fail(data.error || "Failed to generate blog post");
+        }
+
+        setGeneratedPost(data.blogPost);
+        toast({
+          title: "Blog Post Generated",
+          description: "Review the blog post below and open a draft PR when ready.",
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      setGeneratedPost(data.blogPost);
-      toast({
-        title: "Blog Post Generated",
-        description: "Review the blog post below and open a draft PR when ready.",
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const handleSave = async (blogPost: BlogPostDraft) => {
@@ -116,7 +117,7 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.details || data.error || "Failed to open blog pull request");
+        fail(data.details || data.error || "Failed to open blog pull request");
       }
 
       const proposal = data.proposal as {
@@ -182,9 +183,9 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
                   variant="outline"
                 >
                   {searching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-end" />
                   ) : (
-                    <Search className="h-4 w-4" />
+                    <Search className="h-4 w-4" data-icon="inline-end" />
                   )}
                 </Button>
               </div>
@@ -194,15 +195,17 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
               <div>
                 <Label>Select Puzzle</Label>
                 <Select onValueChange={setSelectedPuzzleId} value={selectedPuzzleId}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Blog generation option">
                     <SelectValue placeholder="Choose a puzzle" />
                   </SelectTrigger>
                   <SelectContent>
-                    {puzzles.map((puzzle) => (
-                      <SelectItem key={puzzle.id} value={puzzle.id}>
-                        {puzzle.answer} - {puzzle.puzzle?.substring(0, 50)}...
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      {puzzles.map((puzzle) => (
+                        <SelectItem key={puzzle.id} value={puzzle.id}>
+                          {puzzle.answer} - {puzzle.puzzle?.substring(0, 50)}...
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
@@ -236,12 +239,12 @@ export function BlogPostGenerator({ onBlogPostSaved }: BlogPostGeneratorProps) {
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <FileText className="mr-2 h-4 w-4" />
+                  <FileText data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate Blog Post
                 </>
               )}

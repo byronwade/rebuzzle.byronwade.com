@@ -101,9 +101,10 @@ export function blindSolvePublishBlockers(
   }
   const profileResults = sim.blindProfileResults ?? [];
   const observedProfileIds = new Set(profileResults.map((profile) => profile.profileId));
+  const expectedProfileIdSet = new Set(expectedProfileIds);
   const missingProfileIds = expectedProfileIds.filter((id) => !observedProfileIds.has(id));
   const unexpectedProfileIds = Array.from(observedProfileIds).filter(
-    (id) => !expectedProfileIds.includes(id)
+    (id) => !expectedProfileIdSet.has(id)
   );
   if (
     profileResults.length !== expectedProfileCount ||
@@ -275,10 +276,15 @@ export function summarizeBlindSolveAttempts(input: {
   const wrongParses = Array.from(
     new Map(
       rankedAttempts
-        .flatMap((result) => result.ranked)
-        .filter((hypothesis) => !blindAnswerMatch(hypothesis.answer, input.answer))
+        .flatMap((result) =>
+          result.ranked.flatMap((hypothesis) =>
+            blindAnswerMatch(hypothesis.answer, input.answer)
+              ? []
+              : [{ answer: hypothesis.answer, confidence: hypothesis.confidence }]
+          )
+        )
         .sort((a, b) => b.confidence - a.confidence)
-        .map((hypothesis) => [hypothesis.answer.toLowerCase(), hypothesis.answer])
+        .map((hypothesis) => [hypothesis.answer.toLowerCase(), hypothesis.answer] as const)
     ).values()
   ).slice(0, 5);
 
@@ -295,7 +301,7 @@ export function summarizeBlindSolveAttempts(input: {
       ? attempts.reduce((sum, attempt) => sum + attempt.confidence, 0) / attempts.length
       : 0;
   const profileIds = Array.from(
-    new Set(attempts.map((attempt) => attempt.profileId).filter(Boolean))
+    new Set(attempts.flatMap((attempt) => (attempt.profileId ? [attempt.profileId] : [])))
   ) as string[];
   const profileResults = profileIds.map((profileId): BlindSolveProfileResult => {
     const profileAttempts = rankedAttempts.filter(

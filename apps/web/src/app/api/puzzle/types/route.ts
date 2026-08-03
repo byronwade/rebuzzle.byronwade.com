@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllPuzzleTypeConfigs, listPuzzleTypes } from "@/ai/config/puzzle-types";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 
 /**
  * API endpoint to list all available puzzle types
@@ -28,11 +29,23 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      types: typesWithInfo,
-      defaultType: process.env.DEFAULT_PUZZLE_TYPE || "rebus",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        types: typesWithInfo,
+        defaultType: process.env.DEFAULT_PUZZLE_TYPE || "rebus",
+      },
+      {
+        headers: {
+          "Cache-Control": buildCacheControl({
+            public: true,
+            maxAge: 3600,
+            sMaxAge: 86400,
+            staleWhileRevalidate: 3600,
+          }),
+        },
+      }
+    );
   } catch (error) {
     console.error("Error listing puzzle types:", error);
     return NextResponse.json(
@@ -40,7 +53,7 @@ export async function GET() {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
 }

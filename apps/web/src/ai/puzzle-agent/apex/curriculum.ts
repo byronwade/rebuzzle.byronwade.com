@@ -69,12 +69,13 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   // preserves diversity without silently pairing a positional slot with an
   // unrelated compound answer.
   const freshSeedTechniques = new Set(
-    PHRASE_BANK.filter(
-      (entry) =>
-        !entry.overused &&
-        Boolean(entry.visualCues?.length) &&
-        !banned.has(normalizeAnswerKey(entry.answer))
-    ).flatMap((entry) => entry.techniqueAffinity)
+    PHRASE_BANK.flatMap((entry) =>
+      !entry.overused &&
+      Boolean(entry.visualCues?.length) &&
+      !banned.has(normalizeAnswerKey(entry.answer))
+        ? entry.techniqueAffinity
+        : []
+    )
   );
   const supportedTierTechniques = level.techniques.filter((technique) =>
     freshSeedTechniques.has(technique as TechniqueId)
@@ -92,12 +93,11 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       ] as TechniqueId[])
     : [];
 
+  const supportedTierSet = new Set(supportedTierTechniques);
   const preferredTechniquesRaw = (
     [
-      ...harderBias.filter((t) => supportedTierTechniques.includes(t)),
-      ...diversity.underusedTechniques.filter((t) =>
-        supportedTierTechniques.includes(t as TechniqueId)
-      ),
+      ...harderBias.filter((t) => supportedTierSet.has(t)),
+      ...diversity.underusedTechniques.filter((t) => supportedTierSet.has(t as TechniqueId)),
       ...supportedTierTechniques.filter((t) => !overused.has(t)),
       ...supportedTierTechniques,
     ] as TechniqueId[]
@@ -112,12 +112,10 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   const preferredTechniques = techniqueBias.techniques;
 
   const avoidTechniques = [
-    ...diversity.overusedTechniques.filter((t) =>
-      supportedTierTechniques.includes(t as TechniqueId)
-    ),
+    ...diversity.overusedTechniques.filter((t) => supportedTierSet.has(t as TechniqueId)),
     ...(learning.tooEasy
       ? (["simple_compound", "obvious_emoji_sum"] as string[]).filter((t) =>
-          supportedTierTechniques.includes(t as TechniqueId)
+          supportedTierSet.has(t as TechniqueId)
         )
       : []),
   ];

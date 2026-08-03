@@ -12,12 +12,15 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { fail } from "@/lib/fail";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 interface BulkPuzzleGeneratorProps {
   onPuzzlesSaved?: () => void;
@@ -40,48 +43,47 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
   const puzzleTypes = listPuzzleTypes();
 
   const handleGenerate = async () => {
-    setLoading(true);
-    setGeneratedPuzzles([]);
-    setSelectedPuzzles(new Set());
+    await withLoadingFlag(setLoading, async () => {
+      setGeneratedPuzzles([]);
+      setSelectedPuzzles(new Set());
 
-    try {
-      const response = await fetch("/api/admin/puzzles/generate-bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          count: formData.count,
-          puzzleType: formData.puzzleType,
-          difficultyMin: formData.difficultyMin,
-          difficultyMax: formData.difficultyMax,
-          category: formData.category || undefined,
-          theme: formData.theme || undefined,
-        }),
-      });
+      try {
+        const response = await fetch("/api/admin/puzzles/generate-bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            count: formData.count,
+            puzzleType: formData.puzzleType,
+            difficultyMin: formData.difficultyMin,
+            difficultyMax: formData.difficultyMax,
+            category: formData.category || undefined,
+            theme: formData.theme || undefined,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to generate puzzles");
+        if (!data.success) {
+          fail(data.error || "Failed to generate puzzles");
+        }
+
+        setGeneratedPuzzles(data.puzzles);
+        // Select all by default
+        setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
+
+        toast({
+          title: "Puzzles Generated",
+          description: `Generated ${data.puzzles.length} puzzles. ${data.metadata?.failed || 0} failed.`,
+        });
+      } catch (error) {
+        console.error("Generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       }
-
-      setGeneratedPuzzles(data.puzzles);
-      // Select all by default
-      setSelectedPuzzles(new Set(data.puzzles.map((_: any, i: number) => i)));
-
-      toast({
-        title: "Puzzles Generated",
-        description: `Generated ${data.puzzles.length} puzzles. ${data.metadata?.failed || 0} failed.`,
-      });
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const toggleSelection = (index: number) => {
@@ -186,15 +188,17 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
                 onValueChange={(value) => setFormData({ ...formData, puzzleType: value })}
                 value={formData.puzzleType}
               >
-                <SelectTrigger id="puzzle-type">
+                <SelectTrigger aria-label="Bulk generation option" id="puzzle-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {puzzleTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {puzzleTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -250,12 +254,12 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
             <Button className="w-full" disabled={loading} onClick={handleGenerate}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Generate {formData.count} Puzzles
                 </>
               )}
@@ -275,7 +279,7 @@ export function BulkPuzzleGenerator({ onPuzzlesSaved }: BulkPuzzleGeneratorProps
                 </CardDescription>
               </div>
               <Button disabled={selectedPuzzles.size === 0} onClick={handleSaveSelected}>
-                <Save className="mr-2 h-4 w-4" />
+                <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
                 Save Selected ({selectedPuzzles.size})
               </Button>
             </div>
@@ -307,6 +311,7 @@ function VirtualizedPuzzleList({
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // react-doctor-disable-next-line react-hooks-js/incompatible-library -- @tanstack/react-virtual; isolated in child list
   const virtualizer = useVirtualizer({
     count: generatedPuzzles.length,
     getScrollElement: () => parentRef.current,
@@ -340,6 +345,7 @@ function VirtualizedPuzzleList({
             >
               <div className="flex items-start gap-4 rounded-lg border p-4">
                 <Checkbox
+                  aria-label="Select generated puzzle"
                   checked={selectedPuzzles.has(index)}
                   className="mt-1"
                   onCheckedChange={() => toggleSelection(index)}

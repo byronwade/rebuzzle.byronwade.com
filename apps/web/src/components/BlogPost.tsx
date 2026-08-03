@@ -1,9 +1,10 @@
 "use client";
 
+import { format as formatDateFns } from "date-fns";
 import { ArrowRight, ChevronRight } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { Badge } from "@/components/ui/badge";
+import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 
 interface BlogPostProps {
@@ -36,27 +37,10 @@ const puzzleTypeLabels: Record<string, string> = {
 };
 
 export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
-  const [isToday, setIsToday] = useState(false);
-  const [isYesterday, setIsYesterday] = useState(false);
+  const isToday = useIsLocalCalendarDay(post.date, 0);
+  const isYesterday = useIsLocalCalendarDay(post.date, -1);
 
-  useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const postDate = new Date(post.date);
-    postDate.setHours(0, 0, 0, 0);
-    setIsToday(today.getTime() === postDate.getTime());
-    setIsYesterday(yesterday.getTime() === postDate.getTime());
-  }, [post.date]);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const formatDate = (dateString: string) => formatDateFns(new Date(dateString), "MMMM d, yyyy");
 
   const typeLabel = post.puzzleType
     ? puzzleTypeLabels[post.puzzleType] || post.puzzleType
@@ -110,7 +94,7 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
               {new Date(post.date).getDate()}
             </div>
             <div className="mt-1 font-mono text-[9px] text-subtle uppercase tracking-[0.08em]">
-              {new Date(post.date).toLocaleDateString("en-US", { month: "short" })}
+              {formatDateFns(new Date(post.date), "MMM")}
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -59,7 +59,7 @@ export default function AIErrorPage() {
 
               {/* What Happened */}
               <div className="rounded-lg border border-border bg-muted p-4 text-left">
-                <h3 className="mb-2 font-semibold text-foreground">What happened?</h3>
+                <h2 className="mb-2 font-semibold text-foreground text-base">What happened?</h2>
                 <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
                   <li>AI service may be temporarily down</li>
                   <li>Network connection issues</li>
@@ -69,16 +69,12 @@ export default function AIErrorPage() {
 
               {/* Actions */}
               <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
-                <Link href="/">
-                  <Button className="w-full sm:w-auto" size="lg">
-                    Try Again
-                  </Button>
-                </Link>
-                <Link href="/blog">
-                  <Button className="w-full sm:w-auto" size="lg" variant="outline">
-                    Read Puzzle Tips
-                  </Button>
-                </Link>
+                <Button asChild className="w-full sm:w-auto" size="lg">
+                  <Link href="/">Try Again</Link>
+                </Button>
+                <Button asChild className="w-full sm:w-auto" size="lg" variant="outline">
+                  <Link href="/blog">Read Puzzle Tips</Link>
+                </Button>
               </div>
 
               {/* Additional Info */}

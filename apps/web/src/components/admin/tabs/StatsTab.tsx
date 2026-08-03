@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AreaChart } from "@/components/admin/charts/AreaChart";
 import { BarChart } from "@/components/admin/charts/BarChart";
 import { PieChart } from "@/components/admin/charts/PieChart";
@@ -104,27 +104,16 @@ export function StatsTab({
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
     end: Date | null;
-  }>({
+  }>(() => ({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     end: new Date(),
-  });
+  }));
   const [_selectedPreset, setSelectedPreset] = useState<DateRangePreset>("30d");
-  const prevDateRangeRef = useRef<{ start: Date | null; end: Date | null } | null>(null);
 
-  useEffect(() => {
-    // Compare dates to prevent unnecessary calls
-    const prevRange = prevDateRangeRef.current;
-    const currentStart = dateRange.start?.getTime() ?? null;
-    const currentEnd = dateRange.end?.getTime() ?? null;
-    const prevStart = prevRange?.start?.getTime() ?? null;
-    const prevEnd = prevRange?.end?.getTime() ?? null;
-
-    // Only call if dates actually changed
-    if (currentStart !== prevStart || currentEnd !== prevEnd) {
-      prevDateRangeRef.current = { start: dateRange.start, end: dateRange.end };
-      onRefresh(dateRange.start, dateRange.end);
-    }
-  }, [dateRange.start, dateRange.end, onRefresh]);
+  const handleDateChange = (start: Date | null, end: Date | null) => {
+    setDateRange({ start, end });
+    onRefresh(start, end);
+  };
 
   if (loading) {
     return (
@@ -179,7 +168,7 @@ export function StatsTab({
         <div className="flex items-center gap-2">
           <DateRangePicker
             endDate={dateRange.end}
-            onDateChange={(start, end) => setDateRange({ start, end })}
+            onDateChange={handleDateChange}
             onPresetChange={setSelectedPreset}
             startDate={dateRange.start}
           />

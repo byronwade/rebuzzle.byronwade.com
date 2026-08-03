@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { ensureConnection, getCollection } from "@/db/mongodb";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { buildCacheControl } from "@/lib/http/cache-headers";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 
 interface PuzzleStats {
@@ -27,7 +28,17 @@ export async function GET(request: Request) {
   try {
     const limit = await rateLimiters.public(request);
     if (limit && !limit.success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: {
+            "Cache-Control": buildCacheControl({
+              private: true,
+            }),
+          },
+        }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -71,13 +82,16 @@ export async function GET(request: Request) {
     const todaySolves = uniqueUsers.size;
 
     const validTimes = attempts
-      .filter((a) => typeof a.timeSpentSeconds === "number" && a.timeSpentSeconds > 0)
-      .map((a) => a.timeSpentSeconds as number)
+      .flatMap((a) =>
+        typeof a.timeSpentSeconds === "number" && a.timeSpentSeconds > 0
+          ? [a.timeSpentSeconds as number]
+          : []
+      )
       .sort((a, b) => a - b);
 
-    const validAttempts = attempts
-      .filter((a) => typeof a.attemptNumber === "number")
-      .map((a) => a.attemptNumber as number);
+    const validAttempts = attempts.flatMap((a) =>
+      typeof a.attemptNumber === "number" ? [a.attemptNumber as number] : []
+    );
 
     const averageSolveTime =
       validTimes.length > 0
@@ -101,9 +115,21 @@ export async function GET(request: Request) {
       },
     };
 
-    return NextResponse.json(stats);
+    return NextResponse.json(stats, {
+      headers: {
+        "Cache-Control": buildCacheControl({
+          public: true,
+          maxAge: 30,
+          sMaxAge: 60,
+          staleWhileRevalidate: 120,
+        }),
+      },
+    });
   } catch (error) {
     console.error("Error fetching puzzle stats:", error);
-    return NextResponse.json({ error: "Failed to fetch puzzle statistics" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch puzzle statistics" },
+      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+    );
   }
 }

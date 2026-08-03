@@ -1,10 +1,10 @@
 "use client";
 
 import { Lock, LogIn, Mail } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import * as React from "react";
+import type * as React from "react";
 import { useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { safeInternalRedirect } from "@/lib/safe-internal-redirect";
 import { safeJsonParse } from "@/lib/utils";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,7 +31,9 @@ export default function LoginPage() {
     password?: string;
     form?: string;
   }>({});
-  const [firstErrorField, setFirstErrorField] = useState<string | null>(null);
+  const focusField = (id: string | null) => {
+    if (id) document.getElementById(id)?.focus();
+  };
 
   const validateField = (name: string, value: string): string | undefined => {
     if (name === "email") {
@@ -87,76 +90,64 @@ export default function LoginPage() {
       // Focus first error field
       const firstError = Object.keys(newErrors)[0];
       if (firstError) {
-        setFirstErrorField(firstError);
+        focusField(firstError);
         document.getElementById(firstError)?.focus();
       }
       return;
     }
 
     setErrors({});
-    setIsLoading(true);
 
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // Include cookies in request
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password,
-        }),
-      });
-
-      const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
-
-      if (response.ok && data?.success) {
-        // Cookie is set by server, refresh auth state immediately
-        await refreshAuth();
-
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // Include cookies in request
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            password: formData.password,
+          }),
         });
 
-        const nextPath = safeInternalRedirect(
-          new URLSearchParams(window.location.search).get("next")
-        );
-        setTimeout(() => {
-          router.push(nextPath);
-        }, 1000);
-      } else {
-        const errorMessage = data?.error || "Invalid credentials. Please try again.";
+        const data = await safeJsonParse<{ success: boolean; error?: string }>(response);
+
+        if (response.ok && data?.success) {
+          // Cookie is set by server, refresh auth state immediately
+          await refreshAuth();
+
+          toast({
+            title: "Welcome back!",
+            description: "You've successfully logged in.",
+          });
+
+          const nextPath = safeInternalRedirect(
+            new URLSearchParams(window.location.search).get("next")
+          );
+          setTimeout(() => {
+            router.push(nextPath);
+          }, 1000);
+        } else {
+          const errorMessage = data?.error || "Invalid credentials. Please try again.";
+          setErrors({ form: errorMessage });
+          toast({
+            title: "Login failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
         setErrors({ form: errorMessage });
         toast({
-          title: "Login failed",
+          title: "Error",
           description: errorMessage,
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setErrors({ form: errorMessage });
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
-
-  // Focus first error field when it changes
-  React.useEffect(() => {
-    if (firstErrorField) {
-      const element = document.getElementById(firstErrorField);
-      if (element) {
-        element.focus();
-        setFirstErrorField(null);
-      }
-    }
-  }, [firstErrorField]);
 
   const handleGuestPlay = () => {
     // Set guest mode in localStorage
@@ -290,7 +281,7 @@ export default function LoginPage() {
                   </>
                 ) : (
                   <>
-                    <LogIn aria-hidden="true" className="h-4 w-4" />
+                    <LogIn aria-hidden="true" className="h-4 w-4" data-icon="inline-end" />
                     Log in
                   </>
                 )}

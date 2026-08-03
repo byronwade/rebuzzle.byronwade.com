@@ -69,23 +69,12 @@ export interface PaginatedBlogResponse {
   hasMore: boolean;
 }
 
-// Archive stats for timeline navigation
-export interface MonthArchiveStats {
-  month: number;
-  postCount: number;
-  puzzleTypes: Record<string, number>;
-}
-
-export interface YearArchiveStats {
-  year: number;
-  months: MonthArchiveStats[];
-  totalPosts: number;
-}
-
-export interface ArchiveStats {
-  years: YearArchiveStats[];
-  totalPosts: number;
-}
+// Archive stats types live in @/lib/blog/archive-stats (not a server action).
+export type {
+  ArchiveStats,
+  MonthArchiveStats,
+  YearArchiveStats,
+} from "@/lib/blog/archive-stats";
 
 // Adjacent posts for prev/next navigation
 export interface AdjacentPosts {
@@ -370,45 +359,6 @@ async function fetchBlogPostsPaginatedInternal(
 export { fetchBlogPostsPaginatedInternal as fetchBlogPostsPaginated };
 
 // ============================================================================
-// NEW: Archive stats for timeline navigation
-// ============================================================================
-
-export async function fetchBlogArchiveStats(): Promise<ArchiveStats> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag("blog-posts", "blog-archive");
-
-  const posts = await fetchAllBlogPosts();
-  const grouped = new Map<number, Map<number, MonthArchiveStats>>();
-
-  for (const post of posts) {
-    const date = new Date(post.publishedAt ?? post.date);
-    const year = date.getUTCFullYear();
-    const month = date.getUTCMonth() + 1;
-    const months = grouped.get(year) ?? new Map<number, MonthArchiveStats>();
-    const current = months.get(month) ?? { month, postCount: 0, puzzleTypes: {} };
-    const type = post.puzzleType || "rebus";
-    current.postCount += 1;
-    current.puzzleTypes[type] = (current.puzzleTypes[type] || 0) + 1;
-    months.set(month, current);
-    grouped.set(year, months);
-  }
-
-  const years = [...grouped.entries()]
-    .sort(([a], [b]) => b - a)
-    .map(([year, months]): YearArchiveStats => {
-      const sortedMonths = [...months.values()].sort((a, b) => b.month - a.month);
-      return {
-        year,
-        months: sortedMonths,
-        totalPosts: sortedMonths.reduce((sum, item) => sum + item.postCount, 0),
-      };
-    });
-
-  return { years, totalPosts: posts.length };
-}
-
-// ============================================================================
 // NEW: Search blog posts
 // ============================================================================
 
@@ -599,8 +549,8 @@ export async function fetchAllBlogPosts(options?: {
 
     const posts = await blogPostsCollection.aggregate(pipeline).toArray();
 
-    const databasePosts = posts
-      .map((post: any) => ({
+    const databasePosts = posts.flatMap((post: any) => {
+      const mapped = {
         slug: post.slug,
         date: post.date,
         publishedAt: post.publishedAt,
@@ -614,8 +564,9 @@ export async function fetchAllBlogPosts(options?: {
         sections: post.sections,
         seoMetadata: post.seoMetadata,
         puzzleOrigin: post.puzzleOrigin,
-      }))
-      .filter((post) => post.slug && !post.slug.startsWith("-") && post.slug.length >= 3);
+      };
+      return mapped.slug && !mapped.slug.startsWith("-") && mapped.slug.length >= 3 ? [mapped] : [];
+    });
 
     return mergeBlogPosts(repositoryPosts, databasePosts);
   } catch (error) {

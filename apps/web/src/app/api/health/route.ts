@@ -18,9 +18,10 @@ export async function GET() {
   // Check environment variables
   try {
     const envValidation = validateEnv();
+    const envIssues = envValidation.errors;
     checks.environment = {
       status: envValidation.valid ? "healthy" : "unhealthy",
-      error: envValidation.errors.length > 0 ? envValidation.errors.join(", ") : undefined,
+      error: envIssues.length > 0 ? envIssues.join(", ") : undefined,
     };
   } catch (error) {
     checks.environment = {

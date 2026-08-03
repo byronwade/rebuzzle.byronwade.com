@@ -25,6 +25,7 @@ import {
   isDevModeEnabled,
   setDevModeEnabled,
 } from "@/lib/dev-mode";
+import { fail } from "@/lib/fail";
 import { cn } from "@/lib/utils";
 
 type DevAction = "clear-attempts" | "lock-win" | "lock-lose" | "regenerate";
@@ -57,6 +58,12 @@ export function DevToolsPanel() {
   const refreshStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/dev/session", { credentials: "include" });
+      if (!res.ok) {
+        setAllowed(false);
+        setLockInfo("Sign in as guest or account to use Dev Mode actions");
+        setGatewayInfo("");
+        return;
+      }
       const data = (await res.json()) as {
         allowed?: boolean;
         lock?: { hasAttempt?: boolean; wasSuccessful?: boolean };
@@ -69,7 +76,7 @@ export function DevToolsPanel() {
           likelyConfigured?: boolean;
         };
       };
-      if (!res.ok || !data.allowed) {
+      if (!data.allowed) {
         setAllowed(false);
         setLockInfo("Sign in as guest or account to use Dev Mode actions");
         setGatewayInfo("");
@@ -117,24 +124,27 @@ export function DevToolsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Action failed");
-      }
-      clearDevClientGameState();
-      setStatus(data.message || "Done");
-      await refreshStatus();
-      if (thenNavigate) {
-        router.push(thenNavigate);
-        router.refresh();
+      if (res.ok) {
+        const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
+        if (!data.success) {
+          fail(data.error || "Action failed");
+        }
+        clearDevClientGameState();
+        setStatus(data.message || "Done");
+        await refreshStatus();
+        if (thenNavigate) {
+          router.push(thenNavigate);
+          router.refresh();
+        } else {
+          router.refresh();
+        }
       } else {
-        router.refresh();
+        fail((await res.text().catch(() => "")) || "Action failed");
       }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed");
-    } finally {
-      setBusy(null);
     }
+    setBusy(null);
   };
 
   const go = (path: string) => {
@@ -215,9 +225,9 @@ export function DevToolsPanel() {
               variant="secondary"
             >
               {busy === "regenerate" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" data-icon="inline-end" />
               ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" data-icon="inline-end" />
               )}
               Generate new puzzle
             </Button>
@@ -228,7 +238,7 @@ export function DevToolsPanel() {
               size="sm"
               variant="outline"
             >
-              <Palette className="h-3.5 w-3.5" />
+              <Palette className="h-3.5 w-3.5" data-icon="inline-start" />
               Visual Lab (pictogram / text / image)
             </Button>
             <Button
@@ -239,9 +249,9 @@ export function DevToolsPanel() {
               variant="outline"
             >
               {busy === "clear-attempts" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" data-icon="inline-end" />
               ) : (
-                <Unlock className="h-3.5 w-3.5" />
+                <Unlock className="h-3.5 w-3.5" data-icon="inline-end" />
               )}
               Unlock today (clear lock)
             </Button>
@@ -277,7 +287,7 @@ export function DevToolsPanel() {
                 size="sm"
                 variant="outline"
               >
-                <Trophy className="mr-1 h-3 w-3" />
+                <Trophy data-icon="inline-start" className="mr-1 h-3 w-3" />
                 Win
               </Button>
               <Button
@@ -322,7 +332,10 @@ export function DevToolsPanel() {
           </div>
 
           {status && (
-            <p className="rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px]">
+            <p
+              className="rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px]"
+              role="status"
+            >
               {status}
             </p>
           )}

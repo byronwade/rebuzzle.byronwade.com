@@ -63,12 +63,12 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
             >
               {isEditing ? (
                 <>
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Preview
                 </>
               ) : (
                 <>
-                  <Edit2 className="mr-2 h-4 w-4" />
+                  <Edit2 data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Edit
                 </>
               )}
@@ -263,7 +263,8 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
                 <div className="mt-2 space-y-2">
                   {editedPuzzle.hints.map((hint, index) => (
                     <Textarea
-                      key={index}
+                      aria-label="Puzzle hint"
+                      key={`edit-hint-${hint}`}
                       onChange={(e) => {
                         const newHints = [...editedPuzzle.hints];
                         newHints[index] = e.target.value;
@@ -277,7 +278,10 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
               ) : (
                 <div className="mt-2 space-y-2">
                   {editedPuzzle.hints.map((hint, index) => (
-                    <div className="rounded-md border bg-muted/50 p-3 text-sm" key={index}>
+                    <div
+                      className="rounded-md border bg-muted/50 p-3 text-sm"
+                      key={`view-hint-${hint}`}
+                    >
                       <span className="font-medium">Hint {index + 1}:</span> {hint}
                     </div>
                   ))}
@@ -313,7 +317,7 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
 
         <div className="mt-6 flex justify-end gap-2 border-t pt-4">
           <Button className="w-full md:w-auto" onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" />
+            <Save data-icon="inline-start" className="mr-2 h-4 w-4" />
             Save to Database
           </Button>
         </div>

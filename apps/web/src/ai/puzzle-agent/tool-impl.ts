@@ -289,9 +289,11 @@ export async function proposeConceptSeeds(input: {
   const fallback = proposeConceptSeedsFallback(input);
 
   try {
-    const { z } = await import("zod");
-    const { generateAIObject } = await import("@/ai/client");
-    const { OVERUSED_REBUS_TROPES } = await import("./visual/icon-features");
+    const [{ z }, { generateAIObject }, { OVERUSED_REBUS_TROPES }] = await Promise.all([
+      import("zod"),
+      import("@/ai/client"),
+      import("./visual/icon-features"),
+    ]);
 
     const SeedSchema = z.object({
       seeds: z
@@ -338,23 +340,22 @@ pictogramNouns must be concrete objects a stranger can sketch (key, umbrella, li
     });
 
     const allowed = new Set<string>(techIds);
-    const seeds: ConceptSeedIdea[] = invented.seeds
-      .map((seed) => {
-        const techniqueId = (
-          allowed.has(seed.techniqueId) ? seed.techniqueId : techIds[0] || "simple_compound"
-        ) as TechniqueId;
-        return {
-          workingTitle: seed.workingTitle,
-          answerDirection: seed.answerDirection,
-          category: seed.category,
-          techniqueId,
-          layerPlan: seed.layerPlan,
-          whyItFitsTier: seed.whyItFitsTier,
-          pictogramNouns: seed.pictogramNouns,
-          mechanismOneLiner: seed.mechanismOneLiner,
-        };
-      })
-      .filter((seed) => !avoidKeys.has(normalizeAnswerKey(seed.answerDirection)));
+    const seeds: ConceptSeedIdea[] = invented.seeds.flatMap((seed) => {
+      const techniqueId = (
+        allowed.has(seed.techniqueId) ? seed.techniqueId : techIds[0] || "simple_compound"
+      ) as TechniqueId;
+      const mapped = {
+        workingTitle: seed.workingTitle,
+        answerDirection: seed.answerDirection,
+        category: seed.category,
+        techniqueId,
+        layerPlan: seed.layerPlan,
+        whyItFitsTier: seed.whyItFitsTier,
+        pictogramNouns: seed.pictogramNouns,
+        mechanismOneLiner: seed.mechanismOneLiner,
+      };
+      return avoidKeys.has(normalizeAnswerKey(mapped.answerDirection)) ? [] : [mapped];
+    });
 
     if (seeds.length < 3) return fallback;
 
@@ -721,7 +722,8 @@ export function scorePuzzleQuality(
     visual: input.visual,
   });
   if (!assembly.withinBudget) {
-    issues.push(...assembly.issues.filter((i) => !issues.includes(i)));
+    const existingIssues = new Set(issues);
+    issues.push(...assembly.issues.filter((i) => !existingIssues.has(i)));
   } else {
     strengths.push(`Component budget fits ${level.label}`);
   }
@@ -825,34 +827,34 @@ export function validatePuzzleCandidate(
   const target = input.targetDifficulty ?? input.difficulty;
   const level = getDifficultyLevelForScore(target);
 
-  const errors: string[] = [];
+  const failures: string[] = [];
 
   if (config.validation?.validate) {
     const result = config.validation.validate(input as never);
-    if (!result.valid) errors.push(...(result.errors ?? []));
+    if (!result.valid) failures.push(...(result.errors ?? []));
   }
 
   if (!isKnownTechniqueId(input.techniqueId)) {
-    errors.push("techniqueId must be a known library technique");
+    failures.push("techniqueId must be a known library technique");
   }
 
   const visualCheck = evaluateVisualForPublish(input.visual);
   if (!visualCheck.ok) {
-    errors.push(visualCheck.reason ?? "Visual failed publish check");
+    failures.push(visualCheck.reason ?? "Visual failed publish check");
   }
 
   const quality = scorePuzzleQuality({ ...input, targetDifficulty: target });
-  if (!quality.publishable) errors.push(...quality.issues);
+  if (!quality.publishable) failures.push(...quality.issues);
 
   if (!isDifficultyInBand(input.difficulty, target)) {
-    errors.push(
+    failures.push(
       `Proposed difficulty ${input.difficulty} outside ${level.label} band ${level.min}-${level.max}`
     );
   }
 
   return {
-    valid: errors.length === 0,
-    errors: [...new Set(errors)],
+    valid: failures.length === 0,
+    errors: [...new Set(failures)],
     puzzleType,
     tier: level.label,
   };

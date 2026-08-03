@@ -9,9 +9,11 @@ async function GameOverContent({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  await connection();
-  const params = await searchParams;
-  const solution = await fetchGameOverSolution();
+  const [, params, solution] = await Promise.all([
+    connection(),
+    searchParams,
+    fetchGameOverSolution(),
+  ]);
 
   return (
     <GameOverClient

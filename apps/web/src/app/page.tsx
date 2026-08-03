@@ -6,6 +6,7 @@ import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
 import { HomePageSkeleton } from "@/components/page-skeletons";
 import { PrefetchGuestClient } from "@/components/prefetch-guest-client";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePuzzleMetadata } from "@/lib/seo/metadata";
 import {
   generateFAQPageSchema,
@@ -165,154 +166,157 @@ function PuzzleAlreadyAttemptedDisplay({ wasSuccessful }: { wasSuccessful: boole
  * Dynamic puzzle content - will be streamed with PPR
  */
 async function PuzzleContent({ params }: { params: { preview: boolean; test: boolean } }) {
+  let attemptStatus;
+  let gameData;
+  let previewAllowed;
   try {
     // Opt into request-time rendering before Date/cookie-dependent work
     await connection();
 
     const wantsPreview = params.preview;
     // Parallelize lock check + puzzle fetch + admin preview auth
-    const [attemptStatus, gameData, previewAllowed] = await Promise.all([
+    [attemptStatus, gameData, previewAllowed] = await Promise.all([
       isPuzzleCompletedForToday(),
       fetchGameData(false),
       wantsPreview ? canUsePuzzlePreview() : Promise.resolve(false),
     ]);
-
-    const preview = wantsPreview && previewAllowed;
-
-    // Fail closed: lock UI if already played, or if status is unknown
-    if ((attemptStatus.hasAttempt || attemptStatus.statusUnknown) && !preview) {
-      return (
-        <PuzzleAlreadyAttemptedDisplay
-          wasSuccessful={attemptStatus.statusUnknown ? false : attemptStatus.wasSuccessful}
-        />
-      );
-    }
-
-    // Handle no puzzle available - check both new and legacy fields
-    const hasPuzzle = gameData.puzzle || gameData.rebusPuzzle;
-    if (!hasPuzzle) {
-      return <NoPuzzleDisplay />;
-    }
-
-    // Generate Game schema for JSON-LD — never include the live answer
-    const publishedAtStr =
-      gameData.metadata?.publishedAt ||
-      gameData.publishedAt ||
-      `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
-
-    const gameSchema = generateGameSchema({
-      id: gameData.id,
-      puzzle: gameData.puzzle || gameData.rebusPuzzle || "",
-      answer: "Solve today's Rebuzzle puzzle",
-      difficulty: gameData.difficulty,
-      puzzleType: gameData.puzzleType,
-      explanation:
-        "Daily rebus and logic puzzles. One puzzle per day — come back tomorrow for a new challenge.",
-      hints: [],
-      publishedAt: publishedAtStr,
-    });
-
-    // Generate FAQ schema for common puzzle questions
-    const faqSchema = generateFAQPageSchema([
-      {
-        question: "How do you play Rebuzzle?",
-        answer:
-          "Rebuzzle is a daily puzzle game where you solve visual rebus puzzles, logic grids, cryptic crosswords, and more. Each day you get one new puzzle. Analyze the clues, use hints if needed, and solve to build your streak!",
-      },
-      {
-        question: "Is Rebuzzle free to play?",
-        answer:
-          "Yes! Rebuzzle is completely free to play. No subscriptions, no ads, just daily puzzle fun.",
-      },
-      {
-        question: "What types of puzzles does Rebuzzle have?",
-        answer:
-          "Rebuzzle features 7 puzzle types: rebus puzzles (visual word puzzles), logic grids, cryptic crosswords, number sequences, pattern recognition, Caesar ciphers, and trivia questions. All puzzles are AI-generated and unique every day.",
-      },
-      {
-        question: "How is Rebuzzle different from Wordle?",
-        answer:
-          "While Wordle focuses on guessing 5-letter words, Rebuzzle offers multiple puzzle types including visual rebus puzzles, logic grids, cryptic crosswords, and more. Each puzzle type challenges different cognitive skills.",
-      },
-      {
-        question: "Can you play Rebuzzle on mobile?",
-        answer:
-          "Yes! Rebuzzle is a Progressive Web App (PWA) that works perfectly on mobile, tablet, and desktop. You can even install it on your phone for offline play.",
-      },
-      {
-        question: "How do hints work in Rebuzzle?",
-        answer:
-          "Rebuzzle features a progressive hint system. You can reveal hints that guide you toward the solution without spoiling the answer. Hints are designed to help you learn and improve your puzzle-solving skills.",
-      },
-      {
-        question: "What is a rebus puzzle?",
-        answer:
-          "A rebus puzzle is a visual word puzzle that uses pictures, symbols, and words to represent words or phrases. For example, a picture of a bee (🐝) plus the number 4 (4️⃣) represents 'before' (bee-four).",
-      },
-      {
-        question: "How do you solve rebus puzzles?",
-        answer:
-          "To solve rebus puzzles, look at the visual elements and think about what they represent. Combine sounds, words, and symbols to form the answer. Use hints if you're stuck, and remember that rebus puzzles often use wordplay and phonetic connections.",
-      },
-    ]);
-
-    // Generate HowTo schema for puzzle-solving
-    const howToSchema = generateHowToSchema({
-      name: "How to Solve Rebuzzle Puzzles",
-      description:
-        "Learn how to solve rebus puzzles, logic grids, and other puzzle types in Rebuzzle",
-      steps: [
-        {
-          name: "Analyze the Puzzle",
-          text: "Look carefully at all visual elements, symbols, and words in the puzzle. Identify what each element might represent.",
-        },
-        {
-          name: "Think About Wordplay",
-          text: "Rebus puzzles often use phonetic connections, compound words, or visual representations. Consider how elements might combine or sound.",
-        },
-        {
-          name: "Use Hints Strategically",
-          text: "If you're stuck, use the progressive hint system. Start with the first hint and only reveal more if needed.",
-        },
-        {
-          name: "Make Your Guess",
-          text: "Type your answer using the on-screen keyboard. You'll get instant feedback on whether you're correct.",
-        },
-        {
-          name: "Learn from Explanations",
-          text: "After solving (or viewing the answer), read the explanation to understand the puzzle's logic and improve your skills.",
-        },
-      ],
-    });
-
-    return (
-      <Layout isGamePage>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(gameSchema),
-          }}
-          type="application/ld+json"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(faqSchema),
-          }}
-          type="application/ld+json"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(howToSchema),
-          }}
-          type="application/ld+json"
-        />
-        <PrefetchGuestClient />
-        <GameBoard gameData={gameData} />
-      </Layout>
-    );
   } catch (error) {
     console.error("Error in PuzzleContent:", error);
     return <ErrorDisplay error={error as Error} />;
   }
+
+  const preview = params.preview && previewAllowed;
+
+  // Fail closed: lock UI if already played, or if status is unknown
+  if ((attemptStatus.hasAttempt || attemptStatus.statusUnknown) && !preview) {
+    return (
+      <PuzzleAlreadyAttemptedDisplay
+        wasSuccessful={attemptStatus.statusUnknown ? false : attemptStatus.wasSuccessful}
+      />
+    );
+  }
+
+  // Handle no puzzle available - check both new and legacy fields
+  const hasPuzzle = gameData.puzzle || gameData.rebusPuzzle;
+  if (!hasPuzzle) {
+    return <NoPuzzleDisplay />;
+  }
+
+  // Generate Game schema for JSON-LD — never include the live answer
+  const publishedAtStr =
+    gameData.metadata?.publishedAt ||
+    gameData.publishedAt ||
+    `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+
+  const gameSchema = generateGameSchema({
+    id: gameData.id,
+    puzzle: gameData.puzzle || gameData.rebusPuzzle || "",
+    answer: "Solve today's Rebuzzle puzzle",
+    difficulty: gameData.difficulty,
+    puzzleType: gameData.puzzleType,
+    explanation:
+      "Daily rebus and logic puzzles. One puzzle per day — come back tomorrow for a new challenge.",
+    hints: [],
+    publishedAt: publishedAtStr,
+  });
+
+  // Generate FAQ schema for common puzzle questions
+  const faqSchema = generateFAQPageSchema([
+    {
+      question: "How do you play Rebuzzle?",
+      answer:
+        "Rebuzzle is a daily puzzle game where you solve visual rebus puzzles, logic grids, cryptic crosswords, and more. Each day you get one new puzzle. Analyze the clues, use hints if needed, and solve to build your streak!",
+    },
+    {
+      question: "Is Rebuzzle free to play?",
+      answer:
+        "Yes! Rebuzzle is completely free to play. No subscriptions, no ads, just daily puzzle fun.",
+    },
+    {
+      question: "What types of puzzles does Rebuzzle have?",
+      answer:
+        "Rebuzzle features 7 puzzle types: rebus puzzles (visual word puzzles), logic grids, cryptic crosswords, number sequences, pattern recognition, Caesar ciphers, and trivia questions. All puzzles are AI-generated and unique every day.",
+    },
+    {
+      question: "How is Rebuzzle different from Wordle?",
+      answer:
+        "While Wordle focuses on guessing 5-letter words, Rebuzzle offers multiple puzzle types including visual rebus puzzles, logic grids, cryptic crosswords, and more. Each puzzle type challenges different cognitive skills.",
+    },
+    {
+      question: "Can you play Rebuzzle on mobile?",
+      answer:
+        "Yes! Rebuzzle is a Progressive Web App (PWA) that works perfectly on mobile, tablet, and desktop. You can even install it on your phone for offline play.",
+    },
+    {
+      question: "How do hints work in Rebuzzle?",
+      answer:
+        "Rebuzzle features a progressive hint system. You can reveal hints that guide you toward the solution without spoiling the answer. Hints are designed to help you learn and improve your puzzle-solving skills.",
+    },
+    {
+      question: "What is a rebus puzzle?",
+      answer:
+        "A rebus puzzle is a visual word puzzle that uses pictures, symbols, and words to represent words or phrases. For example, a picture of a bee (🐝) plus the number 4 (4️⃣) represents 'before' (bee-four).",
+    },
+    {
+      question: "How do you solve rebus puzzles?",
+      answer:
+        "To solve rebus puzzles, look at the visual elements and think about what they represent. Combine sounds, words, and symbols to form the answer. Use hints if you're stuck, and remember that rebus puzzles often use wordplay and phonetic connections.",
+    },
+  ]);
+
+  // Generate HowTo schema for puzzle-solving
+  const howToSchema = generateHowToSchema({
+    name: "How to Solve Rebuzzle Puzzles",
+    description:
+      "Learn how to solve rebus puzzles, logic grids, and other puzzle types in Rebuzzle",
+    steps: [
+      {
+        name: "Analyze the Puzzle",
+        text: "Look carefully at all visual elements, symbols, and words in the puzzle. Identify what each element might represent.",
+      },
+      {
+        name: "Think About Wordplay",
+        text: "Rebus puzzles often use phonetic connections, compound words, or visual representations. Consider how elements might combine or sound.",
+      },
+      {
+        name: "Use Hints Strategically",
+        text: "If you're stuck, use the progressive hint system. Start with the first hint and only reveal more if needed.",
+      },
+      {
+        name: "Make Your Guess",
+        text: "Type your answer using the on-screen keyboard. You'll get instant feedback on whether you're correct.",
+      },
+      {
+        name: "Learn from Explanations",
+        text: "After solving (or viewing the answer), read the explanation to understand the puzzle's logic and improve your skills.",
+      },
+    ],
+  });
+
+  return (
+    <Layout isGamePage>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(gameSchema),
+        }}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(faqSchema),
+        }}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(howToSchema),
+        }}
+        type="application/ld+json"
+      />
+      <PrefetchGuestClient />
+      <GameBoard gameData={gameData} />
+    </Layout>
+  );
 }
 
 /**

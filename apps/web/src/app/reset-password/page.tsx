@@ -1,10 +1,10 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { AuthFormSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { withLoadingFlag } from "@/lib/with-loading-flag";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+  const token = searchParams.get("token");
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
@@ -31,18 +32,14 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const tokenParam = searchParams.get("token");
-    if (tokenParam) {
-      setToken(tokenParam);
-    } else {
-      toast({
-        title: "Invalid Link",
-        description: "No reset token provided. Please request a new password reset.",
-        variant: "destructive",
-      });
-      router.push("/forgot-password");
-    }
-  }, [searchParams, router, toast]);
+    if (token) return;
+    toast({
+      title: "Invalid Link",
+      description: "No reset token provided. Please request a new password reset.",
+      variant: "destructive",
+    });
+    window.location.assign("/forgot-password");
+  }, [token, toast]);
 
   const validateField = (
     name: string,
@@ -116,33 +113,53 @@ export default function ResetPasswordPage() {
     }
 
     setErrors({});
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSuccess(true);
-        toast({
-          title: "Password Reset!",
-          description: "Your password has been reset successfully.",
+    await withLoadingFlag(setIsLoading, async () => {
+      try {
+        const response = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            password: formData.password,
+          }),
         });
 
-        // Redirect to login after 2 seconds
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
-      } else {
-        const errorMessage = data.error || "Failed to reset password. Please try again.";
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}) as { error?: string });
+          const errorMessage = data.error || "Failed to reset password. Please try again.";
+          setErrors({ form: errorMessage });
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else {
+          const data = await response.json();
+
+          if (data.success) {
+            setSuccess(true);
+            toast({
+              title: "Password Reset!",
+              description: "Your password has been reset successfully.",
+            });
+
+            // Redirect to login after 2 seconds
+            setTimeout(() => {
+              router.push("/login");
+            }, 2000);
+          } else {
+            const errorMessage = data.error || "Failed to reset password. Please try again.";
+            setErrors({ form: errorMessage });
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Reset password error:", error);
+        const errorMessage = "Failed to connect to server. Please try again.";
         setErrors({ form: errorMessage });
         toast({
           title: "Error",
@@ -150,18 +167,7 @@ export default function ResetPasswordPage() {
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Reset password error:", error);
-      const errorMessage = "Failed to connect to server. Please try again.";
-      setErrors({ form: errorMessage });
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   if (!token) {
@@ -187,19 +193,24 @@ export default function ResetPasswordPage() {
             </div>
 
             {success ? (
-              <div className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center">
+              <div
+                className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center"
+                role="status"
+              >
                 <p className="text-foreground text-sm">
                   Your password has been reset successfully. Redirecting to login...
                 </p>
               </div>
             ) : (
-              <form className="space-y-4" onSubmit={handleSubmit}>
+              <form className="space-y-4" noValidate onSubmit={handleSubmit}>
                 <div>
                   <Label htmlFor="password">New Password</Label>
                   <Input
+                    autoComplete="new-password"
                     autoFocus
                     disabled={isLoading}
                     id="password"
+                    minLength={6}
                     name="password"
                     onBlur={(e) => {
                       const error = validateField("password", e.target.value);
@@ -212,15 +223,19 @@ export default function ResetPasswordPage() {
                     value={formData.password}
                   />
                   {errors.password && (
-                    <p className="mt-1.5 text-destructive text-xs">{errors.password}</p>
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
+                      {errors.password}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <Input
+                    autoComplete="new-password"
                     disabled={isLoading}
                     id="confirmPassword"
+                    minLength={6}
                     name="confirmPassword"
                     onBlur={(e) => {
                       const error = validateField("confirmPassword", e.target.value, formData);
@@ -236,12 +251,17 @@ export default function ResetPasswordPage() {
                     value={formData.confirmPassword}
                   />
                   {errors.confirmPassword && (
-                    <p className="mt-1.5 text-destructive text-xs">{errors.confirmPassword}</p>
+                    <p className="mt-1.5 text-destructive text-xs" role="alert">
+                      {errors.confirmPassword}
+                    </p>
                   )}
                 </div>
 
                 {errors.form && (
-                  <div className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5">
+                  <div
+                    className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5"
+                    role="alert"
+                  >
                     <p className="text-destructive text-sm">{errors.form}</p>
                   </div>
                 )}

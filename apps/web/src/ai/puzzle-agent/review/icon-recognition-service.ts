@@ -464,23 +464,24 @@ export function scoreIconRecognitionCalibration(input: {
   const promotionEligibleConceptIds =
     panelId === "candidates" && controlGatePassed
       ? conceptScores
-          .filter(
-            (score) =>
-              score.role === "candidate" &&
-              score.accuracy !== null &&
-              score.accuracy >= ICON_RECOGNITION_RELEASE_ACCURACY &&
-              score.sizes.every(
-                (size) =>
-                  size.decisions >= minReviewers &&
-                  size.accuracy !== null &&
-                  size.accuracy >= config.specimenFloor
-              )
+          .flatMap((score) =>
+            score.role === "candidate" &&
+            score.accuracy !== null &&
+            score.accuracy >= ICON_RECOGNITION_RELEASE_ACCURACY &&
+            score.sizes.every(
+              (size) =>
+                size.decisions >= minReviewers &&
+                size.accuracy !== null &&
+                size.accuracy >= config.specimenFloor
+            )
+              ? [score.conceptId]
+              : []
           )
-          .map((score) => score.conceptId)
           .sort()
       : [];
+  const promotionEligibleSet = new Set(promotionEligibleConceptIds);
   const blockedCandidateConceptIds = [...config.candidateConceptIds]
-    .filter((conceptId) => !promotionEligibleConceptIds.includes(conceptId))
+    .filter((conceptId) => !promotionEligibleSet.has(conceptId))
     .sort();
   const confusionCounts = new Map<string, IconRecognitionConfusion>();
   for (const review of targetReviews) {
@@ -570,7 +571,9 @@ export function createIconRecognitionService(repository: IconRecognitionReposito
     fixtureIds: Set<string>
   ): Set<string> {
     return new Set(
-      decisions.filter((decision) => fixtureIds.has(decision.fixtureId)).map((row) => row.fixtureId)
+      decisions.flatMap((decision) =>
+        fixtureIds.has(decision.fixtureId) ? [decision.fixtureId] : []
+      )
     );
   }
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { Bell, BellRing, Check, Loader2, Mail, Sparkles } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,13 +23,14 @@ import {
   dailyReminderEnabledBlurb,
   PUZZLE_EMAIL_REMINDER_SHORT,
 } from "@/lib/game/reminder-copy";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 
 export function NotificationBadge() {
   const { isAuthenticated, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -49,41 +50,33 @@ export function NotificationBadge() {
   } = useInAppNotifications(isAuthenticated);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
     if (isOpen && isAuthenticated) {
       void refreshInbox();
     }
   }, [isOpen, isAuthenticated, refreshInbox]);
 
-  // Validate email format
-  const validateEmail = useCallback((emailValue: string): boolean => {
+  const validateEmail = (emailValue: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(emailValue);
-  }, []);
+  };
 
-  const handleEnableClick = useCallback(async () => {
-    // Prevent rapid clicks
+  const handleEnableClick = async () => {
     if (isSubmitting || emailLoading) return;
 
     if (isAuthenticated && user?.email) {
-      // Authenticated user - subscribe directly
       setIsSubmitting(true);
       try {
         await subscribe(user.email);
-      } finally {
-        setIsSubmitting(false);
+      } catch {
+        // Error handled in hook
       }
+      setIsSubmitting(false);
     } else {
-      // Guest - need to collect email
       setShowEmailDialog(true);
     }
-  }, [isAuthenticated, user?.email, subscribe, isSubmitting, emailLoading]);
+  };
 
-  const handleDisableClick = useCallback(async () => {
-    // Prevent rapid clicks
+  const handleDisableClick = async () => {
     if (isSubmitting || emailLoading) return;
 
     setIsSubmitting(true);
@@ -91,16 +84,13 @@ export function NotificationBadge() {
       await unsubscribe();
     } catch (_err) {
       // Error handled in hook
-    } finally {
-      setIsSubmitting(false);
     }
-  }, [unsubscribe, isSubmitting, emailLoading]);
+    setIsSubmitting(false);
+  };
 
-  const handleEmailSubmit = useCallback(async () => {
-    // Clear previous errors
+  const handleEmailSubmit = async () => {
     setEmailError(null);
 
-    // Validate email
     if (!guestEmail.trim()) {
       setEmailError("Email address is required");
       return;
@@ -118,14 +108,12 @@ export function NotificationBadge() {
       setGuestEmail("");
       setEmailError(null);
     } catch (err) {
-      // Error handled in hook, but set local error for dialog
       if (err instanceof Error) {
         setEmailError(err.message);
       }
-    } finally {
-      setIsSubmitting(false);
     }
-  }, [guestEmail, validateEmail, subscribe]);
+    setIsSubmitting(false);
+  };
 
   const getBellIcon = () => {
     if (emailLoading) {
@@ -157,7 +145,7 @@ export function NotificationBadge() {
   if (!mounted) {
     return (
       <Button aria-label="Email Reminders" className="relative" size="icon" variant="ghost">
-        <Bell className="h-5 w-5" />
+        <Bell className="h-5 w-5" data-icon="inline-start" />
       </Button>
     );
   }
@@ -248,12 +236,12 @@ export function NotificationBadge() {
                 >
                   {emailLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                       Disabling...
                     </>
                   ) : (
                     <>
-                      <Bell className="mr-2 h-4 w-4" />
+                      <Bell data-icon="inline-start" className="mr-2 h-4 w-4" />
                       Disable email reminders
                     </>
                   )}
@@ -280,12 +268,12 @@ export function NotificationBadge() {
                 >
                   {emailLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                       Enabling...
                     </>
                   ) : (
                     <>
-                      <Mail className="mr-2 h-4 w-4" />
+                      <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                       Enable daily reminders
                     </>
                   )}
@@ -372,12 +360,12 @@ export function NotificationBadge() {
             >
               {isSubmitting || emailLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
                   Enabling...
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
                   Enable Notifications
                 </>
               )}

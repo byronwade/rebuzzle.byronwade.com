@@ -11,8 +11,8 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import { Confetti } from "@/components/Confetti";
 import { CountdownTimer } from "@/components/CountdownTimer";
@@ -110,7 +110,7 @@ function PlaytestInvitation() {
       <Button asChild className="mt-4 w-full" variant="outline">
         <Link href="/playtest?from=game-over">
           Review a test puzzle
-          <ArrowRight className="ml-2 h-4 w-4" />
+          <ArrowRight data-icon="inline-end" className="ml-2 h-4 w-4" />
         </Link>
       </Button>
     </div>
@@ -155,129 +155,183 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   // Global comparison stats
   const [percentile, setPercentile] = useState<number | null>(null);
   const [todaySolves, setTodaySolves] = useState<number | null>(null);
-  const [perception, setPerception] = useState<PerceptionChoice | null>(null);
+  const [perceptionOverride, setPerception] = useState<PerceptionChoice | null>(null);
   const [perceptionSaving, setPerceptionSaving] = useState(false);
-  const [qualityVote, setQualityVote] = useState<QualityVote | null>(null);
+  const [qualityVoteOverride, setQualityVote] = useState<QualityVote | null>(null);
   const [qualityVoteSaving, setQualityVoteSaving] = useState(false);
-  const [qualityReasons, setQualityReasons] = useState<QualityReason[]>([]);
-  const [playtestEligible, setPlaytestEligible] = useState(false);
+  const [qualityReasonsOverride, setQualityReasons] = useState<QualityReason[] | null>(null);
+  const [fetchedPlaytestEligible, setFetchedPlaytestEligible] = useState(false);
+  const canCheckPlaytest = !authLoading && isAuthenticated && !isGuest && Boolean(userId);
+  const playtestEligible = canCheckPlaytest && fetchedPlaytestEligible;
 
-  const [solution, setSolution] = useState({
-    answer: gameData.answer || "",
-    explanation: gameData.explanation || "",
-  });
+  const puzzleFeedbackKey = gameData.puzzleId || "";
+  const storedFeedback = useSyncExternalStore(
+    (onStoreChange) => {
+      const onStorage = (e: StorageEvent) => {
+        if (
+          e.key === null ||
+          (puzzleFeedbackKey &&
+            (e.key === `difficultyPerception:${puzzleFeedbackKey}` ||
+              e.key === `puzzleQualityVote:${puzzleFeedbackKey}` ||
+              e.key === `puzzleQualityReasons:${puzzleFeedbackKey}`))
+        ) {
+          onStoreChange();
+        }
+      };
+      const onCustom = () => onStoreChange();
+      window.addEventListener("storage", onStorage);
+      window.addEventListener("rebuzzle:game-over-feedback", onCustom);
+      return () => {
+        window.removeEventListener("storage", onStorage);
+        window.removeEventListener("rebuzzle:game-over-feedback", onCustom);
+      };
+    },
+    () => {
+      if (!puzzleFeedbackKey) {
+        return {
+          perception: null as PerceptionChoice | null,
+          qualityVote: null as QualityVote | null,
+          qualityReasons: [] as QualityReason[],
+        };
+      }
+      try {
+        const stored = localStorage.getItem(`difficultyPerception:${puzzleFeedbackKey}`);
+        const perception =
+          stored === "too_easy" || stored === "just_right" || stored === "too_hard" ? stored : null;
+        const qualityStored = localStorage.getItem(`puzzleQualityVote:${puzzleFeedbackKey}`);
+        const qualityVote =
+          qualityStored === "like" || qualityStored === "dislike" ? qualityStored : null;
+        let qualityReasons: QualityReason[] = [];
+        const reasonStored = localStorage.getItem(`puzzleQualityReasons:${puzzleFeedbackKey}`);
+        if (reasonStored) {
+          const parsed = JSON.parse(reasonStored) as unknown;
+          if (Array.isArray(parsed)) {
+            qualityReasons = parsed.filter((reason): reason is QualityReason =>
+              QUALITY_REASON_OPTIONS.some((option) => option.id === reason)
+            );
+          }
+        }
+        return { perception, qualityVote, qualityReasons };
+      } catch {
+        return {
+          perception: null as PerceptionChoice | null,
+          qualityVote: null as QualityVote | null,
+          qualityReasons: [] as QualityReason[],
+        };
+      }
+    },
+    () => ({
+      perception: null as PerceptionChoice | null,
+      qualityVote: null as QualityVote | null,
+      qualityReasons: [] as QualityReason[],
+    })
+  );
+  const perception = perceptionOverride ?? storedFeedback.perception;
+  const qualityVote = qualityVoteOverride ?? storedFeedback.qualityVote;
+  const qualityReasons = qualityReasonsOverride ?? storedFeedback.qualityReasons;
 
-  useEffect(() => {
-    // Server lock is authoritative — never unlock results from localStorage alone
-    if (!gameData.locked) {
-      setSolution({ answer: "", explanation: "" });
-      return;
-    }
-
-    if (gameData.answer) {
-      setSolution({ answer: gameData.answer, explanation: gameData.explanation });
-      return;
-    }
-
-    // Locked but answer not in RSC payload — use today's guess reveal only
-    try {
-      const todayKey = new Date().toISOString().slice(0, 10);
-      const stored = localStorage.getItem("lastGameSolution");
-      if (stored) {
-        const parsed = JSON.parse(stored) as {
+  const storedSolution = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        const raw =
+          localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution");
+        if (!raw) return null;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const parsed = JSON.parse(raw) as {
           answer?: string;
           explanation?: string;
           puzzleDate?: string;
         };
         if (parsed.answer && (!parsed.puzzleDate || parsed.puzzleDate === todayKey)) {
-          setSolution({
-            answer: parsed.answer,
-            explanation: parsed.explanation || "",
-          });
+          return { answer: parsed.answer, explanation: parsed.explanation || "" };
         }
-      }
-    } catch {
-      // ignore
-    }
-  }, [gameData.answer, gameData.explanation, gameData.locked]);
+      } catch {}
+      return null;
+    },
+    () => null
+  );
+
+  const solution = !gameData.locked
+    ? { answer: "", explanation: "" }
+    : gameData.answer
+      ? { answer: gameData.answer, explanation: gameData.explanation || "" }
+      : (storedSolution ?? { answer: "", explanation: "" });
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || isGuest || !userId) {
-      setPlaytestEligible(false);
-      return;
-    }
+    if (!canCheckPlaytest) return;
     const controller = new AbortController();
     void fetch("/api/puzzle-playtests?mode=eligibility", {
       cache: "no-store",
       signal: controller.signal,
     })
       .then((response) => {
-        if (!controller.signal.aborted) setPlaytestEligible(response.ok);
+        if (!controller.signal.aborted) setFetchedPlaytestEligible(response.ok);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setPlaytestEligible(false);
+        if (!controller.signal.aborted) setFetchedPlaytestEligible(false);
       });
     return () => controller.abort();
-  }, [authLoading, isAuthenticated, isGuest, userId]);
+  }, [canCheckPlaytest]);
 
   useEffect(() => {
     async function loadClientExtras() {
+      // Load completion data from localStorage once
+      let completionRaw: string | null = null;
+      let parsedCompletion: CompletionData | null = null;
       try {
-        // Load completion data from localStorage
-        try {
-          const storedData = localStorage.getItem("lastGameCompletion");
-          if (storedData) {
-            const parsed = JSON.parse(storedData) as CompletionData;
-            setCompletionData(parsed);
-            if (parsed.streak) {
-              setStreak(parsed.streak);
-            }
-          }
-        } catch (e) {
-          console.error("Error loading completion data:", e);
-        }
-
-        // Fallback: Load streak from database (only if we have a userId)
-        if (userId) {
-          try {
-            const response = await fetch("/api/user/stats");
-            if (response.ok) {
-              const userStats = await response.json();
-              if (userStats.stats?.streak) {
-                setStreak((prev) => prev || userStats.stats.streak);
-              }
-            }
-          } catch (error) {
-            console.error("Error loading user stats:", error);
+        completionRaw =
+          localStorage.getItem("lastGameCompletion:v1") ??
+          localStorage.getItem("lastGameCompletion");
+        if (completionRaw) {
+          parsedCompletion = JSON.parse(completionRaw) as CompletionData;
+          setCompletionData(parsedCompletion);
+          if (parsedCompletion.streak) {
+            setStreak(parsedCompletion.streak);
           }
         }
+      } catch (e) {
+        console.error("Error loading completion data:", e);
+      }
 
-        // Fetch puzzle stats for global comparison
+      // Fallback: Load streak from database (only if we have a userId)
+      if (userId) {
         try {
-          const statsResponse = await fetch("/api/puzzles/stats");
-          if (statsResponse.ok) {
-            const stats = await statsResponse.json();
-            setTodaySolves(stats.todaySolves || 0);
-
-            const storedData = localStorage.getItem("lastGameCompletion");
-            if (storedData && stats.percentiles) {
-              const parsed = JSON.parse(storedData) as CompletionData;
-              const userTime = parsed.timeTaken;
-              // Approximate "faster than X%" from aggregate percentile buckets
-              let pct = 50;
-              if (userTime <= stats.percentiles.p25) pct = 75;
-              else if (userTime <= stats.percentiles.p50) pct = 50;
-              else if (userTime <= stats.percentiles.p75) pct = 25;
-              else pct = 10;
-              setPercentile(Math.min(99, Math.max(1, pct)));
+          const response = await fetch("/api/user/stats");
+          if (response.ok) {
+            const userStats = await response.json();
+            if (userStats.stats?.streak) {
+              setStreak((prev) => prev || userStats.stats.streak);
             }
           }
         } catch (error) {
-          console.error("Error loading puzzle stats:", error);
+          console.error("Error loading user stats:", error);
         }
-      } finally {
-        setLoading(false);
       }
+
+      // Fetch puzzle stats for global comparison
+      try {
+        const statsResponse = await fetch("/api/puzzles/stats");
+        if (statsResponse.ok) {
+          const stats = await statsResponse.json();
+          setTodaySolves(stats.todaySolves || 0);
+
+          if (parsedCompletion && stats.percentiles) {
+            const userTime = parsedCompletion.timeTaken;
+            // Approximate "faster than X%" from aggregate percentile buckets
+            let pct = 50;
+            if (userTime <= stats.percentiles.p25) pct = 75;
+            else if (userTime <= stats.percentiles.p50) pct = 50;
+            else if (userTime <= stats.percentiles.p75) pct = 25;
+            else pct = 10;
+            setPercentile(Math.min(99, Math.max(1, pct)));
+          }
+        }
+      } catch (error) {
+        console.error("Error loading puzzle stats:", error);
+      }
+
+      setLoading(false);
     }
 
     loadClientExtras();
@@ -296,7 +350,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   function resolvePuzzleId(): string {
     if (gameData.puzzleId) return gameData.puzzleId;
     try {
-      const stored = localStorage.getItem("lastGameSolution");
+      const stored =
+        localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution");
       if (!stored) return "";
       const parsed = JSON.parse(stored) as { puzzleId?: string };
       return parsed.puzzleId || "";
@@ -304,36 +359,6 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       return "";
     }
   }
-
-  useEffect(() => {
-    const puzzleId = gameData.puzzleId;
-    if (!puzzleId || typeof window === "undefined") return;
-    try {
-      const key = `difficultyPerception:${puzzleId}`;
-      const stored = localStorage.getItem(key);
-      if (stored === "too_easy" || stored === "just_right" || stored === "too_hard") {
-        setPerception(stored);
-      }
-      const qualityKey = `puzzleQualityVote:${puzzleId}`;
-      const qualityStored = localStorage.getItem(qualityKey);
-      if (qualityStored === "like" || qualityStored === "dislike") {
-        setQualityVote(qualityStored);
-      }
-      const reasonStored = localStorage.getItem(`puzzleQualityReasons:${puzzleId}`);
-      if (reasonStored) {
-        const parsed = JSON.parse(reasonStored) as unknown;
-        if (Array.isArray(parsed)) {
-          setQualityReasons(
-            parsed.filter((reason): reason is QualityReason =>
-              QUALITY_REASON_OPTIONS.some((option) => option.id === reason)
-            )
-          );
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, [gameData.puzzleId]);
 
   async function submitPerception(choice: PerceptionChoice) {
     const puzzleId = resolvePuzzleId();
@@ -357,9 +382,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       });
     } catch {
       // Non-blocking — local selection still stands
-    } finally {
-      setPerceptionSaving(false);
     }
+    setPerceptionSaving(false);
   }
 
   async function submitQualityVote(vote: QualityVote, reasons: QualityReason[] = []) {
@@ -389,9 +413,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       });
     } catch {
       // Non-blocking — local selection still stands
-    } finally {
-      setQualityVoteSaving(false);
     }
+    setQualityVoteSaving(false);
   }
 
   function toggleQualityReason(reason: QualityReason) {
@@ -411,6 +434,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
     const alreadyCelebrated = consumeJustSolvedSessionFlag();
     if (!alreadyCelebrated) {
+      // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- one-shot celebration kickoff after solve
       setShowConfetti(true);
       haptics.celebration();
     }
@@ -443,9 +467,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           <p className="text-muted-foreground text-sm">
             Results unlock after you finish today&apos;s puzzle.
           </p>
-          <Link href="/">
-            <Button className="w-full">Go to puzzle</Button>
-          </Link>
+          <Button asChild className="w-full">
+            <Link href="/">Go to puzzle</Link>
+          </Button>
         </div>
       </Layout>
     );
@@ -456,6 +480,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
       {success && showConfetti && <Confetti />}
 
       <div className="mx-auto max-w-lg px-4 py-12 md:py-16">
+        <h1 className="sr-only">{success ? "Puzzle solved" : "Puzzle not solved"}</h1>
         {success ? (
           /* SUCCESS STATE - Minimal & Clean */
           <div className="fade-in-up space-y-10">
@@ -464,7 +489,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-success/25 bg-success/10">
                 <Check className="h-5 w-5 text-success" strokeWidth={2.5} />
               </div>
-              <h1 className="font-semibold text-4xl text-foreground tracking-[-0.045em]">Solved</h1>
+              <p className="font-semibold text-4xl text-foreground tracking-[-0.045em]">Solved</p>
               <p className="text-muted-foreground text-sm">You got today's puzzle</p>
             </div>
 
@@ -518,7 +543,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
             {/* Global Comparison Badge - Social proof */}
             {percentile !== null && percentile > 50 && (
-              <div className="fade-in-50 mx-auto flex w-fit animate-in items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 duration-500">
+              <div className="rb-enter  mx-auto flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 ">
                 <TrendingUp className="h-3.5 w-3.5 text-success" />
                 <span className="font-medium text-success text-sm">
                   Faster than {percentile}% of players today
@@ -575,7 +600,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     qualityVote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
                   Like
                 </Button>
                 <Button
@@ -589,7 +614,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                       "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
                 >
-                  <ThumbsDown className="h-4 w-4" />
+                  <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
                   Dislike
                 </Button>
               </div>
@@ -616,7 +641,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     const isWinning = index === completionData.guessHistory.length - 1;
                     return (
                       <div
-                        key={index}
+                        key={`guess-${attempt.attemptNumber}-${attempt.text}`}
                         className={cn(
                           "flex items-center gap-3 rounded-lg border p-3",
                           isWinning
@@ -633,9 +658,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                           {isWinning ? <Check className="h-3.5 w-3.5" /> : attempt.attemptNumber}
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          {attempt.wordResults.map((result, wordIndex) => (
+                          {attempt.wordResults.map((result) => (
                             <span
-                              key={wordIndex}
+                              key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                               className={cn(
                                 "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
                                 result.correct
@@ -668,16 +693,16 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
             {/* Secondary Actions */}
             <div className="flex gap-3">
-              <Link className="flex-1" href="/leaderboard">
-                <Button variant="outline" className="w-full">
+              <Button asChild variant="outline" className="w-full">
+                <Link className="flex-1" href="/leaderboard">
                   Leaderboard
-                </Button>
-              </Link>
-              <Link className="flex-1" href="/blog">
-                <Button variant="outline" className="w-full">
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link className="flex-1" href="/blog">
                   Tips
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
 
             {playtestEligible && <PlaytestInvitation />}
@@ -695,9 +720,11 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     guest — signing up won&apos;t lose today&apos;s solve.
                   </p>
                 </div>
-                <Link href="/signup" className="block">
-                  <Button className="w-full">Create a free account</Button>
-                </Link>
+                <Button asChild className="w-full">
+                  <Link href="/signup" className="block">
+                    Create a free account
+                  </Link>
+                </Button>
                 <p className="text-muted-foreground text-xs">
                   Already have one?{" "}
                   <Link
@@ -724,9 +751,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-inset">
                 <X className="h-8 w-8 text-muted-foreground" strokeWidth={2} />
               </div>
-              <h1 className="font-semibold text-4xl text-foreground tracking-[-0.045em]">
+              <p className="font-semibold text-4xl text-foreground tracking-[-0.045em]">
                 Not quite
-              </h1>
+              </p>
               <p className="text-muted-foreground text-sm">Better luck tomorrow</p>
             </div>
 
@@ -792,7 +819,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     qualityVote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
                   Like
                 </Button>
                 <Button
@@ -806,7 +833,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                       "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
                 >
-                  <ThumbsDown className="h-4 w-4" />
+                  <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
                   Dislike
                 </Button>
               </div>
@@ -829,18 +856,18 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               <div className="space-y-3">
                 <p className="eyebrow text-center">Your Attempts</p>
                 <div className="space-y-2">
-                  {completionData.guessHistory.map((attempt, index) => (
+                  {completionData.guessHistory.map((attempt) => (
                     <div
-                      key={index}
+                      key={`attempt-${attempt.attemptNumber}-${attempt.wordResults.map((r) => r.word).join("-")}`}
                       className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
                     >
                       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-inset font-mono text-[10px] text-subtle">
                         {attempt.attemptNumber}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {attempt.wordResults.map((result, wordIndex) => (
+                        {attempt.wordResults.map((result) => (
                           <span
-                            key={wordIndex}
+                            key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                             className={cn(
                               "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
                               result.correct
@@ -870,16 +897,16 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Link className="flex-1" href="/leaderboard">
-                <Button variant="outline" className="w-full">
+              <Button asChild variant="outline" className="w-full">
+                <Link className="flex-1" href="/leaderboard">
                   Leaderboard
-                </Button>
-              </Link>
-              <Link className="flex-1" href="/blog">
-                <Button variant="outline" className="w-full">
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link className="flex-1" href="/blog">
                   Tips
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
 
             {playtestEligible && <PlaytestInvitation />}

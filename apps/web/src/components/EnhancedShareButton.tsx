@@ -11,12 +11,13 @@ import {
   Share2,
   Twitter,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -24,6 +25,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { beatMeShareLine, buildBeatMeUrl } from "@/lib/game/share-challenge";
 import { haptics } from "@/lib/haptics";
+import { useIsClient } from "@/lib/hooks/use-is-client";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
 
@@ -53,13 +55,11 @@ export function EnhancedShareButton({
 }: EnhancedShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [hasNativeShare, setHasNativeShare] = useState(false);
+  const isClient = useIsClient();
+  const hasNativeShare =
+    isClient && typeof navigator !== "undefined" && typeof navigator.share === "function";
   const { userId } = useAuth();
   const hasTrackedShare = useRef(false);
-
-  useEffect(() => {
-    setHasNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
-  }, []);
 
   const trackShare = async () => {
     if (!userId || hasTrackedShare.current) return;
@@ -241,15 +241,15 @@ export function EnhancedShareButton({
         console.error("Error sharing:", error);
         await handleCopy();
       }
-    } finally {
-      setIsSharing(false);
     }
+    setIsSharing(false);
   };
 
   const moreMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          aria-label="Share options"
           className={cn(
             hasNativeShare || !success ? "flex-1" : "w-full",
             !hasNativeShare && "w-full"
@@ -258,36 +258,44 @@ export function EnhancedShareButton({
           size={size}
           variant={hasNativeShare ? "outline" : "default"}
         >
-          <Share2 className="mr-2 h-4 w-4" />
-          {copied ? "Copied!" : hasNativeShare ? "More" : "Share"}
+          <Share2 data-icon="inline-start" className="mr-2 h-4 w-4" />
+          {hasNativeShare ? "More" : "Share"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className="w-56">
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("twitter")}>
-          <Twitter className="mr-2 h-4 w-4" />
-          Share on X
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("facebook")}>
-          <Facebook className="mr-2 h-4 w-4" />
-          Share on Facebook
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("linkedin")}>
-          <Linkedin className="mr-2 h-4 w-4" />
-          Share on LinkedIn
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("reddit")}>
-          <MessageCircle className="mr-2 h-4 w-4" />
-          Share on Reddit
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("twitter")}>
+            <Twitter data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on X
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("facebook")}>
+            <Facebook data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on Facebook
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("linkedin")}>
+            <Linkedin data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on LinkedIn
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("reddit")}>
+            <MessageCircle data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Share on Reddit
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("email")}>
-          <Mail className="mr-2 h-4 w-4" />
-          Email
-        </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("copy")}>
-          {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-          {copied ? "Copied!" : "Copy text"}
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("email")}>
+            <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
+            Email
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("copy")}>
+            {copied ? (
+              <Check data-icon="inline-start" className="mr-2 h-4 w-4" />
+            ) : (
+              <Copy data-icon="inline-start" className="mr-2 h-4 w-4" />
+            )}
+            {copied ? "Copied!" : "Copy text"}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -300,13 +308,14 @@ export function EnhancedShareButton({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  aria-label="Share your result"
                   className="flex-[1.4]"
                   disabled={isSharing}
                   onClick={() => void handleShare("native")}
                   size={size}
                 >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  {success ? "Share" : nearMiss ? "Share the near miss" : "Share"}
+                  <Share2 data-icon="inline-start" className="mr-2 h-4 w-4" />
+                  Share
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Share your result</TooltipContent>
@@ -326,7 +335,11 @@ export function EnhancedShareButton({
                 size={size}
                 variant="outline"
               >
-                {copied ? <Check className="mr-2 h-4 w-4" /> : <Link2 className="mr-2 h-4 w-4" />}
+                {copied ? (
+                  <Check data-icon="inline-start" className="mr-2 h-4 w-4" />
+                ) : (
+                  <Link2 data-icon="inline-start" className="mr-2 h-4 w-4" />
+                )}
                 {copied ? "Copied" : "Copy"}
               </Button>
             </TooltipTrigger>

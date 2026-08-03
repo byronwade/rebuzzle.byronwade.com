@@ -250,7 +250,7 @@ export async function runQualityPipeline(
     actionItems.push(...qualityAnalysis.analysis.improvements);
     if (adversarial) {
       actionItems.push(
-        ...adversarial.attacks.filter((a) => a.severity !== "minor").map((a) => a.suggestion)
+        ...adversarial.attacks.flatMap((a) => (a.severity !== "minor" ? [a.suggestion] : []))
       );
     }
   } else {
