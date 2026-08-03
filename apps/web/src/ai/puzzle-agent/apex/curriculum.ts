@@ -5,10 +5,11 @@
 import { AI_CONFIG } from "../../config";
 import { loadAllAnswerKeys } from "../../learning/answer-registry";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
+import { normalizeAnswerKey } from "../quality";
 import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
 import { loadLearningDigest } from "./learning-context";
-import { samplePhraseBank } from "./phrase-bank";
+import { PHRASE_BANK, samplePhraseBank } from "./phrase-bank";
 import type { GenerationBrief } from "./types";
 
 export type CurriculumInput = {
@@ -54,6 +55,19 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   const banned = new Set([...diversity.bannedAnswerKeys, ...archiveKeys]);
   const overused = new Set(diversity.overusedTechniques);
 
+  // Do not advertise a tier technique that has no fresh, curated answer
+  // seed. The engine reserves seeds strictly by technique; filtering here
+  // preserves diversity without silently pairing a positional slot with an
+  // unrelated compound answer.
+  const freshSeedTechniques = new Set(
+    PHRASE_BANK.filter(
+      (entry) => !entry.overused && !banned.has(normalizeAnswerKey(entry.answer))
+    ).flatMap((entry) => entry.techniqueAffinity)
+  );
+  const supportedTierTechniques = level.techniques.filter((technique) =>
+    freshSeedTechniques.has(technique as TechniqueId)
+  ) as TechniqueId[];
+
   // Prefer underused techniques from this tier; avoid overused ones.
   // When players are finishing too quickly, bias toward harder techniques in-band.
   const harderBias = learning.tooEasy
@@ -68,18 +82,22 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
 
   const preferredTechniques = (
     [
-      ...harderBias.filter((t) => level.techniques.includes(t)),
-      ...diversity.underusedTechniques.filter((t) => level.techniques.includes(t)),
-      ...level.techniques.filter((t) => !overused.has(t)),
-      ...level.techniques,
+      ...harderBias.filter((t) => supportedTierTechniques.includes(t)),
+      ...diversity.underusedTechniques.filter((t) =>
+        supportedTierTechniques.includes(t as TechniqueId)
+      ),
+      ...supportedTierTechniques.filter((t) => !overused.has(t)),
+      ...supportedTierTechniques,
     ] as TechniqueId[]
   ).filter((t, i, arr) => arr.indexOf(t) === i) as TechniqueId[];
 
   const avoidTechniques = [
-    ...diversity.overusedTechniques.filter((t) => level.techniques.includes(t)),
+    ...diversity.overusedTechniques.filter((t) =>
+      supportedTierTechniques.includes(t as TechniqueId)
+    ),
     ...(learning.tooEasy
       ? (["simple_compound", "obvious_emoji_sum"] as string[]).filter((t) =>
-          level.techniques.includes(t)
+          supportedTierTechniques.includes(t as TechniqueId)
         )
       : []),
   ];
@@ -91,6 +109,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     theme: input.theme,
     category: input.category,
     limit: Math.max(8, candidateCount * 3),
+    excludeOverused: true,
   });
 
   const briefSummary = [
@@ -99,6 +118,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     avoidTechniques.length
       ? `Avoid overused/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`
       : "Technique diversity looks healthy.",
+    `Fresh answer seeds cover ${supportedTierTechniques.length}/${level.techniques.length} techniques in this tier.`,
     `Ban ${banned.size} archived+recent answers (never reuse).`,
     phraseSuggestions.length
       ? `Answer-first candidates available for grounded composition: ${phraseSuggestions

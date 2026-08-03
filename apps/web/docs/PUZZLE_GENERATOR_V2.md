@@ -10,7 +10,7 @@ The Apex/Eve pipeline began with strong conceptual machinery—multiple candidat
 
 That original blind spot is now guarded by deterministic player-pixel checks, blind multi-model icon naming, responsive board perception, screenshot-only solving, answer-aware rejection, and human calibration workflows. The remaining market-readiness gap is empirical: the implemented gates still need sufficient qualified-player evidence and credentialed frozen-benchmark results. A green automated pipeline remains screening evidence, not proof that every intended “car” looks like a car to players.
 
-The Apex invent path now adds an answer-first contract before model composition. Before any model call, every tournament slot reserves a distinct fresh, non-overused phrase-bank answer compatible with its technique focus, asks the model to backform one catalog-grounded visual mechanism, and rejects any returned answer that drifts from the selected seed before asset, novelty, or model-judge work begins. Critique repairs preserve the finalist answer instead of inventing a replacement. This turns the highest-risk failure mode—an attractive explanation for the wrong board—into a cheap deterministic retry while preserving technique and answer diversity across slots. If the inventory cannot cover the tournament, Apex fails closed before spending and the orchestrator uses the validated catalog-grounded reserve path.
+The Apex invent path now adds an answer-first contract before model composition. Before any model call, curriculum removes tier techniques that have no fresh curated seed, the prompt slice guarantees a representative seed for each remaining technique, and every tournament slot reserves a distinct fresh, non-overused phrase-bank answer with strict technique affinity. Apex asks the model to backform one catalog-grounded visual mechanism and rejects any returned answer that drifts from the selected seed before asset, novelty, or model-judge work begins. Critique repairs preserve the finalist answer instead of inventing a replacement. This turns the highest-risk failure mode—an attractive explanation for the wrong board—into a cheap deterministic retry while preserving technique and answer diversity across slots. If the inventory cannot cover the tournament, Apex fails closed before spending and the orchestrator uses the validated catalog-grounded reserve path.
 
 ## Non-negotiable publish contract
 
@@ -36,7 +36,8 @@ The implementation owns these internal stages:
 
 ```text
 curriculum brief
-  -> reserve distinct answer-first seeds for every tournament slot
+  -> filter to techniques with fresh seed coverage
+  -> reserve distinct, strictly technique-compatible answer-first seeds
   -> concept candidates
   -> grounded visual plan
   -> authoritative composition

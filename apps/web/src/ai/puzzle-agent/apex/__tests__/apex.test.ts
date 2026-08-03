@@ -1,8 +1,8 @@
+import { INK_PICTOGRAM_EXAMPLE_EYE, INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
 import { phraseBankSize, samplePhraseBank } from "../phrase-bank";
 import { scoreRubric, tournamentScore } from "../rubric";
 import { pickWinner, rankCandidates } from "../tournament";
 import type { ApexCandidate } from "../types";
-import { INK_PICTOGRAM_EXAMPLE_EYE, INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
 
 function fakeCandidate(overrides: Partial<ApexCandidate> = {}): ApexCandidate {
   return {
@@ -90,9 +90,26 @@ describe("phrase bank", () => {
       limit: 6,
     });
     expect(samples.length).toBeGreaterThan(0);
-    expect(samples.every((s) => !banned.has(s.answer.replace(/[^a-z0-9]/gi, "").toLowerCase()))).toBe(
+    expect(
+      samples.every((s) => !banned.has(s.answer.replace(/[^a-z0-9]/gi, "").toLowerCase()))
+    ).toBe(true);
+  });
+
+  it("keeps fresh coverage for every requested technique in the prompt slice", () => {
+    const samples = samplePhraseBank({
+      targetDifficulty: 5,
+      preferredTechniques: ["simple_compound", "obvious_emoji_sum"],
+      bannedAnswerKeys: new Set(),
+      excludeOverused: true,
+      limit: 6,
+    });
+    expect(samples.some((sample) => sample.techniqueAffinity.includes("simple_compound"))).toBe(
       true
     );
+    expect(samples.some((sample) => sample.techniqueAffinity.includes("obvious_emoji_sum"))).toBe(
+      true
+    );
+    expect(samples.every((sample) => !sample.overused)).toBe(true);
   });
 });
 

@@ -69,6 +69,83 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 5,
     techniqueAffinity: ["simple_compound", "basic_positional"],
   },
+  {
+    answer: "flowerpot",
+    category: "compound",
+    difficultyHint: 4,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "flower + pot",
+  },
+  {
+    answer: "houseboat",
+    category: "compound",
+    difficultyHint: 4,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "house + boat",
+  },
+  {
+    answer: "starfish",
+    category: "compound",
+    difficultyHint: 4,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "star + fish",
+  },
+  {
+    answer: "seashell",
+    category: "compound",
+    difficultyHint: 5,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "sea + shell",
+  },
+  {
+    answer: "cupcake",
+    category: "compound",
+    difficultyHint: 4,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "cup + cake",
+  },
+  {
+    answer: "dogfish",
+    category: "compound",
+    difficultyHint: 5,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "dog + fish",
+  },
+  {
+    answer: "musicbox",
+    category: "compound",
+    difficultyHint: 4,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "music + box",
+  },
+  {
+    answer: "firehouse",
+    category: "compound",
+    difficultyHint: 5,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "fire + house",
+  },
+  {
+    answer: "coffeehouse",
+    category: "compound",
+    difficultyHint: 4,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "coffee + house",
+  },
+  {
+    answer: "flowerbox",
+    category: "compound",
+    difficultyHint: 5,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "flower + box",
+  },
+  {
+    answer: "fishcake",
+    category: "compound",
+    difficultyHint: 5,
+    techniqueAffinity: ["simple_compound", "obvious_emoji_sum"],
+    notes: "fish + cake",
+  },
 
   // Phonetic
   {
@@ -113,6 +190,27 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     difficultyHint: 7,
     techniqueAffinity: ["nested_homophone", "multi_layer_phonetic"],
     notes: "four + give / for + give",
+  },
+  {
+    answer: "knight",
+    category: "phonetic",
+    difficultyHint: 5,
+    techniqueAffinity: ["single_homophone"],
+    notes: "night / knight",
+  },
+  {
+    answer: "flower",
+    category: "phonetic",
+    difficultyHint: 5,
+    techniqueAffinity: ["single_homophone"],
+    notes: "flour / flower",
+  },
+  {
+    answer: "pair",
+    category: "phonetic",
+    difficultyHint: 5,
+    techniqueAffinity: ["single_homophone"],
+    notes: "pear / pair",
   },
 
   // Positional / spatial
@@ -410,6 +508,8 @@ export function samplePhraseBank(input: {
   theme?: string;
   category?: string;
   limit?: number;
+  /** Keep answer-first prompts free of classic tropes. */
+  excludeOverused?: boolean;
 }): PhraseBankEntry[] {
   const limit = input.limit ?? 8;
   const bandMin = Math.max(3, input.targetDifficulty - 2);
@@ -420,6 +520,9 @@ export function samplePhraseBank(input: {
 
   const scored = PHRASE_BANK.map((entry) => {
     if (input.bannedAnswerKeys.has(normalize(entry.answer))) {
+      return { entry, score: -Infinity };
+    }
+    if (input.excludeOverused && entry.overused) {
       return { entry, score: -Infinity };
     }
     let score = 0;
@@ -442,7 +545,34 @@ export function samplePhraseBank(input: {
     .filter((s) => s.score > -Infinity)
     .sort((a, b) => b.score - a.score);
 
-  return scored.slice(0, limit).map((s) => s.entry);
+  // Keep the prompt useful for strict answer-first reservation: each
+  // technique gets a representative seed before we spend the remaining
+  // prompt budget on the highest-scoring nearby answers.
+  const selected: PhraseBankEntry[] = [];
+  const selectedKeys = new Set<string>();
+  for (const technique of input.preferredTechniques) {
+    const match = scored.find(
+      (candidate) =>
+        candidate.entry.techniqueAffinity.includes(technique as TechniqueId) &&
+        !selectedKeys.has(normalize(candidate.entry.answer))
+    );
+    if (!match) continue;
+    selected.push(match.entry);
+    selectedKeys.add(normalize(match.entry.answer));
+    if (selected.length >= limit) break;
+  }
+
+  if (selected.length < limit) {
+    for (const candidate of scored) {
+      const key = normalize(candidate.entry.answer);
+      if (selectedKeys.has(key)) continue;
+      selected.push(candidate.entry);
+      selectedKeys.add(key);
+      if (selected.length >= limit) break;
+    }
+  }
+
+  return selected;
 }
 
 export function phraseBankSize(): number {

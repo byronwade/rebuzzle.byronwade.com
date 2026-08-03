@@ -42,25 +42,26 @@ describe("answer-first seed selection", () => {
     expect(
       selectAnswerFirstSeed({
         entries,
-        techniqueId: "simple_compound",
+        techniqueId: "spatial_preposition_play",
         usedAnswerKeys: ["moonlight"],
       })?.answer
     ).toBe("under the weather");
   });
 
-  it("falls back to a fresh answer when no technique-specific seed exists", () => {
+  it("fails closed when no technique-specific seed exists", () => {
     expect(
       selectAnswerFirstSeed({
         entries,
         techniqueId: "idiom_as_picture",
       })?.answer
-    ).toBe("moonlight");
+    ).toBeUndefined();
   });
 
   it("returns no seed when the inventory is exhausted", () => {
     expect(
       selectAnswerFirstSeed({
         entries,
+        techniqueId: "simple_compound",
         usedAnswerKeys: ["moonlight", "under-the-weather"],
       })
     ).toBeUndefined();
@@ -87,5 +88,25 @@ describe("answer-first seed selection", () => {
       requestedCount: 2,
       selectedCount: 1,
     });
+  });
+
+  it("stops reservation when a slot has no compatible seed", () => {
+    expect(
+      selectAnswerFirstSeeds({
+        entries,
+        techniqueIds: ["idiom_as_picture", "simple_compound"],
+        count: 2,
+      })
+    ).toEqual([]);
+  });
+
+  it("fails closed when no technique schedule is provided", () => {
+    expect(
+      selectAnswerFirstSeeds({
+        entries,
+        techniqueIds: [],
+        count: 1,
+      })
+    ).toEqual([]);
   });
 });
