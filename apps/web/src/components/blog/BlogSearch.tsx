@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -104,11 +105,13 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-              {PUZZLE_TYPES.map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {PUZZLE_TYPES.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         )}
