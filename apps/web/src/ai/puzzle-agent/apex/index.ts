@@ -15,6 +15,10 @@ export {
 } from "./answer-seed-cues";
 export { critiqueCandidate } from "./critique";
 export {
+  buildCritiqueRepairParams,
+  critiqueRepairIssues,
+} from "./critique-repair";
+export {
   inspectAnswerSeedCuePlan,
   layersFromAnswerSeedCues,
   preflightComposeAnswerSeedCuePlan,
@@ -24,8 +28,20 @@ export { loadDiversitySnapshot } from "./diversity-memory";
 export { runApexGeneration } from "./engine";
 export { loadLearningDigest } from "./learning-context";
 export { phraseBankSize, samplePhraseBank } from "./phrase-bank";
-export { applyPlayerSimHeuristics, simulatePlayerSolve } from "./player-sim";
+export {
+  applyPlayerSimHeuristics,
+  playerSimPublishBlockers,
+  simulatePlayerSolve,
+} from "./player-sim";
+export {
+  progressiveHintPublishBlockers,
+  shouldRunProgressiveHintVision,
+} from "./progressive-hint-vision";
 export { scoreRubric, tournamentScore } from "./rubric";
+export {
+  biasTechniquesBySolveRates,
+  loadTechniqueSolveRates,
+} from "./technique-calibration";
 export { pickWinner, rankCandidates } from "./tournament";
 export type {
   ApexCandidate,

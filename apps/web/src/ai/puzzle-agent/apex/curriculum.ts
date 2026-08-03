@@ -10,6 +10,10 @@ import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
 import { loadLearningDigest } from "./learning-context";
 import { PHRASE_BANK, samplePhraseBank } from "./phrase-bank";
+import {
+  biasTechniquesBySolveRates,
+  loadTechniqueSolveRates,
+} from "./technique-calibration";
 import type { GenerationBrief } from "./types";
 
 export type CurriculumInput = {
@@ -32,7 +36,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   const minFunScore = AI_CONFIG.puzzleAgent.minFunScore;
   const candidateCount = input.candidateCount ?? AI_CONFIG.puzzleAgent.apex?.candidateCount ?? 3;
 
-  const [diversity, learning, archiveKeys] = await Promise.all([
+  const [diversity, learning, archiveKeys, techniqueCalibration] = await Promise.all([
     loadDiversitySnapshot({ lookbackDays: 45 }),
     input.useLearningFeedback === false
       ? Promise.resolve({
@@ -49,6 +53,14 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
         })
       : loadLearningDigest(),
     loadAllAnswerKeys(500),
+    input.useLearningFeedback === false
+      ? Promise.resolve({
+          lookbackDays: 45,
+          sampleSize: 0,
+          rates: [],
+          notes: [] as string[],
+        })
+      : loadTechniqueSolveRates({ lookbackDays: 45 }),
   ]);
 
   // Ban recent + full archive answers so retired puzzles still block reuse
@@ -83,7 +95,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       ] as TechniqueId[])
     : [];
 
-  const preferredTechniques = (
+  const preferredTechniquesRaw = (
     [
       ...harderBias.filter((t) => supportedTierTechniques.includes(t)),
       ...diversity.underusedTechniques.filter((t) =>
@@ -93,6 +105,14 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       ...supportedTierTechniques,
     ] as TechniqueId[]
   ).filter((t, i, arr) => arr.indexOf(t) === i) as TechniqueId[];
+
+  const techniqueBias = biasTechniquesBySolveRates({
+    preferredTechniques: preferredTechniquesRaw,
+    rates: techniqueCalibration.rates,
+    tooEasy: learning.tooEasy,
+    tooHard: learning.tooHard,
+  });
+  const preferredTechniques = techniqueBias.techniques;
 
   const avoidTechniques = [
     ...diversity.overusedTechniques.filter((t) =>
@@ -139,6 +159,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     learning.enabled && learning.preferPatterns.length
       ? `Learning prefer: ${learning.preferPatterns.slice(0, 3).join("; ")}.`
       : null,
+    techniqueBias.notes[0] ?? techniqueCalibration.notes[0] ?? null,
     learning.targetDifficultyDelta !== 0
       ? `Applied difficulty delta: ${learning.targetDifficultyDelta > 0 ? "+" : ""}${learning.targetDifficultyDelta}.`
       : null,

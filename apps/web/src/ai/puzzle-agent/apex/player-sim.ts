@@ -17,7 +17,13 @@ import {
   blindSolvePublishBlockers,
   summarizeBlindSolveAttempts,
 } from "./blind-solve-consensus";
+import {
+  progressiveHintPublishBlockers,
+  shouldRunProgressiveHintVision,
+} from "./progressive-hint-vision";
 import type { PlayerSimResult } from "./types";
+
+export { shouldRunProgressiveHintVision } from "./progressive-hint-vision";
 
 const BlindSolveSchema = z.object({
   visibleElements: z.array(z.string().max(100)).max(20),
@@ -95,6 +101,53 @@ export async function runBlindSolveTournament(input: {
   return attempts.flat();
 }
 
+/**
+ * Progressive-hint vision: judges see the board plus early hints (never the final
+ * spoiler). Used after a weak blind solve to verify the ladder unlocks a fair reading.
+ */
+export async function runHintedSolveTournament(input: {
+  visual: PuzzleVisual;
+  tierLabel: string;
+  hints: string[];
+}): Promise<BlindSolveAttempt[]> {
+  const earlyHints = input.hints.slice(0, Math.max(0, input.hints.length - 1)).slice(0, 3);
+  if (!earlyHints.length) return [];
+
+  // Spend control: one mid-size production profile is enough for unlock evidence.
+  const renderedProfiles = await renderPuzzleVisualProfiles(input.visual);
+  const profile =
+    renderedProfiles.find((entry) => entry.profileId.includes("375")) ??
+    renderedProfiles.find((entry) => entry.profileId.includes("mobile")) ??
+    renderedProfiles[0];
+  if (!profile) return [];
+
+  const settled = await Promise.allSettled(
+    AI_CONFIG.visualRecognition.models.map(async (modelId) => ({
+      ...(await generateAIObjectFromImage({
+        modelId,
+        image: profile.pixels,
+        mediaType: "image/png",
+        temperature: 0.35,
+        operation: "vision-hinted-solve",
+        schema: BlindSolveSchema,
+        system: `You are a clever but non-expert player solving a rebus with progressive hints.
+You do not know the intended answer, icon labels, technique, or explanation.
+Use the screenshot first; treat hints as soft unlocks, not spoilers to invent invisible objects.
+Return up to five honest answer hypotheses grounded in visible evidence + the hints.`,
+        prompt: [
+          `Solve this ${input.tierLabel} rebus screenshot with progressive hints.`,
+          `Presentation: ${profile.profileId}, ${profile.viewportWidth}px viewport, ${profile.tileSize}px icons.`,
+          "Hints (earliest → later; final spoiler withheld):",
+          ...earlyHints.map((hint, index) => `${index + 1}. ${hint}`),
+        ].join("\n"),
+      })),
+      model: modelId,
+      profileId: `hinted:${profile.profileId}`,
+    }))
+  );
+  return settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+}
+
 export async function simulatePlayerSolve(input: {
   rebusPuzzle: string;
   answer: string;
@@ -128,12 +181,54 @@ export async function simulatePlayerSolve(input: {
       minConfidence: AI_CONFIG.visualRecognition.minConfidence,
     });
 
+    let hintedAttempted = false;
+    let hintedTopTargetFoundBy = 0;
+    let hintedEstimatedSolveRate = 0;
+    let hintedConfidence = 0;
+    let hintedUnlocksVisualSolve = true;
+    const unfairReasons = [...hintReview.unfairReasons];
+
+    if (
+      shouldRunProgressiveHintVision(blind) &&
+      input.hints.length >= 2 &&
+      process.env.REBUZZLE_SKIP_HINTED_VISION !== "1"
+    ) {
+      hintedAttempted = true;
+      const hintedAttempts = await runHintedSolveTournament({
+        visual: input.visual,
+        tierLabel: input.tierLabel,
+        hints: input.hints,
+      });
+      const hinted = summarizeBlindSolveAttempts({
+        answer: input.answer,
+        attempts: hintedAttempts,
+      });
+      hintedTopTargetFoundBy = hinted.topTargetFoundBy;
+      hintedEstimatedSolveRate = hinted.estimatedSolveRate;
+      hintedConfidence = hinted.confidence;
+      // Early hints should unlock a top-rank reading when blind dominance failed.
+      hintedUnlocksVisualSolve = hinted.topTargetFoundBy >= Math.max(1, hinted.requiredVotes);
+      if (!hintedUnlocksVisualSolve) {
+        unfairReasons.push(
+          "Progressive hints did not unlock a fair visual solve of the intended answer"
+        );
+      }
+    }
+
     return {
       ...hintReview,
+      unfairReasons,
+      hintUnlockOrderLooksFair:
+        hintReview.hintUnlockOrderLooksFair && hintedUnlocksVisualSolve,
       firstWrongParses: blind.wrongParses,
       likelySolvePath: blind.likelySolvePath,
       estimatedSolveRate: blind.estimatedSolveRate,
-      confidence: Math.min(hintReview.confidence, blind.confidence, editorial.confidence),
+      confidence: Math.min(
+        hintReview.confidence,
+        blind.confidence,
+        editorial.confidence,
+        hintedAttempted ? Math.max(hintedConfidence, 0.45) : 1
+      ),
       blindProfileCount: blind.profileCount,
       blindProfilesWithTarget: blind.profilesWithTarget,
       blindTopTargetFoundBy: blind.topTargetFoundBy,
@@ -149,6 +244,11 @@ export async function simulatePlayerSolve(input: {
       editorialConfidence: editorial.confidence,
       editorialFailureKinds: editorial.failureKinds,
       editorialReasons: editorial.reasons,
+      hintedAttempted,
+      hintedTopTargetFoundBy,
+      hintedEstimatedSolveRate,
+      hintedConfidence,
+      hintedUnlocksVisualSolve,
     };
   } catch (error) {
     const failure = safeSimulationError(error);
@@ -187,6 +287,7 @@ export function playerSimPublishBlockers(sim: PlayerSimResult): string[] {
     new Set([
       ...blindSolvePublishBlockers(sim),
       ...editorialReviewPublishBlockers(sim),
+      ...progressiveHintPublishBlockers(sim),
       ...(!sim.hintUnlockOrderLooksFair || sim.unfairReasons.length > 2
         ? sim.unfairReasons.length
           ? sim.unfairReasons

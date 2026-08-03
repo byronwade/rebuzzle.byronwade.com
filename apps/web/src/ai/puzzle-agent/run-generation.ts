@@ -99,6 +99,11 @@ export interface PuzzleGenerationParams {
   deferRenderedEvaluation?: boolean;
   /** Specific model-backed critique instructions for one bounded repair pass. */
   revisionInstructions?: string[];
+  /**
+   * `critique-locked` — repair specialist: preserve answer + cue plan; rewrite
+   * the board only for reviseInstructions (no re-seed invent).
+   */
+  repairMode?: "critique-locked";
   /** Keep a repair pass from silently multiplying spend through model fallbacks. */
   modelChainLimit?: number;
 }
@@ -217,8 +222,10 @@ function buildUserMessage(
     params.briefSummary ? `Curriculum brief: ${params.briefSummary}` : null,
     params.revisionInstructions?.length
       ? [
-          "Bounded repair pass: address every critique instruction below with a new, cleaner board.",
-          "Do not defend or copy the previous mechanism; use a concrete catalog-backed pictogram and preserve a fair hint ladder.",
+          params.repairMode === "critique-locked"
+            ? "CRITIQUE-LOCKED REPAIR: keep the exact answer and every answer-seed cue. Rewrite layout/emphasis/supporting layers only."
+            : "Bounded repair pass: address every critique instruction below with a new, cleaner board.",
+          "Do not invent a replacement answer or swap catalog cues; use the locked cue plan and preserve a fair hint ladder.",
           `Critique instructions: ${params.revisionInstructions.slice(0, 4).join("; ")}`,
         ].join("\n")
       : null,
