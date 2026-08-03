@@ -6,6 +6,21 @@ import {
 } from "../puzzle-playtest-backfill";
 
 function eligiblePuzzle(id = "puzzle-1"): Puzzle {
+  const boardProfiles = [
+    ["compact-320", 320, 44],
+    ["mobile-375", 375, 72],
+    ["desktop-768", 768, 72],
+  ].map(([profileId, viewportWidth, tileSize]) => ({
+    profileId: String(profileId),
+    viewportWidth: Number(viewportWidth),
+    tileSize: Number(tileSize),
+    confidence: 0.9,
+    models: ["vision-a", "vision-b"],
+    conceptVotes: {},
+    textVotes: { SUN: 2, FLOWER: 2 },
+    operatorVotes: { "+": 2 },
+    wrappedRows: 1,
+  }));
   const profiles = ["compact-320", "mobile-375", "desktop-768"].map((profileId) => ({
     profileId,
     judgeCount: 2,
@@ -43,6 +58,9 @@ function eligiblePuzzle(id = "puzzle-1"): Puzzle {
       difficultyLevel: "Hard",
       generationMethod: "apex-tournament",
       estimatedSolveRate: 0.8,
+      boardRecognitionConfidence: 0.9,
+      boardRecognitionModels: ["vision-a", "vision-b"],
+      boardRecognitionProfiles: boardProfiles,
       noveltyEvidence: {
         version: "structural-v1",
         fingerprint: "f".repeat(64),
@@ -106,15 +124,45 @@ describe("historical generated-puzzle playtest backfill", () => {
     };
     expect(inspectPuzzleForPlaytestBackfill(reserve).reason).toBe("reserve-or-lab");
 
+    const noBoardRecognition = eligiblePuzzle("no-board-recognition");
+    noBoardRecognition.metadata!.boardRecognitionProfiles = [];
+    expect(inspectPuzzleForPlaytestBackfill(noBoardRecognition).reason).toBe(
+      "missing-board-recognition-evidence"
+    );
+
+    const wrongBoardProfile = eligiblePuzzle("wrong-board-profile");
+    wrongBoardProfile.metadata!.boardRecognitionProfiles![0]!.profileId = "unknown-profile";
+    expect(inspectPuzzleForPlaytestBackfill(wrongBoardProfile).reason).toBe(
+      "missing-board-recognition-evidence"
+    );
+
     const noVision = eligiblePuzzle("no-vision");
     noVision.metadata!.playabilityEvidence!.blind.profileCount = 1;
     expect(inspectPuzzleForPlaytestBackfill(noVision).reason).toBe(
       "missing-responsive-blind-evidence"
     );
 
+    const wrongProfiles = eligiblePuzzle("wrong-profiles");
+    wrongProfiles.metadata!.playabilityEvidence!.blind.profiles[0]!.profileId = "unknown-profile";
+    expect(inspectPuzzleForPlaytestBackfill(wrongProfiles).reason).toBe(
+      "missing-responsive-blind-evidence"
+    );
+
+    const underQuorum = eligiblePuzzle("under-quorum");
+    underQuorum.metadata!.playabilityEvidence!.blind.profiles[0]!.judgeCount = 1;
+    expect(inspectPuzzleForPlaytestBackfill(underQuorum).reason).toBe(
+      "missing-responsive-blind-evidence"
+    );
+
     const noEditorial = eligiblePuzzle("no-editorial");
     noEditorial.metadata!.playabilityEvidence!.editorial.acceptedProfiles = 2;
     expect(inspectPuzzleForPlaytestBackfill(noEditorial).reason).toBe("missing-editorial-evidence");
+
+    const incompleteEditorialProfiles = eligiblePuzzle("incomplete-editorial-profiles");
+    incompleteEditorialProfiles.metadata!.playabilityEvidence!.editorial.profileCount = 2;
+    expect(inspectPuzzleForPlaytestBackfill(incompleteEditorialProfiles).reason).toBe(
+      "missing-editorial-evidence"
+    );
 
     const unicode = eligiblePuzzle("unicode");
     unicode.visual!.mode = "unicode";
