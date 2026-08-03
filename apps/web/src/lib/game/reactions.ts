@@ -6,8 +6,9 @@
  * client never needs the answer to know how badly it missed.
  *
  * These lines are the floor, not the ceiling: /api/puzzles/quip streams a
- * written-fresh line over the top when the model is available. If it isn't,
- * these stand on their own and nobody can tell the difference.
+ * written-fresh line over the top when the model is available — including a
+ * closing win/loss riff before chat locks. If it isn't, these stand on their
+ * own and nobody can tell the difference.
  */
 
 export type ReactionTier = "correct" | "close" | "warm" | "cold" | "out";
@@ -23,6 +24,8 @@ interface ReactionInput {
   similarity: number;
   attemptsLeft: number;
   guess: string;
+  /** Prior consecutive cold misses this session (before this guess). */
+  consecutiveCold?: number;
 }
 
 /**
@@ -67,6 +70,15 @@ const LINES: Record<ReactionTier, readonly string[]> = {
   ],
 };
 
+/** Sharper colds after a streak of misses — still affectionate, never mean. */
+const COLD_ESCALATED: readonly string[] = [
+  "Still cold. The puzzle isn't moving — you are.",
+  "Two swings, same thin air. Reset and look again.",
+  "We're collecting misses. Charming collection.",
+  "Persistence noted. Accuracy pending.",
+  "Cold streak. Break it with a smaller thought.",
+];
+
 /** Stable small hash so the same guess always gets the same line. */
 function hash(input: string): number {
   let h = 0;
@@ -81,7 +93,7 @@ export function getReactionTier({
   correct,
   similarity,
   attemptsLeft,
-}: Omit<ReactionInput, "guess">): ReactionTier {
+}: Omit<ReactionInput, "guess" | "consecutiveCold">): ReactionTier {
   if (correct) return "correct";
   if (attemptsLeft <= 0) return "out";
   if (similarity >= 70) return "close";
@@ -91,7 +103,9 @@ export function getReactionTier({
 
 export function buildGuessReaction(input: ReactionInput): GuessReaction {
   const tier = getReactionTier(input);
-  const pool = LINES[tier];
+  // Escalate from the second cold onward (3-attempt days rarely reach a third).
+  const escalateCold = tier === "cold" && (input.consecutiveCold ?? 0) >= 1;
+  const pool = escalateCold ? COLD_ESCALATED : LINES[tier];
   const line = pool[hash(input.guess.toLowerCase()) % pool.length] ?? pool[0];
   return { tier, line: line as string };
 }

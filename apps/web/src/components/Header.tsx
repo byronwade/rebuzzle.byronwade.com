@@ -171,7 +171,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
 
             {isPlaying && (
               <AttemptsIndicator
-                animateOnChange={false}
+                animateOnChange
                 currentAttempts={gameState?.currentAttempts ?? 0}
                 maxAttempts={gameState?.maxAttempts ?? 3}
               />

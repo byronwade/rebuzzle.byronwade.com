@@ -13,10 +13,12 @@ import {
 import { fireConfetti } from "@/lib/confetti";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
+import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
+  checkStreakGracePeriod,
   engagementConfig,
   gameSettings,
   getDailyBonusMultiplier,
@@ -25,8 +27,10 @@ import {
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { playInterfaceSound } from "@/lib/interface-sounds";
+import { isReturningUser } from "@/lib/session-tracker";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
+import { ChatClosingDock } from "./ChatClosingDock";
 import { ChatLockedDock } from "./ChatLockedDock";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { useGameContext } from "./GameContext";
@@ -42,12 +46,15 @@ import { SolveResultCard } from "./SolveResultCard";
 interface UserStats {
   points: number;
   streak: number;
+  maxStreak: number;
   totalGames: number;
   wins: number;
   achievements: string[];
   level: number;
   lastPlayDate: string | null;
   dailyChallengeStreak: number;
+  noHintStreak: number;
+  fastestSolveSeconds: number | null;
 }
 
 interface GameBoardProps {
@@ -169,12 +176,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [userStats, setUserStats] = useState<UserStats>({
     points: 0,
     streak: 0,
+    maxStreak: 0,
     totalGames: 0,
     wins: 0,
     achievements: [],
     level: 1,
     lastPlayDate: null,
     dailyChallengeStreak: 0,
+    noHintStreak: 0,
+    fastestSolveSeconds: null,
   });
   const [error, setError] = useState<{
     message: string;
@@ -188,9 +198,51 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [turns, setTurns] = useState<ThreadTurn[]>([]);
   const turnSeq = useRef(0);
   const hasThread = turns.length > 0;
+  /** Answer revealed after a loss (and stored for revisit). */
+  const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
+  /** Brushed a close miss — fuels share copy + Zeigarnik. */
+  const [hadNearMiss, setHadNearMiss] = useState(false);
+  /** Variable-reward lucky solve (client roll when server points absent). */
+  const [isLuckySolve, setIsLuckySolve] = useState(false);
+  const [closestSimilarity, setClosestSimilarity] = useState(0);
+  const [unlockedAchievementName, setUnlockedAchievementName] = useState<string | null>(null);
+  const [dayRank, setDayRank] = useState<number | null>(null);
+  const [showGuestSave, setShowGuestSave] = useState(false);
+  const [dayBonusMultiplier, setDayBonusMultiplier] = useState<number | null>(null);
+  const [paceLabel, setPaceLabel] = useState<string | null>(null);
+  const [previousBestSeconds, setPreviousBestSeconds] = useState<number | null>(null);
+  const consecutiveColdRef = useRef(0);
+  const [isReturner, setIsReturner] = useState(false);
+  const [isComeback, setIsComeback] = useState(false);
+  /** Celebrate when the locked dock + result card land — not at guess submit. */
+  const pendingCelebrationRef = useRef(false);
+  const wasChatLockedRef = useRef(false);
+
+  useEffect(() => {
+    setIsReturner(isReturningUser());
+    setIsComeback(isComebackVisit());
+  }, []);
 
   const patchTurn = useCallback((id: number, patch: Partial<ThreadTurn>) => {
-    setTurns((prev) => prev.map((turn) => (turn.id === id ? { ...turn, ...patch } : turn)));
+    setTurns((prev) =>
+      prev.map((turn) => {
+        if (turn.id !== id) return turn;
+        const next = { ...turn, ...patch };
+        // Persist Eve's closing line for the soft revisit landing.
+        if (
+          (next.tier === "correct" || next.tier === "out") &&
+          typeof next.quip === "string" &&
+          next.quip.trim()
+        ) {
+          try {
+            localStorage.setItem("lastEveClosingLine", next.quip.trim());
+          } catch {
+            // Ignore quota / private mode.
+          }
+        }
+        return next;
+      })
+    );
   }, []);
 
   /**
@@ -199,19 +251,23 @@ export default function GameBoard({ gameData }: GameBoardProps) {
    * Never blocks feedback: the instant line is already on screen by the time
    * this is called, and if the stream fails the riff bubble simply never
    * appears. The route is not given the answer, so it can't leak one.
+   *
+   * Final win/loss tiers are allowed so Eve can still close the conversation
+   * before the chat dock locks. A short timeout keeps a slow model from
+   * holding the input open forever.
    */
   const streamQuip = useCallback(
     async (id: number, guess: string, tier: ReactionTier) => {
-      // Never spend credits after the day is locked, or on the winning turn.
-      if (tier === "correct" || tier === "out") return;
-
       patchTurn(id, { quipPending: true });
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 4500);
       try {
         const response = await fetch("/api/puzzles/quip", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ puzzleId: gameData.id, guess, tier }),
+          signal: controller.signal,
         });
 
         if (!(response.ok && response.body)) {
@@ -238,6 +294,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       } catch (_error) {
         // A missing riff is not worth surfacing — the instant line stands.
         patchTurn(id, { quipPending: false });
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     },
     [gameData.id, patchTurn]
@@ -261,12 +319,18 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             setUserStats({
               points: data.stats.points || 0,
               streak: data.stats.streak || 0,
+              maxStreak: data.stats.maxStreak || 0,
               totalGames: data.stats.totalGames || 0,
               wins: data.stats.wins || 0,
               achievements: [],
               level: data.stats.level || 1,
               lastPlayDate: data.stats.lastPlayDate || null,
               dailyChallengeStreak: data.stats.dailyChallengeStreak || 0,
+              noHintStreak: data.stats.noHintStreak || 0,
+              fastestSolveSeconds:
+                typeof data.stats.fastestSolveSeconds === "number"
+                  ? data.stats.fastestSolveSeconds
+                  : null,
             });
           }
         }
@@ -278,15 +342,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     loadUserStats();
   }, [userId]);
 
-  // Sync game state with context for header display
+  // Sync game state with context for header display.
+  // Stop (and don't restart) once the day is locked in-thread.
   useEffect(() => {
-    if (!gameData.isCompleted) {
+    if (!(gameData.isCompleted || gameState.gameOver)) {
       startGame(typeof gameData.difficulty === "number" ? gameData.difficulty : 5);
     }
     return () => {
       endGame();
     };
-  }, [gameData.difficulty, gameData.isCompleted, startGame, endGame]);
+  }, [gameData.difficulty, gameData.isCompleted, gameState.gameOver, startGame, endGame]);
 
   // Sync attempts with context
   useEffect(() => {
@@ -337,10 +402,16 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   }, []);
 
   const setCompletionState = useCallback(
-    (success: boolean, finalGuess: string, attempts: number, serverScore?: number) => {
+    (
+      success: boolean,
+      finalGuess: string,
+      attempts: number,
+      opts?: { serverScore?: number; celebrate?: boolean }
+    ) => {
       const tomorrow = getNextUtcMidnight();
       const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
       const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
+      const serverScore = opts?.serverScore;
 
       // Prefer authoritative server points; fall back to local estimate for UX only
       let score =
@@ -356,13 +427,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               )
             : 0;
 
-      if (success && !(typeof serverScore === "number" && serverScore > 0)) {
-        const luckyResult = rollLuckySolve();
+      if (success) {
         const dailyBonus = getDailyBonusMultiplier();
-        if (luckyResult.isLucky) {
-          score = Math.round(score * luckyResult.multiplier);
-        } else if (dailyBonus.hasBonus) {
-          score = Math.round(score * dailyBonus.multiplier);
+        if (dailyBonus.hasBonus) {
+          setDayBonusMultiplier(dailyBonus.multiplier);
+        }
+        if (!(typeof serverScore === "number" && serverScore > 0)) {
+          const luckyResult = rollLuckySolve();
+          if (luckyResult.isLucky) {
+            score = Math.round(score * luckyResult.multiplier);
+            setIsLuckySolve(true);
+          } else if (dailyBonus.hasBonus) {
+            score = Math.round(score * dailyBonus.multiplier);
+          }
         }
       }
 
@@ -378,17 +455,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         },
       });
 
+      // Clear header difficulty / attempts rail — stay-in-thread solve used to leave them up.
+      endGame();
       dismissKeyboard();
-      if (success) {
-        haptics.celebration();
+      if (success && opts?.celebrate) {
+        pendingCelebrationRef.current = true;
         markJustSolvedInSession();
-        void fireConfetti();
-      } else {
+      } else if (!success) {
         haptics.error();
       }
     },
     [
       dismissKeyboard,
+      endGame,
       gameState.startTime,
       gameState.hintsUsed,
       userStats.streak,
@@ -396,16 +475,29 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     ]
   );
 
-  const handleIncorrectGuess = useCallback((_attemptsLeft: number, similarity?: number) => {
-    const isNearMiss = similarity !== undefined && similarity >= engagementConfig.nearMissThreshold;
-    if (isNearMiss) {
-      haptics.warning();
-      void playInterfaceSound("near-miss");
-    } else {
-      haptics.error();
-      void playInterfaceSound("incorrect");
-    }
-  }, []);
+  const handleIncorrectGuess = useCallback(
+    (_attemptsLeft: number, similarity?: number, tier?: ReactionTier) => {
+      const resolvedTier =
+        tier ??
+        (similarity !== undefined && similarity >= engagementConfig.nearMissThreshold
+          ? "close"
+          : similarity !== undefined && similarity >= 40
+            ? "warm"
+            : "cold");
+
+      if (resolvedTier === "close") {
+        haptics.warning();
+        void playInterfaceSound("near-miss");
+      } else if (resolvedTier === "warm") {
+        haptics.warm();
+        void playInterfaceSound("incorrect", { playbackRate: 1.02 });
+      } else {
+        haptics.error();
+        void playInterfaceSound("incorrect", { playbackRate: 0.94 });
+      }
+    },
+    []
+  );
 
   const handleGuess = useCallback(
     async (guessValue?: string) => {
@@ -451,6 +543,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             guess: guessToCheck,
             timeSpentSeconds: timeTaken,
             hintsUsed: gameState.hintsUsed,
+            consecutiveCold: consecutiveColdRef.current,
           }),
         });
 
@@ -468,16 +561,19 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           explanation?: string;
           pointsEarned?: number;
           reaction?: GuessReaction;
+          unlockedAchievement?: { name?: string };
           error?: string;
         };
 
         // Already locked / replay blocked — stay in-thread, don't hard-cut away
         if (response.status === 409 || result.locked) {
           void playInterfaceSound("notification");
-          setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts);
+          setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts, {
+            celebrate: false,
+          });
           toast({
             title: result.wasSuccessful ? "Already solved today" : "Day already locked",
-            description: "Chat is locked. Open full results anytime from the dock.",
+            description: "Chat is locked. Open full results from the card below.",
           });
           return;
         }
@@ -490,11 +586,23 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         const attemptNumber =
           result.attemptNumber ?? gameSettings.maxAttempts - previousAttemptsLeft + 1;
 
+        if (typeof result.similarity === "number") {
+          setClosestSimilarity((prev) => Math.max(prev, result.similarity ?? 0));
+        }
+
         // Post the turn the moment the server answers. The reaction is derived
         // from the similarity score server-side, so this is instant.
         const reaction = result.reaction;
         const turnId = ++turnSeq.current;
         if (reaction) {
+          if (reaction.tier === "close") {
+            setHadNearMiss(true);
+          }
+          if (reaction.tier === "cold") {
+            consecutiveColdRef.current += 1;
+          } else {
+            consecutiveColdRef.current = 0;
+          }
           setTurns((prev) => [
             ...prev,
             {
@@ -503,6 +611,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               attemptNumber,
               tier: reaction.tier,
               line: reaction.line,
+              wordResults: wordResults.map((w) => ({
+                word: w.word,
+                correct: w.correct,
+                similarity: w.similarity ?? 0,
+              })),
             },
           ]);
         }
@@ -534,15 +647,48 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             },
           });
 
-          setCompletionState(true, guessToCheck, attempts, earnedPoints);
+          if (typeof result.answer === "string" && result.answer.trim()) {
+            setRevealedAnswer(result.answer.trim());
+          }
+          if (result.unlockedAchievement?.name) {
+            setUnlockedAchievementName(result.unlockedAchievement.name);
+          }
+          recordPlayDay();
+          setShowGuestSave(shouldPromptGuestSave());
 
+          // Start Eve's closing riff before lock UI so the dock waits on it.
+          if (reaction) {
+            try {
+              localStorage.setItem("lastEveClosingLine", reaction.line);
+            } catch {
+              // Ignore quota / private mode.
+            }
+            void streamQuip(turnId, guessToCheck, reaction.tier);
+          }
+
+          const previousBest = userStats.fastestSolveSeconds;
+          setPreviousBestSeconds(
+            typeof previousBest === "number" && previousBest > 0 ? previousBest : null
+          );
+
+          setCompletionState(true, guessToCheck, attempts, {
+            serverScore: earnedPoints,
+            celebrate: true,
+          });
+
+          const cleanWin = gameState.hintsUsed === 0;
           const newStats = { ...userStats };
           newStats.totalGames += 1;
           newStats.wins += 1;
           newStats.streak += 1;
+          newStats.maxStreak = Math.max(newStats.maxStreak, newStats.streak);
           newStats.points += earnedPoints;
           newStats.level = Math.floor(newStats.points / 1000) + 1;
           newStats.lastPlayDate = new Date().toISOString();
+          newStats.noHintStreak = cleanWin ? (userStats.noHintStreak || 0) + 1 : 0;
+          if (previousBest == null || previousBest <= 0 || timeTaken < previousBest) {
+            newStats.fastestSolveSeconds = timeTaken;
+          }
           setUserStats(newStats);
 
           trackPuzzleCompletion({
@@ -608,11 +754,29 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
         if (result.gameOver || newAttemptsLeft <= 0) {
           void playInterfaceSound("failure");
+
+          if (typeof result.answer === "string" && result.answer.trim()) {
+            setRevealedAnswer(result.answer.trim());
+          }
+          recordPlayDay();
+          setShowGuestSave(shouldPromptGuestSave());
+
+          // Start Eve's closing riff before lock UI so the dock waits on it.
+          if (reaction) {
+            try {
+              localStorage.setItem("lastEveClosingLine", reaction.line);
+            } catch {
+              // Ignore quota / private mode.
+            }
+            void streamQuip(turnId, guessToCheck, reaction.tier);
+          }
+
           setCompletionState(false, guessToCheck, gameSettings.maxAttempts);
 
           const newStats = { ...userStats };
           newStats.totalGames += 1;
           newStats.streak = 0;
+          newStats.noHintStreak = 0;
           newStats.lastPlayDate = new Date().toISOString();
           setUserStats(newStats);
 
@@ -658,7 +822,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           };
           localStorage.setItem("lastGameCompletion", JSON.stringify(completionData));
 
-          // Stay in the thread — chat stays locked.
           return;
         }
 
@@ -678,10 +841,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                 )
               : 0;
 
-        handleIncorrectGuess(newAttemptsLeft, overallSimilarity);
+        handleIncorrectGuess(newAttemptsLeft, overallSimilarity, reaction?.tier);
 
         // Eve's riff arrives behind the instant line, in its own bubble.
-        // Never request a quip after the day locks — that burns AI credits.
         if (reaction) {
           void streamQuip(turnId, guessToCheck, reaction.tier);
         }
@@ -735,7 +897,114 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     gameState.timeTakenSeconds,
   ]);
 
-  const resultCard = gameState.gameOver ? (
+  // Keep the answer bar open until Eve's closing riff settles.
+  const awaitingClosingQuip = turns.some(
+    (turn) => (turn.tier === "correct" || turn.tier === "out") && Boolean(turn.quipPending)
+  );
+  const chatLocked = gameState.gameOver && !awaitingClosingQuip;
+  const lastTurn = turns.at(-1);
+
+  // Confetti + celebration haptic land with the result card / locked dock.
+  useEffect(() => {
+    if (!chatLocked || !gameState.wasSuccessful || !pendingCelebrationRef.current) return;
+    pendingCelebrationRef.current = false;
+    haptics.celebration();
+    window.requestAnimationFrame(() => {
+      void fireConfetti();
+    });
+  }, [chatLocked, gameState.wasSuccessful]);
+
+  // Soft lock click when the day closes — ritualizes "come back tomorrow".
+  useEffect(() => {
+    if (chatLocked && !wasChatLockedRef.current) {
+      haptics.lock();
+      void playInterfaceSound("notification");
+    }
+    wasChatLockedRef.current = chatLocked;
+  }, [chatLocked]);
+
+  // Quiet day-rank murmur after a win — social proof without leaving the thread.
+  useEffect(() => {
+    if (!(chatLocked && gameState.wasSuccessful)) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/user/stats?timeframe=today");
+        if (!response.ok) return;
+        const data = (await response.json()) as { rank?: number };
+        if (!cancelled && typeof data.rank === "number" && data.rank > 0) {
+          setDayRank(data.rank);
+        }
+      } catch {
+        // Non-blocking
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatLocked, gameState.wasSuccessful]);
+
+  // Pace murmur from today's solve-time percentiles.
+  useEffect(() => {
+    if (!(chatLocked && gameState.wasSuccessful)) return;
+    const elapsed = gameState.timeTakenSeconds;
+    if (elapsed <= 0) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/puzzles/stats?puzzleId=${encodeURIComponent(gameData.id)}`,
+          { credentials: "include" }
+        );
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          percentiles?: { p25?: number; p50?: number; p75?: number };
+        };
+        const p = data.percentiles;
+        if (!p?.p50 || p.p50 <= 0 || cancelled) return;
+        if (typeof p.p25 === "number" && elapsed <= p.p25) {
+          setPaceLabel("Faster than most");
+        } else if (elapsed <= p.p50) {
+          setPaceLabel("Around the middle");
+        } else if (typeof p.p75 === "number" && elapsed <= p.p75) {
+          setPaceLabel("A bit slower today");
+        } else {
+          setPaceLabel("Took your time");
+        }
+      } catch {
+        // optional murmur
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatLocked, gameState.wasSuccessful, gameState.timeTakenSeconds, gameData.id]);
+
+  const stageCaption = useMemo(() => {
+    const base = getPuzzleQuestion(puzzleType);
+    if (hasThread || gameState.gameOver) return base;
+    if (isComeback) return "Welcome back · one puzzle";
+    try {
+      if (checkStreakGracePeriod().inGracePeriod && userStats.streak > 0) {
+        return "Grace window · streak safe";
+      }
+    } catch {
+      // ignore
+    }
+    if (isReturner && userStats.streak > 0) {
+      return `Day ${userStats.streak} · one puzzle`;
+    }
+    return base;
+  }, [
+    puzzleType,
+    hasThread,
+    gameState.gameOver,
+    userStats.streak,
+    isReturner,
+    isComeback,
+  ]);
+
+  const resultCard = chatLocked ? (
     <SolveResultCard
       success={gameState.wasSuccessful}
       score={gameState.finalScore}
@@ -743,8 +1012,28 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       attempts={gameState.finalAttempts}
       maxAttempts={gameSettings.maxAttempts}
       resultsHref={resultsHref}
+      answer={revealedAnswer}
+      nextPlayTime={gameState.nextPlayTime}
+      nearMiss={hadNearMiss}
+      isLucky={isLuckySolve}
+      dayBonusMultiplier={dayBonusMultiplier}
+      unlockedAchievementName={unlockedAchievementName}
+      closestSimilarity={closestSimilarity > 0 ? closestSimilarity : null}
+      maxStreak={userStats.maxStreak}
+      dayRank={dayRank}
+      hintsUsed={gameState.hintsUsed}
+      noHintStreak={userStats.noHintStreak}
+      puzzleId={gameData.id}
+      timeTakenSeconds={gameState.timeTakenSeconds}
+      previousBestSeconds={previousBestSeconds}
+      paceLabel={paceLabel}
+      totalPoints={userStats.points}
+      showGuestSave={showGuestSave}
     />
   ) : null;
+
+  const showStageChrome =
+    !gameState.gameOver && (!hasThread || Boolean(gameData.hints && gameData.hints.length > 0));
 
   // Puzzle data is already on the server-rendered board — never blank it for
   // auth/guest warm-up. Guest creation only disables submit (below).
@@ -760,20 +1049,31 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               {/* Puzzle area - collapses when keyboard is visible, centers content */}
               <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area flex flex-col">
                 {collapsed ? (
-                  /* COLLAPSED VIEW - minimal puzzle hint when keyboard is open */
-                  <div className="flex flex-col items-center pt-2">
+                  /* COLLAPSED VIEW - minimal puzzle + last Eve line while typing */
+                  <div className="flex flex-col items-center px-4 pt-2">
                     <PuzzleMinimal
                       puzzle={puzzleDisplay}
                       puzzleType={puzzleType}
                       visual={gameData.visual}
                       className="w-full max-w-2xl"
                     />
-                    {/* Show last guess attempt in collapsed view */}
-                    {gameState.guessHistory.length > 0 && (
-                      <div className="mt-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
-                        Last: {gameState.guessHistory[gameState.guessHistory.length - 1]?.text}
+                    {lastTurn ? (
+                      <div className="mt-2 w-full max-w-2xl text-center">
+                        <div className="font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
+                          Last: {lastTurn.text}
+                        </div>
+                        <p
+                          className={cn(
+                            "mt-1 line-clamp-2 text-xs leading-5",
+                            lastTurn.tier === "close" || lastTurn.tier === "warm"
+                              ? "text-warning"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          Eve · {lastTurn.line}
+                        </p>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 ) : (
                   /* EXPANDED VIEW — focused play stage */
@@ -783,33 +1083,39 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       hasThread ? "justify-start" : "justify-center"
                     )}
                   >
-                    <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
-                      <DifficultyBadge
-                        className="play-fade-in"
-                        difficulty={currentEventPuzzle?.difficulty}
-                        showDescription={!hasThread}
-                      />
-                      {gameData.hints && gameData.hints.length > 0 && !gameState.gameOver && (
-                        <HintBadge
-                          hints={gameData.hints}
-                          gameId={gameData.id}
-                          onHintReveal={(hintIndex) => {
-                            dispatch({ type: "REVEAL_HINT" });
-                            void playInterfaceSound("hint");
-                            trackEvent(analyticsEvents.HINT_USED, {
-                              puzzleId: gameData.id || "unknown",
-                              hintIndex,
-                            });
-                          }}
-                        />
-                      )}
-                    </div>
+                    {showStageChrome ? (
+                      <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
+                        {!hasThread ? (
+                          <DifficultyBadge
+                            className="play-fade-in"
+                            difficulty={currentEventPuzzle?.difficulty}
+                            showDescription
+                          />
+                        ) : (
+                          <span />
+                        )}
+                        {gameData.hints && gameData.hints.length > 0 ? (
+                          <HintBadge
+                            hints={gameData.hints}
+                            gameId={gameData.id}
+                            onHintReveal={(hintIndex) => {
+                              dispatch({ type: "REVEAL_HINT" });
+                              void playInterfaceSound("hint");
+                              trackEvent(analyticsEvents.HINT_USED, {
+                                puzzleId: gameData.id || "unknown",
+                                hintIndex,
+                              });
+                            }}
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     <section aria-label="Puzzle" className="w-full max-w-2xl">
                       <PuzzleStage
                         puzzle={puzzleDisplay}
                         puzzleType={puzzleType}
-                        question={getPuzzleQuestion(puzzleType)}
+                        question={stageCaption}
                         state={hasThread ? "docked" : "hero"}
                         visual={gameData.visual}
                       />
@@ -854,18 +1160,35 @@ export default function GameBoard({ gameData }: GameBoardProps) {
               )}
 
               <section
-                aria-label={gameState.gameOver ? "Day locked" : "Answer input"}
+                aria-label={
+                  chatLocked
+                    ? "Day locked"
+                    : awaitingClosingQuip
+                      ? "Eve finishing"
+                      : "Answer input"
+                }
                 className="input-area input-area-keyboard-transition play-dock z-30 shrink-0 px-4 pt-5 pb-safe-lg md:px-6"
               >
                 <div className="mx-auto max-w-2xl">
-                  {gameState.gameOver ? (
-                    <ChatLockedDock success={gameState.wasSuccessful} resultsHref={resultsHref} />
-                  ) : (
-                    <SmartAnswerInput
-                      disabled={gameState.isSubmitting || (!userId && isCreatingGuest)}
-                      isSubmitting={gameState.isSubmitting || isCreatingGuest}
-                      onSubmit={handleGuess}
+                  {chatLocked ? (
+                    <ChatLockedDock
+                      success={gameState.wasSuccessful}
+                      nextPlayTime={gameState.nextPlayTime}
                     />
+                  ) : awaitingClosingQuip ? (
+                    <ChatClosingDock success={gameState.wasSuccessful} />
+                  ) : (
+                    <div className="play-dock-panel">
+                      <SmartAnswerInput
+                        disabled={
+                          gameState.gameOver ||
+                          gameState.isSubmitting ||
+                          (!userId && isCreatingGuest)
+                        }
+                        isSubmitting={gameState.isSubmitting || isCreatingGuest}
+                        onSubmit={handleGuess}
+                      />
+                    </div>
                   )}
                 </div>
               </section>

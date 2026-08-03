@@ -698,6 +698,29 @@
   );
 }
 
+/* Answer bar ↔ closing / locked dock: soft lift instead of a hard cut. */
+.play-dock-panel {
+  animation: dock-in 280ms var(--ease) both;
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-dock-panel {
+    animation: none !important;
+  }
+}
+
 /*
  * The answer bar. A single hairline field that lifts on focus — a crisp edge
  * plus a soft halo, matching the global focus treatment, so it reads as
@@ -932,8 +955,124 @@
   animation: message-in 420ms var(--ease) both;
 }
 
+/* Near-miss "heat" — one pulse so almost-there is felt, not only read. */
+.reaction-heat [data-tone-dot] {
+  animation: heat-pulse 420ms var(--ease) 1;
+}
+
+.reaction-heat-bubble {
+  animation: heat-border 420ms var(--ease) 1;
+}
+
+@keyframes heat-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  40% {
+    transform: scale(1.55);
+    opacity: 1;
+  }
+}
+
+@keyframes heat-border {
+  0%,
+  100% {
+    border-color: hsl(var(--warning) / 0.3);
+  }
+
+  40% {
+    border-color: hsl(var(--warning) / 0.7);
+  }
+}
+
+/* Last heart scarcity — soft breathe, not urgent blink. */
+.heart-fragile {
+  animation: heart-breathe 1.7s var(--ease) infinite;
+}
+
+@keyframes heart-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Streak digit lock-in after points settle. */
+.streak-lock-in {
+  animation: streak-pop 420ms var(--ease) 1;
+}
+
+@keyframes streak-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.chat-lock-icon {
+  animation: lock-seat 280ms var(--ease) both;
+}
+
+/* Near-level flicker — only when within ~15% of the next level. */
+.level-rim {
+  position: relative;
+  overflow: hidden;
+}
+
+.level-rim::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--level-progress, 85%);
+  background: hsl(var(--warning) / 0.75);
+  animation: level-flicker 1.4s var(--ease) infinite;
+}
+
+@keyframes level-flicker {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lock-seat {
+  from {
+    transform: scale(0.88);
+    opacity: 0.5;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .solve-result-card {
+  .solve-result-card,
+  .reaction-heat [data-tone-dot],
+  .reaction-heat-bubble,
+  .heart-fragile,
+  .streak-lock-in,
+  .chat-lock-icon,
+  .level-rim::after {
     animation: none !important;
   }
 }

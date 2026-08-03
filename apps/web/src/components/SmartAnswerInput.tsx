@@ -35,10 +35,22 @@ export function SmartAnswerInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<CursorPosition | null>(null);
   const undoRedoManager = useRef(new UndoRedoManager());
+  /** One arming tap per focus session — commitment cue, not every keystroke. */
+  const armedHapticRef = useRef(false);
 
   const trimmed = value.trim();
   const canSubmit = trimmed.length > 0 && !(disabled || isSubmitting);
   const letterCount = useMemo(() => trimmed.replace(/[^\p{L}\p{N}]/gu, "").length, [trimmed]);
+
+  useEffect(() => {
+    if (letterCount > 0 && !armedHapticRef.current && !disabled) {
+      armedHapticRef.current = true;
+      haptics.hint();
+    }
+    if (letterCount === 0) {
+      armedHapticRef.current = false;
+    }
+  }, [letterCount, disabled]);
 
   const submit = useCallback(() => {
     if (!canSubmit) return;

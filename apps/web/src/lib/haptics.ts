@@ -34,20 +34,26 @@ export const haptics = {
   /** Double pulse - correct word typed */
   success: () => vibrate([30, 50, 30]),
 
-  /** Single longer buzz - wrong guess */
+  /** Single longer buzz - cold / wrong guess */
   error: () => vibrate(100),
 
-  /** Warning pulse - last attempt */
+  /** Soft double tick - warm (partly on track) */
+  warm: () => vibrate([20, 40, 20]),
+
+  /** Warning pulse - close miss / last attempt */
   warning: () => vibrate([50, 30, 50]),
 
   /** Celebration pattern - puzzle complete */
   celebration: () => vibrate([100, 50, 100, 50, 200]),
 
-  /** Soft tick - hint revealed */
+  /** Soft tick - hint revealed / send armed */
   hint: () => vibrate(15),
 
   /** Medium impact - submit action */
   submit: () => vibrate(40),
+
+  /** Soft lock click - day closed */
+  lock: () => vibrate([12, 30, 18]),
 
   /** Cancel any ongoing vibration */
   cancel: () => vibrate(0),

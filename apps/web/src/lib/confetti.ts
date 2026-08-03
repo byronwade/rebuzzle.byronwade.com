@@ -9,33 +9,38 @@ export async function fireConfetti(options?: { durationMs?: number }): Promise<v
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (prefersReduced) return;
 
-  const { default: confetti } = await import("canvas-confetti");
-  const duration = options?.durationMs ?? 2200;
-  const animationEnd = Date.now() + duration;
-  const defaults = { startVelocity: 28, spread: 360, ticks: 55, zIndex: 80 };
+  try {
+    const { default: confetti } = await import("canvas-confetti");
+    const duration = options?.durationMs ?? 2200;
+    const animationEnd = Date.now() + duration;
+    // Above play dock / header chrome so the burst is visible on solve.
+    const defaults = { startVelocity: 28, spread: 360, ticks: 55, zIndex: 9999 };
 
-  const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
-  await new Promise<void>((resolve) => {
-    const interval = window.setInterval(() => {
-      const timeLeft = animationEnd - Date.now();
-      if (timeLeft <= 0) {
-        window.clearInterval(interval);
-        resolve();
-        return;
-      }
+    await new Promise<void>((resolve) => {
+      const interval = window.setInterval(() => {
+        const timeLeft = animationEnd - Date.now();
+        if (timeLeft <= 0) {
+          window.clearInterval(interval);
+          resolve();
+          return;
+        }
 
-      const particleCount = 42 * (timeLeft / duration);
-      void confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.12, 0.28), y: Math.random() - 0.15 },
-      });
-      void confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.72, 0.88), y: Math.random() - 0.15 },
-      });
-    }, 220);
-  });
+        const particleCount = 42 * (timeLeft / duration);
+        void confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.12, 0.28), y: Math.random() - 0.15 },
+        });
+        void confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.72, 0.88), y: Math.random() - 0.15 },
+        });
+      }, 220);
+    });
+  } catch (error) {
+    console.warn("[confetti] failed to load", error);
+  }
 }

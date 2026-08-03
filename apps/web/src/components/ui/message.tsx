@@ -112,7 +112,9 @@ export function MessageMeta({
         className
       )}
     >
-      {tone ? <span aria-hidden className={dotVariants({ tone })} /> : null}
+      {tone ? (
+        <span aria-hidden className={dotVariants({ tone })} data-tone-dot />
+      ) : null}
       {children}
     </p>
   );

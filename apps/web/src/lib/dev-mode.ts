@@ -33,6 +33,9 @@ export function clearDevClientGameState(): void {
   const keys = [
     "lastGameCompletion",
     "lastGameSolution",
+    "lastEveClosingLine",
+    "rebuzzlePlayDays",
+    "rebuzzleEmailNudgeDismissed",
     "gameCompletion",
     "userStats",
   ];

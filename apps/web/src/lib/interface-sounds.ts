@@ -41,6 +41,8 @@ const CUES: Record<InterfaceSoundCue, CueDefinition> = {
 interface PlayInterfaceSoundOptions {
   /** Used only by the sound preference control so users can hear the setting change. */
   ignorePreference?: boolean;
+  /** Override cue pitch — used for graded incorrect feedback. */
+  playbackRate?: number;
 }
 
 export async function playInterfaceSound(
@@ -55,7 +57,7 @@ export async function playInterfaceSound(
   try {
     await playSound(definition.asset.dataUri, {
       volume: definition.volume,
-      playbackRate: definition.playbackRate,
+      playbackRate: options.playbackRate ?? definition.playbackRate,
     });
     return true;
   } catch (error) {
