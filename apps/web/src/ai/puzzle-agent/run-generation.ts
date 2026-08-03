@@ -49,24 +49,13 @@ import {
   scorePuzzleQuality,
   stressTestSolvability,
 } from "./tool-impl";
+import { PUBLICATION_AGENT_TOOLS } from "./publication-tools";
 import { puzzleAgentTools } from "./tools";
 import { PuzzleVisualSchema } from "./visual/composition";
 import { recognizePuzzleBoard } from "./visual/critique-board";
 import { verifyPublicationAssets } from "./visual/publication-assets";
 
-const PUBLICATION_AGENT_TOOLS = [
-  "get_puzzle_type_spec",
-  "get_difficulty_brief",
-  "get_generation_brief",
-  "list_recent_answers",
-  "propose_concept_seeds",
-  "list_technique_library",
-  "list_pictogram_catalog",
-  "inspect_answer_seed_cues",
-  "preflight_compose_cue_plan",
-  "compose_puzzle_visual",
-  "craft_hint_ladder",
-] as const;
+export { EFFICIENCY_AGENT_TOOLS, PUBLICATION_AGENT_TOOLS } from "./publication-tools";
 
 export interface PuzzleGenerationParams {
   targetDifficulty: number;
