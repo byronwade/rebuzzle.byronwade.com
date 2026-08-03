@@ -1104,19 +1104,28 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         {({ isKeyboardVisible }) => {
           // After lock, keep the full thread — don't collapse for the keyboard.
           const keyboardOpen = isKeyboardVisible && !gameState.gameOver;
-          const stageState = keyboardOpen ? "compact" : hasThread ? "docked" : "hero";
+          // Locked days need a page scroller: result card + docked puzzle rarely fit.
+          const stageScrollable = gameState.gameOver && !keyboardOpen;
+          const stageState = keyboardOpen
+            ? "compact"
+            : hasThread || gameState.gameOver
+              ? "docked"
+              : "hero";
 
           return (
             <div className="flex h-full min-h-0 flex-col">
               <main className="puzzle-area flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div
                   className={cn(
-                    "play-stage flex min-h-0 flex-1 flex-col items-center overflow-hidden px-4 md:px-6",
-                    keyboardOpen
-                      ? "justify-start gap-1 pt-1 pb-0"
-                      : hasThread
+                    "play-stage flex min-h-0 flex-1 flex-col items-center px-4 md:px-6",
+                    stageScrollable
+                      ? "touch-pan-y justify-start gap-3 overflow-y-auto overscroll-y-contain py-[clamp(0.5rem,2vh,1rem)] pb-4"
+                      : "overflow-hidden",
+                    !(stageScrollable || keyboardOpen) &&
+                      (hasThread
                         ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
-                        : "justify-center py-[clamp(0.5rem,2vh,1rem)]"
+                        : "justify-center py-[clamp(0.5rem,2vh,1rem)]"),
+                    keyboardOpen && !stageScrollable && "justify-start gap-1 pt-1 pb-0"
                   )}
                 >
                   {showStageChrome && !keyboardOpen ? (
@@ -1180,12 +1189,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     <GuessThread
                       className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl"
                       footer={resultCard}
+                      layout={stageScrollable ? "stack" : "scroll"}
                       turns={turns}
                     />
                   ) : null}
 
                   {!hasThread && resultCard && !keyboardOpen ? (
-                    <div className="mt-[clamp(0.75rem,2.5vh,1.25rem)] w-full max-w-2xl px-0.5 pb-2">
+                    <div className="mt-[clamp(0.75rem,2.5vh,1.25rem)] w-full max-w-2xl shrink-0 px-0.5 pb-2">
                       {resultCard}
                     </div>
                   ) : null}
