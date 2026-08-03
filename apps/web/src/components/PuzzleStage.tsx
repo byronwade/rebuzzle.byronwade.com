@@ -1,6 +1,10 @@
 "use client";
 
+import { type CSSProperties, useMemo } from "react";
 import type { PuzzleVisual } from "@/lib/gameSettings";
+import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
+import { cn } from "@/lib/utils";
+import { hasComposedVisual } from "./PuzzleVisualBoard";
 import { PuzzleDisplay } from "./PuzzleDisplay";
 
 export type StageState = "hero" | "docked";
@@ -25,18 +29,31 @@ const SMALL_TEXT_TYPES = new Set(["riddle", "trivia", "logic-grid", "cryptic-cro
 /**
  * The puzzle plate.
  *
- * A single dark, letterboxed surface with no visible chrome beyond its own
- * edge — the puzzle is the only lit thing on it. Both states share one element
- * so the shrink is a real transition rather than a swap.
+ * Standard ink boards sit on paper (the surface they were drawn for).
+ * Unicode/emoji boards keep the dark cinema plate. If a board paints
+ * non-palette meaning colors, the surface flips for contrast.
  */
 export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: PuzzleStageProps) {
   const size = SMALL_TEXT_TYPES.has(puzzleType) ? "small" : "large";
+  const composed = hasComposedVisual(visual);
+  const surface = useMemo(() => resolvePuzzleSurface(visual), [visual]);
+  const onPaper = surface.mode === "paper";
 
   return (
-    <div className="puzzle-stage w-full" data-state={state}>
-      <div className="puzzle-stage-plate">
-        {/* Atmospheric wash — the plate is lit from behind, not decorated. */}
-        <div aria-hidden className="puzzle-stage-glow" />
+    <div className="puzzle-stage w-full" data-state={state} data-surface={surface.mode}>
+      <div
+        className={cn("puzzle-stage-plate", onPaper && "puzzle-stage-plate--paper")}
+        style={
+          onPaper
+            ? ({
+                "--puzzle-canvas": surface.canvas,
+                "--puzzle-ink": surface.ink,
+              } as CSSProperties)
+            : undefined
+        }
+      >
+        {/* Atmospheric wash — cinema only; paper boards stay clean. */}
+        {!onPaper ? <div aria-hidden className="puzzle-stage-glow" /> : null}
 
         {/*
          * The docked state scales this wrapper rather than swapping the type
@@ -44,7 +61,7 @@ export function PuzzleStage({ puzzle, puzzleType, state, question, visual }: Puz
          */}
         <div className="puzzle-stage-content">
           <PuzzleDisplay
-            className="text-white"
+            className={onPaper || composed ? undefined : "text-white"}
             puzzle={puzzle}
             puzzleType={puzzleType}
             size={size}

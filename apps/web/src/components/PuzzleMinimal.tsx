@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import type { PuzzleVisual } from "@/lib/gameSettings";
+import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
 import { cn } from "@/lib/utils";
 import { hasComposedVisual, PuzzleVisualBoard } from "./PuzzleVisualBoard";
 
@@ -79,6 +81,8 @@ export function PuzzleMinimal({ puzzle, puzzleType, visual, className }: PuzzleM
 
   const content = getMinimalContent();
   const fontSizeClass = getFontSizeClass();
+  const composed = hasComposedVisual(visual) && Boolean(visual);
+  const surface = useMemo(() => resolvePuzzleSurface(visual), [visual]);
 
   return (
     <div
@@ -94,20 +98,28 @@ export function PuzzleMinimal({ puzzle, puzzleType, visual, className }: PuzzleM
       <div
         className={cn(
           "rounded-xl",
-          "bg-muted/50",
-          "border border-dashed border-border/50",
+          !composed && "bg-muted/50 border border-dashed border-border/50",
+          composed && surface.mode === "paper" && "border border-black/10",
+          composed && surface.mode === "cinema" && "border border-white/10",
           "px-4 py-2",
           "max-w-full",
           "overflow-hidden"
         )}
+        style={
+          composed
+            ? {
+                background: surface.canvas,
+                color: surface.ink,
+              }
+            : undefined
+        }
       >
-        {hasComposedVisual(visual) && visual ? (
+        {composed && visual ? (
           <PuzzleVisualBoard
             visual={visual}
             fallback={content}
             compact
             size="small"
-            className="text-foreground/90"
           />
         ) : (
           <span

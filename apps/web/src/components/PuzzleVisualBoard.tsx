@@ -6,7 +6,9 @@ import {
   type PuzzleBoardSize,
 } from "@/ai/puzzle-agent/visual/presentation";
 import { sanitizePictogramSvg } from "@/ai/puzzle-agent/visual/sanitize-svg";
+import { INK_PICTOGRAM_PALETTE } from "@/ai/puzzle-agent/visual/style";
 import type { PuzzleVisual, PuzzleVisualLayer } from "@/lib/gameSettings";
+import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
 import { cn } from "@/lib/utils";
 
 interface PuzzleVisualBoardProps {
@@ -97,12 +99,15 @@ function TextTile({
   return (
     <span
       className={cn(
-        "puzzle-text-layer inline-block text-foreground animate-in fade-in slide-in-from-bottom-1 duration-500 fill-mode-both motion-reduce:animate-none",
+        "puzzle-text-layer inline-block animate-in fade-in slide-in-from-bottom-1 duration-500 fill-mode-both motion-reduce:animate-none",
         sizeClass,
         textEmphasisClass(layer.emphasis),
         stacked && "whitespace-pre text-center"
       )}
-      style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}
+      style={{
+        animationDelay: `${Math.min(index, 6) * 45}ms`,
+        color: "var(--rb-ink)",
+      }}
     >
       {content}
     </span>
@@ -119,10 +124,11 @@ function OperatorTile({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center text-subtle opacity-80",
+        "inline-flex items-center justify-center opacity-75",
         sizeClass,
         "font-medium"
       )}
+      style={{ color: "var(--rb-mist, var(--rb-ink))" }}
       aria-hidden
     >
       {layer.symbol}
@@ -210,14 +216,17 @@ export function PuzzleVisualBoard({
     return true;
   });
 
+  const surface = resolvePuzzleSurface(visual);
+
   if (!hasRenderable || visual.mode === "unicode") {
     return (
       <div
         className={cn(
-          "text-center text-foreground font-semibold whitespace-pre-wrap break-words",
+          "text-center font-semibold whitespace-pre-wrap break-words",
           textClass,
           className
         )}
+        style={{ color: surface.ink }}
       >
         {fallback || visual.unicodeFallback}
       </div>
@@ -236,12 +245,15 @@ export function PuzzleVisualBoard({
   return (
     <div
       className={cn("puzzle-visual-board flex w-full max-w-full", layoutClass, className)}
+      data-surface={surface.mode}
       style={
         {
-          "--rb-ink": "#1a1f1c",
-          "--rb-canvas": "#f4f6f3",
-          "--rb-accent": "#2f6f5e",
-          "--rb-strike": "#b23a2d",
+          "--rb-ink": surface.ink,
+          "--rb-canvas": surface.canvas,
+          "--rb-mist": INK_PICTOGRAM_PALETTE.mist,
+          "--rb-accent": INK_PICTOGRAM_PALETTE.accent,
+          "--rb-strike": INK_PICTOGRAM_PALETTE.strike,
+          color: surface.ink,
           gap: dims.gap,
         } as CSSProperties
       }
@@ -258,7 +270,10 @@ export function PuzzleVisualBoard({
         />
       ))}
       {visual.caption ? (
-        <p className="basis-full mt-2 text-center text-sm text-subtle animate-in fade-in duration-700 delay-200 motion-reduce:animate-none">
+        <p
+          className="basis-full mt-2 text-center text-sm opacity-70 animate-in fade-in duration-700 delay-200 motion-reduce:animate-none"
+          style={{ color: "var(--rb-ink)" }}
+        >
           {visual.caption}
         </p>
       ) : null}
