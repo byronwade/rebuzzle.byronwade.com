@@ -2,9 +2,8 @@
 
 import { Lock } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Timer } from "@/components/Timer";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
+import { Timer } from "@/components/Timer";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
 import { dailyReminderOptInCta, PUZZLE_PUBLISH_COPY } from "@/lib/game/reminder-copy";
 import { cn } from "@/lib/utils";
@@ -18,8 +17,7 @@ interface ChatLockedDockProps {
 const NUDGE_DISMISS_KEY = "rebuzzleEmailNudgeDismissed";
 
 /**
- * Status-only dock after Eve's closing riff. Results / answer live on the
- * SolveResultCard so there's a single primary CTA in the completion beat.
+ * Status-only dock after Eve's closing riff. Quiet habit cue — never a hard sell.
  */
 export function ChatLockedDock({ success, nextPlayTime = null, className }: ChatLockedDockProps) {
   const { isAuthenticated, user } = useAuth();
@@ -76,37 +74,37 @@ export function ChatLockedDock({ success, nextPlayTime = null, className }: Chat
             {success ? "Chat locked · puzzle solved" : "Chat locked · day over"}
           </p>
           {showNudge ? (
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <p className="truncate text-muted-foreground text-xs">
               {isAuthenticated && user?.email ? (
-                <Button
-                  className="h-8 px-3 text-xs"
+                <button
+                  className="text-foreground underline-offset-2 hover:underline disabled:opacity-60"
                   disabled={subscribing}
                   onClick={() => void handleOptIn()}
-                  size="sm"
                   type="button"
                 >
-                  {subscribing ? "Enabling…" : dailyReminderOptInCta()}
-                </Button>
+                  {subscribing ? "Saving…" : dailyReminderOptInCta()}
+                </button>
               ) : (
                 <a
-                  className="font-medium text-foreground text-xs underline-offset-2 hover:underline"
+                  className="text-foreground underline-offset-2 hover:underline"
                   href="/settings"
                   onClick={dismissNudge}
                 >
                   {dailyReminderOptInCta()}
                 </a>
               )}
+              <span className="text-subtle"> · </span>
               <button
-                className="text-subtle text-xs underline-offset-2 hover:underline"
+                className="text-subtle underline-offset-2 hover:underline"
                 onClick={dismissNudge}
                 type="button"
               >
                 Not now
               </button>
-            </div>
+            </p>
           ) : (
             <p className="truncate text-muted-foreground text-xs">
-              Come back after {PUZZLE_PUBLISH_COPY} for tomorrow&apos;s puzzle.
+              Next puzzle after {PUZZLE_PUBLISH_COPY}.
             </p>
           )}
         </div>

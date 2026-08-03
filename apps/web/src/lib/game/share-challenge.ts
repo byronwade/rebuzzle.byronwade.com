@@ -26,7 +26,8 @@ export function parseBeatMeChallenge(search: string | URLSearchParams): {
 }
 
 export function beatMeShareLine(streak: number, success: boolean): string {
-  if (!success) return "Your turn — beat me today.";
-  if (streak > 1) return `🔥 ${streak}-day streak · Beat me today.`;
-  return "Beat me today.";
+  // Quiet invite — attribution lives in the URL, not the shout.
+  if (!success) return "Today's puzzle:";
+  if (streak > 1) return `🔥 ${streak}`;
+  return "";
 }

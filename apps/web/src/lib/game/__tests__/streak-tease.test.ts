@@ -6,18 +6,19 @@ describe("getStreakTease", () => {
     expect(getStreakTease(4, false)).toMatch(/Streak reset/i);
   });
 
-  it("celebrates a streak freeze save", () => {
+  it("quietly notes a streak freeze save", () => {
     expect(getStreakTease(7, false, { streakFrozen: true, freezesLeft: 0 })).toMatch(
-      /Streak freeze saved/i
+      /Streak held at 7/i
     );
   });
 
-  it("celebrates milestone streaks", () => {
-    expect(getStreakTease(7, true)).toMatch(/7-day streak locked in/i);
+  it("marks milestone streaks without FOMO copy", () => {
+    expect(getStreakTease(7, true)).toBe("7-day streak. See you tomorrow.");
   });
 
-  it("teases the next milestone", () => {
+  it("teases the next milestone lightly", () => {
     expect(getStreakTease(5, true)).toMatch(/2 days to a 7-day streak/i);
     expect(getStreakTease(6, true)).toMatch(/One more day for a 7-day streak/i);
+    expect(getStreakTease(5, true)).not.toMatch(/Protect/i);
   });
 });

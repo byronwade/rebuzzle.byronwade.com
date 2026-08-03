@@ -12,10 +12,7 @@ export function getStreakTease(
 ): string {
   if (!success) {
     if (options?.streakFrozen && streak > 0) {
-      const left = options.freezesLeft ?? 0;
-      return left > 0
-        ? `Streak freeze saved your ${streak}-day chain. ${left} freeze left.`
-        : `Streak freeze saved your ${streak}-day chain. Come back tomorrow.`;
+      return `Streak held at ${streak}. Same time tomorrow.`;
     }
     return streak > 0
       ? "Streak reset. Tomorrow is a clean start — one puzzle."
@@ -23,7 +20,7 @@ export function getStreakTease(
   }
 
   if ((MILESTONES as readonly number[]).includes(streak)) {
-    return `${streak}-day streak locked in. Don't break it tomorrow.`;
+    return `${streak}-day streak. See you tomorrow.`;
   }
 
   const next = MILESTONES.find((milestone) => milestone > streak);
@@ -31,8 +28,8 @@ export function getStreakTease(
     const left = next - streak;
     return left === 1
       ? `One more day for a ${next}-day streak.`
-      : `${left} days to a ${next}-day streak. Protect it tomorrow.`;
+      : `${left} days to a ${next}-day streak.`;
   }
 
-  return `${streak}-day streak. Keep the chain going tomorrow.`;
+  return `${streak}-day streak.`;
 }

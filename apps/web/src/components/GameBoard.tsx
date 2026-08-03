@@ -42,7 +42,6 @@ import { getPuzzleQuestion } from "./PuzzleDisplay";
 import { PuzzleStage } from "./PuzzleStage";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 import { SolveResultCard } from "./SolveResultCard";
-import { WinCelebrationOverlay } from "./WinCelebrationOverlay";
 
 interface UserStats {
   points: number;
@@ -211,9 +210,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [hadNearMiss, setHadNearMiss] = useState(false);
   /** Variable-reward lucky solve (client roll when server points absent). */
   const [isLuckySolve, setIsLuckySolve] = useState(false);
-  const [showWinCelebration, setShowWinCelebration] = useState(false);
   const [streakFrozen, setStreakFrozen] = useState(false);
-  const [challengeBanner, setChallengeBanner] = useState<string | null>(null);
+  const [fromChallenge, setFromChallenge] = useState(false);
   const [closestSimilarity, setClosestSimilarity] = useState(0);
   const [unlockedAchievementName, setUnlockedAchievementName] = useState<string | null>(null);
   const [dayRank, setDayRank] = useState<number | null>(null);
@@ -973,22 +971,22 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const chatLocked = gameState.gameOver && !awaitingClosingQuip;
   const lastTurn = turns.at(-1);
 
-  // Confetti + celebration overlay land with the result card / locked dock.
+  // Quiet confetti only — no fullscreen celebration chrome.
   useEffect(() => {
     if (!chatLocked || !gameState.wasSuccessful || !pendingCelebrationRef.current) return;
     pendingCelebrationRef.current = false;
-    setShowWinCelebration(true);
+    haptics.celebration();
     window.requestAnimationFrame(() => {
       void fireConfetti();
     });
   }, [chatLocked, gameState.wasSuccessful]);
 
-  // Beat-me deep link from share → soft challenge banner.
+  // Share deep link → one quiet stage caption, not a banner.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const { challengerId, fromShare } = parseBeatMeChallenge(window.location.search);
     if (!fromShare || !challengerId || challengerId === userId) return;
-    setChallengeBanner("A friend challenged you — solve today's puzzle.");
+    setFromChallenge(true);
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete("beat");
@@ -1068,6 +1066,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const stageCaption = useMemo(() => {
     const base = getPuzzleQuestion(puzzleType);
     if (hasThread || gameState.gameOver) return base;
+    if (fromChallenge) return "Shared with you · one puzzle";
     if (isComeback) return "Welcome back · one puzzle";
     try {
       if (checkStreakGracePeriod().inGracePeriod && userStats.streak > 0) {
@@ -1087,6 +1086,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     userStats.streak,
     isReturner,
     isComeback,
+    fromChallenge,
   ]);
 
   const resultCard = chatLocked ? (
@@ -1130,17 +1130,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   // auth/guest warm-up. Guest creation only disables submit (below).
   return (
     <>
-      <WinCelebrationOverlay
-        achievementName={unlockedAchievementName}
-        attempts={gameState.finalAttempts}
-        dailyBonusMultiplier={dayBonusMultiplier ?? undefined}
-        isLucky={isLuckySolve}
-        isVisible={showWinCelebration}
-        maxAttempts={gameSettings.maxAttempts}
-        onComplete={() => setShowWinCelebration(false)}
-        score={gameState.finalScore}
-        streak={userStats.streak}
-      />
       {/* Main content area - keyboard-aware layout */}
       <KeyboardAwareLayout>
         {({ isKeyboardVisible }) => {
@@ -1150,18 +1139,6 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
           return (
             <div className="flex h-full min-h-0 flex-col">
-              {challengeBanner && !gameState.gameOver ? (
-                <div className="shrink-0 border-border border-b bg-muted/40 px-4 py-2.5 text-center md:px-6">
-                  <p className="text-foreground text-sm">{challengeBanner}</p>
-                  <button
-                    className="mt-0.5 text-muted-foreground text-xs underline-offset-2 hover:underline"
-                    onClick={() => setChallengeBanner(null)}
-                    type="button"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              ) : null}
               <main className="puzzle-area flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div
                   className={cn(

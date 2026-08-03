@@ -166,6 +166,7 @@ export function SolveResultCard({
   const winRate = played > 0 ? Math.round((winCount / played) * 100) : 0;
   const showAnswer = Boolean(answer) && !success;
   const [streakLocked, setStreakLocked] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [perception, setPerception] = useState<PerceptionChoice | null>(null);
   const [perceptionSaving, setPerceptionSaving] = useState(false);
   const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
@@ -309,13 +310,13 @@ export function SolveResultCard({
               Points
             </p>
             {isLucky && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
-                ×2 lucky
+              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                ×2
               </p>
             ) : null}
             {!isLucky && dayBonusMultiplier && dayBonusMultiplier > 1 && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] animate-in fade-in duration-300">
-                ×{dayBonusMultiplier} day
+              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                ×{dayBonusMultiplier}
               </p>
             ) : null}
             {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
@@ -416,19 +417,30 @@ export function SolveResultCard({
       </div>
 
       {scoreDone && (guessDistribution || played > 0) ? (
-        <div className="mt-4 rounded-xl border border-border/70 bg-background/50 px-3 py-3">
-          <WordleStatsPanel
-            compact
-            stats={{
-              played,
-              winRate,
-              currentStreak: streak,
-              maxStreak: Math.max(maxStreak, streak),
-              guessDistribution: guessDistribution ?? [0, 0, 0],
-              recentPlayDates,
-              streakFreezes,
-            }}
-          />
+        <div className="mt-3">
+          <button
+            className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em] underline-offset-2 hover:text-foreground hover:underline"
+            onClick={() => setShowStats((open) => !open)}
+            type="button"
+          >
+            {showStats ? "Hide stats" : "Stats"}
+          </button>
+          {showStats ? (
+            <div className="mt-2 rounded-xl border border-border/50 bg-background/40 px-3 py-3">
+              <WordleStatsPanel
+                compact
+                stats={{
+                  played,
+                  winRate,
+                  currentStreak: streak,
+                  maxStreak: Math.max(maxStreak, streak),
+                  guessDistribution: guessDistribution ?? [0, 0, 0],
+                  recentPlayDates,
+                  streakFreezes,
+                }}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 

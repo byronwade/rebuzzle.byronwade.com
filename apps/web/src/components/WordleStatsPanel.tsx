@@ -57,12 +57,11 @@ export function WordleStatsPanel({ stats, className, compact = false }: WordleSt
         <StatTile icon={<Flame className="h-4 w-4" />} label="Max" value={stats.maxStreak} />
       </div>
 
-      {typeof stats.streakFreezes === "number" && (
+      {typeof stats.streakFreezes === "number" && stats.streakFreezes > 0 ? (
         <p className="text-muted-foreground text-xs">
-          Streak freezes ready:{" "}
-          <span className="font-medium text-foreground">{stats.streakFreezes}</span>
+          Freeze · {stats.streakFreezes}
         </p>
-      )}
+      ) : null}
 
       <div>
         <p className="mb-2 font-medium text-foreground text-xs uppercase tracking-[0.08em]">

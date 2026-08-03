@@ -295,28 +295,7 @@ export async function POST(request: Request) {
           unlockedAchievement = { name: newlyUnlocked[0].name };
         }
 
-        // Surface achievement unlocks in the in-app inbox too.
-        if (newlyUnlocked.length > 0) {
-          try {
-            const { getCollection } = await import("@/db/mongodb");
-            const notifications = getCollection("inAppNotifications");
-            const top = newlyUnlocked[0];
-            if (top) {
-              await notifications.insertOne({
-                id: crypto.randomUUID(),
-                userId: user.userId,
-                type: "achievement",
-                title: "Achievement unlocked",
-                message: top.name,
-                link: "/achievements",
-                read: false,
-                createdAt: new Date(),
-              });
-            }
-          } catch (notifyError) {
-            console.error("[guess] in-app achievement notify failed:", notifyError);
-          }
-        }
+        // Achievements stay in-thread / email — no inbox spam on every unlock.
       } catch (error) {
         console.error("[guess] sync win update failed:", error);
         pointsEarned = Math.floor(
@@ -344,25 +323,7 @@ export async function POST(request: Request) {
         currentStreak = lossUpdate.streak;
         maxStreak = lossUpdate.maxStreak;
         guessDistribution = lossUpdate.guessDistribution;
-
-        if (streakFrozen) {
-          try {
-            const { getCollection } = await import("@/db/mongodb");
-            const notifications = getCollection("inAppNotifications");
-            await notifications.insertOne({
-              id: crypto.randomUUID(),
-              userId: user.userId,
-              type: "streak_milestone",
-              title: "Streak freeze used",
-              message: `Your ${currentStreak}-day streak was saved.`,
-              link: "/",
-              read: false,
-              createdAt: new Date(),
-            });
-          } catch (notifyError) {
-            console.error("[guess] streak-freeze notify failed:", notifyError);
-          }
-        }
+        // Freeze feedback stays on the result card — quiet, not an inbox alert.
       } catch (error) {
         console.error("[guess] sync loss update failed:", error);
       }

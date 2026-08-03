@@ -171,10 +171,8 @@ export function NotificationBadge() {
               <Button
                 aria-label={getBellTooltip()}
                 className={cn(
-                  "relative h-9 w-9 rounded-full transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
-                  notificationsEnabled
-                    ? "text-warning hover:bg-muted"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  "relative h-9 w-9 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
+                  "text-muted-foreground hover:bg-muted hover:text-foreground",
                   emailLoading && "cursor-not-allowed opacity-50"
                 )}
                 disabled={emailLoading}
@@ -182,37 +180,24 @@ export function NotificationBadge() {
                 variant="ghost"
               >
                 {getBellIcon()}
-                {(unreadCount > 0 || notificationsEnabled) && (
-                  <span className="-top-0.5 -right-0.5 absolute flex h-3 w-3">
-                    {unreadCount > 0 ? (
-                      <span className="relative inline-flex h-2.5 min-w-2.5 items-center justify-center rounded-full bg-primary px-1 font-mono text-[9px] text-primary-foreground">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    ) : (
-                      <>
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-60" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
-                      </>
-                    )}
-                  </span>
-                )}
+                {unreadCount > 0 ? (
+                  <span className="-top-0.5 -right-0.5 absolute h-1.5 w-1.5 rounded-full bg-foreground/70" />
+                ) : null}
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent>{getBellTooltip()}</TooltipContent>
         </Tooltip>
         <PopoverContent align="end" className="w-[min(24rem,calc(100vw-1.5rem))] p-0">
-          <div className="border-border border-b p-4">
-            <h3 className="font-semibold text-sm">Notifications</h3>
+          <div className="border-border border-b px-4 py-3">
+            <h3 className="font-medium text-sm">Inbox</h3>
             <p className="mt-0.5 text-muted-foreground text-xs">{dailyReminderEnabledBlurb()}</p>
           </div>
 
           {isAuthenticated && (
-            <div className="max-h-56 overflow-y-auto border-border border-b">
+            <div className="max-h-48 overflow-y-auto border-border border-b">
               {inbox.length === 0 ? (
-                <p className="px-4 py-5 text-muted-foreground text-xs">
-                  No unread messages. Solve today&apos;s puzzle to keep the streak warm.
-                </p>
+                <p className="px-4 py-4 text-muted-foreground text-xs">Nothing new.</p>
               ) : (
                 <ul className="divide-y divide-border">
                   {inbox.map((item) => (

@@ -118,14 +118,13 @@ export function EnhancedShareButton({
       } else {
         message += `Solved today's puzzle.`;
       }
-      if (streak > 0) {
-        message += ` 🔥 ${streak}-day streak`;
-      }
-      message += `\n${beatMeShareLine(streak, true)}\n\n${url}`;
+      const invite = beatMeShareLine(streak, true);
+      if (invite) message += ` ${invite}`;
+      message += `\n\n${url}`;
     } else if (nearMiss) {
-      message += `So close. ${beatMeShareLine(streak, false)}\n\n${url}`;
+      message += `So close.\n\n${url}`;
     } else {
-      message += `Today's puzzle got me. ${beatMeShareLine(streak, false)}\n\n${url}`;
+      message += `Today's puzzle.\n\n${url}`;
     }
 
     return message;
@@ -147,14 +146,11 @@ export function EnhancedShareButton({
       else if (attempts >= maxAttempts) tweet += `Clutch. `;
       else if (nearMiss) tweet += `Almost → got it. `;
       else tweet += `Solved. `;
-      if (streak > 0) tweet += `🔥 ${streak} `;
-      tweet += `Beat me → `;
+      if (streak > 0) tweet += `🔥${streak} `;
     } else if (nearMiss) {
-      tweet += `So close. Beat me → `;
-    } else {
-      tweet += `Your turn → `;
+      tweet += `So close. `;
     }
-    tweet += `${url}`;
+    tweet += url;
     return tweet;
   };
 

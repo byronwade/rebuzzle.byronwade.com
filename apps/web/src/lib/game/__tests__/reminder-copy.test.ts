@@ -18,4 +18,8 @@ describe("reminder-copy", () => {
     expect(blobs).not.toMatch(/8\s*AM/i);
     expect(blobs).toMatch(/4 PM UTC|UTC midnight/);
   });
+
+  it("keeps the opt-in CTA short and quiet", () => {
+    expect(dailyReminderOptInCta()).toBe("Email me tomorrow");
+  });
 });

@@ -8,13 +8,13 @@ export const PUZZLE_EMAIL_REMINDER_COPY = "4 PM UTC";
 export const PUZZLE_EMAIL_REMINDER_SHORT = "4 PM UTC";
 
 export function dailyReminderEnabledBlurb(): string {
-  return `Daily puzzle email around ${PUZZLE_EMAIL_REMINDER_COPY} · new puzzle at ${PUZZLE_PUBLISH_COPY}`;
+  return `Email around ${PUZZLE_EMAIL_REMINDER_COPY}. Puzzle at ${PUZZLE_PUBLISH_COPY}.`;
 }
 
 export function dailyReminderOptInCta(): string {
-  return `Email me tomorrow (${PUZZLE_EMAIL_REMINDER_SHORT})`;
+  return "Email me tomorrow";
 }
 
 export function dailyReminderDialogBlurb(): string {
-  return `Get a daily email when today's puzzle is ready (around ${PUZZLE_EMAIL_REMINDER_COPY}). New puzzles publish at ${PUZZLE_PUBLISH_COPY}.`;
+  return `Optional daily email when the puzzle is ready (around ${PUZZLE_EMAIL_REMINDER_COPY}).`;
 }

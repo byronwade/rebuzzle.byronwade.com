@@ -20,8 +20,9 @@ describe("share-challenge", () => {
     expect(parseBeatMeChallenge("")).toEqual({ challengerId: null, fromShare: false });
   });
 
-  it("writes a crisp beat-me share line", () => {
-    expect(beatMeShareLine(12, true)).toMatch(/Beat me today/);
-    expect(beatMeShareLine(0, false)).toMatch(/Your turn/);
+  it("keeps share invite lines quiet", () => {
+    expect(beatMeShareLine(12, true)).toBe("🔥 12");
+    expect(beatMeShareLine(0, false)).toBe("Today's puzzle:");
+    expect(beatMeShareLine(1, true)).toBe("");
   });
 });
