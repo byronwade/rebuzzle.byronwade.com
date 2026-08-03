@@ -153,11 +153,7 @@ export type CalculatedStatsResult = {
   freezeSource: "freeze" | "shield" | null;
 };
 
-function buildStatsPatch(
-  currentStats: UserStats | null,
-  gameResult: GameResultInput,
-  now: Date
-) {
+function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultInput, now: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const lastPlayDate = currentStats?.lastPlayDate
     ? new Date(
@@ -288,28 +284,21 @@ function buildStatsPatch(
     streakFreezes: protection.streakFreezes,
     streakShields: protection.streakShields,
     lastFreezeUsed: protection.lastFreezeUsed ?? currentStats?.lastFreezeUsed,
-    streakFreezeWeekStart:
-      protection.streakFreezeWeekStart ?? currentStats?.streakFreezeWeekStart,
+    streakFreezeWeekStart: protection.streakFreezeWeekStart ?? currentStats?.streakFreezeWeekStart,
     luckySolveCount,
-    lastLuckySolve:
-      gameResult.won && gameResult.isLucky ? now : currentStats?.lastLuckySolve,
+    lastLuckySolve: gameResult.won && gameResult.isLucky ? now : currentStats?.lastLuckySolve,
     lastBonusMultiplier:
       gameResult.won && gameResult.hasDailyBonus
         ? gameResult.dailyBonusMultiplier
         : currentStats?.lastBonusMultiplier,
-    lastBonusDate:
-      gameResult.won && gameResult.hasDailyBonus ? now : currentStats?.lastBonusDate,
+    lastBonusDate: gameResult.won && gameResult.hasDailyBonus ? now : currentStats?.lastBonusDate,
     guessDistribution: bumpGuessDistribution(
       currentStats?.guessDistribution,
       gameResult.attempts,
       gameResult.won,
       Math.min(3, Math.max(1, maxAttempts))
     ),
-    recentPlayDates: recordRecentPlayDate(
-      currentStats?.recentPlayDates,
-      now,
-      affectsStreak
-    ),
+    recentPlayDates: recordRecentPlayDate(currentStats?.recentPlayDates, now, affectsStreak),
     _meta: {
       pointsEarned,
       streakFrozen: protection.streakFrozen,

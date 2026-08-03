@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
 import { aiDecisionOps } from "@/db/ai-operations";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 
 /**
  * GET /api/admin/ai/decisions/[id]
  * Get a single AI decision with full details
  */
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAdminAccess(request);
     if (!admin) {
@@ -29,8 +26,8 @@ export async function GET(
       const allInOperation = await aiDecisionOps.findByOperationId(decision.operationId);
       if (allInOperation.length > 1) {
         relatedDecisions = allInOperation
-          .filter(d => d.id !== id)
-          .map(d => ({
+          .filter((d) => d.id !== id)
+          .map((d) => ({
             id: d.id,
             decisionType: d.decisionType,
             timestamp: d.timestamp,
@@ -46,9 +43,6 @@ export async function GET(
     });
   } catch (error) {
     console.error("AI Decision detail API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI decision" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI decision" }, { status: 500 });
   }
 }

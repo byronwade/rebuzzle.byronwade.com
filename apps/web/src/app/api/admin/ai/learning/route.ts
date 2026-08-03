@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
 import { aiLearningEventOps } from "@/db/ai-operations";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 import { parseDate, sanitizeId, validateEnum } from "@/lib/api-validation";
 
 /**
@@ -15,10 +15,12 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = validateEnum(
-      searchParams.get("status"),
-      ["proposed", "approved", "applied", "reverted"] as const
-    );
+    const status = validateEnum(searchParams.get("status"), [
+      "proposed",
+      "approved",
+      "applied",
+      "reverted",
+    ] as const);
     const configId = sanitizeId(searchParams.get("configId"));
     const startDate = parseDate(searchParams.get("startDate"));
     const endDate = parseDate(searchParams.get("endDate"));
@@ -42,9 +44,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("AI Learning API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI learning events" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI learning events" }, { status: 500 });
   }
 }

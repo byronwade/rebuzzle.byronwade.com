@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
 import { aiDecisionOps, aiErrorOps, aiFeedbackOps, aiLearningEventOps } from "@/db/ai-operations";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 import { parseDate, validateEnum } from "@/lib/api-validation";
 
 /**
@@ -50,9 +50,10 @@ export async function GET(request: Request) {
     ]);
 
     // Calculate summary metrics
-    const avgSatisfaction = feedbackTrend.length > 0
-      ? feedbackTrend.reduce((sum, d) => sum + d.avgSatisfaction, 0) / feedbackTrend.length
-      : 0;
+    const avgSatisfaction =
+      feedbackTrend.length > 0
+        ? feedbackTrend.reduce((sum, d) => sum + d.avgSatisfaction, 0) / feedbackTrend.length
+        : 0;
 
     const totalErrors = errorPatterns.reduce((sum, p) => sum + p.count, 0);
     const unresolvedErrors = errorPatterns.reduce((sum, p) => sum + (p.count - p.resolvedCount), 0);
@@ -78,9 +79,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("AI Analytics API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI analytics" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI analytics" }, { status: 500 });
   }
 }

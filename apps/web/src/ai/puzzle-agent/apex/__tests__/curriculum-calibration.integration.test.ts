@@ -14,7 +14,9 @@ jest.mock("../../../learning/answer-registry", () => ({
   loadAllAnswerKeys: (...args: unknown[]) => loadAllAnswerKeys(...args),
 }));
 jest.mock("../technique-calibration", () => {
-  const actual = jest.requireActual("../technique-calibration") as typeof import("../technique-calibration");
+  const actual = jest.requireActual(
+    "../technique-calibration"
+  ) as typeof import("../technique-calibration");
   return {
     ...actual,
     loadTechniqueSolveRates: (...args: unknown[]) => loadTechniqueSolveRates(...args),

@@ -1,5 +1,5 @@
-import { Suspense } from "react";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { fetchGameOverSolution } from "@/app/actions/gameActions";
 import { GameOverPageSkeleton } from "@/components/page-skeletons";
 import GameOverClient from "./game-over-client";

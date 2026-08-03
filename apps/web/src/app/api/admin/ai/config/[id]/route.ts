@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
 import { aiConfigOps } from "@/db/ai-operations";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 import { sanitizeId, sanitizeString } from "@/lib/api-validation";
 
 /**
  * GET /api/admin/ai/config/[id]
  * Get a single AI configuration
  */
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAdminAccess(request);
     if (!admin) {
@@ -21,22 +18,25 @@ export async function GET(
     const id = sanitizeId(rawId);
 
     if (!id) {
-      return NextResponse.json({ error: "Invalid configuration ID", code: "INVALID_ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid configuration ID", code: "INVALID_ID" },
+        { status: 400 }
+      );
     }
 
     const config = await aiConfigOps.findById(id);
 
     if (!config) {
-      return NextResponse.json({ error: "Configuration not found", code: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Configuration not found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ config });
   } catch (error) {
     console.error("AI Config detail API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI configuration" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI configuration" }, { status: 500 });
   }
 }
 
@@ -44,10 +44,7 @@ export async function GET(
  * PATCH /api/admin/ai/config/[id]
  * Update an AI configuration
  */
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAdminAccess(request);
     if (!admin) {
@@ -58,20 +55,29 @@ export async function PATCH(
     const id = sanitizeId(rawId);
 
     if (!id) {
-      return NextResponse.json({ error: "Invalid configuration ID", code: "INVALID_ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid configuration ID", code: "INVALID_ID" },
+        { status: 400 }
+      );
     }
 
     const body = await request.json();
 
     const existingConfig = await aiConfigOps.findById(id);
     if (!existingConfig) {
-      return NextResponse.json({ error: "Configuration not found", code: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Configuration not found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
     }
 
     // Don't allow editing active/archived configs directly
     if (existingConfig.status === "active") {
       return NextResponse.json(
-        { error: "Cannot edit active configuration. Create a new version instead.", code: "CANNOT_EDIT_ACTIVE" },
+        {
+          error: "Cannot edit active configuration. Create a new version instead.",
+          code: "CANNOT_EDIT_ACTIVE",
+        },
         { status: 400 }
       );
     }
@@ -91,10 +97,7 @@ export async function PATCH(
     return NextResponse.json({ config: updatedConfig });
   } catch (error) {
     console.error("AI Config update API error:", error);
-    return NextResponse.json(
-      { error: "Failed to update AI configuration" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update AI configuration" }, { status: 500 });
   }
 }
 
@@ -102,10 +105,7 @@ export async function PATCH(
  * DELETE /api/admin/ai/config/[id]
  * Archive an AI configuration
  */
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAdminAccess(request);
     if (!admin) {
@@ -116,18 +116,27 @@ export async function DELETE(
     const id = sanitizeId(rawId);
 
     if (!id) {
-      return NextResponse.json({ error: "Invalid configuration ID", code: "INVALID_ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid configuration ID", code: "INVALID_ID" },
+        { status: 400 }
+      );
     }
 
     const config = await aiConfigOps.findById(id);
 
     if (!config) {
-      return NextResponse.json({ error: "Configuration not found", code: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Configuration not found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
     }
 
     if (config.isDefault && config.status === "active") {
       return NextResponse.json(
-        { error: "Cannot archive the default active configuration", code: "CANNOT_ARCHIVE_DEFAULT" },
+        {
+          error: "Cannot archive the default active configuration",
+          code: "CANNOT_ARCHIVE_DEFAULT",
+        },
         { status: 400 }
       );
     }
@@ -137,10 +146,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("AI Config archive API error:", error);
-    return NextResponse.json(
-      { error: "Failed to archive AI configuration" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to archive AI configuration" }, { status: 500 });
   }
 }
 
@@ -148,10 +154,7 @@ export async function DELETE(
  * POST /api/admin/ai/config/[id]
  * Activate an AI configuration
  */
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAdminAccess(request);
     if (!admin) {
@@ -162,7 +165,10 @@ export async function POST(
     const id = sanitizeId(rawId);
 
     if (!id) {
-      return NextResponse.json({ error: "Invalid configuration ID", code: "INVALID_ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid configuration ID", code: "INVALID_ID" },
+        { status: 400 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -170,7 +176,10 @@ export async function POST(
 
     const config = await aiConfigOps.findById(id);
     if (!config) {
-      return NextResponse.json({ error: "Configuration not found", code: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Configuration not found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
     }
 
     if (action === "activate") {

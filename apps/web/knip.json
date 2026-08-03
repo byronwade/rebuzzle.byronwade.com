@@ -1,21 +1,41 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "entry": [
-    "src/app/**/*.{ts,tsx}",
-    "src/app/layout.tsx",
-    "src/app/page.tsx",
+    "src/app/**/{page,layout,loading,error,not-found,global-error,route,default,template}.{js,jsx,ts,tsx}",
     "next.config.mjs",
     "postcss.config.mjs",
-    "tailwind.config.ts"
+    "tailwind.config.ts",
+    "scripts/**/*.{ts,js}",
+    "agent/**/*.{ts,js}",
+    "emails/**/*.{ts,tsx}",
+    "jest.config.js",
+    "playwright.config.ts",
+    "e2e/**/*.{ts,tsx}",
+    "src/**/__tests__/**/*.{ts,tsx}",
+    "src/**/*.test.{ts,tsx}"
   ],
-  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,js}", "emails/**/*.tsx"],
+  "project": [
+    "src/**/*.{ts,tsx,js,jsx}",
+    "scripts/**/*.{ts,js}",
+    "agent/**/*.{ts,js}",
+    "emails/**/*.{ts,tsx}",
+    "e2e/**/*.{ts,tsx}"
+  ],
   "ignore": [
     "**/*.d.ts",
     "**/*.config.{js,ts,mjs}",
     "**/node_modules/**",
     ".next/**",
     "dist/**",
-    "build/**"
+    "build/**",
+    "tsconfig.tsbuildinfo",
+    "scripts/setup-database.ts",
+    "scripts/setup-neon.ts",
+    "scripts/setup-neon-auth.ts",
+    "scripts/test-database.ts",
+    "scripts/generatePuzzles.ts",
+    "scripts/generate-migrations.ts",
+    "scripts/migrate-embeddings.ts"
   ],
   "ignoreDependencies": [
     "autoprefixer",
@@ -25,20 +45,15 @@
     "@types/react",
     "@types/react-dom",
     "@types/canvas-confetti",
-    "@types/web-push"
+    "@types/web-push",
+    "@types/bcryptjs",
+    "@types/uuid",
+    "@rebuzzle/config",
+    "@rebuzzle/game-logic"
   ],
-  "workspaces": {
-    ".": {
-      "entry": ["src/app/**/*.{ts,tsx}", "next.config.mjs"],
-      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,js}", "emails/**/*.tsx"]
-    }
-  },
   "next": {
     "entry": [
-      "src/app/**/{page,layout,loading,error,not-found,global-error,route,default}.{js,ts,tsx}",
-      "src/app/**/route.{js,ts,tsx}",
-      "src/middleware.{js,ts}",
-      "src/instrumentation.{js,ts}"
+      "src/app/**/{page,layout,loading,error,not-found,global-error,route,default,template}.{js,jsx,ts,tsx}"
     ]
   }
 }

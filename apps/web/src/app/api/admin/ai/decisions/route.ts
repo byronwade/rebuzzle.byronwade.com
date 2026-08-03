@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
 import { aiDecisionOps } from "@/db/ai-operations";
 import type { AIDecision } from "@/db/models";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 import { parseDate, parsePagination, sanitizeId, sanitizeString } from "@/lib/api-validation";
 
 /**
@@ -18,10 +18,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     // Parse and validate pagination parameters
-    const { page, limit } = parsePagination(
-      searchParams.get("page"),
-      searchParams.get("limit")
-    );
+    const { page, limit } = parsePagination(searchParams.get("page"), searchParams.get("limit"));
 
     const decisionType = searchParams.get("type") as AIDecision["decisionType"] | null;
     const success = searchParams.get("success");
@@ -61,10 +58,7 @@ export async function GET(request: Request) {
     const decisions = await aiDecisionOps.findRecent(options);
 
     // Get stats for the same filters
-    const stats = await aiDecisionOps.getStats(
-      options.startDate,
-      options.endDate
-    );
+    const stats = await aiDecisionOps.getStats(options.startDate, options.endDate);
 
     return NextResponse.json({
       decisions,
@@ -76,9 +70,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("AI Decisions API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI decisions" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI decisions" }, { status: 500 });
   }
 }

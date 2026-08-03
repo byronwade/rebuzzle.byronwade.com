@@ -40,10 +40,7 @@ export async function GET(request: Request) {
     const result = await regenerateTodaysPuzzle(puzzleType || undefined);
 
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: result.message }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -51,9 +48,7 @@ export async function GET(request: Request) {
       message: result.message,
       // Never ship the answer even to admin list UIs via this route's default —
       // admin tools that need it should use the admin puzzles API.
-      puzzle: result.puzzle
-        ? toPublicPuzzle(result.puzzle as Record<string, unknown>)
-        : undefined,
+      puzzle: result.puzzle ? toPublicPuzzle(result.puzzle as Record<string, unknown>) : undefined,
     });
   } catch (error) {
     console.error("Error regenerating puzzle:", error);

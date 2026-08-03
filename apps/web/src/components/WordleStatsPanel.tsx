@@ -38,9 +38,7 @@ function buildMonthCells(recentPlayDates: string[] | undefined): Array<{
 }
 
 export function WordleStatsPanel({ stats, className, compact = false }: WordleStatsPanelProps) {
-  const distribution = stats.guessDistribution?.length
-    ? stats.guessDistribution
-    : [0, 0, 0];
+  const distribution = stats.guessDistribution?.length ? stats.guessDistribution : [0, 0, 0];
   const maxBucket = Math.max(1, ...distribution);
   const monthCells = buildMonthCells(stats.recentPlayDates);
 
@@ -49,18 +47,12 @@ export function WordleStatsPanel({ stats, className, compact = false }: WordleSt
       <div className={cn("grid gap-2", compact ? "grid-cols-4" : "grid-cols-2 sm:grid-cols-4")}>
         <StatTile icon={<Trophy className="h-4 w-4" />} label="Played" value={stats.played} />
         <StatTile icon={<Target className="h-4 w-4" />} label="Win %" value={stats.winRate} />
-        <StatTile
-          icon={<Flame className="h-4 w-4" />}
-          label="Streak"
-          value={stats.currentStreak}
-        />
+        <StatTile icon={<Flame className="h-4 w-4" />} label="Streak" value={stats.currentStreak} />
         <StatTile icon={<Flame className="h-4 w-4" />} label="Max" value={stats.maxStreak} />
       </div>
 
       {typeof stats.streakFreezes === "number" && stats.streakFreezes > 0 ? (
-        <p className="text-muted-foreground text-xs">
-          Freeze · {stats.streakFreezes}
-        </p>
+        <p className="text-muted-foreground text-xs">Freeze · {stats.streakFreezes}</p>
       ) : null}
 
       <div>
@@ -110,15 +102,7 @@ export function WordleStatsPanel({ stats, className, compact = false }: WordleSt
   );
 }
 
-function StatTile({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-}) {
+function StatTile({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
     <div className="rounded-xl border border-border/60 bg-muted/20 px-2.5 py-3 text-center">
       <div className="mb-1 flex justify-center text-muted-foreground">{icon}</div>

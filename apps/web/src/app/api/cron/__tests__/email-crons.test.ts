@@ -71,10 +71,7 @@ describe("email cron routes", () => {
       ])
       .mockResolvedValueOnce([{ id: "u1", email: "player@example.com", username: "Player" }])
       // In-app recipients: signed-in players (not email-gated)
-      .mockResolvedValueOnce([
-        { id: "u1" },
-        { id: "u2" },
-      ]);
+      .mockResolvedValueOnce([{ id: "u1" }, { id: "u2" }]);
     mockedSendDaily.mockResolvedValue({ success: true, messageId: "msg-1" });
 
     const res = await getPuzzleEmails(

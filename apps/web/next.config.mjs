@@ -10,6 +10,8 @@ const nextConfig = {
 
   // Client router cache stale times
   experimental: {
+    // Next.js 16+ Turbopack filesystem cache for faster rebuilds on Vercel
+    turbopackFileSystemCacheForBuild: true,
     staleTimes: {
       dynamic: 30,
       static: 180,

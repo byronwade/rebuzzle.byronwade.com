@@ -58,9 +58,7 @@ export async function POST(request: Request) {
         ? Math.min(body.timeSpentSeconds, 7200)
         : 0;
     const hintsUsed =
-      typeof body.hintsUsed === "number" && body.hintsUsed >= 0
-        ? Math.min(body.hintsUsed, 20)
-        : 0;
+      typeof body.hintsUsed === "number" && body.hintsUsed >= 0 ? Math.min(body.hintsUsed, 20) : 0;
     const attemptNumber =
       typeof body.attemptNumber === "number" && body.attemptNumber > 0
         ? Math.min(body.attemptNumber, 20)

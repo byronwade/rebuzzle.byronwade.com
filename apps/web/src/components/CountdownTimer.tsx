@@ -60,9 +60,8 @@ export function CountdownTimer() {
         <div className="font-bold text-3xl tabular-nums">{timeLeft}</div>
         {nextAt && (
           <div className="mt-1 text-[10px] uppercase tracking-wide opacity-75">
-            Resets{" "}
-            {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} local (
-            {nextAt.toISOString().slice(11, 16)} UTC)
+            Resets {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
+            local ({nextAt.toISOString().slice(11, 16)} UTC)
           </div>
         )}
       </div>

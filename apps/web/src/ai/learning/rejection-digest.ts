@@ -162,13 +162,13 @@ export function digestRejectionTexts(
     if (!rule) continue;
     avoidPatterns.push(rule.avoid);
     preferPatterns.push(rule.prefer);
-    notes.push(
-      `Recent reject mode ${bucket.code} ×${bucket.count}: ${rule.prefer}`
-    );
+    notes.push(`Recent reject mode ${bucket.code} ×${bucket.count}: ${rule.prefer}`);
   }
 
   if (buckets.some((b) => b.code === "other") && !top.length) {
-    notes.push("Recent generation failures lack a known taxonomy match — keep cue contracts strict");
+    notes.push(
+      "Recent generation failures lack a known taxonomy match — keep cue contracts strict"
+    );
   }
 
   return {

@@ -50,9 +50,7 @@ export function computeAdaptiveDifficulty(input: {
   const date = input.date ?? new Date();
   const baseline = baselineDifficultyForDate(date);
   const delta =
-    typeof input.forceDelta === "number"
-      ? input.forceDelta
-      : input.performance.difficultyDelta;
+    typeof input.forceDelta === "number" ? input.forceDelta : input.performance.difficultyDelta;
 
   const target = clampGenerationDifficulty(baseline + delta);
   const tier = getDifficultyLevelForScore(target);

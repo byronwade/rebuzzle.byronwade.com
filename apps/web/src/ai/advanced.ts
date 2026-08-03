@@ -2,10 +2,9 @@
  * Advanced AI Puzzle System — Eve tool agent + AI Gateway
  */
 
-export {
-  generateWithChainOfThought,
-} from "./services/advanced-puzzle-generator";
-
+export { runPuzzleAgentGeneration } from "./puzzle-agent/run-generation";
+export type { PuzzleAgentResult } from "./puzzle-agent/schemas";
+export { generateWithChainOfThought } from "./services/advanced-puzzle-generator";
 export {
   aiSelfTest,
   analyzePlayerPerformance,
@@ -14,7 +13,6 @@ export {
   calibrateDifficulty,
   type DifficultyProfile,
 } from "./services/difficulty-calibrator";
-
 export {
   type GeneratedPuzzleResult,
   generateMasterBatch,
@@ -22,7 +20,6 @@ export {
   type MasterGenerationParams,
   selectOptimalPuzzle,
 } from "./services/master-puzzle-orchestrator";
-
 export {
   adversarialTest,
   analyzeQuality,
@@ -30,7 +27,6 @@ export {
   type QualityMetrics,
   runQualityPipeline,
 } from "./services/quality-assurance";
-
 export {
   calculateSimilarity,
   calculateUniquenessScore,
@@ -41,6 +37,3 @@ export {
   isComponentCombinationUnique,
   validateUniqueness,
 } from "./services/uniqueness-tracker";
-
-export { runPuzzleAgentGeneration } from "./puzzle-agent/run-generation";
-export type { PuzzleAgentResult } from "./puzzle-agent/schemas";

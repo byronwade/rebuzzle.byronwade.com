@@ -23,9 +23,7 @@ export type PerceptionMapping = {
 /**
  * Map a 3-way player vote into schema fields used by AIFeedback + puzzleAttempts.
  */
-export function mapDifficultyPerception(
-  choice: DifficultyPerceptionChoice
-): PerceptionMapping {
+export function mapDifficultyPerception(choice: DifficultyPerceptionChoice): PerceptionMapping {
   switch (choice) {
     case "too_easy":
       return {
@@ -57,9 +55,7 @@ export function mapDifficultyPerception(
   }
 }
 
-export function isDifficultyPerceptionChoice(
-  value: unknown
-): value is DifficultyPerceptionChoice {
+export function isDifficultyPerceptionChoice(value: unknown): value is DifficultyPerceptionChoice {
   return value === "too_easy" || value === "just_right" || value === "too_hard";
 }
 

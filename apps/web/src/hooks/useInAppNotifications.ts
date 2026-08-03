@@ -42,23 +42,20 @@ export function useInAppNotifications(enabled: boolean) {
     void refresh();
   }, [refresh]);
 
-  const markRead = useCallback(
-    async (notificationId: string) => {
-      try {
-        await fetch("/api/notifications/in-app", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ notificationId }),
-        });
-        setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
-        setUnreadCount((count) => Math.max(0, count - 1));
-      } catch {
-        // ignore
-      }
-    },
-    []
-  );
+  const markRead = useCallback(async (notificationId: string) => {
+    try {
+      await fetch("/api/notifications/in-app", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ notificationId }),
+      });
+      setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
+      setUnreadCount((count) => Math.max(0, count - 1));
+    } catch {
+      // ignore
+    }
+  }, []);
 
   return { notifications, unreadCount, isLoading, refresh, markRead };
 }

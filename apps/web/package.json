@@ -15,6 +15,10 @@
     "format": "npx biome format --write .",
     "knip": "knip",
     "knip:fix": "knip --fix",
+    "doctor": "react-doctor . -y --no-score",
+    "doctor:react": "react-doctor . -y --verbose --no-score",
+    "doctor:vercel": "vercel-doctor",
+    "doctor:all": "pnpm lint && pnpm knip && pnpm doctor:vercel && pnpm doctor:react",
     "generate:puzzles": "node scripts/generateDailyPuzzles.js",
     "generate:today": "node scripts/generateDailyPuzzles.js --today",
     "generate:year": "node scripts/generateDailyPuzzles.js --year",
@@ -94,6 +98,7 @@
     "recharts": "^2.15.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.5.2",
+    "server-only": "^0.0.1",
     "sharp": "^0.34.5",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
@@ -117,9 +122,11 @@
     "jest": "^30.2.0",
     "knip": "^5.70.2",
     "postcss": "8.4.49",
+    "react-doctor": "^0.9.3",
     "tailwindcss": "3.4.17",
     "ts-jest": "^29.4.5",
     "tsx": "^4.19.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vercel-doctor": "^1.2.0"
   }
 }

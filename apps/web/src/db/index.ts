@@ -4,10 +4,10 @@
  * Clean MongoDB database interface for Rebuzzle
  */
 
-// Analytics operations
-export * from "./analytics-ops";
 // AI Learning System operations
 export * from "./ai-operations";
+// Analytics operations
+export * from "./analytics-ops";
 // Error handling
 export * from "./errors";
 // Database models

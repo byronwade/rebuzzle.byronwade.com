@@ -52,7 +52,9 @@ export async function loadLearningDigest(input?: {
     if (window.tooEasy) {
       avoidPatterns.push("Simple one-step compounds that resolve in under a minute");
       avoidPatterns.push("Over-obvious emoji sums with no false lead");
-      preferPatterns.push("Prefer denser techniques: false leads, nested homophones, spatial idioms");
+      preferPatterns.push(
+        "Prefer denser techniques: false leads, nested homophones, spatial idioms"
+      );
       preferPatterns.push("Require at least two interacting layers for Evil+ targets");
       difficultyDriftNotes.push(
         `RAISE DIFFICULTY: median solve ${Math.round(window.medianSolveSeconds ?? 0)}s, solve rate ${(window.solveRate * 100).toFixed(0)}% → delta +${window.difficultyDelta}`
@@ -74,11 +76,7 @@ export async function loadLearningDigest(input?: {
       preferPatterns.push("Clear visual→answer mapping with progressive hints");
     }
 
-    if (
-      window.avgHintsOnFinal !== null &&
-      window.avgHintsOnFinal > 2.2 &&
-      !window.tooHard
-    ) {
+    if (window.avgHintsOnFinal !== null && window.avgHintsOnFinal > 2.2 && !window.tooHard) {
       avoidPatterns.push("Hints that don't unlock the mechanism early enough");
       preferPatterns.push("Make hint 2 structural, not just thematic");
     }

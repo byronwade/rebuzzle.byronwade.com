@@ -29,12 +29,11 @@ export {
   recordGenerationAudit,
 } from "./generation-audit";
 export {
-  digestRejectionTexts,
-  loadRejectionDigest,
-  type RejectionBucket,
-  type RejectionDigest,
-  type RejectionTaxonomyCode,
-} from "./rejection-digest";
+  assessHumanCalibrationGate,
+  type HumanCalibrationGate,
+  type HumanCalibrationStatus,
+  loadHumanCalibrationGate,
+} from "./human-calibration-gate";
 export {
   type LearningPolicySnapshot,
   recordFinalAttemptSignal,
@@ -69,11 +68,12 @@ export {
 } from "./quality-drift";
 export { loadQualityDriftReport } from "./quality-drift-store";
 export {
-  assessHumanCalibrationGate,
-  loadHumanCalibrationGate,
-  type HumanCalibrationGate,
-  type HumanCalibrationStatus,
-} from "./human-calibration-gate";
+  digestRejectionTexts,
+  loadRejectionDigest,
+  type RejectionBucket,
+  type RejectionDigest,
+  type RejectionTaxonomyCode,
+} from "./rejection-digest";
 export {
   applySimCalibration,
   computeSimCalibrationFromPairs,

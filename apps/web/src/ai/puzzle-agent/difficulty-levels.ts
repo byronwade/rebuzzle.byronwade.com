@@ -38,12 +38,7 @@ export const DIFFICULTY_LEVELS: readonly DifficultyLevelSpec[] = [
     playerPromise: "One clear visual idea, maybe a light phonetic twist.",
     componentBudget: { min: 2, max: 4 },
     hintStyle: "Broad category → structural clue → almost-gives-it-away",
-    techniques: [
-      "simple_compound",
-      "obvious_emoji_sum",
-      "single_homophone",
-      "basic_positional",
-    ],
+    techniques: ["simple_compound", "obvious_emoji_sum", "single_homophone", "basic_positional"],
     avoid: ["obscure slang", "more than one layer of wordplay", "tiny unreadable symbols"],
   },
   {

@@ -8,8 +8,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { dropAllCustomIndexes, listAllIndexes, setupDatabaseIndexes } from "@/db/indexes";
-import { verifyToken } from "@/lib/jwt";
 import { userOps } from "@/db/operations";
+import { verifyToken } from "@/lib/jwt";
 
 /**
  * Verify admin authentication

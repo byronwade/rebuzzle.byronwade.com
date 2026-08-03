@@ -53,10 +53,9 @@ export function useAuthSeed() {
   return useContext(AuthSeedContext);
 }
 
-function sessionToState(session: ServerSession | null | undefined): Pick<
-  AuthState,
-  "isAuthenticated" | "userId" | "user" | "isGuest" | "isLoading" | "error"
-> {
+function sessionToState(
+  session: ServerSession | null | undefined
+): Pick<AuthState, "isAuthenticated" | "userId" | "user" | "isGuest" | "isLoading" | "error"> {
   if (session?.authenticated && session.user) {
     return {
       isAuthenticated: true,

@@ -137,8 +137,7 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
             <div className="border-t pt-4">
               <p className="text-muted-foreground text-xs">
                 A new puzzle publishes each day at UTC midnight. Email reminders go out around 4 PM
-                UTC. Use the notification bell in the header
-                to get daily reminders.
+                UTC. Use the notification bell in the header to get daily reminders.
               </p>
             </div>
           </div>

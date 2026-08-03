@@ -192,22 +192,12 @@ export const puzzleAgentTools: ToolSet = {
           z.object({
             kind: z.literal("catalog"),
             concept: z.string(),
-            role: z.enum([
-              "word-part",
-              "phonetic-anchor",
-              "semantic-anchor",
-              "structural-anchor",
-            ]),
+            role: z.enum(["word-part", "phonetic-anchor", "semantic-anchor", "structural-anchor"]),
           }),
           z.object({
             kind: z.literal("text"),
             content: z.string(),
-            role: z.enum([
-              "word-part",
-              "phonetic-anchor",
-              "semantic-anchor",
-              "structural-anchor",
-            ]),
+            role: z.enum(["word-part", "phonetic-anchor", "semantic-anchor", "structural-anchor"]),
           }),
           z.object({
             kind: z.literal("operator"),
@@ -223,9 +213,7 @@ export const puzzleAgentTools: ToolSet = {
         cues: input.cues as AnswerSeedVisualCue[],
       });
       if (!result.ok) {
-        throw new Error(
-          `Cue-plan preflight failed (${result.stage}): ${result.issues.join("; ")}`
-        );
+        throw new Error(`Cue-plan preflight failed (${result.stage}): ${result.issues.join("; ")}`);
       }
       return {
         ...result,

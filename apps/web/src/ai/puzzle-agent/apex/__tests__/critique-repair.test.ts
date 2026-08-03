@@ -1,7 +1,4 @@
-import {
-  buildCritiqueRepairParams,
-  critiqueRepairIssues,
-} from "../critique-repair";
+import { buildCritiqueRepairParams, critiqueRepairIssues } from "../critique-repair";
 
 describe("critique-locked repair specialist", () => {
   const cuePlan = [

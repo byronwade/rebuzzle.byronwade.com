@@ -35,6 +35,7 @@ import {
   type CapturedPuzzleComposition,
 } from "./authoritative-draft";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
+import { PUBLICATION_AGENT_TOOLS } from "./publication-tools";
 import { evaluatePublishGates, normalizeAnswerKey } from "./quality";
 import {
   normalizePuzzleAgentDraft,
@@ -49,7 +50,6 @@ import {
   scorePuzzleQuality,
   stressTestSolvability,
 } from "./tool-impl";
-import { PUBLICATION_AGENT_TOOLS } from "./publication-tools";
 import { puzzleAgentTools } from "./tools";
 import { PuzzleVisualSchema } from "./visual/composition";
 import { recognizePuzzleBoard } from "./visual/critique-board";

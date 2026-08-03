@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
 import { getNextUtcMidnight } from "@/lib/game/daily-lock";
 import { toPublicPuzzle } from "@/lib/game/public-puzzle";
+import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
 
 /**
  * GET /api/puzzle/today

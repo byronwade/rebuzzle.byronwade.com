@@ -44,8 +44,13 @@ export function parsePagination(
 export function sanitizeString(input: string | null, maxLength = 1000): string | undefined {
   if (!input) return undefined;
 
-  // Remove null bytes and control characters
-  let sanitized = input.replace(/[\x00-\x1f\x7f]/g, "");
+  // Strip null bytes / control characters without a control-char regex literal.
+  let sanitized = "";
+  for (const char of input) {
+    const code = char.charCodeAt(0);
+    if (code === 0x7f || code <= 0x1f) continue;
+    sanitized += char;
+  }
 
   // Truncate to max length
   sanitized = sanitized.slice(0, maxLength);

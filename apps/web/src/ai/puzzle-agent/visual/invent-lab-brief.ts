@@ -20,18 +20,12 @@ const LabBriefSchema = z.object({
     .min(2)
     .max(48)
     .describe("Concrete visual noun or short imageable idea for a rebus board"),
-  answer: z
-    .string()
-    .min(3)
-    .max(64)
-    .describe("Idiom, compound, or phrase the rebus could encode"),
+  answer: z.string().min(3).max(64).describe("Idiom, compound, or phrase the rebus could encode"),
   difficulty: z.number().min(4).max(9),
 });
 
 function pickPhraseBankBrief(difficulty: number): LabBrief {
-  const pool = PHRASE_BANK.filter(
-    (p) => Math.abs((p.difficultyHint ?? 5) - difficulty) <= 2
-  );
+  const pool = PHRASE_BANK.filter((p) => Math.abs((p.difficultyHint ?? 5) - difficulty) <= 2);
   const entries = pool.length ? pool : [...PHRASE_BANK];
   const entry = entries[Math.floor(Math.random() * entries.length)]!;
   const answer = entry.answer;
@@ -60,10 +54,7 @@ export async function inventLabBrief(input?: {
   difficulty?: number;
 }): Promise<LabBrief> {
   const adaptive = await resolveAdaptiveDifficultyForDate(new Date());
-  const difficulty = Math.max(
-    4,
-    Math.min(9, input?.difficulty ?? adaptive.target)
-  );
+  const difficulty = Math.max(4, Math.min(9, input?.difficulty ?? adaptive.target));
 
   const hasConcept = Boolean(input?.concept?.trim());
   const hasAnswer = Boolean(input?.answer?.trim());
@@ -93,7 +84,9 @@ Prefer idioms and compounds with clear visual nouns and a clever but fair aha.`,
         hasConcept
           ? `Concept hint: ${input!.concept}`
           : "Choose a concrete noun yourself (object/animal/tool — not an abstract idea).",
-        hasAnswer ? `Answer hint: ${input!.answer}` : "Choose a fresh answer yourself (not a classic rebus cliché).",
+        hasAnswer
+          ? `Answer hint: ${input!.answer}`
+          : "Choose a fresh answer yourself (not a classic rebus cliché).",
       ].join("\n"),
     });
 

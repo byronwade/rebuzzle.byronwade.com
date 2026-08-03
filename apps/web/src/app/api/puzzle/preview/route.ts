@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { previewPuzzleGeneration } from "../../../actions/puzzleGenerationActions";
 import { verifyAdminAccess } from "@/lib/admin-auth";
+import { previewPuzzleGeneration } from "../../../actions/puzzleGenerationActions";
 
 /**
  * Admin-only AI generation smoke test. Returns generated content to admins only.

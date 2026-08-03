@@ -10,10 +10,7 @@ import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
 import { loadLearningDigest } from "./learning-context";
 import { PHRASE_BANK, samplePhraseBank } from "./phrase-bank";
-import {
-  biasTechniquesBySolveRates,
-  loadTechniqueSolveRates,
-} from "./technique-calibration";
+import { biasTechniquesBySolveRates, loadTechniqueSolveRates } from "./technique-calibration";
 import type { GenerationBrief } from "./types";
 
 export type CurriculumInput = {

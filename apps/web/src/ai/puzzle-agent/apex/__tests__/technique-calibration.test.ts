@@ -1,11 +1,7 @@
 import { biasTechniquesBySolveRates } from "../technique-calibration";
 
 describe("technique-family difficulty calibrator", () => {
-  const preferred = [
-    "simple_compound",
-    "false_lead_visual",
-    "positional_phrase",
-  ] as const;
+  const preferred = ["simple_compound", "false_lead_visual", "positional_phrase"] as const;
 
   const rates = [
     { techniqueId: "simple_compound", sampleSize: 12, solveRate: 0.92 },

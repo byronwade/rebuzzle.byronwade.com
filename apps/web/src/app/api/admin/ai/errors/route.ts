@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
 import { aiErrorOps } from "@/db/ai-operations";
 import type { AIError } from "@/db/models";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 import { parseDate, parsePagination, sanitizeId } from "@/lib/api-validation";
 
 /**
@@ -18,10 +18,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     // Parse and validate pagination parameters
-    const { page, limit } = parsePagination(
-      searchParams.get("page"),
-      searchParams.get("limit")
-    );
+    const { page, limit } = parsePagination(searchParams.get("page"), searchParams.get("limit"));
 
     const severity = searchParams.get("severity") as AIError["severity"] | null;
     const errorType = searchParams.get("errorType") as AIError["errorType"] | null;
@@ -53,10 +50,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("AI Errors API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI errors" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI errors" }, { status: 500 });
   }
 }
 
@@ -85,7 +79,11 @@ export async function PATCH(request: Request) {
     }
 
     // Validate resolution object has required fields
-    if (typeof resolution !== "object" || !resolution.action || typeof resolution.action !== "string") {
+    if (
+      typeof resolution !== "object" ||
+      !resolution.action ||
+      typeof resolution.action !== "string"
+    ) {
       return NextResponse.json(
         { error: "resolution.action is required and must be a string", code: "INVALID_RESOLUTION" },
         { status: 400 }
@@ -93,20 +91,29 @@ export async function PATCH(request: Request) {
     }
 
     // Validate action is one of the allowed values
-    const validActions = ["retry_succeeded", "fallback_succeeded", "manual_fix", "ignored", "config_changed"] as const;
+    const validActions = [
+      "retry_succeeded",
+      "fallback_succeeded",
+      "manual_fix",
+      "ignored",
+      "config_changed",
+    ] as const;
     if (!validActions.includes(resolution.action)) {
       return NextResponse.json(
-        { error: `resolution.action must be one of: ${validActions.join(", ")}`, code: "INVALID_ACTION" },
+        {
+          error: `resolution.action must be one of: ${validActions.join(", ")}`,
+          code: "INVALID_ACTION",
+        },
         { status: 400 }
       );
     }
 
     // Sanitize resolution fields
     const sanitizedResolution: {
-      action: typeof validActions[number];
+      action: (typeof validActions)[number];
       notes?: string;
     } = {
-      action: resolution.action as typeof validActions[number],
+      action: resolution.action as (typeof validActions)[number],
       notes: resolution.notes ? String(resolution.notes).slice(0, 2000) : undefined,
     };
 
@@ -115,9 +122,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("AI Error resolve API error:", error);
-    return NextResponse.json(
-      { error: "Failed to resolve error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to resolve error" }, { status: 500 });
   }
 }

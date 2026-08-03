@@ -61,7 +61,8 @@ const ToolsTab = dynamic(
 );
 
 const AIInsightsTab = dynamic(
-  () => import("@/components/admin/tabs/AIInsightsTab").then((mod) => ({ default: mod.AIInsightsTab })),
+  () =>
+    import("@/components/admin/tabs/AIInsightsTab").then((mod) => ({ default: mod.AIInsightsTab })),
   {
     loading: () => (
       <div className="flex items-center justify-center py-12">

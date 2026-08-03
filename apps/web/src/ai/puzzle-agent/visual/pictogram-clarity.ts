@@ -35,8 +35,7 @@ export function scorePictogramClarity(svg: string | null | undefined): Pictogram
     reasons.push("effects_or_gradients");
   }
 
-  const shapeTags =
-    svg.match(/<(path|circle|ellipse|rect|polygon|polyline|line)\b/gi)?.length ?? 0;
+  const shapeTags = svg.match(/<(path|circle|ellipse|rect|polygon|polyline|line)\b/gi)?.length ?? 0;
 
   if (shapeTags === 0) {
     score -= 45;
@@ -81,9 +80,11 @@ export function scorePictogramClarity(svg: string | null | undefined): Pictogram
   const hasFill = /\bfill\s*=/i.test(svg) || /fill\s*:/i.test(svg);
   if (hasFill) score += 4;
 
-  if (/#(?:6[0-9a-f]{5}|7[0-9a-f]{5}|8[0-9a-f]{5}|9[0-9a-f]{5}|a[0-9a-f]{5}|b[0-9a-f]{5})\b|purple|violet|indigo|#7c3aed|#8b5cf6/i.test(
-    svg
-  )) {
+  if (
+    /#(?:6[0-9a-f]{5}|7[0-9a-f]{5}|8[0-9a-f]{5}|9[0-9a-f]{5}|a[0-9a-f]{5}|b[0-9a-f]{5})\b|purple|violet|indigo|#7c3aed|#8b5cf6/i.test(
+      svg
+    )
+  ) {
     score -= 14;
     reasons.push("off_palette");
   }
@@ -167,7 +168,10 @@ const ABSTRACT_CONCEPTS = new Set([
 ]);
 
 export function isAbstractPictogramConcept(concept: string): boolean {
-  const key = concept.trim().toLowerCase().replace(/[^a-z\s-]/g, "");
+  const key = concept
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, "");
   if (!key) return true;
   if (ABSTRACT_CONCEPTS.has(key)) return true;
   // Multi-word abstract phrases

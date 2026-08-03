@@ -18,7 +18,10 @@
     "dev:mobile": "pnpm --filter @rebuzzle/mobile dev",
     "build:web": "pnpm --filter @rebuzzle/web build",
     "build:desktop": "pnpm --filter @rebuzzle/desktop build",
-    "build:mobile": "pnpm --filter @rebuzzle/mobile build"
+    "build:mobile": "pnpm --filter @rebuzzle/mobile build",
+    "lint:web": "pnpm --filter @rebuzzle/web lint",
+    "knip:web": "pnpm --filter @rebuzzle/web knip",
+    "doctor:web": "pnpm --filter @rebuzzle/web doctor:all"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

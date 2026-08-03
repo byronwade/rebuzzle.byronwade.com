@@ -1,7 +1,4 @@
-import {
-  applySimCalibration,
-  computeSimCalibrationFromPairs,
-} from "../sim-calibration";
+import { applySimCalibration, computeSimCalibrationFromPairs } from "../sim-calibration";
 
 describe("sim calibration", () => {
   it("returns empty until enough pairs exist", () => {

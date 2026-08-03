@@ -14,10 +14,7 @@ import {
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
 import { buildGuessReaction } from "@/lib/game/reactions";
-import {
-  composePointsMultiplier,
-  rollEngagementMultipliers,
-} from "@/lib/game/retention-stats";
+import { composePointsMultiplier, rollEngagementMultipliers } from "@/lib/game/retention-stats";
 import { calculateGamePoints } from "@/lib/gameSettings";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 
@@ -243,7 +240,7 @@ export async function POST(request: Request) {
     // Award wins before responding so the client can whisper the unlock in-thread.
     let unlockedAchievement: { name: string } | undefined;
     let unlockedForEmail: Awaited<
-      ReturnType<(typeof import("@/lib/achievements/service"))["checkAndAwardAchievements"]>
+      ReturnType<typeof import("@/lib/achievements/service")["checkAndAwardAchievements"]>
     >["newlyUnlocked"] = [];
 
     if (isFinal && isCorrect) {

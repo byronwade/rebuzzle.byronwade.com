@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { verifyAdminAccess } from "@/lib/admin-auth";
+import { v4 as uuidv4 } from "uuid";
 import { aiConfigOps } from "@/db/ai-operations";
 import type { NewAIConfiguration } from "@/db/models";
-import { v4 as uuidv4 } from "uuid";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 import { sanitizeString } from "@/lib/api-validation";
 
 /**
@@ -36,10 +36,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("AI Config API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI configurations" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch AI configurations" }, { status: 500 });
   }
 }
 
@@ -55,7 +52,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name: rawName, description: rawDescription, config, version: rawVersion, abTest } = body;
+    const {
+      name: rawName,
+      description: rawDescription,
+      config,
+      version: rawVersion,
+      abTest,
+    } = body;
 
     // Sanitize string inputs
     const name = sanitizeString(rawName, 200);
@@ -105,9 +108,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ config: created }, { status: 201 });
   } catch (error) {
     console.error("AI Config create API error:", error);
-    return NextResponse.json(
-      { error: "Failed to create AI configuration" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create AI configuration" }, { status: 500 });
   }
 }

@@ -135,12 +135,12 @@ describe("retention-stats", () => {
     });
 
     it("rolls deterministically for daily bonus with fixed random", () => {
-      const neverLucky = rollEngagementMultipliers(new Date("2026-08-03T00:00:00.000Z"), () => 0.99);
-      expect(neverLucky.isLucky).toBe(false);
-      const alwaysLucky = rollEngagementMultipliers(
+      const neverLucky = rollEngagementMultipliers(
         new Date("2026-08-03T00:00:00.000Z"),
-        () => 0
+        () => 0.99
       );
+      expect(neverLucky.isLucky).toBe(false);
+      const alwaysLucky = rollEngagementMultipliers(new Date("2026-08-03T00:00:00.000Z"), () => 0);
       expect(alwaysLucky.isLucky).toBe(true);
       expect(alwaysLucky.luckyMultiplier).toBe(engagementConfig.luckySolveMultiplier);
     });
