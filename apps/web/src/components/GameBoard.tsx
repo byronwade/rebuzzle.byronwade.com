@@ -38,7 +38,6 @@ import { GuessThread, type ThreadTurn } from "./GuessThread";
 import { HintBadge } from "./HintBadge";
 import { KeyboardAwareLayout } from "./KeyboardAwareLayout";
 import { getPuzzleQuestion } from "./PuzzleDisplay";
-import { PuzzleMinimal } from "./PuzzleMinimal";
 import { PuzzleStage } from "./PuzzleStage";
 import { SmartAnswerInput } from "./SmartAnswerInput";
 import { SolveResultCard } from "./SolveResultCard";
@@ -1042,98 +1041,92 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       {/* Main content area - keyboard-aware layout */}
       <KeyboardAwareLayout>
         {({ isKeyboardVisible }) => {
-          // After lock, always show the full thread + result — never the collapsed keyboard view.
-          const collapsed = isKeyboardVisible && !gameState.gameOver;
+          // After lock, keep the full thread — don't collapse for the keyboard.
+          const keyboardOpen = isKeyboardVisible && !gameState.gameOver;
+          const stageState = keyboardOpen ? "compact" : hasThread ? "docked" : "hero";
+
           return (
-            <div className="flex flex-col h-full">
-              {/* Puzzle area - collapses when keyboard is visible, centers content */}
-              <main className="flex-1 overflow-hidden transition-all duration-300 puzzle-area flex flex-col">
-                {collapsed ? (
-                  /* COLLAPSED VIEW - minimal puzzle + last Eve line while typing */
-                  <div className="flex flex-col items-center px-4 pt-2">
-                    <PuzzleMinimal
+            <div className="flex h-full min-h-0 flex-col">
+              <main className="puzzle-area flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div
+                  className={cn(
+                    "play-stage flex min-h-0 flex-1 flex-col items-center overflow-hidden px-4 md:px-6",
+                    keyboardOpen
+                      ? "justify-start py-2"
+                      : hasThread
+                        ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
+                        : "justify-center py-[clamp(0.5rem,2vh,1rem)]"
+                  )}
+                >
+                  {showStageChrome && !keyboardOpen ? (
+                    <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
+                      {!hasThread ? (
+                        <DifficultyBadge
+                          className="play-fade-in"
+                          difficulty={currentEventPuzzle?.difficulty}
+                          showDescription
+                        />
+                      ) : (
+                        <span />
+                      )}
+                      {gameData.hints && gameData.hints.length > 0 ? (
+                        <HintBadge
+                          hints={gameData.hints}
+                          gameId={gameData.id}
+                          onHintReveal={(hintIndex) => {
+                            dispatch({ type: "REVEAL_HINT" });
+                            void playInterfaceSound("hint");
+                            trackEvent(analyticsEvents.HINT_USED, {
+                              puzzleId: gameData.id || "unknown",
+                              hintIndex,
+                            });
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <section aria-label="Puzzle" className="w-full max-w-2xl shrink-0">
+                    <PuzzleStage
                       puzzle={puzzleDisplay}
                       puzzleType={puzzleType}
+                      question={keyboardOpen ? undefined : stageCaption}
+                      state={stageState}
                       visual={gameData.visual}
-                      className="w-full max-w-2xl"
                     />
-                    {lastTurn ? (
-                      <div className="mt-2 w-full max-w-2xl text-center">
-                        <div className="font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
-                          Last: {lastTurn.text}
-                        </div>
-                        <p
-                          className={cn(
-                            "mt-1 line-clamp-2 text-xs leading-5",
-                            lastTurn.tier === "close" || lastTurn.tier === "warm"
-                              ? "text-warning"
-                              : "text-muted-foreground"
-                          )}
-                        >
-                          Eve · {lastTurn.line}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  /* EXPANDED VIEW — focused play stage */
-                  <div
-                    className={cn(
-                      "play-stage flex flex-1 flex-col items-center overflow-hidden px-4 py-[clamp(0.5rem,2vh,1rem)] md:px-6",
-                      hasThread ? "justify-start" : "justify-center"
-                    )}
-                  >
-                    {showStageChrome ? (
-                      <div className="mb-[clamp(0.5rem,2vh,1rem)] flex w-full max-w-2xl items-start justify-between gap-3">
-                        {!hasThread ? (
-                          <DifficultyBadge
-                            className="play-fade-in"
-                            difficulty={currentEventPuzzle?.difficulty}
-                            showDescription
-                          />
-                        ) : (
-                          <span />
-                        )}
-                        {gameData.hints && gameData.hints.length > 0 ? (
-                          <HintBadge
-                            hints={gameData.hints}
-                            gameId={gameData.id}
-                            onHintReveal={(hintIndex) => {
-                              dispatch({ type: "REVEAL_HINT" });
-                              void playInterfaceSound("hint");
-                              trackEvent(analyticsEvents.HINT_USED, {
-                                puzzleId: gameData.id || "unknown",
-                                hintIndex,
-                              });
-                            }}
-                          />
-                        ) : null}
-                      </div>
-                    ) : null}
+                  </section>
 
-                    <section aria-label="Puzzle" className="w-full max-w-2xl">
-                      <PuzzleStage
-                        puzzle={puzzleDisplay}
-                        puzzleType={puzzleType}
-                        question={stageCaption}
-                        state={hasThread ? "docked" : "hero"}
-                        visual={gameData.visual}
-                      />
-                    </section>
+                  {keyboardOpen && lastTurn ? (
+                    <p
+                      className={cn(
+                        "mt-1.5 w-full max-w-2xl truncate text-center text-xs leading-5",
+                        lastTurn.tier === "close" || lastTurn.tier === "warm"
+                          ? "text-warning"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                        {lastTurn.text}
+                      </span>
+                      <span className="mx-1.5 text-border-strong">·</span>
+                      Eve · {lastTurn.line}
+                    </p>
+                  ) : null}
 
-                    {hasThread ? (
-                      <GuessThread
-                        className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl flex-1 px-0.5 pb-2"
-                        footer={resultCard}
-                        turns={turns}
-                      />
-                    ) : resultCard ? (
-                      <div className="mt-[clamp(0.75rem,2.5vh,1.25rem)] w-full max-w-2xl px-0.5 pb-2">
-                        {resultCard}
-                      </div>
-                    ) : null}
-                  </div>
-                )}
+                  {hasThread && !keyboardOpen ? (
+                    <GuessThread
+                      className="mt-[clamp(0.75rem,2.5vh,1.25rem)] max-w-2xl"
+                      footer={resultCard}
+                      turns={turns}
+                    />
+                  ) : null}
+
+                  {!hasThread && resultCard && !keyboardOpen ? (
+                    <div className="mt-[clamp(0.75rem,2.5vh,1.25rem)] w-full max-w-2xl px-0.5 pb-2">
+                      {resultCard}
+                    </div>
+                  ) : null}
+                </div>
               </main>
 
               {/* Error display - positioned above input area */}

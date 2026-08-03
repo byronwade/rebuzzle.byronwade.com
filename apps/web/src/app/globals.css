@@ -828,6 +828,19 @@
   --stage-radius: 12px;
 }
 
+/* Keyboard-open: real small tiles (no transform shrink that clips glyphs). */
+.puzzle-stage[data-state="compact"] {
+  --stage-pad: 0.5rem;
+  --stage-min: 0px;
+  --stage-scale: 1;
+  --stage-radius: 12px;
+}
+
+.puzzle-stage[data-state="compact"] .puzzle-stage-plate {
+  min-height: 0;
+  overflow: visible;
+}
+
 .puzzle-stage-plate {
   position: relative;
   display: flex;
@@ -838,8 +851,9 @@
   min-height: var(--stage-min);
   padding: var(--stage-pad) clamp(1rem, 4vw, 2rem);
   border-radius: var(--stage-radius);
-  /* Near-black in both themes: the plate is the room, not a card. */
+  /* Cinema default: near-black room for unicode / emoji boards. */
   background: radial-gradient(120% 140% at 50% 0%, #1c1c1c 0%, #0a0a0a 62%);
+  color: #f5f5f4;
   box-shadow:
     0 1px 2px rgb(0 0 0 / 0.3),
     0 24px 60px -24px rgb(0 0 0 / 0.45),
@@ -848,7 +862,19 @@
     min-height 420ms var(--ease),
     padding 420ms var(--ease),
     border-radius 420ms var(--ease),
-    box-shadow 420ms var(--ease);
+    box-shadow 420ms var(--ease),
+    background 280ms var(--ease),
+    color 280ms var(--ease);
+}
+
+/* Ink Pictogram boards — authored for paper; never sit on cinema black. */
+.puzzle-stage-plate--paper {
+  background: var(--puzzle-canvas, #f4f6f3);
+  color: var(--puzzle-ink, #1a1f1c);
+  box-shadow:
+    0 1px 2px rgb(26 31 28 / 0.08),
+    0 18px 40px -24px rgb(26 31 28 / 0.22),
+    inset 0 0 0 1px rgb(26 31 28 / 0.08);
 }
 
 .puzzle-stage[data-state="docked"] .puzzle-stage-plate {
@@ -856,6 +882,13 @@
     0 1px 2px rgb(0 0 0 / 0.25),
     0 12px 28px -18px rgb(0 0 0 / 0.4),
     inset 0 0 0 1px rgb(255 255 255 / 0.07);
+}
+
+.puzzle-stage[data-state="docked"] .puzzle-stage-plate--paper {
+  box-shadow:
+    0 1px 2px rgb(26 31 28 / 0.06),
+    0 10px 22px -16px rgb(26 31 28 / 0.18),
+    inset 0 0 0 1px rgb(26 31 28 / 0.08);
 }
 
 /* The light behind the puzzle. Sits under the content, never over it. */
@@ -920,16 +953,16 @@
    ============================================================ */
 
 .guess-thread {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.guess-thread [data-slot="message-scroller-viewport"] {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
 }
 
-.guess-thread::-webkit-scrollbar {
-  display: none;
-}
-
-.guess-thread > * {
+.guess-thread [data-slot="message-scroller-item"] {
   animation: message-in 320ms var(--ease) both;
 }
 
@@ -946,7 +979,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .guess-thread > * {
+  .guess-thread [data-slot="message-scroller-item"] {
     animation: none !important;
   }
 }
@@ -1098,17 +1131,24 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
-  transition: height 0.3s ease-out;
+  transition: height 0.2s ease-out;
 }
 
-.keyboard-visible .puzzle-area,
+.keyboard-visible .puzzle-area {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .keyboard-visible .input-area {
   flex: 0 0 auto;
 }
 
-.keyboard-visible .puzzle-area {
-  overflow: hidden;
+.keyboard-visible .play-dock {
+  padding-top: 0.75rem;
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
 }
 
 .input-area-keyboard-transition {
