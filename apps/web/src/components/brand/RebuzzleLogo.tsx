@@ -14,15 +14,15 @@ const WORDMARK_SIZE: Record<LogoSize, string> = {
   lg: "text-xl",
 };
 
-const R_LETTER =
-  "M18 14H34C44.5 14 51 21 51 30C51 37.5 46 43 38.5 45L52 56H40L28.5 46H25.5V56H18V14ZM25.5 22.5V37H33.5C38.5 37 42 33.5 42 30C42 26 38.5 22.5 33.5 22.5H25.5Z";
-
 type RebuzzleMarkProps = {
   className?: string;
   title?: string;
 };
 
-/** Ink board, solid custom R, link-blue solution spark. */
+/**
+ * Daily board mark — 2×2 Wordle-style tiles, one solved in link blue.
+ * Theme-aware board via foreground; tiles stay high-contrast.
+ */
 export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
   return (
     <svg
@@ -35,8 +35,10 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
     >
       {title ? <title>{title}</title> : null}
       <rect className="fill-foreground" height="64" rx="14" width="64" />
-      <path className="fill-background" d={R_LETTER} fillRule="evenodd" />
-      <circle className="fill-link" cx="36.5" cy="29.8" r="2.5" />
+      <rect className="fill-background" height="20" rx="5" width="20" x="10" y="10" />
+      <rect className="fill-background" height="20" rx="5" width="20" x="34" y="10" />
+      <rect className="fill-background" height="20" rx="5" width="20" x="10" y="34" />
+      <rect className="fill-link" height="20" rx="5" width="20" x="34" y="34" />
     </svg>
   );
 }
