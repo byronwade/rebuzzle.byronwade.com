@@ -63,6 +63,8 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
     const { trySelectUgcLotteryFiller } = await import("@/lib/ugc/lottery");
     const ugc = await trySelectUgcLotteryFiller({ dateString, fallbackReason });
     if (ugc) {
+      revalidateTag("daily-puzzle", "max");
+      revalidateTag(`daily-puzzle-${dateString}`, "max");
       return {
         id: ugc.id,
         rebusPuzzle: ugc.rebusPuzzle,
