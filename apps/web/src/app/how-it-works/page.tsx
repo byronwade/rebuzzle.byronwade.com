@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import { AppLink } from "@/components/AppLink";
+import { DeveloperDeepDive } from "@/components/how-it-works/DeveloperDeepDive";
 import Layout from "@/components/Layout";
 import { generateStaticPageMetadata } from "@/lib/seo/metadata";
 import {
@@ -20,7 +21,7 @@ import {
 export const metadata: Metadata = generateStaticPageMetadata({
   title: "How to Play Rebuzzle | Decode Daily Visual Puzzles",
   description:
-    "Learn how to solve Rebuzzle's daily visual word puzzles. Read pictures, notice placement, test your answer, and use progressive hints when you need a nudge.",
+    "Learn how to solve Rebuzzle's daily visual word puzzles—then dive into how Apex, Eve, publish gates, and play-loop AI actually work. Open-source notes and feedback welcome.",
   url: "/how-it-works",
   keywords: [
     "how to play Rebuzzle",
@@ -28,6 +29,8 @@ export const metadata: Metadata = generateStaticPageMetadata({
     "daily visual puzzle",
     "picture word puzzles",
     "rebus puzzle tips",
+    "Rebuzzle AI architecture",
+    "Apex puzzle generator",
   ],
 });
 
@@ -115,7 +118,7 @@ export default function HowItWorksPage() {
   ]);
 
   const speakableSchema = generateSpeakableSchema({
-    cssSelector: ["h1", "#decode-rules", "#daily-run"],
+    cssSelector: ["h1", "#decode-rules", "#daily-run", "#under-the-hood"],
   });
 
   return (
@@ -164,6 +167,12 @@ export default function HowItWorksPage() {
                 href="#decode-rules"
               >
                 Learn the patterns
+              </a>
+              <a
+                className="text-muted-foreground text-sm underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
+                href="#under-the-hood"
+              >
+                For developers
               </a>
             </div>
           </div>
@@ -374,8 +383,18 @@ export default function HowItWorksPage() {
               className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
             />
           </AppLink>
+          <p className="mt-8 text-center">
+            <a
+              className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em] underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
+              href="#under-the-hood"
+            >
+              Continue to the technical deep dive
+            </a>
+          </p>
         </section>
       </div>
+
+      <DeveloperDeepDive />
     </Layout>
   );
 }
