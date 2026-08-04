@@ -14,11 +14,8 @@ const WORDMARK_SIZE: Record<LogoSize, string> = {
   lg: "text-xl",
 };
 
-/** Classic jigsaw: tabs on top/right/bottom, socket on the left. */
-const PUZZLE_PIECE =
-  "M30 22.8H32.55C32.55 20.75 33.7 19.4 35.5 19.4C37.3 19.4 38.45 20.75 38.45 22.8H41C42.45 22.8 43.55 23.9 43.55 25.35V26.5C45.45 26.5 46.75 27.7 46.75 29.55C46.75 31.4 45.45 32.6 43.55 32.6V33.75C43.55 35.2 42.45 36.3 41 36.3H38.45C38.45 38.35 37.3 39.7 35.5 39.7C33.7 39.7 32.55 38.35 32.55 36.3H30C28.55 36.3 27.45 35.2 27.45 33.75V32.6C27.45 32.6 31.1 32.6 31.1 29.55C31.1 26.5 27.45 26.5 27.45 26.5V25.35C27.45 23.9 28.55 22.8 30 22.8Z";
-
-const R_WITH_PUZZLE_CUTOUT = `M18 14h16.2c7.35 0 12.3 4.55 12.3 11.15 0 5.05-2.85 8.85-7.55 10.35L48.2 50H38.7L30.4 36.9H25.5V50H18V14Z${PUZZLE_PIECE}`;
+const R_LETTER =
+  "M18 15h17.2c9.15 0 15.6 5.85 15.6 14.2 0 6.85-4.05 12.05-10.7 13.85L51 49H40.2l-9.3-5.4H26.2V49H18V15Zm8.2 8.1v12.2h9.2c4.35 0 7.1-2.55 7.1-6.15 0-3.55-2.75-6.05-7.1-6.05h-9.2Z";
 
 type RebuzzleMarkProps = {
   className?: string;
@@ -26,8 +23,8 @@ type RebuzzleMarkProps = {
 };
 
 /**
- * Rebuzzle board mark — ink tile, geometric R, classic puzzle-piece counter.
- * Uses foreground/background so it flips cleanly with the theme.
+ * Rebuzzle mark — ink board, custom R, link-blue solution spark.
+ * Theme-aware via foreground/background fills.
  */
 export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
   return (
@@ -41,8 +38,8 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
     >
       {title ? <title>{title}</title> : null}
       <rect className="fill-foreground" height="64" rx="14" width="64" />
-      <path className="fill-background" d={R_WITH_PUZZLE_CUTOUT} fillRule="evenodd" />
-      <path className="fill-link" d={PUZZLE_PIECE} />
+      <path className="fill-background" d={R_LETTER} fillRule="evenodd" />
+      <circle className="fill-link" cx="39.2" cy="29.2" r="2.6" />
     </svg>
   );
 }
@@ -52,7 +49,6 @@ type RebuzzleLogoProps = {
   markClassName?: string;
   size?: LogoSize;
   showWordmark?: boolean;
-  /** Accessible name when the logo is the sole content of a link */
   title?: string;
 };
 
