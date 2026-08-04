@@ -101,6 +101,7 @@ describe("Apex critique-locked repair integration", () => {
       diversity: { bannedAnswerKeys: [] },
       briefSummary: "test",
       techniqueRates: [],
+      answerEloByKey: new Map(),
       learning: {
         enabled: false,
         avoidPatterns: [],

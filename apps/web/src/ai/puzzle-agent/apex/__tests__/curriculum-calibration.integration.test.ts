@@ -2,6 +2,7 @@ const loadDiversitySnapshot = jest.fn();
 const loadLearningDigest = jest.fn();
 const loadAllAnswerKeys = jest.fn();
 const loadTechniqueSolveRates = jest.fn();
+const loadAnswerEloMap = jest.fn();
 const samplePhraseBank = jest.fn();
 
 jest.mock("../diversity-memory", () => ({
@@ -22,6 +23,9 @@ jest.mock("../technique-calibration", () => {
     loadTechniqueSolveRates: (...args: unknown[]) => loadTechniqueSolveRates(...args),
   };
 });
+jest.mock("../elo-store", () => ({
+  loadAnswerEloMap: (...args: unknown[]) => loadAnswerEloMap(...args),
+}));
 jest.mock("../phrase-bank", () => {
   const actual = jest.requireActual("../phrase-bank") as typeof import("../phrase-bank");
   return {
@@ -66,6 +70,7 @@ describe("curriculum ← technique calibration integration", () => {
       ],
       notes: ["Loaded technique rates"],
     });
+    loadAnswerEloMap.mockResolvedValue(new Map([["doorbell", 1625]]));
   });
 
   it("biases preferred techniques toward harder families when learning says too easy", async () => {
@@ -88,10 +93,13 @@ describe("curriculum ← technique calibration integration", () => {
     });
 
     expect(loadTechniqueSolveRates).toHaveBeenCalled();
+    expect(loadAnswerEloMap).toHaveBeenCalled();
     // Lowest live solve rate in-tier should lead when the window is too easy.
     expect(brief.preferredTechniques[0]).toBe("single_homophone");
     expect(brief.preferredTechniques.at(-1)).toBe("simple_compound");
+    expect(brief.answerEloByKey.get("doorbell")).toBe(1625);
     expect(brief.briefSummary).toMatch(/Technique calibration \(too easy\)/i);
+    expect(brief.briefSummary).toMatch(/Pairwise answer Elo/i);
   });
 
   it("skips technique calibration load when learning feedback is disabled", async () => {
@@ -100,7 +108,9 @@ describe("curriculum ← technique calibration integration", () => {
       useLearningFeedback: false,
     });
     expect(loadTechniqueSolveRates).not.toHaveBeenCalled();
+    expect(loadAnswerEloMap).not.toHaveBeenCalled();
     expect(loadLearningDigest).not.toHaveBeenCalled();
     expect(brief.learning.enabled).toBe(false);
+    expect(brief.answerEloByKey.size).toBe(0);
   });
 });

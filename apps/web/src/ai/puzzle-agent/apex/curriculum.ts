@@ -10,6 +10,7 @@ import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
 import { loadLearningDigest } from "./learning-context";
 import { PHRASE_BANK, samplePhraseBank } from "./phrase-bank";
+import { loadAnswerEloMap } from "./elo-store";
 import { biasTechniquesBySolveRates, loadTechniqueSolveRates } from "./technique-calibration";
 import type { GenerationBrief } from "./types";
 
@@ -33,32 +34,36 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   const minFunScore = AI_CONFIG.puzzleAgent.minFunScore;
   const candidateCount = input.candidateCount ?? AI_CONFIG.puzzleAgent.apex?.candidateCount ?? 3;
 
-  const [diversity, learning, archiveKeys, techniqueCalibration] = await Promise.all([
-    loadDiversitySnapshot({ lookbackDays: 45 }),
-    input.useLearningFeedback === false
-      ? Promise.resolve({
-          enabled: false,
-          avoidPatterns: [] as string[],
-          preferPatterns: [] as string[],
-          difficultyDriftNotes: [] as string[],
-          sampleSize: 0,
-          targetDifficultyDelta: 0,
-          tooEasy: false,
-          tooHard: false,
-          medianSolveSeconds: null as number | null,
-          solveRate: null as number | null,
-        })
-      : loadLearningDigest(),
-    loadAllAnswerKeys(500),
-    input.useLearningFeedback === false
-      ? Promise.resolve({
-          lookbackDays: 45,
-          sampleSize: 0,
-          rates: [],
-          notes: [] as string[],
-        })
-      : loadTechniqueSolveRates({ lookbackDays: 45 }),
-  ]);
+  const [diversity, learning, archiveKeys, techniqueCalibration, answerEloByKey] =
+    await Promise.all([
+      loadDiversitySnapshot({ lookbackDays: 45 }),
+      input.useLearningFeedback === false
+        ? Promise.resolve({
+            enabled: false,
+            avoidPatterns: [] as string[],
+            preferPatterns: [] as string[],
+            difficultyDriftNotes: [] as string[],
+            sampleSize: 0,
+            targetDifficultyDelta: 0,
+            tooEasy: false,
+            tooHard: false,
+            medianSolveSeconds: null as number | null,
+            solveRate: null as number | null,
+          })
+        : loadLearningDigest(),
+      loadAllAnswerKeys(500),
+      input.useLearningFeedback === false
+        ? Promise.resolve({
+            lookbackDays: 45,
+            sampleSize: 0,
+            rates: [],
+            notes: [] as string[],
+          })
+        : loadTechniqueSolveRates({ lookbackDays: 45 }),
+      input.useLearningFeedback === false
+        ? Promise.resolve(new Map<string, number>())
+        : loadAnswerEloMap({ limit: 500 }),
+    ]);
 
   // Ban recent + full archive answers so retired puzzles still block reuse
   const banned = new Set([...diversity.bannedAnswerKeys, ...archiveKeys]);
@@ -155,6 +160,9 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       ? `Learning prefer: ${learning.preferPatterns.slice(0, 3).join("; ")}.`
       : null,
     techniqueBias.notes[0] ?? techniqueCalibration.notes[0] ?? null,
+    answerEloByKey.size
+      ? `Pairwise answer Elo loaded for ${answerEloByKey.size} keys.`
+      : null,
     learning.targetDifficultyDelta !== 0
       ? `Applied difficulty delta: ${learning.targetDifficultyDelta > 0 ? "+" : ""}${learning.targetDifficultyDelta}.`
       : null,
@@ -175,6 +183,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     diversity,
     learning,
     techniqueRates: techniqueCalibration.rates,
+    answerEloByKey,
     qualityThreshold,
     minFunScore,
     minRubricOverall: AI_CONFIG.puzzleAgent.apex?.minRubricOverall ?? 78,

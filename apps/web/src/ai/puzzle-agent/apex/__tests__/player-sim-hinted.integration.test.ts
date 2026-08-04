@@ -145,6 +145,12 @@ describe("simulatePlayerSolve progressive-hint integration", () => {
       (call) => (call[0] as { operation?: string }).operation === "vision-hinted-solve"
     );
     expect(hintedCalls.length).toBeGreaterThan(0);
+    const hintedSystem = String(
+      (hintedCalls[0]?.[0] as { system?: string } | undefined)?.system ?? ""
+    );
+    expect(hintedSystem).toMatch(/DESCRIPTION/);
+    expect(hintedSystem).toMatch(/RELATIONS/);
+    expect(hintedSystem).toMatch(/PROGRAM/);
     expect(result.hintedAttempted).toBe(true);
     expect(result.hintedUnlocksVisualSolve).toBe(false);
     expect(playerSimPublishBlockers(result).join(" ")).toMatch(/Progressive-hint vision failed/i);

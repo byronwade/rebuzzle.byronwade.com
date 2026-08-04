@@ -1,10 +1,9 @@
 /**
  * Elo-style priors for Apex finalist pre-ranking.
  *
- * Not a full pairwise rating system yet — converts observed technique/player
- * solve rates (and optional difficulty hints) into Elo so tournament ranking
- * can prefer finalists that fit the target difficulty band before expensive
- * rendered evaluation.
+ * Soft priors come from technique/player solve rates and difficulty hints.
+ * When `answerEloByKey` is provided (from persisted pairwise matches in
+ * `puzzleEloRatings`), those ratings take precedence over soft priors.
  */
 
 import type { TechniqueSolveRate } from "./technique-calibration";

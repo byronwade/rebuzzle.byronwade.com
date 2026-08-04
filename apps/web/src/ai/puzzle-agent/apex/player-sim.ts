@@ -25,6 +25,16 @@ import type { PlayerSimResult } from "./types";
 
 export { shouldRunProgressiveHintVision } from "./progressive-hint-vision";
 
+/** Shared DescProg ladder for blind and hinted screenshot solves. */
+export const DESCPROG_SOLVE_SYSTEM = `You are a clever but non-expert player solving a rebus from a screenshot.
+You do not know the intended answer, icon labels, technique, or explanation.
+Follow a component-guided program before answering:
+1) DESCRIPTION — list every visible icon, word, letter, number, and operator exactly as seen.
+2) RELATIONS — note order, stacking (above/below/between), size/case contrast, repeats, and operators.
+3) PROGRAM — for each cue, propose the word or sound it contributes; combine steps into candidate phrases.
+4) HYPOTHESES — return up to five honest answers ranked by confidence, each with a short cue→answer mapping in rationale.
+Never claim confidence from information that is not visible in the screenshot.`;
+
 const BlindSolveSchema = z.object({
   visibleElements: z.array(z.string().max(100)).max(20),
   relationships: z.array(z.string().max(180)).max(12),
@@ -65,14 +75,7 @@ export async function runBlindSolveImageTournament(input: {
         temperature: 0.35,
         operation: "vision-blind-solve",
         schema: BlindSolveSchema,
-        system: `You are a clever but non-expert player seeing a rebus puzzle for the first time.
-You do not know the intended answer, icon labels, technique, explanation, or hints.
-Follow a component-guided program before answering:
-1) DESCRIPTION — list every visible icon, word, letter, number, and operator exactly as seen.
-2) RELATIONS — note order, stacking (above/below/between), size/case contrast, repeats, and operators.
-3) PROGRAM — for each cue, propose the word or sound it contributes; combine steps into candidate phrases.
-4) HYPOTHESES — return up to five honest answers ranked by confidence, each with a short cue→answer mapping in rationale.
-Never claim confidence from information that is not visible in the screenshot.`,
+        system: DESCPROG_SOLVE_SYSTEM,
         prompt: [
           `Blindly solve this ${input.tierLabel} rebus screenshot.`,
           `Presentation: ${input.presentation ?? input.profileId}.`,
@@ -135,15 +138,17 @@ export async function runHintedSolveTournament(input: {
         temperature: 0.35,
         operation: "vision-hinted-solve",
         schema: BlindSolveSchema,
-        system: `You are a clever but non-expert player solving a rebus with progressive hints.
-You do not know the intended answer, icon labels, technique, or explanation.
-Use the screenshot first; treat hints as soft unlocks, not spoilers to invent invisible objects.
-Return up to five honest answer hypotheses grounded in visible evidence + the hints.`,
+        system: `${DESCPROG_SOLVE_SYSTEM}
+
+Progressive-hint mode: run the same DESCRIPTION → RELATIONS → PROGRAM → HYPOTHESES ladder.
+Use the screenshot first; treat hints as soft unlocks, not permission to invent invisible objects.
+Hints may confirm or reorder steps in PROGRAM, but every hypothesis must still map to visible cues.`,
         prompt: [
           `Solve this ${input.tierLabel} rebus screenshot with progressive hints.`,
           `Presentation: ${profile.profileId}, ${profile.viewportWidth}px viewport, ${profile.tileSize}px icons.`,
           "Hints (earliest → later; final spoiler withheld):",
           ...earlyHints.map((hint, index) => `${index + 1}. ${hint}`),
+          "Respond with visibleElements, relationships, then ranked hypotheses after applying the DescProg ladder.",
         ].join("\n"),
       })),
       model: modelId,

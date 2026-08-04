@@ -47,6 +47,8 @@ export function assessHumanCalibrationGate(input: {
     visualFailureRate: number | null;
     ambiguityRate: number | null;
   } | null;
+  /** Technique-family drift from playtest strata (watch/halt signals). */
+  techniqueDriftIssues?: string[] | null;
   now?: Date;
 }): HumanCalibrationGate {
   const reasons: string[] = [];
@@ -54,6 +56,7 @@ export function assessHumanCalibrationGate(input: {
 
   const icon = input.icon;
   const playtest = input.playtest;
+  const techniqueDriftIssues = (input.techniqueDriftIssues ?? []).filter(Boolean);
 
   if (icon) {
     if (icon.coverageRate >= 1) {
@@ -92,6 +95,22 @@ export function assessHumanCalibrationGate(input: {
       reasons.push(
         `Human playtest collecting (${playtest.completedCandidates}/${PLAYTEST_RELEASE_COMPLETED_FLOOR} completed puzzles)`
       );
+    }
+  }
+
+  // Playtest technique drift feeds the breaker once release samples exist.
+  // Crush/miss drift while collecting stays watch; after the release floor it
+  // can force reserve when paired with a failing release cohort, otherwise watch.
+  if (techniqueDriftIssues.length) {
+    reasons.push(...techniqueDriftIssues.slice(0, 3));
+    if (status === "insufficient") {
+      status = "watch";
+    } else if (
+      status === "healthy" &&
+      playtest &&
+      playtest.completedCandidates >= PLAYTEST_RELEASE_COMPLETED_FLOOR
+    ) {
+      status = "watch";
     }
   }
 
@@ -134,6 +153,7 @@ export function assessHumanCalibrationGate(input: {
 export async function loadHumanCalibrationGate(): Promise<HumanCalibrationGate> {
   let icon: Parameters<typeof assessHumanCalibrationGate>[0]["icon"] = null;
   let playtest: Parameters<typeof assessHumanCalibrationGate>[0]["playtest"] = null;
+  let techniqueDriftIssues: string[] = [];
 
   try {
     const [
@@ -185,9 +205,26 @@ export async function loadHumanCalibrationGate(): Promise<HumanCalibrationGate> 
       visualFailureRate: report.visualFailureRate,
       ambiguityRate: report.ambiguityRate,
     };
+
+    try {
+      const [{ techniqueRatesFromPlaytestStrata, playtestTechniqueDriftIssues }, { loadLearningDigest }] =
+        await Promise.all([
+          import("@/ai/puzzle-agent/apex/playtest-calibration"),
+          import("@/ai/puzzle-agent/apex/learning-context"),
+        ]);
+      const rates = techniqueRatesFromPlaytestStrata(report.techniqueScores);
+      const learning = await loadLearningDigest();
+      techniqueDriftIssues = playtestTechniqueDriftIssues({
+        rates,
+        tooEasy: learning.tooEasy,
+        tooHard: learning.tooHard,
+      });
+    } catch {
+      techniqueDriftIssues = [];
+    }
   } catch {
     playtest = null;
   }
 
-  return assessHumanCalibrationGate({ icon, playtest });
+  return assessHumanCalibrationGate({ icon, playtest, techniqueDriftIssues });
 }

@@ -509,6 +509,19 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     ],
   },
 
+  // Pairwise Elo ratings derived from playtest / live solve strata
+  {
+    collection: "puzzleEloRatings",
+    indexes: [
+      {
+        spec: { kind: 1, key: 1 },
+        options: { unique: true, name: "elo_kind_key_unique" },
+      },
+      { spec: { kind: 1, updatedAt: -1 } },
+      { spec: { rating: -1 } },
+    ],
+  },
+
   // Levels collection
   {
     collection: "levels",

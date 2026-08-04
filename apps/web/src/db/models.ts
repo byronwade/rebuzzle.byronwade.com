@@ -1161,6 +1161,19 @@ export interface PuzzlePlaytestReview {
   createdAt: Date;
 }
 
+/** Persisted pairwise Elo subject (answer key or technique id). Higher = harder. */
+export type PuzzleEloSubjectKind = "answer" | "technique";
+
+export interface PuzzleEloRating {
+  _id?: string;
+  key: string;
+  kind: PuzzleEloSubjectKind;
+  rating: number;
+  matches: number;
+  updatedAt: Date;
+  createdAt: Date;
+}
+
 /**
  * AI Configuration - versioned AI config with A/B testing
  */
