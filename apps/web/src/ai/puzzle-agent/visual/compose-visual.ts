@@ -3,6 +3,7 @@
  * Fills pictogram SVGs (+ optional image tiles) and validates budget/style.
  */
 
+import { defaultLayoutForTechnique } from "../apex/rule-graph";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
 import { computeFunScore, displayLeaksAnswer, isKnownTechniqueId } from "../quality";
 import { getTechniques } from "../technique-library";
@@ -170,6 +171,7 @@ export async function composePuzzleVisual(
 
   const unicodeFallback =
     input.unicodeFallback?.trim() || buildUnicodeFallback(filledLayers) || "◆";
+  const layout = input.layout ?? defaultLayoutForTechnique(input.techniqueId);
 
   const parsed = PuzzleVisualSchema.safeParse({
     styleId: INK_PICTOGRAM_STYLE_ID,
@@ -178,7 +180,7 @@ export async function composePuzzleVisual(
       : filledLayers.some((l) => l.kind === "pictogram" && l.svg)
         ? "composed"
         : "unicode",
-    layout: input.layout ?? "row",
+    layout,
     layers: filledLayers,
     unicodeFallback,
     caption: input.caption,
@@ -189,7 +191,7 @@ export async function composePuzzleVisual(
     : {
         styleId: INK_PICTOGRAM_STYLE_ID,
         mode: "unicode",
-        layout: "row",
+        layout,
         layers: filledLayers.length
           ? filledLayers
           : [

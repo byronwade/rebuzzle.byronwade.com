@@ -106,7 +106,7 @@ Object recognition alone is insufficient. Render the same component used by the 
 - alternate readings introduced by layout;
 - accessibility fallback matching the visual meaning without exposing the answer.
 
-The current `flex-wrap` row renderer can change visual topology across widths, so generation must either lock a composition grid or validate each responsive state.
+Publication boards use a **viewport-invariant layout lock**: row breaks are planned once from the compact-320 profile (and grid columns from a fixed rule), then reused at mobile-375 and desktop-768 so cue adjacency cannot change with width. The React player consumes the same locked row membership instead of CSS `flex-wrap` reflow. Positional techniques additionally receive a deterministic rule→graph composer (`simple_compound`, `single_homophone`, `basic_positional`, `positional_phrase`, `size_or_case_semantics`) that chooses layout and joiners/emphasis before invent spend.
 
 Every board-perception judge must independently inventory pictograms, visible text, and operator symbols. Consensus requires every declared cue in every responsive profile; repeated cues retain their multiplicity, because one visible `GO` cannot prove a board intended to show `GO GO GO`. Text matching normalizes case, spacing, and stacked letters without granting short-substring credit, while operator matching accepts only explicit symbol equivalents such as `plus` for `+`. Per-profile concept, text, and operator vote maps are persisted with the generated puzzle.
 

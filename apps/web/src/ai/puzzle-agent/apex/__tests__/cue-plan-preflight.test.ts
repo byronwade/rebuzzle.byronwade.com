@@ -1,20 +1,28 @@
 jest.mock("../../visual/compose-visual", () => ({
-  composePuzzleVisual: jest.fn(async ({ layers }: { layers: unknown[] }) => ({
-    visual: {
-      styleId: "ink-pictogram-v1",
-      mode: "composed",
-      layout: "row",
+  composePuzzleVisual: jest.fn(
+    async ({
       layers,
-      unicodeFallback: "🌸 POT",
-    },
-    totalParts: layers.length,
-    withinBudget: true,
-    componentBudget: { min: 1, max: 4 },
-    funScore: 80,
-    issues: [],
-    tips: [],
-    generated: { pictograms: 1, images: 0, failedPictograms: 0, failedImages: 0 },
-  })),
+      layout = "row",
+    }: {
+      layers: unknown[];
+      layout?: "row" | "stack" | "grid" | "overlay";
+    }) => ({
+      visual: {
+        styleId: "ink-pictogram-v1",
+        mode: "composed",
+        layout,
+        layers,
+        unicodeFallback: "🌸 POT",
+      },
+      totalParts: layers.length,
+      withinBudget: true,
+      componentBudget: { min: 1, max: 4 },
+      funScore: 80,
+      issues: [],
+      tips: [],
+      generated: { pictograms: 1, images: 0, failedPictograms: 0, failedImages: 0 },
+    })
+  ),
 }));
 
 import { resolveCuratedPictogram } from "../../visual/curated-pictograms";
@@ -71,13 +79,32 @@ describe("cue-plan preflight", () => {
 
     expect(result.ok).toBe(true);
     expect(result.composition?.issues).toEqual([]);
+    expect(result.inspection.layout).toBe("row");
+    expect(result.inspection.ruleGraph.applied).toBe(true);
     expect(result.composition?.visual.layers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: "pictogram", concept: "flower" }),
         expect.objectContaining({ kind: "text", content: "POT" }),
+        expect.objectContaining({ kind: "operator", symbol: "+" }),
       ])
     );
     expect(result.inspection.ready).toBe(true);
+  });
+
+  it("selects stack layout for positional techniques during preflight", async () => {
+    const result = await preflightComposeAnswerSeedCuePlan({
+      answer: "waterfall",
+      targetDifficulty: 5,
+      techniqueId: "basic_positional",
+      cues: [
+        { kind: "text", content: "WATER", role: "word-part" },
+        { kind: "text", content: "FALL", role: "word-part" },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.inspection.layout).toBe("stack");
+    expect(result.composition?.visual.layout).toBe("stack");
   });
 
   it("fails closed before compose when the cue plan is invalid", async () => {

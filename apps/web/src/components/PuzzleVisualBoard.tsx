@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { CSSProperties } from "react";
+import { planPlayerLockedRows } from "@/ai/puzzle-agent/visual/layout-plan";
 import {
   PUZZLE_BOARD_SIZE_SPECS,
   type PuzzleBoardSize,
@@ -249,49 +250,101 @@ export function PuzzleVisualBoard({
     );
   }
 
-  const layoutClass =
-    visual.layout === "stack"
-      ? "flex-col items-center"
-      : visual.layout === "grid"
-        ? "flex-wrap justify-center max-w-[22rem]"
-        : visual.layout === "overlay"
-          ? "relative flex-wrap justify-center"
-          : "flex-row flex-wrap justify-center items-center";
+  // Locked row membership matches server recognition profiles — no flex-wrap reflow.
+  const rowIndexes =
+    visual.layout === "overlay"
+      ? [layers.map((_, index) => index)]
+      : planPlayerLockedRows(visual, resolvedSize);
+
+  const boardStyle = {
+    "--rb-ink": surface.ink,
+    "--rb-canvas": surface.canvas,
+    "--rb-mist": INK_PICTOGRAM_PALETTE.mist,
+    "--rb-accent": INK_PICTOGRAM_PALETTE.accent,
+    "--rb-strike": INK_PICTOGRAM_PALETTE.strike,
+    color: surface.ink,
+    gap: dims.gap,
+  } as CSSProperties;
+
+  if (visual.layout === "overlay") {
+    return (
+      <div
+        className={cn(
+          "puzzle-visual-board relative flex w-full max-w-full items-center justify-center",
+          className
+        )}
+        data-layout-lock="overlay"
+        data-surface={surface.mode}
+        style={boardStyle}
+        role="img"
+        aria-label={fallback || visual.unicodeFallback}
+      >
+        {layers.map((layer, index) => {
+          const offset = (index - (layers.length - 1) / 2) * Math.max(5, dims.gap * 0.75);
+          return (
+            <div
+              key={`overlay-${index}`}
+              className="absolute"
+              style={{ transform: `translate(${offset}px, ${offset}px)` }}
+            >
+              <LayerView layer={layer} index={index} size={resolvedSize} />
+            </div>
+          );
+        })}
+        {/* Spacer so relative box has intrinsic size */}
+        <div className="invisible flex" style={{ gap: dims.gap }} aria-hidden>
+          {layers.map((layer, index) => (
+            <LayerView key={`spacer-${index}`} layer={layer} index={index} size={resolvedSize} />
+          ))}
+        </div>
+        {visual.caption ? (
+          <p
+            className="rb-enter absolute top-full mt-2 w-full text-center text-sm opacity-70"
+            style={{ color: "var(--rb-ink)" }}
+          >
+            {visual.caption}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div
-      className={cn("puzzle-visual-board flex w-full max-w-full", layoutClass, className)}
+      className={cn("puzzle-visual-board flex w-full max-w-full flex-col items-center", className)}
+      data-layout-lock="viewport-invariant"
       data-surface={surface.mode}
-      style={
-        {
-          "--rb-ink": surface.ink,
-          "--rb-canvas": surface.canvas,
-          "--rb-mist": INK_PICTOGRAM_PALETTE.mist,
-          "--rb-accent": INK_PICTOGRAM_PALETTE.accent,
-          "--rb-strike": INK_PICTOGRAM_PALETTE.strike,
-          color: surface.ink,
-          gap: dims.gap,
-        } as CSSProperties
-      }
+      style={boardStyle}
       role="img"
       aria-label={fallback || visual.unicodeFallback}
     >
-      {layers.map((layer, index) => (
-        <LayerView
-          // Layers are ordered composition — index is stable for a given board
-          key={`${layer.kind}-${"svg" in layer && layer.svg ? layer.svg.slice(0, 48) : ""}${
-            "text" in layer && layer.text ? layer.text : ""
-          }${"src" in layer && layer.src ? layer.src : ""}${
-            "emojiFallback" in layer && layer.emojiFallback ? layer.emojiFallback : ""
-          }`}
-          layer={layer}
-          index={index}
-          size={resolvedSize}
-        />
+      {rowIndexes.map((indexes, rowIndex) => (
+        <div
+          key={`row-${rowIndex}`}
+          className="flex flex-nowrap items-center justify-center"
+          style={{ gap: dims.gap }}
+          data-layout-row={rowIndex}
+        >
+          {indexes.map((index) => {
+            const layer = layers[index]!;
+            return (
+              <LayerView
+                key={`${layer.kind}-${index}-${
+                  "concept" in layer && layer.concept ? layer.concept : ""
+                }${"content" in layer && layer.content ? layer.content : ""}${
+                  "symbol" in layer && layer.symbol ? layer.symbol : ""
+                }`}
+                layer={layer}
+                index={index}
+                size={resolvedSize}
+              />
+            );
+          })}
+        </div>
       ))}
       {visual.caption ? (
         <p
-          className="rb-enter basis-full mt-2 text-center text-sm opacity-70 "
+          className="rb-enter mt-2 text-center text-sm opacity-70"
           style={{ color: "var(--rb-ink)" }}
         >
           {visual.caption}
