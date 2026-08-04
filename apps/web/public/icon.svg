@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Rebuzzle">
   <rect width="64" height="64" rx="14" fill="#171717"/>
   <path
     fill="#fafafa"
     fill-rule="evenodd"
-    d="M18 15h17.2c9.15 0 15.6 5.85 15.6 14.2 0 6.85-4.05 12.05-10.7 13.85L51 49H40.2l-9.3-5.4H26.2V49H18V15Zm8.2 8.1v12.2h9.2c4.35 0 7.1-2.55 7.1-6.15 0-3.55-2.75-6.05-7.1-6.05h-9.2Z"
+    d="M18 14H34C44.5 14 51 21 51 30C51 37.5 46 43 38.5 45L52 56H40L28.5 46H25.5V56H18V14ZM25.5 22.5V37H33.5C38.5 37 42 33.5 42 30C42 26 38.5 22.5 33.5 22.5H25.5Z"
   />
-  <circle cx="39.2" cy="29.2" r="2.6" fill="#0070f3"/>
+  <circle cx="36.5" cy="29.8" r="2.5" fill="#0070f3"/>
 </svg>

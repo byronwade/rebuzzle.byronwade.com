@@ -15,17 +15,14 @@ const WORDMARK_SIZE: Record<LogoSize, string> = {
 };
 
 const R_LETTER =
-  "M18 15h17.2c9.15 0 15.6 5.85 15.6 14.2 0 6.85-4.05 12.05-10.7 13.85L51 49H40.2l-9.3-5.4H26.2V49H18V15Zm8.2 8.1v12.2h9.2c4.35 0 7.1-2.55 7.1-6.15 0-3.55-2.75-6.05-7.1-6.05h-9.2Z";
+  "M18 14H34C44.5 14 51 21 51 30C51 37.5 46 43 38.5 45L52 56H40L28.5 46H25.5V56H18V14ZM25.5 22.5V37H33.5C38.5 37 42 33.5 42 30C42 26 38.5 22.5 33.5 22.5H25.5Z";
 
 type RebuzzleMarkProps = {
   className?: string;
   title?: string;
 };
 
-/**
- * Rebuzzle mark — ink board, custom R, link-blue solution spark.
- * Theme-aware via foreground/background fills.
- */
+/** Ink board, solid custom R, link-blue solution spark. */
 export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
   return (
     <svg
@@ -39,7 +36,7 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
       {title ? <title>{title}</title> : null}
       <rect className="fill-foreground" height="64" rx="14" width="64" />
       <path className="fill-background" d={R_LETTER} fillRule="evenodd" />
-      <circle className="fill-link" cx="39.2" cy="29.2" r="2.6" />
+      <circle className="fill-link" cx="36.5" cy="29.8" r="2.5" />
     </svg>
   );
 }
