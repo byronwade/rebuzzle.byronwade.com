@@ -20,8 +20,8 @@ type RebuzzleMarkProps = {
 };
 
 /**
- * Game mark — a board tile meeting a solve token.
- * Two shapes. Reads at every size.
+ * Game mark — a blue solve chip with a token ring.
+ * Brand-colored so it stays distinct in light and dark UI.
  */
 export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
   return (
@@ -30,13 +30,20 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
       className={cn("shrink-0", className)}
       fill="none"
       role={title ? "img" : undefined}
-      viewBox="0 0 64 64"
+      viewBox="0 0 32 32"
       xmlns="http://www.w3.org/2000/svg"
     >
       {title ? <title>{title}</title> : null}
-      <rect className="fill-foreground" height="64" rx="14" width="64" />
-      <rect className="fill-background" height="28" rx="6" width="28" x="10" y="14" />
-      <circle className="fill-link" cx="40" cy="36" r="14" />
+      <rect width="32" height="32" rx="9" fill="#0070F3" />
+      <circle cx="16" cy="16" r="7.5" fill="#FAFAFA" />
+      <circle
+        cx="16"
+        cy="16"
+        r="5.25"
+        fill="none"
+        stroke="#171717"
+        strokeWidth="2.25"
+      />
     </svg>
   );
 }
