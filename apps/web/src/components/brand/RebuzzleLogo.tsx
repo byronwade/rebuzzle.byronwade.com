@@ -36,14 +36,7 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
       {title ? <title>{title}</title> : null}
       <rect width="32" height="32" rx="9" fill="#0070F3" />
       <circle cx="16" cy="16" r="7.5" fill="#FAFAFA" />
-      <circle
-        cx="16"
-        cy="16"
-        r="5.25"
-        fill="none"
-        stroke="#171717"
-        strokeWidth="2.25"
-      />
+      <circle cx="16" cy="16" r="5.25" fill="none" stroke="#171717" strokeWidth="2.25" />
     </svg>
   );
 }
