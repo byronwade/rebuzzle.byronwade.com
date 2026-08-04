@@ -1,7 +1,7 @@
 import { composeRuleGraph, defaultLayoutForTechnique, isRuleGraphTechnique } from "../rule-graph";
 
 describe("rule-graph composer", () => {
-  it("recognizes the high-coverage technique set", () => {
+  it("recognizes the full named technique set", () => {
     expect(isRuleGraphTechnique("simple_compound")).toBe(true);
     expect(isRuleGraphTechnique("obvious_emoji_sum")).toBe(true);
     expect(isRuleGraphTechnique("basic_positional")).toBe(true);
@@ -9,7 +9,13 @@ describe("rule-graph composer", () => {
     expect(isRuleGraphTechnique("math_symbol_wordplay")).toBe(true);
     expect(isRuleGraphTechnique("false_lead_visual")).toBe(true);
     expect(isRuleGraphTechnique("idiom_as_picture")).toBe(true);
-    expect(isRuleGraphTechnique("nested_homophone")).toBe(false);
+    expect(isRuleGraphTechnique("nested_homophone")).toBe(true);
+    expect(isRuleGraphTechnique("multi_layer_phonetic")).toBe(true);
+    expect(isRuleGraphTechnique("triple_layer_composition")).toBe(true);
+    expect(isRuleGraphTechnique("rare_but_fair_idiom")).toBe(true);
+    expect(isRuleGraphTechnique("recursive_visual_pun")).toBe(true);
+    expect(isRuleGraphTechnique("cultural_common_knowledge_plus_twist")).toBe(true);
+    expect(isRuleGraphTechnique("not_a_real_technique")).toBe(false);
   });
 
   it("inserts + joiners for simple_compound when omitted", () => {
@@ -155,9 +161,82 @@ describe("rule-graph composer", () => {
     expect(result.layers.every((layer) => layer.kind !== "operator")).toBe(true);
   });
 
-  it("passes through unknown techniques as a flat row", () => {
+  it("keeps nested / multi-layer phonetic chains as rows without forced joiners", () => {
     const result = composeRuleGraph({
       techniqueId: "nested_homophone",
+      answer: "wait for it",
+      cues: [
+        { kind: "text", content: "WEIGHT", role: "phonetic-anchor" },
+        { kind: "catalog", concept: "4", role: "phonetic-anchor" },
+        { kind: "text", content: "IT", role: "word-part" },
+      ],
+    });
+    expect(result.applied).toBe(true);
+    expect(result.layout).toBe("row");
+    expect(result.layers.every((layer) => layer.kind !== "operator")).toBe(true);
+    expect(result.rules.some((rule) => /phonetic/i.test(rule))).toBe(true);
+  });
+
+  it("grids triple_layer_composition when three semantic parts are present", () => {
+    const result = composeRuleGraph({
+      techniqueId: "triple_layer_composition",
+      answer: "read between the lines",
+      cues: [
+        { kind: "text", content: "READ", role: "word-part" },
+        { kind: "text", content: "LINE", role: "word-part" },
+        { kind: "text", content: "LINE", role: "word-part" },
+      ],
+    });
+    expect(result.layout).toBe("grid");
+    expect(result.layers.some((layer) => layer.kind === "operator")).toBe(true);
+  });
+
+  it("overlays recursive_visual_pun and strips joiners", () => {
+    const result = composeRuleGraph({
+      techniqueId: "recursive_visual_pun",
+      answer: "picture in picture",
+      cues: [
+        { kind: "catalog", concept: "frame", role: "semantic-anchor" },
+        { kind: "operator", symbol: "+", role: "structural-anchor" },
+        { kind: "catalog", concept: "frame", role: "semantic-anchor" },
+      ],
+    });
+    expect(result.layout).toBe("overlay");
+    expect(result.layers.every((layer) => layer.kind !== "operator")).toBe(true);
+  });
+
+  it("rows rare / cultural idiom boards with joiners", () => {
+    const rare = composeRuleGraph({
+      techniqueId: "rare_but_fair_idiom",
+      answer: "kick the bucket",
+      cues: [
+        { kind: "catalog", concept: "boot", role: "word-part" },
+        { kind: "catalog", concept: "bucket", role: "word-part" },
+      ],
+    });
+    expect(rare.applied).toBe(true);
+    expect(rare.layout).toBe("row");
+    expect(rare.layers.map((layer) => layer.kind)).toEqual([
+      "pictogram",
+      "operator",
+      "pictogram",
+    ]);
+
+    const cultural = composeRuleGraph({
+      techniqueId: "cultural_common_knowledge_plus_twist",
+      answer: "break a leg",
+      cues: [
+        { kind: "text", content: "BREAK", role: "word-part" },
+        { kind: "catalog", concept: "leg", role: "word-part" },
+      ],
+    });
+    expect(cultural.layout).toBe("row");
+    expect(cultural.applied).toBe(true);
+  });
+
+  it("passes through unknown techniques as a flat row", () => {
+    const result = composeRuleGraph({
+      techniqueId: "not_a_real_technique",
       cues: [{ kind: "text", content: "HOT", role: "word-part" }],
     });
     expect(result.applied).toBe(false);

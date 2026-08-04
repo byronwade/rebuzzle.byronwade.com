@@ -310,6 +310,7 @@ export async function runApexGeneration(
     eloOptions: {
       techniqueRates: brief.techniqueRates,
       targetDifficulty: brief.targetDifficulty,
+      answerEloByKey: brief.answerEloByKey,
     },
     prepare: async (candidate) => {
       const critiqueStarted = Date.now();

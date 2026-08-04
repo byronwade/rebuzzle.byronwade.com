@@ -19,6 +19,8 @@ export const RULE_GRAPH_TECHNIQUES = [
   "obvious_emoji_sum",
   "multi_emoji_compound",
   "single_homophone",
+  "nested_homophone",
+  "multi_layer_phonetic",
   "basic_positional",
   "positional_phrase",
   "spatial_preposition_play",
@@ -26,6 +28,10 @@ export const RULE_GRAPH_TECHNIQUES = [
   "size_or_case_semantics",
   "idiom_as_picture",
   "false_lead_visual",
+  "triple_layer_composition",
+  "rare_but_fair_idiom",
+  "recursive_visual_pun",
+  "cultural_common_knowledge_plus_twist",
 ] as const satisfies readonly TechniqueId[];
 
 export type RuleGraphTechniqueId = (typeof RULE_GRAPH_TECHNIQUES)[number];
@@ -213,14 +219,48 @@ export function composeRuleGraph(input: {
       }
       break;
     }
-    case "single_homophone": {
+    case "single_homophone":
+    case "nested_homophone":
+    case "multi_layer_phonetic": {
       layout = "row";
       const phonetic = input.cues.filter((cue) => cue.role === "phonetic-anchor").length;
+      // Nested / multi-layer phonetics still read left-to-right; avoid forced + joiners
+      // that imply a literal compound instead of sound chaining.
       rules.push(
         phonetic
           ? `preserve ${phonetic} phonetic-anchor cue(s)`
-          : "homophone board — no forced joiners"
+          : `${techniqueId} — sound chain without forced joiners`
       );
+      if (techniqueId !== "single_homophone" && layers.filter(isSemanticPart).length >= 3) {
+        rules.push("multi-cue phonetic chain — order is the pronunciation path");
+      }
+      break;
+    }
+    case "triple_layer_composition": {
+      const joined = ensureCompoundJoiners(layers);
+      layers = joined.layers;
+      layout = layers.filter(isSemanticPart).length >= 3 ? "grid" : "row";
+      rules.push(`triple_layer_composition: layout:${layout}`);
+      if (joined.changed) rules.push("insert:+ between composition parts");
+      break;
+    }
+    case "rare_but_fair_idiom":
+    case "cultural_common_knowledge_plus_twist": {
+      // Familiar phrase boards stay linear; cultural twists still need clear left→right reading.
+      layout = "row";
+      const joined = ensureCompoundJoiners(layers);
+      layers = joined.layers;
+      rules.push(`${techniqueId}: row reading of literal/cultural parts`);
+      if (joined.changed) rules.push("insert:+ between idiom parts");
+      break;
+    }
+    case "recursive_visual_pun": {
+      // Self-referential / nested readings benefit from overlay adjacency.
+      const stripped = stripJoinOperators(layers);
+      layers = stripped.layers;
+      layout = layers.filter(isSemanticPart).length >= 2 ? "overlay" : "row";
+      rules.push(`recursive_visual_pun: layout:${layout} for nested reading`);
+      if (stripped.changed) rules.push("strip + joiners so recursion is spatial");
       break;
     }
     case "idiom_as_picture": {

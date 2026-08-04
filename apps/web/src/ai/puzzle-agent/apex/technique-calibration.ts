@@ -2,13 +2,17 @@
  * Technique-family difficulty calibrator.
  *
  * Reorders curriculum technique preference using observed human solve rates
- * (live puzzle metadata and optional playtest strata). Techniques that players
+ * (live puzzle metadata merged with playtest strata). Techniques that players
  * crush get demoted when the window is too easy; techniques that players miss
  * get promoted when the window is too hard.
  */
 
 import { getCollection } from "@/db/mongodb";
 import type { TechniqueId } from "../technique-library";
+import {
+  mergeTechniqueSolveRates,
+  techniqueRatesFromPlaytestStrata,
+} from "./playtest-calibration";
 
 export type TechniqueSolveRate = {
   techniqueId: string;
@@ -21,6 +25,8 @@ export type TechniqueCalibrationSnapshot = {
   sampleSize: number;
   rates: TechniqueSolveRate[];
   notes: string[];
+  /** Playtest-only rates before merge (for Elo sync / drift breakers). */
+  playtestRates?: TechniqueSolveRate[];
 };
 
 const MIN_SAMPLES = 4;
@@ -82,69 +88,145 @@ export function biasTechniquesBySolveRates(input: {
   };
 }
 
+async function loadLiveTechniqueSolveRates(input: {
+  lookbackDays: number;
+  limit: number;
+}): Promise<TechniqueSolveRate[]> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - input.lookbackDays);
+
+  const docs = (await getCollection("puzzles")
+    .find({
+      createdAt: { $gte: cutoff },
+      "metadata.techniqueId": { $type: "string" },
+      "metadata.liveSolveRate": { $type: "number" },
+    })
+    .project({
+      "metadata.techniqueId": 1,
+      "metadata.liveSolveRate": 1,
+    })
+    .sort({ createdAt: -1 })
+    .limit(input.limit)
+    .toArray()) as Array<{
+    metadata?: { techniqueId?: string; liveSolveRate?: number };
+  }>;
+
+  const buckets = new Map<string, { sum: number; count: number }>();
+  for (const doc of docs) {
+    const techniqueId = doc.metadata?.techniqueId;
+    const liveSolveRate = doc.metadata?.liveSolveRate;
+    if (!techniqueId || typeof liveSolveRate !== "number" || !Number.isFinite(liveSolveRate)) {
+      continue;
+    }
+    const bucket = buckets.get(techniqueId) ?? { sum: 0, count: 0 };
+    bucket.sum += Math.max(0, Math.min(1, liveSolveRate));
+    bucket.count += 1;
+    buckets.set(techniqueId, bucket);
+  }
+
+  return [...buckets.entries()]
+    .map(([techniqueId, bucket]) => ({
+      techniqueId,
+      sampleSize: bucket.count,
+      solveRate: bucket.count ? bucket.sum / bucket.count : 0,
+    }))
+    .sort((a, b) => b.sampleSize - a.sampleSize);
+}
+
+async function loadPlaytestTechniqueSolveRates(): Promise<{
+  rates: TechniqueSolveRate[];
+  candidates: Array<{
+    answer: string;
+    techniqueId?: string;
+    decisions: number;
+    solveRate: number | null;
+  }>;
+  notes: string[];
+}> {
+  try {
+    const { puzzlePlaytestService } = await import("../review/puzzle-playtest-server");
+    const report = await puzzlePlaytestService.getReport("operational-audit", new Date(), {
+      readOnly: true,
+    });
+    const rates = techniqueRatesFromPlaytestStrata(report.techniqueScores);
+    const candidates = report.visibleCandidates.map((row) => ({
+      answer: row.answer,
+      techniqueId: row.techniqueId,
+      decisions: row.decisions,
+      solveRate: row.solveRate,
+    }));
+    return {
+      rates,
+      candidates,
+      notes: rates.length
+        ? [`Loaded ${rates.length} technique families from human playtest strata`]
+        : ["No playtest technique strata yet"],
+    };
+  } catch {
+    return {
+      rates: [],
+      candidates: [],
+      notes: ["Playtest calibration unavailable — using live solve rates only"],
+    };
+  }
+}
+
 /**
- * Aggregate liveSolveRate by techniqueId from published puzzles.
+ * Aggregate liveSolveRate by techniqueId from published puzzles, merged with
+ * human playtest strata. Optionally syncs pairwise Elo from playtest candidates.
  */
 export async function loadTechniqueSolveRates(input?: {
   lookbackDays?: number;
   limit?: number;
+  syncElo?: boolean;
 }): Promise<TechniqueCalibrationSnapshot> {
   const lookbackDays = input?.lookbackDays ?? 45;
   const limit = Math.min(input?.limit ?? 400, 800);
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - lookbackDays);
+  const syncElo = input?.syncElo !== false;
 
   try {
-    const docs = (await getCollection("puzzles")
-      .find({
-        createdAt: { $gte: cutoff },
-        "metadata.techniqueId": { $type: "string" },
-        "metadata.liveSolveRate": { $type: "number" },
-      })
-      .project({
-        "metadata.techniqueId": 1,
-        "metadata.liveSolveRate": 1,
-      })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .toArray()) as Array<{
-      metadata?: { techniqueId?: string; liveSolveRate?: number };
-    }>;
+    const [live, playtest] = await Promise.all([
+      loadLiveTechniqueSolveRates({ lookbackDays, limit }),
+      loadPlaytestTechniqueSolveRates(),
+    ]);
 
-    const buckets = new Map<string, { sum: number; count: number }>();
-    for (const doc of docs) {
-      const techniqueId = doc.metadata?.techniqueId;
-      const liveSolveRate = doc.metadata?.liveSolveRate;
-      if (!techniqueId || typeof liveSolveRate !== "number" || !Number.isFinite(liveSolveRate)) {
-        continue;
+    const rates = mergeTechniqueSolveRates(live, playtest.rates);
+    const notes = [
+      live.length
+        ? `Loaded ${live.length} technique families with live solve rates (${lookbackDays}d)`
+        : "No technique-family live solve rates yet",
+      ...playtest.notes,
+    ];
+
+    if (syncElo && playtest.candidates.length) {
+      try {
+        const { syncPlaytestPairwiseElo } = await import("./elo-store");
+        const sync = await syncPlaytestPairwiseElo({ candidates: playtest.candidates });
+        if (sync.applied > 0) {
+          notes.push(`Synced ${sync.applied}/${sync.planned} playtest pairwise Elo matches`);
+        }
+      } catch {
+        notes.push("Playtest Elo sync skipped");
       }
-      const bucket = buckets.get(techniqueId) ?? { sum: 0, count: 0 };
-      bucket.sum += Math.max(0, Math.min(1, liveSolveRate));
-      bucket.count += 1;
-      buckets.set(techniqueId, bucket);
     }
 
-    const rates = [...buckets.entries()]
-      .map(([techniqueId, bucket]) => ({
-        techniqueId,
-        sampleSize: bucket.count,
-        solveRate: bucket.count ? bucket.sum / bucket.count : 0,
-      }))
-      .sort((a, b) => b.sampleSize - a.sampleSize);
+    if (!rates.length) {
+      notes.push("Curriculum uses diversity order only");
+    }
 
     return {
       lookbackDays,
       sampleSize: rates.reduce((sum, row) => sum + row.sampleSize, 0),
       rates,
-      notes: rates.length
-        ? [`Loaded ${rates.length} technique families with live solve rates (${lookbackDays}d)`]
-        : ["No technique-family live solve rates yet — curriculum uses diversity order only"],
+      playtestRates: playtest.rates,
+      notes,
     };
   } catch {
     return {
       lookbackDays,
       sampleSize: 0,
       rates: [],
+      playtestRates: [],
       notes: ["Technique calibration unavailable — continue without solve-rate bias"],
     };
   }

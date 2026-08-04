@@ -70,4 +70,20 @@ describe("human calibration gate", () => {
     expect(gate.shouldUseReserve).toBe(false);
     expect(gate.status).toBe("healthy");
   });
+
+  it("surfaces playtest technique drift as watch without forcing reserve alone", () => {
+    const gate = assessHumanCalibrationGate({
+      playtest: {
+        contractVersion: "puzzle-playtest-v3",
+        completedCandidates: 30,
+        releaseReady: true,
+        visualFailureRate: 0.01,
+        ambiguityRate: 0.04,
+      },
+      techniqueDriftIssues: ["Playtest drift: simple_compound solve rate 92% (players crushing)"],
+    });
+    expect(gate.shouldUseReserve).toBe(false);
+    expect(gate.status).toBe("watch");
+    expect(gate.reasons.join(" ")).toMatch(/simple_compound/);
+  });
 });

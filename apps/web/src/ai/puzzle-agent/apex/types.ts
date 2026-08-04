@@ -174,8 +174,10 @@ export type GenerationBrief = {
   phraseSuggestions: PhraseBankEntry[];
   diversity: DiversitySnapshot;
   learning: LearningDigest;
-  /** Live technique solve rates for Elo-informed finalist pre-ranking. */
+  /** Live + playtest technique solve rates for Elo-informed finalist pre-ranking. */
   techniqueRates: TechniqueSolveRate[];
+  /** Persisted pairwise answer Elo (higher = harder); empty when learning off. */
+  answerEloByKey: Map<string, number>;
   qualityThreshold: number;
   minFunScore: number;
   minRubricOverall: number;

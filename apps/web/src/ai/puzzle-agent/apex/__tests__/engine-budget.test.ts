@@ -108,6 +108,7 @@ describe("Apex spending-cap behavior", () => {
       diversity: { bannedAnswerKeys: [] },
       briefSummary: "test",
       techniqueRates: [],
+      answerEloByKey: new Map(),
     });
     runPuzzleAgentGeneration.mockRejectedValue(new AIBudgetExceededError());
 
@@ -130,6 +131,7 @@ describe("Apex spending-cap behavior", () => {
       diversity: { bannedAnswerKeys: [] },
       briefSummary: "test",
       techniqueRates: [],
+      answerEloByKey: new Map(),
     });
 
     await expect(runApexGeneration({ targetDifficulty: 5 })).rejects.toMatchObject({
@@ -168,6 +170,7 @@ describe("Apex spending-cap behavior", () => {
       diversity: { bannedAnswerKeys: [] },
       briefSummary: "test",
       techniqueRates: [],
+      answerEloByKey: new Map(),
       learning: {
         enabled: false,
         avoidPatterns: [],
