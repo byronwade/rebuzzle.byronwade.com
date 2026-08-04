@@ -8,6 +8,8 @@
 
 import {
   getPuzzleBoardRecognitionProfile,
+  puzzleBoardFontSize,
+  puzzleBoardOperatorWidth,
   PUZZLE_BOARD_SIZE_SPECS,
   type PuzzleBoardRecognitionProfile,
   type PuzzleBoardSize,
@@ -49,14 +51,6 @@ export type LockedLayoutPlan = {
 /** Narrowest production profile — the topology source of truth. */
 export const LAYOUT_LOCK_CANONICAL_PROFILE_ID = "compact-320" as const;
 
-function fontSizeFor(emphasis: LayoutPlanLayer["emphasis"], base: number): number {
-  if (emphasis === "large") return Math.round(base * 1.35);
-  if (emphasis === "small") return Math.round(base * 0.72);
-  if (emphasis === "tiny") return Math.round(base * 0.55);
-  if (emphasis === "stacked") return Math.round(base * 0.9);
-  return base;
-}
-
 export function estimateLayerBox(
   layer: LayoutPlanLayer,
   profile: PuzzleBoardRecognitionProfile,
@@ -67,11 +61,11 @@ export function estimateLayerBox(
     return { width: size.tile, height: size.tile };
   }
   if (layer.kind === "operator") {
-    return { width: Math.max(22, Math.round(size.tile * 0.58)), height: size.tile };
+    return { width: puzzleBoardOperatorWidth(size.tile), height: size.tile };
   }
 
   const content = layer.content ?? "";
-  const fontSize = fontSizeFor(layer.emphasis, size.fontSize);
+  const fontSize = puzzleBoardFontSize(layer.emphasis, size.fontSize);
   if (layer.emphasis === "stacked") {
     return {
       width: Math.max(fontSize * 1.5, 28),

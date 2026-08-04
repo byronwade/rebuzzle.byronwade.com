@@ -20,6 +20,36 @@ export const INK_PICTOGRAM_PALETTE = {
   strike: "#b23a2d",
 } as const;
 
+/**
+ * Play surfaces for the board plate.
+ * Prefer paper for ink pictograms; cinema for unicode/emoji or high-contrast meaning colors.
+ * Meaning colors (answer-specific paints) must still resolve through this map or the ink palette —
+ * never ad-hoc hex in generators.
+ */
+export const PUZZLE_BOARD_SURFACES = {
+  paper: {
+    mode: "paper" as const,
+    canvas: INK_PICTOGRAM_PALETTE.canvas,
+    ink: INK_PICTOGRAM_PALETTE.ink,
+  },
+  cinema: {
+    mode: "cinema" as const,
+    canvas: "#0a0a0a",
+    ink: "#f5f5f4",
+  },
+} as const;
+
+/**
+ * Reserved meaning tints — only when the answer itself needs a color cue
+ * (e.g. strike-through, "red tape"). Keep the rest of the board on ink/mist.
+ */
+export const PUZZLE_BOARD_MEANING_TINTS = {
+  ink: INK_PICTOGRAM_PALETTE.ink,
+  mist: INK_PICTOGRAM_PALETTE.mist,
+  accent: INK_PICTOGRAM_PALETTE.accent,
+  strike: INK_PICTOGRAM_PALETTE.strike,
+} as const;
+
 /** Tiny few-shot: a readable bee — striped body, wings, antennae. */
 export const INK_PICTOGRAM_EXAMPLE_BEE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><ellipse cx="32" cy="36" rx="15" ry="11" fill="${INK_PICTOGRAM_PALETTE.canvas}" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25"/><path d="M20 32h24M20 36h24M20 40h24" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2.25" stroke-linecap="round"/><path d="M18 28c-6-6-2-14 4-12" fill="none" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2" stroke-linecap="round"/><path d="M46 28c6-6 2-14-4-12" fill="none" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2" stroke-linecap="round"/><circle cx="26" cy="33" r="1.6" fill="${INK_PICTOGRAM_PALETTE.ink}"/><line x1="27" y1="24" x2="24" y2="16" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2" stroke-linecap="round"/><line x1="37" y1="24" x2="40" y2="16" stroke="${INK_PICTOGRAM_PALETTE.ink}" stroke-width="2" stroke-linecap="round"/></svg>`;
 

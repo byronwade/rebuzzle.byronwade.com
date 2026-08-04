@@ -4,7 +4,12 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { planPlayerLockedRows } from "@/ai/puzzle-agent/visual/layout-plan";
 import {
+  PUZZLE_BOARD_CHROME,
   PUZZLE_BOARD_SIZE_SPECS,
+  puzzleBoardFontSize,
+  puzzleBoardLetterSpacingEm,
+  puzzleBoardOperatorWidth,
+  puzzleBoardTextWeight,
   type PuzzleBoardSize,
 } from "@/ai/puzzle-agent/visual/presentation";
 import { sanitizePictogramSvg } from "@/ai/puzzle-agent/visual/sanitize-svg";
@@ -23,27 +28,26 @@ interface PuzzleVisualBoardProps {
   compact?: boolean;
 }
 
-const TEXT_SIZE_CLASS: Record<PuzzleBoardSize, string> = {
-  small: "text-lg",
-  medium: "text-2xl",
-  large: "text-[clamp(1.75rem,5vw,2.75rem)]",
-};
-
-function textEmphasisClass(emphasis?: string): string {
-  switch (emphasis) {
-    case "large":
-      return "text-[1.35em] font-bold tracking-tight";
-    case "small":
-      return "text-[0.72em] font-semibold tracking-wide";
-    case "tiny":
-      return "text-[0.55em] font-semibold tracking-[0.12em] uppercase opacity-90";
-    case "strike":
-      return "line-through decoration-[0.12em] decoration-[var(--rb-strike,#b23a2d)] font-bold";
-    case "stacked":
-      return "font-bold leading-[0.95] tracking-[0.08em]";
-    default:
-      return "font-semibold tracking-tight";
+function textLayerStyle(emphasis: string | undefined, baseFontSize: number): CSSProperties {
+  const fontSize = puzzleBoardFontSize(emphasis, baseFontSize);
+  const fontWeight = puzzleBoardTextWeight(emphasis);
+  const letterSpacing = `${puzzleBoardLetterSpacingEm(emphasis)}em`;
+  const style: CSSProperties = {
+    fontSize,
+    fontWeight,
+    letterSpacing,
+    color: "var(--rb-ink)",
+    lineHeight: emphasis === "stacked" ? 0.95 : 1.05,
+  };
+  if (emphasis === "tiny") {
+    style.textTransform = "uppercase";
   }
+  if (emphasis === "strike") {
+    style.textDecoration = "line-through";
+    style.textDecorationThickness = "0.12em";
+    style.textDecorationColor = "var(--rb-strike)";
+  }
+  return style;
 }
 
 function PictogramTile({
@@ -60,7 +64,7 @@ function PictogramTile({
   if (safeSvg) {
     return (
       <span
-        className="rb-enter puzzle-pictogram inline-flex shrink-0 items-center justify-center "
+        className="rb-enter puzzle-pictogram inline-flex shrink-0 items-center justify-center"
         style={{
           width: sizePx,
           height: sizePx,
@@ -74,10 +78,22 @@ function PictogramTile({
     );
   }
 
+  // Keep fallbacks inside the ink language — no multicolor OS emoji salad.
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center leading-none"
-      style={{ width: sizePx, height: sizePx, fontSize: sizePx * 0.72 }}
+      className="puzzle-pictogram-fallback inline-flex shrink-0 items-center justify-center leading-none"
+      style={{
+        width: sizePx,
+        height: sizePx,
+        fontSize: sizePx * PUZZLE_BOARD_CHROME.fallbackGlyphFactor,
+        fontWeight: puzzleBoardTextWeight("normal"),
+        color: "var(--rb-ink)",
+        background: "var(--rb-canvas)",
+        border: "1px solid color-mix(in oklab, var(--rb-mist) 55%, transparent)",
+        borderRadius: 8,
+        filter: "grayscale(1) contrast(1.12)",
+        animationDelay: `${Math.min(index, 6) * 45}ms`,
+      }}
       role="img"
       aria-label={layer.concept}
     >
@@ -88,11 +104,11 @@ function PictogramTile({
 
 function TextTile({
   layer,
-  sizeClass,
+  baseFontSize,
   index,
 }: {
   layer: Extract<PuzzleVisualLayer, { kind: "text" }>;
-  sizeClass: string;
+  baseFontSize: number;
   index: number;
 }) {
   const stacked = layer.emphasis === "stacked";
@@ -101,14 +117,12 @@ function TextTile({
   return (
     <span
       className={cn(
-        "puzzle-text-layer inline-block ",
-        sizeClass,
-        textEmphasisClass(layer.emphasis),
+        "puzzle-text-layer rb-enter inline-block font-sans",
         stacked && "whitespace-pre text-center"
       )}
       style={{
+        ...textLayerStyle(layer.emphasis, baseFontSize),
         animationDelay: `${Math.min(index, 6) * 45}ms`,
-        color: "var(--rb-ink)",
       }}
     >
       {content}
@@ -118,15 +132,24 @@ function TextTile({
 
 function OperatorTile({
   layer,
-  sizeClass,
+  tile,
+  baseFontSize,
 }: {
   layer: Extract<PuzzleVisualLayer, { kind: "operator" }>;
-  sizeClass: string;
+  tile: number;
+  baseFontSize: number;
 }) {
   return (
     <span
-      className={cn("inline-flex items-center justify-center opacity-75", sizeClass, "font-medium")}
-      style={{ color: "var(--rb-mist, var(--rb-ink))" }}
+      className="inline-flex items-center justify-center font-sans"
+      style={{
+        width: puzzleBoardOperatorWidth(tile),
+        height: tile,
+        fontSize: baseFontSize,
+        fontWeight: puzzleBoardTextWeight("operator"),
+        letterSpacing: `${puzzleBoardLetterSpacingEm("operator")}em`,
+        color: "var(--rb-mist)",
+      }}
       aria-hidden
     >
       {layer.symbol}
@@ -149,7 +172,13 @@ function ImageTile({
 
   if (!safe) return null;
 
-  // data: URLs from AI Gateway aren't a fit for next/image
+  const tileStyle = {
+    width: sizePx,
+    height: sizePx,
+    animationDelay: `${Math.min(index, 6) * 45}ms`,
+  } as CSSProperties;
+
+  // Square tiles match pictogram slots — no rounded media cards on the board.
   if (src.startsWith("data:image/")) {
     return (
       <img
@@ -157,12 +186,8 @@ function ImageTile({
         alt={layer.alt}
         width={sizePx}
         height={sizePx}
-        className="rb-enter puzzle-image-tile inline-block shrink-0 rounded-md object-cover "
-        style={{
-          width: sizePx,
-          height: sizePx,
-          animationDelay: `${Math.min(index, 6) * 45}ms`,
-        }}
+        className="rb-enter puzzle-image-tile inline-block shrink-0 object-cover"
+        style={tileStyle}
         draggable={false}
       />
     );
@@ -175,12 +200,8 @@ function ImageTile({
       width={sizePx}
       height={sizePx}
       unoptimized
-      className="rb-enter puzzle-image-tile inline-block shrink-0 rounded-md object-cover "
-      style={{
-        width: sizePx,
-        height: sizePx,
-        animationDelay: `${Math.min(index, 6) * 45}ms`,
-      }}
+      className="rb-enter puzzle-image-tile inline-block shrink-0 object-cover"
+      style={tileStyle}
       draggable={false}
     />
   );
@@ -196,15 +217,14 @@ function LayerView({
   size: PuzzleBoardSize;
 }) {
   const dims = PUZZLE_BOARD_SIZE_SPECS[size];
-  const textClass = TEXT_SIZE_CLASS[size];
   if (layer.kind === "pictogram") {
     return <PictogramTile layer={layer} sizePx={dims.tile} index={index} />;
   }
   if (layer.kind === "text") {
-    return <TextTile layer={layer} sizeClass={textClass} index={index} />;
+    return <TextTile layer={layer} baseFontSize={dims.fontSize} index={index} />;
   }
   if (layer.kind === "operator") {
-    return <OperatorTile layer={layer} sizeClass={textClass} />;
+    return <OperatorTile layer={layer} tile={dims.tile} baseFontSize={dims.fontSize} />;
   }
   if (layer.kind === "image") {
     return <ImageTile layer={layer} sizePx={dims.tile} index={index} />;
@@ -225,7 +245,6 @@ export function PuzzleVisualBoard({
 }: PuzzleVisualBoardProps) {
   const resolvedSize = compact ? "small" : size;
   const dims = PUZZLE_BOARD_SIZE_SPECS[resolvedSize];
-  const textClass = TEXT_SIZE_CLASS[resolvedSize];
   const layers = visual.layers ?? [];
   const hasRenderable = layers.some((l) => {
     if (l.kind === "pictogram") return Boolean(l.svg || l.emojiFallback);
@@ -238,12 +257,14 @@ export function PuzzleVisualBoard({
   if (!hasRenderable || visual.mode === "unicode") {
     return (
       <div
-        className={cn(
-          "text-center font-semibold whitespace-pre-wrap break-words",
-          textClass,
-          className
-        )}
-        style={{ color: surface.ink }}
+        className={cn("text-center font-sans whitespace-pre-wrap break-words", className)}
+        style={{
+          color: surface.ink,
+          fontSize: dims.fontSize,
+          fontWeight: puzzleBoardTextWeight("normal"),
+          letterSpacing: `${puzzleBoardLetterSpacingEm("normal")}em`,
+          lineHeight: 1.2,
+        }}
       >
         {fallback || visual.unicodeFallback}
       </div>
@@ -264,6 +285,7 @@ export function PuzzleVisualBoard({
     "--rb-strike": INK_PICTOGRAM_PALETTE.strike,
     color: surface.ink,
     gap: dims.gap,
+    rowGap: dims.gap,
   } as CSSProperties;
 
   if (visual.layout === "overlay") {
@@ -299,8 +321,15 @@ export function PuzzleVisualBoard({
         </div>
         {visual.caption ? (
           <p
-            className="rb-enter absolute top-full mt-2 w-full text-center text-sm opacity-70"
-            style={{ color: "var(--rb-ink)" }}
+            className="rb-enter absolute top-full mt-2 w-full text-center font-sans"
+            style={{
+              color: "var(--rb-mist)",
+              fontSize: Math.max(
+                PUZZLE_BOARD_CHROME.captionMinSize,
+                Math.round(dims.fontSize * PUZZLE_BOARD_CHROME.captionSizeFactor)
+              ),
+              fontWeight: puzzleBoardTextWeight("normal"),
+            }}
           >
             {visual.caption}
           </p>
@@ -344,8 +373,15 @@ export function PuzzleVisualBoard({
       ))}
       {visual.caption ? (
         <p
-          className="rb-enter mt-2 text-center text-sm opacity-70"
-          style={{ color: "var(--rb-ink)" }}
+          className="rb-enter mt-2 text-center font-sans"
+          style={{
+            color: "var(--rb-mist)",
+            fontSize: Math.max(
+              PUZZLE_BOARD_CHROME.captionMinSize,
+              Math.round(dims.fontSize * PUZZLE_BOARD_CHROME.captionSizeFactor)
+            ),
+            fontWeight: puzzleBoardTextWeight("normal"),
+          }}
         >
           {visual.caption}
         </p>
