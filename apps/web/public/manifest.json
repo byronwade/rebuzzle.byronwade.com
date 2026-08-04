@@ -6,7 +6,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
-  "theme_color": "#8b5cf6",
+  "theme_color": "#171717",
   "categories": ["games", "entertainment", "education"],
   "lang": "en-US",
   "scope": "/",

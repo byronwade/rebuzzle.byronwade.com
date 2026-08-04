@@ -1,4 +1,4 @@
-import { Container, Heading, Link, Section } from "@react-email/components";
+import { Img, Link, Section } from "@react-email/components";
 
 interface EmailHeaderProps {
   logoUrl?: string;
@@ -6,43 +6,40 @@ interface EmailHeaderProps {
 }
 
 export function EmailHeader({
-  logoUrl = "https://byronwade.com/logo.png",
+  logoUrl = "https://rebuzzle.byronwade.com/brand/logo-email.png",
   appName = "Rebuzzle",
 }: EmailHeaderProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://rebuzzle.byronwade.com";
 
   return (
     <Section style={headerStyle}>
-      <Container style={containerStyle}>
-        <Link href={baseUrl} style={logoLinkStyle}>
-          <Heading style={headingStyle}>🧩 {appName}</Heading>
-        </Link>
-      </Container>
+      <Link href={baseUrl} style={logoLinkStyle}>
+        <Img
+          alt={appName}
+          height="36"
+          src={logoUrl}
+          style={logoImgStyle}
+          width="158"
+        />
+      </Link>
     </Section>
   );
 }
 
 const headerStyle = {
   backgroundColor: "#ffffff",
-  padding: "20px 0",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const containerStyle = {
-  maxWidth: "600px",
-  margin: "0 auto",
-  padding: "0 20px",
+  padding: "22px 28px 18px",
+  borderBottom: "1px solid #ebebeb",
 };
 
 const logoLinkStyle = {
   textDecoration: "none",
   color: "inherit",
+  display: "inline-block",
 };
 
-const headingStyle = {
-  margin: "0",
-  fontSize: "24px",
-  fontWeight: "600",
-  color: "#8b5cf6",
-  textAlign: "center" as const,
+const logoImgStyle = {
+  display: "block",
+  border: "0",
+  outline: "none",
 };

@@ -1,9 +1,9 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 /**
- * Default Open Graph Image
- *
- * Generates a dynamic OG image for the homepage with branding
+ * Default Open Graph image — ink-on-canvas with the Rebuzzle mark.
  */
 export const alt = "Rebuzzle - Daily Rebus Puzzle Game";
 export const size = {
@@ -14,6 +14,9 @@ export const size = {
 export const contentType = "image/png";
 
 export default async function Image() {
+  const logoBuffer = await readFile(join(process.cwd(), "public/brand/logo-mark.png"));
+  const logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+
   return new ImageResponse(
     <div
       style={{
@@ -23,8 +26,7 @@ export default async function Image() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#8b5cf6",
-        backgroundImage: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)",
+        backgroundColor: "#fafafa",
       }}
     >
       <div
@@ -36,20 +38,21 @@ export default async function Image() {
           padding: "80px",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- OG ImageResponse */}
+        <img
+          alt=""
+          height={128}
+          src={logoSrc}
+          style={{ marginBottom: 36, borderRadius: 28 }}
+          width={128}
+        />
         <div
           style={{
-            fontSize: "120px",
-            marginBottom: "40px",
-          }}
-        >
-          🧩
-        </div>
-        <div
-          style={{
-            fontSize: "72px",
-            fontWeight: "bold",
-            color: "white",
-            marginBottom: "20px",
+            fontSize: 72,
+            fontWeight: 600,
+            color: "#171717",
+            letterSpacing: "-0.04em",
+            marginBottom: 16,
             textAlign: "center",
           }}
         >
@@ -57,22 +60,24 @@ export default async function Image() {
         </div>
         <div
           style={{
-            fontSize: "32px",
-            color: "rgba(255, 255, 255, 0.9)",
+            fontSize: 28,
+            color: "#666666",
             textAlign: "center",
+            letterSpacing: "-0.02em",
           }}
         >
-          Daily Rebus Puzzle Game
+          See it. Say it. Solve it.
         </div>
         <div
           style={{
-            fontSize: "24px",
-            color: "rgba(255, 255, 255, 0.8)",
-            marginTop: "40px",
+            fontSize: 22,
+            color: "#888888",
+            marginTop: 28,
             textAlign: "center",
+            maxWidth: 640,
           }}
         >
-          Challenge your mind with AI-generated puzzles every day
+          One visual puzzle a day — free, local midnight unlock.
         </div>
       </div>
     </div>,

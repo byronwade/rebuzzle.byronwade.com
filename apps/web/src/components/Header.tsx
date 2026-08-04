@@ -15,6 +15,7 @@ import { useIsClient } from "@/lib/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 import { AttemptsIndicator } from "./AttemptsIndicator";
 import { useAuth } from "./AuthProvider";
+import { RebuzzleLogo } from "./brand/RebuzzleLogo";
 import { InfoButton } from "./InfoButton";
 import { NotificationBadge } from "./NotificationBadge";
 import { Timer } from "./Timer";
@@ -62,11 +63,8 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
       <header className="play-chrome sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto flex h-header max-w-page items-center justify-between gap-4 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-7">
-            <Link
-              className="font-semibold text-[17px] text-foreground tracking-[-0.04em] transition-opacity hover:opacity-70"
-              href="/"
-            >
-              Rebuzzle
+            <Link className="transition-opacity hover:opacity-70" href="/">
+              <RebuzzleLogo size="md" />
             </Link>
 
             {/* Desktop site nav */}

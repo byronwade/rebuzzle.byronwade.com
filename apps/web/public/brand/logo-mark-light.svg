@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="14" fill="#171717"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Rebuzzle">
+  <!-- Inverted mark for dark surfaces -->
+  <rect width="64" height="64" rx="14" fill="#fafafa"/>
   <path
-    fill="#fafafa"
+    fill="#171717"
     d="M18 14h16.2c7.35 0 12.3 4.55 12.3 11.15 0 5.05-2.85 8.85-7.55 10.35L48.2 50H38.7L30.4 36.9H25.5V50H18V14Zm7.5 6.6v9.9h7.55c3.5 0 5.7-1.95 5.7-5 0-3-2.2-4.9-5.7-4.9H25.5Z"
   />
   <circle cx="39.5" cy="25.5" r="3.25" fill="#0070f3"/>
