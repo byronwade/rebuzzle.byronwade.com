@@ -3,6 +3,7 @@
  * Keep heuristics here so assemble, compose, score, and gates stay aligned.
  */
 
+import { evaluateNearMissStress } from "./apex/near-miss-stress";
 import {
   type DifficultyTierLabel,
   getDifficultyLevelForScore,
@@ -420,6 +421,14 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
     return {
       ok: false,
       reason: `Semantic alignment failed (${semanticAlignment.rule}): ${semanticAlignment.blockers.join("; ")}`,
+    };
+  }
+
+  const nearMissStress = evaluateNearMissStress({ answer });
+  if (!nearMissStress.ok) {
+    return {
+      ok: false,
+      reason: nearMissStress.issues[0] ?? "Near-miss stress failed",
     };
   }
 

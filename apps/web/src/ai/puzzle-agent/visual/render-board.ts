@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import type { PuzzleVisual, VisualLayer } from "./composition";
+import { layoutLayersLocked, planLockedRowIndexes } from "./layout-plan";
 import {
   getPuzzleBoardRecognitionProfile,
   PUZZLE_BOARD_RECOGNITION_PROFILES,
@@ -13,15 +14,6 @@ const CANVAS = "#f4f6f3";
 const INK = "#1a1f1c";
 const STRIKE = "#b23a2d";
 
-type Box = { width: number; height: number };
-type Position = Box & { x: number; y: number };
-type LayoutPlan = {
-  width: number;
-  height: number;
-  positions: Position[];
-  wrappedRows: number;
-};
-
 export type RenderedPuzzleBoard = {
   profileId: PuzzleBoardRecognitionProfileId;
   viewportWidth: number;
@@ -29,6 +21,9 @@ export type RenderedPuzzleBoard = {
   width: number;
   height: number;
   wrappedRows: number;
+  /** Locked row membership shared across all profiles. */
+  rowIndexes: number[][];
+  locked: true;
   pixels: Uint8Array;
 };
 
@@ -49,162 +44,9 @@ function fontSizeFor(layer: Extract<VisualLayer, { kind: "text" }>, base: number
   return base;
 }
 
-function boxFor(
-  layer: VisualLayer,
-  profile: PuzzleBoardRecognitionProfile,
-  availableWidth: number
-): Box {
-  const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
-  if (layer.kind === "pictogram" || layer.kind === "image") {
-    return { width: size.tile, height: size.tile };
-  }
-  if (layer.kind === "operator") {
-    return { width: Math.max(22, Math.round(size.tile * 0.58)), height: size.tile };
-  }
-
-  const fontSize = fontSizeFor(layer, size.fontSize);
-  if (layer.emphasis === "stacked") {
-    return {
-      width: Math.max(fontSize * 1.5, 28),
-      height: Math.max(size.tile, layer.content.length * fontSize * 1.04),
-    };
-  }
-  return {
-    width: Math.max(
-      size.tile * 0.7,
-      Math.min(availableWidth, layer.content.length * fontSize * 0.68 + fontSize * 0.5)
-    ),
-    height: size.tile,
-  };
-}
-
-function planRows(
-  boxes: Box[],
-  availableWidth: number,
-  gap: number
-): Array<{ indexes: number[]; width: number; height: number }> {
-  const rows: Array<{ indexes: number[]; width: number; height: number }> = [];
-  let current = { indexes: [] as number[], width: 0, height: 0 };
-
-  boxes.forEach((box, index) => {
-    const nextWidth = current.indexes.length ? current.width + gap + box.width : box.width;
-    if (current.indexes.length && nextWidth > availableWidth) {
-      rows.push(current);
-      current = { indexes: [index], width: box.width, height: box.height };
-      return;
-    }
-    current.indexes.push(index);
-    current.width = nextWidth;
-    current.height = Math.max(current.height, box.height);
-  });
-  if (current.indexes.length) rows.push(current);
-  return rows;
-}
-
-function layoutLayers(visual: PuzzleVisual, profile: PuzzleBoardRecognitionProfile): LayoutPlan {
-  const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
-  const availableWidth = profile.viewportWidth - profile.padding * 2;
-  const boxes = visual.layers.map((layer) => boxFor(layer, profile, availableWidth));
-  if (!boxes.length) {
-    return {
-      width: profile.viewportWidth,
-      height: size.tile + profile.padding * 2,
-      positions: [],
-      wrappedRows: 0,
-    };
-  }
-
-  if (visual.layout === "stack") {
-    const positions: Position[] = [];
-    let y = profile.padding;
-    boxes.forEach((box) => {
-      positions.push({
-        ...box,
-        x: profile.padding + (availableWidth - box.width) / 2,
-        y,
-      });
-      y += box.height + size.gap;
-    });
-    return {
-      width: profile.viewportWidth,
-      height: y - size.gap + profile.padding,
-      positions,
-      wrappedRows: boxes.length,
-    };
-  }
-
-  if (visual.layout === "grid") {
-    const cellWidth = Math.max(...boxes.map((box) => box.width));
-    const cellHeight = Math.max(...boxes.map((box) => box.height));
-    const columns = Math.max(
-      1,
-      Math.min(3, Math.floor((availableWidth + size.gap) / (cellWidth + size.gap)))
-    );
-    const rows = Math.ceil(boxes.length / columns);
-    const gridWidth = columns * cellWidth + (columns - 1) * size.gap;
-    const startX = profile.padding + (availableWidth - gridWidth) / 2;
-    const positions = boxes.map((box, index) => ({
-      ...box,
-      x: startX + (index % columns) * (cellWidth + size.gap) + (cellWidth - box.width) / 2,
-      y:
-        profile.padding +
-        Math.floor(index / columns) * (cellHeight + size.gap) +
-        (cellHeight - box.height) / 2,
-    }));
-    return {
-      width: profile.viewportWidth,
-      height: profile.padding * 2 + rows * cellHeight + (rows - 1) * size.gap,
-      positions,
-      wrappedRows: rows,
-    };
-  }
-
-  if (visual.layout === "overlay") {
-    const contentWidth = Math.min(availableWidth, Math.max(...boxes.map((box) => box.width)) + 36);
-    const contentHeight = Math.max(...boxes.map((box) => box.height)) + 36;
-    const positions = boxes.map((box, index) => {
-      const offset = (index - (boxes.length - 1) / 2) * Math.max(5, size.gap * 0.75);
-      return {
-        ...box,
-        x: profile.padding + (availableWidth - box.width) / 2 + offset,
-        y: profile.padding + (contentHeight - box.height) / 2 + offset,
-      };
-    });
-    return {
-      width: profile.viewportWidth,
-      height: contentHeight + profile.padding * 2,
-      positions,
-      wrappedRows: 1,
-    };
-  }
-
-  const rows = planRows(boxes, availableWidth, size.gap);
-  const positions: Position[] = Array.from({ length: boxes.length });
-  let y = profile.padding;
-  rows.forEach((row) => {
-    let x = profile.padding + (availableWidth - row.width) / 2;
-    row.indexes.forEach((index) => {
-      const box = boxes[index]!;
-      positions[index] = {
-        ...box,
-        x,
-        y: y + (row.height - box.height) / 2,
-      };
-      x += box.width + size.gap;
-    });
-    y += row.height + size.gap;
-  });
-  return {
-    width: profile.viewportWidth,
-    height: y - size.gap + profile.padding,
-    positions,
-    wrappedRows: rows.length,
-  };
-}
-
 function renderLayer(
   layer: VisualLayer,
-  position: Position,
+  position: { x: number; y: number; width: number; height: number },
   profile: PuzzleBoardRecognitionProfile
 ): string {
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
@@ -245,11 +87,12 @@ function renderLayer(
 
 export async function renderPuzzleVisualProfile(
   visual: PuzzleVisual,
-  profileId: PuzzleBoardRecognitionProfileId
+  profileId: PuzzleBoardRecognitionProfileId,
+  rowIndexes: number[][] = planLockedRowIndexes(visual)
 ): Promise<RenderedPuzzleBoard> {
   const profile = getPuzzleBoardRecognitionProfile(profileId);
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
-  const layout = layoutLayers(visual, profile);
+  const layout = layoutLayersLocked(visual, profile, rowIndexes);
   const captionHeight = visual.caption ? Math.max(32, size.fontSize) : 0;
   const width = layout.width;
   const height = Math.max(size.tile + profile.padding * 2, layout.height + captionHeight);
@@ -269,17 +112,20 @@ export async function renderPuzzleVisualProfile(
     width,
     height,
     wrappedRows: layout.wrappedRows,
+    rowIndexes: layout.rowIndexes,
+    locked: true,
     pixels,
   };
 }
 
-/** Render every presentation that can materially change recognizability or topology. */
+/** Render every presentation with identical locked cue topology. */
 export async function renderPuzzleVisualProfiles(
   visual: PuzzleVisual
 ): Promise<RenderedPuzzleBoard[]> {
+  const rowIndexes = planLockedRowIndexes(visual);
   return Promise.all(
     PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) =>
-      renderPuzzleVisualProfile(visual, profile.id)
+      renderPuzzleVisualProfile(visual, profile.id, rowIndexes)
     )
   );
 }

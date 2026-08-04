@@ -24,6 +24,7 @@ import {
 } from "./apex/answer-seed-cues";
 import { toPlayabilityEvidence } from "./apex/blind-solve-consensus";
 import { preflightComposeAnswerSeedCuePlan } from "./apex/cue-plan-preflight";
+import { evaluateNearMissStress } from "./apex/near-miss-stress";
 import {
   applyPlayerSimHeuristics,
   playerSimPublishBlockers,
@@ -31,8 +32,10 @@ import {
 } from "./apex/player-sim";
 import type { AnswerSeedVisualCue } from "./apex/types";
 import {
+  answerSeedStructureIssues,
   applyAuthoritativeComposition,
   type CapturedPuzzleComposition,
+  mergeInventAssetsOntoPreflight,
 } from "./authoritative-draft";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
 import { PUBLICATION_AGENT_TOOLS } from "./publication-tools";
@@ -199,7 +202,8 @@ function buildUserMessage(
           "HOST CUE-PLAN PREFLIGHT (already composed, zero invent): reuse these exact ingredients.",
           `Preflight unicodeFallback: ${preflight.unicodeFallback}`,
           `Preflight layers: ${preflight.layerSummary}`,
-          "Call compose_puzzle_visual with the same concepts/text/operators (you may refine layout/emphasis only).",
+          "Call compose_puzzle_visual with the same concepts/text/operators and the same layout.",
+          "Only fill catalog assets / recognition fields. Do not restructure layers, reorder cues, or change layout/emphasis.",
         ].join("\n")
       : null,
     params.phraseSeeds?.length
@@ -212,7 +216,7 @@ function buildUserMessage(
     params.revisionInstructions?.length
       ? [
           params.repairMode === "critique-locked"
-            ? "CRITIQUE-LOCKED REPAIR: keep the exact answer and every answer-seed cue. Rewrite layout/emphasis/supporting layers only."
+            ? "CRITIQUE-LOCKED REPAIR: keep the exact answer, cue plan, layout, and layer order. Improve asset fills/recognition only — do not restructure the board."
             : "Bounded repair pass: address every critique instruction below with a new, cleaner board.",
           "Do not invent a replacement answer or swap catalog cues; use the locked cue plan and preserve a fair hint ladder.",
           `Critique instructions: ${params.revisionInstructions.slice(0, 4).join("; ")}`,
@@ -348,7 +352,7 @@ export async function runPuzzleAgentGeneration(
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       let completedSteps = 0;
       const completedTools: string[] = [];
-      let capturedComposition: CapturedPuzzleComposition | null = hostPreflightComposition;
+      let inventComposition: CapturedPuzzleComposition | null = null;
       try {
         const agent = new ToolLoopAgent({
           model: getAiGateway()(modelId),
@@ -387,7 +391,7 @@ export async function runPuzzleAgentGeneration(
             const input = toolCall.input as { answer?: unknown };
             const visual = PuzzleVisualSchema.safeParse(output.visual);
             if (visual.success && typeof input.answer === "string") {
-              capturedComposition = { answer: input.answer, visual: visual.data };
+              inventComposition = { answer: input.answer, visual: visual.data };
             }
           },
         });
@@ -403,6 +407,11 @@ export async function runPuzzleAgentGeneration(
         }
 
         const output = normalizePuzzleAgentDraft(rawOutput);
+        // Answer-seed runs: host rule-graph preflight owns layout/layer structure.
+        // Invent may only contribute asset fills on matching layers.
+        const capturedComposition = hostPreflightComposition
+          ? mergeInventAssetsOntoPreflight(hostPreflightComposition, inventComposition)
+          : inventComposition;
         if (!capturedComposition) {
           throw new Error("compose_puzzle_visual did not return a valid authoritative board");
         }
@@ -416,6 +425,27 @@ export async function runPuzzleAgentGeneration(
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
           lastError = lastCandidateError;
           continue;
+        }
+
+        if (hostPreflightComposition) {
+          const structureIssues = answerSeedStructureIssues(
+            hostPreflightComposition.visual,
+            puzzle.visual
+          );
+          if (structureIssues.length) {
+            priorFailure = `Answer-first structure lock failed: ${structureIssues.join("; ")}`;
+            lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+            lastError = lastCandidateError;
+            if (generatorTrace) {
+              console.warn("[Puzzle Agent] candidate rejected", {
+                modelId,
+                attempt,
+                stage: "answer-seed-structure-lock",
+                reason: priorFailure,
+              });
+            }
+            continue;
+          }
         }
 
         const missingSeedCues = missingAnswerSeedCues({
@@ -477,6 +507,23 @@ export async function runPuzzleAgentGeneration(
               reason: priorFailure,
               score: semanticAlignment.score,
               warnings: semanticAlignment.warnings,
+            });
+          }
+          continue;
+        }
+
+        const nearMissStress = evaluateNearMissStress({ answer: puzzle.answer });
+        if (!nearMissStress.ok) {
+          priorFailure = nearMissStress.issues[0] ?? "Near-miss stress failed";
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          if (generatorTrace) {
+            console.warn("[Puzzle Agent] candidate rejected", {
+              modelId,
+              attempt,
+              stage: "near-miss-stress",
+              reason: priorFailure,
+              nearMisses: nearMissStress.nearMisses,
             });
           }
           continue;
@@ -651,6 +698,29 @@ export async function runPuzzleAgentGeneration(
               attempt,
               stage: "screenshot-playability",
               reason: priorFailure,
+            });
+          }
+          continue;
+        }
+
+        // Blind wrong parses that are near-miss cousins of the intended answer
+        // mean the board still "solves" for a close alternate — fail closed.
+        const blindNearMiss = evaluateNearMissStress({
+          answer: puzzle.answer,
+          extraCandidates: sim.firstWrongParses,
+          includePhraseBank: false,
+        });
+        if (!blindNearMiss.ok) {
+          priorFailure = blindNearMiss.issues[0] ?? "Near-miss stress failed on blind wrong parses";
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          if (generatorTrace) {
+            console.warn("[Puzzle Agent] candidate rejected", {
+              modelId,
+              attempt,
+              stage: "near-miss-blind-parses",
+              reason: priorFailure,
+              nearMisses: blindNearMiss.nearMisses,
             });
           }
           continue;

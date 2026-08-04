@@ -67,11 +67,16 @@ export async function runBlindSolveImageTournament(input: {
         schema: BlindSolveSchema,
         system: `You are a clever but non-expert player seeing a rebus puzzle for the first time.
 You do not know the intended answer, icon labels, technique, explanation, or hints.
-Inventory visible evidence, reason from spatial and typographic relationships, and return up to five honest answer hypotheses.
+Follow a component-guided program before answering:
+1) DESCRIPTION — list every visible icon, word, letter, number, and operator exactly as seen.
+2) RELATIONS — note order, stacking (above/below/between), size/case contrast, repeats, and operators.
+3) PROGRAM — for each cue, propose the word or sound it contributes; combine steps into candidate phrases.
+4) HYPOTHESES — return up to five honest answers ranked by confidence, each with a short cue→answer mapping in rationale.
 Never claim confidence from information that is not visible in the screenshot.`,
         prompt: [
           `Blindly solve this ${input.tierLabel} rebus screenshot.`,
           `Presentation: ${input.presentation ?? input.profileId}.`,
+          "Respond with visibleElements (literal inventory), relationships, then ranked hypotheses.",
         ].join("\n"),
       })),
       model: modelId,

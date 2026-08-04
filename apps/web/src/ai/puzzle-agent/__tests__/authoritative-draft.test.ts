@@ -1,4 +1,8 @@
-import { applyAuthoritativeComposition } from "../authoritative-draft";
+import {
+  answerSeedStructureIssues,
+  applyAuthoritativeComposition,
+  mergeInventAssetsOntoPreflight,
+} from "../authoritative-draft";
 import { resolveCuratedPictogram } from "../visual/curated-pictograms";
 
 const eye = resolveCuratedPictogram("eye")!;
@@ -17,6 +21,28 @@ const visual = {
       source: "catalog" as const,
     },
   ],
+};
+
+const preflightBoard = {
+  answer: "keyboard",
+  visual: {
+    styleId: "ink-pictogram-v1" as const,
+    mode: "composed" as const,
+    layout: "row" as const,
+    unicodeFallback: "🔑 + BOARD",
+    layers: [
+      {
+        kind: "pictogram" as const,
+        concept: "key",
+        emojiFallback: "🔑",
+        svg: "<svg id='preflight' />",
+        assetId: "key",
+        source: "catalog" as const,
+      },
+      { kind: "operator" as const, symbol: "+" },
+      { kind: "text" as const, content: "BOARD", emphasis: "normal" as const },
+    ],
+  },
 };
 
 const puzzle = {
@@ -45,5 +71,80 @@ describe("applyAuthoritativeComposition", () => {
         { answer: "ice cream", visual }
       )
     ).toThrow("Final answer changed");
+  });
+});
+
+describe("answer-seed structure lock", () => {
+  it("detects layout and layer drift", () => {
+    expect(
+      answerSeedStructureIssues(preflightBoard.visual, {
+        ...preflightBoard.visual,
+        layout: "stack",
+      })
+    ).toEqual(expect.arrayContaining([expect.stringMatching(/Layout drifted/i)]));
+
+    expect(
+      answerSeedStructureIssues(preflightBoard.visual, {
+        ...preflightBoard.visual,
+        layers: preflightBoard.visual.layers.slice(0, 1),
+      })
+    ).toEqual(expect.arrayContaining([expect.stringMatching(/Layer count drifted/i)]));
+  });
+
+  it("keeps host structure and merges invent asset fills", () => {
+    const invent = {
+      answer: "keyboard",
+      visual: {
+        ...preflightBoard.visual,
+        layers: [
+          {
+            kind: "pictogram" as const,
+            concept: "key",
+            emojiFallback: "🔑",
+            svg: "<svg id='invent' />",
+            assetId: "key",
+            source: "catalog" as const,
+            seenAs: ["key"],
+            recognitionConfidence: 0.95,
+          },
+          { kind: "operator" as const, symbol: "+" },
+          { kind: "text" as const, content: "BOARD", emphasis: "normal" as const },
+        ],
+      },
+    };
+
+    const merged = mergeInventAssetsOntoPreflight(preflightBoard, invent);
+    expect(merged.visual.layout).toBe("row");
+    expect(merged.visual.layers).toHaveLength(3);
+    expect(merged.visual.layers[0]).toEqual(
+      expect.objectContaining({
+        kind: "pictogram",
+        svg: "<svg id='invent' />",
+        seenAs: ["key"],
+        recognitionConfidence: 0.95,
+      })
+    );
+  });
+
+  it("discards invent boards that restructure the preflight", () => {
+    const invent = {
+      answer: "keyboard",
+      visual: {
+        ...preflightBoard.visual,
+        layout: "stack" as const,
+        layers: [
+          {
+            kind: "pictogram" as const,
+            concept: "key",
+            emojiFallback: "🔑",
+            svg: "<svg id='invent' />",
+            source: "catalog" as const,
+          },
+        ],
+      },
+    };
+
+    const merged = mergeInventAssetsOntoPreflight(preflightBoard, invent);
+    expect(merged).toEqual(preflightBoard);
   });
 });

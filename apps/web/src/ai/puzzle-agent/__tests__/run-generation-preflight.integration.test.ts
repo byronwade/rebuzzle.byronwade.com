@@ -49,12 +49,14 @@ jest.mock("../../errors", () => ({
 jest.mock("../../quota-manager", () => ({
   enforceQuota: (...args: unknown[]) => enforceQuota(...args),
 }));
-jest.mock("../authoritative-draft", () => ({
-  applyAuthoritativeComposition: jest.fn((puzzle, composition) => ({
-    ...puzzle,
-    rebusPuzzle: composition.visual.unicodeFallback,
-    visual: composition.visual,
-  })),
+jest.mock("../authoritative-draft", () => {
+  const actual = jest.requireActual("../authoritative-draft") as typeof import("../authoritative-draft");
+  return {
+    ...actual,
+  };
+});
+jest.mock("../apex/near-miss-stress", () => ({
+  evaluateNearMissStress: jest.fn(() => ({ ok: true, issues: [], nearMisses: [] })),
 }));
 jest.mock("../difficulty-levels", () => ({
   getDifficultyLevelForScore: jest.fn(() => ({
@@ -266,7 +268,7 @@ describe("runPuzzleAgentGeneration cue-plan preflight integration", () => {
     );
   });
 
-  it("still rejects when the model board omits a mandatory cue after preflight", async () => {
+  it("ignores invent restructuring and keeps the host preflight board", async () => {
     generate.mockImplementation(
       async (options: {
         onToolExecutionEnd?: (event: {
@@ -285,14 +287,14 @@ describe("runPuzzleAgentGeneration cue-plan preflight integration", () => {
               visual: {
                 styleId: "ink-pictogram-v1",
                 mode: "composed",
-                layout: "row",
+                layout: "stack",
                 unicodeFallback: "🔑",
                 layers: [
                   {
                     kind: "pictogram",
                     concept: "key",
                     emojiFallback: "🔑",
-                    svg: "<svg />",
+                    svg: "<svg id='invent' />",
                     source: "catalog",
                   },
                 ],
@@ -307,9 +309,9 @@ describe("runPuzzleAgentGeneration cue-plan preflight integration", () => {
               answer: "keyboard",
               difficulty: 5,
               difficultyLevel: "Hard",
-              explanation: "key",
+              explanation: "key + board",
               category: "compound",
-              hints: ["a", "b", "c"],
+              hints: ["compound", "objects", "starts with K"],
               techniqueId: "simple_compound",
               visual: preflightVisual,
             },
@@ -318,14 +320,28 @@ describe("runPuzzleAgentGeneration cue-plan preflight integration", () => {
       }
     );
 
-    await expect(
-      runPuzzleAgentGeneration({
-        targetDifficulty: 5,
-        answerSeed: "keyboard",
-        answerSeedCuePlan: cuePlan,
-        maxAttempts: 1,
-        modelChainLimit: 1,
-      })
-    ).rejects.toThrow(/Answer-first visual cue contract failed|Missing text cue BOARD/i);
+    const result = await runPuzzleAgentGeneration({
+      targetDifficulty: 5,
+      answerSeed: "keyboard",
+      answerSeedCuePlan: cuePlan,
+      preferredTechniques: ["simple_compound"],
+      maxAttempts: 1,
+      modelChainLimit: 1,
+      deferRenderedEvaluation: true,
+    });
+
+    expect(result.puzzle.visual.layout).toBe("row");
+    expect(result.puzzle.visual.layers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "pictogram", concept: "key" }),
+        expect.objectContaining({ kind: "text", content: "BOARD" }),
+      ])
+    );
+    expect(generateArgsPromptMentionsStructureLock()).toBe(true);
   });
 });
+
+function generateArgsPromptMentionsStructureLock(): boolean {
+  const generateArgs = generate.mock.calls[0]?.[1] as { prompt: string };
+  return /Do not restructure layers/i.test(generateArgs?.prompt ?? "");
+}

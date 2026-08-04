@@ -78,7 +78,7 @@ function fakeCandidate(overrides: Partial<ApexCandidate> = {}): ApexCandidate {
 
 describe("phrase bank", () => {
   it("has a substantial curated corpus", () => {
-    expect(phraseBankSize()).toBeGreaterThanOrEqual(40);
+    expect(phraseBankSize()).toBeGreaterThanOrEqual(90);
   });
 
   it("samples non-banned phrases near the target difficulty", () => {

@@ -137,8 +137,10 @@ export const puzzleAgentTools: ToolSet = {
 
   inspect_answer_seed_cues: tool({
     description:
-      "Inspect a host-owned answer-seed cue contract: catalog validity, draft layers, and whether a board is missing required cues. Call before compose when an answer-first seed is reserved.",
+      "Inspect a host-owned answer-seed cue contract: catalog validity, rule-graph layers/layout, and whether a board is missing required cues. Call before compose when an answer-first seed is reserved.",
     inputSchema: z.object({
+      answer: z.string().optional(),
+      techniqueId: z.string().optional(),
       cues: z
         .array(
           z.discriminatedUnion("kind", [
@@ -176,6 +178,8 @@ export const puzzleAgentTools: ToolSet = {
       inspectAnswerSeedCuePlan({
         cues: input.cues as AnswerSeedVisualCue[] | undefined,
         visual: input.visual,
+        techniqueId: input.techniqueId,
+        answer: input.answer,
       }),
   }),
 

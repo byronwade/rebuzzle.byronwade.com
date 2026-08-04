@@ -307,6 +307,10 @@ export async function runApexGeneration(
   const selection = await selectQualifiedFinalist({
     candidates,
     minRubricOverall: brief.minRubricOverall,
+    eloOptions: {
+      techniqueRates: brief.techniqueRates,
+      targetDifficulty: brief.targetDifficulty,
+    },
     prepare: async (candidate) => {
       const critiqueStarted = Date.now();
       try {

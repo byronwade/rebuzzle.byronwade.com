@@ -31,8 +31,14 @@ jest.mock("../../errors", () => ({
   parseAIError: jest.fn((error) => error),
 }));
 jest.mock("../../quota-manager", () => ({ enforceQuota: jest.fn(async () => undefined) }));
-jest.mock("../authoritative-draft", () => ({
-  applyAuthoritativeComposition: jest.fn((puzzle) => puzzle),
+jest.mock("../authoritative-draft", () => {
+  const actual = jest.requireActual("../authoritative-draft") as typeof import("../authoritative-draft");
+  return {
+    ...actual,
+  };
+});
+jest.mock("../apex/near-miss-stress", () => ({
+  evaluateNearMissStress: jest.fn(() => ({ ok: true, issues: [], nearMisses: [] })),
 }));
 jest.mock("../difficulty-levels", () => ({
   getDifficultyLevelForScore: jest.fn(() => ({
@@ -188,7 +194,12 @@ describe("runPuzzleAgentGeneration asset gate", () => {
     expect(evaluatePublishGates).not.toHaveBeenCalled();
   });
 
-  it("rejects an authoritative board that omits a required seed cue before asset checks", async () => {
+  it("keeps host preflight structure when invent omits a seed cue, then runs asset checks", async () => {
+    verifyPublicationAssets.mockResolvedValue({
+      ok: false,
+      reason: 'Pictogram "key" is not catalog-backed or human-approved',
+    });
+
     await expect(
       runPuzzleAgentGeneration({
         targetDifficulty: 5,
@@ -202,7 +213,15 @@ describe("runPuzzleAgentGeneration asset gate", () => {
       })
     ).rejects.toBeInstanceOf(PuzzleCandidateRejectedError);
 
-    expect(verifyPublicationAssets).not.toHaveBeenCalled();
+    // Invent dropped BOARD, but host preflight still owns the board — asset gate runs on it.
+    expect(verifyPublicationAssets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        layers: expect.arrayContaining([
+          expect.objectContaining({ kind: "pictogram", concept: "key" }),
+          expect.objectContaining({ kind: "text", content: "BOARD" }),
+        ]),
+      })
+    );
     expect(checkUniqueness).not.toHaveBeenCalled();
     expect(evaluatePublishGates).not.toHaveBeenCalled();
   });

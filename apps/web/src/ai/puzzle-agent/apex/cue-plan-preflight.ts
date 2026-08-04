@@ -7,57 +7,24 @@
 
 import type { ComposePuzzleVisualResult } from "../visual/compose-visual";
 import type { PuzzleVisual, VisualLayer } from "../visual/composition";
-import { resolveCuratedPictogram } from "../visual/curated-pictograms";
 import {
   answerSeedCuePlanIssues,
   formatAnswerSeedCuePlan,
   missingAnswerSeedCues,
 } from "./answer-seed-cues";
+import { composeRuleGraph, type PuzzleLayoutMode, type RuleGraphResult } from "./rule-graph";
 import type { AnswerSeedVisualCue } from "./types";
-
-function emojiForConcept(concept: string): string {
-  // Share-string placeholder only — compose fills reviewed SVG + real fallback.
-  const cleaned = concept
-    .replace(/[^a-z0-9]+/gi, "")
-    .slice(0, 2)
-    .toUpperCase();
-  return cleaned || "◆";
-}
 
 /**
  * Deterministic layer plan from host-owned answer-seed cues.
+ * Prefer composeRuleGraph when a technique is known.
  */
-export function layersFromAnswerSeedCues(cues: readonly AnswerSeedVisualCue[]): VisualLayer[] {
-  return cues.map((cue): VisualLayer => {
-    if (cue.kind === "catalog") {
-      const resolved = resolveCuratedPictogram(cue.concept);
-      const concept = resolved?.canonicalConcept ?? cue.concept;
-      return {
-        kind: "pictogram",
-        concept,
-        role: cue.role,
-        emojiFallback: emojiForConcept(concept),
-        ...(resolved
-          ? {
-              svg: resolved.svg,
-              assetId: resolved.assetId,
-              source: "catalog" as const,
-            }
-          : {}),
-      };
-    }
-    if (cue.kind === "text") {
-      return {
-        kind: "text",
-        content: cue.content,
-        emphasis: "normal",
-      };
-    }
-    return {
-      kind: "operator",
-      symbol: cue.symbol,
-    };
-  });
+export function layersFromAnswerSeedCues(
+  cues: readonly AnswerSeedVisualCue[],
+  techniqueId?: string,
+  answer?: string
+): VisualLayer[] {
+  return composeRuleGraph({ cues, techniqueId, answer }).layers;
 }
 
 export type InspectAnswerSeedCuePlanResult = {
@@ -65,6 +32,8 @@ export type InspectAnswerSeedCuePlanResult = {
   issues: string[];
   missingOnBoard: string[];
   layerPlan: VisualLayer[];
+  layout: PuzzleLayoutMode;
+  ruleGraph: RuleGraphResult;
   catalogConcepts: string[];
   ready: boolean;
   guidance: string[];
@@ -76,10 +45,24 @@ export type InspectAnswerSeedCuePlanResult = {
 export function inspectAnswerSeedCuePlan(input: {
   cues?: readonly AnswerSeedVisualCue[];
   visual?: PuzzleVisual;
+  techniqueId?: string;
+  answer?: string;
 }): InspectAnswerSeedCuePlanResult {
   const cues = input.cues ?? [];
   const issues = answerSeedCuePlanIssues(cues);
-  const layerPlan = issues.length ? [] : layersFromAnswerSeedCues(cues);
+  const ruleGraph = issues.length
+    ? {
+        layers: [] as VisualLayer[],
+        layout: "row" as const,
+        applied: false,
+        techniqueId: input.techniqueId,
+        rules: ["skipped:invalid-cues"],
+      }
+    : composeRuleGraph({
+        cues,
+        techniqueId: input.techniqueId,
+        answer: input.answer,
+      });
   const missingOnBoard = input.visual ? missingAnswerSeedCues({ visual: input.visual, cues }) : [];
   const catalogConcepts = cues
     .filter(
@@ -97,7 +80,11 @@ export function inspectAnswerSeedCuePlan(input: {
     guidance.push("Fix cue-plan issues before compose_puzzle_visual");
   } else if (cues.length) {
     guidance.push("Call compose_puzzle_visual with these exact layer concepts/text/operators");
+    guidance.push(`Use layout=${ruleGraph.layout} from the rule-graph template`);
     guidance.push("Do not substitute catalog concepts with vaguely related icons");
+    if (ruleGraph.applied) {
+      guidance.push(`Rule-graph applied: ${ruleGraph.rules.join("; ")}`);
+    }
   }
   if (missingOnBoard.length) {
     guidance.push(`Board is still missing: ${missingOnBoard.join("; ")}`);
@@ -107,7 +94,9 @@ export function inspectAnswerSeedCuePlan(input: {
     plan: formatAnswerSeedCuePlan(cues),
     issues,
     missingOnBoard,
-    layerPlan,
+    layerPlan: ruleGraph.layers,
+    layout: ruleGraph.layout,
+    ruleGraph,
     catalogConcepts,
     ready: issues.length === 0 && cues.length > 0 && missingOnBoard.length === 0,
     guidance,
@@ -123,16 +112,20 @@ export type CuePlanPreflightResult = {
 };
 
 /**
- * Host-side preflight: validate cues → compose deterministically → verify presence.
+ * Host-side preflight: validate cues → rule-graph → compose → verify presence.
  */
 export async function preflightComposeAnswerSeedCuePlan(input: {
   answer: string;
   targetDifficulty: number;
   techniqueId?: string;
   cues: readonly AnswerSeedVisualCue[];
-  layout?: "row" | "stack" | "grid" | "overlay";
+  layout?: PuzzleLayoutMode;
 }): Promise<CuePlanPreflightResult> {
-  const inspection = inspectAnswerSeedCuePlan({ cues: input.cues });
+  const inspection = inspectAnswerSeedCuePlan({
+    cues: input.cues,
+    techniqueId: input.techniqueId,
+    answer: input.answer,
+  });
   if (!input.cues.length || inspection.issues.length) {
     return {
       ok: false,
@@ -149,7 +142,8 @@ export async function preflightComposeAnswerSeedCuePlan(input: {
     answer: input.answer,
     targetDifficulty: input.targetDifficulty,
     techniqueId: input.techniqueId,
-    layout: input.layout ?? "row",
+    // Explicit caller layout wins; otherwise use deterministic rule-graph layout.
+    layout: input.layout ?? inspection.layout,
     layers: inspection.layerPlan,
   });
 
@@ -175,6 +169,8 @@ export async function preflightComposeAnswerSeedCuePlan(input: {
       inspection: inspectAnswerSeedCuePlan({
         cues: input.cues,
         visual: composition.visual,
+        techniqueId: input.techniqueId,
+        answer: input.answer,
       }),
       composition,
     };
@@ -187,6 +183,8 @@ export async function preflightComposeAnswerSeedCuePlan(input: {
     inspection: inspectAnswerSeedCuePlan({
       cues: input.cues,
       visual: composition.visual,
+      techniqueId: input.techniqueId,
+      answer: input.answer,
     }),
     composition,
   };

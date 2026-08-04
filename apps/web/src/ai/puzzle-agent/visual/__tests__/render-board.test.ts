@@ -30,7 +30,7 @@ describe("renderPuzzleVisual", () => {
     expect(metadata.height).toBeGreaterThanOrEqual(72);
   });
 
-  it("renders all production profiles and preserves responsive wrapping", async () => {
+  it("renders all production profiles with locked cue topology", async () => {
     const icon = resolveCuratedPictogram("car")!;
     const visual: PuzzleVisual = {
       styleId: "ink-pictogram-v1",
@@ -58,6 +58,10 @@ describe("renderPuzzleVisual", () => {
     expect(profiles.map((profile) => profile.width)).toEqual([320, 375, 768]);
     expect(profiles[0]!.tileSize).toBe(44);
     expect(profiles[1]!.tileSize).toBe(72);
-    expect(profiles[1]!.wrappedRows).toBeGreaterThan(profiles[2]!.wrappedRows);
+    expect(profiles[0]!.locked).toBe(true);
+    expect(profiles[0]!.rowIndexes).toEqual(profiles[1]!.rowIndexes);
+    expect(profiles[1]!.rowIndexes).toEqual(profiles[2]!.rowIndexes);
+    expect(profiles[0]!.wrappedRows).toBe(profiles[1]!.wrappedRows);
+    expect(profiles[1]!.wrappedRows).toBe(profiles[2]!.wrappedRows);
   });
 });
