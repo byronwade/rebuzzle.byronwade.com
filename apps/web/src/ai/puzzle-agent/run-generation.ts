@@ -703,6 +703,29 @@ export async function runPuzzleAgentGeneration(
           continue;
         }
 
+        // Blind wrong parses that are near-miss cousins of the intended answer
+        // mean the board still "solves" for a close alternate — fail closed.
+        const blindNearMiss = evaluateNearMissStress({
+          answer: puzzle.answer,
+          extraCandidates: sim.firstWrongParses,
+          includePhraseBank: false,
+        });
+        if (!blindNearMiss.ok) {
+          priorFailure = blindNearMiss.issues[0] ?? "Near-miss stress failed on blind wrong parses";
+          lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
+          lastError = lastCandidateError;
+          if (generatorTrace) {
+            console.warn("[Puzzle Agent] candidate rejected", {
+              modelId,
+              attempt,
+              stage: "near-miss-blind-parses",
+              reason: priorFailure,
+              nearMisses: blindNearMiss.nearMisses,
+            });
+          }
+          continue;
+        }
+
         return {
           puzzle: {
             ...puzzle,

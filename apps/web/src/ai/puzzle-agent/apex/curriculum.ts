@@ -174,6 +174,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
     phraseSuggestions,
     diversity,
     learning,
+    techniqueRates: techniqueCalibration.rates,
     qualityThreshold,
     minFunScore,
     minRubricOverall: AI_CONFIG.puzzleAgent.apex?.minRubricOverall ?? 78,

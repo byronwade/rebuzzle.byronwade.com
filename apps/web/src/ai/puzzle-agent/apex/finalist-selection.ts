@@ -1,3 +1,4 @@
+import type { EloRankingOptions } from "./elo-ratings";
 import { rankCandidates } from "./tournament";
 import type { ApexCandidate } from "./types";
 
@@ -76,8 +77,11 @@ export async function selectQualifiedFinalist(input: {
   canStartRevision?: () => boolean;
   revise?: FinalistRevision;
   maxRevisions?: number;
+  /** Soft Elo prior used while pre-ranking cheap drafts before vision spend. */
+  eloOptions?: EloRankingOptions;
 }): Promise<FinalistSelectionResult> {
-  const preRanked = rankCandidates(input.candidates, input.minRubricOverall);
+  const eloOptions = input.eloOptions;
+  const preRanked = rankCandidates(input.candidates, input.minRubricOverall, eloOptions);
   const preparedById = new Map<string, ApexCandidate>();
   const evaluatedById = new Map<string, ApexCandidate>();
   const failures: string[] = [];
@@ -91,7 +95,7 @@ export async function selectQualifiedFinalist(input: {
     }
 
     const candidate = input.prepare ? await input.prepare(draft) : draft;
-    let prepared = rankCandidates([candidate], input.minRubricOverall)[0];
+    let prepared = rankCandidates([candidate], input.minRubricOverall, eloOptions)[0];
     if (!prepared) {
       failures.push(`${draft.id}: finalist preparation returned no candidate`);
       continue;
@@ -126,7 +130,7 @@ export async function selectQualifiedFinalist(input: {
       }
 
       const revisedCandidate = input.prepare ? await input.prepare(revised) : revised;
-      prepared = rankCandidates([revisedCandidate], input.minRubricOverall)[0];
+      prepared = rankCandidates([revisedCandidate], input.minRubricOverall, eloOptions)[0];
       if (!prepared) {
         failures.push(`${revised.id}: finalist revision returned no candidate`);
         continue;
@@ -145,7 +149,7 @@ export async function selectQualifiedFinalist(input: {
     }
 
     const evaluated = await input.evaluate(prepared);
-    const rescored = rankCandidates([evaluated], input.minRubricOverall)[0];
+    const rescored = rankCandidates([evaluated], input.minRubricOverall, eloOptions)[0];
     if (!rescored) {
       failures.push("Rendered finalist evaluation returned no candidate");
       continue;

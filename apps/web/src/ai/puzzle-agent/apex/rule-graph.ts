@@ -17,12 +17,15 @@ export type PuzzleLayoutMode = "row" | "stack" | "grid" | "overlay";
 export const RULE_GRAPH_TECHNIQUES = [
   "simple_compound",
   "obvious_emoji_sum",
+  "multi_emoji_compound",
   "single_homophone",
   "basic_positional",
   "positional_phrase",
   "spatial_preposition_play",
   "math_symbol_wordplay",
   "size_or_case_semantics",
+  "idiom_as_picture",
+  "false_lead_visual",
 ] as const satisfies readonly TechniqueId[];
 
 export type RuleGraphTechniqueId = (typeof RULE_GRAPH_TECHNIQUES)[number];
@@ -198,12 +201,16 @@ export function composeRuleGraph(input: {
 
   switch (techniqueId) {
     case "simple_compound":
-    case "obvious_emoji_sum": {
+    case "obvious_emoji_sum":
+    case "multi_emoji_compound": {
       const joined = ensureCompoundJoiners(layers);
       layers = joined.layers;
       layout = "row";
       if (joined.changed) rules.push("insert:+ between word-parts");
       else rules.push("keep cue-plan joiners");
+      if (techniqueId === "multi_emoji_compound" && layers.filter(isSemanticPart).length >= 3) {
+        rules.push("multi-emoji compound — order is the phrase");
+      }
       break;
     }
     case "single_homophone": {
@@ -214,6 +221,24 @@ export function composeRuleGraph(input: {
           ? `preserve ${phonetic} phonetic-anchor cue(s)`
           : "homophone board — no forced joiners"
       );
+      break;
+    }
+    case "idiom_as_picture": {
+      // Literal idiom boards read left-to-right; keep joiners when present.
+      layout = "row";
+      const joined = ensureCompoundJoiners(layers);
+      layers = joined.layers;
+      rules.push("idiom_as_picture: row reading of literal parts");
+      if (joined.changed) rules.push("insert:+ between idiom parts");
+      break;
+    }
+    case "false_lead_visual": {
+      // Spatial re-reading beats a tempting horizontal compound.
+      const stripped = stripJoinOperators(layers);
+      layers = stripped.layers;
+      layout = layers.filter(isSemanticPart).length >= 3 ? "overlay" : "stack";
+      rules.push(`false_lead_visual: layout:${layout} hides the first reading`);
+      if (stripped.changed) rules.push("strip + joiners so false lead is spatial");
       break;
     }
     case "basic_positional":

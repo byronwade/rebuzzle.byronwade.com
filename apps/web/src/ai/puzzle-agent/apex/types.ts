@@ -7,6 +7,7 @@ import type { DifficultyTierLabel } from "../difficulty-levels";
 import type { PuzzleNoveltyEvidence } from "../novelty";
 import type { TechniqueId } from "../technique-library";
 import type { PuzzleVisual } from "../visual/composition";
+import type { TechniqueSolveRate } from "./technique-calibration";
 
 const RubricScoresSchema = z.object({
   ahaMoment: z.number().min(0).max(100),
@@ -173,6 +174,8 @@ export type GenerationBrief = {
   phraseSuggestions: PhraseBankEntry[];
   diversity: DiversitySnapshot;
   learning: LearningDigest;
+  /** Live technique solve rates for Elo-informed finalist pre-ranking. */
+  techniqueRates: TechniqueSolveRate[];
   qualityThreshold: number;
   minFunScore: number;
   minRubricOverall: number;

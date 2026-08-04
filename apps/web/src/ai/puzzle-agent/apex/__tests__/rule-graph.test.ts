@@ -7,7 +7,9 @@ describe("rule-graph composer", () => {
     expect(isRuleGraphTechnique("basic_positional")).toBe(true);
     expect(isRuleGraphTechnique("spatial_preposition_play")).toBe(true);
     expect(isRuleGraphTechnique("math_symbol_wordplay")).toBe(true);
-    expect(isRuleGraphTechnique("false_lead_visual")).toBe(false);
+    expect(isRuleGraphTechnique("false_lead_visual")).toBe(true);
+    expect(isRuleGraphTechnique("idiom_as_picture")).toBe(true);
+    expect(isRuleGraphTechnique("nested_homophone")).toBe(false);
   });
 
   it("inserts + joiners for simple_compound when omitted", () => {
@@ -107,9 +109,55 @@ describe("rule-graph composer", () => {
     ]);
   });
 
-  it("passes through unknown techniques as a flat row", () => {
+  it("joins multi_emoji_compound parts in a row", () => {
+    const result = composeRuleGraph({
+      techniqueId: "multi_emoji_compound",
+      answer: "moonwalk",
+      cues: [
+        { kind: "catalog", concept: "moon", role: "word-part" },
+        { kind: "catalog", concept: "footprints", role: "word-part" },
+      ],
+    });
+    expect(result.layout).toBe("row");
+    expect(result.layers.some((layer) => layer.kind === "operator")).toBe(true);
+  });
+
+  it("keeps idiom_as_picture as a left-to-right row", () => {
+    const result = composeRuleGraph({
+      techniqueId: "idiom_as_picture",
+      answer: "piece of cake",
+      cues: [
+        { kind: "text", content: "PIECE", role: "word-part" },
+        { kind: "catalog", concept: "cake", role: "word-part" },
+      ],
+    });
+    expect(result.applied).toBe(true);
+    expect(result.layout).toBe("row");
+    expect(result.layers.map((layer) => layer.kind)).toEqual([
+      "text",
+      "operator",
+      "pictogram",
+    ]);
+  });
+
+  it("uses stack/overlay for false_lead_visual and strips joiners", () => {
     const result = composeRuleGraph({
       techniqueId: "false_lead_visual",
+      answer: "dog eat dog",
+      cues: [
+        { kind: "catalog", concept: "dog", role: "word-part" },
+        { kind: "operator", symbol: "+", role: "structural-anchor" },
+        { kind: "text", content: "EAT", role: "word-part" },
+        { kind: "catalog", concept: "dog", role: "word-part" },
+      ],
+    });
+    expect(result.layout).toBe("overlay");
+    expect(result.layers.every((layer) => layer.kind !== "operator")).toBe(true);
+  });
+
+  it("passes through unknown techniques as a flat row", () => {
+    const result = composeRuleGraph({
+      techniqueId: "nested_homophone",
       cues: [{ kind: "text", content: "HOT", role: "word-part" }],
     });
     expect(result.applied).toBe(false);

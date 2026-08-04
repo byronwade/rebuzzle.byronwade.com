@@ -33,4 +33,14 @@ describe("near-miss stress", () => {
     expect(result.ok).toBe(false);
     expect(result.nearMisses).toContain("hold on tight");
   });
+
+  it("can score blind wrong parses without consulting the phrase bank", () => {
+    const result = evaluateNearMissStress({
+      answer: "hold on",
+      extraCandidates: ["hold on tight"],
+      includePhraseBank: false,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.nearMisses).toEqual(["hold on tight"]);
+  });
 });

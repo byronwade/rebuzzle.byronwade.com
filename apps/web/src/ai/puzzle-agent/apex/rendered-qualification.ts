@@ -1,4 +1,5 @@
 import { recognizePuzzleBoard } from "../visual/critique-board";
+import { evaluateNearMissStress } from "./near-miss-stress";
 import {
   applyPlayerSimHeuristics,
   playerSimPublishBlockers,
@@ -54,7 +55,15 @@ export async function qualifyRenderedCandidate(
     };
   }
 
-  const blockers = playerSimPublishBlockers(playerSim);
+  const blockers = [...playerSimPublishBlockers(playerSim)];
+  const nearMissStress = evaluateNearMissStress({
+    answer: candidate.answer,
+    extraCandidates: playerSim.firstWrongParses,
+    includePhraseBank: false,
+  });
+  if (!nearMissStress.ok) {
+    blockers.push(...nearMissStress.issues);
+  }
   const profileResults = boardRecognition.profileResults ?? [];
   const qualified: ApexCandidate = {
     ...candidate,

@@ -1,11 +1,17 @@
 const recognizePuzzleBoard = jest.fn();
 const simulatePlayerSolve = jest.fn();
+const applyPlayerSimHeuristics = jest.fn();
+const playerSimPublishBlockers = jest.fn(() => [] as string[]);
+const evaluateNearMissStress = jest.fn(() => ({ ok: true, issues: [], nearMisses: [] }));
 
 jest.mock("../../visual/critique-board", () => ({ recognizePuzzleBoard }));
 jest.mock("../player-sim", () => ({
-  applyPlayerSimHeuristics: jest.fn(),
-  playerSimPublishBlockers: jest.fn(() => []),
+  applyPlayerSimHeuristics: (...args: unknown[]) => applyPlayerSimHeuristics(...args),
+  playerSimPublishBlockers: (...args: unknown[]) => playerSimPublishBlockers(...args),
   simulatePlayerSolve,
+}));
+jest.mock("../near-miss-stress", () => ({
+  evaluateNearMissStress: (...args: unknown[]) => evaluateNearMissStress(...args),
 }));
 
 import { INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
@@ -51,7 +57,12 @@ function candidate(): ApexCandidate {
 }
 
 describe("rendered finalist qualification", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    playerSimPublishBlockers.mockReturnValue([]);
+    evaluateNearMissStress.mockReturnValue({ ok: true, issues: [], nearMisses: [] });
+    applyPlayerSimHeuristics.mockImplementation((sim) => sim);
+  });
 
   it("rejects an unrecognized board before spending on player simulation", async () => {
     recognizePuzzleBoard.mockResolvedValue({
@@ -69,5 +80,39 @@ describe("rendered finalist qualification", () => {
     expect(result.publishable).toBe(false);
     expect(result.rejectReasons).toContain("Rendered board objects not recognized: door");
     expect(simulatePlayerSolve).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when blind wrong parses are near-miss cousins of the answer", async () => {
+    recognizePuzzleBoard.mockResolvedValue({
+      ok: true,
+      perceptions: [{ model: "a", overallConfidence: 0.9 }],
+      conceptVotes: {},
+      textVotes: {},
+      operatorVotes: {},
+      profileResults: [],
+    });
+    simulatePlayerSolve.mockResolvedValue({
+      firstWrongParses: ["door to doors"],
+      likelySolvePath: "ok",
+      hintUnlockOrderLooksFair: true,
+      unfairReasons: [],
+      estimatedSolveRate: 0.5,
+      confidence: 0.9,
+    });
+    evaluateNearMissStress.mockReturnValue({
+      ok: false,
+      issues: ['Near-miss stress failed: "door to door" collides with close alternate(s): door to doors'],
+      nearMisses: ["door to doors"],
+    });
+
+    const result = await qualifyRenderedCandidate(candidate());
+
+    expect(evaluateNearMissStress).toHaveBeenCalledWith({
+      answer: "door to door",
+      extraCandidates: ["door to doors"],
+      includePhraseBank: false,
+    });
+    expect(result.publishable).toBe(false);
+    expect(result.rejectReasons.join(" ")).toMatch(/Near-miss stress failed/i);
   });
 });

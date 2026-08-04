@@ -99,8 +99,11 @@ export function findAnswerNearMisses(answer: string, candidates: readonly string
 export function evaluateNearMissStress(input: {
   answer: string;
   extraCandidates?: readonly string[];
+  /** When false, only score `extraCandidates` (used after blind-solve wrong parses). */
+  includePhraseBank?: boolean;
 }): NearMissStressResult {
-  const bank = PHRASE_BANK.map((entry) => entry.answer);
+  const bank =
+    input.includePhraseBank === false ? [] : PHRASE_BANK.map((entry) => entry.answer);
   const candidates = [...new Set([...(input.extraCandidates ?? []), ...bank])];
   const nearMisses = findAnswerNearMisses(input.answer, candidates).filter(
     (phrase) => normalizePhraseForNearMiss(phrase) !== normalizePhraseForNearMiss(input.answer)
