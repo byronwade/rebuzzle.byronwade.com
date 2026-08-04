@@ -20,7 +20,8 @@ type RebuzzleMarkProps = {
 };
 
 /**
- * Rebus board mark — two staggered clue tiles leading into a solved answer bar.
+ * Game mark — a board tile meeting a solve token.
+ * Two shapes. Reads at every size.
  */
 export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
   return (
@@ -34,11 +35,8 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
     >
       {title ? <title>{title}</title> : null}
       <rect className="fill-foreground" height="64" rx="14" width="64" />
-      <rect className="fill-background" height="22" rx="6" width="22" x="10" y="10" />
-      <circle className="fill-foreground" cx="21" cy="21" r="5.5" />
-      <rect className="fill-background" height="22" rx="6" width="22" x="32" y="28" />
-      <path className="stroke-foreground" d="M38 39h10" strokeLinecap="round" strokeWidth="3.25" />
-      <rect className="fill-link" height="8" rx="4" width="44" x="10" y="54" />
+      <rect className="fill-background" height="30" rx="8" width="30" x="11" y="17" />
+      <circle className="fill-link" cx="40" cy="32" r="15" />
     </svg>
   );
 }
