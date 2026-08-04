@@ -1259,7 +1259,14 @@
 }
 
 .puzzle-visual-board .puzzle-image-tile {
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 12%, transparent);
+  /* Square tile language — match pictogram slots, ink rim only */
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--rb-mist, var(--foreground)) 35%, transparent);
+  border-radius: 0;
+}
+
+.puzzle-visual-board .puzzle-pictogram-fallback {
+  /* Multicolor OS emoji are desaturated so the board stays ink-first */
+  filter: grayscale(1) contrast(1.12);
 }
 
 /* Monospace puzzles (number-sequence, caesar-cipher) */

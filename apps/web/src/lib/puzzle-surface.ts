@@ -6,7 +6,7 @@
  * the background flips to whichever surface keeps contrast readable.
  */
 
-import { INK_PICTOGRAM_PALETTE } from "@/ai/puzzle-agent/visual/style";
+import { INK_PICTOGRAM_PALETTE, PUZZLE_BOARD_SURFACES } from "@/ai/puzzle-agent/visual/style";
 import type { PuzzleVisual } from "@/lib/gameSettings";
 
 export type PuzzleSurfaceMode = "paper" | "cinema";
@@ -22,16 +22,12 @@ export interface PuzzleSurface {
 }
 
 const PAPER: PuzzleSurface = {
-  mode: "paper",
-  canvas: INK_PICTOGRAM_PALETTE.canvas,
-  ink: INK_PICTOGRAM_PALETTE.ink,
+  ...PUZZLE_BOARD_SURFACES.paper,
   usesMeaningColors: false,
 };
 
 const CINEMA: PuzzleSurface = {
-  mode: "cinema",
-  canvas: "#0a0a0a",
-  ink: "#f5f5f4",
+  ...PUZZLE_BOARD_SURFACES.cinema,
   usesMeaningColors: false,
 };
 

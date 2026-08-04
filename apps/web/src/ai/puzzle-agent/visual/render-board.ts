@@ -3,16 +3,18 @@ import type { PuzzleVisual, VisualLayer } from "./composition";
 import { layoutLayersLocked, planLockedRowIndexes } from "./layout-plan";
 import {
   getPuzzleBoardRecognitionProfile,
+  puzzleBoardCaptionSize,
+  puzzleBoardFontSize,
+  puzzleBoardTextWeight,
+  PUZZLE_BOARD_CHROME,
   PUZZLE_BOARD_RECOGNITION_PROFILES,
   PUZZLE_BOARD_SIZE_SPECS,
+  PUZZLE_BOARD_SVG_FONT_FAMILY,
   type PuzzleBoardRecognitionProfile,
   type PuzzleBoardRecognitionProfileId,
 } from "./presentation";
 import { sanitizePictogramSvg } from "./sanitize-svg";
-
-const CANVAS = "#f4f6f3";
-const INK = "#1a1f1c";
-const STRIKE = "#b23a2d";
+import { INK_PICTOGRAM_PALETTE } from "./style";
 
 export type RenderedPuzzleBoard = {
   profileId: PuzzleBoardRecognitionProfileId;
@@ -36,24 +38,19 @@ function escapeXml(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
-function fontSizeFor(layer: Extract<VisualLayer, { kind: "text" }>, base: number): number {
-  if (layer.emphasis === "large") return Math.round(base * 1.35);
-  if (layer.emphasis === "small") return Math.round(base * 0.72);
-  if (layer.emphasis === "tiny") return Math.round(base * 0.55);
-  if (layer.emphasis === "stacked") return Math.round(base * 0.9);
-  return base;
-}
-
 function renderLayer(
   layer: VisualLayer,
   position: { x: number; y: number; width: number; height: number },
   profile: PuzzleBoardRecognitionProfile
 ): string {
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
+  const fontFamily = PUZZLE_BOARD_SVG_FONT_FAMILY;
   if (layer.kind === "pictogram") {
     const svg = sanitizePictogramSvg(layer.svg ?? "");
     if (!svg) {
-      return `<text x="${position.x + position.width / 2}" y="${position.y + position.height * 0.72}" text-anchor="middle" font-size="${Math.round(size.tile * 0.72)}">${escapeXml(layer.emojiFallback)}</text>`;
+      // Monochrome letter/emoji stub — avoid OS multicolor emoji in recognition renders.
+      const glyph = Math.round(size.tile * PUZZLE_BOARD_CHROME.fallbackGlyphFactor);
+      return `<rect x="${position.x}" y="${position.y}" width="${position.width}" height="${position.height}" rx="8" fill="${INK_PICTOGRAM_PALETTE.canvas}" stroke="${INK_PICTOGRAM_PALETTE.mist}" stroke-width="1"/><text x="${position.x + position.width / 2}" y="${position.y + position.height * 0.68}" text-anchor="middle" font-family="${fontFamily}" font-size="${glyph}" font-weight="600" fill="${INK_PICTOGRAM_PALETTE.ink}">${escapeXml(layer.emojiFallback || "◆")}</text>`;
     }
     const src = Buffer.from(svg).toString("base64");
     return `<image x="${position.x}" y="${position.y}" width="${position.width}" height="${position.height}" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml;base64,${src}"/>`;
@@ -65,24 +62,24 @@ function renderLayer(
   }
 
   if (layer.kind === "operator") {
-    return `<text x="${position.x + position.width / 2}" y="${position.y + position.height * 0.68}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${size.fontSize}" font-weight="500" fill="${INK}">${escapeXml(layer.symbol)}</text>`;
+    return `<text x="${position.x + position.width / 2}" y="${position.y + position.height * 0.68}" text-anchor="middle" font-family="${fontFamily}" font-size="${size.fontSize}" font-weight="${puzzleBoardTextWeight("operator")}" fill="${INK_PICTOGRAM_PALETTE.mist}">${escapeXml(layer.symbol)}</text>`;
   }
 
-  const fontSize = fontSizeFor(layer, size.fontSize);
-  const weight = layer.emphasis === "large" || layer.emphasis === "strike" ? 700 : 600;
+  const fontSize = puzzleBoardFontSize(layer.emphasis, size.fontSize);
+  const weight = puzzleBoardTextWeight(layer.emphasis);
   if (layer.emphasis === "stacked") {
     return layer.content
       .split("")
       .map(
         (character, index) =>
-          `<text x="${position.x + position.width / 2}" y="${position.y + fontSize + index * fontSize * 1.04}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="700" fill="${INK}">${escapeXml(character)}</text>`
+          `<text x="${position.x + position.width / 2}" y="${position.y + fontSize + index * fontSize * 1.04}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${weight}" fill="${INK_PICTOGRAM_PALETTE.ink}">${escapeXml(character)}</text>`
       )
       .join("");
   }
 
-  const text = `<text x="${position.x + position.width / 2}" y="${position.y + position.height / 2 + fontSize * 0.34}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="${weight}" fill="${INK}">${escapeXml(layer.content)}</text>`;
+  const text = `<text x="${position.x + position.width / 2}" y="${position.y + position.height / 2 + fontSize * 0.34}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${weight}" fill="${INK_PICTOGRAM_PALETTE.ink}">${escapeXml(layer.content)}</text>`;
   if (layer.emphasis !== "strike") return text;
-  return `${text}<line x1="${position.x + 4}" y1="${position.y + position.height / 2}" x2="${position.x + position.width - 4}" y2="${position.y + position.height / 2}" stroke="${STRIKE}" stroke-width="${Math.max(3, size.tile / 18)}" stroke-linecap="round"/>`;
+  return `${text}<line x1="${position.x + 4}" y1="${position.y + position.height / 2}" x2="${position.x + position.width - 4}" y2="${position.y + position.height / 2}" stroke="${INK_PICTOGRAM_PALETTE.strike}" stroke-width="${Math.max(3, size.tile / 18)}" stroke-linecap="round"/>`;
 }
 
 export async function renderPuzzleVisualProfile(
@@ -100,9 +97,9 @@ export async function renderPuzzleVisualProfile(
     .map((layer, index) => renderLayer(layer, layout.positions[index]!, profile))
     .join("");
   const caption = visual.caption
-    ? `<text x="${width / 2}" y="${height - 12}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${Math.max(12, Math.round(size.fontSize * 0.42))}" fill="#6b756f">${escapeXml(visual.caption)}</text>`
+    ? `<text x="${width / 2}" y="${height - 12}" text-anchor="middle" font-family="${PUZZLE_BOARD_SVG_FONT_FAMILY}" font-size="${puzzleBoardCaptionSize(size.fontSize)}" fill="${INK_PICTOGRAM_PALETTE.mist}">${escapeXml(visual.caption)}</text>`
     : "";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${CANVAS}" rx="12"/>${layers}${caption}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${INK_PICTOGRAM_PALETTE.canvas}" rx="12"/>${layers}${caption}</svg>`;
   const pixels = await sharp(Buffer.from(svg)).png().toBuffer();
 
   return {

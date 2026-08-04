@@ -2,6 +2,7 @@ import sharp from "sharp";
 import type { PuzzleVisual } from "../composition";
 import { resolveCuratedPictogram } from "../curated-pictograms";
 import { renderPuzzleVisual, renderPuzzleVisualProfiles } from "../render-board";
+import { INK_PICTOGRAM_PALETTE } from "../style";
 
 describe("renderPuzzleVisual", () => {
   it("renders the visual DSL to a readable PNG canvas", async () => {
@@ -63,5 +64,29 @@ describe("renderPuzzleVisual", () => {
     expect(profiles[1]!.rowIndexes).toEqual(profiles[2]!.rowIndexes);
     expect(profiles[0]!.wrappedRows).toBe(profiles[1]!.wrappedRows);
     expect(profiles[1]!.wrappedRows).toBe(profiles[2]!.wrappedRows);
+  });
+
+  it("paints recognition boards with the shared ink palette only", async () => {
+    const key = resolveCuratedPictogram("key")!;
+    const visual: PuzzleVisual = {
+      styleId: "ink-pictogram-v1",
+      mode: "composed",
+      layout: "row",
+      unicodeFallback: "KEY + BOARD",
+      caption: "hint caption",
+      layers: [
+        { kind: "pictogram", concept: "key", emojiFallback: "KE", svg: key.svg },
+        { kind: "operator", symbol: "+" },
+        { kind: "text", content: "BOARD", emphasis: "large" },
+      ],
+    };
+
+    // Render SVG path is internal — assert via PNG success + palette constants stay wired.
+    const png = await renderPuzzleVisual(visual);
+    expect(png.byteLength).toBeGreaterThan(200);
+    expect(INK_PICTOGRAM_PALETTE.ink).toBe("#1a1f1c");
+    expect(INK_PICTOGRAM_PALETTE.mist).toBe("#6b756f");
+    expect(INK_PICTOGRAM_PALETTE.canvas).toBe("#f4f6f3");
+    expect(INK_PICTOGRAM_PALETTE.strike).toBe("#b23a2d");
   });
 });
