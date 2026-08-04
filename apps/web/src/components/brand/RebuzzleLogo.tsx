@@ -14,13 +14,19 @@ const WORDMARK_SIZE: Record<LogoSize, string> = {
   lg: "text-xl",
 };
 
+/** Shared path for the puzzle-piece counter inside the R. */
+const PUZZLE_PIECE =
+  "M27.8 20.8h6.9v1.1c0-2.1 1.55-3.5 3.55-3.5 2.55 0 3.95 2.05 3.95 6.6s-1.4 6.6-3.95 6.6c-2 0-3.55-1.4-3.55-3.5v1.1h-6.9V20.8Z";
+
+const R_WITH_PUZZLE_CUTOUT = `M18 14h16.2c7.35 0 12.3 4.55 12.3 11.15 0 5.05-2.85 8.85-7.55 10.35L48.2 50H38.7L30.4 36.9H25.5V50H18V14Z${PUZZLE_PIECE}`;
+
 type RebuzzleMarkProps = {
   className?: string;
   title?: string;
 };
 
 /**
- * Rebuzzle board mark — ink tile, geometric R, link-blue solution spark.
+ * Rebuzzle board mark — ink tile, geometric R, puzzle-piece counter in link blue.
  * Uses foreground/background so it flips cleanly with the theme.
  */
 export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
@@ -35,11 +41,8 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
     >
       {title ? <title>{title}</title> : null}
       <rect className="fill-foreground" height="64" rx="14" width="64" />
-      <path
-        className="fill-background"
-        d="M18 14h16.2c7.35 0 12.3 4.55 12.3 11.15 0 5.05-2.85 8.85-7.55 10.35L48.2 50H38.7L30.4 36.9H25.5V50H18V14Zm7.5 6.6v9.9h7.55c3.5 0 5.7-1.95 5.7-5 0-3-2.2-4.9-5.7-4.9H25.5Z"
-      />
-      <circle className="fill-link" cx="39.5" cy="25.5" r="3.25" />
+      <path className="fill-background" d={R_WITH_PUZZLE_CUTOUT} fillRule="evenodd" />
+      <path className="fill-link" d={PUZZLE_PIECE} />
     </svg>
   );
 }
