@@ -6,13 +6,32 @@
  * flex-wrap cannot change cue adjacency or meaning.
  */
 
-import type { PuzzleVisual, VisualLayer } from "./composition";
 import {
   getPuzzleBoardRecognitionProfile,
   PUZZLE_BOARD_SIZE_SPECS,
   type PuzzleBoardRecognitionProfile,
   type PuzzleBoardSize,
 } from "./presentation";
+
+/**
+ * Structural board shape accepted by the layout lock.
+ * Wider than the Zod PuzzleVisual so the React player (optional emphasis) can share it.
+ */
+export type LayoutPlanVisual = {
+  layout?: "row" | "stack" | "grid" | "overlay";
+  layers: readonly LayoutPlanLayer[];
+};
+
+export type LayoutPlanLayer = {
+  kind: "pictogram" | "text" | "operator" | "image";
+  content?: string;
+  emphasis?: "normal" | "large" | "small" | "strike" | "stacked" | "tiny";
+  concept?: string;
+  symbol?: string;
+  emojiFallback?: string;
+  svg?: string;
+  src?: string;
+};
 
 export type LayoutBox = { width: number; height: number };
 export type LayoutPosition = LayoutBox & { x: number; y: number };
@@ -30,16 +49,16 @@ export type LockedLayoutPlan = {
 /** Narrowest production profile — the topology source of truth. */
 export const LAYOUT_LOCK_CANONICAL_PROFILE_ID = "compact-320" as const;
 
-function fontSizeFor(layer: Extract<VisualLayer, { kind: "text" }>, base: number): number {
-  if (layer.emphasis === "large") return Math.round(base * 1.35);
-  if (layer.emphasis === "small") return Math.round(base * 0.72);
-  if (layer.emphasis === "tiny") return Math.round(base * 0.55);
-  if (layer.emphasis === "stacked") return Math.round(base * 0.9);
+function fontSizeFor(emphasis: LayoutPlanLayer["emphasis"], base: number): number {
+  if (emphasis === "large") return Math.round(base * 1.35);
+  if (emphasis === "small") return Math.round(base * 0.72);
+  if (emphasis === "tiny") return Math.round(base * 0.55);
+  if (emphasis === "stacked") return Math.round(base * 0.9);
   return base;
 }
 
 export function estimateLayerBox(
-  layer: VisualLayer,
+  layer: LayoutPlanLayer,
   profile: PuzzleBoardRecognitionProfile,
   availableWidth: number
 ): LayoutBox {
@@ -51,17 +70,18 @@ export function estimateLayerBox(
     return { width: Math.max(22, Math.round(size.tile * 0.58)), height: size.tile };
   }
 
-  const fontSize = fontSizeFor(layer, size.fontSize);
+  const content = layer.content ?? "";
+  const fontSize = fontSizeFor(layer.emphasis, size.fontSize);
   if (layer.emphasis === "stacked") {
     return {
       width: Math.max(fontSize * 1.5, 28),
-      height: Math.max(size.tile, layer.content.length * fontSize * 1.04),
+      height: Math.max(size.tile, content.length * fontSize * 1.04),
     };
   }
   return {
     width: Math.max(
       size.tile * 0.7,
-      Math.min(availableWidth, layer.content.length * fontSize * 0.68 + fontSize * 0.5)
+      Math.min(availableWidth, content.length * fontSize * 0.68 + fontSize * 0.5)
     ),
     height: size.tile,
   };
@@ -104,7 +124,7 @@ export function lockedGridColumns(layerCount: number): number {
  * Compute locked row membership for a board.
  * Membership is invariant across recognition profiles and the React player.
  */
-export function planLockedRowIndexes(visual: PuzzleVisual): number[][] {
+export function planLockedRowIndexes(visual: LayoutPlanVisual): number[][] {
   const layers = visual.layers ?? [];
   if (!layers.length) return [];
 
@@ -138,7 +158,7 @@ export function planLockedRowIndexes(visual: PuzzleVisual): number[][] {
  * Place layers for one profile using locked row membership.
  */
 export function layoutLayersLocked(
-  visual: PuzzleVisual,
+  visual: LayoutPlanVisual,
   profile: PuzzleBoardRecognitionProfile,
   rowIndexes: number[][] = planLockedRowIndexes(visual)
 ): LockedLayoutPlan {
@@ -263,7 +283,7 @@ export function layoutLayersLocked(
  * invent a different reading order.
  */
 export function planPlayerLockedRows(
-  visual: PuzzleVisual,
+  visual: LayoutPlanVisual,
   _boardSize?: PuzzleBoardSize
 ): number[][] {
   return planLockedRowIndexes(visual);

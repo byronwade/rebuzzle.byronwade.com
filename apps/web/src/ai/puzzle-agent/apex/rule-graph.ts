@@ -16,9 +16,12 @@ export type PuzzleLayoutMode = "row" | "stack" | "grid" | "overlay";
 /** Techniques with a deterministic graph template in this slice. */
 export const RULE_GRAPH_TECHNIQUES = [
   "simple_compound",
+  "obvious_emoji_sum",
   "single_homophone",
   "basic_positional",
   "positional_phrase",
+  "spatial_preposition_play",
+  "math_symbol_wordplay",
   "size_or_case_semantics",
 ] as const satisfies readonly TechniqueId[];
 
@@ -194,7 +197,8 @@ export function composeRuleGraph(input: {
   let layout: PuzzleLayoutMode = "row";
 
   switch (techniqueId) {
-    case "simple_compound": {
+    case "simple_compound":
+    case "obvious_emoji_sum": {
       const joined = ensureCompoundJoiners(layers);
       layers = joined.layers;
       layout = "row";
@@ -212,22 +216,39 @@ export function composeRuleGraph(input: {
       );
       break;
     }
-    case "basic_positional": {
+    case "basic_positional":
+    case "positional_phrase":
+    case "spatial_preposition_play": {
       const stripped = stripJoinOperators(layers);
       layers = stripped.layers;
       layout = "stack";
-      rules.push("layout:stack encodes over/under");
-      if (stripped.changed) rules.push("strip + joiners for spatial reading");
-      break;
-    }
-    case "positional_phrase": {
-      const stripped = stripJoinOperators(layers);
-      layers = stripped.layers;
-      layout = "stack";
-      rules.push("layout:stack encodes idiom placement");
+      rules.push("layout:stack encodes spatial/prepositional reading");
       if (stripped.changed) rules.push("strip + joiners for spatial reading");
       if (layers.filter(isSemanticPart).length >= 3) {
         rules.push("multi-cue stack — order is the phrase");
+      }
+      break;
+    }
+    case "math_symbol_wordplay": {
+      layout = "row";
+      const hasMathOp = layers.some(
+        (layer) => layer.kind === "operator" && /[+\-×÷/=]/.test(layer.symbol)
+      );
+      if (!hasMathOp && layers.filter(isSemanticPart).length >= 2) {
+        // Insert a division-style operator between the first two parts when missing.
+        const out: VisualLayer[] = [];
+        let inserted = false;
+        for (const layer of layers) {
+          if (!inserted && out.length === 1 && isSemanticPart(layer)) {
+            out.push({ kind: "operator", symbol: "/" });
+            inserted = true;
+            rules.push("insert:/ between operands");
+          }
+          out.push(layer);
+        }
+        layers = out;
+      } else {
+        rules.push(hasMathOp ? "keep math operator" : "math board without forced operator");
       }
       break;
     }
