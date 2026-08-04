@@ -20,8 +20,7 @@ type RebuzzleMarkProps = {
 };
 
 /**
- * Rebus board mark — two visual clue tiles over a solved answer bar.
- * Unique to Rebuzzle’s visual-word format (not a letter grid).
+ * Rebus board mark — two staggered clue tiles leading into a solved answer bar.
  */
 export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
   return (
@@ -35,17 +34,11 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
     >
       {title ? <title>{title}</title> : null}
       <rect className="fill-foreground" height="64" rx="14" width="64" />
-      <rect className="fill-background" height="20" rx="5" width="20" x="10" y="11" />
-      <circle className="fill-foreground" cx="20" cy="21" r="5" />
-      <rect className="fill-background" height="20" rx="5" width="20" x="34" y="11" />
-      <path
-        className="stroke-foreground"
-        d="M40 21h8M44 17v8"
-        strokeLinecap="round"
-        strokeWidth="2.75"
-      />
-      <rect className="fill-link" height="16" rx="5" width="44" x="10" y="37" />
-      <rect className="fill-background" height="4" rx="2" width="24" x="20" y="43" />
+      <rect className="fill-background" height="22" rx="6" width="22" x="10" y="10" />
+      <circle className="fill-foreground" cx="21" cy="21" r="5.5" />
+      <rect className="fill-background" height="22" rx="6" width="22" x="32" y="28" />
+      <path className="stroke-foreground" d="M38 39h10" strokeLinecap="round" strokeWidth="3.25" />
+      <rect className="fill-link" height="8" rx="4" width="44" x="10" y="54" />
     </svg>
   );
 }
@@ -66,7 +59,7 @@ export function RebuzzleLogo({
   title = "Rebuzzle",
 }: RebuzzleLogoProps) {
   return (
-    <span className={cn("inline-flex items-center gap-2.5 text-foreground", className)}>
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
       <RebuzzleMark
         className={cn(MARK_SIZE[size], markClassName)}
         title={showWordmark ? undefined : title}
