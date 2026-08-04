@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { listPublicCreatorPuzzles } from "@/lib/ugc/submissions";
 import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
+import { listPublicCreatorPuzzles } from "@/lib/ugc/submissions";
 
 type Params = { params: Promise<{ username: string }> };
 

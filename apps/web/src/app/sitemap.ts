@@ -180,5 +180,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Combine all pages
-  return [...staticPages, ...puzzleTypePages, ...blogPosts, ...creatorPages, ...communityPuzzlePages];
+  return [
+    ...staticPages,
+    ...puzzleTypePages,
+    ...blogPosts,
+    ...creatorPages,
+    ...communityPuzzlePages,
+  ];
 }
