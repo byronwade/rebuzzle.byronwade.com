@@ -484,6 +484,29 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     ],
   },
 
+  // Player-authored Studio submissions (UGC)
+  {
+    collection: "userPuzzleSubmissions",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true } },
+      { spec: { slug: 1 }, options: { unique: true } },
+      { spec: { userId: 1, updatedAt: -1 } },
+      { spec: { status: 1, updatedAt: -1 } },
+      { spec: { status: 1, answerKey: 1 } },
+      { spec: { username: 1, status: 1, updatedAt: -1 } },
+      {
+        spec: { answerKey: 1 },
+        options: {
+          unique: true,
+          name: "ugc_answer_key_unique_when_live",
+          partialFilterExpression: {
+            status: { $in: ["approved", "featured", "pending_grade"] },
+          },
+        },
+      },
+    ],
+  },
+
   // Blind human playtesting of actual AI-generated puzzle boards
   {
     collection: "puzzlePlaytestCandidates",

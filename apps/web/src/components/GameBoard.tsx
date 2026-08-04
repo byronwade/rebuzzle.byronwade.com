@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 import { ChatClosingDock } from "./ChatClosingDock";
 import { ChatLockedDock } from "./ChatLockedDock";
+import { CreatorAttribution } from "./CreatorAttribution";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { useGameContext } from "./GameContext";
 import { GuessThread, type ThreadTurn } from "./GuessThread";
@@ -1165,6 +1166,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                         state={stageState}
                         visual={gameData.visual}
                       />
+                      {!keyboardOpen && gameData.metadata?.attribution?.username ? (
+                        <CreatorAttribution
+                          className="mt-3"
+                          credit={{
+                            username: gameData.metadata.attribution.username,
+                            profilePath: gameData.metadata.attribution.profilePath,
+                          }}
+                        />
+                      ) : null}
                     </section>
 
                     {keyboardOpen && lastTurn ? (

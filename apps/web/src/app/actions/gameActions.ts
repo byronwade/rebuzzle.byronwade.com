@@ -25,6 +25,13 @@ type TodaysPuzzle = {
   category?: string;
   relevanceScore?: number;
   visual?: PuzzleVisual;
+  source?: string;
+  attribution?: {
+    userId: string;
+    username: string;
+    submissionId: string;
+    profilePath: string;
+  };
 };
 
 /**
@@ -192,6 +199,8 @@ export async function fetchGameData(_isPreview = false): Promise<PublicGameData>
       relevanceScore: puzzle.relevanceScore,
       hints: puzzle.hints,
       puzzleType,
+      source: puzzle.source,
+      attribution: puzzle.attribution,
     } as PuzzleMetadata;
 
     return {

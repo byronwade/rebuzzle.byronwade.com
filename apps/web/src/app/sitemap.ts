@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { fetchAllBlogPosts } from "@/app/actions/blogActions";
 import { getBaseUrl } from "@/lib/seo/utils";
+import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
+import { listSitemapCommunityPuzzles, listSitemapCreators } from "@/lib/ugc/submissions";
 
 /**
  * Dynamic Sitemap Generation
@@ -88,6 +90,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${baseUrl}/studio`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.85,
+    },
+    {
       url: `${baseUrl}/rebuzzle-vs-wordle`,
       lastModified: now,
       changeFrequency: "monthly",
@@ -142,6 +150,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Error fetching blog posts for sitemap:", error);
   }
 
+  let creatorPages: MetadataRoute.Sitemap = [];
+  let communityPuzzlePages: MetadataRoute.Sitemap = [];
+  try {
+    const [creators, community] = await Promise.all([
+      listSitemapCreators(200),
+      listSitemapCommunityPuzzles(500),
+    ]);
+    creatorPages = creators.map((creator) => ({
+      url: `${baseUrl}${profilePathForUsername(creator.username)}`,
+      lastModified: creator.updatedAt || now,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
+    communityPuzzlePages = community.map((puzzle) => ({
+      url: `${baseUrl}${communityPuzzlePath(puzzle.slug)}`,
+      lastModified: puzzle.updatedAt || now,
+      changeFrequency: "weekly" as const,
+      priority: 0.75,
+    }));
+  } catch (error) {
+    console.error("Error fetching UGC pages for sitemap:", error);
+  }
+
   // Combine all pages
-  return [...staticPages, ...puzzleTypePages, ...blogPosts];
+  return [...staticPages, ...puzzleTypePages, ...blogPosts, ...creatorPages, ...communityPuzzlePages];
 }

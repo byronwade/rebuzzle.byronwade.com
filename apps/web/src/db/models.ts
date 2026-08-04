@@ -261,6 +261,16 @@ export interface Puzzle {
     source?: string;
     labMode?: string;
     createdByUserId?: string;
+    /** User-generated content attribution (Studio). */
+    attribution?: {
+      userId: string;
+      username: string;
+      submissionId: string;
+      profilePath: string;
+    };
+    /** Approved UGC playable outside the daily rotation. */
+    communityPlayable?: boolean;
+    ugcSubmissionId?: string;
     likes?: number;
     dislikes?: number;
     lastQualityVote?: "like" | "dislike";
@@ -445,13 +455,59 @@ export interface InAppNotification {
   _id?: string;
   id: string;
   userId: string;
-  type: "puzzle_ready" | "streak_milestone" | "achievement" | "general";
+  type: "puzzle_ready" | "streak_milestone" | "achievement" | "general" | "ugc_featured";
   title: string;
   message: string;
   link?: string;
   read: boolean;
   createdAt: Date;
   readAt?: Date;
+}
+
+/** Status of a player-authored rebus in Studio. */
+export type UserPuzzleSubmissionStatus =
+  | "draft"
+  | "pending_grade"
+  | "rejected"
+  | "approved"
+  | "featured";
+
+/**
+ * Player-authored rebus draft / submission.
+ * Approved rows may also have a linked `Puzzle` for community play + daily lottery.
+ */
+export interface UserPuzzleSubmission {
+  _id?: string;
+  id: string;
+  /** URL slug under /community/puzzles/[slug] */
+  slug: string;
+  userId: string;
+  username: string;
+  status: UserPuzzleSubmissionStatus;
+  title?: string;
+  answer: string;
+  answerKey: string;
+  explanation: string;
+  hints: string[];
+  techniqueId: string;
+  difficulty: number;
+  visual: PuzzleVisual;
+  rebusPuzzle: string;
+  /** Linked community / daily puzzle id once approved */
+  puzzleId?: string;
+  grade?: {
+    ok: boolean;
+    score: number;
+    funScore: number;
+    issues: string[];
+    gradedAt: string;
+  };
+  featuredOn?: string;
+  featuredNotifiedAt?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  submittedAt?: Date;
+  approvedAt?: Date;
 }
 
 // Legacy push subscription (kept for migration)
@@ -651,7 +707,7 @@ export interface NewEmailSubscription {
 export interface NewInAppNotification {
   id: string;
   userId: string;
-  type: "puzzle_ready" | "streak_milestone" | "achievement" | "general";
+  type: "puzzle_ready" | "streak_milestone" | "achievement" | "general" | "ugc_featured";
   title: string;
   message: string;
   link?: string;
