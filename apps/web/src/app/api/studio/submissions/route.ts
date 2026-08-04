@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { gradeUserPuzzleSubmission } from "@/lib/ugc/grade-submission";
+import { publicEveReview, runEveStudioReview } from "@/lib/ugc/eve-review";
 import { requireStudioUser } from "@/lib/ugc/require-studio-user";
 import {
   findSubmissionById,
@@ -30,6 +31,7 @@ function publicSubmission(row: Awaited<ReturnType<typeof listSubmissionsForUser>
     rebusPuzzle: row.rebusPuzzle,
     visual: row.visual,
     grade: row.grade,
+    eveReview: row.eveReview,
     puzzleId: row.puzzleId,
     featuredOn: row.featuredOn,
     updatedAt: row.updatedAt,
@@ -64,9 +66,10 @@ type Body = {
   layers?: unknown[];
   caption?: string;
   submit?: boolean;
+  deepReview?: boolean;
 };
 
-/** POST /api/studio/submissions — save draft and optionally grade/submit. */
+/** POST /api/studio/submissions — save draft and optionally Eve-review + submit. */
 export async function POST(request: Request) {
   const auth = await getAuthenticatedUser(request);
   if (!auth) {
@@ -91,6 +94,7 @@ export async function POST(request: Request) {
   const techniqueId = typeof body.techniqueId === "string" ? body.techniqueId.trim() : "";
   const difficulty = typeof body.difficulty === "number" ? body.difficulty : 5;
   const layers = Array.isArray(body.layers) ? body.layers : [];
+  const title = typeof body.title === "string" ? body.title.trim() : undefined;
 
   if (!answer || !techniqueId || layers.length === 0) {
     return NextResponse.json(
@@ -100,24 +104,119 @@ export async function POST(request: Request) {
   }
 
   try {
+    const visualInput = {
+      layout: body.layout,
+      layers: layers as never,
+      caption: typeof body.caption === "string" ? body.caption : undefined,
+    };
+
+    // Publish path: full Eve review (safety → grade → critique → optional sim).
+    // Draft saves keep the lighter deterministic grade for fast iteration.
+    if (body.submit) {
+      const review = await runEveStudioReview({
+        title,
+        answer,
+        explanation,
+        hints,
+        techniqueId,
+        difficulty,
+        visual: visualInput,
+        deepReview: body.deepReview === true,
+      });
+
+      const draft = await upsertDraftSubmission({
+        id: typeof body.id === "string" ? body.id : undefined,
+        userId: gate.user.userId,
+        username: gate.user.username,
+        title,
+        answer,
+        explanation,
+        hints,
+        techniqueId,
+        difficulty,
+        visual: review.grade.visual,
+        rebusPuzzle: review.grade.rebusPuzzle,
+        answerKey: review.grade.answerKey,
+      });
+
+      const eveReview = {
+        reviewId: review.reviewId,
+        ok: review.ok,
+        verdict: review.verdict,
+        summary: review.summary,
+        blockers: review.blockers,
+        warnings: review.warnings,
+        checkedAt: review.checkedAt,
+        spend: review.spend,
+      };
+
+      if (!review.ok) {
+        const rejected = await markSubmissionGraded({
+          submission: { ...draft, status: "pending_grade" },
+          ok: false,
+          score: review.grade.score,
+          funScore: review.grade.funScore,
+          issues: review.blockers.length ? review.blockers : review.grade.issues,
+          visual: review.grade.visual,
+          rebusPuzzle: review.grade.rebusPuzzle,
+          answerKey: review.grade.answerKey,
+          eveReview,
+        });
+        return NextResponse.json(
+          {
+            error: "Eve review did not ship — fix the blockers and try again.",
+            submission: publicSubmission(rejected),
+            grade: {
+              ok: false,
+              score: review.grade.score,
+              funScore: review.grade.funScore,
+              issues: review.blockers.length ? review.blockers : review.grade.issues,
+            },
+            review: publicEveReview(review),
+          },
+          { status: 422 }
+        );
+      }
+
+      const existing = await findSubmissionById(draft.id);
+      const approved = await markSubmissionGraded({
+        submission: existing ?? draft,
+        ok: true,
+        score: review.grade.score,
+        funScore: review.grade.funScore,
+        issues: [],
+        visual: review.grade.visual,
+        rebusPuzzle: review.grade.rebusPuzzle,
+        answerKey: review.grade.answerKey,
+        eveReview,
+      });
+
+      return NextResponse.json({
+        submission: publicSubmission(approved),
+        grade: {
+          ok: true,
+          score: review.grade.score,
+          funScore: review.grade.funScore,
+          issues: [],
+        },
+        review: publicEveReview(review),
+      });
+    }
+
     const grade = await gradeUserPuzzleSubmission({
       answer,
       explanation,
       hints,
       techniqueId,
       difficulty,
-      visual: {
-        layout: body.layout,
-        layers: layers as never,
-        caption: typeof body.caption === "string" ? body.caption : undefined,
-      },
+      visual: visualInput,
     });
 
     const draft = await upsertDraftSubmission({
       id: typeof body.id === "string" ? body.id : undefined,
       userId: gate.user.userId,
       username: gate.user.username,
-      title: body.title,
+      title,
       answer,
       explanation,
       hints,
@@ -128,63 +227,13 @@ export async function POST(request: Request) {
       answerKey: grade.answerKey,
     });
 
-    if (!body.submit) {
-      return NextResponse.json({
-        submission: publicSubmission(draft),
-        grade: {
-          ok: grade.ok,
-          score: grade.score,
-          funScore: grade.funScore,
-          issues: grade.issues,
-        },
-      });
-    }
-
-    if (!grade.ok) {
-      const rejected = await markSubmissionGraded({
-        submission: { ...draft, status: "pending_grade" },
-        ok: false,
+    return NextResponse.json({
+      submission: publicSubmission(draft),
+      grade: {
+        ok: grade.ok,
         score: grade.score,
         funScore: grade.funScore,
         issues: grade.issues,
-        visual: grade.visual,
-        rebusPuzzle: grade.rebusPuzzle,
-        answerKey: grade.answerKey,
-      });
-      return NextResponse.json(
-        {
-          error: "AI checks failed — fix the issues and try again.",
-          submission: publicSubmission(rejected),
-          grade: {
-            ok: false,
-            score: grade.score,
-            funScore: grade.funScore,
-            issues: grade.issues,
-          },
-        },
-        { status: 422 }
-      );
-    }
-
-    const existing = await findSubmissionById(draft.id);
-    const approved = await markSubmissionGraded({
-      submission: existing ?? draft,
-      ok: true,
-      score: grade.score,
-      funScore: grade.funScore,
-      issues: [],
-      visual: grade.visual,
-      rebusPuzzle: grade.rebusPuzzle,
-      answerKey: grade.answerKey,
-    });
-
-    return NextResponse.json({
-      submission: publicSubmission(approved),
-      grade: {
-        ok: true,
-        score: grade.score,
-        funScore: grade.funScore,
-        issues: [],
       },
     });
   } catch (error) {

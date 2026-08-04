@@ -5,8 +5,15 @@ import type { PuzzleVisual, VisualLayer } from "@/ai/puzzle-agent/visual/composi
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
+import {
+  emptyEveReviewState,
+  EveReviewPanel,
+  type EveReviewLiveState,
+  type LiveCheckStatus,
+} from "@/components/studio/EveReviewPanel";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
 import { Button } from "@/components/ui/button";
+import { EVE_REVIEW_CHECKS, EVE_REVIEW_PHASES } from "@/lib/ugc/eve-review-manifest";
 import {
   humanizeGradeIssue,
   STUDIO_TEMPLATES,
@@ -85,6 +92,143 @@ function appendWithJoiner(prev: VisualLayer[], next: VisualLayer): VisualLayer[]
   return needsJoiner ? [...prev, { kind: "operator", symbol: "+" }, next] : [...prev, next];
 }
 
+function applyReviewEvent(
+  prev: EveReviewLiveState,
+  event: Record<string, unknown>
+): EveReviewLiveState {
+  const type = event.type;
+  if (type === "manifest") {
+    const phases = Array.isArray(event.phases)
+      ? (event.phases as Array<{ id: string; label: string; summary: string }>).map((p) => ({
+          ...p,
+          status: "pending" as const,
+        }))
+      : prev.phases;
+    const checks = Array.isArray(event.checks)
+      ? (
+          event.checks as Array<{
+            id: string;
+            label: string;
+            lookingFor: string;
+            phase: string;
+            severity?: string;
+            spend?: string;
+          }>
+        ).map((c) => ({
+          ...c,
+          status: "pending" as const,
+        }))
+      : prev.checks;
+    return {
+      ...prev,
+      reviewId: typeof event.reviewId === "string" ? event.reviewId : prev.reviewId,
+      phases,
+      checks,
+      running: true,
+      thinking: [],
+      answers: [],
+      blockers: [],
+      warnings: [],
+      verdict: undefined,
+      summary: undefined,
+      error: undefined,
+    };
+  }
+  if (type === "phase") {
+    const phaseId = String(event.phaseId ?? "");
+    const status = event.status as "pending" | "running" | "done";
+    return {
+      ...prev,
+      phases: prev.phases.map((p) => (p.id === phaseId ? { ...p, status } : p)),
+    };
+  }
+  if (type === "thinking") {
+    return {
+      ...prev,
+      thinking: [
+        ...prev.thinking,
+        { phaseId: String(event.phaseId ?? ""), text: String(event.text ?? "") },
+      ].slice(-24),
+    };
+  }
+  if (type === "check") {
+    const checkId = String(event.checkId ?? "");
+    const status = event.status as LiveCheckStatus;
+    return {
+      ...prev,
+      checks: prev.checks.map((c) =>
+        c.id === checkId
+          ? {
+              ...c,
+              status,
+              detail: typeof event.detail === "string" ? event.detail : c.detail,
+              thinking: typeof event.thinking === "string" ? event.thinking : c.thinking,
+            }
+          : c
+      ),
+    };
+  }
+  if (type === "answer") {
+    return {
+      ...prev,
+      answers: [
+        ...prev.answers,
+        {
+          phaseId: String(event.phaseId ?? ""),
+          summary: String(event.summary ?? ""),
+          data: event.data as Record<string, string | number | boolean | null> | undefined,
+        },
+      ].slice(-16),
+    };
+  }
+  if (type === "done") {
+    const review = event.review as
+      | {
+          ok?: boolean;
+          verdict?: "ship" | "revise" | "reject";
+          summary?: string;
+          blockers?: string[];
+          warnings?: string[];
+          checks?: Array<{
+            id: string;
+            status: LiveCheckStatus;
+            detail?: string;
+            thinking?: string;
+          }>;
+        }
+      | undefined;
+    return {
+      ...prev,
+      running: false,
+      verdict: review?.verdict,
+      summary: review?.summary,
+      blockers: review?.blockers ?? [],
+      warnings: review?.warnings ?? [],
+      checks: review?.checks
+        ? prev.checks.map((check) => {
+            const match = review.checks?.find((c) => c.id === check.id);
+            return match
+              ? {
+                  ...check,
+                  status: match.status,
+                  detail: match.detail,
+                  thinking: match.thinking,
+                }
+              : check;
+          })
+        : prev.checks,
+    };
+  }
+  if (type === "error") {
+    return {
+      ...prev,
+      running: false,
+      error: String(event.error ?? "Eve review failed"),
+    };
+  }
+  return prev;
+}
+
 export function PuzzleStudio() {
   const { isAuthenticated, isGuest, isLoading, user } = useAuth();
   const [pending, startTransition] = useTransition();
@@ -108,6 +252,20 @@ export function PuzzleStudio() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [eveReview, setEveReview] = useState<EveReviewLiveState>(() =>
+    emptyEveReviewState(
+      EVE_REVIEW_PHASES,
+      EVE_REVIEW_CHECKS.map((c) => ({
+        id: c.id,
+        label: c.label,
+        lookingFor: c.lookingFor,
+        phase: c.phase,
+        severity: c.severity,
+        spend: c.spend,
+      }))
+    )
+  );
 
   const preview = useMemo(() => buildPreview(layout, layers), [layout, layers]);
   const selected = layers[selectedIndex];
@@ -165,7 +323,114 @@ export function PuzzleStudio() {
     setPublishedSlug(null);
     setStatusMessage(null);
     setError(null);
+    setEveReview(
+      emptyEveReviewState(
+        EVE_REVIEW_PHASES,
+        EVE_REVIEW_CHECKS.map((c) => ({
+          id: c.id,
+          label: c.label,
+          lookingFor: c.lookingFor,
+          phase: c.phase,
+          severity: c.severity,
+          spend: c.spend,
+        }))
+      )
+    );
     setStep("board");
+  }
+
+  function reviewPayload() {
+    return {
+      title: title || answer,
+      answer,
+      explanation,
+      hints,
+      techniqueId,
+      difficulty,
+      layout,
+      layers,
+    };
+  }
+
+  async function runEveReviewStream() {
+    setError(null);
+    setStatusMessage(null);
+    setReviewing(true);
+    setEveReview((prev) => ({
+      ...emptyEveReviewState(
+        prev.phases.length
+          ? prev.phases.map(({ id, label, summary }) => ({ id, label, summary }))
+          : EVE_REVIEW_PHASES,
+        prev.checks.length
+          ? prev.checks.map(({ id, label, lookingFor, phase, severity, spend }) => ({
+              id,
+              label,
+              lookingFor,
+              phase,
+              severity,
+              spend,
+            }))
+          : EVE_REVIEW_CHECKS.map((c) => ({
+              id: c.id,
+              label: c.label,
+              lookingFor: c.lookingFor,
+              phase: c.phase,
+              severity: c.severity,
+              spend: c.spend,
+            }))
+      ),
+      running: true,
+    }));
+
+    try {
+      const response = await fetch("/api/studio/review", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reviewPayload()),
+      });
+      if (!response.ok || !response.body) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "Eve review failed to start");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let event: Record<string, unknown>;
+          try {
+            event = JSON.parse(line) as Record<string, unknown>;
+          } catch {
+            continue;
+          }
+          setEveReview((prev) => applyReviewEvent(prev, event));
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          setEveReview((prev) => applyReviewEvent(prev, JSON.parse(buffer) as Record<string, unknown>));
+        } catch {
+          /* ignore trailing partial */
+        }
+      }
+      setStatusMessage("Eve finished the checklist — review the verdict below.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Eve review failed";
+      setError(message);
+      setEveReview((prev) => ({ ...prev, running: false, error: message }));
+    } finally {
+      setReviewing(false);
+      setEveReview((prev) => ({ ...prev, running: false }));
+    }
   }
 
   function applyTemplate(template: StudioTemplate) {
@@ -310,8 +575,42 @@ export function PuzzleStudio() {
           error?: string;
           submission?: StudioSubmission;
           grade?: GradeSnapshot;
+          review?: {
+            ok?: boolean;
+            verdict?: "ship" | "revise" | "reject";
+            summary?: string;
+            blockers?: string[];
+            warnings?: string[];
+            checks?: Array<{
+              id: string;
+              status: LiveCheckStatus;
+              detail?: string;
+              thinking?: string;
+            }>;
+          };
         };
         if (data.grade) setGrade(data.grade);
+        if (data.review) {
+          setEveReview((prev) => ({
+            ...prev,
+            running: false,
+            verdict: data.review?.verdict,
+            summary: data.review?.summary,
+            blockers: data.review?.blockers ?? [],
+            warnings: data.review?.warnings ?? [],
+            checks: prev.checks.map((check) => {
+              const match = data.review?.checks?.find((c) => c.id === check.id);
+              return match
+                ? {
+                    ...check,
+                    status: match.status,
+                    detail: match.detail,
+                    thinking: match.thinking,
+                  }
+                : check;
+            }),
+          }));
+        }
         if (data.submission) {
           setDraftId(
             data.submission.status === "approved" || data.submission.status === "featured"
@@ -330,10 +629,10 @@ export function PuzzleStudio() {
           return;
         }
         if (submit) {
-          setStatusMessage("You’re in! Your puzzle is live on your profile and in the daily lottery.");
+          setStatusMessage("You’re in! Eve shipped it — live on your profile and in the daily lottery.");
           setStep("publish");
         } else {
-          setStatusMessage("Draft saved. Jump to Publish when you’re ready for Eve’s check.");
+          setStatusMessage("Draft saved. Run Eve’s full review before publishing.");
           setStep("publish");
         }
         const listRes = await fetch("/api/studio/submissions", { credentials: "include" });
@@ -722,21 +1021,40 @@ export function PuzzleStudio() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold tracking-tight text-teal-950">
-                  Ready for Eve’s check?
+                  Eve’s extensive review
                 </h2>
                 <p className="mt-1 text-sm text-teal-900/65">
-                  Passing boards go on your public profile and into the daily lottery. Nothing posts
-                  until you click Publish.
+                  Watch status, thinking, and answers for every check. Safety runs before any model
+                  spend. Publish only ships when Eve’s verdict is ship — servers re-check on submit.
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Button disabled={pending || !canPublish} onClick={() => save(false)} type="button" variant="outline">
-                    {pending ? "Checking…" : "Preview grade"}
+                  <Button
+                    disabled={pending || reviewing || !canPublish}
+                    onClick={() => void runEveReviewStream()}
+                    type="button"
+                    variant="outline"
+                  >
+                    {reviewing ? "Eve reviewing…" : "Run Eve review"}
                   </Button>
-                  <Button disabled={pending || !canPublish} onClick={() => save(true)} type="button">
+                  <Button
+                    disabled={pending || reviewing || !canPublish}
+                    onClick={() => save(false)}
+                    type="button"
+                    variant="ghost"
+                  >
+                    {pending ? "Saving…" : "Save draft"}
+                  </Button>
+                  <Button
+                    disabled={pending || reviewing || !canPublish}
+                    onClick={() => save(true)}
+                    type="button"
+                  >
                     {pending ? "Publishing…" : "Publish puzzle"}
                   </Button>
                 </div>
+
+                <EveReviewPanel state={eveReview} />
 
                 {grade ? (
                   <div
@@ -748,7 +1066,7 @@ export function PuzzleStudio() {
                     )}
                   >
                     <p className="font-medium">
-                      {grade.ok ? "Looks fair to publish" : "Needs a quick fix"}
+                      Deterministic score
                       <span className="ml-2 font-normal opacity-70">
                         quality {grade.score} · fun {grade.funScore}
                       </span>
@@ -760,7 +1078,7 @@ export function PuzzleStudio() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="mt-2 opacity-80">No blocking issues.</p>
+                      <p className="mt-2 opacity-80">No deterministic blockers.</p>
                     )}
                   </div>
                 ) : null}

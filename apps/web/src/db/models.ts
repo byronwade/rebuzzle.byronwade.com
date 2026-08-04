@@ -502,6 +502,17 @@ export interface UserPuzzleSubmission {
     issues: string[];
     gradedAt: string;
   };
+  /** Snapshot from the last Eve Studio review (author-facing checklist). */
+  eveReview?: {
+    reviewId: string;
+    ok: boolean;
+    verdict: "ship" | "revise" | "reject";
+    summary: string;
+    blockers: string[];
+    warnings: string[];
+    checkedAt: string;
+    spend?: { critique: string; playerSim: string };
+  };
   featuredOn?: string;
   featuredNotifiedAt?: string;
   createdAt: Date;

@@ -240,6 +240,7 @@ export async function markSubmissionGraded(input: {
   visual: PuzzleVisual;
   rebusPuzzle: string;
   answerKey: string;
+  eveReview?: UserPuzzleSubmission["eveReview"];
 }): Promise<UserPuzzleSubmission> {
   const now = new Date();
   const status = input.ok ? "approved" : "rejected";
@@ -256,6 +257,7 @@ export async function markSubmissionGraded(input: {
       issues: input.issues,
       gradedAt: now.toISOString(),
     },
+    eveReview: input.eveReview ?? input.submission.eveReview,
     submittedAt: input.submission.submittedAt ?? now,
     approvedAt: input.ok ? now : input.submission.approvedAt,
     updatedAt: now,
