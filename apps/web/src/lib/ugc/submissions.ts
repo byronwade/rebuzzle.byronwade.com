@@ -45,6 +45,15 @@ export async function listPublicCreatorPuzzles(
     .toArray()) as UserPuzzleSubmission[];
 }
 
+/** Newest approved / featured boards for the community index. */
+export async function listRecentCommunityPuzzles(limit = 36): Promise<UserPuzzleSubmission[]> {
+  return (await submissionsCollection()
+    .find({ status: { $in: ["approved", "featured"] } })
+    .sort({ updatedAt: -1 })
+    .limit(Math.min(limit, 100))
+    .toArray()) as UserPuzzleSubmission[];
+}
+
 export async function listSitemapCommunityPuzzles(limit = 500): Promise<
   Array<{ slug: string; updatedAt: Date; username: string }>
 > {

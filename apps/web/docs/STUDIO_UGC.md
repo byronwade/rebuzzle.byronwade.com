@@ -1,11 +1,14 @@
 # Rebuzzle Studio (user-generated puzzles)
 
-Players compose rebus boards in a Framer-style editor (`/studio`). Eve grades submissions with the same visual authenticity / leak / technique floors used on invent (without Apex invent spend or blind recognition). Approved boards:
+Players compose rebus boards in Studio (`/studio`) with a three-step flow: **Board → Answer → Publish**. Starter templates (Sunflower, Doorbell, Big deal) make the first board one tap away. Eve grades submissions with the same visual authenticity / leak / technique floors used on invent (without Apex invent spend or blind recognition). Approved boards:
 
 1. Become playable anytime at `/community/puzzles/[slug]`
 2. Appear on the creator’s public profile `/u/[username]`
-3. Enter a date-seeded **lottery** that can fill reserve/filler daily slots
-4. Credit the author on the daily board and notify them in-app when featured
+3. Show up in the `/community` index
+4. Enter a date-seeded **lottery** that can fill reserve/filler daily slots
+5. Credit the author on the daily board and notify them in-app when featured
+
+Guests must create a free account before publishing.
 
 ## Data
 
@@ -18,6 +21,7 @@ Players compose rebus boards in a Framer-style editor (`/studio`). Eve grades su
 | Surface | Path |
 |---|---|
 | Editor | `/studio` |
+| Community index | `/community` |
 | Creator SEO profile | `/u/[username]` |
 | Community play | `/community/puzzles/[slug]` |
 | Catalog API | `GET /api/studio/catalog` |

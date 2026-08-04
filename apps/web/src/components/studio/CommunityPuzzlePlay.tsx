@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/components/AuthProvider";
 import { AppLink as Link } from "@/components/AppLink";
+import { useAuth } from "@/components/AuthProvider";
+import { Button } from "@/components/ui/button";
 
 export function CommunityPuzzlePlay({
   puzzleId,
@@ -14,12 +14,13 @@ export function CommunityPuzzlePlay({
   hints: string[];
   techniqueLabel: string;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isGuest } = useAuth();
   const [guess, setGuess] = useState("");
   const [hintsUsed, setHintsUsed] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [solved, setSolved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
 
   async function submitGuess() {
     if (!guess.trim() || busy || solved) return;
@@ -42,56 +43,63 @@ export function CommunityPuzzlePlay({
         isCorrect?: boolean;
         explanation?: string;
         gameOver?: boolean;
+        attemptsLeft?: number;
       };
+      if (typeof data.attemptsLeft === "number") setAttemptsLeft(data.attemptsLeft);
       if (!response.ok) {
         setMessage(data.error || "Guess failed");
         return;
       }
       if (data.isCorrect) {
         setSolved(true);
-        setMessage(data.explanation || "Solved!");
+        setMessage(data.explanation || "Solved — nice work.");
       } else if (data.gameOver) {
-        setMessage(data.explanation || "Out of attempts — try another board.");
+        setMessage(data.explanation || "Out of attempts on this board.");
       } else {
-        setMessage("Not quite — keep going.");
+        setMessage("Not quite — try another angle.");
+        setGuess("");
       }
     } catch {
-      setMessage("Network error");
+      setMessage("Network error — try again.");
     } finally {
       setBusy(false);
     }
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || isGuest) {
     return (
-      <div className="mt-8 rounded-xl border border-teal-900/10 bg-white/80 p-5 text-sm">
-        <p className="text-muted-foreground">
-          <Link className="font-medium text-teal-900 underline-offset-4 hover:underline" href="/login">
-            Log in
-          </Link>{" "}
-          to guess this community puzzle. Technique: {techniqueLabel}.
-        </p>
+      <div className="mt-8 rounded-xl border border-teal-900/10 bg-white/80 p-5 text-sm leading-6 text-teal-900/80">
+        <Link className="font-medium text-teal-900 underline-offset-4 hover:underline" href="/login">
+          Log in
+        </Link>{" "}
+        to guess. Technique: {techniqueLabel}.
       </div>
     );
   }
 
   return (
     <div className="mt-8 space-y-4 rounded-xl border border-teal-900/10 bg-white/80 p-5">
-      <p className="text-xs uppercase tracking-[0.14em] text-teal-900/60">
-        Technique · {techniqueLabel}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs uppercase tracking-[0.14em] text-teal-900/60">
+          Technique · {techniqueLabel}
+        </p>
+        {attemptsLeft !== null ? (
+          <p className="text-xs text-teal-900/55">{attemptsLeft} attempts left</p>
+        ) : null}
+      </div>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
-          className="flex-1 rounded-lg border border-teal-900/15 px-3 py-2"
+          aria-label="Your answer"
+          className="flex-1 rounded-lg border border-teal-900/15 px-3 py-2.5"
           disabled={solved || busy}
           onChange={(e) => setGuess(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") void submitGuess();
           }}
-          placeholder="Your answer"
+          placeholder="Type your answer"
           value={guess}
         />
-        <Button disabled={busy || solved} onClick={() => void submitGuess()} type="button">
+        <Button disabled={busy || solved || !guess.trim()} onClick={() => void submitGuess()} type="button">
           Guess
         </Button>
         <Button
@@ -100,17 +108,24 @@ export function CommunityPuzzlePlay({
           type="button"
           variant="outline"
         >
-          Hint
+          Hint {hintsUsed < hints.length ? `(${hintsUsed}/${hints.length})` : ""}
         </Button>
       </div>
       {hintsUsed > 0 ? (
-        <ul className="space-y-1 text-sm text-teal-900/80">
-          {hints.slice(0, hintsUsed).map((hint) => (
-            <li key={hint}>{hint}</li>
+        <ul className="space-y-1.5 text-sm text-teal-900/80">
+          {hints.slice(0, hintsUsed).map((hint, index) => (
+            <li key={`${index}-${hint}`}>
+              <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-teal-900/45">
+                Hint {index + 1}
+              </span>
+              {hint}
+            </li>
           ))}
         </ul>
       ) : null}
-      {message ? <p className="text-sm text-teal-950">{message}</p> : null}
+      {message ? (
+        <p className={`text-sm ${solved ? "text-teal-900" : "text-teal-950"}`}>{message}</p>
+      ) : null}
     </div>
   );
 }

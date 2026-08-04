@@ -98,11 +98,16 @@ export default async function CreatorProfilePage({ params }: Params) {
           ))}
         </dl>
 
-        <div className="mt-10 flex items-center justify-between gap-3">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold tracking-tight">Puzzles</h2>
-          <Link className="text-sm text-teal-800 hover:underline" href="/studio">
-            Make your own →
-          </Link>
+          <div className="flex gap-4 text-sm">
+            <Link className="text-teal-800 hover:underline" href="/community">
+              Community
+            </Link>
+            <Link className="text-teal-800 hover:underline" href="/studio">
+              Make your own →
+            </Link>
+          </div>
         </div>
 
         {puzzles.length === 0 ? (

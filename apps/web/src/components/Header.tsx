@@ -36,8 +36,8 @@ type HeaderProps = {
 
 const NAV_LINKS = [
   { href: "/studio", label: "Studio" },
+  { href: "/community", label: "Community" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/achievements", label: "Achievements" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/blog", label: "Blog" },
 ];

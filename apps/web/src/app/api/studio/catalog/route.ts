@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
+import { listAllTechniques } from "@/ai/puzzle-agent/technique-library";
 import {
   listCuratedPictogramIds,
   resolveCuratedPictogram,
 } from "@/ai/puzzle-agent/visual/curated-pictograms";
-import { listAllTechniques } from "@/ai/puzzle-agent/technique-library";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { requireStudioUser } from "@/lib/ugc/require-studio-user";
 
 /** GET /api/studio/catalog — pictogram + technique pickers for Studio. */
 export async function GET(request: Request) {
-  const user = await getAuthenticatedUser(request);
-  if (!user) {
+  const auth = await getAuthenticatedUser(request);
+  if (!auth) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+  const gate = await requireStudioUser(auth);
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
   const pictograms = listCuratedPictogramIds()
@@ -23,7 +28,8 @@ export async function GET(request: Request) {
         svg: resolved.svg,
       };
     })
-    .filter((row): row is NonNullable<typeof row> => Boolean(row));
+    .filter((row): row is NonNullable<typeof row> => Boolean(row))
+    .sort((a, b) => a.concept.localeCompare(b.concept));
 
   return NextResponse.json({
     pictograms,
