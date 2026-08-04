@@ -1,5 +1,6 @@
-import { Heading, Link, Section, Text } from "@react-email/components";
+import { Button, Heading, Link, Section, Text } from "@react-email/components";
 import { BaseEmail } from "./components/base-email";
+import { appBaseUrl, styles } from "./components/theme";
 
 interface NotificationWelcomeEmailProps {
   email: string;
@@ -7,122 +8,61 @@ interface NotificationWelcomeEmailProps {
 }
 
 export function NotificationWelcomeEmail({
-  email,
+  email: _email,
   unsubscribeUrl,
 }: NotificationWelcomeEmailProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+  const baseUrl = appBaseUrl();
 
   return (
     <BaseEmail
-      preview="Welcome to Rebuzzle notifications! You're all set."
-      showUnsubscribe={true}
+      kicker="Notifications"
+      preview="You're subscribed — we'll nudge you when a new board is worth opening."
+      showUnsubscribe
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Heading style={headingStyle}>
-        Welcome to Rebuzzle Notifications! 🎉
-      </Heading>
+      <Text style={styles.eyebrow}>You&apos;re on the list</Text>
+      <Heading style={styles.h1}>We&apos;ll ping you for the good stuff.</Heading>
 
-      <Text style={textStyle}>
-        Thanks for subscribing to email notifications! You're now set to receive
-        updates about:
+      <Text style={styles.p}>
+        Thanks for opting in. Expect calm, useful mail — not a firehose.
       </Text>
 
-      <Section style={infoBoxStyle}>
-        <Text style={infoTextStyle}>
-          ✅ Daily puzzle availability notifications
-        </Text>
-        <Text style={infoTextStyle}>✅ Special events and challenges</Text>
-        <Text style={infoTextStyle}>✅ Game updates and new features</Text>
-        <Text style={infoTextStyle}>✅ Blog posts and puzzle insights</Text>
-      </Section>
-
-      <Section style={tipsBoxStyle}>
-        <Heading as="h3" style={tipsHeadingStyle}>
-          What to Expect
-        </Heading>
-        <Text style={tipsTextStyle}>
-          You'll get an email when a new puzzle is ready — typically around 4 PM
-          UTC. The puzzle itself publishes at UTC midnight.
-        </Text>
-        <Text style={tipsTextStyle}>
-          You can manage your notification preferences or unsubscribe at any
-          time from your{" "}
-          <Link href={`${baseUrl}/settings`} style={linkStyle}>
-            account settings
-          </Link>
-          .
+      <Section style={styles.panel}>
+        <Text style={styles.h3}>What we send</Text>
+        <Text style={styles.pSmall}>Daily puzzle-ready reminders (around 4 PM UTC)</Text>
+        <Text style={styles.pSmall}>Occasional blog posts about yesterday&apos;s board</Text>
+        <Text style={{ ...styles.pSmall, marginBottom: 0 }}>
+          Streak nudges only when it might actually help
         </Text>
       </Section>
 
-      <Text style={textStyle}>
-        Ready to start solving? Head over to{" "}
-        <Link href={baseUrl} style={linkStyle}>
-          Rebuzzle
-        </Link>{" "}
-        and tackle today's puzzle!
+      <Text style={styles.p}>
+        The puzzle itself unlocks at <strong>your local midnight</strong>. Reminders are a courtesy
+        so you don&apos;t miss the window.
       </Text>
 
-      <Text style={textStyle}>
-        If you have any questions or feedback, feel free to reach out. We're
-        here to help!
+      <Section style={styles.ctaWrap}>
+        <Button href={baseUrl} style={styles.cta}>
+          Open today&apos;s puzzle
+        </Button>
+      </Section>
+
+      <Text style={styles.pSmall}>
+        Change your mind anytime in{" "}
+        <Link href={`${baseUrl}/settings`} style={styles.link}>
+          settings
+        </Link>
+        {unsubscribeUrl ? (
+          <>
+            {" "}
+            or{" "}
+            <Link href={unsubscribeUrl} style={styles.link}>
+              unsubscribe
+            </Link>
+          </>
+        ) : null}
+        .
       </Text>
     </BaseEmail>
   );
 }
-
-const headingStyle = {
-  fontSize: "28px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 20px",
-  textAlign: "center" as const,
-};
-
-const textStyle = {
-  fontSize: "16px",
-  lineHeight: "1.6",
-  color: "#374151",
-  margin: "0 0 16px",
-};
-
-const infoBoxStyle = {
-  backgroundColor: "#f0fdf4",
-  borderLeft: "4px solid #22c55e",
-  borderRadius: "4px",
-  padding: "20px",
-  margin: "24px 0",
-};
-
-const infoTextStyle = {
-  fontSize: "15px",
-  lineHeight: "1.8",
-  color: "#166534",
-  margin: "4px 0",
-};
-
-const tipsBoxStyle = {
-  backgroundColor: "#f3f4f6",
-  borderRadius: "8px",
-  padding: "20px",
-  margin: "24px 0",
-};
-
-const tipsHeadingStyle = {
-  fontSize: "18px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 12px",
-};
-
-const tipsTextStyle = {
-  fontSize: "15px",
-  lineHeight: "1.6",
-  color: "#4b5563",
-  margin: "8px 0",
-};
-
-const linkStyle = {
-  color: "#8b5cf6",
-  textDecoration: "underline",
-};
-

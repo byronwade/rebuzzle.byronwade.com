@@ -1,5 +1,6 @@
 import { Button, Heading, Link, Section, Text } from "@react-email/components";
 import { BaseEmail } from "./components/base-email";
+import { appBaseUrl, colors, fonts, styles } from "./components/theme";
 
 interface StreakAtRiskEmailProps {
   username?: string;
@@ -9,10 +10,7 @@ interface StreakAtRiskEmailProps {
 }
 
 /**
- * Streak At Risk Email
- *
- * Psychology: Loss aversion - people feel losses 2x more than gains.
- * Subtle approach: Encouraging without guilt-tripping or pressure.
+ * Soft loss-aversion nudge — encouraging, never guilt-heavy.
  */
 export function StreakAtRiskEmail({
   username,
@@ -20,191 +18,98 @@ export function StreakAtRiskEmail({
   puzzleUrl,
   unsubscribeUrl,
 }: StreakAtRiskEmailProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
-  const greeting = username ? `Hi ${username},` : "Hi there,";
+  const baseUrl = appBaseUrl();
+  const greeting = username ? `${username},` : "Hey,";
 
-  // Dynamic messaging based on streak length
-  const getStreakMessage = () => {
-    if (currentStreak >= 30) {
-      return {
-        emoji: "🏆",
-        headline: "Don't let your incredible streak slip away!",
-        body: `You've built an amazing ${currentStreak}-day streak - that's truly impressive dedication! Today's puzzle is waiting.`,
-      };
-    }
-    if (currentStreak >= 14) {
-      return {
-        emoji: "🔥",
-        headline: "Your streak is on fire!",
-        body: `${currentStreak} days strong! You're on an incredible run. Keep the momentum going with today's puzzle.`,
-      };
-    }
-    if (currentStreak >= 7) {
-      return {
-        emoji: "⚡",
-        headline: "One week milestone in sight!",
-        body: `You're at ${currentStreak} days - that's a solid streak! Just a quick puzzle to keep it alive.`,
-      };
-    }
-    return {
-      emoji: "✨",
-      headline: "Your streak is building nicely!",
-      body: `${currentStreak} days and counting! Each day adds to your achievement. Today's puzzle is ready.`,
-    };
-  };
-
-  const { emoji, headline, body } = getStreakMessage();
+  const copy =
+    currentStreak >= 30
+      ? {
+          eyebrow: "Legendary run",
+          headline: "A rare streak is still open today.",
+          body: `You've kept ${currentStreak} days in a row. Today's board is the only thing between that chain and a quiet reset at local midnight.`,
+        }
+      : currentStreak >= 14
+        ? {
+            eyebrow: "Two-week heat",
+            headline: "Your streak still has a pulse.",
+            body: `${currentStreak} days in. One short solve keeps the rhythm — no heroics required.`,
+          }
+        : currentStreak >= 7
+          ? {
+              eyebrow: "Week locked in",
+              headline: "Don't let a good week go quiet.",
+              body: `You're at ${currentStreak} days. Today's puzzle is usually a few minutes — then you're clear until tomorrow.`,
+            }
+          : {
+              eyebrow: "Streak watch",
+              headline: "Today's board can keep the chain.",
+              body: `${currentStreak} day${currentStreak === 1 ? "" : "s"} so far. Pop in when you have a spare moment.`,
+            };
 
   return (
     <BaseEmail
-      preview={`${emoji} Your ${currentStreak}-day streak needs you!`}
-      showUnsubscribe={true}
+      kicker="Streak"
+      preview={`Your ${currentStreak}-day streak is still open until local midnight.`}
+      showUnsubscribe
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Heading style={headingStyle}>
-        {emoji} {headline}
-      </Heading>
+      <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
+      <Heading style={styles.h1}>{copy.headline}</Heading>
 
-      <Text style={textStyle}>{greeting}</Text>
+      <Text style={styles.p}>
+        {greeting} {copy.body}
+      </Text>
 
-      <Text style={textStyle}>{body}</Text>
-
-      <Section style={streakBoxStyle}>
+      <Section style={streakPanelStyle}>
         <Text style={streakNumberStyle}>{currentStreak}</Text>
-        <Text style={streakLabelStyle}>Day Streak</Text>
+        <Text style={streakLabelStyle}>Day streak</Text>
       </Section>
 
-      <Section style={buttonSectionStyle}>
-        <Button href={puzzleUrl} style={buttonStyle}>
-          🎮 Play Today's Puzzle
+      <Section style={styles.ctaWrap}>
+        <Button href={puzzleUrl} style={styles.cta}>
+          Keep the streak
         </Button>
       </Section>
 
-      <Section style={tipsBoxStyle}>
-        <Heading as="h3" style={tipsHeadingStyle}>
-          Quick Tips:
-        </Heading>
-        <Text style={tipTextStyle}>• Today's puzzle takes just 2-5 minutes</Text>
-        <Text style={tipTextStyle}>• You have unlimited attempts</Text>
-        <Text style={tipTextStyle}>• Your streak resets at midnight</Text>
-      </Section>
+      <Text style={{ ...styles.pSmall, textAlign: "center" as const }}>
+        No pressure if today&apos;s chaos wins. Fresh board tomorrow either way.
+      </Text>
 
-      <Section style={linksSectionStyle}>
-        <Link href={`${baseUrl}/leaderboard`} style={linkStyle}>
-          Streak Leaderboard
+      <Text style={{ ...styles.pSmall, textAlign: "center" as const, marginTop: "16px" }}>
+        <Link href={`${baseUrl}/profile`} style={styles.link}>
+          Your stats
         </Link>
-        {" • "}
-        <Link href={`${baseUrl}/profile`} style={linkStyle}>
-          Your Stats
+        {" · "}
+        <Link href={`${baseUrl}/settings`} style={styles.link}>
+          Notification settings
         </Link>
-        {" • "}
-        <Link href={`${baseUrl}/settings`} style={linkStyle}>
-          Notification Settings
-        </Link>
-      </Section>
-
-      <Text style={footerNoteStyle}>
-        No pressure - we just thought you'd want to know! If you're busy today,
-        that's totally fine. There's always tomorrow for a fresh start.
       </Text>
     </BaseEmail>
   );
 }
 
-const headingStyle = {
-  fontSize: "26px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 20px",
+const streakPanelStyle = {
+  ...styles.panel,
   textAlign: "center" as const,
-};
-
-const textStyle = {
-  fontSize: "16px",
-  lineHeight: "1.6",
-  color: "#374151",
-  margin: "0 0 16px",
-};
-
-const streakBoxStyle = {
-  backgroundColor: "#fef3c7",
-  borderRadius: "12px",
-  padding: "24px",
-  margin: "24px 0",
-  textAlign: "center" as const,
-  border: "2px solid #fbbf24",
+  padding: "28px 20px",
 };
 
 const streakNumberStyle = {
-  fontSize: "48px",
-  fontWeight: "700",
-  color: "#d97706",
   margin: "0",
-  lineHeight: "1",
+  fontFamily: fonts.sans,
+  fontSize: "56px",
+  fontWeight: "600" as const,
+  lineHeight: "0.95",
+  letterSpacing: "-0.06em",
+  color: colors.ink,
 };
 
 const streakLabelStyle = {
-  fontSize: "16px",
-  fontWeight: "600",
-  color: "#92400e",
-  margin: "8px 0 0",
+  margin: "12px 0 0",
+  fontFamily: fonts.mono,
+  fontSize: "11px",
+  fontWeight: "500" as const,
+  letterSpacing: "0.14em",
   textTransform: "uppercase" as const,
-  letterSpacing: "1px",
-};
-
-const buttonSectionStyle = {
-  textAlign: "center" as const,
-  margin: "32px 0",
-};
-
-const buttonStyle = {
-  backgroundColor: "#f59e0b",
-  color: "#ffffff",
-  padding: "14px 28px",
-  borderRadius: "6px",
-  textDecoration: "none",
-  fontWeight: "600",
-  fontSize: "16px",
-  display: "inline-block",
-};
-
-const tipsBoxStyle = {
-  backgroundColor: "#f3f4f6",
-  borderRadius: "8px",
-  padding: "16px 20px",
-  margin: "24px 0",
-};
-
-const tipsHeadingStyle = {
-  fontSize: "16px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 8px",
-};
-
-const tipTextStyle = {
-  fontSize: "14px",
-  lineHeight: "1.5",
-  color: "#4b5563",
-  margin: "4px 0",
-};
-
-const linksSectionStyle = {
-  textAlign: "center" as const,
-  margin: "24px 0",
-  fontSize: "14px",
-};
-
-const linkStyle = {
-  color: "#f59e0b",
-  textDecoration: "underline",
-};
-
-const footerNoteStyle = {
-  fontSize: "13px",
-  lineHeight: "1.5",
-  color: "#9ca3af",
-  textAlign: "center" as const,
-  margin: "24px 0 0",
-  fontStyle: "italic",
+  color: colors.subtle,
 };

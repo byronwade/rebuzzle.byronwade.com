@@ -1,183 +1,63 @@
 import { Button, Heading, Link, Section, Text } from "@react-email/components";
 import { BaseEmail } from "./components/base-email";
+import { appBaseUrl, styles } from "./components/theme";
 
 interface SignupWelcomeEmailProps {
   username: string;
   email: string;
 }
 
-export function SignupWelcomeEmail({
-  username,
-  email,
-}: SignupWelcomeEmailProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://byronwade.com";
+export function SignupWelcomeEmail({ username, email }: SignupWelcomeEmailProps) {
+  const baseUrl = appBaseUrl();
   const unsubscribeUrl = `${baseUrl}/unsubscribe?email=${encodeURIComponent(email)}`;
 
   return (
     <BaseEmail
-      preview={`Welcome to Rebuzzle, ${username}! Start solving puzzles today.`}
+      kicker="Welcome"
+      preview={`Welcome to Rebuzzle, ${username} — your first board is ready.`}
       showUnsubscribe={false}
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Heading style={headingStyle}>Welcome to Rebuzzle! 🎉</Heading>
+      <Text style={styles.eyebrow}>You&apos;re in</Text>
+      <Heading style={styles.h1}>Welcome to the daily aha.</Heading>
 
-      <Text style={textStyle}>Hi {username},</Text>
-
-      <Text style={textStyle}>
-        We're thrilled to have you join the Rebuzzle community! You're now part
-        of a growing group of puzzle enthusiasts who love daily brain teasers.
+      <Text style={styles.p}>Hi {username},</Text>
+      <Text style={styles.p}>
+        Rebuzzle is one visual word puzzle a day — pictures, placement, and sound that hide a
+        familiar phrase. No subscriptions. No clutter. Just the click when it clicks.
       </Text>
 
-      <Section style={infoBoxStyle}>
-        <Heading as="h3" style={infoHeadingStyle}>
-          What's Next?
-        </Heading>
-        <Text style={infoTextStyle}>
-          • Solve today's puzzle and start earning points
+      <Section style={styles.panel}>
+        <Text style={styles.h3}>How to settle in</Text>
+        <Text style={styles.pSmall}>1. Play today&apos;s board — start a streak if you like.</Text>
+        <Text style={styles.pSmall}>2. Use progressive hints when you&apos;re stuck (they cost points).</Text>
+        <Text style={styles.pSmall}>
+          3. Come back after local midnight for a new one — same calendar day as you.
         </Text>
-        <Text style={infoTextStyle}>
-          • Compete on the leaderboard with other players
+        <Text style={{ ...styles.pSmall, marginBottom: 0 }}>
+          4. Optional: turn on email reminders in settings when you want a nudge.
         </Text>
-        <Text style={infoTextStyle}>
-          • Build your streak by solving puzzles daily
-        </Text>
-        <Text style={infoTextStyle}>• Unlock achievements as you progress</Text>
       </Section>
 
-      <Section style={buttonSectionStyle}>
-        <Button href={baseUrl} style={buttonStyle}>
-          Play Your First Puzzle
+      <Section style={styles.ctaWrap}>
+        <Button href={baseUrl} style={styles.cta}>
+          Play your first puzzle
         </Button>
       </Section>
 
-      <Section style={tipsBoxStyle}>
-        <Heading as="h3" style={tipsHeadingStyle}>
-          Quick Tips
-        </Heading>
-        <Text style={tipsTextStyle}>
-          <strong>Look for visual clues:</strong> Puzzles use visual wordplay
-          and patterns.
-        </Text>
-        <Text style={tipsTextStyle}>
-          <strong>Use hints wisely:</strong> Each hint reduces your final score,
-          but can help when you're stuck.
-        </Text>
-        <Text style={tipsTextStyle}>
-          <strong>Build your streak:</strong> Solve puzzles daily to maintain
-          your streak and climb the leaderboard!
-        </Text>
-      </Section>
-
-      <Text style={textStyle}>
-        You'll receive daily puzzle notifications to keep you engaged. You can
-        manage your email preferences in your{" "}
-        <Link href={`${baseUrl}/settings`} style={linkStyle}>
-          account settings
+      <Text style={styles.p}>
+        Curious how the AI builds boards? Peek at{" "}
+        <Link href={`${baseUrl}/how-it-works#under-the-hood`} style={styles.link}>
+          How it works
         </Link>
         .
       </Text>
 
-      <Text style={textStyle}>
-        Ready to start? Head over to{" "}
-        <Link href={baseUrl} style={linkStyle}>
-          Rebuzzle
-        </Link>{" "}
-        and solve your first puzzle!
-      </Text>
-
-      <Text style={signatureStyle}>
-        Happy puzzling!
+      <Text style={styles.signature}>
+        Happy puzzling,
         <br />
-        The Rebuzzle Team
+        Rebuzzle
       </Text>
     </BaseEmail>
   );
 }
-
-const headingStyle = {
-  fontSize: "28px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 20px",
-  textAlign: "center" as const,
-};
-
-const textStyle = {
-  fontSize: "16px",
-  lineHeight: "1.6",
-  color: "#374151",
-  margin: "0 0 16px",
-};
-
-const infoBoxStyle = {
-  backgroundColor: "#f3f4f6",
-  borderRadius: "8px",
-  padding: "20px",
-  margin: "24px 0",
-};
-
-const infoHeadingStyle = {
-  fontSize: "20px",
-  fontWeight: "600",
-  color: "#1f2937",
-  margin: "0 0 12px",
-};
-
-const infoTextStyle = {
-  fontSize: "15px",
-  lineHeight: "1.6",
-  color: "#4b5563",
-  margin: "4px 0",
-};
-
-const buttonSectionStyle = {
-  textAlign: "center" as const,
-  margin: "32px 0",
-};
-
-const buttonStyle = {
-  backgroundColor: "#8b5cf6",
-  color: "#ffffff",
-  padding: "14px 28px",
-  borderRadius: "6px",
-  textDecoration: "none",
-  fontWeight: "600",
-  fontSize: "16px",
-  display: "inline-block",
-};
-
-const tipsBoxStyle = {
-  backgroundColor: "#fef3c7",
-  borderLeft: "4px solid #f59e0b",
-  borderRadius: "4px",
-  padding: "16px 20px",
-  margin: "24px 0",
-};
-
-const tipsHeadingStyle = {
-  fontSize: "18px",
-  fontWeight: "600",
-  color: "#92400e",
-  margin: "0 0 12px",
-};
-
-const tipsTextStyle = {
-  fontSize: "14px",
-  lineHeight: "1.6",
-  color: "#78350f",
-  margin: "8px 0",
-};
-
-const linkStyle = {
-  color: "#8b5cf6",
-  textDecoration: "underline",
-};
-
-const signatureStyle = {
-  fontSize: "16px",
-  lineHeight: "1.6",
-  color: "#6b7280",
-  margin: "32px 0 0",
-  fontStyle: "italic",
-};
-
