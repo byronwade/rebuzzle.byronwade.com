@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" fill="none" role="img" aria-label="Rebuzzle">
   <rect width="64" height="64" rx="14" fill="#171717"/>
-  <rect x="11" y="17" width="30" height="30" rx="8" fill="#fafafa"/>
-  <circle cx="40" cy="32" r="15" fill="#0070f3"/>
+  <rect x="10" y="14" width="28" height="28" rx="6" fill="#fafafa"/>
+  <circle cx="40" cy="36" r="14" fill="#0070f3"/>
   <text
     x="80"
     y="42"

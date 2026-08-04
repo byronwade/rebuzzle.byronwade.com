@@ -35,8 +35,8 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
     >
       {title ? <title>{title}</title> : null}
       <rect className="fill-foreground" height="64" rx="14" width="64" />
-      <rect className="fill-background" height="30" rx="8" width="30" x="11" y="17" />
-      <circle className="fill-link" cx="40" cy="32" r="15" />
+      <rect className="fill-background" height="28" rx="6" width="28" x="10" y="14" />
+      <circle className="fill-link" cx="40" cy="36" r="14" />
     </svg>
   );
 }
