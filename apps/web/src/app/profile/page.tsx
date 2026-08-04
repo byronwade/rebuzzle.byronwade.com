@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { WordleStatsPanel } from "@/components/WordleStatsPanel";
 import { type AvatarPreferences, generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
+import { profilePathForUsername } from "@/lib/ugc/slug";
 
 type UserStats = {
   level: number;
@@ -282,12 +283,22 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-            <Button asChild size="sm" variant="outline" className="font-medium text-sm">
-              <Link href="/settings">
-                <Edit data-icon="inline-start" className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" className="font-medium text-sm">
+                <Link href="/studio">Studio</Link>
+              </Button>
+              {isAuthenticated && user?.username ? (
+                <Button asChild size="sm" variant="outline" className="font-medium text-sm">
+                  <Link href={profilePathForUsername(user.username)}>Public page</Link>
+                </Button>
+              ) : null}
+              <Button asChild size="sm" variant="outline" className="font-medium text-sm">
+                <Link href="/settings">
+                  <Edit data-icon="inline-start" className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
 

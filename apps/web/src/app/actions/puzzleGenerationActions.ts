@@ -58,6 +58,43 @@ async function calculateDailyDifficulty(date?: Date): Promise<{
 }
 
 async function persistReservePuzzle(dateString: string, fallbackReason: string) {
+  // Studio lottery: occasionally fill reserve days with approved player puzzles.
+  try {
+    const { trySelectUgcLotteryFiller } = await import("@/lib/ugc/lottery");
+    const ugc = await trySelectUgcLotteryFiller({ dateString, fallbackReason });
+    if (ugc) {
+      revalidateTag("daily-puzzle", "max");
+      revalidateTag(`daily-puzzle-${dateString}`, "max");
+      return {
+        id: ugc.id,
+        rebusPuzzle: ugc.rebusPuzzle,
+        answer: ugc.answer,
+        difficulty: ugc.difficulty,
+        category: ugc.category,
+        explanation: ugc.explanation,
+        hints: ugc.hints,
+        visual: ugc.visual,
+        techniqueId: ugc.techniqueId,
+        difficultyLevel: ugc.difficultyLevel,
+        puzzle: ugc.rebusPuzzle,
+        puzzleType: "rebus" as const,
+        date: dateString,
+        topic: ugc.category,
+        relevanceScore: 7,
+        aiGenerated: false,
+        fromDatabase: true,
+        fallbackReason,
+        attribution: ugc.attribution,
+        source: "user" as const,
+      };
+    }
+  } catch (error) {
+    logger.warn("UGC lottery unavailable — continuing with curated reserve", {
+      dateString,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
   const selected = await selectMongoReservePuzzle({ dateString });
   const reserve = selected.puzzle;
   const persisted = await persistDailyPuzzle({

@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, HelpCircle, LogOut, Settings, Trophy, User } from "lucide-react";
+import { Flame, HelpCircle, LogOut, PenLine, Settings, Trophy, User, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
+import { profilePathForUsername } from "@/lib/ugc/slug";
 import { cn } from "@/lib/utils";
 import { VisualThemeMenuItems } from "./VisualThemeMenuItems";
 
@@ -84,6 +85,13 @@ export function UserMenuAccountContent({
           <User className="h-4 w-4" />
           Profile
         </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer gap-2"
+          onClick={() => router.push(profilePathForUsername(username))}
+        >
+          <User className="h-4 w-4" />
+          Public creator page
+        </DropdownMenuItem>
         <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => router.push("/settings")}>
           <Settings className="h-4 w-4" />
           Settings
@@ -94,6 +102,17 @@ export function UserMenuAccountContent({
 
       <DropdownMenuLabel>Game</DropdownMenuLabel>
       <DropdownMenuGroup>
+        <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => router.push("/studio")}>
+          <PenLine className="h-4 w-4" />
+          Studio
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer gap-2"
+          onClick={() => router.push("/community")}
+        >
+          <Users className="h-4 w-4" />
+          Community puzzles
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer gap-2"
           onClick={() => router.push("/leaderboard")}

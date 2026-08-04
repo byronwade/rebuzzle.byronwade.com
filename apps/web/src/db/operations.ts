@@ -49,6 +49,16 @@ export const userOps = {
     return await collection.findOne({ email });
   },
 
+  async findByUsername(username: string): Promise<User | null> {
+    const collection = getCollection<User>("users");
+    // Case-insensitive exact match for public profile URLs
+    const escaped = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return await collection.findOne({
+      username: { $regex: `^${escaped}$`, $options: "i" },
+      isGuest: { $ne: true },
+    });
+  },
+
   async updateLastLogin(id: string): Promise<void> {
     const collection = getCollection<User>("users");
     await collection.updateOne({ id }, { $set: { lastLogin: new Date() } });

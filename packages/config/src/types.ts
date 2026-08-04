@@ -44,6 +44,15 @@ export interface PuzzleMetadata {
   techniqueId?: string;
   visualStyleId?: string;
   funScore?: number;
+  /** Player-authored rebus credit (Studio / community). */
+  attribution?: {
+    userId: string;
+    username: string;
+    submissionId: string;
+    profilePath: string;
+  };
+  source?: string;
+  communityPlayable?: boolean;
 }
 
 /** Generative board (custom pictograms / text / optional images). */

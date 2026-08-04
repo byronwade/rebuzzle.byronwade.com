@@ -112,9 +112,12 @@ export async function POST(request: Request) {
 
     const publishedKey = puzzle.publishedAt ? getUtcPuzzleDate(new Date(puzzle.publishedAt)) : null;
     const isDaily = Boolean(todays && todays.id === puzzle.id && publishedKey === localDateKey);
+    const isCommunity =
+      puzzle.metadata?.source === "user" && puzzle.metadata?.communityPlayable === true;
 
-    // Archive: any published puzzle before the player's local today
-    if (!isDaily) {
+    // Archive: any published puzzle before the player's local today.
+    // Approved Studio puzzles stay playable anytime via communityPlayable.
+    if (!isDaily && !isCommunity) {
       if (!publishedKey || publishedKey >= localDateKey) {
         return NextResponse.json(
           { success: false, error: "This puzzle is not playable yet" },
