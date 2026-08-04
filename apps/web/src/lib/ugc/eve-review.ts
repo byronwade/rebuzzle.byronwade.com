@@ -5,10 +5,7 @@
 
 import { AI_CONFIG } from "@/ai/config";
 import { critiqueCandidate } from "@/ai/puzzle-agent/apex/critique";
-import {
-  playerSimPublishBlockers,
-  simulatePlayerSolve,
-} from "@/ai/puzzle-agent/apex/player-sim";
+import { playerSimPublishBlockers, simulatePlayerSolve } from "@/ai/puzzle-agent/apex/player-sim";
 import type { CritiqueResult } from "@/ai/puzzle-agent/apex/types";
 import { tierLabelForScore } from "@/ai/puzzle-agent/quality";
 import { evaluateSemanticAlignment } from "@/ai/puzzle-agent/semantic-alignment";
@@ -16,9 +13,9 @@ import type { PuzzleVisual } from "@/ai/puzzle-agent/visual/composition";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import {
   partitionSafetyFindings,
+  type SafetyFinding,
   scanStudioContentSafety,
   validateStudioPayloadBounds,
-  type SafetyFinding,
 } from "./content-safety";
 import {
   EVE_REVIEW_CHECKS,
@@ -26,7 +23,7 @@ import {
   type ReviewCheckId,
   type ReviewPhaseId,
 } from "./eve-review-manifest";
-import { gradeUserPuzzleSubmission, type GradeSubmissionResult } from "./grade-submission";
+import { type GradeSubmissionResult, gradeUserPuzzleSubmission } from "./grade-submission";
 
 export type CheckRunStatus = "pending" | "running" | "pass" | "fail" | "warn" | "skip";
 export type PhaseRunStatus = "pending" | "running" | "done";
@@ -46,6 +43,8 @@ export type EveReviewInput = {
   };
   /** When true, attempt vision player-sim if env allows */
   deepReview?: boolean;
+  /** Current draft id — excluded from live UGC answer uniqueness */
+  excludeSubmissionId?: string;
 };
 
 export type EveReviewCheckResult = {
@@ -63,7 +62,10 @@ export type EveReviewResult = {
   blockers: string[];
   warnings: string[];
   checks: EveReviewCheckResult[];
-  grade: Pick<GradeSubmissionResult, "ok" | "score" | "funScore" | "issues" | "visual" | "rebusPuzzle" | "answerKey">;
+  grade: Pick<
+    GradeSubmissionResult,
+    "ok" | "score" | "funScore" | "issues" | "visual" | "rebusPuzzle" | "answerKey"
+  >;
   critique?: {
     verdict: CritiqueResult["verdict"];
     source: CritiqueResult["source"];
@@ -230,7 +232,10 @@ export async function runEveStudioReview(
 
   // ── Intake ──────────────────────────────────────────────────────────────
   await startPhase("intake");
-  await think("intake", "Confirming author session already gated the API; sizing the draft payload.");
+  await think(
+    "intake",
+    "Confirming author session already gated the API; sizing the draft payload."
+  );
   await setCheck(
     "auth_surface",
     "pass",
@@ -252,7 +257,9 @@ export async function runEveStudioReview(
   );
   await answer(
     "intake",
-    boundFindings.length ? "Payload needs trimming before deeper checks." : "Draft size looks safe.",
+    boundFindings.length
+      ? "Payload needs trimming before deeper checks."
+      : "Draft size looks safe.",
     {
       layers: input.visual.layers.length,
       hints: input.hints.filter(Boolean).length,
@@ -313,7 +320,7 @@ export async function runEveStudioReview(
 
   let grade: GradeSubmissionResult | null = null;
   let critiquePayload: EveReviewResult["critique"];
-  let spend: EveReviewResult["spend"] = { critique: "skipped", playerSim: "skipped" };
+  const spend: EveReviewResult["spend"] = { critique: "skipped", playerSim: "skipped" };
 
   if (safetyBlocked) {
     for (const id of [
@@ -350,6 +357,7 @@ export async function runEveStudioReview(
       techniqueId: input.techniqueId,
       difficulty: input.difficulty,
       visual: input.visual,
+      excludeSubmissionId: input.excludeSubmissionId,
     });
 
     const issueBlob = grade.issues.join(" | ");
@@ -388,9 +396,7 @@ export async function runEveStudioReview(
     );
     await answer(
       "structure",
-      grade.ok
-        ? "Structure looks publishable so far."
-        : "Structure has issues — see checks.",
+      grade.ok ? "Structure looks publishable so far." : "Structure has issues — see checks.",
       { rebus: grade.rebusPuzzle, partsIssue: has(/cues|pictogram/i) }
     );
     await endPhase("structure");
@@ -424,7 +430,13 @@ export async function runEveStudioReview(
     );
     await setCheck(
       "publish_floors",
-      has(/Quality score|Fun score/i) ? "fail" : grade.ok ? "pass" : has(/score/i) ? "fail" : "pass",
+      has(/Quality score|Fun score/i)
+        ? "fail"
+        : grade.ok
+          ? "pass"
+          : has(/score/i)
+            ? "fail"
+            : "pass",
       `Quality ${grade.score}/100 · fun ${grade.funScore}/100` +
         (has(/Quality score|Fun score/i)
           ? ` — ${grade.issues.filter((i) => /score/i.test(i)).join("; ")}`
@@ -467,8 +479,15 @@ export async function runEveStudioReview(
     // ── Critique ──────────────────────────────────────────────────────────
     await startPhase("critique");
     if (!studioCritiqueEnabled()) {
-      await think("critique", "Eve critique disabled via EVE_APEX_CRITIQUE / EVE_APEX_ENGINE — skipping spend.");
-      await setCheck("adversarial_critique", "skip", "Critique spend disabled in this environment.");
+      await think(
+        "critique",
+        "Eve critique disabled via EVE_APEX_CRITIQUE / EVE_APEX_ENGINE — skipping spend."
+      );
+      await setCheck(
+        "adversarial_critique",
+        "skip",
+        "Critique spend disabled in this environment."
+      );
       await setCheck("icon_recognizability", "skip", "Skipped with critique.");
       await setCheck("trope_freshness", "skip", "Skipped with critique.");
       spend.critique = "skipped";
@@ -493,7 +512,10 @@ export async function runEveStudioReview(
         "Asking Eve’s adversarial editor: would we be proud to publish this nationally?"
       );
       const concepts = grade.visual.layers
-        .filter((l): l is Extract<PuzzleVisual["layers"][number], { kind: "pictogram" }> => l.kind === "pictogram")
+        .filter(
+          (l): l is Extract<PuzzleVisual["layers"][number], { kind: "pictogram" }> =>
+            l.kind === "pictogram"
+        )
         .map((l) => l.concept);
 
       const critique = await critiqueCandidate({
@@ -550,7 +572,8 @@ export async function runEveStudioReview(
           critiqueBlocks
             ? `${critique.verdict}: ${critique.summary}`
             : `Ship-ready critique — ${critique.summary}`,
-          critique.reviseInstructions.slice(0, 3).join(" · ") || critique.flaws.slice(0, 2).join(" · ")
+          critique.reviseInstructions.slice(0, 3).join(" · ") ||
+            critique.flaws.slice(0, 2).join(" · ")
         );
         await setCheck(
           "icon_recognizability",
@@ -566,17 +589,13 @@ export async function runEveStudioReview(
         );
       }
 
-      await answer(
-        "critique",
-        critique.summary,
-        {
-          verdict: critique.verdict,
-          source: critique.source ?? "model",
-          creativity: critique.creativityScore ?? 0,
-          icons: critique.iconRecognizability ?? 0,
-          trope: Boolean(critique.overusedTrope),
-        }
-      );
+      await answer("critique", critique.summary, {
+        verdict: critique.verdict,
+        source: critique.source ?? "model",
+        creativity: critique.creativityScore ?? 0,
+        icons: critique.iconRecognizability ?? 0,
+        trope: Boolean(critique.overusedTrope),
+      });
     }
     await endPhase("critique");
 
@@ -624,11 +643,15 @@ export async function runEveStudioReview(
             : `Fair enough — estimated solve rate ${(sim.estimatedSolveRate * 100).toFixed(0)}%.`,
           sim.likelySolvePath
         );
-        await answer("player_sim", blockers.length ? "Player sim found fairness issues." : "Player sim looks fair.", {
-          estimatedSolveRate: sim.estimatedSolveRate,
-          confidence: sim.confidence,
-          blockers: blockers.length,
-        });
+        await answer(
+          "player_sim",
+          blockers.length ? "Player sim found fairness issues." : "Player sim looks fair.",
+          {
+            estimatedSolveRate: sim.estimatedSolveRate,
+            confidence: sim.confidence,
+            blockers: blockers.length,
+          }
+        );
       } catch {
         spend.playerSim = "failed";
         await setCheck(
@@ -645,7 +668,10 @@ export async function runEveStudioReview(
 
   // ── Verdict ─────────────────────────────────────────────────────────────
   await startPhase("verdict");
-  await think("verdict", "Aggregating every blocking check into a ship / revise / reject decision.");
+  await think(
+    "verdict",
+    "Aggregating every blocking check into a ship / revise / reject decision."
+  );
 
   if (!grade) {
     // Minimal grade shell when safety short-circuits
@@ -662,10 +688,7 @@ export async function runEveStudioReview(
       answerKey: "",
       score: 0,
       funScore: 0,
-      issues: [
-        ...boundFindings.map((f) => f.message),
-        ...safetyFindings.map((f) => f.message),
-      ],
+      issues: [...boundFindings.map((f) => f.message), ...safetyFindings.map((f) => f.message)],
     };
   }
 
@@ -684,9 +707,7 @@ export async function runEveStudioReview(
     ok
       ? "Eve would ship this — publish when you’re ready."
       : `${verdict}: ${blockers.slice(0, 3).join(" · ") || "See checklist"}`,
-    ok
-      ? "All blocking checks passed."
-      : "Fix blockers, re-run Eve review, then publish."
+    ok ? "All blocking checks passed." : "Fix blockers, re-run Eve review, then publish."
   );
 
   const summary = ok

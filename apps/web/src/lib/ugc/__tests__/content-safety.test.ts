@@ -1,7 +1,4 @@
-import {
-  scanStudioContentSafety,
-  validateStudioPayloadBounds,
-} from "../content-safety";
+import { scanStudioContentSafety, validateStudioPayloadBounds } from "../content-safety";
 
 describe("content-safety", () => {
   it("flags emails, urls, and injection phrasing", () => {

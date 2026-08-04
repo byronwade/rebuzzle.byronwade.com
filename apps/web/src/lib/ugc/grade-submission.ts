@@ -17,6 +17,7 @@ import {
 } from "@/ai/puzzle-agent/quality";
 import type { PuzzleVisual } from "@/ai/puzzle-agent/visual/composition";
 import { countVisualParts } from "@/ai/puzzle-agent/visual/composition";
+import { isUgcAnswerKeyTaken } from "./submissions";
 import { hydrateStudioVisual } from "./visual-hydrate";
 
 export type GradeSubmissionInput = {
@@ -30,6 +31,8 @@ export type GradeSubmissionInput = {
     layers: PuzzleVisual["layers"];
     caption?: string;
   };
+  /** Exclude the author's current draft when checking live UGC answer collisions. */
+  excludeSubmissionId?: string;
 };
 
 export type GradeSubmissionResult = {
@@ -97,6 +100,8 @@ export async function gradeUserPuzzleSubmission(
     const taken = await isAnswerRegistered(answer);
     if (taken.taken) {
       issues.push("That answer is already in the puzzle archive — pick a fresh phrase");
+    } else if (await isUgcAnswerKeyTaken(answerKey, input.excludeSubmissionId)) {
+      issues.push("Another Studio puzzle already uses that answer — pick a fresh phrase");
     }
   } catch {
     issues.push("Could not verify answer uniqueness — try again");

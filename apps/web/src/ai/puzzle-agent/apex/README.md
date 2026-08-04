@@ -23,6 +23,8 @@ Falls back to classic Eve ToolLoopAgent if the tournament yields nothing.
 | `EVE_APEX_MIN_RUBRIC` | `78` | Minimum rubric overall to win |
 | `EVE_APEX_CRITIQUE` | on | Set `0` to skip critique LLM calls |
 | `EVE_APEX_PLAYER_SIM` | on | Set `0` to skip player-sim LLM calls |
+| `STUDIO_EVE_PLAYER_SIM` | off | Set `1` to allow Studio deep review (vision player-sim) when Apex player-sim + board vision are on |
+| `REBUZZLE_BOARD_VISION_GATE` | on | Set `0` to disable board vision gates (also blocks Studio deep review) |
 | `REBUZZLE_APEX_REVISION_RESERVE_MS` | `155000` | Minimum remaining runtime reserved for one critique-guided repair plus final evidence |
 
 The repair lane is deliberately bounded: it bans the original answer, uses one

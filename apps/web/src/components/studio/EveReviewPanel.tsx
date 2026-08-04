@@ -140,10 +140,7 @@ export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
 
       <div className="max-h-[360px] space-y-2 overflow-auto rounded-xl border border-teal-900/10 bg-white/70 p-3">
         {state.checks.map((check) => (
-          <div
-            className="rounded-lg border border-teal-900/5 px-3 py-2.5"
-            key={check.id}
-          >
+          <div className="rounded-lg border border-teal-900/5 px-3 py-2.5" key={check.id}>
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={cn(

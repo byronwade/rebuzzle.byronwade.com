@@ -2,8 +2,8 @@
  * Mongo helpers for Studio submissions + community puzzle promotion.
  */
 
-import { getCollection } from "@/db/mongodb";
 import type { NewPuzzle, Puzzle, PuzzleVisual, UserPuzzleSubmission } from "@/db/models";
+import { getCollection } from "@/db/mongodb";
 import { toLegacyDifficultyLabel } from "@/lib/game/published-puzzle";
 import { logger } from "@/lib/logger";
 import { communityPuzzlePath, profilePathForUsername, slugifyHandle } from "./slug";
@@ -54,9 +54,9 @@ export async function listRecentCommunityPuzzles(limit = 36): Promise<UserPuzzle
     .toArray()) as UserPuzzleSubmission[];
 }
 
-export async function listSitemapCommunityPuzzles(limit = 500): Promise<
-  Array<{ slug: string; updatedAt: Date; username: string }>
-> {
+export async function listSitemapCommunityPuzzles(
+  limit = 500
+): Promise<Array<{ slug: string; updatedAt: Date; username: string }>> {
   const rows = (await submissionsCollection()
     .find({ status: { $in: ["approved", "featured"] } })
     .project({ slug: 1, updatedAt: 1, username: 1 })
@@ -66,9 +66,9 @@ export async function listSitemapCommunityPuzzles(limit = 500): Promise<
   return rows;
 }
 
-export async function listSitemapCreators(limit = 200): Promise<
-  Array<{ username: string; updatedAt: Date }>
-> {
+export async function listSitemapCreators(
+  limit = 200
+): Promise<Array<{ username: string; updatedAt: Date }>> {
   const rows = (await submissionsCollection()
     .aggregate([
       { $match: { status: { $in: ["approved", "featured"] } } },
@@ -134,16 +134,60 @@ export async function upsertDraftSubmission(input: {
     rebusPuzzle: input.rebusPuzzle,
     puzzleId: existing?.puzzleId,
     grade: existing?.grade,
+    eveReview: existing?.eveReview,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
 
-  await submissionsCollection().updateOne(
-    { id },
-    { $set: doc },
-    { upsert: true }
-  );
+  await submissionsCollection().updateOne({ id }, { $set: doc }, { upsert: true });
   return doc;
+}
+
+/** True when another live Studio submission already claims this answer key. */
+export async function isUgcAnswerKeyTaken(
+  answerKey: string,
+  excludeSubmissionId?: string
+): Promise<boolean> {
+  if (!answerKey) return false;
+  const query: Record<string, unknown> = {
+    answerKey,
+    status: { $in: ["approved", "featured", "pending_grade"] },
+  };
+  if (excludeSubmissionId) {
+    query.id = { $ne: excludeSubmissionId };
+  }
+  const hit = await submissionsCollection().findOne(query, { projection: { id: 1 } });
+  return Boolean(hit);
+}
+
+/** Persist an Eve review snapshot on the author's draft without publishing. */
+export async function attachEveReviewSnapshot(input: {
+  submissionId: string;
+  userId: string;
+  eveReview: NonNullable<UserPuzzleSubmission["eveReview"]>;
+  grade?: UserPuzzleSubmission["grade"];
+  visual?: PuzzleVisual;
+  rebusPuzzle?: string;
+  answerKey?: string;
+}): Promise<UserPuzzleSubmission | null> {
+  const existing = await findSubmissionById(input.submissionId);
+  if (!existing || existing.userId !== input.userId) return null;
+  if (existing.status === "approved" || existing.status === "featured") {
+    throw new Error("Approved puzzles are locked — duplicate to revise");
+  }
+
+  const now = new Date();
+  const next: UserPuzzleSubmission = {
+    ...existing,
+    eveReview: input.eveReview,
+    grade: input.grade ?? existing.grade,
+    visual: input.visual ?? existing.visual,
+    rebusPuzzle: input.rebusPuzzle ?? existing.rebusPuzzle,
+    answerKey: input.answerKey ?? existing.answerKey,
+    updatedAt: now,
+  };
+  await submissionsCollection().updateOne({ id: next.id }, { $set: next });
+  return next;
 }
 
 /** Create / refresh the community Puzzle row for an approved submission. */
@@ -241,39 +285,91 @@ export async function markSubmissionGraded(input: {
   rebusPuzzle: string;
   answerKey: string;
   eveReview?: UserPuzzleSubmission["eveReview"];
+  /**
+   * When review fails: hold `pending_grade` (default) so the answer key stays
+   * reserved while the author revises. Hard rejects set this to false.
+   */
+  pendingOnFail?: boolean;
 }): Promise<UserPuzzleSubmission> {
   const now = new Date();
-  const status = input.ok ? "approved" : "rejected";
+  const grade = {
+    ok: input.ok,
+    score: input.score,
+    funScore: input.funScore,
+    issues: input.issues,
+    gradedAt: now.toISOString(),
+  };
+  const eveReview = input.eveReview ?? input.submission.eveReview;
+
+  if (input.ok) {
+    // Stage as pending_grade first so the unique answerKey index holds the phrase
+    // while we create the community puzzle — never approve without puzzleId.
+    const staging: UserPuzzleSubmission = {
+      ...input.submission,
+      status: "pending_grade",
+      visual: input.visual,
+      rebusPuzzle: input.rebusPuzzle,
+      answerKey: input.answerKey,
+      grade,
+      eveReview,
+      submittedAt: input.submission.submittedAt ?? now,
+      updatedAt: now,
+    };
+    await submissionsCollection().updateOne({ id: staging.id }, { $set: staging });
+
+    let puzzleId: string;
+    try {
+      puzzleId = await ensureCommunityPuzzle(staging);
+    } catch (error) {
+      await submissionsCollection().updateOne(
+        { id: staging.id },
+        {
+          $set: {
+            status: "draft",
+            updatedAt: new Date(),
+            grade: {
+              ok: false,
+              score: input.score,
+              funScore: input.funScore,
+              issues: [
+                "Could not create the community puzzle row — fix any issues and publish again",
+              ],
+              gradedAt: new Date().toISOString(),
+            },
+          },
+        }
+      );
+      throw error;
+    }
+
+    const approved: UserPuzzleSubmission = {
+      ...staging,
+      status: "approved",
+      puzzleId,
+      approvedAt: now,
+      updatedAt: new Date(),
+    };
+    await submissionsCollection().updateOne({ id: approved.id }, { $set: approved });
+    logger.info("Studio submission approved", {
+      submissionId: approved.id,
+      puzzleId,
+      path: communityPuzzlePath(approved.slug),
+    });
+    return approved;
+  }
+
+  const status = input.pendingOnFail === false ? "rejected" : "pending_grade";
   const next: UserPuzzleSubmission = {
     ...input.submission,
     status,
     visual: input.visual,
     rebusPuzzle: input.rebusPuzzle,
     answerKey: input.answerKey,
-    grade: {
-      ok: input.ok,
-      score: input.score,
-      funScore: input.funScore,
-      issues: input.issues,
-      gradedAt: now.toISOString(),
-    },
-    eveReview: input.eveReview ?? input.submission.eveReview,
+    grade,
+    eveReview,
     submittedAt: input.submission.submittedAt ?? now,
-    approvedAt: input.ok ? now : input.submission.approvedAt,
     updatedAt: now,
   };
-
   await submissionsCollection().updateOne({ id: next.id }, { $set: next });
-
-  if (input.ok) {
-    const puzzleId = await ensureCommunityPuzzle(next);
-    next.puzzleId = puzzleId;
-    logger.info("Studio submission approved", {
-      submissionId: next.id,
-      puzzleId,
-      path: communityPuzzlePath(next.slug),
-    });
-  }
-
   return next;
 }

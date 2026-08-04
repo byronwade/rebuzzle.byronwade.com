@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Layout from "@/components/Layout";
+import { connection } from "next/server";
 import { AppLink as Link } from "@/components/AppLink";
 import { CreatorAttribution } from "@/components/CreatorAttribution";
-import { CommunityPuzzlePlay } from "@/components/studio/CommunityPuzzlePlay";
+import Layout from "@/components/Layout";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
-import { generatePageMetadata } from "@/lib/seo/metadata";
+import { CommunityPuzzlePlay } from "@/components/studio/CommunityPuzzlePlay";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
+import { generatePageMetadata } from "@/lib/seo/metadata";
 import { getBaseUrl } from "@/lib/seo/utils";
 import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
 import { findSubmissionBySlug } from "@/lib/ugc/submissions";
@@ -40,6 +41,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function CommunityPuzzlePage({ params }: Params) {
+  await connection();
   const { slug: raw } = await params;
   const slug = decodeURIComponent(raw || "").trim();
   const submission = slug ? await findSubmissionBySlug(slug) : null;

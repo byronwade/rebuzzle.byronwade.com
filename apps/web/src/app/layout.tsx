@@ -351,25 +351,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ThemeHotkey />
             <AppCommandMenu />
             <VisualThemeProvider>
-              <AuthProvider initialSession={null}>
-                <Suspense
-                  fallback={
-                    <div
-                      aria-busy="true"
-                      aria-label="Loading session"
-                      className="flex items-center gap-2 px-4 py-2"
-                      role="status"
-                    >
-                      <Skeleton className="h-2 w-24" />
-                      <span className="text-muted-foreground text-xs">Loading…</span>
-                    </div>
-                  }
-                >
-                  <AuthSessionLoader />
-                </Suspense>
-                {children}
-                <Toaster />
-              </AuthProvider>
+              <Suspense
+                fallback={
+                  <div
+                    aria-busy="true"
+                    aria-label="Loading application shell"
+                    className="flex min-h-screen items-center justify-center"
+                    role="status"
+                  >
+                    <Skeleton className="h-2 w-24" />
+                  </div>
+                }
+              >
+                <AuthProvider initialSession={null}>
+                  <Suspense
+                    fallback={
+                      <div
+                        aria-busy="true"
+                        aria-label="Loading session"
+                        className="flex items-center gap-2 px-4 py-2"
+                        role="status"
+                      >
+                        <Skeleton className="h-2 w-24" />
+                        <span className="text-muted-foreground text-xs">Loading…</span>
+                      </div>
+                    }
+                  >
+                    <AuthSessionLoader />
+                  </Suspense>
+                  <Suspense fallback={null}>{children}</Suspense>
+                  <Toaster />
+                </AuthProvider>
+              </Suspense>
             </VisualThemeProvider>
           </ThemeProvider>
         </ErrorBoundary>

@@ -3,8 +3,8 @@
  * ahead of curated reserve inventory.
  */
 
-import { getCollection } from "@/db/mongodb";
 import type { NewInAppNotification, Puzzle, UserPuzzleSubmission } from "@/db/models";
+import { getCollection } from "@/db/mongodb";
 import { logger } from "@/lib/logger";
 import { communityPuzzlePath, profilePathForUsername } from "./slug";
 import { ensureCommunityPuzzle, submissionsCollection } from "./submissions";

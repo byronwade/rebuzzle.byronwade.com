@@ -69,7 +69,10 @@ export function CommunityPuzzlePlay({
   if (!isAuthenticated || isGuest) {
     return (
       <div className="mt-8 rounded-xl border border-teal-900/10 bg-white/80 p-5 text-sm leading-6 text-teal-900/80">
-        <Link className="font-medium text-teal-900 underline-offset-4 hover:underline" href="/login">
+        <Link
+          className="font-medium text-teal-900 underline-offset-4 hover:underline"
+          href="/login"
+        >
           Log in
         </Link>{" "}
         to guess. Technique: {techniqueLabel}.
@@ -99,7 +102,11 @@ export function CommunityPuzzlePlay({
           placeholder="Type your answer"
           value={guess}
         />
-        <Button disabled={busy || solved || !guess.trim()} onClick={() => void submitGuess()} type="button">
+        <Button
+          disabled={busy || solved || !guess.trim()}
+          onClick={() => void submitGuess()}
+          type="button"
+        >
           Guess
         </Button>
         <Button

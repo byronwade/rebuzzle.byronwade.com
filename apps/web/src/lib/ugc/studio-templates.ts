@@ -30,7 +30,11 @@ export const STUDIO_TEMPLATES: StudioTemplate[] = [
     difficulty: 4,
     explanation:
       "The sun pictogram plus the flower pictogram join left-to-right as the compound word sunflower.",
-    hints: ["It's a compound word", "Begins with a daytime light source", "A tall yellow garden plant"],
+    hints: [
+      "It's a compound word",
+      "Begins with a daytime light source",
+      "A tall yellow garden plant",
+    ],
     concepts: ["sun", "flower"],
     layout: "row",
   },
@@ -41,8 +45,7 @@ export const STUDIO_TEMPLATES: StudioTemplate[] = [
     answer: "doorbell",
     techniqueId: "simple_compound",
     difficulty: 4,
-    explanation:
-      "A door pictogram next to a bell pictogram reads as the compound doorbell.",
+    explanation: "A door pictogram next to a bell pictogram reads as the compound doorbell.",
     hints: ["Compound household word", "You press this when visiting", "Starts with an entrance"],
     concepts: ["door", "bell"],
     layout: "row",

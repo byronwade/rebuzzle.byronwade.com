@@ -5,21 +5,21 @@ import type { PuzzleVisual, VisualLayer } from "@/ai/puzzle-agent/visual/composi
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
+import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
 import {
-  emptyEveReviewState,
-  EveReviewPanel,
   type EveReviewLiveState,
+  EveReviewPanel,
+  emptyEveReviewState,
   type LiveCheckStatus,
 } from "@/components/studio/EveReviewPanel";
-import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
 import { Button } from "@/components/ui/button";
 import { EVE_REVIEW_CHECKS, EVE_REVIEW_PHASES } from "@/lib/ugc/eve-review-manifest";
+import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
 import {
   humanizeGradeIssue,
   STUDIO_TEMPLATES,
   type StudioTemplate,
 } from "@/lib/ugc/studio-templates";
-import { profilePathForUsername, communityPuzzlePath } from "@/lib/ugc/slug";
 import { cn } from "@/lib/utils";
 
 type CatalogPictogram = { id: string; concept: string; svg: string };
@@ -30,6 +30,16 @@ type GradeSnapshot = {
   score: number;
   funScore: number;
   issues: string[];
+};
+
+type StudioEveReviewSnapshot = {
+  reviewId: string;
+  ok: boolean;
+  verdict: "ship" | "revise" | "reject";
+  summary: string;
+  blockers: string[];
+  warnings: string[];
+  checkedAt: string;
 };
 
 type StudioSubmission = {
@@ -45,9 +55,56 @@ type StudioSubmission = {
   rebusPuzzle: string;
   visual: PuzzleVisual;
   grade?: GradeSnapshot & { gradedAt?: string };
+  eveReview?: StudioEveReviewSnapshot;
   puzzleId?: string;
   featuredOn?: string;
 };
+
+function studioContentFingerprint(input: {
+  answer: string;
+  explanation: string;
+  hints: string[];
+  techniqueId: string;
+  difficulty: number;
+  layout: PuzzleVisual["layout"];
+  layers: VisualLayer[];
+}) {
+  return JSON.stringify({
+    answer: input.answer.trim(),
+    explanation: input.explanation.trim(),
+    hints: input.hints.map((h) => h.trim()),
+    techniqueId: input.techniqueId,
+    difficulty: input.difficulty,
+    layout: input.layout,
+    layers: input.layers,
+  });
+}
+
+function hydrateEveReviewFromSnapshot(
+  snapshot?: StudioEveReviewSnapshot | null
+): EveReviewLiveState {
+  const base = emptyEveReviewState(
+    EVE_REVIEW_PHASES,
+    EVE_REVIEW_CHECKS.map((c) => ({
+      id: c.id,
+      label: c.label,
+      lookingFor: c.lookingFor,
+      phase: c.phase,
+      severity: c.severity,
+      spend: c.spend,
+    }))
+  );
+  if (!snapshot) return base;
+  return {
+    ...base,
+    reviewId: snapshot.reviewId,
+    running: false,
+    verdict: snapshot.verdict,
+    summary: snapshot.summary,
+    blockers: snapshot.blockers,
+    warnings: snapshot.warnings,
+  };
+}
 
 type StepId = "board" | "details" | "publish";
 
@@ -219,6 +276,12 @@ function applyReviewEvent(
         : prev.checks,
     };
   }
+  if (type === "persisted") {
+    return {
+      ...prev,
+      reviewId: typeof event.submissionId === "string" ? prev.reviewId : prev.reviewId,
+    };
+  }
   if (type === "error") {
     return {
       ...prev,
@@ -253,24 +316,31 @@ export function PuzzleStudio() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [deepReview, setDeepReview] = useState(false);
+  const [shipFingerprint, setShipFingerprint] = useState<string | null>(null);
   const [eveReview, setEveReview] = useState<EveReviewLiveState>(() =>
-    emptyEveReviewState(
-      EVE_REVIEW_PHASES,
-      EVE_REVIEW_CHECKS.map((c) => ({
-        id: c.id,
-        label: c.label,
-        lookingFor: c.lookingFor,
-        phase: c.phase,
-        severity: c.severity,
-        spend: c.spend,
-      }))
-    )
+    hydrateEveReviewFromSnapshot(null)
   );
 
   const preview = useMemo(() => buildPreview(layout, layers), [layout, layers]);
   const selected = layers[selectedIndex];
   const canDetails = layers.some((l) => l.kind === "pictogram" || l.kind === "text");
   const canPublish = canDetails && answer.trim().length >= 2 && explanation.trim().length >= 24;
+  const currentFingerprint = useMemo(
+    () =>
+      studioContentFingerprint({
+        answer,
+        explanation,
+        hints,
+        techniqueId,
+        difficulty,
+        layout,
+        layers,
+      }),
+    [answer, explanation, hints, techniqueId, difficulty, layout, layers]
+  );
+  const eveShipReady = eveReview.verdict === "ship" && shipFingerprint === currentFingerprint;
+  const canSubmitPublish = canPublish && eveShipReady;
 
   useEffect(() => {
     if (!isAuthenticated || isGuest) return;
@@ -323,24 +393,15 @@ export function PuzzleStudio() {
     setPublishedSlug(null);
     setStatusMessage(null);
     setError(null);
-    setEveReview(
-      emptyEveReviewState(
-        EVE_REVIEW_PHASES,
-        EVE_REVIEW_CHECKS.map((c) => ({
-          id: c.id,
-          label: c.label,
-          lookingFor: c.lookingFor,
-          phase: c.phase,
-          severity: c.severity,
-          spend: c.spend,
-        }))
-      )
-    );
+    setEveReview(hydrateEveReviewFromSnapshot(null));
+    setShipFingerprint(null);
+    setDeepReview(false);
     setStep("board");
   }
 
   function reviewPayload() {
     return {
+      id: draftId,
       title: title || answer,
       answer,
       explanation,
@@ -349,6 +410,8 @@ export function PuzzleStudio() {
       difficulty,
       layout,
       layers,
+      deepReview,
+      persist: true,
     };
   }
 
@@ -412,17 +475,44 @@ export function PuzzleStudio() {
           } catch {
             continue;
           }
+          if (event.type === "persisted" && typeof event.submissionId === "string") {
+            setDraftId(event.submissionId);
+          }
+          if (event.type === "done") {
+            const review = event.review as { verdict?: string } | undefined;
+            if (review?.verdict === "ship") {
+              setShipFingerprint(
+                studioContentFingerprint({
+                  answer,
+                  explanation,
+                  hints,
+                  techniqueId,
+                  difficulty,
+                  layout,
+                  layers,
+                })
+              );
+            } else {
+              setShipFingerprint(null);
+            }
+          }
           setEveReview((prev) => applyReviewEvent(prev, event));
         }
       }
       if (buffer.trim()) {
         try {
-          setEveReview((prev) => applyReviewEvent(prev, JSON.parse(buffer) as Record<string, unknown>));
+          const event = JSON.parse(buffer) as Record<string, unknown>;
+          if (event.type === "persisted" && typeof event.submissionId === "string") {
+            setDraftId(event.submissionId);
+          }
+          setEveReview((prev) => applyReviewEvent(prev, event));
         } catch {
           /* ignore trailing partial */
         }
       }
-      setStatusMessage("Eve finished the checklist — review the verdict below.");
+      setStatusMessage(
+        "Eve finished — snapshot saved on your draft. Publish when verdict is ship."
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Eve review failed";
       setError(message);
@@ -465,6 +555,8 @@ export function PuzzleStudio() {
     setDraftId(undefined);
     setPublishedSlug(null);
     setGrade(null);
+    setEveReview(hydrateEveReviewFromSnapshot(null));
+    setShipFingerprint(null);
     setTitle(template.label);
     setAnswer(template.answer);
     setExplanation(template.explanation);
@@ -540,18 +632,37 @@ export function PuzzleStudio() {
     setLayout(row.visual.layout);
     setLayers(row.visual.layers);
     setGrade(row.grade ?? null);
+    setEveReview(hydrateEveReviewFromSnapshot(row.eveReview));
+    const fingerprint = studioContentFingerprint({
+      answer: row.answer,
+      explanation: row.explanation ?? "",
+      hints:
+        row.hints && row.hints.length >= 3
+          ? [row.hints[0] ?? "", row.hints[1] ?? "", row.hints[2] ?? ""]
+          : ["", "", ""],
+      techniqueId: row.techniqueId,
+      difficulty: row.difficulty,
+      layout: row.visual.layout,
+      layers: row.visual.layers,
+    });
+    setShipFingerprint(row.eveReview?.verdict === "ship" ? fingerprint : null);
     setPublishedSlug(row.status === "approved" || row.status === "featured" ? row.slug : null);
     setStatusMessage(
       locked
         ? `Viewing published “${row.title || row.answer}”. Editing creates a new draft.`
         : `Loaded ${row.status} draft`
     );
-    setStep("board");
+    setStep(row.eveReview ? "publish" : "board");
   }
 
   function save(submit: boolean) {
     setError(null);
     setStatusMessage(null);
+    if (submit && !eveShipReady) {
+      setError("Run Eve review and get a ship verdict on the current board before publishing.");
+      setStep("publish");
+      return;
+    }
     startTransition(async () => {
       try {
         const response = await fetch("/api/studio/submissions", {
@@ -569,6 +680,7 @@ export function PuzzleStudio() {
             layout,
             layers,
             submit,
+            deepReview,
           }),
         });
         const data = (await response.json()) as {
@@ -629,7 +741,9 @@ export function PuzzleStudio() {
           return;
         }
         if (submit) {
-          setStatusMessage("You’re in! Eve shipped it — live on your profile and in the daily lottery.");
+          setStatusMessage(
+            "You’re in! Eve shipped it — live on your profile and in the daily lottery."
+          );
           setStep("publish");
         } else {
           setStatusMessage("Draft saved. Run Eve’s full review before publishing.");
@@ -673,16 +787,18 @@ export function PuzzleStudio() {
             always live on your profile.
           </p>
           <ol className="mt-8 space-y-3 text-sm text-teal-950">
-            {["Compose the board from fair catalog icons", "Add answer, hints, and a short mapping", "Publish into the lottery"].map(
-              (line, i) => (
-                <li className="flex gap-3" key={line}>
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-900 text-[11px] font-semibold text-white">
-                    {i + 1}
-                  </span>
-                  <span className="pt-0.5">{line}</span>
-                </li>
-              )
-            )}
+            {[
+              "Compose the board from fair catalog icons",
+              "Add answer, hints, and a short mapping",
+              "Publish into the lottery",
+            ].map((line, i) => (
+              <li className="flex gap-3" key={line}>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-900 text-[11px] font-semibold text-white">
+                  {i + 1}
+                </span>
+                <span className="pt-0.5">{line}</span>
+              </li>
+            ))}
           </ol>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild>
@@ -768,7 +884,9 @@ export function PuzzleStudio() {
             <div className="rounded-2xl border border-teal-900/10 bg-white/75 p-4 shadow-sm backdrop-blur md:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold text-teal-950">Start from a template</h2>
-                {!loaded ? <span className="text-xs text-muted-foreground">Loading icons…</span> : null}
+                {!loaded ? (
+                  <span className="text-xs text-muted-foreground">Loading icons…</span>
+                ) : null}
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {STUDIO_TEMPLATES.map((template) => (
@@ -786,7 +904,11 @@ export function PuzzleStudio() {
 
               <div className="mt-5 flex min-h-[220px] items-center justify-center rounded-xl border border-dashed border-teal-900/15 bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-5">
                 {layers.length ? (
-                  <PuzzleVisualBoard fallback={preview.unicodeFallback} size="large" visual={preview} />
+                  <PuzzleVisualBoard
+                    fallback={preview.unicodeFallback}
+                    size="large"
+                    visual={preview}
+                  />
                 ) : (
                   <p className="max-w-xs text-center text-sm text-teal-900/45">
                     Your board preview appears here. Tap a template or pick icons on the right.
@@ -814,10 +936,16 @@ export function PuzzleStudio() {
                     ))}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-teal-900/60">
-                    <button onClick={() => moveLayer(selectedIndex, selectedIndex - 1)} type="button">
+                    <button
+                      onClick={() => moveLayer(selectedIndex, selectedIndex - 1)}
+                      type="button"
+                    >
                       Move left
                     </button>
-                    <button onClick={() => moveLayer(selectedIndex, selectedIndex + 1)} type="button">
+                    <button
+                      onClick={() => moveLayer(selectedIndex, selectedIndex + 1)}
+                      type="button"
+                    >
                       Move right
                     </button>
                     <button
@@ -919,7 +1047,11 @@ export function PuzzleStudio() {
           <section className="mt-5 rounded-2xl border border-teal-900/10 bg-white/75 p-4 shadow-sm backdrop-blur md:p-6">
             <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
               <div className="flex items-center justify-center rounded-xl bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-4">
-                <PuzzleVisualBoard fallback={preview.unicodeFallback} size="medium" visual={preview} />
+                <PuzzleVisualBoard
+                  fallback={preview.unicodeFallback}
+                  size="medium"
+                  visual={preview}
+                />
               </div>
               <div className="space-y-3">
                 <label className="block text-sm">
@@ -1014,7 +1146,11 @@ export function PuzzleStudio() {
           <section className="mt-5 rounded-2xl border border-teal-900/10 bg-white/75 p-4 shadow-sm backdrop-blur md:p-6">
             <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
               <div className="flex flex-col items-center justify-center rounded-xl bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-4">
-                <PuzzleVisualBoard fallback={preview.unicodeFallback} size="medium" visual={preview} />
+                <PuzzleVisualBoard
+                  fallback={preview.unicodeFallback}
+                  size="medium"
+                  visual={preview}
+                />
                 <p className="mt-3 text-center text-sm font-medium text-teal-950">
                   {answer || "Your answer"}
                 </p>
@@ -1027,6 +1163,22 @@ export function PuzzleStudio() {
                   Watch status, thinking, and answers for every check. Safety runs before any model
                   spend. Publish only ships when Eve’s verdict is ship — servers re-check on submit.
                 </p>
+
+                <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-teal-950">
+                  <input
+                    checked={deepReview}
+                    className="mt-1"
+                    onChange={(e) => setDeepReview(e.target.checked)}
+                    type="checkbox"
+                  />
+                  <span>
+                    Deep review (vision player-sim)
+                    <span className="mt-0.5 block text-xs text-teal-900/55">
+                      Extra spend — only when server flags allow (
+                      <code className="text-[11px]">STUDIO_EVE_PLAYER_SIM</code>).
+                    </span>
+                  </span>
+                </label>
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button
@@ -1046,13 +1198,19 @@ export function PuzzleStudio() {
                     {pending ? "Saving…" : "Save draft"}
                   </Button>
                   <Button
-                    disabled={pending || reviewing || !canPublish}
+                    disabled={pending || reviewing || !canSubmitPublish}
                     onClick={() => save(true)}
                     type="button"
                   >
                     {pending ? "Publishing…" : "Publish puzzle"}
                   </Button>
                 </div>
+                {!eveShipReady && canPublish ? (
+                  <p className="mt-2 text-xs text-teal-900/60">
+                    Publish unlocks after Eve returns <span className="font-medium">ship</span> on
+                    this exact board. Re-run review if you change anything.
+                  </p>
+                ) : null}
 
                 <EveReviewPanel state={eveReview} />
 
@@ -1108,7 +1266,10 @@ export function PuzzleStudio() {
               ) : (
                 <ul className="mt-3 divide-y divide-teal-900/10 rounded-xl border border-teal-900/10">
                   {submissions.slice(0, 8).map((row) => (
-                    <li className="flex items-center justify-between gap-3 px-3 py-2.5" key={row.id}>
+                    <li
+                      className="flex items-center justify-between gap-3 px-3 py-2.5"
+                      key={row.id}
+                    >
                       <button
                         className="min-w-0 flex-1 text-left"
                         onClick={() => loadSubmission(row)}

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import Layout from "@/components/Layout";
+import { connection } from "next/server";
 import { AppLink as Link } from "@/components/AppLink";
+import Layout from "@/components/Layout";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
 import { Button } from "@/components/ui/button";
-import { generatePageMetadata } from "@/lib/seo/metadata";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
+import { generatePageMetadata } from "@/lib/seo/metadata";
 import { getBaseUrl } from "@/lib/seo/utils";
 import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
 import { listRecentCommunityPuzzles } from "@/lib/ugc/submissions";
@@ -18,6 +19,7 @@ export const metadata: Metadata = generatePageMetadata({
 });
 
 export default async function CommunityPage() {
+  await connection();
   const puzzles = await listRecentCommunityPuzzles(36);
   const baseUrl = getBaseUrl();
   const schema = {

@@ -494,6 +494,8 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { status: 1, updatedAt: -1 } },
       { spec: { status: 1, answerKey: 1 } },
       { spec: { username: 1, status: 1, updatedAt: -1 } },
+      // Lottery pool: oldest approved with a community puzzleId first
+      { spec: { status: 1, puzzleId: 1, approvedAt: 1, createdAt: 1 } },
       {
         spec: { answerKey: 1 },
         options: {

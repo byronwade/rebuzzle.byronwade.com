@@ -5,6 +5,10 @@ jest.mock("@/ai/learning/answer-registry", () => ({
   isAnswerRegistered: jest.fn(async () => ({ taken: false })),
 }));
 
+jest.mock("../submissions", () => ({
+  isUgcAnswerKeyTaken: jest.fn(async () => false),
+}));
+
 jest.mock("@/ai/puzzle-agent/visual/curated-pictograms", () => ({
   resolveCuratedPictogram: (concept: string) => {
     if (concept === "sun" || concept === "flower") {

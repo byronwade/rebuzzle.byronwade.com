@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Layout from "@/components/Layout";
+import { connection } from "next/server";
 import { AppLink as Link } from "@/components/AppLink";
+import Layout from "@/components/Layout";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
 import { db } from "@/db";
-import { generatePageMetadata } from "@/lib/seo/metadata";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
+import { generatePageMetadata } from "@/lib/seo/metadata";
 import { getBaseUrl } from "@/lib/seo/utils";
 import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
 import { listPublicCreatorPuzzles } from "@/lib/ugc/submissions";
@@ -40,6 +41,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function CreatorProfilePage({ params }: Params) {
+  await connection();
   const { username: raw } = await params;
   const username = decodeURIComponent(raw || "").trim();
   const user = username ? await db.userOps.findByUsername(username) : null;
@@ -80,8 +82,8 @@ export default async function CreatorProfilePage({ params }: Params) {
           {user.username}
         </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground leading-7">
-          Community rebus boards by {user.username}. Featured wins land in the daily rotation;
-          every approved puzzle stays playable here.
+          Community rebus boards by {user.username}. Featured wins land in the daily rotation; every
+          approved puzzle stays playable here.
         </p>
 
         <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -91,7 +93,10 @@ export default async function CreatorProfilePage({ params }: Params) {
             ["Created", puzzles.length],
             ["Featured", puzzles.filter((p) => p.status === "featured").length],
           ].map(([label, value]) => (
-            <div className="rounded-xl border border-teal-900/10 bg-teal-50/40 px-4 py-3" key={label}>
+            <div
+              className="rounded-xl border border-teal-900/10 bg-teal-50/40 px-4 py-3"
+              key={label}
+            >
               <dt className="text-[11px] uppercase tracking-[0.14em] text-teal-900/60">{label}</dt>
               <dd className="mt-1 text-2xl font-semibold tracking-tight text-teal-950">{value}</dd>
             </div>

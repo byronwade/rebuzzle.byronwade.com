@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
-import { gradeUserPuzzleSubmission } from "@/lib/ugc/grade-submission";
 import { publicEveReview, runEveStudioReview } from "@/lib/ugc/eve-review";
+import { gradeUserPuzzleSubmission } from "@/lib/ugc/grade-submission";
 import { requireStudioUser } from "@/lib/ugc/require-studio-user";
 import {
   findSubmissionById,
@@ -95,6 +95,7 @@ export async function POST(request: Request) {
   const difficulty = typeof body.difficulty === "number" ? body.difficulty : 5;
   const layers = Array.isArray(body.layers) ? body.layers : [];
   const title = typeof body.title === "string" ? body.title.trim() : undefined;
+  const draftId = typeof body.id === "string" ? body.id : undefined;
 
   if (!answer || !techniqueId || layers.length === 0) {
     return NextResponse.json(
@@ -122,10 +123,11 @@ export async function POST(request: Request) {
         difficulty,
         visual: visualInput,
         deepReview: body.deepReview === true,
+        excludeSubmissionId: draftId,
       });
 
       const draft = await upsertDraftSubmission({
-        id: typeof body.id === "string" ? body.id : undefined,
+        id: draftId,
         userId: gate.user.userId,
         username: gate.user.username,
         title,
@@ -151,8 +153,8 @@ export async function POST(request: Request) {
       };
 
       if (!review.ok) {
-        const rejected = await markSubmissionGraded({
-          submission: { ...draft, status: "pending_grade" },
+        const held = await markSubmissionGraded({
+          submission: draft,
           ok: false,
           score: review.grade.score,
           funScore: review.grade.funScore,
@@ -161,11 +163,13 @@ export async function POST(request: Request) {
           rebusPuzzle: review.grade.rebusPuzzle,
           answerKey: review.grade.answerKey,
           eveReview,
+          // Hard safety rejects free the key; revise holds pending_grade.
+          pendingOnFail: review.verdict !== "reject",
         });
         return NextResponse.json(
           {
             error: "Eve review did not ship — fix the blockers and try again.",
-            submission: publicSubmission(rejected),
+            submission: publicSubmission(held),
             grade: {
               ok: false,
               score: review.grade.score,
@@ -210,10 +214,11 @@ export async function POST(request: Request) {
       techniqueId,
       difficulty,
       visual: visualInput,
+      excludeSubmissionId: draftId,
     });
 
     const draft = await upsertDraftSubmission({
-      id: typeof body.id === "string" ? body.id : undefined,
+      id: draftId,
       userId: gate.user.userId,
       username: gate.user.username,
       title,

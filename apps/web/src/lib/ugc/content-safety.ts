@@ -114,7 +114,11 @@ export function validateStudioPayloadBounds(input: {
     }
   }
   if (input.layersLength < 1) {
-    findings.push({ code: "empty_board", message: "Add at least one board piece", field: "layers" });
+    findings.push({
+      code: "empty_board",
+      message: "Add at least one board piece",
+      field: "layers",
+    });
   }
   if (input.layersLength > MAX.layers) {
     findings.push({ code: "too_many_layers", message: "Too many board layers", field: "layers" });
