@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
 
+/** Free-canvas center as % of artboard (0–100). Optional on row/stack layouts. */
+const layerPositionSchema = {
+  x: z.number().min(0).max(100).optional(),
+  y: z.number().min(0).max(100).optional(),
+};
+
 /** A custom pictogram ("our emoji") — SVG preferred, unicode fallback required. */
 export const PictogramLayerSchema = z.object({
   kind: z.literal("pictogram"),
@@ -28,6 +34,7 @@ export const PictogramLayerSchema = z.object({
     .optional(),
   /** Unicode emoji fallback for share text / older clients */
   emojiFallback: z.string().min(1).max(8),
+  ...layerPositionSchema,
 });
 
 /** Styled text used as a visual device (size, case, strike, stack). */
@@ -35,12 +42,14 @@ export const TextLayerSchema = z.object({
   kind: z.literal("text"),
   content: z.string().min(1).max(40),
   emphasis: z.enum(["normal", "large", "small", "strike", "stacked", "tiny"]).default("normal"),
+  ...layerPositionSchema,
 });
 
 /** Math / spatial operator between pieces. */
 export const OperatorLayerSchema = z.object({
   kind: z.literal("operator"),
   symbol: z.string().min(1).max(4),
+  ...layerPositionSchema,
 });
 
 /** Optional AI-illustrated tile for techniques that need a scene. */
@@ -53,6 +62,7 @@ export const ImageLayerSchema = z.object({
   alt: z.string().min(1).max(120),
   /** data:image/...;base64,... or https URL after persist */
   src: z.string().optional(),
+  ...layerPositionSchema,
 });
 
 export const VisualLayerSchema = z.discriminatedUnion("kind", [
@@ -65,7 +75,7 @@ export const VisualLayerSchema = z.discriminatedUnion("kind", [
 export const PuzzleVisualSchema = z.object({
   styleId: z.literal(INK_PICTOGRAM_STYLE_ID).default(INK_PICTOGRAM_STYLE_ID),
   mode: z.enum(["composed", "unicode", "hybrid"]).default("composed"),
-  layout: z.enum(["row", "stack", "grid", "overlay"]).default("row"),
+  layout: z.enum(["row", "stack", "grid", "overlay", "free"]).default("row"),
   layers: z.array(VisualLayerSchema).min(1).max(12),
   /** Plain-text / emoji share string — always required */
   unicodeFallback: z.string().min(1).max(200),

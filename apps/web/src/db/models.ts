@@ -26,6 +26,8 @@ export interface User {
   deviceId?: string; // For desktop/mobile app identification
   lastSeenIp?: string; // Last IP hash seen
   lastSeenAt?: Date; // When last seen
+  /** Lifetime Studio AI image generations used (hard cap elsewhere). */
+  studioAiGenerationsUsed?: number;
 }
 
 export interface UserStats {
@@ -73,9 +75,15 @@ export interface UserStats {
   recentPlayDates?: string[]; // UTC YYYY-MM-DD keys, newest first
 }
 
+/** Free-canvas center as % of artboard (0–100). */
+type LayerPositionFields = {
+  x?: number;
+  y?: number;
+};
+
 /** Generative board layers (Ink Pictogram v1 + text + optional images). */
 export type PuzzleVisualLayer =
-  | {
+  | ({
       kind: "pictogram";
       concept: string;
       role?: string;
@@ -90,29 +98,29 @@ export type PuzzleVisualLayer =
         confidence: number;
       }>;
       emojiFallback: string;
-    }
-  | {
+    } & LayerPositionFields)
+  | ({
       kind: "text";
       content: string;
       emphasis?: "normal" | "large" | "small" | "strike" | "stacked" | "tiny";
-    }
-  | {
+    } & LayerPositionFields)
+  | ({
       kind: "operator";
       symbol: string;
-    }
-  | {
+    } & LayerPositionFields)
+  | ({
       kind: "image";
       /** Concrete subject required by blind board recognition for new puzzles. */
       concept?: string;
       prompt: string;
       alt: string;
       src?: string;
-    };
+    } & LayerPositionFields);
 
 export interface PuzzleVisual {
   styleId: "ink-pictogram-v1";
   mode: "composed" | "unicode" | "hybrid";
-  layout: "row" | "stack" | "grid" | "overlay";
+  layout: "row" | "stack" | "grid" | "overlay" | "free";
   layers: PuzzleVisualLayer[];
   unicodeFallback: string;
   caption?: string;

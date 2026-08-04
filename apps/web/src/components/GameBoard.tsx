@@ -28,6 +28,7 @@ import {
 } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
+import { useIsNarrowViewport } from "@/lib/hooks/useMediaQuery";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { getPuzzleQuestion } from "@/lib/puzzle-questions";
 import { isReturningUser } from "@/lib/session-tracker";
@@ -205,6 +206,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [turns, setTurns] = useState<ThreadTurn[]>([]);
   const turnSeq = useRef(0);
   const hasThread = turns.length > 0;
+  /** Mobile: expand the docked puzzle after the first guess; desktop stays hero-sized. */
+  const isNarrowViewport = useIsNarrowViewport();
+  const [stageExpanded, setStageExpanded] = useState(false);
   /** Answer revealed after a loss (and stored for revisit). */
   const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
   /** Brushed a close miss — fuels share copy + Zeigarnik. */
@@ -225,6 +229,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   /** Celebrate when the locked dock + result card land — not at guess submit. */
   const pendingCelebrationRef = useRef(false);
   const wasChatLockedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasThread && !gameState.gameOver) {
+      setStageExpanded(false);
+    }
+  }, [hasThread, gameState.gameOver]);
 
   const patchTurn = (id: number, patch: Partial<ThreadTurn>) => {
     let persistQuip: string | null = null;
@@ -1107,11 +1117,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           const keyboardOpen = isKeyboardVisible && !gameState.gameOver;
           // Locked days need a page scroller: result card + docked puzzle rarely fit.
           const stageScrollable = gameState.gameOver && !keyboardOpen;
+          // Desktop keeps hero scale once chat appears; mobile docks and can toggle.
           const stageState = keyboardOpen
             ? "compact"
-            : hasThread || gameState.gameOver
+            : isNarrowViewport && (hasThread || gameState.gameOver) && !stageExpanded
               ? "docked"
               : "hero";
+          const canToggleStage =
+            isNarrowViewport && (hasThread || gameState.gameOver) && !keyboardOpen;
 
           return (
             <div className="flex h-full min-h-0 flex-col">
@@ -1123,7 +1136,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                       ? "touch-pan-y justify-start gap-3 overflow-y-auto overscroll-y-contain py-[clamp(0.5rem,2vh,1rem)] pb-4"
                       : "overflow-hidden",
                     !(stageScrollable || keyboardOpen) &&
-                      (hasThread
+                      (hasThread && isNarrowViewport && !stageExpanded
                         ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
                         : "justify-center py-[clamp(0.5rem,2vh,1rem)]"),
                     keyboardOpen && !stageScrollable && "justify-start gap-1 pt-1 pb-0"
@@ -1160,9 +1173,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   <div className="flex w-full max-w-2xl shrink-0 flex-col items-center">
                     <section aria-label="Puzzle" className="w-full shrink-0">
                       <PuzzleStage
+                        onToggleSize={
+                          canToggleStage ? () => setStageExpanded((prev) => !prev) : undefined
+                        }
                         puzzle={puzzleDisplay}
                         puzzleType={puzzleType}
                         question={keyboardOpen ? undefined : stageCaption}
+                        sizeExpanded={stageExpanded}
                         state={stageState}
                         visual={gameData.visual}
                       />

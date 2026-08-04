@@ -80,8 +80,14 @@ export async function gradeUserPuzzleSubmission(
     issues.push("Answer is visible in the board text — hide the solution in the visual");
   }
 
-  if (visual.layers.some((layer) => layer.kind === "image")) {
-    issues.push("Custom image tiles are not supported in Studio yet — use catalog pictograms");
+  for (const layer of visual.layers) {
+    if (layer.kind !== "image") continue;
+    if (!layer.src?.startsWith("data:image/")) {
+      issues.push("AI image tiles need an embedded image — regenerate or remove them");
+    }
+    if (!layer.concept?.trim()) {
+      issues.push("AI image tiles need a short concept label");
+    }
   }
 
   const parts = countVisualParts(visual);
@@ -114,6 +120,9 @@ export async function gradeUserPuzzleSubmission(
       ["large", "small", "strike", "stacked", "tiny"].includes(layer.emphasis)
   );
   const hasOperator = visual.layers.some((layer) => layer.kind === "operator");
+  const hasFreePlacement =
+    visual.layout === "free" &&
+    visual.layers.some((layer) => typeof layer.x === "number" && typeof layer.y === "number");
 
   const funScore = computeFunScore({
     techniqueId,
@@ -122,7 +131,7 @@ export async function gradeUserPuzzleSubmission(
     issueCount: issues.length,
     generativeParts: visualCheck.pictogramSvgCount + (styledText ? 1 : 0),
     unicodeParts: 0,
-    hasSpatialOrOperator: hasOperator || visual.layout !== "row",
+    hasSpatialOrOperator: hasOperator || hasFreePlacement || visual.layout !== "row",
     hasStyledText: styledText,
     explanationMapsWell: explanationMapsAnswer(explanation, answer),
   });

@@ -80,6 +80,13 @@ test.describe("Studio API auth contracts", () => {
     expect([400, 401, 403]).toContain(response.status());
   });
 
+  test("studio AI generate rejects anonymous access", async ({ request }) => {
+    const response = await request.post("/api/studio/generate", {
+      data: { concept: "rusty key" },
+    });
+    expect([401, 403]).toContain(response.status());
+  });
+
   test("creator API returns structured empty/not-found for unknown handles", async ({
     request,
   }) => {

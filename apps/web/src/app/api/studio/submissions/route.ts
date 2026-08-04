@@ -62,7 +62,7 @@ type Body = {
   hints?: string[];
   techniqueId?: string;
   difficulty?: number;
-  layout?: "row" | "stack" | "grid" | "overlay";
+  layout?: "row" | "stack" | "grid" | "overlay" | "free";
   layers?: unknown[];
   caption?: string;
   submit?: boolean;

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { PuzzleVisual, VisualLayer } from "@/ai/puzzle-agent/visual/composition";
+import { defaultPositionForIndex, snapPosition } from "@/ai/puzzle-agent/visual/layer-position";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
@@ -12,9 +13,11 @@ import {
   emptyEveReviewState,
   type LiveCheckStatus,
 } from "@/components/studio/EveReviewPanel";
+import { StudioArtboard } from "@/components/studio/StudioArtboard";
 import { Button } from "@/components/ui/button";
 import { EVE_REVIEW_CHECKS, EVE_REVIEW_PHASES } from "@/lib/ugc/eve-review-manifest";
 import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
+import { STUDIO_AI_GENERATION_LIMIT, type StudioMark } from "@/lib/ugc/studio-marks";
 import {
   humanizeGradeIssue,
   STUDIO_TEMPLATES,
@@ -24,6 +27,7 @@ import { cn } from "@/lib/utils";
 
 type CatalogPictogram = { id: string; concept: string; svg: string };
 type TechniqueOption = { id: string; name: string; summary: string };
+type AiQuota = { used: number; limit: number; remaining: number };
 
 type GradeSnapshot = {
   ok: boolean;
@@ -109,7 +113,7 @@ function hydrateEveReviewFromSnapshot(
 type StepId = "board" | "details" | "publish";
 
 const STEPS: Array<{ id: StepId; label: string; hint: string }> = [
-  { id: "board", label: "1 · Board", hint: "Pick icons" },
+  { id: "board", label: "1 · Board", hint: "Place pieces" },
   { id: "details", label: "2 · Answer", hint: "Explain it" },
   { id: "publish", label: "3 · Publish", hint: "Eve checks" },
 ];
@@ -118,7 +122,7 @@ function layerLabel(layer: VisualLayer): string {
   if (layer.kind === "pictogram") return layer.concept;
   if (layer.kind === "text") return layer.content;
   if (layer.kind === "operator") return layer.symbol;
-  return layer.concept || "image";
+  return layer.concept || layer.alt || "image";
 }
 
 function buildPreview(layout: PuzzleVisual["layout"], layers: VisualLayer[]): PuzzleVisual {
@@ -140,13 +144,14 @@ function buildPreview(layout: PuzzleVisual["layout"], layers: VisualLayer[]): Pu
   };
 }
 
-function appendWithJoiner(prev: VisualLayer[], next: VisualLayer): VisualLayer[] {
-  const last = prev[prev.length - 1];
-  const needsJoiner =
-    last &&
-    (last.kind === "pictogram" || last.kind === "text") &&
-    (next.kind === "pictogram" || next.kind === "text");
-  return needsJoiner ? [...prev, { kind: "operator", symbol: "+" }, next] : [...prev, next];
+function withDefaultPosition(layer: VisualLayer, index: number): VisualLayer {
+  if (typeof layer.x === "number" && typeof layer.y === "number") return layer;
+  const pos = defaultPositionForIndex(index);
+  return { ...layer, ...pos };
+}
+
+function appendLayer(prev: VisualLayer[], next: VisualLayer): VisualLayer[] {
+  return [...prev, withDefaultPosition(next, prev.length)];
 }
 
 function applyReviewEvent(
@@ -306,10 +311,19 @@ export function PuzzleStudio() {
   const [hints, setHints] = useState(["", "", ""]);
   const [techniqueId, setTechniqueId] = useState("simple_compound");
   const [difficulty, setDifficulty] = useState(5);
-  const [layout, setLayout] = useState<PuzzleVisual["layout"]>("row");
+  const [layout, setLayout] = useState<PuzzleVisual["layout"]>("free");
   const [layers, setLayers] = useState<VisualLayer[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogTab, setCatalogTab] = useState<"icons" | "marks" | "ai">("icons");
+  const [marks, setMarks] = useState<StudioMark[]>([]);
+  const [aiQuota, setAiQuota] = useState<AiQuota>({
+    used: 0,
+    limit: STUDIO_AI_GENERATION_LIMIT,
+    remaining: STUDIO_AI_GENERATION_LIMIT,
+  });
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [grade, setGrade] = useState<GradeSnapshot | null>(null);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -324,7 +338,9 @@ export function PuzzleStudio() {
 
   const preview = useMemo(() => buildPreview(layout, layers), [layout, layers]);
   const selected = layers[selectedIndex];
-  const canDetails = layers.some((l) => l.kind === "pictogram" || l.kind === "text");
+  const canDetails = layers.some(
+    (l) => l.kind === "pictogram" || l.kind === "text" || l.kind === "image"
+  );
   const canPublish = canDetails && answer.trim().length >= 2 && explanation.trim().length >= 24;
   const currentFingerprint = useMemo(
     () =>
@@ -354,9 +370,13 @@ export function PuzzleStudio() {
           const data = (await catalogRes.json()) as {
             pictograms: CatalogPictogram[];
             techniques: TechniqueOption[];
+            marks?: StudioMark[];
+            aiQuota?: AiQuota;
           };
           setPictograms(data.pictograms);
           setTechniques(data.techniques);
+          if (data.marks) setMarks(data.marks);
+          if (data.aiQuota) setAiQuota(data.aiQuota);
         }
         if (listRes.ok) {
           const data = (await listRes.json()) as { submissions: StudioSubmission[] };
@@ -374,9 +394,15 @@ export function PuzzleStudio() {
 
   const filteredCatalog = useMemo(() => {
     const q = catalogQuery.trim().toLowerCase();
-    if (!q) return pictograms.slice(0, 36);
-    return pictograms.filter((p) => p.concept.includes(q) || p.id.includes(q)).slice(0, 36);
+    if (!q) return pictograms;
+    return pictograms.filter((p) => p.concept.includes(q) || p.id.includes(q));
   }, [catalogQuery, pictograms]);
+
+  const filteredMarks = useMemo(() => {
+    const q = catalogQuery.trim().toLowerCase();
+    if (!q) return marks;
+    return marks.filter((m) => m.label.toLowerCase().includes(q) || m.value.includes(q));
+  }, [catalogQuery, marks]);
 
   function resetBoard() {
     setDraftId(undefined);
@@ -386,9 +412,11 @@ export function PuzzleStudio() {
     setHints(["", "", ""]);
     setTechniqueId("simple_compound");
     setDifficulty(5);
-    setLayout("row");
+    setLayout("free");
     setLayers([]);
     setSelectedIndex(0);
+    setCatalogTab("icons");
+    setAiPrompt("");
     setGrade(null);
     setPublishedSlug(null);
     setStatusMessage(null);
@@ -528,28 +556,32 @@ export function PuzzleStudio() {
     for (const concept of template.concepts) {
       const item = pictograms.find((p) => p.concept === concept || p.id === concept);
       if (!item) continue;
-      const pictogram: VisualLayer = {
-        kind: "pictogram",
-        concept: item.concept,
-        svg: item.svg,
-        assetId: item.id,
-        source: "catalog",
-        emojiFallback: item.concept.slice(0, 2).toUpperCase() || "◆",
-        role: "word-part",
-      };
-      const joined = appendWithJoiner(nextLayers, pictogram);
-      nextLayers.length = 0;
-      nextLayers.push(...joined);
+      nextLayers.push(
+        withDefaultPosition(
+          {
+            kind: "pictogram",
+            concept: item.concept,
+            svg: item.svg,
+            assetId: item.id,
+            source: "catalog",
+            emojiFallback: item.concept.slice(0, 2).toUpperCase() || "◆",
+            role: "word-part",
+          },
+          nextLayers.length
+        )
+      );
     }
     for (const text of template.textLayers ?? []) {
-      const layer: VisualLayer = {
-        kind: "text",
-        content: text.content,
-        emphasis: text.emphasis ?? "normal",
-      };
-      const joined = appendWithJoiner(nextLayers, layer);
-      nextLayers.length = 0;
-      nextLayers.push(...joined);
+      nextLayers.push(
+        withDefaultPosition(
+          {
+            kind: "text",
+            content: text.content,
+            emphasis: text.emphasis ?? "normal",
+          },
+          nextLayers.length
+        )
+      );
     }
 
     setDraftId(undefined);
@@ -563,16 +595,16 @@ export function PuzzleStudio() {
     setHints([...template.hints]);
     setTechniqueId(template.techniqueId);
     setDifficulty(template.difficulty);
-    setLayout(template.layout);
+    setLayout("free");
     setLayers(nextLayers);
     setSelectedIndex(Math.max(0, nextLayers.length - 1));
-    setStatusMessage(`Loaded “${template.label}” — tweak it, then continue.`);
+    setStatusMessage(`Loaded “${template.label}” — drag pieces anywhere, then continue.`);
     setStep("board");
   }
 
   function addPictogram(item: CatalogPictogram) {
     setLayers((prev) => {
-      const next: VisualLayer = {
+      const joined = appendLayer(prev, {
         kind: "pictogram",
         concept: item.concept,
         svg: item.svg,
@@ -580,16 +612,33 @@ export function PuzzleStudio() {
         source: "catalog",
         emojiFallback: item.concept.slice(0, 2).toUpperCase() || "◆",
         role: "word-part",
-      };
-      const joined = appendWithJoiner(prev, next);
+      });
       setSelectedIndex(joined.length - 1);
       return joined;
     });
+    setLayout("free");
+  }
+
+  function addMark(mark: StudioMark) {
+    setLayers((prev) => {
+      const layer: VisualLayer =
+        mark.kind === "operator"
+          ? { kind: "operator", symbol: mark.value }
+          : {
+              kind: "text",
+              content: mark.value,
+              emphasis: mark.emphasis ?? "large",
+            };
+      const joined = appendLayer(prev, layer);
+      setSelectedIndex(joined.length - 1);
+      return joined;
+    });
+    setLayout("free");
   }
 
   function addText() {
     setLayers((prev) => {
-      const joined = appendWithJoiner(prev, {
+      const joined = appendLayer(prev, {
         kind: "text",
         content: "WORD",
         emphasis: "normal",
@@ -597,23 +646,92 @@ export function PuzzleStudio() {
       setSelectedIndex(joined.length - 1);
       return joined;
     });
+    setLayout("free");
   }
 
-  function moveLayer(from: number, to: number) {
+  function moveLayerPosition(index: number, position: { x: number; y: number }) {
+    const snapped = snapPosition(position);
+    setLayers((prev) =>
+      prev.map((layer, i) => (i === index ? { ...layer, x: snapped.x, y: snapped.y } : layer))
+    );
+    setLayout("free");
+  }
+
+  function bringForward(index: number) {
     setLayers((prev) => {
-      if (to < 0 || to >= prev.length) return prev;
+      if (index >= prev.length - 1) return prev;
       const next = [...prev];
-      const [item] = next.splice(from, 1);
+      const [item] = next.splice(index, 1);
       if (!item) return prev;
-      next.splice(to, 0, item);
+      next.splice(index + 1, 0, item);
+      setSelectedIndex(index + 1);
       return next;
     });
-    setSelectedIndex(to);
+  }
+
+  function sendBackward(index: number) {
+    setLayers((prev) => {
+      if (index <= 0) return prev;
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      if (!item) return prev;
+      next.splice(index - 1, 0, item);
+      setSelectedIndex(index - 1);
+      return next;
+    });
   }
 
   function removeLayer(index: number) {
     setLayers((prev) => prev.filter((_, i) => i !== index));
     setSelectedIndex((current) => Math.max(0, Math.min(current, layers.length - 2)));
+  }
+
+  async function generateAiImage() {
+    const concept = aiPrompt.trim();
+    if (concept.length < 2 || aiGenerating || aiQuota.remaining <= 0) return;
+    setAiGenerating(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/studio/generate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concept }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        layer?: Extract<VisualLayer, { kind: "image" }>;
+        used?: number;
+        limit?: number;
+        remaining?: number;
+      };
+      if (!response.ok || !data.layer) {
+        throw new Error(data.error || "AI generation failed");
+      }
+      if (
+        typeof data.used === "number" &&
+        typeof data.limit === "number" &&
+        typeof data.remaining === "number"
+      ) {
+        setAiQuota({ used: data.used, limit: data.limit, remaining: data.remaining });
+      }
+      setLayers((prev) => {
+        const joined = appendLayer(prev, data.layer!);
+        setSelectedIndex(joined.length - 1);
+        return joined;
+      });
+      setLayout("free");
+      setAiPrompt("");
+      setStatusMessage(
+        `AI image added · ${data.remaining ?? 0} generation${
+          (data.remaining ?? 0) === 1 ? "" : "s"
+        } left`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI generation failed");
+    } finally {
+      setAiGenerating(false);
+    }
   }
 
   function loadSubmission(row: StudioSubmission) {
@@ -629,8 +747,10 @@ export function PuzzleStudio() {
     );
     setTechniqueId(row.techniqueId);
     setDifficulty(row.difficulty);
-    setLayout(row.visual.layout);
-    setLayers(row.visual.layers);
+    setLayout("free");
+    setLayers(
+      row.visual.layers.map((layer, index) => withDefaultPosition(layer as VisualLayer, index))
+    );
     setGrade(row.grade ?? null);
     setEveReview(hydrateEveReviewFromSnapshot(row.eveReview));
     const fingerprint = studioContentFingerprint({
@@ -902,18 +1022,13 @@ export function PuzzleStudio() {
                 ))}
               </div>
 
-              <div className="mt-5 flex min-h-[220px] items-center justify-center rounded-xl border border-dashed border-teal-900/15 bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-5">
-                {layers.length ? (
-                  <PuzzleVisualBoard
-                    fallback={preview.unicodeFallback}
-                    size="large"
-                    visual={preview}
-                  />
-                ) : (
-                  <p className="max-w-xs text-center text-sm text-teal-900/45">
-                    Your board preview appears here. Tap a template or pick icons on the right.
-                  </p>
-                )}
+              <div className="mt-5">
+                <StudioArtboard
+                  onMove={moveLayerPosition}
+                  onSelect={setSelectedIndex}
+                  selectedIndex={selectedIndex}
+                  visual={preview}
+                />
               </div>
 
               {layers.length ? (
@@ -936,17 +1051,11 @@ export function PuzzleStudio() {
                     ))}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-teal-900/60">
-                    <button
-                      onClick={() => moveLayer(selectedIndex, selectedIndex - 1)}
-                      type="button"
-                    >
-                      Move left
+                    <button onClick={() => sendBackward(selectedIndex)} type="button">
+                      Send back
                     </button>
-                    <button
-                      onClick={() => moveLayer(selectedIndex, selectedIndex + 1)}
-                      type="button"
-                    >
-                      Move right
+                    <button onClick={() => bringForward(selectedIndex)} type="button">
+                      Bring forward
                     </button>
                     <button
                       className="text-rose-700"
@@ -987,7 +1096,12 @@ export function PuzzleStudio() {
                                 i === selectedIndex && layer.kind === "text"
                                   ? {
                                       ...layer,
-                                      emphasis: e.target.value as "normal" | "large" | "small",
+                                      emphasis: e.target.value as
+                                        | "normal"
+                                        | "large"
+                                        | "small"
+                                        | "strike"
+                                        | "tiny",
                                     }
                                   : layer
                               )
@@ -998,6 +1112,8 @@ export function PuzzleStudio() {
                           <option value="normal">Normal</option>
                           <option value="large">Large</option>
                           <option value="small">Small</option>
+                          <option value="tiny">Tiny</option>
+                          <option value="strike">Strike</option>
                         </select>
                       </label>
                     </div>
@@ -1013,32 +1129,114 @@ export function PuzzleStudio() {
             </div>
 
             <aside className="rounded-2xl border border-teal-900/10 bg-white/75 p-3 shadow-sm backdrop-blur">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-900/65">
-                Icon catalog
-              </h2>
-              <input
-                className="mt-2 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2 text-sm"
-                onChange={(e) => setCatalogQuery(e.target.value)}
-                placeholder="Search icons…"
-                value={catalogQuery}
-              />
-              <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
-                {filteredCatalog.map((item) => (
+              <div className="grid grid-cols-3 gap-1 rounded-lg bg-teal-50/70 p-1">
+                {(
+                  [
+                    ["icons", "Icons"],
+                    ["marks", "Marks"],
+                    ["ai", "AI"],
+                  ] as const
+                ).map(([id, label]) => (
                   <button
-                    className="flex flex-col items-center gap-1 rounded-lg border border-transparent bg-teal-50/50 p-2 text-[10px] text-teal-900 transition-colors hover:border-teal-800/20 hover:bg-white"
-                    key={item.id}
-                    onClick={() => addPictogram(item)}
-                    title={`Add ${item.concept}`}
+                    className={cn(
+                      "rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                      catalogTab === id
+                        ? "bg-white text-teal-950 shadow-sm"
+                        : "text-teal-900/65 hover:text-teal-950"
+                    )}
+                    key={id}
+                    onClick={() => setCatalogTab(id)}
                     type="button"
                   >
-                    <span
-                      className="inline-flex h-9 w-9 items-center justify-center [&_svg]:h-6 [&_svg]:w-6"
-                      dangerouslySetInnerHTML={{ __html: item.svg }}
-                    />
-                    <span className="w-full truncate text-center">{item.concept}</span>
+                    {label}
                   </button>
                 ))}
               </div>
+
+              {catalogTab !== "ai" ? (
+                <input
+                  className="mt-2 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2 text-sm"
+                  onChange={(e) => setCatalogQuery(e.target.value)}
+                  placeholder={catalogTab === "icons" ? "Search icons…" : "Search marks…"}
+                  value={catalogQuery}
+                />
+              ) : null}
+
+              {catalogTab === "icons" ? (
+                <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
+                  {filteredCatalog.map((item) => (
+                    <button
+                      className="flex flex-col items-center gap-1 rounded-lg border border-transparent bg-teal-50/50 p-2 text-[10px] text-teal-900 transition-colors hover:border-teal-800/20 hover:bg-white"
+                      key={item.id}
+                      onClick={() => addPictogram(item)}
+                      title={`Add ${item.concept}`}
+                      type="button"
+                    >
+                      <span
+                        className="inline-flex h-9 w-9 items-center justify-center [&_svg]:h-6 [&_svg]:w-6"
+                        dangerouslySetInnerHTML={{ __html: item.svg }}
+                      />
+                      <span className="w-full truncate text-center">{item.concept}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {catalogTab === "marks" ? (
+                <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
+                  {filteredMarks.map((mark) => (
+                    <button
+                      className="flex flex-col items-center gap-1 rounded-lg border border-transparent bg-teal-50/50 p-2 text-[10px] text-teal-900 transition-colors hover:border-teal-800/20 hover:bg-white"
+                      key={mark.id}
+                      onClick={() => addMark(mark)}
+                      title={`Add ${mark.label}`}
+                      type="button"
+                    >
+                      <span className="inline-flex h-9 w-9 items-center justify-center text-lg font-semibold">
+                        {mark.value}
+                      </span>
+                      <span className="w-full truncate text-center">{mark.label}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {catalogTab === "ai" ? (
+                <div className="mt-3 space-y-3">
+                  <p className="text-xs leading-5 text-teal-900/65">
+                    Generate a custom image tile when the catalog doesn’t have what you need.
+                    Lifetime limit: {aiQuota.limit} per account · {aiQuota.remaining} left.
+                  </p>
+                  <label className="block text-sm">
+                    <span className="text-teal-900/70">What should it look like?</span>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2 text-sm"
+                      disabled={aiGenerating || aiQuota.remaining <= 0}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void generateAiImage();
+                        }
+                      }}
+                      placeholder="e.g. rusty key, tiny bee…"
+                      value={aiPrompt}
+                    />
+                  </label>
+                  <Button
+                    className="w-full"
+                    disabled={aiGenerating || aiQuota.remaining <= 0 || aiPrompt.trim().length < 2}
+                    onClick={() => void generateAiImage()}
+                    type="button"
+                  >
+                    {aiGenerating
+                      ? "Generating…"
+                      : aiQuota.remaining <= 0
+                        ? "No generations left"
+                        : `Generate (${aiQuota.remaining} left)`}
+                  </Button>
+                </div>
+              ) : null}
             </aside>
           </section>
         ) : null}

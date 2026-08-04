@@ -55,35 +55,42 @@ export interface PuzzleMetadata {
   communityPlayable?: boolean;
 }
 
+/** Free-canvas center as % of artboard (0–100). */
+type LayerPositionFields = {
+  x?: number;
+  y?: number;
+};
+
 /** Generative board (custom pictograms / text / optional images). */
 export type PuzzleVisualLayer =
-  | {
+  | ({
       kind: "pictogram";
       concept: string;
       role?: string;
       svg?: string;
       emojiFallback: string;
-    }
-  | {
+    } & LayerPositionFields)
+  | ({
       kind: "text";
       content: string;
       emphasis?: "normal" | "large" | "small" | "strike" | "stacked" | "tiny";
-    }
-  | {
+    } & LayerPositionFields)
+  | ({
       kind: "operator";
       symbol: string;
-    }
-  | {
+    } & LayerPositionFields)
+  | ({
       kind: "image";
       prompt: string;
       alt: string;
       src?: string;
-    };
+      concept?: string;
+    } & LayerPositionFields);
 
 export interface PuzzleVisual {
   styleId: "ink-pictogram-v1";
   mode: "composed" | "unicode" | "hybrid";
-  layout: "row" | "stack" | "grid" | "overlay";
+  layout: "row" | "stack" | "grid" | "overlay" | "free";
   layers: PuzzleVisualLayer[];
   unicodeFallback: string;
   caption?: string;

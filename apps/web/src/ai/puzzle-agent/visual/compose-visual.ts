@@ -260,7 +260,11 @@ export async function composePuzzleVisual(
     issueCount: issues.length,
     generativeParts: generated.pictograms + (styledText ? 1 : 0) + Math.min(1, generated.images),
     unicodeParts: visual.mode === "unicode" ? Math.max(1, textLayers) : 0,
-    hasSpatialOrOperator: hasOperator || visual.layout === "stack" || visual.layout === "overlay",
+    hasSpatialOrOperator:
+      hasOperator ||
+      visual.layout === "stack" ||
+      visual.layout === "overlay" ||
+      visual.layout === "free",
     hasStyledText: styledText,
     explanationMapsWell: false,
     avgPictogramClarity,
