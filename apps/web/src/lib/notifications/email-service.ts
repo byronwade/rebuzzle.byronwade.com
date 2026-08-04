@@ -186,7 +186,7 @@ export async function sendDailyPuzzleEmail(
       unsubscribeUrl,
     }),
     email,
-    "🧩 Today's Rebuzzle is Ready!"
+    "Today's Rebuzzle is Ready!"
   );
 }
 

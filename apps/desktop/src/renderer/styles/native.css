@@ -136,17 +136,10 @@ body {
   margin-bottom: var(--spacing-md);
 }
 
-.logo-text {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.1);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-lg);
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: block;
 }
 
 .sidebar-items {

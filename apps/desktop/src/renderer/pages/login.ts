@@ -21,6 +21,11 @@ export async function createLoginPage(): Promise<HTMLElement> {
   page.innerHTML = `
     <div class="login-container">
       <div class="login-header">
+        <svg class="login-brand-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="32" height="32" rx="9" fill="#0070F3"/>
+          <circle cx="16" cy="16" r="7.5" fill="#FAFAFA"/>
+          <circle cx="16" cy="16" r="5.25" fill="none" stroke="#171717" stroke-width="2.25"/>
+        </svg>
         <h1>Welcome Back</h1>
         <p>Sign in to track your progress</p>
       </div>
@@ -179,6 +184,13 @@ loginStyles.textContent = `
   .login-header {
     text-align: center;
     margin-bottom: var(--spacing-xl);
+  }
+
+  .login-brand-mark {
+    width: 56px;
+    height: 56px;
+    display: block;
+    margin: 0 auto var(--spacing-md);
   }
 
   .login-header h1 {

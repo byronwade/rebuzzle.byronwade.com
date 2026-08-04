@@ -21,7 +21,7 @@ export function generateOrganizationSchema() {
     url: baseUrl,
     logo: {
       "@type": "ImageObject",
-      url: `${baseUrl}/icon-512x512.png`,
+      url: `${baseUrl}/brand/logo-mark.png`,
       width: 512,
       height: 512,
     },
@@ -133,7 +133,7 @@ export function generateArticleSchema(post: {
       name: "Rebuzzle",
       logo: {
         "@type": "ImageObject",
-        url: `${baseUrl}/icon-512x512.png`,
+        url: `${baseUrl}/brand/logo-mark.png`,
         width: 512,
         height: 512,
       },
@@ -433,7 +433,7 @@ export function generateSoftwareApplicationSchema() {
       },
       {
         "@type": "ImageObject",
-        url: `${baseUrl}/icon-512x512.png`,
+        url: `${baseUrl}/brand/logo-mark.png`,
         width: 512,
         height: 512,
       },

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
+import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -204,6 +205,9 @@ export default function SignupPage() {
           <Card className="w-full max-w-[400px] p-8" variant="float">
             {/* Header */}
             <div className="mb-7 text-center">
+              <div className="mb-5 flex justify-center">
+                <RebuzzleLogo size="lg" showWordmark={false} />
+              </div>
               <h1 className="font-semibold text-2xl tracking-[-0.04em]">Create your account.</h1>
               <p className="mt-2 text-muted-foreground text-sm">
                 Keep your streak, points and achievements across devices.

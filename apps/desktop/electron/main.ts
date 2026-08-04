@@ -232,7 +232,7 @@ function setupDailyReminder(): void {
     if (!stats.completedToday) {
       showNativeNotification({
         id: "daily-puzzle",
-        title: "🧩 Daily Puzzle Ready!",
+        title: "Daily Puzzle Ready!",
         body: "Today's Rebuzzle puzzle is waiting for you. Keep your streak alive!",
         onClick: "puzzle/today",
         urgency: "normal",
@@ -696,8 +696,13 @@ function createMenu(): void {
 // ============================================
 
 function createTray(): void {
-  // Create a simple tray icon
-  const icon = nativeImage.createEmpty();
+  const trayIconPath = path.join(__dirname, "../resources/icon.png");
+  let icon = nativeImage.createFromPath(trayIconPath);
+  if (icon.isEmpty()) {
+    icon = nativeImage.createEmpty();
+  } else {
+    icon = icon.resize({ width: 16, height: 16 });
+  }
 
   tray = new Tray(icon);
   tray.setToolTip("Rebuzzle - Daily Puzzle");
@@ -884,11 +889,13 @@ async function createWindow(): Promise<void> {
   const devServerAvailable = await isDevServerAvailable();
   console.log(isDev ? `Dev mode: Vite server ${devServerAvailable ? "available" : "not available"}` : "Production mode");
 
+  const appIconPath = path.join(__dirname, "../resources/icon.png");
   const windowConfig: Electron.BrowserWindowConstructorOptions = {
     width: 1200,
     height: 900,
     minWidth: 420,
     minHeight: 700,
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
