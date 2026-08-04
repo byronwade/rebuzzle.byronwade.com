@@ -43,6 +43,7 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "resources/**/*",
       "!node_modules/**/*"
     ],
     "protocols": [
@@ -68,7 +69,7 @@
           ]
         }
       ],
-      "icon": "build/icon.icns",
+      "icon": "resources/icon.png",
       "category": "public.app-category.puzzle-games",
       "darkModeSupport": true,
       "hardenedRuntime": true,
@@ -91,7 +92,7 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "resources/icon.ico"
     },
     "linux": {
       "target": [
@@ -108,15 +109,15 @@
           ]
         }
       ],
-      "icon": "build/icons",
+      "icon": "resources/icons",
       "category": "Game"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico"
     },
     "dmg": {
       "contents": [

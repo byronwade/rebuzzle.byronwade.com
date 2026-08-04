@@ -6,6 +6,7 @@ import type * as React from "react";
 import { useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
+import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -162,6 +163,9 @@ export default function LoginPage() {
           <Card className="w-full max-w-[400px] p-8" variant="float">
             {/* Header */}
             <div className="mb-7 text-center">
+              <div className="mb-5 flex justify-center">
+                <RebuzzleLogo size="lg" showWordmark={false} />
+              </div>
               <h1 className="mb-2 font-semibold text-2xl tracking-[-0.04em]">Welcome back.</h1>
               <p className="mt-2 text-muted-foreground text-sm">
                 Log in to track your progress and compete

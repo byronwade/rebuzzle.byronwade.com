@@ -1,4 +1,5 @@
 import { AppLink as Link } from "@/components/AppLink";
+import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
 
 const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[] }[] = [
   {
@@ -49,8 +50,8 @@ export function Footer() {
       <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-16">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-1">
-            <Link className="font-semibold text-[17px] text-foreground tracking-[-0.04em]" href="/">
-              Rebuzzle
+            <Link className="inline-flex transition-opacity hover:opacity-70" href="/">
+              <RebuzzleLogo size="md" />
             </Link>
             <p className="mt-3 max-w-[26ch] text-muted-foreground text-sm leading-6">
               One AI-generated puzzle a day. Seven types, one shot, no ads.

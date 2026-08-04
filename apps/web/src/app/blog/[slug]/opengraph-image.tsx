@@ -1,10 +1,10 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { fetchBlogPost } from "@/app/actions/blogActions";
 
 /**
- * Blog Post Open Graph Image
- *
- * Generates a dynamic OG image for blog posts with title and puzzle info
+ * Blog post Open Graph image — matches Rebuzzle ink-on-canvas brand.
  */
 export const alt = "Rebuzzle Blog Post";
 export const size = {
@@ -17,9 +17,10 @@ export const contentType = "image/png";
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await fetchBlogPost(slug);
+  const logoBuffer = await readFile(join(process.cwd(), "public/brand/logo-mark.png"));
+  const logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
 
   if (!post) {
-    // Fallback image if post not found
     return new ImageResponse(
       <div
         style={{
@@ -29,27 +30,32 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#8b5cf6",
-          backgroundImage: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)",
+          backgroundColor: "#fafafa",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- OG ImageResponse */}
+        <img
+          alt=""
+          height={96}
+          src={logoSrc}
+          style={{ marginBottom: 28, borderRadius: 22 }}
+          width={96}
+        />
         <div
           style={{
-            fontSize: "72px",
-            fontWeight: "bold",
-            color: "white",
+            fontSize: 56,
+            fontWeight: 600,
+            color: "#171717",
+            letterSpacing: "-0.04em",
           }}
         >
           Rebuzzle Blog
         </div>
       </div>,
-      {
-        ...size,
-      }
+      { ...size }
     );
   }
 
-  // Truncate title if too long
   const title = post.title.length > 60 ? `${post.title.slice(0, 57)}...` : post.title;
 
   return new ImageResponse(
@@ -62,91 +68,97 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         backgroundColor: "#ffffff",
       }}
     >
-      {/* Header with gradient */}
       <div
         style={{
           width: "100%",
-          height: "200px",
+          height: 120,
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          backgroundImage: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)",
+          padding: "0 64px",
+          borderBottom: "1px solid #ebebeb",
+          backgroundColor: "#fafafa",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- OG ImageResponse */}
+        <img
+          alt=""
+          height={48}
+          src={logoSrc}
+          style={{ borderRadius: 12, marginRight: 16 }}
+          width={48}
+        />
         <div
           style={{
-            fontSize: "48px",
-            fontWeight: "bold",
-            color: "white",
+            fontSize: 28,
+            fontWeight: 600,
+            color: "#171717",
+            letterSpacing: "-0.04em",
           }}
         >
-          🧩 Rebuzzle Blog
+          Rebuzzle Blog
         </div>
       </div>
 
-      {/* Content area */}
       <div
         style={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          padding: "60px 80px",
+          padding: "56px 64px",
           justifyContent: "center",
         }}
       >
-        {/* Title */}
         <div
           style={{
-            fontSize: "56px",
-            fontWeight: "bold",
-            color: "#1f2937",
-            marginBottom: "30px",
-            lineHeight: "1.2",
+            fontSize: 52,
+            fontWeight: 600,
+            color: "#171717",
+            letterSpacing: "-0.035em",
+            marginBottom: 28,
+            lineHeight: 1.15,
           }}
         >
           {title}
         </div>
 
-        {/* Puzzle info */}
         <div
           style={{
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
-            gap: "20px",
-            marginTop: "40px",
+            gap: 16,
+            marginTop: 12,
           }}
         >
           <div
             style={{
-              fontSize: "32px",
-              color: "#8b5cf6",
-              fontWeight: "bold",
+              fontSize: 24,
+              color: "#0070f3",
+              fontWeight: 600,
             }}
           >
             Puzzle: {post.answer}
           </div>
-          {post.puzzleType && (
+          {post.puzzleType ? (
             <div
               style={{
-                fontSize: "24px",
-                color: "#6b7280",
-                backgroundColor: "#f3f4f6",
-                padding: "8px 16px",
-                borderRadius: "8px",
+                fontSize: 20,
+                color: "#666666",
+                backgroundColor: "#f5f5f5",
+                padding: "8px 14px",
+                borderRadius: 999,
               }}
             >
               {post.puzzleType}
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Date */}
         <div
           style={{
-            fontSize: "20px",
-            color: "#9ca3af",
-            marginTop: "30px",
+            fontSize: 18,
+            color: "#888888",
+            marginTop: 28,
           }}
         >
           {new Date(post.date).toLocaleDateString("en-US", {
@@ -157,8 +169,6 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         </div>
       </div>
     </div>,
-    {
-      ...size,
-    }
+    { ...size }
   );
 }

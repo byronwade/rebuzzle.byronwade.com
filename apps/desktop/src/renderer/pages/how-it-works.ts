@@ -17,7 +17,13 @@ export async function createHowItWorksPage(): Promise<HTMLElement> {
     <!-- Intro Section -->
     <section class="hiw-section">
       <div class="hiw-intro">
-        <div class="hiw-intro-icon">🧩</div>
+        <div class="hiw-intro-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="48" height="48">
+            <rect width="32" height="32" rx="9" fill="#0070F3"/>
+            <circle cx="16" cy="16" r="7.5" fill="#FAFAFA"/>
+            <circle cx="16" cy="16" r="5.25" fill="none" stroke="#171717" stroke-width="2.25"/>
+          </svg>
+        </div>
         <h2>AI-Powered Daily Puzzles</h2>
         <p>Rebuzzle uses advanced AI to generate unique, challenging puzzles every day. Each puzzle is carefully crafted to be fun, fair, and thought-provoking.</p>
       </div>
@@ -209,7 +215,8 @@ function getStyles(): string {
       }
 
       .hiw-intro-icon {
-        font-size: 4rem;
+        display: flex;
+        justify-content: center;
         margin-bottom: var(--spacing-md);
       }
 

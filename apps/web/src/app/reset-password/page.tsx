@@ -1,10 +1,10 @@
 "use client";
 
-import { Lock } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
+import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
 import Layout from "@/components/Layout";
 import { AuthFormSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
@@ -181,8 +181,8 @@ export default function ResetPasswordPage() {
           <Card className="w-full max-w-[400px] p-8" variant="float">
             {/* Header */}
             <div className="mb-7 text-center">
-              <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
-                <Lock className="h-5 w-5 text-muted-foreground" />
+              <div className="mb-5 flex justify-center">
+                <RebuzzleLogo size="lg" showWordmark={false} />
               </div>
               <h1 className="font-semibold text-2xl tracking-[-0.04em]">Reset password</h1>
               <p className="mt-2 text-muted-foreground text-sm">

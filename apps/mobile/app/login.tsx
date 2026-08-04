@@ -21,6 +21,7 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { useTheme } from '../src/contexts/ThemeContext';
 import { hexToRgba } from '../src/lib/theme';
 import { Button } from '../src/components/ui/Button';
+import { RebuzzleMark } from '../src/components/RebuzzleMark';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -93,8 +94,8 @@ export default function LoginScreen() {
         <View style={styles.content}>
           {/* Logo/Brand Section */}
           <Animated.View entering={FadeIn.delay(100).duration(400)} style={styles.brandSection}>
-            <View style={[styles.logoContainer, { backgroundColor: colors.primary }]}>
-              <Text style={styles.logoText}>R</Text>
+            <View style={styles.logoContainer}>
+              <RebuzzleMark size={64} />
             </View>
             <Text style={[styles.brandName, { color: colors.foreground }]}>Rebuzzle</Text>
           </Animated.View>
@@ -263,21 +264,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 12,
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#ffffff',
   },
   brandName: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: -0.5,
   },
   header: {

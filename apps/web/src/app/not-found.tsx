@@ -1,9 +1,11 @@
 import { AppLink as Link } from "@/components/AppLink";
+import { RebuzzleMark } from "@/components/brand/RebuzzleLogo";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 py-16 text-center">
+      <RebuzzleMark className="mb-6 size-12" title="Rebuzzle" />
       <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.18em]">404</p>
       <h1 className="mt-3 font-semibold text-3xl text-foreground tracking-[-0.04em] md:text-4xl">
         Page not found

@@ -46,7 +46,7 @@ export function SignupWelcomeEmail({
 
       <Section style={buttonSectionStyle}>
         <Button href={baseUrl} style={buttonStyle}>
-          🧩 Play Your First Puzzle
+          Play Your First Puzzle
         </Button>
       </Section>
 

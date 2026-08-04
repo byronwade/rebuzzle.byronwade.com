@@ -21,11 +21,11 @@ export function DailyPuzzleEmail({
 
   return (
     <BaseEmail
-      preview="🎯 Today's Rebuzzle is ready! Start solving now."
+      preview="Today's Rebuzzle is ready! Start solving now."
       showUnsubscribe={true}
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Heading style={headingStyle}>🎯 Today's Rebuzzle is Ready!</Heading>
+      <Heading style={headingStyle}>Today's Rebuzzle is Ready!</Heading>
 
       <Text style={textStyle}>{greeting}</Text>
 

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
 import { useAuth } from "./AuthProvider";
+import { RebuzzleLogo } from "./brand/RebuzzleLogo";
 
 export default function AdminHeader() {
   const { user, isLoading } = useAuth();
@@ -58,7 +59,10 @@ export default function AdminHeader() {
         {/* Logo and Title */}
         <div className="flex items-center gap-4">
           <Link className="flex items-center gap-2 transition-opacity hover:opacity-80" href="/">
-            <h1 className="font-semibold text-base text-primary md:text-lg">Rebuzzle Admin</h1>
+            <RebuzzleLogo size="sm" />
+            <span className="font-semibold text-muted-foreground text-sm tracking-[-0.02em]">
+              Admin
+            </span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             <Button asChild size="sm" variant="ghost">
