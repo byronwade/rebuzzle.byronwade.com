@@ -9,20 +9,16 @@ jest.mock("../submissions", () => ({
   isUgcAnswerKeyTaken: jest.fn(async () => false),
 }));
 
-jest.mock("@/ai/puzzle-agent/visual/curated-pictograms", () => ({
-  resolveCuratedPictogram: (concept: string) => {
-    if (concept === "sun" || concept === "flower") {
-      return {
-        assetId: `id-${concept}`,
-        canonicalConcept: concept,
-        svg: `<svg data-concept="${concept}"></svg>`,
-      };
-    }
-    return null;
-  },
-  isAuthenticCuratedPictogram: () => true,
-  getCuratedPictogramAliases: () => [],
-}));
+jest.mock("@/ai/puzzle-agent/visual/curated-pictograms", () => {
+  const actual = jest.requireActual(
+    "@/ai/puzzle-agent/visual/curated-pictograms"
+  ) as typeof import("@/ai/puzzle-agent/visual/curated-pictograms");
+  return {
+    ...actual,
+    isAuthenticCuratedPictogram: () => true,
+    getCuratedPictogramAliases: actual.getCuratedPictogramAliases ?? (() => []),
+  };
+});
 
 jest.mock("@/ai/puzzle-agent/apex/critique", () => ({
   critiqueCandidate: jest.fn(async () => ({
