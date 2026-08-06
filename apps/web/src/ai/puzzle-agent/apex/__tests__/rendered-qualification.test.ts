@@ -101,7 +101,9 @@ describe("rendered finalist qualification", () => {
     });
     evaluateNearMissStress.mockReturnValue({
       ok: false,
-      issues: ['Near-miss stress failed: "door to door" collides with close alternate(s): door to doors'],
+      issues: [
+        'Near-miss stress failed: "door to door" collides with close alternate(s): door to doors',
+      ],
       nearMisses: ["door to doors"],
     });
 

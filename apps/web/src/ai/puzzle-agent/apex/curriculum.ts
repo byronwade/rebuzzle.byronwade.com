@@ -8,9 +8,9 @@ import { getDifficultyLevelForScore } from "../difficulty-levels";
 import { normalizeAnswerKey } from "../quality";
 import type { TechniqueId } from "../technique-library";
 import { loadDiversitySnapshot } from "./diversity-memory";
+import { loadAnswerEloMap } from "./elo-store";
 import { loadLearningDigest } from "./learning-context";
 import { PHRASE_BANK, samplePhraseBank } from "./phrase-bank";
-import { loadAnswerEloMap } from "./elo-store";
 import { biasTechniquesBySolveRates, loadTechniqueSolveRates } from "./technique-calibration";
 import type { GenerationBrief } from "./types";
 
@@ -160,9 +160,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
       ? `Learning prefer: ${learning.preferPatterns.slice(0, 3).join("; ")}.`
       : null,
     techniqueBias.notes[0] ?? techniqueCalibration.notes[0] ?? null,
-    answerEloByKey.size
-      ? `Pairwise answer Elo loaded for ${answerEloByKey.size} keys.`
-      : null,
+    answerEloByKey.size ? `Pairwise answer Elo loaded for ${answerEloByKey.size} keys.` : null,
     learning.targetDifficultyDelta !== 0
       ? `Applied difficulty delta: ${learning.targetDifficultyDelta > 0 ? "+" : ""}${learning.targetDifficultyDelta}.`
       : null,

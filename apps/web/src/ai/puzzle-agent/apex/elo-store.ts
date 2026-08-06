@@ -139,9 +139,7 @@ export async function recordPairwiseEloMatch(input: {
 }
 
 /** Load answer-key → Elo map for finalist pre-ranking. */
-export async function loadAnswerEloMap(input?: {
-  limit?: number;
-}): Promise<Map<string, number>> {
+export async function loadAnswerEloMap(input?: { limit?: number }): Promise<Map<string, number>> {
   const limit = Math.min(input?.limit ?? 500, 2000);
   const map = new Map<string, number>();
   try {
@@ -210,8 +208,7 @@ export function planPlaytestEloMatches(input: {
 
     // Technique-level: average solve rate vs other techniques later.
     if (techniqueId !== "unknown" && ranked.length) {
-      const avg =
-        ranked.reduce((sum, row) => sum + (row.solveRate ?? 0.5), 0) / ranked.length;
+      const avg = ranked.reduce((sum, row) => sum + (row.solveRate ?? 0.5), 0) / ranked.length;
       // Stash as synthetic marker — technique pairwise applied in sync below.
       void avg;
     }

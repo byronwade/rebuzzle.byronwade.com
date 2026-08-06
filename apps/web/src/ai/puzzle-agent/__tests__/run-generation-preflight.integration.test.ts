@@ -50,7 +50,9 @@ jest.mock("../../quota-manager", () => ({
   enforceQuota: (...args: unknown[]) => enforceQuota(...args),
 }));
 jest.mock("../authoritative-draft", () => {
-  const actual = jest.requireActual("../authoritative-draft") as typeof import("../authoritative-draft");
+  const actual = jest.requireActual(
+    "../authoritative-draft"
+  ) as typeof import("../authoritative-draft");
   return {
     ...actual,
   };

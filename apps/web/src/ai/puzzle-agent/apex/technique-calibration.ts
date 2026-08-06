@@ -9,10 +9,7 @@
 
 import { getCollection } from "@/db/mongodb";
 import type { TechniqueId } from "../technique-library";
-import {
-  mergeTechniqueSolveRates,
-  techniqueRatesFromPlaytestStrata,
-} from "./playtest-calibration";
+import { mergeTechniqueSolveRates, techniqueRatesFromPlaytestStrata } from "./playtest-calibration";
 
 export type TechniqueSolveRate = {
   techniqueId: string;

@@ -1,11 +1,11 @@
 import {
+  PUZZLE_BOARD_EMPHASIS_SCALE,
+  PUZZLE_BOARD_SIZE_SPECS,
   puzzleBoardCaptionSize,
   puzzleBoardFontSize,
   puzzleBoardLetterSpacingEm,
   puzzleBoardOperatorWidth,
   puzzleBoardTextWeight,
-  PUZZLE_BOARD_EMPHASIS_SCALE,
-  PUZZLE_BOARD_SIZE_SPECS,
 } from "../presentation";
 import { INK_PICTOGRAM_PALETTE, PUZZLE_BOARD_SURFACES } from "../style";
 

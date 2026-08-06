@@ -207,11 +207,13 @@ export async function loadHumanCalibrationGate(): Promise<HumanCalibrationGate> 
     };
 
     try {
-      const [{ techniqueRatesFromPlaytestStrata, playtestTechniqueDriftIssues }, { loadLearningDigest }] =
-        await Promise.all([
-          import("@/ai/puzzle-agent/apex/playtest-calibration"),
-          import("@/ai/puzzle-agent/apex/learning-context"),
-        ]);
+      const [
+        { techniqueRatesFromPlaytestStrata, playtestTechniqueDriftIssues },
+        { loadLearningDigest },
+      ] = await Promise.all([
+        import("@/ai/puzzle-agent/apex/playtest-calibration"),
+        import("@/ai/puzzle-agent/apex/learning-context"),
+      ]);
       const rates = techniqueRatesFromPlaytestStrata(report.techniqueScores);
       const learning = await loadLearningDigest();
       techniqueDriftIssues = playtestTechniqueDriftIssues({

@@ -10,9 +10,9 @@ describe("near-miss stress", () => {
   });
 
   it("flags multi-word phrase containment and plural cousins", () => {
-    expect(
-      findAnswerNearMisses("hold on", ["hold on tight", "hold", "keyboard"])
-    ).toEqual(["hold on tight"]);
+    expect(findAnswerNearMisses("hold on", ["hold on tight", "hold", "keyboard"])).toEqual([
+      "hold on tight",
+    ]);
     expect(findAnswerNearMisses("cats", ["cat", "dog"])).toEqual(["cat"]);
   });
 

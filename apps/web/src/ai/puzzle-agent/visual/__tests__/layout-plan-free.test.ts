@@ -1,5 +1,5 @@
-import { getPuzzleBoardRecognitionProfile } from "../presentation";
 import { layoutLayersLocked, planLockedRowIndexes } from "../layout-plan";
+import { getPuzzleBoardRecognitionProfile } from "../presentation";
 
 describe("free layout plan", () => {
   it("places layers from percentage coordinates", () => {
