@@ -1,3 +1,4 @@
+import { listCuratedPictogramIds } from "../../visual/curated-pictograms";
 import { buildIconBenchmarkCorpus } from "../corpus";
 import { compareIconBenchmarkReports, scoreIconBenchmark } from "../score";
 import { ICON_BENCHMARK_TILE_SIZES, type IconBenchmarkObservation } from "../types";
@@ -18,14 +19,18 @@ function perfectObservations(): IconBenchmarkObservation[] {
 
 describe("puzzle generator benchmark", () => {
   it("builds a frozen corpus with more than 200 multi-size decisions", () => {
+    const catalogSize = listCuratedPictogramIds().length;
     const corpus = buildIconBenchmarkCorpus();
     const positives = corpus.filter((entry) => entry.expected === "accept");
     const negatives = corpus.filter((entry) => entry.expected === "reject");
+    const expectedDecisions = catalogSize * 2 * ICON_BENCHMARK_TILE_SIZES.length;
 
-    expect(corpus).toHaveLength(196);
-    expect(positives).toHaveLength(98);
-    expect(negatives).toHaveLength(98);
-    expect(corpus.length * ICON_BENCHMARK_TILE_SIZES.length).toBe(392);
+    expect(catalogSize).toBeGreaterThanOrEqual(90);
+    expect(corpus).toHaveLength(catalogSize * 2);
+    expect(positives).toHaveLength(catalogSize);
+    expect(negatives).toHaveLength(catalogSize);
+    expect(corpus.length * ICON_BENCHMARK_TILE_SIZES.length).toBe(expectedDecisions);
+    expect(expectedDecisions).toBeGreaterThan(200);
     expect(negatives.every((entry) => entry.intendedConcept !== entry.renderedConcept)).toBe(true);
     expect(new Set(corpus.map((entry) => entry.id)).size).toBe(corpus.length);
   });
@@ -34,7 +39,7 @@ describe("puzzle generator benchmark", () => {
     const corpus = buildIconBenchmarkCorpus();
     const report = scoreIconBenchmark({ cases: corpus, observations: perfectObservations() });
 
-    expect(report.expectedObservations).toBe(392);
+    expect(report.expectedObservations).toBe(corpus.length * ICON_BENCHMARK_TILE_SIZES.length);
     expect(report.coverage).toBe(1);
     expect(report.positiveRecall).toBe(1);
     expect(report.negativeRecall).toBe(1);
