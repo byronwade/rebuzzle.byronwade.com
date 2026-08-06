@@ -32,11 +32,7 @@ export function rankCandidates(
     );
     return {
       ...withRubric,
-      tournamentScore: blendScoreWithElo(
-        baseScore,
-        elo,
-        targetEloForDifficulty(targetDifficulty)
-      ),
+      tournamentScore: blendScoreWithElo(baseScore, elo, targetEloForDifficulty(targetDifficulty)),
     };
   });
 

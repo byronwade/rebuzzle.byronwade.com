@@ -712,11 +712,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "cultural",
     difficultyHint: 5,
     techniqueAffinity: ["cultural_common_knowledge_plus_twist", "spatial_preposition_play"],
-    visualCues: [
-      textCue("ON", "structural-anchor"),
-      textCue("CLOUD"),
-      textCue("9"),
-    ],
+    visualCues: [textCue("ON", "structural-anchor"), textCue("CLOUD"), textCue("9")],
   },
   {
     answer: "hit the hay",
@@ -769,11 +765,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "idiom",
     difficultyHint: 5,
     techniqueAffinity: ["spatial_preposition_play", "idiom_as_picture"],
-    visualCues: [
-      catalogCue("fish"),
-      textCue("OUT", "structural-anchor"),
-      textCue("WATER"),
-    ],
+    visualCues: [catalogCue("fish"), textCue("OUT", "structural-anchor"), textCue("WATER")],
   },
   {
     answer: "head over heels",
@@ -794,11 +786,7 @@ export const PHRASE_BANK: readonly PhraseBankEntry[] = [
     category: "positional",
     difficultyHint: 6,
     techniqueAffinity: ["spatial_preposition_play", "positional_phrase"],
-    visualCues: [
-      textCue("WATER"),
-      textCue("UNDER", "structural-anchor"),
-      textCue("BRIDGE"),
-    ],
+    visualCues: [textCue("WATER"), textCue("UNDER", "structural-anchor"), textCue("BRIDGE")],
   },
   {
     answer: "crossroads",

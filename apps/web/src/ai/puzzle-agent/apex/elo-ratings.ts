@@ -92,10 +92,7 @@ export function resolveCandidateElo(
     return Math.round(answerElo);
   }
 
-  if (
-    typeof input.estimatedSolveRate === "number" &&
-    Number.isFinite(input.estimatedSolveRate)
-  ) {
+  if (typeof input.estimatedSolveRate === "number" && Number.isFinite(input.estimatedSolveRate)) {
     return eloFromSolveRate(input.estimatedSolveRate);
   }
 

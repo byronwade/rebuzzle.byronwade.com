@@ -24,7 +24,7 @@ describe("curated pictogram catalog", () => {
     const ids = listCuratedPictogramIds();
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.length).toBeGreaterThanOrEqual(90);
-    expect(listCuratedPictogramIds({ includeQuarantined: true })).toHaveLength(118);
+    expect(listCuratedPictogramIds({ includeQuarantined: true })).toHaveLength(166);
   });
 
   it("resolves every catalog asset to an authentic identity", () => {

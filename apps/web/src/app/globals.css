@@ -977,6 +977,36 @@
   overflow: hidden;
 }
 
+/* Mobile: tap the plate to toggle docked ↔ hero after chat starts. */
+.puzzle-stage-plate--toggleable {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  border: 0;
+  appearance: none;
+  text-align: inherit;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.puzzle-stage-plate--toggleable:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+
+.puzzle-stage-toggle-hint {
+  margin-top: 0.35rem;
+  text-align: center;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(var(--subtle-foreground));
+  opacity: 0.72;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .puzzle-stage-plate,
   .puzzle-stage-content,

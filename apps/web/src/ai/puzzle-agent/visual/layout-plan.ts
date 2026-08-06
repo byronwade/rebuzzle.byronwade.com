@@ -8,19 +8,24 @@
 
 import {
   getPuzzleBoardRecognitionProfile,
-  puzzleBoardFontSize,
-  puzzleBoardOperatorWidth,
   PUZZLE_BOARD_SIZE_SPECS,
   type PuzzleBoardRecognitionProfile,
   type PuzzleBoardSize,
+  puzzleBoardFontSize,
+  puzzleBoardOperatorWidth,
 } from "./presentation";
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(100, Math.max(0, value));
+}
 
 /**
  * Structural board shape accepted by the layout lock.
  * Wider than the Zod PuzzleVisual so the React player (optional emphasis) can share it.
  */
 export type LayoutPlanVisual = {
-  layout?: "row" | "stack" | "grid" | "overlay";
+  layout?: "row" | "stack" | "grid" | "overlay" | "free";
   layers: readonly LayoutPlanLayer[];
 };
 
@@ -33,6 +38,9 @@ export type LayoutPlanLayer = {
   emojiFallback?: string;
   svg?: string;
   src?: string;
+  /** Free-canvas center as % of artboard (0–100). */
+  x?: number;
+  y?: number;
 };
 
 export type LayoutBox = { width: number; height: number };
@@ -126,7 +134,7 @@ export function planLockedRowIndexes(visual: LayoutPlanVisual): number[][] {
     return layers.map((_, index) => [index]);
   }
 
-  if (visual.layout === "overlay") {
+  if (visual.layout === "overlay" || visual.layout === "free") {
     return [layers.map((_, index) => index)];
   }
 
@@ -232,6 +240,35 @@ export function layoutLayersLocked(
     return {
       width: profile.viewportWidth,
       height: contentHeight + profile.padding * 2,
+      positions,
+      rowIndexes,
+      wrappedRows: 1,
+      locked: true,
+    };
+  }
+
+  if (visual.layout === "free") {
+    const boardWidth = availableWidth;
+    const boardHeight = Math.max(size.tile * 2.4, Math.round(boardWidth * (10 / 16)));
+    const positions = boxes.map((box, index) => {
+      const layer = layers[index];
+      const cx =
+        typeof layer?.x === "number"
+          ? profile.padding + (clampPercent(layer.x) / 100) * boardWidth
+          : profile.padding + boardWidth * (0.3 + (index % 4) * 0.12);
+      const cy =
+        typeof layer?.y === "number"
+          ? profile.padding + (clampPercent(layer.y) / 100) * boardHeight
+          : profile.padding + boardHeight * (0.32 + Math.floor(index / 4) * 0.14);
+      return {
+        ...box,
+        x: cx - box.width / 2,
+        y: cy - box.height / 2,
+      };
+    });
+    return {
+      width: profile.viewportWidth,
+      height: boardHeight + profile.padding * 2,
       positions,
       rowIndexes,
       wrappedRows: 1,

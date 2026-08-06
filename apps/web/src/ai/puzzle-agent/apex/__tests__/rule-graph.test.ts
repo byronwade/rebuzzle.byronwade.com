@@ -139,11 +139,7 @@ describe("rule-graph composer", () => {
     });
     expect(result.applied).toBe(true);
     expect(result.layout).toBe("row");
-    expect(result.layers.map((layer) => layer.kind)).toEqual([
-      "text",
-      "operator",
-      "pictogram",
-    ]);
+    expect(result.layers.map((layer) => layer.kind)).toEqual(["text", "operator", "pictogram"]);
   });
 
   it("uses stack/overlay for false_lead_visual and strips joiners", () => {
@@ -216,11 +212,7 @@ describe("rule-graph composer", () => {
     });
     expect(rare.applied).toBe(true);
     expect(rare.layout).toBe("row");
-    expect(rare.layers.map((layer) => layer.kind)).toEqual([
-      "pictogram",
-      "operator",
-      "pictogram",
-    ]);
+    expect(rare.layers.map((layer) => layer.kind)).toEqual(["pictogram", "operator", "pictogram"]);
 
     const cultural = composeRuleGraph({
       techniqueId: "cultural_common_knowledge_plus_twist",

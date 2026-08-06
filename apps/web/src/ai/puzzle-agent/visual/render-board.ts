@@ -3,15 +3,15 @@ import type { PuzzleVisual, VisualLayer } from "./composition";
 import { layoutLayersLocked, planLockedRowIndexes } from "./layout-plan";
 import {
   getPuzzleBoardRecognitionProfile,
-  puzzleBoardCaptionSize,
-  puzzleBoardFontSize,
-  puzzleBoardTextWeight,
   PUZZLE_BOARD_CHROME,
   PUZZLE_BOARD_RECOGNITION_PROFILES,
   PUZZLE_BOARD_SIZE_SPECS,
   PUZZLE_BOARD_SVG_FONT_FAMILY,
   type PuzzleBoardRecognitionProfile,
   type PuzzleBoardRecognitionProfileId,
+  puzzleBoardCaptionSize,
+  puzzleBoardFontSize,
+  puzzleBoardTextWeight,
 } from "./presentation";
 import { sanitizePictogramSvg } from "./sanitize-svg";
 import { INK_PICTOGRAM_PALETTE } from "./style";

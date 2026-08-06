@@ -2,15 +2,16 @@
 
 import Image from "next/image";
 import type { CSSProperties } from "react";
+import { defaultPositionForIndex, hasLayerPosition } from "@/ai/puzzle-agent/visual/layer-position";
 import { planPlayerLockedRows } from "@/ai/puzzle-agent/visual/layout-plan";
 import {
   PUZZLE_BOARD_CHROME,
   PUZZLE_BOARD_SIZE_SPECS,
+  type PuzzleBoardSize,
   puzzleBoardFontSize,
   puzzleBoardLetterSpacingEm,
   puzzleBoardOperatorWidth,
   puzzleBoardTextWeight,
-  type PuzzleBoardSize,
 } from "@/ai/puzzle-agent/visual/presentation";
 import { sanitizePictogramSvg } from "@/ai/puzzle-agent/visual/sanitize-svg";
 import { INK_PICTOGRAM_PALETTE } from "@/ai/puzzle-agent/visual/style";
@@ -273,7 +274,7 @@ export function PuzzleVisualBoard({
 
   // Locked row membership matches server recognition profiles — no flex-wrap reflow.
   const rowIndexes =
-    visual.layout === "overlay"
+    visual.layout === "overlay" || visual.layout === "free"
       ? [layers.map((_, index) => index)]
       : planPlayerLockedRows(visual, resolvedSize);
 
@@ -287,6 +288,58 @@ export function PuzzleVisualBoard({
     gap: dims.gap,
     rowGap: dims.gap,
   } as CSSProperties;
+
+  if (visual.layout === "free") {
+    return (
+      <div
+        className={cn("puzzle-visual-board relative w-full max-w-full", className)}
+        data-layout-lock="free"
+        data-surface={surface.mode}
+        style={{
+          ...boardStyle,
+          aspectRatio: "16 / 10",
+          minHeight: Math.max(dims.tile * 2.2, 120),
+        }}
+        role="img"
+        aria-label={fallback || visual.unicodeFallback}
+      >
+        {layers.map((layer, index) => {
+          const position = hasLayerPosition(layer)
+            ? { x: layer.x, y: layer.y }
+            : defaultPositionForIndex(index);
+          return (
+            <div
+              key={`free-${index}`}
+              className="absolute"
+              style={{
+                left: `${position.x}%`,
+                top: `${position.y}%`,
+                transform: "translate(-50%, -50%)",
+                zIndex: index + 1,
+              }}
+            >
+              <LayerView layer={layer} index={index} size={resolvedSize} />
+            </div>
+          );
+        })}
+        {visual.caption ? (
+          <p
+            className="rb-enter absolute top-full mt-2 w-full text-center font-sans"
+            style={{
+              color: "var(--rb-mist)",
+              fontSize: Math.max(
+                PUZZLE_BOARD_CHROME.captionMinSize,
+                Math.round(dims.fontSize * PUZZLE_BOARD_CHROME.captionSizeFactor)
+              ),
+              fontWeight: puzzleBoardTextWeight("normal"),
+            }}
+          >
+            {visual.caption}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   if (visual.layout === "overlay") {
     return (

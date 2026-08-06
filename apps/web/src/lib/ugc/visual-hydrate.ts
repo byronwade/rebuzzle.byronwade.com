@@ -25,6 +25,13 @@ export function hydrateStudioVisual(input: {
 }): { visual: PuzzleVisual; issues: string[] } {
   const issues: string[] = [];
   const layers: VisualLayer[] = input.layers.map((layer) => {
+    if (layer.kind === "image") {
+      return {
+        ...layer,
+        x: layer.x,
+        y: layer.y,
+      };
+    }
     if (layer.kind !== "pictogram") return layer;
     const curated = resolveCuratedPictogram(layer.concept);
     if (!curated) {
@@ -42,6 +49,8 @@ export function hydrateStudioVisual(input: {
       assetId: curated.assetId,
       source: "catalog" as const,
       emojiFallback: layer.emojiFallback || emojiFallbackFor(curated.canonicalConcept),
+      x: layer.x,
+      y: layer.y,
     };
   });
 

@@ -81,9 +81,10 @@ function review(input: {
 describe("blind human icon-recognition calibration", () => {
   it("builds one opaque specimen per catalog asset and player size", () => {
     const fixtures = buildIconRecognitionFixtures();
+    const expectedCount = listCuratedPictogramIds().length * 2;
 
-    expect(fixtures).toHaveLength(196);
-    expect(new Set(fixtures.map((fixture) => fixture.fixtureId)).size).toBe(196);
+    expect(fixtures).toHaveLength(expectedCount);
+    expect(new Set(fixtures.map((fixture) => fixture.fixtureId)).size).toBe(expectedCount);
     expect(new Set(fixtures.map((fixture) => fixture.sizePx))).toEqual(new Set([44, 72]));
     for (const fixture of fixtures) {
       expect(fixture.fixtureId).toMatch(/^[a-f0-9]{32}$/);

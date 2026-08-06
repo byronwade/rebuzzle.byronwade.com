@@ -32,7 +32,9 @@ jest.mock("../../errors", () => ({
 }));
 jest.mock("../../quota-manager", () => ({ enforceQuota: jest.fn(async () => undefined) }));
 jest.mock("../authoritative-draft", () => {
-  const actual = jest.requireActual("../authoritative-draft") as typeof import("../authoritative-draft");
+  const actual = jest.requireActual(
+    "../authoritative-draft"
+  ) as typeof import("../authoritative-draft");
   return {
     ...actual,
   };
