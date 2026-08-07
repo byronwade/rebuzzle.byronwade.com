@@ -15,6 +15,9 @@ updates:
       - dependency-name: "@expo/*"
       - dependency-name: "react-native"
       - dependency-name: "react-native-*"
+      - dependency-name: "@react-native-async-storage/*"
+      - dependency-name: "@react-native-community/*"
+      - dependency-name: "@react-native/*"
       # tailwind-merge v3 requires Tailwind CSS v4; web/ui are on Tailwind v3.
       - dependency-name: "tailwind-merge"
         versions: [">=3"]
