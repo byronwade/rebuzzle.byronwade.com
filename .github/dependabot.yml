@@ -7,6 +7,17 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - dependencies
+    ignore:
+      # apps/mobile is pinned to Expo SDK 52: react/react-native/expo packages
+      # must be upgraded together via `npx expo install`, not individually.
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      # tailwind-merge v3 requires Tailwind CSS v4; web/ui are on Tailwind v3.
+      - dependency-name: "tailwind-merge"
+        versions: [">=3"]
     groups:
       production-dependencies:
         dependency-type: production

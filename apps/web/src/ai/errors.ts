@@ -241,7 +241,7 @@ export function parseAIError(error: unknown): AIError {
     }
 
     // Try nested failure list (AI SDK RetryError has this)
-    const nestedFailures = Array.isArray(err["errors"]) ? err["errors"] : null;
+    const nestedFailures = Array.isArray(err.errors) ? err.errors : null;
     if (nestedFailures && nestedFailures.length > 0) {
       const lastErr = nestedFailures[nestedFailures.length - 1];
       const nested = parseAIError(lastErr);

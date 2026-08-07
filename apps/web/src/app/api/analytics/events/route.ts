@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   try {
     // Check if request has a body before parsing
     const contentType = request.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
+    if (!contentType?.includes("application/json")) {
       return NextResponse.json({ error: "Content-Type must be application/json" }, { status: 400 });
     }
 

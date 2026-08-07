@@ -24,7 +24,7 @@ function clampScore(n: number): number {
  */
 export function scorePictogramClarity(svg: string | null | undefined): PictogramClarityResult {
   const reasons: string[] = [];
-  if (!svg || !svg.includes("<svg")) {
+  if (!svg?.includes("<svg")) {
     return { score: 0, ok: false, reasons: ["missing_svg"] };
   }
 

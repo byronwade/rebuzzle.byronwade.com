@@ -9,7 +9,7 @@ import { rateLimiters } from "@/lib/middleware/rate-limit";
 export async function POST(request: Request) {
   // Apply rate limiting
   const rateLimitResult = await rateLimiters.auth(request);
-  if (!rateLimitResult || !rateLimitResult.success) {
+  if (!rateLimitResult?.success) {
     return NextResponse.json(
       {
         error: "Too many requests. Please try again later.",

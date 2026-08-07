@@ -31,7 +31,7 @@ export async function safeJsonParse<T = any>(response: Response): Promise<T | nu
 
     // Check if response has content
     const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
+    if (!contentType?.includes("application/json")) {
       return null;
     }
 

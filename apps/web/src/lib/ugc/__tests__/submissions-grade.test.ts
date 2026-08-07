@@ -134,8 +134,11 @@ describe("markSubmissionGraded", () => {
       })
     ).rejects.toThrow(/mongo down/i);
 
-    const last = updateOne.mock.calls[updateOne.mock.calls.length - 1];
-    const payload = (last?.[1] as { $set: UserPuzzleSubmission }).$set;
+    const last = updateOne.mock.calls[updateOne.mock.calls.length - 1] as [
+      unknown,
+      { $set: UserPuzzleSubmission },
+    ];
+    const payload = last[1].$set;
     expect(payload.status).toBe("draft");
     expect(payload.grade?.ok).toBe(false);
   });
