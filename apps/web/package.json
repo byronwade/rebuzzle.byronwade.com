@@ -125,6 +125,7 @@
     "autoprefixer": "10.5.4",
     "babel-plugin-react-compiler": "^1.0.0",
     "jest": "^30.4.2",
+    "jest-environment-node": "^30.4.1",
     "knip": "^5.70.2",
     "postcss": "8.5.25",
     "react-doctor": "^0.9.4",
