@@ -890,37 +890,32 @@ export function PuzzleStudio() {
 
   if (!isAuthenticated || isGuest) {
     return (
-      <div className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_420px_at_20%_-10%,#99f6e4_0%,transparent_55%),linear-gradient(180deg,#f8faf9,#eef5f3)]"
-        />
-        <div className="relative mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center px-4 py-16">
-          <p className="font-[family-name:var(--font-studio-display)] text-5xl tracking-tight text-teal-950 md:text-6xl">
-            Studio
-          </p>
-          <h1 className="mt-4 text-balance text-2xl font-semibold tracking-tight text-teal-950">
+      <div className="mx-auto max-w-page px-4 py-16 md:px-6 md:py-24">
+        <div className="max-w-2xl">
+          <p className="eyebrow">Studio</p>
+          <h1 className="mt-5 text-balance font-semibold text-[clamp(2.75rem,6vw,4.5rem)] leading-[0.95] tracking-[-0.065em]">
             Make a rebus in three quiet steps.
           </h1>
-          <p className="mt-3 text-teal-900/70 leading-7">
+          <p className="mt-5 max-w-xl text-pretty text-muted-foreground leading-7">
             Tap icons, write the answer, let Eve grade it. Good boards can fill a daily slot — and
             always live on your profile.
           </p>
-          <ol className="mt-8 space-y-3 text-sm text-teal-950">
+          <ol className="mt-12 border-border border-t">
             {[
               "Compose the board from fair catalog icons",
               "Add answer, hints, and a short mapping",
               "Publish into the lottery",
             ].map((line, i) => (
-              <li className="flex gap-3" key={line}>
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-900 text-[11px] font-semibold text-white">
-                  {i + 1}
-                </span>
-                <span className="pt-0.5">{line}</span>
+              <li
+                className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-4 border-border border-b py-6"
+                key={line}
+              >
+                <span className="pt-0.5 font-mono text-subtle text-xs tabular-nums">0{i + 1}</span>
+                <span className="font-medium tracking-[-0.01em]">{line}</span>
               </li>
             ))}
           </ol>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-10 flex flex-wrap gap-3">
             <Button asChild>
               <Link href={isGuest ? "/signup?next=/studio" : "/login?next=/studio"}>
                 {isGuest ? "Create a free account" : "Log in to open Studio"}
@@ -936,14 +931,15 @@ export function PuzzleStudio() {
   }
 
   return (
-    <div className="studio-shell min-h-[calc(100vh-4rem)] bg-[radial-gradient(1100px_520px_at_12%_-12%,#ccfbf1_0%,transparent_50%),linear-gradient(180deg,#f8faf9_0%,#eef5f3_100%)]">
-      <div className="mx-auto max-w-5xl px-3 py-5 md:px-6 md:py-8">
+    <div className="min-h-[calc(100vh-4rem)]">
+      <div className="mx-auto max-w-5xl px-3 py-8 md:px-6 md:py-12">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="font-[family-name:var(--font-studio-display)] text-4xl tracking-tight text-teal-950 md:text-5xl">
-              Studio
+            <p className="eyebrow">Studio</p>
+            <p className="mt-3 font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
+              Build a board.
             </p>
-            <p className="mt-1 text-sm text-teal-900/65">
+            <p className="mt-2 text-muted-foreground text-sm">
               Three steps. Fair icons. Eve grades. Lottery optional.
             </p>
           </div>
@@ -961,7 +957,7 @@ export function PuzzleStudio() {
 
         <nav
           aria-label="Studio steps"
-          className="mt-6 grid grid-cols-3 gap-2 rounded-2xl border border-teal-900/10 bg-white/70 p-1.5 shadow-sm backdrop-blur"
+          className="mt-8 grid grid-cols-3 gap-1 rounded-lg border border-border bg-inset p-1"
         >
           {STEPS.map((item) => {
             const active = step === item.id;
@@ -970,8 +966,10 @@ export function PuzzleStudio() {
             return (
               <button
                 className={cn(
-                  "rounded-xl px-2 py-2.5 text-left transition-colors md:px-3",
-                  active ? "bg-teal-900 text-white shadow-sm" : "text-teal-950 hover:bg-teal-50",
+                  "rounded-md px-2 py-2.5 text-left transition-colors md:px-3",
+                  active
+                    ? "bg-foreground text-background"
+                    : "text-foreground hover:bg-card hover:shadow-sm",
                   locked && !active && "opacity-45"
                 )}
                 disabled={locked && !active}
@@ -979,8 +977,13 @@ export function PuzzleStudio() {
                 onClick={() => setStep(item.id)}
                 type="button"
               >
-                <span className="block text-sm font-semibold">{item.label}</span>
-                <span className={cn("text-[11px]", active ? "text-teal-100" : "text-teal-900/55")}>
+                <span className="block font-semibold text-sm">{item.label}</span>
+                <span
+                  className={cn(
+                    "text-[11px]",
+                    active ? "text-background/60" : "text-muted-foreground"
+                  )}
+                >
                   {item.hint}
                 </span>
               </button>
@@ -989,21 +992,21 @@ export function PuzzleStudio() {
         </nav>
 
         {statusMessage ? (
-          <p className="mt-4 rounded-xl border border-teal-800/15 bg-teal-50/80 px-4 py-3 text-sm text-teal-900">
+          <p className="mt-4 rounded-lg border border-border bg-inset px-4 py-3 text-sm leading-6">
             {statusMessage}
           </p>
         ) : null}
         {error ? (
-          <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive text-sm leading-6">
             {error}
           </p>
         ) : null}
 
         {step === "board" ? (
           <section className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="rounded-2xl border border-teal-900/10 bg-white/75 p-4 shadow-sm backdrop-blur md:p-5">
+            <div className="rounded-lg border border-border bg-card p-4 md:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-teal-950">Start from a template</h2>
+                <h2 className="font-semibold text-sm tracking-[-0.01em]">Start from a template</h2>
                 {!loaded ? (
                   <span className="text-xs text-muted-foreground">Loading icons…</span>
                 ) : null}
@@ -1011,13 +1014,15 @@ export function PuzzleStudio() {
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {STUDIO_TEMPLATES.map((template) => (
                   <button
-                    className="rounded-xl border border-teal-900/10 bg-teal-50/40 px-3 py-3 text-left transition-colors hover:border-teal-800/25 hover:bg-white"
+                    className="rounded-lg border border-border bg-inset px-3 py-3 text-left transition-colors hover:border-border-strong hover:bg-card"
                     key={template.id}
                     onClick={() => applyTemplate(template)}
                     type="button"
                   >
-                    <span className="block font-medium text-teal-950">{template.label}</span>
-                    <span className="mt-1 block text-xs text-teal-900/60">{template.blurb}</span>
+                    <span className="block font-medium tracking-[-0.01em]">{template.label}</span>
+                    <span className="mt-1 block text-muted-foreground text-xs">
+                      {template.blurb}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1039,8 +1044,8 @@ export function PuzzleStudio() {
                         className={cn(
                           "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                           selectedIndex === index
-                            ? "bg-teal-900 text-white"
-                            : "bg-teal-50 text-teal-900 hover:bg-teal-100"
+                            ? "bg-foreground text-background"
+                            : "border border-border bg-inset text-muted-foreground hover:text-foreground"
                         )}
                         key={`${layer.kind}-${index}`}
                         onClick={() => setSelectedIndex(index)}
@@ -1050,7 +1055,7 @@ export function PuzzleStudio() {
                       </button>
                     ))}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-teal-900/60">
+                  <div className="mt-2 flex flex-wrap gap-3 text-muted-foreground text-xs [&>button:hover]:text-foreground [&>button]:transition-colors">
                     <button onClick={() => sendBackward(selectedIndex)} type="button">
                       Send back
                     </button>
@@ -1058,7 +1063,7 @@ export function PuzzleStudio() {
                       Bring forward
                     </button>
                     <button
-                      className="text-rose-700"
+                      className="text-destructive"
                       onClick={() => removeLayer(selectedIndex)}
                       type="button"
                     >
@@ -1073,7 +1078,7 @@ export function PuzzleStudio() {
                       <label className="text-sm">
                         Text
                         <input
-                          className="mt-1 w-full rounded-lg border border-teal-900/15 px-3 py-2"
+                          className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
                           onChange={(e) =>
                             setLayers((prev) =>
                               prev.map((layer, i) =>
@@ -1089,7 +1094,7 @@ export function PuzzleStudio() {
                       <label className="text-sm">
                         Size
                         <select
-                          className="mt-1 w-full rounded-lg border border-teal-900/15 px-3 py-2"
+                          className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
                           onChange={(e) =>
                             setLayers((prev) =>
                               prev.map((layer, i) =>
@@ -1128,8 +1133,8 @@ export function PuzzleStudio() {
               </div>
             </div>
 
-            <aside className="rounded-2xl border border-teal-900/10 bg-white/75 p-3 shadow-sm backdrop-blur">
-              <div className="grid grid-cols-3 gap-1 rounded-lg bg-teal-50/70 p-1">
+            <aside className="rounded-lg border border-border bg-card p-3">
+              <div className="grid grid-cols-3 gap-1 rounded-md border border-border bg-inset p-1">
                 {(
                   [
                     ["icons", "Icons"],
@@ -1141,8 +1146,8 @@ export function PuzzleStudio() {
                     className={cn(
                       "rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
                       catalogTab === id
-                        ? "bg-white text-teal-950 shadow-sm"
-                        : "text-teal-900/65 hover:text-teal-950"
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                     key={id}
                     onClick={() => setCatalogTab(id)}
@@ -1155,7 +1160,7 @@ export function PuzzleStudio() {
 
               {catalogTab !== "ai" ? (
                 <input
-                  className="mt-2 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2 text-sm"
+                  className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-border-strong"
                   onChange={(e) => setCatalogQuery(e.target.value)}
                   placeholder={catalogTab === "icons" ? "Search icons…" : "Search marks…"}
                   value={catalogQuery}
@@ -1166,7 +1171,7 @@ export function PuzzleStudio() {
                 <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
                   {filteredCatalog.map((item) => (
                     <button
-                      className="flex flex-col items-center gap-1 rounded-lg border border-transparent bg-teal-50/50 p-2 text-[10px] text-teal-900 transition-colors hover:border-teal-800/20 hover:bg-white"
+                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-[10px] text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
                       key={item.id}
                       onClick={() => addPictogram(item)}
                       title={`Add ${item.concept}`}
@@ -1186,7 +1191,7 @@ export function PuzzleStudio() {
                 <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
                   {filteredMarks.map((mark) => (
                     <button
-                      className="flex flex-col items-center gap-1 rounded-lg border border-transparent bg-teal-50/50 p-2 text-[10px] text-teal-900 transition-colors hover:border-teal-800/20 hover:bg-white"
+                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-[10px] text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
                       key={mark.id}
                       onClick={() => addMark(mark)}
                       title={`Add ${mark.label}`}
@@ -1203,14 +1208,14 @@ export function PuzzleStudio() {
 
               {catalogTab === "ai" ? (
                 <div className="mt-3 space-y-3">
-                  <p className="text-xs leading-5 text-teal-900/65">
+                  <p className="text-muted-foreground text-xs leading-5">
                     Generate a custom image tile when the catalog doesn’t have what you need.
                     Lifetime limit: {aiQuota.limit} per account · {aiQuota.remaining} left.
                   </p>
                   <label className="block text-sm">
-                    <span className="text-teal-900/70">What should it look like?</span>
+                    <span className="text-muted-foreground">What should it look like?</span>
                     <input
-                      className="mt-1 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-border-strong"
                       disabled={aiGenerating || aiQuota.remaining <= 0}
                       onChange={(e) => setAiPrompt(e.target.value)}
                       onKeyDown={(e) => {
@@ -1242,9 +1247,9 @@ export function PuzzleStudio() {
         ) : null}
 
         {step === "details" ? (
-          <section className="mt-5 rounded-2xl border border-teal-900/10 bg-white/75 p-4 shadow-sm backdrop-blur md:p-6">
+          <section className="mt-5 rounded-lg border border-border bg-card p-4 md:p-6">
             <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-              <div className="flex items-center justify-center rounded-xl bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-4">
+              <div className="flex items-center justify-center rounded-lg border border-border bg-inset p-4">
                 <PuzzleVisualBoard
                   fallback={preview.unicodeFallback}
                   size="medium"
@@ -1253,18 +1258,20 @@ export function PuzzleStudio() {
               </div>
               <div className="space-y-3">
                 <label className="block text-sm">
-                  <span className="text-teal-900/70">Answer players should type</span>
+                  <span className="text-muted-foreground">Answer players should type</span>
                   <input
-                    className="mt-1 w-full rounded-lg border border-teal-900/15 px-3 py-2.5 text-base"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2.5 text-base outline-none transition-colors focus:border-border-strong"
                     onChange={(e) => setAnswer(e.target.value)}
                     placeholder="e.g. sunflower"
                     value={answer}
                   />
                 </label>
                 <label className="block text-sm">
-                  <span className="text-teal-900/70">How does the board become that answer?</span>
+                  <span className="text-muted-foreground">
+                    How does the board become that answer?
+                  </span>
                   <textarea
-                    className="mt-1 min-h-28 w-full rounded-lg border border-teal-900/15 px-3 py-2.5"
+                    className="mt-1 min-h-28 w-full rounded-md border border-border bg-card px-3 py-2.5 outline-none transition-colors focus:border-border-strong"
                     onChange={(e) => setExplanation(e.target.value)}
                     placeholder="Sun + flower reads as the compound sunflower…"
                     value={explanation}
@@ -1273,9 +1280,9 @@ export function PuzzleStudio() {
                 <div className="grid gap-2 md:grid-cols-3">
                   {hints.map((hint, index) => (
                     <label className="block text-sm" key={`hint-${index}`}>
-                      <span className="text-teal-900/70">Hint {index + 1}</span>
+                      <span className="text-muted-foreground">Hint {index + 1}</span>
                       <input
-                        className="mt-1 w-full rounded-lg border border-teal-900/15 px-3 py-2"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
                         onChange={(e) =>
                           setHints((prev) =>
                             prev.map((value, i) => (i === index ? e.target.value : value))
@@ -1286,15 +1293,15 @@ export function PuzzleStudio() {
                     </label>
                   ))}
                 </div>
-                <details className="rounded-xl border border-teal-900/10 bg-teal-50/30 p-3">
-                  <summary className="cursor-pointer text-sm font-medium text-teal-950">
+                <details className="rounded-lg border border-border bg-inset p-3">
+                  <summary className="cursor-pointer font-medium text-sm">
                     Advanced (technique & difficulty)
                   </summary>
                   <div className="mt-3 grid gap-3 md:grid-cols-2">
                     <label className="block text-sm">
                       Technique
                       <select
-                        className="mt-1 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
                         onChange={(e) => setTechniqueId(e.target.value)}
                         value={techniqueId}
                       >
@@ -1308,7 +1315,7 @@ export function PuzzleStudio() {
                     <label className="block text-sm">
                       Difficulty (1–10)
                       <input
-                        className="mt-1 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
                         max={10}
                         min={1}
                         onChange={(e) => setDifficulty(Number(e.target.value) || 5)}
@@ -1319,7 +1326,7 @@ export function PuzzleStudio() {
                     <label className="block text-sm md:col-span-2">
                       Title on your profile
                       <input
-                        className="mt-1 w-full rounded-lg border border-teal-900/15 bg-white px-3 py-2"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder={answer || "Optional"}
                         value={title}
@@ -1341,28 +1348,24 @@ export function PuzzleStudio() {
         ) : null}
 
         {step === "publish" ? (
-          <section className="mt-5 rounded-2xl border border-teal-900/10 bg-white/75 p-4 shadow-sm backdrop-blur md:p-6">
+          <section className="mt-5 rounded-lg border border-border bg-card p-4 md:p-6">
             <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
-              <div className="flex flex-col items-center justify-center rounded-xl bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-4">
+              <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-inset p-4">
                 <PuzzleVisualBoard
                   fallback={preview.unicodeFallback}
                   size="medium"
                   visual={preview}
                 />
-                <p className="mt-3 text-center text-sm font-medium text-teal-950">
-                  {answer || "Your answer"}
-                </p>
+                <p className="mt-3 text-center font-medium text-sm">{answer || "Your answer"}</p>
               </div>
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-teal-950">
-                  Eve’s extensive review
-                </h2>
-                <p className="mt-1 text-sm text-teal-900/65">
+                <h2 className="font-semibold text-xl tracking-[-0.04em]">Eve’s extensive review</h2>
+                <p className="mt-1 text-muted-foreground text-sm leading-6">
                   Watch status, thinking, and answers for every check. Safety runs before any model
                   spend. Publish only ships when Eve’s verdict is ship — servers re-check on submit.
                 </p>
 
-                <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-teal-950">
+                <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
                   <input
                     checked={deepReview}
                     className="mt-1"
@@ -1371,7 +1374,7 @@ export function PuzzleStudio() {
                   />
                   <span>
                     Deep review (vision player-sim)
-                    <span className="mt-0.5 block text-xs text-teal-900/55">
+                    <span className="mt-0.5 block text-muted-foreground text-xs">
                       Extra spend — only when server flags allow (
                       <code className="text-[11px]">STUDIO_EVE_PLAYER_SIM</code>).
                     </span>
@@ -1404,7 +1407,7 @@ export function PuzzleStudio() {
                   </Button>
                 </div>
                 {!eveShipReady && canPublish ? (
-                  <p className="mt-2 text-xs text-teal-900/60">
+                  <p className="mt-2 text-muted-foreground text-xs leading-5">
                     Publish unlocks after Eve returns <span className="font-medium">ship</span> on
                     this exact board. Re-run review if you change anything.
                   </p>
@@ -1416,9 +1419,7 @@ export function PuzzleStudio() {
                   <div
                     className={cn(
                       "mt-5 rounded-xl border px-4 py-3 text-sm",
-                      grade.ok
-                        ? "border-teal-800/20 bg-teal-50 text-teal-950"
-                        : "border-amber-200 bg-amber-50 text-amber-950"
+                      grade.ok ? "border-border bg-inset" : "border-warning/40 bg-warning/10"
                     )}
                   >
                     <p className="font-medium">
@@ -1452,17 +1453,20 @@ export function PuzzleStudio() {
               </div>
             </div>
 
-            <div className="mt-8 border-t border-teal-900/10 pt-5">
+            <div className="mt-8 border-border border-t pt-5">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-teal-950">Your puzzles</h3>
-                <Link className="text-sm text-teal-800 hover:underline" href="/community">
+                <h3 className="font-semibold text-sm tracking-[-0.01em]">Your puzzles</h3>
+                <Link
+                  className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+                  href="/community"
+                >
                   Community →
                 </Link>
               </div>
               {submissions.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">Nothing published yet.</p>
               ) : (
-                <ul className="mt-3 divide-y divide-teal-900/10 rounded-xl border border-teal-900/10">
+                <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
                   {submissions.slice(0, 8).map((row) => (
                     <li
                       className="flex items-center justify-between gap-3 px-3 py-2.5"
@@ -1473,24 +1477,24 @@ export function PuzzleStudio() {
                         onClick={() => loadSubmission(row)}
                         type="button"
                       >
-                        <span className="block truncate font-medium text-teal-950">
+                        <span className="block truncate font-medium tracking-[-0.01em]">
                           {row.title || row.answer}
                         </span>
-                        <span className="text-[11px] uppercase tracking-[0.12em] text-teal-900/55">
+                        <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
                           {row.status}
                           {row.featuredOn ? ` · daily ${row.featuredOn}` : ""}
                         </span>
                       </button>
                       {row.status === "approved" || row.status === "featured" ? (
                         <Link
-                          className="shrink-0 text-sm text-teal-800 hover:underline"
+                          className="shrink-0 text-sm underline-offset-4 hover:underline"
                           href={communityPuzzlePath(row.slug)}
                         >
                           Open
                         </Link>
                       ) : (
                         <button
-                          className="shrink-0 text-sm text-teal-800 hover:underline"
+                          className="shrink-0 text-sm underline-offset-4 hover:underline"
                           onClick={() => loadSubmission(row)}
                           type="button"
                         >

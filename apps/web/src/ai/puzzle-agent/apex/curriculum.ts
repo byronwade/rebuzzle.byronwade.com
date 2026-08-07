@@ -75,9 +75,7 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
   // unrelated compound answer.
   const freshSeedTechniques = new Set(
     PHRASE_BANK.flatMap((entry) =>
-      !entry.overused &&
-      Boolean(entry.visualCues?.length) &&
-      !banned.has(normalizeAnswerKey(entry.answer))
+      !entry.overused && entry.visualCues?.length && !banned.has(normalizeAnswerKey(entry.answer))
         ? entry.techniqueAffinity
         : []
     )

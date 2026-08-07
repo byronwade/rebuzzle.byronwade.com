@@ -258,8 +258,9 @@ export default function ProfilePage() {
     <Layout>
       <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
-        <div className="mb-6">
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8">
+          <p className="eyebrow mb-5">Profile</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 border-2 border-border sm:h-20 sm:w-20 sm:border-4">
                 <AvatarFallback
@@ -272,7 +273,9 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="font-semibold text-base text-foreground md:text-lg">{username}</h1>
+                <h1 className="font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-3xl">
+                  {username}
+                </h1>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <Badge variant="secondary" className="font-medium text-xs">
                     Level {currentLevel}
@@ -305,8 +308,8 @@ export default function ProfilePage() {
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Stats Overview */}
           <Card className="p-6">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-base md:text-lg">
-              <Trophy className="h-5 w-5 text-primary" />
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-base tracking-[-0.02em]">
+              <Trophy className="h-4 w-4 text-muted-foreground" />
               Statistics
             </h2>
 
@@ -356,12 +359,12 @@ export default function ProfilePage() {
           {/* Achievements — catalog-backed from /api/user/achievements */}
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 font-semibold text-base md:text-lg">
-                <Award className="h-5 w-5 text-primary" />
+              <h2 className="flex items-center gap-2 font-semibold text-base tracking-[-0.02em]">
+                <Award className="h-4 w-4 text-muted-foreground" />
                 Achievements ({unlockedAchievements.length})
               </h2>
               <Link
-                className="font-medium text-primary text-xs underline-offset-2 hover:underline"
+                className="font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
                 href="/achievements"
               >
                 View all
@@ -372,10 +375,10 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 {unlockedAchievements.map((achievement) => (
                   <div
-                    className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                    className="flex items-center gap-3 rounded-lg border border-border bg-inset p-3"
                     key={achievement.id}
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-lg">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-lg">
                       {achievement.icon || "🏅"}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -391,8 +394,8 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="py-8 text-center">
-                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-muted/50">
-                  <Award className="h-8 w-8 text-muted-foreground/50" />
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-inset">
+                  <Award className="h-6 w-6 text-muted-foreground/60" />
                 </div>
                 <p className="mb-2 font-medium text-foreground text-sm">No achievements yet</p>
                 <p className="text-muted-foreground text-xs">
@@ -405,31 +408,39 @@ export default function ProfilePage() {
 
         {/* Activity Section */}
         <Card className="mt-6 p-6">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-base md:text-lg">
-            <Calendar className="h-5 w-5 text-primary" />
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-base tracking-[-0.02em]">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
             Activity Summary
           </h2>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-              <div className="mb-1 text-muted-foreground text-sm">Total Points</div>
-              <div className="font-semibold text-2xl text-foreground">
+          <dl className="hairline-grid grid grid-cols-1 rounded-lg sm:grid-cols-3">
+            <div className="px-5 py-4">
+              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
+                Total Points
+              </dt>
+              <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
                 {stats.points.toLocaleString("en-US", { useGrouping: true })}
-              </div>
+              </dd>
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-              <div className="mb-1 text-muted-foreground text-sm">Current Streak</div>
-              <div className="font-semibold text-2xl text-foreground">{stats.streak}</div>
+            <div className="px-5 py-4">
+              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
+                Current Streak
+              </dt>
+              <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
+                {stats.streak}
+              </dd>
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-colors hover:bg-muted/50">
-              <div className="mb-1 text-muted-foreground text-sm">Daily Challenge Streak</div>
-              <div className="font-semibold text-2xl text-foreground">
+            <div className="px-5 py-4">
+              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
+                Daily Streak
+              </dt>
+              <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
                 {stats.dailyChallengeStreak}
-              </div>
+              </dd>
             </div>
-          </div>
+          </dl>
         </Card>
 
         {/* Actions */}

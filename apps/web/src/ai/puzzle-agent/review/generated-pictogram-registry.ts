@@ -339,7 +339,7 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
 
     async quarantine(id: string, reason: string): Promise<void> {
       const candidate = await repository.findCandidateById(id);
-      if (!candidate || candidate.status !== "approved") return;
+      if (candidate?.status !== "approved") return;
       const now = new Date();
       await repository.transitionCandidate({
         id,
