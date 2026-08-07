@@ -101,11 +101,11 @@ export function StudioArtboard({
     return (
       <div
         className={cn(
-          "flex min-h-[220px] items-center justify-center rounded-xl border border-dashed border-teal-900/15 bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-5",
+          "flex min-h-[220px] items-center justify-center rounded-lg border border-border border-dashed bg-inset p-5",
           className
         )}
       >
-        <p className="max-w-xs text-center text-sm text-teal-900/45">
+        <p className="max-w-xs text-center text-muted-foreground text-sm leading-6">
           Your artboard appears here. Tap icons, marks, or generate an image — then drag pieces
           anywhere. They snap to a {STUDIO_GRID_STEP}% grid.
         </p>
@@ -117,11 +117,11 @@ export function StudioArtboard({
     <div className={cn("space-y-2", className)}>
       <div
         ref={boardRef}
-        className="relative overflow-hidden rounded-xl border border-teal-900/15 bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] shadow-sm"
+        className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm"
         style={{
           aspectRatio: "16 / 10",
           backgroundImage:
-            "linear-gradient(to right, rgb(13 148 136 / 0.07) 1px, transparent 1px), linear-gradient(to bottom, rgb(13 148 136 / 0.07) 1px, transparent 1px)",
+            "linear-gradient(to right, hsl(var(--border) / 0.6) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.6) 1px, transparent 1px)",
           backgroundSize: `${STUDIO_GRID_STEP}% ${STUDIO_GRID_STEP}%`,
           touchAction: "none",
         }}
@@ -144,8 +144,8 @@ export function StudioArtboard({
               className={cn(
                 "absolute touch-none select-none rounded-md outline-none transition-shadow",
                 selected
-                  ? "ring-2 ring-teal-700 ring-offset-2 ring-offset-[#f7fbfa]"
-                  : "hover:ring-1 hover:ring-teal-800/25",
+                  ? "ring-2 ring-foreground ring-offset-2 ring-offset-card"
+                  : "hover:ring-1 hover:ring-border-strong",
                 drag?.index === index && "z-50 cursor-grabbing"
               )}
               style={{
@@ -175,7 +175,7 @@ export function StudioArtboard({
           );
         })}
       </div>
-      <p className="text-center text-[11px] text-teal-900/50">
+      <p className="text-center text-[11px] text-subtle">
         Drag to place · snaps to grid · tap a piece to select
       </p>
     </div>

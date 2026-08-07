@@ -71,11 +71,9 @@ export default async function CommunityPuzzlePage({ params }: Params) {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         type="application/ld+json"
       />
-      <div className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-800/70">
-          Community puzzle
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-teal-950 md:text-4xl">
+      <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
+        <p className="eyebrow">Community puzzle</p>
+        <h1 className="mt-4 text-balance font-semibold text-3xl tracking-[-0.04em] md:text-4xl">
           {submission.title || "Untitled board"}
         </h1>
         <CreatorAttribution
@@ -86,7 +84,7 @@ export default async function CommunityPuzzlePage({ params }: Params) {
           }}
         />
 
-        <div className="mt-8 flex min-h-48 items-center justify-center rounded-2xl border border-teal-900/10 bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-6">
+        <div className="mt-8 flex min-h-48 items-center justify-center rounded-lg border border-border bg-inset p-6">
           <PuzzleVisualBoard
             fallback={submission.rebusPuzzle}
             size="large"
@@ -100,9 +98,12 @@ export default async function CommunityPuzzlePage({ params }: Params) {
           techniqueLabel={submission.techniqueId.replaceAll("_", " ")}
         />
 
-        <p className="mt-8 text-sm text-muted-foreground">
+        <p className="mt-8 text-muted-foreground text-sm">
           Want to publish your own?{" "}
-          <Link className="text-teal-800 underline-offset-4 hover:underline" href="/studio">
+          <Link
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+            href="/studio"
+          >
             Open Studio
           </Link>
           .

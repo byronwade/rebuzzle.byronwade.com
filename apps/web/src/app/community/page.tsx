@@ -36,16 +36,14 @@ export default async function CommunityPage() {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         type="application/ld+json"
       />
-      <div className="mx-auto max-w-5xl px-4 py-10 md:px-6 md:py-16">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
+        <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-800/70">
-              Community
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-teal-950 md:text-5xl">
+            <p className="eyebrow">Community</p>
+            <h1 className="mt-4 text-balance font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
               Player puzzles
             </h1>
-            <p className="mt-3 max-w-xl text-muted-foreground leading-7">
+            <p className="mt-4 max-w-xl text-pretty text-muted-foreground leading-7">
               Boards made in Studio, graded by Eve, playable anytime. Featured ones can land in the
               daily rotation.
             </p>
@@ -56,40 +54,47 @@ export default async function CommunityPage() {
         </div>
 
         {puzzles.length === 0 ? (
-          <div className="mt-12 rounded-2xl border border-teal-900/10 bg-teal-50/40 px-6 py-12 text-center">
-            <p className="text-lg font-medium text-teal-950">No community boards yet</p>
-            <p className="mt-2 text-sm text-teal-900/65">
+          <div className="mt-14 rounded-xl border border-border bg-card px-6 py-14 text-center shadow-lg">
+            <p className="eyebrow">Empty board</p>
+            <p className="mt-3 font-semibold text-2xl tracking-[-0.04em]">
+              No community boards yet
+            </p>
+            <p className="mx-auto mt-3 max-w-sm text-muted-foreground text-sm leading-6">
               Be the first — compose a rebus in Studio and publish it.
             </p>
-            <Button asChild className="mt-6">
+            <Button asChild className="mt-7">
               <Link href="/studio">Make a puzzle</Link>
             </Button>
           </div>
         ) : (
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {puzzles.map((puzzle) => (
-              <li key={puzzle.id}>
+              <li className="group" key={puzzle.id}>
                 <Link
-                  className="block h-full rounded-2xl border border-teal-900/10 bg-white/80 p-4 transition-colors hover:border-teal-800/30 hover:bg-teal-50/40"
+                  className="block h-full rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong"
                   href={communityPuzzlePath(puzzle.slug)}
                 >
-                  <div className="flex min-h-28 items-center justify-center rounded-xl bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-3">
+                  <div className="flex min-h-28 items-center justify-center rounded-lg border border-border bg-inset p-3">
                     <PuzzleVisualBoard
                       fallback={puzzle.rebusPuzzle}
                       size="medium"
                       visual={puzzle.visual}
                     />
                   </div>
-                  <p className="mt-3 truncate font-medium text-teal-950">
-                    {puzzle.title || "Untitled board"}
-                  </p>
-                  <p className="mt-1 text-sm text-teal-900/60">
-                    by {puzzle.username}
-                    {puzzle.status === "featured" ? " · Featured" : ""}
-                  </p>
+                  <div className="mt-3 flex items-baseline justify-between gap-2">
+                    <p className="truncate font-semibold tracking-[-0.02em]">
+                      {puzzle.title || "Untitled board"}
+                    </p>
+                    {puzzle.status === "featured" ? (
+                      <span className="shrink-0 font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
+                        Featured
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-muted-foreground text-sm">by {puzzle.username}</p>
                 </Link>
                 <Link
-                  className="mt-1 inline-block px-1 text-xs text-teal-800/70 hover:underline"
+                  className="mt-1.5 inline-block px-1 text-subtle text-xs transition-colors hover:text-foreground"
                   href={profilePathForUsername(puzzle.username)}
                 >
                   View profile

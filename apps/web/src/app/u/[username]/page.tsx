@@ -68,48 +68,53 @@ export default async function CreatorProfilePage({ params }: Params) {
     ],
   };
 
+  const creatorStats: Array<[string, number]> = [
+    ["Level", stats?.level ?? 1],
+    ["Wins", stats?.wins ?? 0],
+    ["Created", puzzles.length],
+    ["Featured", puzzles.filter((p) => p.status === "featured").length],
+  ];
+
   return (
     <Layout>
       <script
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(personSchema) }}
         type="application/ld+json"
       />
-      <div className="mx-auto max-w-5xl px-4 py-10 md:px-6 md:py-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-800/70">
-          Creator
-        </p>
-        <h1 className="mt-3 font-[family-name:var(--font-geist-sans)] text-4xl font-semibold tracking-[-0.04em] text-teal-950 md:text-5xl">
+      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
+        <p className="eyebrow">Creator</p>
+        <h1 className="mt-4 text-balance font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
           {user.username}
         </h1>
-        <p className="mt-3 max-w-2xl text-muted-foreground leading-7">
+        <p className="mt-4 max-w-2xl text-pretty text-muted-foreground leading-7">
           Community rebus boards by {user.username}. Featured wins land in the daily rotation; every
           approved puzzle stays playable here.
         </p>
 
-        <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            ["Level", stats?.level ?? 1],
-            ["Wins", stats?.wins ?? 0],
-            ["Created", puzzles.length],
-            ["Featured", puzzles.filter((p) => p.status === "featured").length],
-          ].map(([label, value]) => (
-            <div
-              className="rounded-xl border border-teal-900/10 bg-teal-50/40 px-4 py-3"
-              key={label}
-            >
-              <dt className="text-[11px] uppercase tracking-[0.14em] text-teal-900/60">{label}</dt>
-              <dd className="mt-1 text-2xl font-semibold tracking-tight text-teal-950">{value}</dd>
+        <dl className="hairline-grid mt-10 grid grid-cols-2 rounded-lg bg-card sm:grid-cols-4">
+          {creatorStats.map(([label, value]) => (
+            <div className="px-5 py-4" key={label}>
+              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
+                {label}
+              </dt>
+              <dd className="mt-1.5 font-semibold text-3xl tracking-[-0.04em]">{value}</dd>
             </div>
           ))}
         </dl>
 
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">Puzzles</h2>
-          <div className="flex gap-4 text-sm">
-            <Link className="text-teal-800 hover:underline" href="/community">
+        <div className="mt-14 flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="font-semibold text-2xl tracking-[-0.04em]">Puzzles</h2>
+          <div className="flex gap-5 text-sm">
+            <Link
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              href="/community"
+            >
               Community
             </Link>
-            <Link className="text-teal-800 hover:underline" href="/studio">
+            <Link
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              href="/studio"
+            >
               Make your own →
             </Link>
           </div>
@@ -122,19 +127,21 @@ export default async function CreatorProfilePage({ params }: Params) {
             {puzzles.map((puzzle) => (
               <li key={puzzle.id}>
                 <Link
-                  className="block rounded-2xl border border-teal-900/10 bg-white/80 p-4 transition-colors hover:border-teal-800/30 hover:bg-teal-50/40"
+                  className="block rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong"
                   href={communityPuzzlePath(puzzle.slug)}
                 >
-                  <div className="flex min-h-28 items-center justify-center rounded-xl bg-[linear-gradient(180deg,#fbfefe,#f3faf8)] p-4">
+                  <div className="flex min-h-28 items-center justify-center rounded-lg border border-border bg-inset p-4">
                     <PuzzleVisualBoard
                       fallback={puzzle.rebusPuzzle}
                       size="medium"
                       visual={puzzle.visual}
                     />
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <p className="truncate font-medium">{puzzle.title || "Untitled board"}</p>
-                    <span className="text-[11px] uppercase tracking-[0.12em] text-teal-900/60">
+                  <div className="mt-3 flex items-baseline justify-between gap-2">
+                    <p className="truncate font-semibold tracking-[-0.02em]">
+                      {puzzle.title || "Untitled board"}
+                    </p>
+                    <span className="shrink-0 font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
                       {puzzle.status === "featured" ? "Featured" : "Play"}
                     </span>
                   </div>
