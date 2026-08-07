@@ -27,8 +27,8 @@
     "doctor:web": "pnpm --filter @rebuzzle/web doctor:all"
   },
   "devDependencies": {
-    "turbo": "^2.3.0",
-    "@biomejs/biome": "^2.2.6",
+    "turbo": "^2.10.8",
+    "@biomejs/biome": "^2.5.7",
     "typescript": "^5.9.3"
   },
   "pnpm": {

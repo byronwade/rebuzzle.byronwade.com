@@ -22,18 +22,19 @@ describe("Material Symbol replacement candidates", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it.each(
-    listMaterialSymbolCandidateIds()
-  )("renders a sanitized, locally vendored candidate for %s", (id) => {
-    const candidate = resolveMaterialSymbolCandidate(id);
+  it.each(listMaterialSymbolCandidateIds())(
+    "renders a sanitized, locally vendored candidate for %s",
+    (id) => {
+      const candidate = resolveMaterialSymbolCandidate(id);
 
-    expect(candidate?.canonicalConcept).toBe(id);
-    expect(candidate?.assetId).toMatch(/^material-symbols:[a-z0-9_]+:fill1-opsz20@50f0603134ce$/);
-    expect(candidate?.svg).toContain('viewBox="0 -960 960 960"');
-    expect(candidate?.svg).toMatch(/<path d=".{80,}"/);
-    expect(candidate?.svg).toContain(`fill="${INK_PICTOGRAM_PALETTE.ink}"`);
-    expect(candidate?.svg).not.toMatch(/<script|javascript:|onload=/i);
-  });
+      expect(candidate?.canonicalConcept).toBe(id);
+      expect(candidate?.assetId).toMatch(/^material-symbols:[a-z0-9_]+:fill1-opsz20@50f0603134ce$/);
+      expect(candidate?.svg).toContain('viewBox="0 -960 960 960"');
+      expect(candidate?.svg).toMatch(/<path d=".{80,}"/);
+      expect(candidate?.svg).toContain(`fill="${INK_PICTOGRAM_PALETTE.ink}"`);
+      expect(candidate?.svg).not.toMatch(/<script|javascript:|onload=/i);
+    }
+  );
 
   it("fails closed for concepts outside the candidate inventory", () => {
     expect(resolveMaterialSymbolCandidate("car")).toBeNull();
