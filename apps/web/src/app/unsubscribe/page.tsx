@@ -71,7 +71,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
                   <CheckCircle2 className="h-5 w-5 text-success" />
                 </div>
-                <p className="font-semibold text-2xl tracking-[-0.04em]">Unsubscribed</p>
+                <h2 className="font-semibold text-2xl tracking-[-0.04em]">Unsubscribed</h2>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
                   {email ? (
                     <>
@@ -102,9 +102,9 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
                   <XCircle className="h-5 w-5 text-destructive" />
                 </div>
-                <p className="font-semibold text-2xl tracking-[-0.04em]">
+                <h2 className="font-semibold text-2xl tracking-[-0.04em]">
                   Unsubscribe didn&apos;t go through
-                </p>
+                </h2>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
                   We couldn&apos;t process your unsubscribe request. This might be because the link
                   has expired or is invalid.
@@ -125,7 +125,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
                 <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <p className="font-semibold text-2xl tracking-[-0.04em]">Missing email</p>
+                <h2 className="font-semibold text-2xl tracking-[-0.04em]">Missing email</h2>
                 <p className="mt-3 text-muted-foreground text-sm leading-6">
                   This unsubscribe link is missing an email address. Open the link from your
                   notification email, or manage preferences in settings.

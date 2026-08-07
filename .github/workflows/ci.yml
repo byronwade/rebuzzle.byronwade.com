@@ -57,6 +57,12 @@ jobs:
     timeout-minutes: 45
     needs: quality
 
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
