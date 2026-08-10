@@ -261,8 +261,8 @@ importers:
         specifier: 0.468.0
         version: 0.468.0
       lucide-react:
-        specifier: ^0.468.0
-        version: 0.468.0(react@19.2.8)
+        specifier: ^1.29.0
+        version: 1.29.0(react@19.2.8)
       mongodb:
         specifier: ^7.5.0
         version: 7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7)
@@ -441,8 +441,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       lucide-react:
-        specifier: ^0.468.0
-        version: 0.468.0(react@19.2.8)
+        specifier: ^1.29.0
+        version: 1.29.0(react@19.2.8)
       react:
         specifier: ^18.0.0 || ^19.0.0
         version: 19.2.8
@@ -7024,10 +7024,10 @@ packages:
       react-native: '*'
       react-native-svg: ^12.0.0 || ^13.0.0 || ^14.0.0 || ^15.0.0
 
-  lucide-react@0.468.0:
-    resolution: {integrity: sha512-6koYRhnM2N0GGZIdXzSeiNwguv1gt/FAjZOiPl76roBi3xKEXa4WmfpxgQwTTL4KipXjefrnf3oV4IsYhi4JFA==}
+  lucide-react@1.29.0:
+    resolution: {integrity: sha512-Xs9QFG5+9sNX04MdKVT4++umA+hJ2qsJVlRlRWHQ7qZobXgMiNHSpZ5eZm8JUoGCdNyoEdXoEwa8HVr0DNjOQg==}
     peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   lucide@0.468.0:
     resolution: {integrity: sha512-UFbgwji/ZnAV7iTTE4jujyTV7J95AILKyATDUrqOJrMcUGfXvGjw3c1mcuHZUX2oJfkrAGU9KoxkrLQk2jjtiA==}
@@ -16844,7 +16844,7 @@ snapshots:
       react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.28.5(@babel/core@7.29.7))(@types/react@19.2.18)(encoding@0.1.13)(react@18.3.1)
       react-native-svg: 15.15.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.28.5(@babel/core@7.29.7))(@types/react@19.2.18)(encoding@0.1.13)(react@18.3.1))(react@18.3.1)
 
-  lucide-react@0.468.0(react@19.2.8):
+  lucide-react@1.29.0(react@19.2.8):
     dependencies:
       react: 19.2.8
 
