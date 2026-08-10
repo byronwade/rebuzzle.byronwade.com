@@ -138,8 +138,8 @@ importers:
   apps/web:
     dependencies:
       '@ai-sdk/gateway':
-        specifier: ^4.0.40
-        version: 4.0.40(zod@3.25.76)
+        specifier: ^4.0.44
+        version: 4.0.44(zod@3.25.76)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
@@ -210,8 +210,8 @@ importers:
         specifier: workspace:^
         version: link:../../packages/game-logic
       '@shadcn/react':
-        specifier: ^0.2.1
-        version: 0.2.1(@types/react@19.2.18)(react@19.2.8)
+        specifier: ^0.3.0
+        version: 0.3.0(@types/react@19.2.18)(react@19.2.8)
       '@tailwindcss/typography':
         specifier: ^0.5.20
         version: 0.5.20(tailwindcss@3.4.17)
@@ -225,8 +225,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1(next@16.3.0(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@20.19.25)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       ai:
-        specifier: ^7.0.51
-        version: 7.0.51(zod@3.25.76)
+        specifier: ^7.0.56
+        version: 7.0.56(zod@3.25.76)
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -249,8 +249,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       eve:
-        specifier: ^0.30.5
-        version: 0.30.5(@opentelemetry/api@1.9.1)(ai@7.0.51(zod@3.25.76))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.2.0)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7))
+        specifier: ^0.31.1
+        version: 0.31.1(@opentelemetry/api@1.9.1)(ai@7.0.56(zod@3.25.76))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.2.0)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7))
       jose:
         specifier: ^6.2.8
         version: 6.2.8
@@ -261,8 +261,8 @@ importers:
         specifier: 0.468.0
         version: 0.468.0
       lucide-react:
-        specifier: ^1.29.0
-        version: 1.29.0(react@19.2.8)
+        specifier: ^1.30.0
+        version: 1.30.0(react@19.2.8)
       mongodb:
         specifier: ^7.5.0
         version: 7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7)
@@ -441,8 +441,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       lucide-react:
-        specifier: ^1.29.0
-        version: 1.29.0(react@19.2.8)
+        specifier: ^1.30.0
+        version: 1.30.0(react@19.2.8)
       react:
         specifier: ^18.0.0 || ^19.0.0
         version: 19.2.8
@@ -479,20 +479,20 @@ packages:
       graphql:
         optional: true
 
-  '@ai-sdk/gateway@4.0.40':
-    resolution: {integrity: sha512-poNySlk+zSe04M4v0wgJKt+mzY6Vk6abcQid58YZnFUBJYo6VwfsFUaW7oINoR1vYYB7Ne6eqY1doSxYKt0KDg==}
+  '@ai-sdk/gateway@4.0.44':
+    resolution: {integrity: sha512-dQ/AHH1do1iEpWEXdAge37FtpXV17fsj7NkL9w+xuzVgvmI7+dQFeDerul+F2I5czmxe61Lq+TnUREjU92UXYg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider-utils@5.0.20':
-    resolution: {integrity: sha512-9W8c2mXiGgbo9sBBT4ybEWF8znxla2CO8VTim8t5oCCLP4aDH4o6RvkHfwL/iLC6mEbO4a6LpS2FBbQHccU+ig==}
+  '@ai-sdk/provider-utils@5.0.23':
+    resolution: {integrity: sha512-mFvAAszenK8Xny3v+4Vntke5IcUkyzjss3gTBOxVWNrSIWmt/FhQ5gCgoJXW7IK11cklRaicMPwOXTnnBtaqFQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider@4.0.5':
-    resolution: {integrity: sha512-9WAerTaPU2jcVi8dh8x27tySEuLur1Kfg7Go74GuCmsC/2MDSvrTkrK8ZrXWjryEevKfcPPmO1enveE7eqlzoA==}
+  '@ai-sdk/provider@4.0.6':
+    resolution: {integrity: sha512-YYXjvs8F3q/BdEn9tBDoDuQACotfR7c5foGw/ADsM6iAVC1JabqEjQSkwHv/Kg2vNIr1c2AVHcQb+JYsYk76Qw==}
     engines: {node: '>=22'}
 
   '@alcalzone/ansi-tokenize@0.3.0':
@@ -3828,8 +3828,8 @@ packages:
     resolution: {integrity: sha512-0MwHrA8+nNvMIsqf8m3cXwCBlUjr6AS7N6CZvHJtY1DkqEvQqEbD5VIrhzEyHN/KMZIgQ8XeDCQRhjnXFQGRhg==}
     engines: {node: '>=18'}
 
-  '@shadcn/react@0.2.1':
-    resolution: {integrity: sha512-5krgi3dRMKb5jH6a+qPzVJUy/54s0kKE4Rw4LjDfLqOdVQTWKUgxWf1kW8r912I0jX/Lzxqc+pgjkjWxUIK5BQ==}
+  '@shadcn/react@0.3.0':
+    resolution: {integrity: sha512-iKN0NuYe850VDHlxEfvppFrpa7CMV3zArTHusXlaSmeFeQhohGbIqclv6WwPTs/44I8EkXQpcuRt6sXEVKkWqQ==}
     peerDependencies:
       '@types/react': 19.2.18
       react: '>=19'
@@ -4306,8 +4306,8 @@ packages:
     resolution: {integrity: sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA==}
     engines: {node: '>=8'}
 
-  ai@7.0.51:
-    resolution: {integrity: sha512-yyxSDZmlpTZs2oepyjzHMXrPk0mJ2ITpw8TfXYiF53yo0WkQJ1qm6MbpUiYclh640D35nNJ8bq57RffSrX+Qzg==}
+  ai@7.0.56:
+    resolution: {integrity: sha512-Lp7q9tZFl/TGOpBBNgt2wZ85SoCvJJVlHQksMkqrgiFUnIGOw+L2FWJ0gXuNEngLQTp9+t32k8QuIB7Jc5uKRA==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -5599,8 +5599,8 @@ packages:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
 
-  eve@0.30.5:
-    resolution: {integrity: sha512-YoAZvQN+dkyIPT5nNp9bYlwhtoOZGM2/VgRXLPy2VfecumROWGYfLI6DbISbc5i4Lo+7m6gxRp+g4oyuMGm19g==}
+  eve@0.31.1:
+    resolution: {integrity: sha512-ozN3p0LkZi8dRY7ffqx+uTRP+k/GKR8w0IK6YwWG0b1Z4cB+BWDvHaZv7sGe/+AlK+JWCJMXg9Hj+8Lmg3Y0Kg==}
     engines: {node: '>=24'}
     hasBin: true
     peerDependencies:
@@ -7024,8 +7024,8 @@ packages:
       react-native: '*'
       react-native-svg: ^12.0.0 || ^13.0.0 || ^14.0.0 || ^15.0.0
 
-  lucide-react@1.29.0:
-    resolution: {integrity: sha512-Xs9QFG5+9sNX04MdKVT4++umA+hJ2qsJVlRlRWHQ7qZobXgMiNHSpZ5eZm8JUoGCdNyoEdXoEwa8HVr0DNjOQg==}
+  lucide-react@1.30.0:
+    resolution: {integrity: sha512-tUIr2jXLbWpCkdtH8XP7P7YppM9ueWgTky99lpWDY6z5REs6B+O6ZQ3U5tHkUUY59ANyOv/PBcs8E4Fe3KO3eA==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -9684,23 +9684,23 @@ snapshots:
 
   '@0no-co/graphql.web@1.2.0': {}
 
-  '@ai-sdk/gateway@4.0.40(zod@3.25.76)':
+  '@ai-sdk/gateway@4.0.44(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.5
-      '@ai-sdk/provider-utils': 5.0.20(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.6
+      '@ai-sdk/provider-utils': 5.0.23(zod@3.25.76)
       '@vercel/oidc': 3.2.0
       zod: 3.25.76
 
-  '@ai-sdk/provider-utils@5.0.20(zod@3.25.76)':
+  '@ai-sdk/provider-utils@5.0.23(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.5
+      '@ai-sdk/provider': 4.0.6
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.0
       undici: 7.29.0
       zod: 3.25.76
 
-  '@ai-sdk/provider@4.0.5':
+  '@ai-sdk/provider@4.0.6':
     dependencies:
       json-schema: 0.4.0
 
@@ -13207,7 +13207,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@shadcn/react@0.2.1(@types/react@19.2.18)(react@19.2.8)':
+  '@shadcn/react@0.3.0(@types/react@19.2.18)(react@19.2.8)':
     optionalDependencies:
       '@types/react': 19.2.18
       react: 19.2.8
@@ -13615,11 +13615,11 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
-  ai@7.0.51(zod@3.25.76):
+  ai@7.0.56(zod@3.25.76):
     dependencies:
-      '@ai-sdk/gateway': 4.0.40(zod@3.25.76)
-      '@ai-sdk/provider': 4.0.5
-      '@ai-sdk/provider-utils': 5.0.20(zod@3.25.76)
+      '@ai-sdk/gateway': 4.0.44(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.6
+      '@ai-sdk/provider-utils': 5.0.23(zod@3.25.76)
       zod: 3.25.76
 
   ajv-formats@2.1.1(ajv@8.20.0):
@@ -15071,9 +15071,9 @@ snapshots:
 
   etag@1.8.1: {}
 
-  eve@0.30.5(@opentelemetry/api@1.9.1)(ai@7.0.51(zod@3.25.76))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.2.0)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7)):
+  eve@0.31.1(@opentelemetry/api@1.9.1)(ai@7.0.56(zod@3.25.76))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.2.0)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7)):
     dependencies:
-      ai: 7.0.51(zod@3.25.76)
+      ai: 7.0.56(zod@3.25.76)
       nitro: 3.0.260610-beta(dotenv@17.4.2)(jiti@2.7.0)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7))
       undici: 8.9.0
     optionalDependencies:
@@ -16844,7 +16844,7 @@ snapshots:
       react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.28.5(@babel/core@7.29.7))(@types/react@19.2.18)(encoding@0.1.13)(react@18.3.1)
       react-native-svg: 15.15.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.28.5(@babel/core@7.29.7))(@types/react@19.2.18)(encoding@0.1.13)(react@18.3.1))(react@18.3.1)
 
-  lucide-react@1.29.0(react@19.2.8):
+  lucide-react@1.30.0(react@19.2.8):
     dependencies:
       react: 19.2.8
 
