@@ -139,7 +139,7 @@ importers:
     dependencies:
       '@ai-sdk/gateway':
         specifier: ^4.0.59
-        version: 4.0.59(zod@3.25.76)
+        version: 4.0.59(zod@4.4.3)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
@@ -226,7 +226,7 @@ importers:
         version: 2.0.1(next@16.3.1(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@20.19.25)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       ai:
         specifier: ^7.0.73
-        version: 7.0.73(zod@3.25.76)
+        version: 7.0.73(zod@4.4.3)
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -250,7 +250,7 @@ importers:
         version: 17.4.2
       eve:
         specifier: ^0.42.0
-        version: 0.42.0(@opentelemetry/api@1.9.1)(ai@7.0.73(zod@3.25.76))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.4.1)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7))
+        version: 0.42.0(@opentelemetry/api@1.9.1)(ai@7.0.73(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.4.1)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7))
       jose:
         specifier: ^6.2.9
         version: 6.2.9
@@ -315,8 +315,8 @@ importers:
         specifier: ^3.6.7
         version: 3.6.7
       zod:
-        specifier: ^3.25.76
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.5.7
@@ -391,8 +391,8 @@ importers:
   packages/config:
     dependencies:
       zod:
-        specifier: ^3.25.76
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       typescript:
         specifier: ^5.9.3
@@ -9683,9 +9683,6 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
-
   zod@4.1.13:
     resolution: {integrity: sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig==}
 
@@ -9701,21 +9698,21 @@ snapshots:
 
   '@0no-co/graphql.web@1.2.0': {}
 
-  '@ai-sdk/gateway@4.0.59(zod@3.25.76)':
+  '@ai-sdk/gateway@4.0.59(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.28(zod@3.25.76)
+      '@ai-sdk/provider-utils': 5.0.28(zod@4.4.3)
       '@vercel/oidc': 3.2.0
-      zod: 3.25.76
+      zod: 4.4.3
 
-  '@ai-sdk/provider-utils@5.0.28(zod@3.25.76)':
+  '@ai-sdk/provider-utils@5.0.28(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.7
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
       undici: 7.29.0
-      zod: 3.25.76
+      zod: 4.4.3
 
   '@ai-sdk/provider@4.0.7':
     dependencies:
@@ -13635,12 +13632,12 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
-  ai@7.0.73(zod@3.25.76):
+  ai@7.0.73(zod@4.4.3):
     dependencies:
-      '@ai-sdk/gateway': 4.0.59(zod@3.25.76)
+      '@ai-sdk/gateway': 4.0.59(zod@4.4.3)
       '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.28(zod@3.25.76)
-      zod: 3.25.76
+      '@ai-sdk/provider-utils': 5.0.28(zod@4.4.3)
+      zod: 4.4.3
 
   ajv-formats@2.1.1(ajv@8.20.0):
     optionalDependencies:
@@ -15014,8 +15011,8 @@ snapshots:
       '@babel/parser': 7.29.8
       eslint: 10.8.0(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 3.25.76
-      zod-validation-error: 4.0.2(zod@3.25.76)
+      zod: 4.4.3
+      zod-validation-error: 4.0.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -15091,9 +15088,9 @@ snapshots:
 
   etag@1.8.1: {}
 
-  eve@0.42.0(@opentelemetry/api@1.9.1)(ai@7.0.73(zod@3.25.76))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.4.1)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7)):
+  eve@0.42.0(@opentelemetry/api@1.9.1)(ai@7.0.73(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)(just-bash@3.4.1)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7)):
     dependencies:
-      ai: 7.0.73(zod@3.25.76)
+      ai: 7.0.73(zod@4.4.3)
       nitro: 3.0.260610-beta(dotenv@17.4.2)(jiti@2.7.0)(mongodb@7.5.0(@mongodb-js/zstd@7.0.0)(socks@2.8.7))
       undici: 8.9.0
     optionalDependencies:
@@ -19999,11 +19996,9 @@ snapshots:
       compress-commons: 4.1.2
       readable-stream: 3.6.2
 
-  zod-validation-error@4.0.2(zod@3.25.76):
+  zod-validation-error@4.0.2(zod@4.4.3):
     dependencies:
-      zod: 3.25.76
-
-  zod@3.25.76: {}
+      zod: 4.4.3
 
   zod@4.1.13: {}
 
