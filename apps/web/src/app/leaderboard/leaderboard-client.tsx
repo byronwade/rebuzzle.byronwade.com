@@ -110,7 +110,7 @@ export default function LeaderboardClient({
 
           if (isAuthenticated && userId) {
             const userResponse = await fetch(
-              `/api/user/stats?userId=${userId}&timeframe=${timeframe}`
+              `/api/user/stats?userId=${userId}&timeframe=${timeframe}&includeRank=true`
             );
             if (userResponse.ok) {
               const userData = await userResponse.json();

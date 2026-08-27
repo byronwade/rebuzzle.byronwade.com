@@ -86,8 +86,10 @@ export function AuthProvider({
   const seeded = sessionToState(initialSession);
   const [authState, setAuthState] = useState<AuthState>({
     ...seeded,
-    // If we didn't get a server session, still show a brief loading state
-    isLoading: initialSession === undefined,
+    // undefined = no seed planned (client will fetch).
+    // null = layout is streaming AuthSessionSeed — stay loading so guest warm-up
+    // and notification hooks don't race a false "logged out" window.
+    isLoading: initialSession === undefined || initialSession === null,
     refreshAuth: async () => {},
   });
 
@@ -155,7 +157,20 @@ export function AuthProvider({
 
   useEffect(() => {
     setupSessionTracking();
-    trackUserSession();
+
+    // Defer analytics visit write — don't contend with puzzle/auth cold start.
+    const track = () => {
+      trackUserSession();
+    };
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof globalThis !== "undefined" && "requestIdleCallback" in globalThis) {
+      idleId = (
+        globalThis as Window & typeof globalThis
+      ).requestIdleCallback(track, { timeout: 3000 });
+    } else {
+      timeoutId = setTimeout(track, 1200);
+    }
 
     // When server already seeded a session, skip the initial client fetch
     if (initialSession !== undefined) {
@@ -163,12 +178,24 @@ export function AuthProvider({
         setupSessionTracking(initialSession.user.id);
       }
       initialCheckComplete.current = true;
-      return;
+      return () => {
+        if (idleId !== undefined && "cancelIdleCallback" in globalThis) {
+          (globalThis as Window & typeof globalThis).cancelIdleCallback(idleId);
+        }
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+      };
     }
 
     void checkAuth().finally(() => {
       initialCheckComplete.current = true;
     });
+
+    return () => {
+      if (idleId !== undefined && "cancelIdleCallback" in globalThis) {
+        (globalThis as Window & typeof globalThis).cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
   }, [checkAuth, initialSession]);
 
   useEffect(() => {
