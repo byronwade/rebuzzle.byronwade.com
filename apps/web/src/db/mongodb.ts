@@ -29,12 +29,12 @@ let lastError: Error | null = null;
  * MongoDB connection options optimized for serverless environments
  */
 const getConnectionOptions = (): MongoClientOptions => ({
-  // Connection pool settings - optimized for serverless
-  maxPoolSize: process.env.NODE_ENV === "production" ? 10 : 5,
-  minPoolSize: 1,
+  // Connection pool settings - optimized for serverless (no warm min pool)
+  maxPoolSize: process.env.NODE_ENV === "production" ? 5 : 5,
+  minPoolSize: 0,
 
   // Connection timeout settings
-  connectTimeoutMS: 10_000, // 10 seconds to establish connection
+  connectTimeoutMS: 8_000,
   socketTimeoutMS: 45_000, // 45 seconds for socket operations
 
   // Retry settings
@@ -42,7 +42,7 @@ const getConnectionOptions = (): MongoClientOptions => ({
   retryReads: true,
 
   // Server selection timeout
-  serverSelectionTimeoutMS: 10_000, // 10 seconds to select a server
+  serverSelectionTimeoutMS: 8_000,
 
   // Heartbeat settings (keep connections alive)
   heartbeatFrequencyMS: 10_000, // Send heartbeat every 10 seconds
@@ -52,7 +52,7 @@ const getConnectionOptions = (): MongoClientOptions => ({
 
   // Wait queue settings
   maxIdleTimeMS: 30_000, // Close idle connections after 30 seconds
-  waitQueueTimeoutMS: 10_000, // Wait max 10 seconds for connection from pool
+  waitQueueTimeoutMS: 8_000,
 });
 
 /**
