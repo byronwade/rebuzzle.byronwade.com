@@ -2,6 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  // Vercel preview deploys fail with immutable static upload + preview comments
+  // ("Cannot patch preview comments when immutable static file upload is enabled").
+  // Opt out until the platform path is stable for this project.
+  supportsImmutableAssets: false,
+
   // Cache Components (PPR + "use cache" / cacheLife / cacheTag)
   cacheComponents: true,
 
