@@ -35,7 +35,7 @@ export type FeedbackSnapshot = {
 export const EMPTY_FEEDBACK_SNAPSHOT: FeedbackSnapshot = Object.freeze({
   perception: null,
   qualityVote: null,
-  qualityReasons: Object.freeze([]) as QualityReason[],
+  qualityReasons: Object.freeze([]) as unknown as QualityReason[],
 });
 
 const feedbackSnapshotCache = new Map<
