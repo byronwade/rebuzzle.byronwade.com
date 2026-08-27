@@ -98,10 +98,11 @@ export async function POST(request: NextRequest) {
       {
         success: result.success,
         message: result.success
-          ? `Successfully created ${result.totalCreated} indexes`
+          ? `Successfully created ${result.totalCreated} indexes (${result.totalSkipped} already present)`
           : `Created ${result.totalCreated} indexes with ${result.totalErrors} errors`,
         results: result.results,
         totalCreated: result.totalCreated,
+        totalSkipped: result.totalSkipped,
         totalErrors: result.totalErrors,
       },
       { headers: PRIVATE_NO_STORE }

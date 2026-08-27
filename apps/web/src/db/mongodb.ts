@@ -12,8 +12,11 @@ import { config } from "dotenv";
 import { type Collection, type Db, MongoClient, type MongoClientOptions } from "mongodb";
 import { getDatabaseUrl, getMongoDatabaseName } from "@/lib/env";
 
-// Load environment variables
-config({ path: ".env.local" });
+// Load .env.local only in local development. On Vercel, env vars are injected
+// by the platform — calling dotenv there logs noisy "injecting env (0)" tips.
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  config({ path: ".env.local", quiet: true });
+}
 
 /** Database connection status */
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";

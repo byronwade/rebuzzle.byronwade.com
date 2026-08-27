@@ -241,7 +241,8 @@ export async function validateAnswer(params: {
         method: "ai",
       };
     } catch (error) {
-      console.error("[AI Validation] Failed, falling back to fuzzy:", error);
+      // Timeout / provider blips are expected — fuzzy fallback keeps guesses responsive.
+      console.warn("[AI Validation] Failed, falling back to fuzzy:", error);
       // Fall through to fuzzy fallback
     }
   }

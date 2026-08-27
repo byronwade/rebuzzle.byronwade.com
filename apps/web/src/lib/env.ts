@@ -205,8 +205,8 @@ export function validateEnvOrThrow(): void {
   const result = validateEnv();
 
   if (result.warnings.length > 0) {
-    console.warn("[Env Validation] Warnings:");
-    result.warnings.forEach((warning) => console.warn(`  - ${warning}`));
+    // Single line keeps Vercel log noise down (cold starts re-run this often).
+    console.warn(`[Env Validation] Warnings (${result.warnings.length}): ${result.warnings.join("; ")}`);
   }
 
   if (!result.valid) {

@@ -4,8 +4,8 @@
  * Creates indexes for optimal query performance.
  * Run this on application startup or as a migration script.
  *
- * Indexes are created with { background: true } to avoid blocking
- * database operations during creation.
+ * Index creation is idempotent: if an equivalent key pattern already exists
+ * (including legacy names from older migration scripts), it is skipped.
  */
 
 import type { Db, IndexSpecification } from "mongodb";
@@ -561,37 +561,86 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
   },
 ];
 
+/** Stable serialization of an index key pattern for equivalence checks. */
+export function indexKeySignature(spec: IndexSpecification | Record<string, unknown>): string {
+  const entries = Object.entries(spec as Record<string, unknown>).sort(([a], [b]) =>
+    a.localeCompare(b)
+  );
+  return entries.map(([key, value]) => `${key}:${String(value)}`).join("|");
+}
+
+export function isBenignIndexConflict(error: unknown): boolean {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? Number((error as { code?: number }).code)
+      : undefined;
+  // 85 IndexOptionsConflict, 86 IndexKeySpecsConflict — same keys, different name/options
+  if (code === 85 || code === 86) return true;
+
+  const failureText = error instanceof Error ? error.message : String(error);
+  const lower = failureText.toLowerCase();
+  return (
+    lower.includes("already exists") ||
+    lower.includes("equivalent index") ||
+    lower.includes("same name as the requested index") ||
+    lower.includes("index already exists with a different name")
+  );
+}
+
 /**
  * Create all indexes for a collection
  */
 async function createCollectionIndexes(
   db: Db,
   definition: IndexDefinition
-): Promise<{ collection: string; created: number; failures: string[] }> {
+): Promise<{ collection: string; created: number; skipped: number; failures: string[] }> {
   const collection = db.collection(definition.collection);
   const failures: string[] = [];
   let created = 0;
+  let skipped = 0;
+
+  // Snapshot existing indexes once so re-bootstraps don't fight legacy names
+  // from older migration scripts (e.g. users_id_unique vs id_1).
+  let existingSignatures = new Set<string>();
+  try {
+    const existing = await collection.indexes();
+    existingSignatures = new Set(
+      existing
+        .filter((idx) => idx.name !== "_id_")
+        .map((idx) => indexKeySignature(idx.key as Record<string, unknown>))
+    );
+  } catch {
+    // Collection may not exist yet — createIndex will create it
+  }
 
   for (const indexDef of definition.indexes) {
+    const desiredSignature = indexKeySignature(indexDef.spec);
+    if (existingSignatures.has(desiredSignature)) {
+      skipped++;
+      continue;
+    }
+
     try {
       // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: MongoDB index creation is sequential to avoid lock contention
+      // Do not pass deprecated `background: true` — it can conflict with indexes
+      // created by older scripts and is ignored on modern MongoDB (4.2+) anyway.
       await collection.createIndex(indexDef.spec, {
         ...indexDef.options,
-        background: true, // Don't block operations
       });
       created++;
+      existingSignatures.add(desiredSignature);
     } catch (error) {
-      // Index might already exist with different options
-      const failureText = error instanceof Error ? error.message : String(error);
-
-      // Ignore "index already exists" errors
-      if (!failureText.includes("already exists")) {
-        failures.push(`${JSON.stringify(indexDef.spec)}: ${failureText}`);
+      if (isBenignIndexConflict(error)) {
+        skipped++;
+        existingSignatures.add(desiredSignature);
+        continue;
       }
+      const failureText = error instanceof Error ? error.message : String(error);
+      failures.push(`${JSON.stringify(indexDef.spec)}: ${failureText}`);
     }
   }
 
-  return { collection: definition.collection, created, failures };
+  return { collection: definition.collection, created, skipped, failures };
 }
 
 /**
@@ -600,13 +649,25 @@ async function createCollectionIndexes(
  */
 export async function setupDatabaseIndexes(): Promise<{
   success: boolean;
-  results: Array<{ collection: string; created: number; failures: string[] }>;
+  results: Array<{
+    collection: string;
+    created: number;
+    skipped: number;
+    failures: string[];
+  }>;
   totalCreated: number;
+  totalSkipped: number;
   totalErrors: number;
 }> {
   const db = getDatabase();
-  const results: Array<{ collection: string; created: number; failures: string[] }> = [];
+  const results: Array<{
+    collection: string;
+    created: number;
+    skipped: number;
+    failures: string[];
+  }> = [];
   let totalCreated = 0;
+  let totalSkipped = 0;
   let totalErrors = 0;
 
   console.log("[DB Indexes] Starting index setup...");
@@ -616,6 +677,7 @@ export async function setupDatabaseIndexes(): Promise<{
     const result = await createCollectionIndexes(db, definition);
     results.push(result);
     totalCreated += result.created;
+    totalSkipped += result.skipped;
     totalErrors += result.failures.length;
 
     if (result.failures.length > 0) {
@@ -628,12 +690,15 @@ export async function setupDatabaseIndexes(): Promise<{
     }
   }
 
-  console.log(`[DB Indexes] Complete: ${totalCreated} indexes created, ${totalErrors} errors`);
+  console.log(
+    `[DB Indexes] Complete: ${totalCreated} created, ${totalSkipped} already present, ${totalErrors} errors`
+  );
 
   return {
     success: totalErrors === 0,
     results,
     totalCreated,
+    totalSkipped,
     totalErrors,
   };
 }
