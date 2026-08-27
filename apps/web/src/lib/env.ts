@@ -206,7 +206,9 @@ export function validateEnvOrThrow(): void {
 
   if (result.warnings.length > 0) {
     // Single line keeps Vercel log noise down (cold starts re-run this often).
-    console.warn(`[Env Validation] Warnings (${result.warnings.length}): ${result.warnings.join("; ")}`);
+    console.warn(
+      `[Env Validation] Warnings (${result.warnings.length}): ${result.warnings.join("; ")}`
+    );
   }
 
   if (!result.valid) {

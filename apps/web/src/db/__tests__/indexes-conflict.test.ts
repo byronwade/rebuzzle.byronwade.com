@@ -32,11 +32,13 @@ describe("DB index bootstrap helpers", () => {
 
     it("does not treat real failures as benign", () => {
       expect(
-        isBenignIndexConflict(new Error("E11000 duplicate key error collection: users index: email_1"))
+        isBenignIndexConflict(
+          new Error("E11000 duplicate key error collection: users index: email_1")
+        )
       ).toBe(false);
-      expect(isBenignIndexConflict(new Error("not authorized on rebuzzle to execute command"))).toBe(
-        false
-      );
+      expect(
+        isBenignIndexConflict(new Error("not authorized on rebuzzle to execute command"))
+      ).toBe(false);
     });
   });
 });

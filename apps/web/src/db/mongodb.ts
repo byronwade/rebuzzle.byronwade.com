@@ -69,6 +69,12 @@ export function shouldAutoInitializeIndexes(environment: NodeJS.ProcessEnv = pro
   if (environment.REBUZZLE_SKIP_AUTO_INDEXES === "1") return false;
   if (environment.NEXT_PHASE?.includes("production-build")) return false;
   if (environment.npm_lifecycle_event === "build") return false;
+  // Production serverless cold starts must not list/create indexes on every instance —
+  // that contends with real requests and makes the app feel sluggish. Opt in with
+  // REBUZZLE_AUTO_INDEXES=1 for repair; prefer admin API / `pnpm db:create-indexes`.
+  if (environment.NODE_ENV === "production" && environment.REBUZZLE_AUTO_INDEXES !== "1") {
+    return false;
+  }
   return true;
 }
 
