@@ -165,9 +165,9 @@ export function AuthProvider({
     let idleId: number | undefined;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     if (typeof globalThis !== "undefined" && "requestIdleCallback" in globalThis) {
-      idleId = (
-        globalThis as Window & typeof globalThis
-      ).requestIdleCallback(track, { timeout: 3000 });
+      idleId = (globalThis as Window & typeof globalThis).requestIdleCallback(track, {
+        timeout: 3000,
+      });
     } else {
       timeoutId = setTimeout(track, 1200);
     }

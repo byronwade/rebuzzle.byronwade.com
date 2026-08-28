@@ -166,12 +166,20 @@ export const getDatabase = (): Db => {
     const uriHasDbPath = /mongodb(?:\+srv)?:\/\/[^/]+\/[^/?]+/.test(getDatabaseUrl());
     globalForDb.db = uriHasDbPath ? client.db() : client.db(getMongoDatabaseName());
 
-    // Pre-warm connection in background (non-blocking)
-    // This helps in serverless environments where cold starts need faster connections
-    ensureConnection().catch((error) => {
-      // Connection will happen on first operation anyway, so we can ignore errors here
-      console.warn("[MongoDB] Background connection pre-warm failed:", error);
-    });
+    // Kick connect once; Mongo operations await the same topology handshake.
+    if (!globalForDb.connectionPromise) {
+      globalForDb.connectionPromise = client.connect().then((c) => {
+        connectionStatus = "connected";
+        lastError = null;
+        return c;
+      });
+      globalForDb.connectionPromise.catch((error) => {
+        connectionStatus = "error";
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.warn("[MongoDB] Connection pre-warm failed:", error);
+        globalForDb.connectionPromise = undefined;
+      });
+    }
 
     // Initialize indexes in background (only once per process)
     if (!globalForDb.indexesInitialized && shouldAutoInitializeIndexes()) {

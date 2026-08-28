@@ -27,9 +27,11 @@ export function useEmailNotifications() {
       return;
     }
 
-    // Unauthenticated / guest-without-session: trust localStorage only.
-    // The status route requires auth for userId lookups; hitting it early is noise.
-    if (!(isAuthenticated && userId)) {
+    // Guests and logged-out users: localStorage only. Avoid a Mongo round-trip
+    // that contends with puzzle/guess on cold instances.
+    const isGuestUser =
+      Boolean(user?.isGuest) || Boolean(user?.email?.endsWith("@guest.rebuzzle.local"));
+    if (!(isAuthenticated && userId) || isGuestUser) {
       setEnabled(Boolean(getStoredNotificationEmail()));
       return;
     }
@@ -53,7 +55,7 @@ export function useEmailNotifications() {
     } catch (err) {
       console.error("[Notifications] Status check failed:", err);
     }
-  }, [authLoading, isAuthenticated, userId]);
+  }, [authLoading, isAuthenticated, userId, user?.email, user?.isGuest]);
 
   // Check status on mount and when auth state changes
   useEffect(() => {
