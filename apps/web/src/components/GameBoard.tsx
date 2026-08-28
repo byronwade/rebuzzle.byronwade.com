@@ -315,14 +315,17 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   };
   const { userId, isLoading: authLoading } = useAuth();
   const { ensureGuest, isCreating: isCreatingGuest } = useLazyGuest();
-  // PrefetchGuestClient warms the session in idle time; board stays interactive.
-  const guestReady = Boolean(userId) || !authLoading;
+  // Board is interactive without a guest session; guest is created on first guess.
+  const guestReady = !authLoading;
   const { startGame, endGame, setGameState: setContextGameState } = useGameContext();
 
-  // Load stats after auth — cookie identity, no userId query param
+  // Load stats after auth — cookie identity, no userId query param.
+  // Defer until idle so cold Mongo isn't shared with the first paint path.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const loadUserStats = async () => {
       try {
@@ -359,9 +362,23 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       }
     };
 
-    void loadUserStats();
+    const run = () => {
+      void loadUserStats();
+    };
+    if (typeof globalThis !== "undefined" && "requestIdleCallback" in globalThis) {
+      idleId = (globalThis as Window & typeof globalThis).requestIdleCallback(run, {
+        timeout: 4000,
+      });
+    } else {
+      timeoutId = setTimeout(run, 1500);
+    }
+
     return () => {
       cancelled = true;
+      if (idleId !== undefined && "cancelIdleCallback" in globalThis) {
+        (globalThis as Window & typeof globalThis).cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
     };
   }, [userId]);
 
@@ -400,22 +417,41 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     endGame();
   }, [gameData.isCompleted, gameState.gameOver, endGame]);
 
-  // Track puzzle start AFTER guest is created
+  // Track puzzle start after auth settles — defer so it doesn't contend with TTFB.
   useEffect(() => {
-    if (!guestReady) return; // Wait for guest creation
+    if (!guestReady) return;
 
-    trackPuzzleStart({
-      puzzleId: gameData.id || "unknown",
-      puzzleType,
-      difficulty:
-        typeof gameData.difficulty === "number"
-          ? gameData.difficulty.toString()
-          : gameData.difficulty || "medium",
-    });
-    trackEvent(analyticsEvents.GAME_START, {
-      puzzleId: gameData.id,
-      puzzleType,
-    });
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const run = () => {
+      trackPuzzleStart({
+        puzzleId: gameData.id || "unknown",
+        puzzleType,
+        difficulty:
+          typeof gameData.difficulty === "number"
+            ? gameData.difficulty.toString()
+            : gameData.difficulty || "medium",
+      });
+      trackEvent(analyticsEvents.GAME_START, {
+        puzzleId: gameData.id,
+        puzzleType,
+      });
+    };
+
+    if (typeof globalThis !== "undefined" && "requestIdleCallback" in globalThis) {
+      idleId = (globalThis as Window & typeof globalThis).requestIdleCallback(run, {
+        timeout: 3500,
+      });
+    } else {
+      timeoutId = setTimeout(run, 1200);
+    }
+
+    return () => {
+      if (idleId !== undefined && "cancelIdleCallback" in globalThis) {
+        (globalThis as Window & typeof globalThis).cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
   }, [gameData.id, gameData.difficulty, puzzleType, guestReady]);
 
   const dismissKeyboard = () => {

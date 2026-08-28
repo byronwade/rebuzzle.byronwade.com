@@ -12,8 +12,11 @@ import { config } from "dotenv";
 import { type Collection, type Db, MongoClient, type MongoClientOptions } from "mongodb";
 import { getDatabaseUrl, getMongoDatabaseName } from "@/lib/env";
 
-// Load environment variables
-config({ path: ".env.local" });
+// Load .env.local only in local development. On Vercel, env vars are injected
+// by the platform — calling dotenv there logs noisy "injecting env (0)" tips.
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  config({ path: ".env.local", quiet: true });
+}
 
 /** Database connection status */
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
@@ -26,12 +29,12 @@ let lastError: Error | null = null;
  * MongoDB connection options optimized for serverless environments
  */
 const getConnectionOptions = (): MongoClientOptions => ({
-  // Connection pool settings - optimized for serverless
-  maxPoolSize: process.env.NODE_ENV === "production" ? 10 : 5,
-  minPoolSize: 1,
+  // Connection pool settings - optimized for serverless (no warm min pool)
+  maxPoolSize: process.env.NODE_ENV === "production" ? 5 : 5,
+  minPoolSize: 0,
 
   // Connection timeout settings
-  connectTimeoutMS: 10_000, // 10 seconds to establish connection
+  connectTimeoutMS: 8_000,
   socketTimeoutMS: 45_000, // 45 seconds for socket operations
 
   // Retry settings
@@ -39,7 +42,7 @@ const getConnectionOptions = (): MongoClientOptions => ({
   retryReads: true,
 
   // Server selection timeout
-  serverSelectionTimeoutMS: 10_000, // 10 seconds to select a server
+  serverSelectionTimeoutMS: 8_000,
 
   // Heartbeat settings (keep connections alive)
   heartbeatFrequencyMS: 10_000, // Send heartbeat every 10 seconds
@@ -49,7 +52,7 @@ const getConnectionOptions = (): MongoClientOptions => ({
 
   // Wait queue settings
   maxIdleTimeMS: 30_000, // Close idle connections after 30 seconds
-  waitQueueTimeoutMS: 10_000, // Wait max 10 seconds for connection from pool
+  waitQueueTimeoutMS: 8_000,
 });
 
 /**
@@ -66,6 +69,12 @@ export function shouldAutoInitializeIndexes(environment: NodeJS.ProcessEnv = pro
   if (environment.REBUZZLE_SKIP_AUTO_INDEXES === "1") return false;
   if (environment.NEXT_PHASE?.includes("production-build")) return false;
   if (environment.npm_lifecycle_event === "build") return false;
+  // Production serverless cold starts must not list/create indexes on every instance —
+  // that contends with real requests and makes the app feel sluggish. Opt in with
+  // REBUZZLE_AUTO_INDEXES=1 for repair; prefer admin API / `pnpm db:create-indexes`.
+  if (environment.NODE_ENV === "production" && environment.REBUZZLE_AUTO_INDEXES !== "1") {
+    return false;
+  }
   return true;
 }
 
@@ -157,12 +166,20 @@ export const getDatabase = (): Db => {
     const uriHasDbPath = /mongodb(?:\+srv)?:\/\/[^/]+\/[^/?]+/.test(getDatabaseUrl());
     globalForDb.db = uriHasDbPath ? client.db() : client.db(getMongoDatabaseName());
 
-    // Pre-warm connection in background (non-blocking)
-    // This helps in serverless environments where cold starts need faster connections
-    ensureConnection().catch((error) => {
-      // Connection will happen on first operation anyway, so we can ignore errors here
-      console.warn("[MongoDB] Background connection pre-warm failed:", error);
-    });
+    // Kick connect once; Mongo operations await the same topology handshake.
+    if (!globalForDb.connectionPromise) {
+      globalForDb.connectionPromise = client.connect().then((c) => {
+        connectionStatus = "connected";
+        lastError = null;
+        return c;
+      });
+      globalForDb.connectionPromise.catch((error) => {
+        connectionStatus = "error";
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.warn("[MongoDB] Connection pre-warm failed:", error);
+        globalForDb.connectionPromise = undefined;
+      });
+    }
 
     // Initialize indexes in background (only once per process)
     if (!globalForDb.indexesInitialized && shouldAutoInitializeIndexes()) {

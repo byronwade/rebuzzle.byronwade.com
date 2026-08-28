@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  Check,
-  Copy,
-  Facebook,
-  Link2,
-  Linkedin,
-  Mail,
-  MessageCircle,
-  Share2,
-  Twitter,
-} from "lucide-react";
+import { Check, Copy, Link2, Mail, MessageCircle, Share2, X } from "lucide-react";
+import type { SVGProps } from "react";
 import { useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -28,6 +19,23 @@ import { haptics } from "@/lib/haptics";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { cn } from "@/lib/utils";
+
+/** lucide-react v1 removed brand icons — keep simple inline marks for share menus. */
+function FacebookIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M14 13.5h2.5l1-4H14V7.5c0-1.03.3-1.77 1.9-1.77H18V2.14C17.3 2.05 16.15 2 14.93 2 11.93 2 10 3.84 10 7.17V9.5H7v4h3V22h4z" />
+    </svg>
+  );
+}
+
+function LinkedInIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M6.94 8.5H3.5V21h3.44V8.5zM5.22 3C4.05 3 3.1 3.96 3.1 5.14c0 1.17.94 2.13 2.12 2.13h.02c1.18 0 2.13-.96 2.13-2.13C7.35 3.96 6.4 3 5.22 3zM20.5 21h-3.44v-6.76c0-1.7-.61-2.86-2.14-2.86-1.17 0-1.86.78-2.17 1.54-.11.27-.14.64-.14 1.02V21H9.18s.05-10.95 0-12.09h3.44v1.71c.46-.7 1.27-1.71 3.1-1.71 2.26 0 3.96 1.48 3.96 4.66V21z" />
+    </svg>
+  );
+}
 
 interface EnhancedShareButtonProps {
   success: boolean;
@@ -265,15 +273,15 @@ export function EnhancedShareButton({
       <DropdownMenuContent align="center" className="w-56">
         <DropdownMenuGroup>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("twitter")}>
-            <Twitter data-icon="inline-start" className="mr-2 h-4 w-4" />
+            <X data-icon="inline-start" className="mr-2 h-4 w-4" />
             Share on X
           </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("facebook")}>
-            <Facebook data-icon="inline-start" className="mr-2 h-4 w-4" />
+            <FacebookIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             Share on Facebook
           </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("linkedin")}>
-            <Linkedin data-icon="inline-start" className="mr-2 h-4 w-4" />
+            <LinkedInIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             Share on LinkedIn
           </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("reddit")}>

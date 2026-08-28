@@ -103,7 +103,7 @@ export function DateRangePicker({
         </PopoverTrigger>
         <PopoverContent align="start" className="w-auto p-0">
           <Calendar
-            initialFocus
+            autoFocus
             mode="range"
             numberOfMonths={2}
             onSelect={(range) => {

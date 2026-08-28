@@ -23,6 +23,15 @@ import { consumeJustSolvedSessionFlag } from "@/lib/game/game-over-href";
 import { calculateGamePoints, gameSettings } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+import {
+  EMPTY_FEEDBACK_SNAPSHOT,
+  type PerceptionChoice,
+  QUALITY_REASON_OPTIONS,
+  type QualityReason,
+  type QualityVote,
+  readFeedbackSnapshot,
+  readSolutionSnapshot,
+} from "./game-over-snapshots";
 
 interface GameData {
   answer: string;
@@ -35,27 +44,6 @@ interface GameData {
     puzzleType?: string;
   };
 }
-
-type PerceptionChoice = "too_easy" | "just_right" | "too_hard";
-type QualityVote = "like" | "dislike";
-type QualityReason =
-  | "unrecognizable"
-  | "ambiguous"
-  | "unfair"
-  | "boring"
-  | "bad_hints"
-  | "too_easy"
-  | "too_hard";
-
-const QUALITY_REASON_OPTIONS: Array<{ id: QualityReason; label: string }> = [
-  { id: "unrecognizable", label: "Couldn’t recognize it" },
-  { id: "ambiguous", label: "Too ambiguous" },
-  { id: "unfair", label: "Felt unfair" },
-  { id: "bad_hints", label: "Hints didn’t help" },
-  { id: "boring", label: "Not interesting" },
-  { id: "too_easy", label: "Too easy" },
-  { id: "too_hard", label: "Too hard" },
-];
 
 function QualityReasonPicker({
   selected,
@@ -186,45 +174,8 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
         window.removeEventListener("rebuzzle:game-over-feedback", onCustom);
       };
     },
-    () => {
-      if (!puzzleFeedbackKey) {
-        return {
-          perception: null as PerceptionChoice | null,
-          qualityVote: null as QualityVote | null,
-          qualityReasons: [] as QualityReason[],
-        };
-      }
-      try {
-        const stored = localStorage.getItem(`difficultyPerception:${puzzleFeedbackKey}`);
-        const perception =
-          stored === "too_easy" || stored === "just_right" || stored === "too_hard" ? stored : null;
-        const qualityStored = localStorage.getItem(`puzzleQualityVote:${puzzleFeedbackKey}`);
-        const qualityVote =
-          qualityStored === "like" || qualityStored === "dislike" ? qualityStored : null;
-        let qualityReasons: QualityReason[] = [];
-        const reasonStored = localStorage.getItem(`puzzleQualityReasons:${puzzleFeedbackKey}`);
-        if (reasonStored) {
-          const parsed = JSON.parse(reasonStored) as unknown;
-          if (Array.isArray(parsed)) {
-            qualityReasons = parsed.filter((reason): reason is QualityReason =>
-              QUALITY_REASON_OPTIONS.some((option) => option.id === reason)
-            );
-          }
-        }
-        return { perception, qualityVote, qualityReasons };
-      } catch {
-        return {
-          perception: null as PerceptionChoice | null,
-          qualityVote: null as QualityVote | null,
-          qualityReasons: [] as QualityReason[],
-        };
-      }
-    },
-    () => ({
-      perception: null as PerceptionChoice | null,
-      qualityVote: null as QualityVote | null,
-      qualityReasons: [] as QualityReason[],
-    })
+    () => readFeedbackSnapshot(puzzleFeedbackKey),
+    () => EMPTY_FEEDBACK_SNAPSHOT
   );
   const perception = perceptionOverride ?? storedFeedback.perception;
   const qualityVote = qualityVoteOverride ?? storedFeedback.qualityVote;
@@ -232,23 +183,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
 
   const storedSolution = useSyncExternalStore(
     () => () => {},
-    () => {
-      try {
-        const raw =
-          localStorage.getItem("lastGameSolution:v1") ?? localStorage.getItem("lastGameSolution");
-        if (!raw) return null;
-        const todayKey = new Date().toISOString().slice(0, 10);
-        const parsed = JSON.parse(raw) as {
-          answer?: string;
-          explanation?: string;
-          puzzleDate?: string;
-        };
-        if (parsed.answer && (!parsed.puzzleDate || parsed.puzzleDate === todayKey)) {
-          return { answer: parsed.answer, explanation: parsed.explanation || "" };
-        }
-      } catch {}
-      return null;
-    },
+    readSolutionSnapshot,
     () => null
   );
 

@@ -44,8 +44,11 @@ export async function GET(request: Request) {
     }
 
     const userId = authUser.userId;
+    const includeRank = searchParams.get("includeRank") === "true";
     const { user, stats } = await getUserWithStats(userId);
-    const rank = await getUserRank(userId, timeframe);
+    // Rank uses countDocuments over userStats — skip unless the UI needs it
+    // (leaderboard / profile). Play mount only needs streak/points.
+    const rank = includeRank ? await getUserRank(userId, timeframe) : null;
 
     if (!user) {
       return NextResponse.json(
