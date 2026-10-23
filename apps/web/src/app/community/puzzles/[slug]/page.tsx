@@ -20,7 +20,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug: raw } = await params;
   const slug = decodeURIComponent(raw || "").trim();
   const submission = slug ? await findSubmissionBySlug(slug) : null;
-  if (!submission || (submission.status !== "approved" && submission.status !== "featured")) {
+  if (
+    !submission ||
+    (submission.status !== "approved" && submission.status !== "featured") ||
+    !submission.puzzleId
+  ) {
     return generatePageMetadata({
       title: "Community puzzle",
       description: "This community rebus could not be found.",

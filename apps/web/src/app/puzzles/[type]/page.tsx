@@ -138,6 +138,7 @@ export async function generateMetadata({
     return {
       title: "Puzzle Type Not Found | Rebuzzle",
       description: "The requested puzzle type could not be found.",
+      robots: { index: false, follow: false },
     };
   }
 
