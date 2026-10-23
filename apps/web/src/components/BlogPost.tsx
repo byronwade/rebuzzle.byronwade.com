@@ -93,7 +93,7 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
             <div className="font-mono font-medium text-foreground text-sm leading-none tabular-nums">
               {new Date(post.date).getDate()}
             </div>
-            <div className="mt-1 font-mono text-[9px] text-subtle">
+            <div className="mt-1 font-mono text-subtle text-xs">
               {formatDateFns(new Date(post.date), "MMM")}
             </div>
           </div>

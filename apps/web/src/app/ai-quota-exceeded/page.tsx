@@ -29,6 +29,7 @@ export default function AIQuotaExceededPage() {
               {/* Icon */}
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted">
                 <svg
+                  aria-hidden="true"
                   className="h-10 w-10 text-muted-foreground"
                   fill="none"
                   stroke="currentColor"
