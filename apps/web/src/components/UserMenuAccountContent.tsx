@@ -42,7 +42,10 @@ export function UserMenuAccountContent({
             </AvatarFallback>
           </Avatar>
           {hasStreak && (
-            <div className="-bottom-0.5 -right-0.5 absolute flex h-4 w-4 items-center justify-center rounded-full bg-warning font-semibold text-[9px] text-background ring-2 ring-popover">
+            <div
+              aria-hidden="true"
+              className="-bottom-1 -right-1 absolute flex h-5 min-w-5 items-center justify-center rounded-full bg-warning px-1 font-mono font-semibold text-background text-xs tabular-nums ring-2 ring-popover"
+            >
               {streak > 99 ? "99" : streak}
             </div>
           )}
