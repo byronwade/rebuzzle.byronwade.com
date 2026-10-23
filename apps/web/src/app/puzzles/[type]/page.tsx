@@ -5,6 +5,7 @@ import BlogPost from "@/components/BlogPost";
 import Layout from "@/components/Layout";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePuzzleTypeMetadata } from "@/lib/seo/metadata";
+import { isPuzzleTypeSlug, PUZZLE_TYPE_SLUGS, type PuzzleTypeSlug } from "@/lib/seo/puzzle-types";
 import {
   generateBreadcrumbSchema,
   generateItemListSchema,
@@ -15,7 +16,7 @@ import { fetchBlogPosts } from "../../actions/blogActions";
 
 // Puzzle type metadata
 const PUZZLE_TYPE_INFO: Record<
-  string,
+  PuzzleTypeSlug,
   {
     name: string;
     description: string;
@@ -117,8 +118,7 @@ const PUZZLE_TYPE_INFO: Record<
 // In Cache Components mode, we must return at least one result
 export async function generateStaticParams() {
   // Return all puzzle type keys for static generation
-  const puzzleTypes = Object.keys(PUZZLE_TYPE_INFO);
-  return puzzleTypes.map((type) => ({
+  return PUZZLE_TYPE_SLUGS.map((type) => ({
     type,
   }));
 }
@@ -132,7 +132,7 @@ export async function generateMetadata({
   params: Promise<{ type: string }>;
 }): Promise<Metadata> {
   const { type } = await params;
-  const puzzleInfo = PUZZLE_TYPE_INFO[type];
+  const puzzleInfo = isPuzzleTypeSlug(type) ? PUZZLE_TYPE_INFO[type] : undefined;
 
   if (!puzzleInfo) {
     return {
@@ -152,7 +152,7 @@ export async function generateMetadata({
 
 export default async function PuzzleTypePage({ params }: { params: Promise<{ type: string }> }) {
   const { type } = await params;
-  const puzzleInfo = PUZZLE_TYPE_INFO[type];
+  const puzzleInfo = isPuzzleTypeSlug(type) ? PUZZLE_TYPE_INFO[type] : undefined;
 
   if (!puzzleInfo) {
     notFound();
@@ -192,7 +192,7 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
   );
 
   // Get related puzzle types (exclude current)
-  const relatedTypes = Object.keys(PUZZLE_TYPE_INFO).filter((t) => t !== type);
+  const relatedTypes = PUZZLE_TYPE_SLUGS.filter((t) => t !== type);
 
   return (
     <Layout>
