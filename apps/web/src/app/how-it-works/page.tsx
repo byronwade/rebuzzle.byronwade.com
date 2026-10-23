@@ -178,26 +178,16 @@ export default function HowItWorksPage() {
           </div>
 
           <div className="relative lg:py-6">
-            <div
-              aria-hidden
-              className="absolute -inset-20 -z-10 opacity-30 blur-3xl [background:conic-gradient(from_110deg_at_50%_50%,var(--grad-develop-start),var(--grad-develop-end),var(--grad-preview-start),var(--grad-preview-end),var(--grad-ship-end),var(--grad-develop-start))] dark:opacity-20"
-            />
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090909] text-white shadow-[0_32px_80px_-32px_rgba(0,0,0,0.65)]">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#171717] text-[#f7f4ee] shadow-[0_1px_2px_rgba(0,0,0,0.36),0_18px_40px_rgba(0,0,0,0.36)]">
               <div className="flex items-center justify-between border-white/10 border-b px-5 py-4">
-                <span className="font-mono text-[11px] text-white/50 uppercase tracking-[0.18em]">
-                  Practice board
-                </span>
-                <span className="inline-flex items-center gap-2 font-mono text-[11px] text-white/50 uppercase tracking-[0.12em]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="font-medium text-white/60 text-xs">Practice board</span>
+                <span className="inline-flex items-center gap-2 font-medium text-white/60 text-xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
                   Easy read
                 </span>
               </div>
 
               <div className="relative flex min-h-[25rem] flex-col items-center justify-center px-6 py-14 sm:px-12">
-                <div
-                  aria-hidden
-                  className="absolute inset-x-[10%] top-0 h-48 bg-[radial-gradient(ellipse_at_top,rgba(0,124,240,0.22),transparent_70%)]"
-                />
                 <p className="relative mb-10 text-center text-sm text-white/55">
                   What familiar phrase is pictured here?
                 </p>
@@ -224,7 +214,7 @@ export default function HowItWorksPage() {
                 </details>
               </div>
             </div>
-            <p className="mt-4 text-center font-mono text-[10px] text-subtle uppercase tracking-[0.16em]">
+            <p className="mt-4 text-center font-medium text-xs text-subtle">
               The arrangement is part of the clue
             </p>
           </div>
@@ -303,13 +293,11 @@ export default function HowItWorksPage() {
 
             <aside className="lg:pt-32">
               <div className="rounded-xl border border-border bg-card p-5 shadow-lg">
-                <div className="rounded-lg bg-[#0b0b0b] px-5 py-10 text-center text-white">
+                <div className="rounded-lg border border-white/10 bg-[#171717] px-5 py-10 text-center text-[#f7f4ee]">
                   <div className="font-semibold text-3xl tracking-[-0.04em]">
                     CYCLE&nbsp; CYCLE&nbsp; CYCLE
                   </div>
-                  <p className="mt-4 font-mono text-[10px] text-white/45 uppercase tracking-[0.16em]">
-                    Read the count
-                  </p>
+                  <p className="mt-4 font-medium text-white/60 text-xs">Read the count</p>
                 </div>
                 <div className="mt-4 space-y-3">
                   <div className="ml-auto max-w-[78%] rounded-xl rounded-br-sm bg-foreground px-4 py-3 text-background text-sm">
@@ -320,9 +308,7 @@ export default function HowItWorksPage() {
                   </div>
                 </div>
                 <div className="mt-5 flex items-center justify-between border-border border-t pt-4">
-                  <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
-                    Solved in 1
-                  </span>
+                  <span className="font-medium text-xs text-subtle">Solved in 1</span>
                   <span className="inline-flex items-center gap-1.5 text-sm">
                     <Sparkles aria-hidden className="h-3.5 w-3.5" /> +100
                   </span>
@@ -385,7 +371,7 @@ export default function HowItWorksPage() {
           </AppLink>
           <p className="mt-8 text-center">
             <a
-              className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em] underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
+              className="font-medium text-xs text-subtle underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
               href="#under-the-hood"
             >
               Continue to the technical deep dive

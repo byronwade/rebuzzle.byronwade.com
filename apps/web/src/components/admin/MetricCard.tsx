@@ -44,7 +44,6 @@ export function MetricCard({
     <Card
       className={cn(
         "relative overflow-hidden border transition-[box-shadow,border-color,colors] hover:shadow-md",
-        "bg-gradient-to-br from-card to-card/50",
         className
       )}
     >
@@ -76,10 +75,8 @@ export function MetricCard({
             <div
               className={cn(
                 "mt-2 flex items-center gap-1 font-medium text-xs",
-                isPositive &&
-                  "w-fit rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                isNegative &&
-                  "w-fit rounded-full bg-red-100 px-2 py-0.5 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                isPositive && "w-fit rounded-full bg-success/10 px-2 py-0.5 text-success",
+                isNegative && "w-fit rounded-full bg-destructive/10 px-2 py-0.5 text-destructive",
                 isNeutral && "text-muted-foreground"
               )}
             >
@@ -93,8 +90,6 @@ export function MetricCard({
           )}
         </div>
       </div>
-      {/* Decorative gradient line */}
-      <div className="absolute right-0 bottom-0 left-0 h-1 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent" />
     </Card>
   );
 }

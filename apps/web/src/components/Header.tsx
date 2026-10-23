@@ -61,7 +61,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
 
   return (
     <TooltipProvider delayDuration={300}>
-      <header className="play-chrome sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+      <header className="play-chrome sticky top-0 z-40 w-full bg-background">
         <div className="mx-auto flex h-header max-w-page items-center justify-between gap-4 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-7">
             <Link className="transition-opacity hover:opacity-70" href="/">

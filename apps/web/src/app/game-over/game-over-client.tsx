@@ -512,7 +512,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
                   {attempts}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                <div className="mt-1.5 font-medium text-xs text-subtle">
                   {attempts === 1 ? "Attempt" : "Attempts"}
                 </div>
               </div>
@@ -520,9 +520,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
                   {displayScore}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                  Points
-                </div>
+                <div className="mt-1.5 font-medium text-xs text-subtle">Points</div>
               </div>
               <div>
                 <div className="flex items-center justify-center gap-1 font-semibold text-3xl tracking-[-0.04em] tabular-nums">
@@ -535,9 +533,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     <span className="text-foreground">0</span>
                   )}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                  Streak
-                </div>
+                <div className="mt-1.5 font-medium text-xs text-subtle">Streak</div>
               </div>
             </div>
 
@@ -662,7 +658,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                             <span
                               key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                               className={cn(
-                                "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
+                                "rounded px-1.5 py-0.5 font-medium text-xs",
                                 result.correct
                                   ? "bg-success/15 text-success"
                                   : "bg-destructive/10 text-destructive"
@@ -869,7 +865,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                           <span
                             key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                             className={cn(
-                              "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
+                              "rounded px-1.5 py-0.5 font-medium text-xs",
                               result.correct
                                 ? "bg-success/15 text-success"
                                 : "bg-destructive/10 text-destructive"

@@ -1,14 +1,17 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Rebuzzle design system.
+ * Rebuzzle on the Thorbis design system (https://design.thorbis.com).
  *
- * Ink on canvas: a neutral ladder carries every surface, hairline and
- * disabled state; the brand mesh gradient is the only decorative chrome.
- * Display type is tracked aggressively negative and never exceeds weight 600.
+ * Quiet chrome, precise work: cream/ink type on canvas, a brighter sheet,
+ * recessed wells, ink commits and a single electric-blue pointer. Type is
+ * Inter (chrome 13, content 14, titles tracked tight) with Geist Mono for
+ * scores, timers and ciphers. No gradients; weight never exceeds 600.
  */
 const config: Config = {
   darkMode: ["class"],
+  // Thorbis: hover is colour only, gated to devices that can actually hover.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -27,21 +30,21 @@ const config: Config = {
       fontSize: {
         // Body ladder — neutral to slightly-negative tracking.
         xs: ["0.75rem", { lineHeight: "1rem" }],
-        sm: ["0.875rem", { lineHeight: "1.25rem", letterSpacing: "-0.005em" }],
-        base: ["1rem", { lineHeight: "1.5rem" }],
-        lg: ["1.125rem", { lineHeight: "1.75rem" }],
-        xl: ["1.25rem", { lineHeight: "1.75rem", letterSpacing: "-0.02em" }],
-        "2xl": ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.03em" }],
-        "3xl": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.035em" }],
-        "4xl": ["2.25rem", { lineHeight: "2.5rem", letterSpacing: "-0.04em" }],
-        "5xl": ["3rem", { lineHeight: "1", letterSpacing: "-0.045em" }],
-        "6xl": ["3.75rem", { lineHeight: "1", letterSpacing: "-0.05em" }],
-        "7xl": ["4.5rem", { lineHeight: "1", letterSpacing: "-0.05em" }],
-        // Display ladder — mirrors the brand's hero / section scale.
-        "display-sm": ["1.25rem", { lineHeight: "1.75rem", letterSpacing: "-0.03em" }],
-        "display-md": ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.04em" }],
-        "display-lg": ["2rem", { lineHeight: "2.5rem", letterSpacing: "-0.04em" }],
-        "display-xl": ["3rem", { lineHeight: "1", letterSpacing: "-0.05em" }],
+        sm: ["0.875rem", { lineHeight: "1.3125rem", letterSpacing: "-0.006em" }],
+        base: ["1rem", { lineHeight: "1.625rem", letterSpacing: "-0.011em" }],
+        lg: ["1.125rem", { lineHeight: "1.75rem", letterSpacing: "-0.014em" }],
+        xl: ["1.25rem", { lineHeight: "1.5rem", letterSpacing: "-0.017em" }],
+        "2xl": ["1.5rem", { lineHeight: "1.875rem", letterSpacing: "-0.019em" }],
+        "3xl": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.021em" }],
+        "4xl": ["2.25rem", { lineHeight: "2.625rem", letterSpacing: "-0.022em" }],
+        "5xl": ["3rem", { lineHeight: "1.05", letterSpacing: "-0.025em" }],
+        "6xl": ["3.75rem", { lineHeight: "1", letterSpacing: "-0.028em" }],
+        "7xl": ["4.5rem", { lineHeight: "1", letterSpacing: "-0.03em" }],
+        // Display ladder — Thorbis heading-16/20/32 plus one showcase step.
+        "display-sm": ["1.25rem", { lineHeight: "1.5rem", letterSpacing: "-0.017em" }],
+        "display-md": ["1.5rem", { lineHeight: "1.875rem", letterSpacing: "-0.019em" }],
+        "display-lg": ["2rem", { lineHeight: "2.5rem", letterSpacing: "-0.022em" }],
+        "display-xl": ["3rem", { lineHeight: "1.05", letterSpacing: "-0.025em" }],
       },
       fontWeight: {
         // 600 is the display ceiling. Heavier aliases are remapped rather than
@@ -85,6 +88,16 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        // Thorbis electric blue — the single pointer colour.
+        brand: {
+          DEFAULT: "hsl(var(--brand) / <alpha-value>)",
+          hover: "hsl(var(--brand-hover) / <alpha-value>)",
+          foreground: "hsl(var(--brand-foreground) / <alpha-value>)",
+        },
+        pumpkin: "hsl(var(--pumpkin) / <alpha-value>)",
+        forest: "hsl(var(--forest) / <alpha-value>)",
+        olive: "hsl(var(--olive) / <alpha-value>)",
+        burnt: "hsl(var(--burnt) / <alpha-value>)",
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
@@ -108,12 +121,12 @@ const config: Config = {
         },
       },
       borderRadius: {
-        sm: "calc(var(--radius) - 4px)", // 4px — tightest inline chrome
-        md: "calc(var(--radius) - 2px)", // 6px — in-app buttons, inputs, menus
-        lg: "var(--radius)", // 8px — marketing + feature cards
-        xl: "0.75rem", // 12px — larger card chrome
-        "2xl": "1rem", // 16px — cards with a hero image cap
-        pill: "100px", // marketing CTA
+        sm: "0.375rem", // 6px — inline chrome, menu rows
+        md: "0.5rem", // 8px — compact controls, menu panels
+        lg: "var(--radius)", // 10px — commits and fields
+        xl: "var(--radius-sheet)", // 14px — sheets
+        "2xl": "1rem", // 16px — the hero object
+        pill: "999px", // chips
       },
       boxShadow: {
         // Stacked small offsets + an inset hairline ring — never one heavy drop.
@@ -138,6 +151,9 @@ const config: Config = {
         page: "1200px",
         "page-wide": "1400px",
       },
+      // Thorbis motion tokens: 120ms press/hover, ease-out only.
+      transitionDuration: { fast: "120ms", overlay: "180ms" },
+      transitionTimingFunction: { thorbis: "cubic-bezier(0.23, 1, 0.32, 1)" },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

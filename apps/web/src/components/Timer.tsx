@@ -43,9 +43,11 @@ export function Timer({ nextPlayTime, className, compact = false }: TimerProps) 
       const difference = targetTime.getTime() - Date.now();
 
       if (difference <= 0) {
-        if (!reloadedRef.current) {
+        // Only the play surface swaps to the new puzzle; a reader on another
+        // page keeps their place and simply sees the countdown land.
+        if (!reloadedRef.current && window.location.pathname === "/") {
           reloadedRef.current = true;
-          window.location.assign("/");
+          window.location.reload();
         }
         setUnderHour(false);
         return "00:00:00";

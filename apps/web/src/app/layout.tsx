@@ -1,4 +1,4 @@
-import { Geist, Geist_Mono, Press_Start_2P } from "next/font/google";
+import { Geist_Mono, Inter, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
@@ -24,18 +24,19 @@ import {
 } from "@/lib/seo/structured-data";
 import { VISUAL_THEME_BOOTSTRAP_SCRIPT } from "@/lib/visual-theme";
 
-// Geometric sans carries display, body, button — everything narrative.
-const geistSans = Geist({
+// Thorbis UI face: Inter Variable with optical sizing for chrome, content and titles.
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   preload: true,
-  fallback: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+  axes: ["opsz"],
+  fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
   adjustFontFallback: true,
   // Distinct from --font-sans so visual skins can rebind the semantic stack.
-  variable: "--font-geist-sans",
+  variable: "--font-inter",
 });
 
-// Mono carries the technical layer only: eyebrows, code, puzzle ciphers.
+// Geist Mono carries the numbers: scores, timers, streaks and puzzle ciphers.
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "swap",
@@ -59,8 +60,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // theme-color follows the resolved canvas (Thorbis cream / void).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f4ee" },
     { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
   // Chromium/Android: resize layout viewport with the OSK. Safari ignores.
@@ -255,7 +257,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html
-      className={`${geistSans.variable} ${geistMono.variable} ${pressStart.variable}`}
+      className={`${inter.variable} ${geistMono.variable} ${pressStart.variable}`}
       data-skin="default"
       lang="en"
       suppressHydrationWarning
@@ -336,7 +338,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen overflow-x-hidden bg-background font-sans antialiased">
         {/* Skip to content link for keyboard navigation */}
         <a
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:font-medium focus:text-background focus:text-sm"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[80] focus:rounded-lg focus:bg-foreground focus:px-4 focus:py-2 focus:font-medium focus:text-background focus:text-sm"
           href="#main-content"
         >
           Skip to content

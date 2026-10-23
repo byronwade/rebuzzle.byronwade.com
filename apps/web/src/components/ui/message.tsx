@@ -79,15 +79,14 @@ const dotVariants = cva("h-1.5 w-1.5 shrink-0 rounded-full", {
   defaultVariants: { tone: "neutral" },
 });
 
-/** Eve's mark. A gradient disc — the one place the brand mesh appears small. */
+/** Eve's mark. An electric-blue disc — the accent as a pointer to who is speaking. */
 export function MessageAvatar({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
       className={cn(
-        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm ring-1 ring-white/20",
-        "bg-gradient-to-br from-[#007cf0] to-[#7928ca]",
-        "font-semibold text-[10px] text-white",
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand/40",
+        "bg-brand font-semibold text-[11px] text-brand-foreground",
         className
       )}
     >

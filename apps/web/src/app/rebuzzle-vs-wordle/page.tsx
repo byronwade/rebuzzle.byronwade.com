@@ -186,9 +186,7 @@ export default function RebuzzleVsWordlePage() {
               <div className="font-semibold text-4xl text-foreground tracking-[-0.045em] tabular-nums">
                 {stat.value}
               </div>
-              <p className="mt-2 font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
-                {stat.label}
-              </p>
+              <p className="mt-2 font-medium text-xs text-subtle">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -202,13 +200,13 @@ export default function RebuzzleVsWordlePage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-border border-b bg-inset">
-                  <th className="px-4 py-2.5 text-left font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
+                  <th className="px-4 py-2.5 text-left font-medium font-normal text-xs text-muted-foreground">
                     Feature
                   </th>
-                  <th className="px-4 py-2.5 text-left font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
+                  <th className="px-4 py-2.5 text-left font-medium font-normal text-xs text-muted-foreground">
                     Rebuzzle
                   </th>
-                  <th className="px-4 py-2.5 text-left font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em]">
+                  <th className="px-4 py-2.5 text-left font-medium font-normal text-xs text-muted-foreground">
                     Wordle
                   </th>
                 </tr>

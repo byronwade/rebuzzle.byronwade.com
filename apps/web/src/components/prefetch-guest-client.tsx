@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 
@@ -11,13 +11,17 @@ import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 export function PrefetchGuestClient() {
   const { isAuthenticated, isLoading } = useAuth();
   const { ensureGuest } = useLazyGuest();
+  // Warm once per mount. A failed warm-up must not retry on re-render — the
+  // first guess retries on its own, and the endpoint is rate limited per IP.
+  const attemptedRef = useRef(false);
 
   useEffect(() => {
-    if (isLoading || isAuthenticated) {
+    if (isLoading || isAuthenticated || attemptedRef.current) {
       return;
     }
 
     const warm = () => {
+      attemptedRef.current = true;
       void ensureGuest();
     };
 

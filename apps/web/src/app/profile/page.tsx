@@ -415,27 +415,21 @@ export default function ProfilePage() {
 
           <dl className="hairline-grid grid grid-cols-1 rounded-lg sm:grid-cols-3">
             <div className="px-5 py-4">
-              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-                Total Points
-              </dt>
+              <dt className="font-medium text-xs text-subtle">Total Points</dt>
               <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
                 {stats.points.toLocaleString("en-US", { useGrouping: true })}
               </dd>
             </div>
 
             <div className="px-5 py-4">
-              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-                Current Streak
-              </dt>
+              <dt className="font-medium text-xs text-subtle">Current Streak</dt>
               <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
                 {stats.streak}
               </dd>
             </div>
 
             <div className="px-5 py-4">
-              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-                Daily Streak
-              </dt>
+              <dt className="font-medium text-xs text-subtle">Daily Streak</dt>
               <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
                 {stats.dailyChallengeStreak}
               </dd>

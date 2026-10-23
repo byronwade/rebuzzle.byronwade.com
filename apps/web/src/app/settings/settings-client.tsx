@@ -295,8 +295,8 @@ export default function SettingsPage() {
             <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[#7928ca] to-[#ff0080]">
-                    <Trophy className="size-5 text-white" />
+                  <div className="flex size-9 items-center justify-center rounded-full border border-border bg-inset text-warning">
+                    <Trophy className="size-4" />
                   </div>
                   <div>
                     <h2 className="font-semibold text-base">Achievements & Levels</h2>
@@ -314,11 +314,11 @@ export default function SettingsPage() {
           <EmailNotificationForm />
 
           {/* Temporary Dev Mode */}
-          <Card className="border-amber-500/40 p-6">
+          <Card className="border-warning/40 p-6">
             <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
-              <FlaskConical className="h-5 w-5 text-amber-600" />
+              <FlaskConical className="h-5 w-5 text-warning" />
               Dev Mode
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-[10px] text-amber-800 uppercase tracking-wide dark:text-amber-300">
+              <span className="rounded-full bg-warning/15 px-2 py-0.5 font-medium text-[11px] text-warning">
                 Temporary
               </span>
             </h2>
@@ -351,9 +351,9 @@ export default function SettingsPage() {
               />
             </div>
             {devMode && (
-              <div className="mt-4 border-amber-500/20 border-t pt-4">
+              <div className="mt-4 border-warning/20 border-t pt-4">
                 <Link
-                  className="inline-flex items-center gap-2 text-amber-800 text-sm underline-offset-2 hover:underline dark:text-amber-300"
+                  className="inline-flex items-center gap-2 text-warning text-sm underline-offset-2 hover:underline"
                   href="/dev/visual-lab"
                 >
                   <Palette className="h-4 w-4" />
@@ -470,7 +470,7 @@ export default function SettingsPage() {
                         </p>
                         {id === "8bit" && (
                           <span
-                            className="mt-1 font-normal text-[10px] uppercase tracking-wide text-subtle"
+                            className="mt-1 font-normal text-xs text-subtle"
                             style={{ fontFamily: "var(--font-pixel), monospace" }}
                           >
                             PRESS START

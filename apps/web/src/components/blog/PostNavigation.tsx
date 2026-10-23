@@ -34,7 +34,7 @@ export function PostNavigation({ prev, next, className }: PostNavigationProps) {
           href={`/blog/${prev.slug}`}
           className="group flex flex-col rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong/50"
         >
-          <div className="mb-3 flex items-center gap-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
+          <div className="mb-3 flex items-center gap-1.5 font-medium text-xs text-subtle">
             <ArrowLeft className="size-3" />
             <span>Previous puzzle</span>
           </div>
@@ -56,7 +56,7 @@ export function PostNavigation({ prev, next, className }: PostNavigationProps) {
           href={`/blog/${next.slug}`}
           className="group flex flex-col rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong/50 sm:text-right"
         >
-          <div className="mb-3 flex items-center gap-1.5 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] sm:justify-end">
+          <div className="mb-3 flex items-center gap-1.5 font-medium text-xs text-subtle sm:justify-end">
             <span>Next puzzle</span>
             <ArrowRight className="size-3" />
           </div>

@@ -295,7 +295,7 @@ export default function LoginPage() {
             {/* Divider */}
             <div className="relative my-6">
               <Separator />
-              <span className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 bg-card px-3 font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
+              <span className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 bg-card px-3 font-medium text-xs text-subtle">
                 or
               </span>
             </div>

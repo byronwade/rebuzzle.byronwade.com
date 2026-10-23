@@ -34,9 +34,9 @@ export function RebuzzleMark({ className, title }: RebuzzleMarkProps) {
       xmlns="http://www.w3.org/2000/svg"
     >
       {title ? <title>{title}</title> : null}
-      <rect width="32" height="32" rx="9" fill="#0070F3" />
-      <circle cx="16" cy="16" r="7.5" fill="#FAFAFA" />
-      <circle cx="16" cy="16" r="5.25" fill="none" stroke="#171717" strokeWidth="2.25" />
+      <rect width="32" height="32" rx="9" fill="#3A6AE0" />
+      <circle cx="16" cy="16" r="7.5" fill="#F7F4EE" />
+      <circle cx="16" cy="16" r="5.25" fill="none" stroke="#0A0A0A" strokeWidth="2.25" />
     </svg>
   );
 }

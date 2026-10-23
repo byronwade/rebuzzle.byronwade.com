@@ -33,7 +33,7 @@ const StatsTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-neutral-700 dark:text-neutral-300" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     ),
     ssr: false,
@@ -45,7 +45,7 @@ const ToolsTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-neutral-700 dark:text-neutral-300" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     ),
     ssr: false,
@@ -58,7 +58,7 @@ const AIInsightsTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-neutral-700 dark:text-neutral-300" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     ),
     ssr: false,
@@ -1534,9 +1534,7 @@ function UsersTab({
                         <span className="inline-flex items-center gap-1">
                           {user.stats?.streak || 0}
                           {user.stats && user.stats.streak > 0 && (
-                            <span className="text-neutral-700 dark:text-neutral-300 text-xs dark:text-neutral-500 dark:text-neutral-400">
-                              🔥
-                            </span>
+                            <span className="text-muted-foreground text-xs">🔥</span>
                           )}
                         </span>
                       </TableCell>
@@ -1664,7 +1662,7 @@ function AnalyticsTab({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-neutral-700 dark:text-neutral-300" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }

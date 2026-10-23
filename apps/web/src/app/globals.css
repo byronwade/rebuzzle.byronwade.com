@@ -3,129 +3,167 @@
 @tailwind utilities;
 
 /* ============================================================
-   REBUZZLE DESIGN SYSTEM
-   A stark ink-on-canvas system: near-white surfaces, a 200-step
-   neutral ladder for every hairline and disabled state, and a
-   single multi-stop mesh gradient as the only decorative chrome.
+   REBUZZLE × THORBIS DESIGN SYSTEM
+   https://design.thorbis.com — quiet chrome, precise work.
+
+   Cream type on a near-black void (dark); warm ink on cream (light —
+   a retune, not an invert). The sheet is brighter than the canvas,
+   a field is a recessed well, a commit is ink, chips are pills and
+   icon-only controls are circles. One accent: electric blue, used as
+   a pointer (focus, links, the live mark) — never 10% of the screen.
+   No gradients, no ornamental blur. Game delight lives in motion
+   and feedback, not in costume.
    ============================================================ */
 
 @layer base {
   :root {
-    /* — Surface ladder — */
-    --background: 0 0% 98%; /* canvas-soft  #fafafa — the page body */
-    --foreground: 0 0% 9%; /* ink          #171717 */
-    --card: 0 0% 100%; /* canvas       #ffffff */
-    --card-foreground: 0 0% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --inset: 0 0% 96%; /* canvas-soft-2 #f5f5f5 */
+    /* — Surfaces (light) — canvas cream, paper sheet, warm well — */
+    --background: 40 38% 95.1%; /* canvas  #f7f4ee */
+    --foreground: 33 22% 10.2%; /* ink     #201b14 */
+    --card: 40 54% 98.7%; /* panel   #fdfcfa — the sheet */
+    --card-foreground: 33 22% 10.2%;
+    --popover: 40 54% 98.7%;
+    --popover-foreground: 33 22% 10.2%;
+    --inset: 40 24% 90.8%; /* field   #ede9e2 — one step darker */
 
-    /* — Ink primary — the single conversion colour — */
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    /* — Commit is ink — */
+    --primary: 33 22% 10.2%;
+    --primary-foreground: 40 38% 95.1%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%; /* body #666 — readable secondary text */
-    --subtle-foreground: 0 0% 53%; /* mute #888 — lowest-priority text */
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
+    /* — Electric blue: the one accent — */
+    --brand: 223 73% 55.3%; /* #3a6ae0 */
+    --brand-hover: 223 75% 63.4%; /* #5b84e8 */
+    --brand-foreground: 0 0% 100%;
 
-    /* — Hairlines — */
-    --border: 0 0% 92%; /* hairline        #ebebeb */
-    --border-strong: 0 0% 63%; /* hairline-strong #a1a1a1 */
-    --input: 0 0% 92%;
-    --ring: 0 0% 9%;
+    --secondary: 39 14% 94.2%;
+    --secondary-foreground: 33 22% 10.2%;
+    --muted: 39 14% 94.2%; /* hover — ink 5% into paper */
+    --muted-foreground: 34 4% 40.3%; /* marker */
+    --subtle-foreground: 34 3% 52.7%;
+    --accent: 38 10% 91.6%; /* selected — ink 8% into paper */
+    --accent-foreground: 33 22% 10.2%;
 
-    /* — Semantic — */
-    --link: 212 100% 48%; /* #0070f3 */
-    --link-deep: 213 90% 42%; /* #0761d1 */
-    --success: 131 35% 46%;
-    --warning: 37 91% 55%; /* #f5a623 */
-    --destructive: 0 100% 47%; /* #ee0000 */
+    /* — Rims — a stroke that follows a rounded figure, never a divider — */
+    --border: 38 9% 89.8%;
+    --border-strong: 36 4% 72.1%;
+    --input: 38 9% 86%;
+    --ring: 223 73% 55.3%;
+
+    /* — Status words (reserved — not a rainbow) — */
+    --link: 223 73% 50%;
+    --link-deep: 223 73% 42%;
+    --success: 142 76% 32%;
+    --warning: 36 100% 36%;
+    --destructive: 358 68% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* — Brand gradient stops (hero scale only) — */
-    --grad-develop-start: #007cf0;
-    --grad-develop-end: #00dfd8;
-    --grad-preview-start: #7928ca;
-    --grad-preview-end: #ff0080;
-    --grad-ship-start: #ff4d4d;
-    --grad-ship-end: #f9cb28;
+    /* — Quiet extras: marks, never jobs — */
+    --pumpkin: 23 77% 43.4%;
+    --forest: 127 22% 23.7%;
+    --olive: 69 20% 31.6%;
+    --burnt: 11 64% 39%;
 
-    /* — Charts inherit the gradient palette, never a sixth accent — */
-    --chart-1: 212 100% 47%;
-    --chart-2: 178 100% 44%;
-    --chart-3: 280 67% 47%;
-    --chart-4: 330 100% 50%;
-    --chart-5: 44 94% 57%;
+    /* Legacy gradient stops now resolve to flat Thorbis hues (D-018). */
+    --grad-develop-start: hsl(var(--brand));
+    --grad-develop-end: hsl(var(--brand-hover));
+    --grad-preview-start: hsl(var(--brand));
+    --grad-preview-end: hsl(var(--pumpkin));
+    --grad-ship-start: hsl(var(--burnt));
+    --grad-ship-end: hsl(var(--warning));
 
-    /* — Stacked elevation — small offsets + inset hairline, never one heavy drop — */
-    --shadow-border: inset 0 0 0 1px rgb(0 0 0 / 0.08);
-    --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.02), 0 2px 2px rgb(0 0 0 / 0.04);
-    --shadow-md: 0 2px 2px rgb(0 0 0 / 0.04), 0 8px 8px -8px rgb(0 0 0 / 0.04);
-    --shadow-lg: 0 2px 2px rgb(0 0 0 / 0.04), 0 8px 16px -4px rgb(0 0 0 / 0.04);
-    --shadow-menu: 0 1px 1px rgb(0 0 0 / 0.02), 0 8px 16px -4px rgb(0 0 0 / 0.04),
-      0 24px 32px -8px rgb(0 0 0 / 0.06);
+    /* — Charts: one accent, status hues, quiet extras — */
+    --chart-1: 223 73% 55.3%;
+    --chart-2: 142 60% 38%;
+    --chart-3: 36 100% 42%;
+    --chart-4: 23 77% 43.4%;
+    --chart-5: 69 20% 38%;
 
-    --radius: 0.5rem; /* marketing radius 8px; sm 4px / md 6px derive from it */
-    --header-height: 56px;
+    /* — Depth is a whisper: rest, sink, lift, overlay — */
+    --shadow-border: inset 0 0 0 1px hsl(var(--foreground) / 0.08);
+    --shadow-sm: 0 1px 2px hsl(33 22% 10% / 0.06);
+    --shadow-md: 0 1px 2px hsl(33 22% 10% / 0.06), 0 6px 16px hsl(33 22% 10% / 0.06);
+    --shadow-lg: 0 1px 2px hsl(33 22% 10% / 0.07), 0 12px 32px hsl(33 22% 10% / 0.08);
+    --shadow-menu: 0 1px 2px hsl(33 22% 10% / 0.08), 0 18px 48px hsl(33 22% 10% / 0.12);
+    --shadow-field: inset 0 0 0 1px hsl(var(--foreground) / 0.1),
+      inset 0 1px 1px hsl(33 22% 10% / 0.06);
+    --shadow-commit: inset 0 0 0 1px hsl(var(--background) / 0.2),
+      0 1px 0 hsl(var(--background) / 0.24) inset, 0 1px 1px hsl(0 0% 0% / 0.2);
+    --shadow-accent: 0 8px 24px hsl(var(--brand) / 0.22), inset 0 1px hsl(0 0% 100% / 0.2);
 
-    /* One easing curve for the whole surface. Everything decelerates the same
-       way, so moving between states never feels like two different apps. */
-    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    /* — Geometry — 10px controls, 14px sheets, pills and circles — */
+    --radius: 0.625rem;
+    --radius-sheet: 0.875rem;
+    --header-height: 52px;
 
-    /* Focus: a hairline edge plus a soft halo. No hard 2px outline ring. */
-    --focus-edge: hsl(var(--foreground) / 0.3);
-    --focus-halo: hsl(var(--foreground) / 0.07);
+    /* — Motion — 120ms ease-out, transform + opacity only — */
+    --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --motion-fast: 120ms;
+    --motion-overlay: 180ms;
 
-    /* Semantic font stacks — skins rebind these; next/font fills --font-geist-* */
-    --font-sans: var(--font-geist-sans), Inter, system-ui, -apple-system, sans-serif;
-    --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* Focus is an accent ring, not selection. */
+    --focus-edge: hsl(var(--ring));
+    --focus-halo: hsl(var(--ring) / 0.18);
+
+    /* Semantic font stacks — skins rebind these; next/font fills the vars */
+    --font-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      sans-serif;
+    --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, SFMono-Regular, Menlo,
+      monospace;
   }
 
   .dark {
-    --background: 0 0% 4%; /* #0a0a0a */
-    --foreground: 0 0% 93%; /* #ededed */
-    --card: 0 0% 6%; /* #0f0f0f */
-    --card-foreground: 0 0% 93%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 93%;
-    --inset: 0 0% 10%;
+    /* — Surfaces (dark) — near-black void, the sheet, a darker well — */
+    --background: 0 0% 3.9%; /* canvas  #0a0a0a */
+    --foreground: 40 38% 95.1%; /* cream   #f7f4ee */
+    --card: 0 0% 9.1%; /* panel   #171717 */
+    --card-foreground: 40 38% 95.1%;
+    --popover: 40 1% 13%; /* lift — overlays sit above the sheet */
+    --popover-foreground: 40 38% 95.1%;
+    --inset: 0 0% 3.1%; /* field   #080808 */
 
-    --primary: 0 0% 93%;
-    --primary-foreground: 0 0% 4%;
+    --primary: 40 38% 95.1%;
+    --primary-foreground: 0 0% 3.9%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 93%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 63%;
-    --subtle-foreground: 0 0% 53%;
-    --accent: 0 0% 16%;
-    --accent-foreground: 0 0% 93%;
+    --brand: 223 73% 55.3%;
+    --brand-hover: 223 75% 63.4%;
+    --brand-foreground: 0 0% 100%;
 
-    --border: 0 0% 18%; /* #2e2e2e */
-    --border-strong: 0 0% 33%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 63%;
+    --secondary: 40 1% 14.2%;
+    --secondary-foreground: 40 38% 95.1%;
+    --muted: 40 1% 14.2%; /* hover — cream 6% into panel */
+    --muted-foreground: 0 0% 71.8%; /* marker #b7b7b7 */
+    --subtle-foreground: 40 2% 56.4%;
+    --accent: 40 1% 16.8%; /* selected — cream 9% into panel */
+    --accent-foreground: 40 38% 95.1%;
 
-    --link: 212 100% 60%; /* #3291ff */
-    --link-deep: 212 100% 70%;
-    --success: 131 41% 56%;
-    --warning: 37 91% 60%;
-    --destructive: 0 100% 62%;
+    --border: 40 1% 17.7%;
+    --border-strong: 40 2% 33.1%;
+    --input: 40 1% 20%;
+    --ring: 223 75% 63.4%;
+
+    --link: 223 75% 68%;
+    --link-deep: 223 75% 76%;
+    --success: 142 60% 45%;
+    --warning: 43 100% 50.1%;
+    --destructive: 358 75% 59.1%;
     --destructive-foreground: 0 0% 100%;
 
-    --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 0.09);
-    --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.24), 0 2px 2px rgb(0 0 0 / 0.2);
-    --shadow-md: 0 2px 2px rgb(0 0 0 / 0.28), 0 8px 8px -8px rgb(0 0 0 / 0.32);
-    --shadow-lg: 0 2px 2px rgb(0 0 0 / 0.28), 0 8px 16px -4px rgb(0 0 0 / 0.32);
-    --shadow-menu: 0 1px 1px rgb(0 0 0 / 0.24), 0 8px 16px -4px rgb(0 0 0 / 0.32),
-      0 24px 32px -8px rgb(0 0 0 / 0.4);
+    --chart-1: 223 75% 63.4%;
+    --chart-2: 142 60% 45%;
+    --chart-3: 43 100% 50%;
+    --chart-4: 23 77% 52%;
+    --chart-5: 69 20% 50%;
 
-    --focus-edge: hsl(var(--foreground) / 0.42);
-    --focus-halo: hsl(var(--foreground) / 0.1);
+    --shadow-border: inset 0 0 0 1px hsl(var(--foreground) / 0.1);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.32);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.32), 0 8px 20px rgb(0 0 0 / 0.2);
+    --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.36), 0 18px 40px rgb(0 0 0 / 0.36);
+    --shadow-menu: 0 1px 2px rgb(0 0 0 / 0.28), 0 18px 48px rgb(0 0 0 / 0.34);
+    --shadow-field: inset 0 0 0 1px hsl(var(--foreground) / 0.12),
+      inset 0 1px 1px rgb(0 0 0 / 0.28);
+
+    --focus-edge: hsl(var(--ring));
+    --focus-halo: hsl(var(--ring) / 0.24);
   }
 
   /* ============================================================
@@ -260,34 +298,42 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "ss01", "ss03", "cv01", "cv09";
+    /* Inter: single-storey a, open digits, tabular-ready figures. */
+    font-feature-settings: "ss01", "cv11";
+    font-optical-sizing: auto;
     text-rendering: optimizeLegibility;
   }
 
-  /* Display type is tracked negative — that tracking is part of the voice. */
+  /* Headings: sentence case, weight 500–600, tracked tight only at display. */
   h1,
   h2,
   h3,
   h4 {
-    @apply font-semibold tracking-tight;
+    @apply font-semibold;
     text-wrap: balance;
+    scroll-margin-top: calc(var(--header-height) + 1rem);
   }
 
   h1 {
-    letter-spacing: -0.04em;
+    letter-spacing: -0.022em;
   }
 
   h2 {
-    letter-spacing: -0.035em;
+    letter-spacing: -0.018em;
   }
 
-  h3 {
-    letter-spacing: -0.03em;
+  h3,
+  h4 {
+    letter-spacing: -0.011em;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   ::selection {
-    background-color: hsl(var(--foreground));
-    color: hsl(var(--background));
+    background-color: hsl(var(--brand) / 0.28);
+    color: hsl(var(--foreground));
   }
 
   html {
@@ -295,11 +341,17 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* One consistent focus ring across the whole surface */
+  /* Focus is an accent ring — visible, and never the same as selected. */
   :focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
-    border-radius: 2px;
+  }
+
+  /* Money, scores, streaks and timers never jitter as digits change. */
+  time,
+  .tabular-nums,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -318,27 +370,28 @@
    ============================================================ */
 
 @layer components {
-  /* Level 1 — the universal "this is a card" cue: hairline ring only. */
+  /* The sheet — brighter than the canvas, a rim that follows its 14px radius. */
   .surface {
-    @apply rounded-lg border border-border bg-card;
+    @apply rounded-xl border border-border bg-card;
   }
 
-  /* Level 2 — subtle drop. Template / list cards. */
+  /* Sheet with a short lift — only for things you can press. */
   .surface-raised {
-    @apply rounded-lg border border-border bg-card;
+    @apply rounded-xl border border-border bg-card;
     box-shadow: var(--shadow-sm);
   }
 
-  /* Level 4 — float stack. Pricing / callout panels. */
+  /* Overlay-scale lift: dialogs, result cards, the one hero object. */
   .surface-float {
     @apply rounded-xl border border-border bg-card;
     box-shadow: var(--shadow-lg);
   }
 
-  /* Inset region — a step deeper than the page. */
+  /* A well — one step darker than its parent, inset, 1px rim. */
   .surface-inset {
     @apply rounded-lg border border-border;
     background-color: hsl(var(--inset));
+    box-shadow: var(--shadow-field);
   }
 
   /* Polarity-flipped band — the brand's chief depth cue between sections. */
@@ -346,18 +399,29 @@
     @apply bg-foreground text-background;
   }
 
-  /* Mono eyebrow — the voice of the technical layer. */
+  /* Caption label — 12px, medium, sentence case. Thorbis has no all-caps kickers. */
   .eyebrow {
-    @apply font-mono text-[11px] text-subtle uppercase tracking-[0.14em];
+    @apply font-medium text-muted-foreground text-xs;
   }
 
-  /* Marketing CTA pill vs. 6px in-app radius: pick a scale per screen. */
+  /* Showcase commit: ink, 44px touch, 10px radius with the commit rim. */
   .cta-pill {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 font-medium text-[15px] text-background transition-opacity hover:opacity-90;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-foreground px-5 font-medium text-[15px] text-background transition-[background-color,transform] duration-fast active:scale-[0.98];
+    box-shadow: var(--shadow-commit);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .cta-pill:hover {
+      background-color: hsl(var(--foreground) / 0.88);
+    }
+
+    .cta-pill-secondary:hover {
+      background-color: hsl(var(--muted));
+    }
   }
 
   .cta-pill-secondary {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 font-medium text-[15px] text-foreground transition-colors hover:bg-muted;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 font-medium text-[15px] text-foreground transition-[background-color,transform] duration-fast active:scale-[0.98];
   }
 
   /* A single row of hairline-separated stats. */
@@ -505,47 +569,25 @@
     text-wrap: pretty;
   }
 
-  /* The brand mesh — one unified object, hero scale only, never miniaturised. */
+  /* Formerly the brand mesh. Thorbis: a fill is one mix, never a gradient (D-018). */
   .mesh-gradient {
-    background-image:
-      radial-gradient(at 18% 0%, var(--grad-develop-start) 0px, transparent 55%),
-      radial-gradient(at 62% 8%, var(--grad-preview-start) 0px, transparent 50%),
-      radial-gradient(at 92% 0%, var(--grad-preview-end) 0px, transparent 55%),
-      radial-gradient(at 40% 30%, var(--grad-develop-end) 0px, transparent 45%),
-      radial-gradient(at 82% 34%, var(--grad-ship-end) 0px, transparent 45%);
+    background-color: hsl(var(--brand) / 0.08);
   }
 
-  /* Text set in the develop→preview gradient. Headline scale only. */
+  /* Formerly gradient text. Now the accent as a pointer on the word itself. */
   .text-gradient {
-    background-image: linear-gradient(
-      90deg,
-      var(--grad-develop-start),
-      var(--grad-preview-start) 45%,
-      var(--grad-preview-end)
-    );
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
+    color: hsl(var(--brand));
   }
 
-  /* A 1px hairline that fades at both ends — section dividers. */
+  /* Regions separate by space and tone; a rule is a quiet one-mix line. */
   .rule-fade {
     height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      hsl(var(--border)) 15%,
-      hsl(var(--border)) 85%,
-      transparent
-    );
+    background-color: hsl(var(--border));
   }
 
-  /* Faint engineered grid — background texture at very low contrast. */
+  /* Texture removed — the canvas is a void, not a pattern. */
   .grid-texture {
-    background-image:
-      linear-gradient(to right, hsl(var(--border) / 0.7) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(var(--border) / 0.7) 1px, transparent 1px);
-    background-size: 64px 64px;
+    background-image: none;
   }
 
   .h-dvh {
@@ -614,7 +656,7 @@
 }
 
 .rb-enter {
-  animation: rb-enter 400ms ease-out both;
+  animation: rb-enter 240ms var(--ease) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -663,7 +705,7 @@
 }
 
 .fade-in-up {
-  animation: fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-in-up 240ms var(--ease) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -693,7 +735,7 @@
 
 .play-puzzle-panel {
   position: relative;
-  border-radius: 12px;
+  border-radius: var(--radius-sheet);
   padding: clamp(0.75rem, 2vh, 1.25rem) clamp(0.75rem, 3vw, 1.5rem);
   background-color: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -812,7 +854,9 @@
 }
 
 .guess-chip {
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    transform var(--motion-fast) var(--ease);
 }
 
 .guess-chip:active {
@@ -840,7 +884,7 @@
   --stage-pad: clamp(1.75rem, 7vh, 3.5rem);
   --stage-min: clamp(150px, 28vh, 280px);
   --stage-scale: 1.2;
-  --stage-radius: 16px;
+  --stage-radius: 14px;
 }
 
 .puzzle-stage[data-state="docked"] {
@@ -889,13 +933,14 @@
   min-height: var(--stage-min);
   padding: var(--stage-pad) clamp(1rem, 4vw, 2rem);
   border-radius: var(--stage-radius);
-  /* Cinema default: near-black room for unicode / emoji boards. */
-  background: radial-gradient(120% 140% at 50% 0%, #1c1c1c 0%, #0a0a0a 62%);
-  color: #f5f5f4;
+  /* The stage is a Thorbis dark sheet in both themes: one flat fill, a real
+     1px rim that follows the radius, and a short lift (no gradient, no glow). */
+  background-color: #171717;
+  color: #f7f4ee;
+  border: 1px solid rgb(247 244 238 / 0.1);
   box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.3),
-    0 24px 60px -24px rgb(0 0 0 / 0.45),
-    inset 0 0 0 1px rgb(255 255 255 / 0.07);
+    0 1px 2px rgb(0 0 0 / 0.32),
+    0 18px 40px -20px rgb(0 0 0 / 0.45);
   transition:
     min-height 420ms var(--ease),
     padding 420ms var(--ease),
@@ -909,24 +954,90 @@
 .puzzle-stage-plate--paper {
   background: var(--puzzle-canvas, #f4f6f3);
   color: var(--puzzle-ink, #1a1f1c);
+  border-color: rgb(26 31 28 / 0.1);
   box-shadow:
     0 1px 2px rgb(26 31 28 / 0.08),
-    0 18px 40px -24px rgb(26 31 28 / 0.22),
-    inset 0 0 0 1px rgb(26 31 28 / 0.08);
+    0 18px 40px -24px rgb(26 31 28 / 0.22);
 }
 
 .puzzle-stage[data-state="docked"] .puzzle-stage-plate {
   box-shadow:
     0 1px 2px rgb(0 0 0 / 0.25),
-    0 12px 28px -18px rgb(0 0 0 / 0.4),
-    inset 0 0 0 1px rgb(255 255 255 / 0.07);
+    0 12px 28px -18px rgb(0 0 0 / 0.4);
 }
 
 .puzzle-stage[data-state="docked"] .puzzle-stage-plate--paper {
   box-shadow:
     0 1px 2px rgb(26 31 28 / 0.06),
-    0 10px 22px -16px rgb(26 31 28 / 0.18),
-    inset 0 0 0 1px rgb(26 31 28 / 0.08);
+    0 10px 22px -16px rgb(26 31 28 / 0.18);
+}
+
+/* The stage glow is retired: Thorbis overlays are a mix, never a blur (D-021). */
+.puzzle-stage-glow {
+  display: none;
+}
+
+.puzzle-stage-content {
+  transform-origin: top center;
+}
+
+.puzzle-stage[data-state="compact"] .puzzle-container-responsive {
+  padding: 0.4rem 1rem;
+}
+
+/* Kill stage size transitions while compact — they fight the shell resize. */
+.puzzle-stage[data-state="compact"] .puzzle-stage-plate,
+.puzzle-stage[data-state="compact"] .puzzle-stage-content {
+  transition: none;
+}
+
+.puzzle-stage-plate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: var(--stage-min);
+  padding: var(--stage-pad) clamp(1rem, 4vw, 2rem);
+  border-radius: var(--stage-radius);
+  /* The stage is a Thorbis dark sheet in both themes: one flat fill, a real
+     1px rim that follows the radius, and a short lift (no gradient, no glow). */
+  background-color: #171717;
+  color: #f7f4ee;
+  border: 1px solid rgb(247 244 238 / 0.1);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.32),
+    0 18px 40px -20px rgb(0 0 0 / 0.45);
+  transition:
+    min-height 420ms var(--ease),
+    padding 420ms var(--ease),
+    border-radius 420ms var(--ease),
+    box-shadow 420ms var(--ease),
+    background 280ms var(--ease),
+    color 280ms var(--ease);
+}
+
+/* Ink Pictogram boards — authored for paper; never sit on cinema black. */
+.puzzle-stage-plate--paper {
+  background: var(--puzzle-canvas, #f4f6f3);
+  color: var(--puzzle-ink, #1a1f1c);
+  border-color: rgb(26 31 28 / 0.1);
+  box-shadow:
+    0 1px 2px rgb(26 31 28 / 0.08),
+    0 18px 40px -24px rgb(26 31 28 / 0.22);
+}
+
+.puzzle-stage[data-state="docked"] .puzzle-stage-plate {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.25),
+    0 12px 28px -18px rgb(0 0 0 / 0.4);
+}
+
+.puzzle-stage[data-state="docked"] .puzzle-stage-plate--paper {
+  box-shadow:
+    0 1px 2px rgb(26 31 28 / 0.06),
+    0 10px 22px -16px rgb(26 31 28 / 0.18);
 }
 
 /* The light behind the puzzle. Sits under the content, never over it. */
@@ -999,10 +1110,8 @@
 .puzzle-stage-toggle-hint {
   margin-top: 0.35rem;
   text-align: center;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: hsl(var(--subtle-foreground));
   opacity: 0.72;
 }

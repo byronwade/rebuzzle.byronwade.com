@@ -147,13 +147,9 @@ export function PuzzlePreview({ puzzle, onSave, onCancel }: PuzzlePreviewProps) 
                     size="large"
                   />
                 </div>
-                <div className="rounded-lg border bg-neutral-100 p-4 dark:bg-neutral-800/30">
-                  <div className="mb-2 font-medium text-neutral-900 text-sm dark:text-neutral-100">
-                    Answer
-                  </div>
-                  <div className="font-semibold text-neutral-800 text-lg dark:text-neutral-200">
-                    {editedPuzzle.answer}
-                  </div>
+                <div className="rounded-lg border bg-inset p-4">
+                  <div className="mb-2 font-medium text-foreground text-sm">Answer</div>
+                  <div className="font-semibold text-foreground text-lg">{editedPuzzle.answer}</div>
                 </div>
                 <div>
                   <div className="mb-2 font-medium text-sm">Explanation</div>

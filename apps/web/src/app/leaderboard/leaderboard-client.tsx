@@ -287,7 +287,7 @@ export default function LeaderboardClient({
                     {/* XP Progress Bar */}
                     {userEntry.stats.level > 0 && (
                       <div className="mt-2 w-40">
-                        <div className="mb-1.5 flex justify-between font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                        <div className="mb-1.5 flex justify-between font-medium text-xs text-subtle">
                           <span>Lvl {userEntry.stats.level}</span>
                           <span>Lvl {userEntry.stats.level + 1}</span>
                         </div>
@@ -615,8 +615,8 @@ export default function LeaderboardClient({
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[#7928ca] to-[#ff0080]">
-                    <Sparkles className="size-5 text-white" />
+                  <div className="flex size-9 items-center justify-center rounded-full border border-border bg-inset text-brand">
+                    <Sparkles className="size-4" />
                   </div>
                   <div>
                     <p className="font-semibold text-base text-foreground">Achievements & Levels</p>

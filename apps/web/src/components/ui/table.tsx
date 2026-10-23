@@ -59,8 +59,8 @@ const TableHead = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <th
     className={cn(
-      // Header carries the mono voice: uppercase, tracked, caption scale.
-      "h-9 px-3 text-left align-middle font-mono font-normal text-[11px] text-muted-foreground uppercase tracking-[0.08em] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      // Header: caption scale, sentence case — Thorbis has no all-caps labels.
+      "h-9 px-3 text-left align-middle font-medium font-normal text-xs text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     ref={ref}

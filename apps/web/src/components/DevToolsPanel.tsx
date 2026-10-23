@@ -157,7 +157,7 @@ export function DevToolsPanel() {
     <div
       className={cn(
         "pointer-events-auto fixed bottom-3 right-3 z-[80] w-[min(100vw-1.5rem,20rem)]",
-        "rounded-xl border border-amber-500/40 bg-background/95 shadow-xl backdrop-blur-md"
+        "rounded-xl border border-amber-500/40 bg-popover shadow-xl"
       )}
     >
       <div className="flex items-center gap-2 border-b border-amber-500/30 px-3 py-2">

@@ -56,9 +56,7 @@ export function WordleStatsPanel({ stats, className, compact = false }: WordleSt
       ) : null}
 
       <div>
-        <p className="mb-2 font-medium text-foreground text-xs uppercase tracking-[0.08em]">
-          Guess distribution
-        </p>
+        <p className="mb-2 font-medium text-foreground text-xs">Guess distribution</p>
         <div className="space-y-1.5">
           {distribution.map((count, guessNumber) => {
             const bucketLabel = `Guess ${guessNumber + 1}`;
@@ -83,7 +81,7 @@ export function WordleStatsPanel({ stats, className, compact = false }: WordleSt
 
       {!compact && (
         <div>
-          <p className="mb-2 flex items-center gap-1.5 font-medium text-foreground text-xs uppercase tracking-[0.08em]">
+          <p className="mb-2 flex items-center gap-1.5 font-medium text-foreground text-xs">
             <Calendar className="h-3.5 w-3.5" />
             This month
           </p>

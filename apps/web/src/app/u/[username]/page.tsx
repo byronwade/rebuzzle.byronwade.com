@@ -94,9 +94,7 @@ export default async function CreatorProfilePage({ params }: Params) {
         <dl className="hairline-grid mt-10 grid grid-cols-2 rounded-lg bg-card sm:grid-cols-4">
           {creatorStats.map(([label, value]) => (
             <div className="px-5 py-4" key={label}>
-              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-                {label}
-              </dt>
+              <dt className="font-medium text-xs text-subtle">{label}</dt>
               <dd className="mt-1.5 font-semibold text-3xl tracking-[-0.04em]">{value}</dd>
             </div>
           ))}
@@ -141,7 +139,7 @@ export default async function CreatorProfilePage({ params }: Params) {
                     <p className="truncate font-semibold tracking-[-0.02em]">
                       {puzzle.title || "Untitled board"}
                     </p>
-                    <span className="shrink-0 font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
+                    <span className="shrink-0 font-medium text-xs text-subtle">
                       {puzzle.status === "featured" ? "Featured" : "Play"}
                     </span>
                   </div>

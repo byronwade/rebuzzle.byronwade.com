@@ -86,9 +86,7 @@ export default async function CommunityPage() {
                       {puzzle.title || "Untitled board"}
                     </p>
                     {puzzle.status === "featured" ? (
-                      <span className="shrink-0 font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
-                        Featured
-                      </span>
+                      <span className="shrink-0 font-medium text-xs text-subtle">Featured</span>
                     ) : null}
                   </div>
                   <p className="mt-1 text-muted-foreground text-sm">by {puzzle.username}</p>

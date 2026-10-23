@@ -70,9 +70,7 @@ export function UserMenuAccountContent({
             <span className="font-mono font-medium text-foreground text-sm tabular-nums">
               {stat.value}
             </span>
-            <span className="text-[10px] text-subtle uppercase tracking-[0.08em]">
-              {stat.label}
-            </span>
+            <span className="text-xs text-subtle">{stat.label}</span>
           </div>
         ))}
       </div>

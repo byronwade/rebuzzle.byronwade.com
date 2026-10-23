@@ -84,9 +84,7 @@ export function CommunityPuzzlePlay({
   return (
     <div className="mt-8 space-y-4 rounded-lg border border-border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-          Technique · {techniqueLabel}
-        </p>
+        <p className="font-medium text-xs text-subtle">Technique · {techniqueLabel}</p>
         {attemptsLeft !== null ? (
           <p className="font-mono text-[11px] text-subtle tabular-nums">
             {attemptsLeft} attempts left
@@ -125,9 +123,7 @@ export function CommunityPuzzlePlay({
         <ul className="space-y-1.5 text-sm leading-6">
           {hints.slice(0, hintsUsed).map((hint, index) => (
             <li key={`${index}-${hint}`}>
-              <span className="mr-2 font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
-                Hint {index + 1}
-              </span>
+              <span className="mr-2 font-medium text-xs text-subtle">Hint {index + 1}</span>
               {hint}
             </li>
           ))}

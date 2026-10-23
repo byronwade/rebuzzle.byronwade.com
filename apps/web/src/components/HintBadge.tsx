@@ -127,9 +127,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] text-subtle uppercase tracking-[0.08em]">
-                        Hint {index + 1}
-                      </span>
+                      <span className="font-medium text-xs text-subtle">Hint {index + 1}</span>
                       {isRevealed ? (
                         <Badge variant="secondary">
                           <UnlockIcon className="h-3 w-3" />

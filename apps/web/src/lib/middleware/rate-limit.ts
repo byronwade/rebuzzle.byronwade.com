@@ -36,6 +36,11 @@ function cleanupExpiredEntries() {
 }
 
 export interface RateLimitOptions {
+  /**
+   * Bucket name. Each limiter counts in its own bucket, so analytics beacons
+   * never spend the login / guest-session allowance for the same IP.
+   */
+  name?: string;
   windowMs: number; // Time window in milliseconds
   maxRequests: number; // Maximum requests per window
   keyGenerator?: (request: Request) => string; // Custom key generator
@@ -58,8 +63,11 @@ export function rateLimit(options: RateLimitOptions) {
   return async (request: Request): Promise<RateLimitResult | null> => {
     cleanupExpiredEntries();
 
-    // Generate key for this request
-    const key = options.keyGenerator?.(request) || getDefaultKey(request);
+    // Custom keys are already scoped by their caller. The shared IP key is
+    // scoped by bucket name so separate limiters never spend one allowance.
+    const customKey = options.keyGenerator?.(request);
+    const baseKey = customKey || getDefaultKey(request);
+    const key = options.name ? `${options.name}:${baseKey}` : baseKey;
 
     const now = Date.now();
     const windowMs = options.windowMs;
@@ -128,30 +136,42 @@ export function getUserKey(userId: string): string {
 export const rateLimiters = {
   // Strict rate limit for authentication endpoints
   auth: rateLimit({
+    name: "auth",
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: 5, // 5 requests per 15 minutes
   }),
 
   // Moderate rate limit for API endpoints
+  // Anonymous guest sessions: households, classrooms and offices share one IP.
+  guest: rateLimit({
+    name: "guest",
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 30,
+  }),
+
   api: rateLimit({
+    name: "api",
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 60, // 60 requests per minute
   }),
 
   // Generous rate limit for public endpoints
   public: rateLimit({
+    name: "public",
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 100, // 100 requests per minute
   }),
 
   // Strict rate limit for AI endpoints
   ai: rateLimit({
+    name: "ai",
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 10, // 10 requests per minute
   }),
 
   // Daily puzzle guesses
   guess: rateLimit({
+    name: "guess",
     windowMs: 60 * 1000,
     maxRequests: 20,
   }),
