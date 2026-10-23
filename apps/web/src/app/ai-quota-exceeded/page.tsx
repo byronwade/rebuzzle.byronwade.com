@@ -70,7 +70,7 @@ export default function AIQuotaExceededPage() {
               {/* Actions */}
               <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
                 <Button asChild className="w-full sm:w-auto" size="lg">
-                  <Link href="/">Play Today's Puzzle</Link>
+                  <Link href="/">Play today's puzzle</Link>
                 </Button>
                 <Button asChild className="w-full sm:w-auto" size="lg" variant="outline">
                   <Link href="/blog">Read Puzzle Tips</Link>

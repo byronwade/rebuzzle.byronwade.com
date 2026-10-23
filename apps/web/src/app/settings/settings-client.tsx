@@ -47,7 +47,9 @@ export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  const { visualTheme, setVisualTheme, mounted: themeMounted } = useVisualTheme();
+  // The provider hydrates in the root layout before this streamed page, so its
+  // `mounted` is already true mid-hydration here; use this page's own flag.
+  const { visualTheme, setVisualTheme } = useVisualTheme();
   const { user, isAuthenticated } = useAuth();
   const mounted = useIsClient();
   const [devMode, setDevMode] = useState(false);
@@ -440,13 +442,13 @@ export default function SettingsPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {VISUAL_THEMES.map((id) => {
                     const meta = VISUAL_THEME_META[id];
-                    const selected = themeMounted && visualTheme === id;
+                    const selected = mounted && visualTheme === id;
                     const Icon = id === "8bit" ? Gamepad2 : Palette;
                     return (
                       <button
                         key={id}
                         type="button"
-                        disabled={!themeMounted}
+                        disabled={!mounted}
                         onClick={() => {
                           setVisualTheme(id as VisualTheme);
                           toast({

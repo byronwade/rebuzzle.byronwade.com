@@ -39,7 +39,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0f766e",
+  // theme-color follows the resolved Thorbis canvas, same as every other page.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f4ee" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
   // Android/Chrome: shrink the layout viewport with the keyboard so flex shells
   // and dvh track the visible band. iOS Safari ignores this (no-op) and we pin
   // to visualViewport in VisualViewportShell instead.

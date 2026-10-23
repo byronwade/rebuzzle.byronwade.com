@@ -84,9 +84,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 /**
- * Rarity ladder. It climbs the brand's own gradient stops — teal → blue →
- * violet → amber — so a wall of badges never introduces a colour that isn't
- * already in the system.
+ * Rarity ladder on Thorbis hues: marker → success → electric blue → pumpkin →
+ * gold. The tier is always also a word, so colour is never the only cue.
  */
 const rarityConfig = {
   common: {
@@ -96,22 +95,22 @@ const rarityConfig = {
   },
   uncommon: {
     label: "Uncommon",
-    color: "text-[#0d9488] dark:text-[#00dfd8]",
-    bg: "bg-[#00dfd8]/10",
+    color: "text-success",
+    bg: "bg-success/10",
   },
   rare: {
     label: "Rare",
     color: "text-link",
-    bg: "bg-link/10",
+    bg: "bg-brand/10",
   },
   epic: {
     label: "Epic",
-    color: "text-[#7928ca] dark:text-[#a875e8]",
-    bg: "bg-[#7928ca]/10",
+    color: "text-pumpkin dark:text-[hsl(23_77%_60%)]",
+    bg: "bg-pumpkin/10",
   },
   legendary: {
     label: "Legendary",
-    color: "text-[#ab570a] dark:text-warning",
+    color: "text-warning",
     bg: "bg-warning/10",
   },
 };
@@ -142,15 +141,20 @@ const levelTiers: Array<{
   { name: "Rookie", levels: [1, 10], icon: Star, color: "text-subtle" },
   { name: "Bronze", levels: [11, 20], icon: Medal, color: "text-muted-foreground" },
   { name: "Silver", levels: [21, 35], icon: Shield, color: "text-border-strong" },
-  { name: "Gold", levels: [36, 50], icon: Trophy, color: "text-[#ab570a] dark:text-warning" },
-  { name: "Platinum", levels: [51, 65], icon: Gem, color: "text-[#0d9488] dark:text-[#00dfd8]" },
+  { name: "Gold", levels: [36, 50], icon: Trophy, color: "text-warning" },
+  { name: "Platinum", levels: [51, 65], icon: Gem, color: "text-success" },
   { name: "Diamond", levels: [66, 80], icon: Sparkles, color: "text-link" },
-  { name: "Master", levels: [81, 95], icon: Crown, color: "text-[#7928ca] dark:text-[#a875e8]" },
+  {
+    name: "Master",
+    levels: [81, 95],
+    icon: Crown,
+    color: "text-pumpkin dark:text-[hsl(23_77%_60%)]",
+  },
   {
     name: "Grandmaster",
     levels: [96, 100],
     icon: Flame,
-    color: "text-[#c0005f] dark:text-[#ff4da6]",
+    color: "text-burnt dark:text-destructive",
   },
 ];
 
@@ -444,7 +448,7 @@ export default function AchievementsPage() {
                   <Link href="/login">Login</Link>
                 </Button>
                 <Button asChild size="sm">
-                  <Link href="/signup">Sign Up</Link>
+                  <Link href="/signup">Sign up</Link>
                 </Button>
               </div>
             </CardContent>

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
+import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePageMetadata } from "@/lib/seo/metadata";
@@ -18,7 +20,7 @@ export const metadata: Metadata = generatePageMetadata({
   url: "/community",
 });
 
-export default async function CommunityPage() {
+async function CommunityPageContent() {
   await connection();
   const puzzles = await listRecentCommunityPuzzles(36);
   const baseUrl = getBaseUrl();
@@ -103,5 +105,14 @@ export default async function CommunityPage() {
         )}
       </div>
     </Layout>
+  );
+}
+
+/** Sync shell — stream the request-time body inside Suspense (Cache Components). */
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={<ContentPageSkeleton />}>
+      <CommunityPageContent />
+    </Suspense>
   );
 }

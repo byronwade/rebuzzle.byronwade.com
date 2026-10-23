@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
+import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { db } from "@/db";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePageMetadata } from "@/lib/seo/metadata";
@@ -40,7 +42,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   });
 }
 
-export default async function CreatorProfilePage({ params }: Params) {
+async function CreatorProfilePageContent({ params }: Params) {
   await connection();
   const { username: raw } = await params;
   const username = decodeURIComponent(raw || "").trim();
@@ -150,5 +152,14 @@ export default async function CreatorProfilePage({ params }: Params) {
         )}
       </div>
     </Layout>
+  );
+}
+
+/** Sync shell — stream the request-time body inside Suspense (Cache Components). */
+export default function CreatorProfilePage({ params }: Params) {
+  return (
+    <Suspense fallback={<ContentPageSkeleton />}>
+      <CreatorProfilePageContent params={params} />
+    </Suspense>
   );
 }

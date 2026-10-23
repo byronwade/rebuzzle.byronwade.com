@@ -358,8 +358,8 @@ export default function LeaderboardClient({
               <p className="text-muted-foreground text-sm mb-4">
                 Be the first to solve a puzzle and claim the top spot!
               </p>
-              <Button asChild>
-                <Link href="/">Start Playing</Link>
+              <Button asChild variant="brand">
+                <Link href="/">Start playing</Link>
               </Button>
             </CardContent>
           </Card>
@@ -604,8 +604,8 @@ export default function LeaderboardClient({
 
         {/* Call to Action */}
         <div className="mt-8 text-center">
-          <Button asChild size="lg" className="font-medium">
-            <Link href="/">Play Today's Puzzle</Link>
+          <Button asChild size="lg" variant="brand">
+            <Link href="/">Play today's puzzle</Link>
           </Button>
         </div>
 

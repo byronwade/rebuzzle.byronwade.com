@@ -143,6 +143,28 @@ interface GameOverClientProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
+type StoredFeedback = {
+  perception: PerceptionChoice | null;
+  qualityVote: QualityVote | null;
+  qualityReasons: QualityReason[];
+};
+
+const EMPTY_FEEDBACK: StoredFeedback = { perception: null, qualityVote: null, qualityReasons: [] };
+
+/**
+ * useSyncExternalStore compares snapshots by identity, so a getter that
+ * builds a fresh object each call re-renders forever. Hand back the previous
+ * object while its serialized value is unchanged.
+ */
+const snapshotCache = new Map<string, { json: string; value: unknown }>();
+function stableSnapshot<T>(slot: string, value: T): T {
+  const json = JSON.stringify(value);
+  const cached = snapshotCache.get(slot);
+  if (cached && cached.json === json) return cached.value as T;
+  snapshotCache.set(slot, { json, value });
+  return value;
+}
+
 export default function GameOverClient({ gameData, searchParams: params }: GameOverClientProps) {
   const { userId, isGuest, isAuthenticated, isLoading: authLoading } = useAuth();
   const showSignupCta = !authLoading && (!isAuthenticated || isGuest || !userId);
@@ -186,13 +208,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
         window.removeEventListener("rebuzzle:game-over-feedback", onCustom);
       };
     },
-    () => {
+    (): StoredFeedback => {
       if (!puzzleFeedbackKey) {
-        return {
-          perception: null as PerceptionChoice | null,
-          qualityVote: null as QualityVote | null,
-          qualityReasons: [] as QualityReason[],
-        };
+        return EMPTY_FEEDBACK;
       }
       try {
         const stored = localStorage.getItem(`difficultyPerception:${puzzleFeedbackKey}`);
@@ -211,20 +229,12 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             );
           }
         }
-        return { perception, qualityVote, qualityReasons };
+        return stableSnapshot("feedback", { perception, qualityVote, qualityReasons });
       } catch {
-        return {
-          perception: null as PerceptionChoice | null,
-          qualityVote: null as QualityVote | null,
-          qualityReasons: [] as QualityReason[],
-        };
+        return EMPTY_FEEDBACK;
       }
     },
-    () => ({
-      perception: null as PerceptionChoice | null,
-      qualityVote: null as QualityVote | null,
-      qualityReasons: [] as QualityReason[],
-    })
+    () => EMPTY_FEEDBACK
   );
   const perception = perceptionOverride ?? storedFeedback.perception;
   const qualityVote = qualityVoteOverride ?? storedFeedback.qualityVote;
@@ -244,7 +254,10 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           puzzleDate?: string;
         };
         if (parsed.answer && (!parsed.puzzleDate || parsed.puzzleDate === todayKey)) {
-          return { answer: parsed.answer, explanation: parsed.explanation || "" };
+          return stableSnapshot("solution", {
+            answer: parsed.answer,
+            explanation: parsed.explanation || "",
+          });
         }
       } catch {}
       return null;

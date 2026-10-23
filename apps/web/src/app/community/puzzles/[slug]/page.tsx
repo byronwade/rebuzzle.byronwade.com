@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { CreatorAttribution } from "@/components/CreatorAttribution";
 import Layout from "@/components/Layout";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
+import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { CommunityPuzzlePlay } from "@/components/studio/CommunityPuzzlePlay";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePageMetadata } from "@/lib/seo/metadata";
@@ -40,7 +42,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   });
 }
 
-export default async function CommunityPuzzlePage({ params }: Params) {
+async function CommunityPuzzlePageContent({ params }: Params) {
   await connection();
   const { slug: raw } = await params;
   const slug = decodeURIComponent(raw || "").trim();
@@ -110,5 +112,14 @@ export default async function CommunityPuzzlePage({ params }: Params) {
         </p>
       </div>
     </Layout>
+  );
+}
+
+/** Sync shell — stream the request-time body inside Suspense (Cache Components). */
+export default function CommunityPuzzlePage({ params }: Params) {
+  return (
+    <Suspense fallback={<ContentPageSkeleton />}>
+      <CommunityPuzzlePageContent params={params} />
+    </Suspense>
   );
 }

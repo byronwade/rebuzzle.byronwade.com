@@ -1,7 +1,9 @@
 import { CheckCircle2, Mail, XCircle } from "lucide-react";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
+import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCollection } from "@/db/mongodb";
@@ -41,7 +43,7 @@ async function disableSubscription(opts: {
   }
 }
 
-export default async function UnsubscribePage({ searchParams }: { searchParams: SearchParams }) {
+async function UnsubscribePageContent({ searchParams }: { searchParams: SearchParams }) {
   await connection();
   const params = await searchParams;
 
@@ -141,5 +143,14 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
         </div>
       </div>
     </Layout>
+  );
+}
+
+/** Sync shell — stream the request-time body inside Suspense (Cache Components). */
+export default function UnsubscribePage({ searchParams }: { searchParams: SearchParams }) {
+  return (
+    <Suspense fallback={<ContentPageSkeleton />}>
+      <UnsubscribePageContent searchParams={searchParams} />
+    </Suspense>
   );
 }
