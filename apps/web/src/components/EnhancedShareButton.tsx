@@ -1,18 +1,9 @@
 "use client";
 
-import {
-  Check,
-  Copy,
-  Facebook,
-  Link2,
-  Linkedin,
-  Mail,
-  MessageCircle,
-  Share2,
-  Twitter,
-} from "lucide-react";
+import { Check, Copy, Link2, Mail, Share2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { FacebookIcon, LinkedinIcon, RedditIcon, XIcon } from "@/components/brand/SocialIcons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -265,19 +256,19 @@ export function EnhancedShareButton({
       <DropdownMenuContent align="center" className="w-56">
         <DropdownMenuGroup>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("twitter")}>
-            <Twitter data-icon="inline-start" className="mr-2 h-4 w-4" />
+            <XIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             Share on X
           </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("facebook")}>
-            <Facebook data-icon="inline-start" className="mr-2 h-4 w-4" />
+            <FacebookIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             Share on Facebook
           </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("linkedin")}>
-            <Linkedin data-icon="inline-start" className="mr-2 h-4 w-4" />
+            <LinkedinIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             Share on LinkedIn
           </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer" onClick={() => void handleShare("reddit")}>
-            <MessageCircle data-icon="inline-start" className="mr-2 h-4 w-4" />
+            <RedditIcon data-icon="inline-start" className="mr-2 h-4 w-4" />
             Share on Reddit
           </DropdownMenuItem>
         </DropdownMenuGroup>
