@@ -521,6 +521,31 @@
     }
   }
 
+  /*
+   * Invisible 44px hit areas for compact controls on touch screens.
+   *
+   * Every link or button inside `.touch-targets` gets a centred ::after at
+   * least 44px square, so a 32px icon button or a 22px pill keeps its drawn
+   * size but takes a full fingertip. Leave about 10px between neighbours or
+   * their areas overlap. `:where()` keeps the position rule at zero class
+   * specificity, so an element that is already `absolute` stays that way.
+   */
+  @media (pointer: coarse) {
+    :where(.touch-targets) :is(a, button) {
+      position: relative;
+    }
+
+    :where(.touch-targets) :is(a, button)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+
   /* Momentum scrolling for the rare menu long enough to need it. */
   [role="menu"],
   [role="listbox"] {
