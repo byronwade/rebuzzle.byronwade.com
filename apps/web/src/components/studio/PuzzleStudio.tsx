@@ -1158,7 +1158,7 @@ export function PuzzleStudio() {
 
               {catalogTab !== "ai" ? (
                 <input
-                  className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-border-strong"
+                  className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-base outline-none transition-colors focus:border-border-strong md:text-sm"
                   onChange={(e) => setCatalogQuery(e.target.value)}
                   placeholder={catalogTab === "icons" ? "Search icons…" : "Search marks…"}
                   value={catalogQuery}
@@ -1169,7 +1169,7 @@ export function PuzzleStudio() {
                 <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
                   {filteredCatalog.map((item) => (
                     <button
-                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-[10px] text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
+                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
                       key={item.id}
                       onClick={() => addPictogram(item)}
                       title={`Add ${item.concept}`}
@@ -1189,7 +1189,7 @@ export function PuzzleStudio() {
                 <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
                   {filteredMarks.map((mark) => (
                     <button
-                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-[10px] text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
+                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
                       key={mark.id}
                       onClick={() => addMark(mark)}
                       title={`Add ${mark.label}`}
@@ -1213,7 +1213,7 @@ export function PuzzleStudio() {
                   <label className="block text-sm">
                     <span className="text-muted-foreground">What should it look like?</span>
                     <input
-                      className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-border-strong"
+                      className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-base outline-none transition-colors focus:border-border-strong md:text-sm"
                       disabled={aiGenerating || aiQuota.remaining <= 0}
                       onChange={(e) => setAiPrompt(e.target.value)}
                       onKeyDown={(e) => {
