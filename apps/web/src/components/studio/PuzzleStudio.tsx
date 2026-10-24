@@ -6,6 +6,7 @@ import { defaultPositionForIndex, snapPosition } from "@/ai/puzzle-agent/visual/
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
+import { PageHeader } from "@/components/PageHeader";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
 import {
   type EveReviewLiveState,
@@ -890,24 +891,22 @@ export function PuzzleStudio() {
 
   if (!isAuthenticated || isGuest) {
     return (
-      <div className="mx-auto max-w-page px-4 py-16 md:px-6 md:py-24">
+      <div className="mx-auto max-w-page px-4 py-10 md:px-6 md:py-14">
         <div className="max-w-2xl">
-          <p className="eyebrow">Studio</p>
-          <h1 className="mt-5 text-balance font-semibold text-[clamp(2.75rem,6vw,4.5rem)] leading-[0.95] tracking-[-0.065em]">
-            Make a rebus in three quiet steps.
-          </h1>
-          <p className="mt-5 max-w-xl text-pretty text-muted-foreground leading-7">
-            Tap icons, write the answer, let Eve grade it. Good boards can fill a daily slot — and
-            always live on your profile.
-          </p>
-          <ol className="mt-12 border-border border-t">
+          <PageHeader
+            className="mb-0 md:mb-0"
+            description="Tap icons, write the answer, let Eve grade it. Good boards can fill a daily slot and always live on your profile."
+            eyebrow="Studio"
+            title="Make a rebus in three steps."
+          />
+          <ol className="mt-10 border-border border-t">
             {[
               "Compose the board from fair catalog icons",
               "Add answer, hints, and a short mapping",
               "Publish into the lottery",
             ].map((line, i) => (
               <li
-                className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-4 border-border border-b py-6"
+                className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-border border-b py-5 md:grid-cols-[3.5rem_minmax(0,1fr)]"
                 key={line}
               >
                 <span className="pt-0.5 font-mono text-subtle text-xs tabular-nums">0{i + 1}</span>
@@ -915,13 +914,13 @@ export function PuzzleStudio() {
               </li>
             ))}
           </ol>
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Button asChild>
+          <div className="mt-10 flex flex-col gap-2 sm:flex-row">
+            <Button asChild size="lg">
               <Link href={isGuest ? "/signup?next=/studio" : "/login?next=/studio"}>
                 {isGuest ? "Create a free account" : "Log in to open Studio"}
               </Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild size="lg" variant="outline">
               <Link href="/community">Browse player puzzles</Link>
             </Button>
           </div>
@@ -933,27 +932,24 @@ export function PuzzleStudio() {
   return (
     <div className="min-h-[calc(100vh-4rem)]">
       <div className="mx-auto max-w-5xl px-3 py-8 md:px-6 md:py-12">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow">Studio</p>
-            <p className="mt-3 font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
-              Build a board.
-            </p>
-            <p className="mt-2 text-muted-foreground text-sm">
-              Three steps. Fair icons. Eve grades. Lottery optional.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {user?.username ? (
-              <Button asChild size="sm" variant="outline">
-                <Link href={profilePathForUsername(user.username)}>Your profile</Link>
+        <PageHeader
+          actions={
+            <>
+              {user?.username ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link href={profilePathForUsername(user.username)}>Your profile</Link>
+                </Button>
+              ) : null}
+              <Button onClick={resetBoard} size="sm" type="button" variant="ghost">
+                New board
               </Button>
-            ) : null}
-            <Button onClick={resetBoard} size="sm" type="button" variant="ghost">
-              New board
-            </Button>
-          </div>
-        </header>
+            </>
+          }
+          className="mb-0 md:mb-0"
+          description="Three steps. Fair icons. Eve grades. Lottery optional."
+          eyebrow="Studio"
+          title="Build a board."
+        />
 
         <nav
           aria-label="Studio steps"
