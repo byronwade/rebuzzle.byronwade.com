@@ -82,6 +82,9 @@ function LayoutContent({
       <main
         className={cn(
           "relative z-10 flex min-h-0 flex-1 flex-col",
+          // `mx-auto` page wrappers opt out of flex stretch, so without this they
+          // size to their content: narrow pages shrink and wide content overflows.
+          "[&>*]:w-full",
           isGamePage && "overflow-hidden",
           className
         )}
