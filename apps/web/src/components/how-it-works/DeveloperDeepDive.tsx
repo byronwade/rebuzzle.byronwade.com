@@ -222,7 +222,7 @@ export function DeveloperDeepDive() {
                 {String(index + 1).padStart(2, "0")}
               </span>
               <h4 className="font-semibold tracking-[-0.02em]">{step.title}</h4>
-              <p className="text-sm text-muted-foreground leading-6 md:col-start-3">
+              <p className="col-start-2 text-sm text-muted-foreground leading-6 md:col-start-3">
                 {step.detail}
               </p>
             </li>
