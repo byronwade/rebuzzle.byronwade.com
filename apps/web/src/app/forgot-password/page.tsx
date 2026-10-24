@@ -3,7 +3,7 @@
 import { Loader2, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { AuthField, AuthNotice, AuthShell, authFooterLink } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,13 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const successRef = useRef<HTMLDivElement>(null);
+
+  // The form unmounts on success; move focus to the result so keyboard and
+  // screen-reader users land on what changed.
+  useEffect(() => {
+    if (success) successRef.current?.focus();
+  }, [success]);
 
   const validateEmail = (emailValue: string): string | undefined => {
     if (!emailValue.trim()) {
@@ -105,7 +112,7 @@ export default function ForgotPasswordPage() {
       title={success ? "Check your inbox." : "Reset your password."}
     >
       {success ? (
-        <div className="space-y-4">
+        <div className="space-y-4 rounded-lg outline-none" ref={successRef} tabIndex={-1}>
           <AuthNotice tone="success">
             Didn't get it? Check spam, or send it again in a minute.
           </AuthNotice>
