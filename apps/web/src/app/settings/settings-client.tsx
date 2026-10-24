@@ -1,5 +1,6 @@
 "use client";
 
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import {
   Check,
   ChevronRight,
@@ -305,37 +306,36 @@ export default function SettingsPage() {
                   System follows your device. Works with every style.
                 </p>
               </div>
-              <div
+              <RadioGroupPrimitive.Root
                 aria-label="Color mode"
                 className="inline-grid w-full grid-cols-3 gap-1 rounded-lg bg-inset p-1 sm:w-auto"
-                role="radiogroup"
+                disabled={!mounted}
+                onValueChange={(value) => {
+                  setTheme(value);
+                  if (value !== "system") updateSettings({ darkMode: value === "dark" });
+                }}
+                orientation="horizontal"
+                value={colorMode}
               >
                 {COLOR_MODES.map(({ value, label, icon: Icon }) => {
                   const selected = colorMode === value;
                   return (
-                    <button
-                      aria-checked={selected}
+                    <RadioGroupPrimitive.Item
                       className={cn(
                         "inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 font-medium text-sm transition-colors focus-ring",
                         selected
                           ? "bg-card text-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground"
                       )}
-                      disabled={!mounted}
                       key={value}
-                      onClick={() => {
-                        setTheme(value);
-                        if (value !== "system") updateSettings({ darkMode: value === "dark" });
-                      }}
-                      role="radio"
-                      type="button"
+                      value={value}
                     >
                       <Icon aria-hidden className="h-4 w-4" />
                       {label}
-                    </button>
+                    </RadioGroupPrimitive.Item>
                   );
                 })}
-              </div>
+              </RadioGroupPrimitive.Root>
             </div>
 
             <div className="space-y-3 p-4 sm:p-5">
@@ -354,28 +354,27 @@ export default function SettingsPage() {
                   .
                 </p>
               </div>
-              <div aria-label="Style" className="grid gap-3 sm:grid-cols-2" role="radiogroup">
+              <RadioGroupPrimitive.Root
+                aria-label="Style"
+                className="grid gap-3 sm:grid-cols-2"
+                disabled={!mounted}
+                onValueChange={(value) => setVisualTheme(value as VisualTheme)}
+                value={mounted ? visualTheme : undefined}
+              >
                 {VISUAL_THEMES.map((id) => {
                   const meta = VISUAL_THEME_META[id];
                   const selected = mounted && visualTheme === id;
                   const isPixel = id === "8bit";
                   return (
-                    <button
-                      aria-checked={selected}
+                    <RadioGroupPrimitive.Item
                       className={cn(
                         "group relative overflow-hidden rounded-lg border text-left transition-colors focus-ring",
                         selected
                           ? "border-foreground ring-1 ring-foreground"
                           : "border-border hover:border-border-strong"
                       )}
-                      disabled={!mounted}
                       key={id}
-                      onClick={() => {
-                        setVisualTheme(id as VisualTheme);
-                        toast({ title: `${meta.label} style`, description: meta.description });
-                      }}
-                      role="radio"
-                      type="button"
+                      value={id}
                     >
                       {/* Miniature of the style: a puzzle tile and a commit button */}
                       <div
@@ -425,10 +424,10 @@ export default function SettingsPage() {
                           {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
                         </span>
                       </div>
-                    </button>
+                    </RadioGroupPrimitive.Item>
                   );
                 })}
-              </div>
+              </RadioGroupPrimitive.Root>
             </div>
           </SettingsSection>
 

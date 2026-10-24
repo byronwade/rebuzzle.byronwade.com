@@ -1,5 +1,6 @@
 "use client";
 
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import {
   ArrowDown,
   Award,
@@ -215,10 +216,12 @@ export default function LeaderboardClient({
 
         {/* Ranking controls — what to rank by, and over what window */}
         <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <div
+          <RadioGroupPrimitive.Root
             aria-label="Rank by"
             className="inline-grid grid-cols-2 gap-1 rounded-lg bg-inset p-1"
-            role="radiogroup"
+            onValueChange={(value) => setSortBy(value as typeof sortBy)}
+            orientation="horizontal"
+            value={sortBy}
           >
             {(
               [
@@ -226,23 +229,20 @@ export default function LeaderboardClient({
                 { value: "streak", label: "Streaks", icon: Flame },
               ] as const
             ).map(({ value, label, icon: Icon }) => (
-              <button
-                aria-checked={sortBy === value}
+              <RadioGroupPrimitive.Item
                 className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-4 font-medium text-sm transition-colors focus-ring ${
                   sortBy === value
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 key={value}
-                onClick={() => setSortBy(value)}
-                role="radio"
-                type="button"
+                value={value}
               >
                 <Icon aria-hidden className="size-4" />
                 {label}
-              </button>
+              </RadioGroupPrimitive.Item>
             ))}
-          </div>
+          </RadioGroupPrimitive.Root>
 
           {sortBy === "points" && (
             <Tabs
