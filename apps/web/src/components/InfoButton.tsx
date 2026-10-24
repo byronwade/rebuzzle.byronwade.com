@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { gameSettings } from "@/lib/gameSettings";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 
 interface InfoButtonProps {
@@ -117,8 +118,8 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
                 <div className="space-y-2">
                   <h4 className="font-semibold">General Rules:</h4>
                   <ul className="list-inside list-disc space-y-1 text-sm">
-                    <li>You have unlimited attempts to solve the puzzle</li>
-                    <li>Use hints if you're stuck - they guide you progressively</li>
+                    <li>You get {gameSettings.maxAttempts} guesses, one puzzle a day</li>
+                    <li>Stuck? Hints reveal one at a time</li>
                     <li>A new puzzle unlocks each day at your local midnight</li>
                     <li>Each puzzle type has its own unique solving approach</li>
                   </ul>
