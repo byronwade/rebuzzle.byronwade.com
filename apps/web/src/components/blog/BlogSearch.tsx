@@ -71,8 +71,8 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
 
   return (
     <div className={className}>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+        <div className="relative min-w-0 basis-full sm:flex-1 sm:basis-auto">
           <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-subtle" />
           <Input
             aria-label="Search blog posts"
@@ -98,7 +98,10 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
 
         {showTypeFilter && (
           <Select value={puzzleType} onValueChange={setPuzzleType}>
-            <SelectTrigger aria-label="Filter by puzzle type" className="h-11 w-[140px]">
+            <SelectTrigger
+              aria-label="Filter by puzzle type"
+              className="h-11 flex-1 sm:w-[140px] sm:flex-none"
+            >
               <SelectValue placeholder="Type">
                 {PUZZLE_TYPES.find((type) => type.id === puzzleType)?.name ?? "All types"}
               </SelectValue>
