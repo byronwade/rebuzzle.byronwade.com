@@ -110,7 +110,7 @@ const rarityConfig = {
   epic: {
     label: "Epic",
     dot: "bg-pumpkin",
-    color: "text-pumpkin dark:text-[hsl(23_77%_60%)]",
+    color: "text-pumpkin",
     bg: "bg-pumpkin/10",
   },
   legendary: {
@@ -154,7 +154,7 @@ const levelTiers: Array<{
     name: "Master",
     levels: [81, 95],
     icon: Crown,
-    color: "text-pumpkin dark:text-[hsl(23_77%_60%)]",
+    color: "text-pumpkin",
   },
   {
     name: "Grandmaster",
