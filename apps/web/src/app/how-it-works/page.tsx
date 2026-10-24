@@ -151,9 +151,9 @@ export default function HowItWorksPage() {
               Rebuzzle turns familiar words and phrases into visual clues. Your job is to work
               backwards—from what you see to the thought hiding underneath.
             </p>
-            <div className="mt-9 flex flex-wrap items-center gap-5">
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
               <AppLink
-                className="group inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 font-medium text-background text-sm transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
+                className="group inline-flex h-11 items-center justify-center gap-2 rounded-md bg-foreground px-5 font-medium text-background text-sm transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
                 href="/"
               >
                 Play today&apos;s puzzle
@@ -162,18 +162,21 @@ export default function HowItWorksPage() {
                   className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                 />
               </AppLink>
-              <a
-                className="text-muted-foreground text-sm underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
-                href="#decode-rules"
-              >
-                Learn the patterns
-              </a>
-              <a
-                className="text-muted-foreground text-sm underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
-                href="#under-the-hood"
-              >
-                For developers
-              </a>
+              {/* Secondary links stay on one line so neither is orphaned on phones */}
+              <div className="flex items-center justify-center gap-6 sm:justify-start sm:gap-5">
+                <a
+                  className="inline-flex h-11 items-center text-muted-foreground text-sm underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
+                  href="#decode-rules"
+                >
+                  Learn the patterns
+                </a>
+                <a
+                  className="inline-flex h-11 items-center text-muted-foreground text-sm underline decoration-border-strong underline-offset-4 transition-colors hover:text-foreground"
+                  href="#under-the-hood"
+                >
+                  For developers
+                </a>
+              </div>
             </div>
           </div>
 

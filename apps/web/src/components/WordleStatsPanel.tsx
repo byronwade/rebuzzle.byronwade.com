@@ -108,12 +108,12 @@ export function WordleStatsPanel({
               {playedThisMonth}/{monthCells.length} days
             </p>
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid max-w-[17rem] grid-cols-7 gap-1.5">
             {monthCells.map((cell) => (
               <div
                 aria-label={`${cell.key}${cell.played ? ", played" : ""}`}
                 className={cn(
-                  "aspect-square max-h-8 rounded-[4px]",
+                  "aspect-square rounded-[4px]",
                   cell.played ? "bg-foreground" : "bg-inset",
                   cell.isToday && "ring-1 ring-foreground ring-offset-1 ring-offset-card"
                 )}

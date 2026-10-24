@@ -5,6 +5,7 @@ import {
   Check,
   Flame,
   FlaskConical,
+  Lock,
   ThumbsDown,
   ThumbsUp,
   TrendingUp,
@@ -18,6 +19,7 @@ import { Confetti } from "@/components/Confetti";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { EnhancedShareButton } from "@/components/EnhancedShareButton";
 import Layout from "@/components/Layout";
+import { StatusPage } from "@/components/StatusPage";
 import { Button } from "@/components/ui/button";
 import { consumeJustSolvedSessionFlag } from "@/lib/game/game-over-href";
 import { calculateGamePoints, gameSettings } from "@/lib/gameSettings";
@@ -69,7 +71,7 @@ function QualityReasonPicker({
   return (
     <div className="space-y-2">
       <p className="text-muted-foreground text-xs">What should we improve?</p>
-      <div className="flex flex-wrap justify-center gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {QUALITY_REASON_OPTIONS.map((option) => (
           <Button
             key={option.id}
@@ -79,7 +81,7 @@ function QualityReasonPicker({
             disabled={saving}
             onClick={() => onToggle(option.id)}
             className={cn(
-              "h-8 rounded-full px-3 text-xs",
+              "h-11 rounded-full px-3 text-xs sm:h-8",
               selected.includes(option.id) &&
                 "border-destructive/40 bg-destructive/10 text-destructive"
             )}
@@ -475,458 +477,295 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
   if (!gameData.locked) {
     return (
       <Layout>
-        <div className="mx-auto max-w-lg px-4 py-16 text-center space-y-6">
-          <h1 className="text-2xl font-bold tracking-tight">Play today&apos;s puzzle</h1>
-          <p className="text-muted-foreground text-sm">
-            Results unlock after you finish today&apos;s puzzle.
-          </p>
-          <Button asChild className="w-full">
-            <Link href="/">Go to puzzle</Link>
-          </Button>
-        </div>
+        <StatusPage
+          actions={
+            <>
+              <Button asChild size="lg">
+                <Link href="/">Play today&apos;s puzzle</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/leaderboard">See the leaderboard</Link>
+              </Button>
+            </>
+          }
+          description="Results, the answer and your stats show up here once you finish today's puzzle."
+          eyebrow="Results"
+          icon={Lock}
+          title="Solve it first."
+        />
       </Layout>
     );
   }
+
+  const guessHistory = completionData?.guessHistory ?? [];
 
   return (
     <Layout>
       {success && showConfetti && <Confetti />}
 
-      <div className="mx-auto max-w-lg px-4 py-12 md:py-16">
+      <div className="fade-in-up mx-auto max-w-lg space-y-8 px-4 py-12 md:py-16">
         <h1 className="sr-only">{success ? "Puzzle solved" : "Puzzle not solved"}</h1>
-        {success ? (
-          /* SUCCESS STATE - Minimal & Clean */
-          <div className="fade-in-up space-y-10">
-            {/* Header */}
-            <div className="space-y-3 text-center">
-              <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-success/25 bg-success/10">
-                <Check className="h-5 w-5 text-success" strokeWidth={2.5} />
-              </div>
-              <p className="font-semibold text-4xl text-foreground tracking-[-0.045em]">Solved</p>
-              <p className="text-muted-foreground text-sm">You got today's puzzle</p>
-            </div>
 
-            {/* Answer */}
-            <div className="border-border border-y py-8 text-center">
-              <p className="eyebrow mb-3">The Answer</p>
-              <h2 className="text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
-                {solution.answer}
-              </h2>
-              {solution.explanation && (
-                <p className="mx-auto mt-5 max-w-sm text-balance text-muted-foreground text-sm leading-6">
-                  {solution.explanation}
-                </p>
+        {/* Verdict + answer: one card so the answer reads as the result, not a separate block */}
+        <section className="overflow-hidden rounded-xl border border-border bg-card text-center shadow-sm">
+          <div className="px-6 pt-8 pb-7">
+            <div
+              className={cn(
+                "mx-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium text-xs",
+                success
+                  ? "border-success/25 bg-success/10 text-success"
+                  : "border-border bg-inset text-muted-foreground"
               )}
+            >
+              {success ? (
+                <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={2.5} />
+              ) : (
+                <X aria-hidden className="h-3.5 w-3.5" strokeWidth={2.5} />
+              )}
+              {success
+                ? `Solved in ${attempts} ${attempts === 1 ? "guess" : "guesses"}`
+                : "Not this time"}
             </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-card py-5 text-center">
-              <div>
-                <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
-                  {attempts}
-                </div>
-                <div className="mt-1.5 font-medium text-xs text-subtle">
-                  {attempts === 1 ? "Attempt" : "Attempts"}
-                </div>
-              </div>
-              <div>
-                <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
-                  {displayScore}
-                </div>
-                <div className="mt-1.5 font-medium text-xs text-subtle">Points</div>
-              </div>
-              <div>
-                <div className="flex items-center justify-center gap-1 font-semibold text-3xl tracking-[-0.04em] tabular-nums">
-                  {streak > 0 ? (
-                    <>
-                      <span className="text-warning">{streak}</span>
-                      <Flame className="h-4 w-4 text-warning" />
-                    </>
-                  ) : (
-                    <span className="text-foreground">0</span>
-                  )}
-                </div>
-                <div className="mt-1.5 font-medium text-xs text-subtle">Streak</div>
-              </div>
-            </div>
-
-            {/* Global Comparison Badge - Social proof */}
-            {percentile !== null && percentile > 50 && (
-              <div className="rb-enter  mx-auto flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 ">
-                <TrendingUp className="h-3.5 w-3.5 text-success" />
-                <span className="font-medium text-success text-sm">
-                  Faster than {percentile}% of players today
-                </span>
-              </div>
+            <p className="eyebrow mt-6">{success ? "Today's answer" : "The answer was"}</p>
+            <h2 className="mt-2 text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
+              {solution.answer}
+            </h2>
+            {solution.explanation && (
+              <p className="mx-auto mt-4 max-w-sm text-pretty text-muted-foreground text-sm leading-6">
+                {solution.explanation}
+              </p>
             )}
+          </div>
 
-            {/* Difficulty perception — feeds self-learning */}
-            <div className="space-y-3 text-center">
-              <p className="eyebrow">How did it feel?</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { id: "too_easy", label: "Too easy" },
-                    { id: "just_right", label: "Just right" },
-                    { id: "too_hard", label: "Too hard" },
-                  ] as const
-                ).map((option) => {
-                  const selected = perception === option.id;
-                  return (
-                    <Button
-                      key={option.id}
-                      type="button"
-                      variant="outline"
-                      disabled={Boolean(perception) || perceptionSaving}
-                      onClick={() => void submitPerception(option.id)}
+          {success ? (
+            <dl className="grid grid-cols-3 divide-x divide-border border-border border-t bg-inset/60 py-4">
+              <div className="flex flex-col-reverse gap-1">
+                <dt className="text-subtle text-xs">{attempts === 1 ? "Guess" : "Guesses"}</dt>
+                <dd className="font-semibold text-2xl text-foreground tabular-nums tracking-[-0.04em]">
+                  {attempts}
+                </dd>
+              </div>
+              <div className="flex flex-col-reverse gap-1">
+                <dt className="text-subtle text-xs">Points</dt>
+                <dd className="font-semibold text-2xl text-foreground tabular-nums tracking-[-0.04em]">
+                  {displayScore}
+                </dd>
+              </div>
+              <div className="flex flex-col-reverse gap-1">
+                <dt className="text-subtle text-xs">Day streak</dt>
+                <dd className="flex items-center justify-center gap-1 font-semibold text-2xl tabular-nums tracking-[-0.04em]">
+                  <span className={streak > 0 ? "text-warning" : "text-foreground"}>{streak}</span>
+                  {streak > 0 ? <Flame aria-hidden className="h-4 w-4 text-warning" /> : null}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="border-border border-t bg-inset/60 px-6 py-4 text-muted-foreground text-sm">
+              {todaySolves !== null && todaySolves > 0
+                ? `${todaySolves.toLocaleString()} ${todaySolves === 1 ? "player" : "players"} solved it today. A fresh one unlocks at midnight.`
+                : "A fresh puzzle unlocks at midnight."}
+            </p>
+          )}
+        </section>
+
+        {/* Global comparison — social proof, only when it flatters */}
+        {success && percentile !== null && percentile > 50 && (
+          <p className="rb-enter mx-auto flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3.5 py-1.5 font-medium text-sm text-success">
+            <TrendingUp aria-hidden className="h-3.5 w-3.5" />
+            Faster than {percentile}% of players today
+          </p>
+        )}
+
+        {guessHistory.length > 0 && (
+          <section className="space-y-3">
+            <p className="eyebrow">Your guesses</p>
+            <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+              {guessHistory.map((attempt, index) => {
+                const isWinning = success && index === guessHistory.length - 1;
+                return (
+                  <li
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3",
+                      isWinning && "bg-success/[0.07]"
+                    )}
+                    key={`guess-${attempt.attemptNumber}-${attempt.text}`}
+                  >
+                    <span
                       className={cn(
-                        "h-auto py-3 text-xs sm:text-sm",
-                        selected && "border-foreground bg-inset"
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs",
+                        isWinning ? "bg-success text-background" : "bg-inset text-subtle"
                       )}
                     >
-                      {option.label}
-                    </Button>
-                  );
-                })}
-              </div>
-              {perception && (
-                <p className="text-muted-foreground text-xs">
-                  Thanks — this tunes tomorrow&apos;s puzzle
-                </p>
-              )}
-            </div>
+                      {isWinning ? (
+                        <Check aria-hidden className="h-3 w-3" />
+                      ) : (
+                        attempt.attemptNumber
+                      )}
+                    </span>
+                    <span className="flex flex-wrap gap-1.5">
+                      {attempt.wordResults.map((result) => (
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 font-medium text-xs",
+                            result.correct
+                              ? "bg-success/15 text-success"
+                              : "bg-destructive/10 text-destructive"
+                          )}
+                          key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
+                        >
+                          {result.word}
+                        </span>
+                      ))}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        )}
 
-            <div className="space-y-3 text-center">
-              <p className="eyebrow">Did you enjoy this puzzle?</p>
-              <div className="flex items-center justify-center gap-2">
+        <div className="space-y-2">
+          <EnhancedShareButton
+            answer={solution.answer}
+            attempts={attempts}
+            className="w-full"
+            difficulty={gameData.difficulty}
+            maxAttempts={gameSettings.maxAttempts}
+            puzzleType={gameData.puzzleType || gameData.metadata?.puzzleType}
+            size="lg"
+            streak={streak}
+            success={success}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Button asChild className="h-11 sm:h-9" variant="outline">
+              <Link href="/leaderboard">Leaderboard</Link>
+            </Button>
+            <Button asChild className="h-11 sm:h-9" variant="outline">
+              <Link href="/blog">Puzzle tips</Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Both feedback questions in one quiet panel — they feed the self-learning loop */}
+        <section className="space-y-5 rounded-xl border border-border bg-card px-5 py-5">
+          <div className="space-y-2.5">
+            <p className="font-medium text-foreground text-sm">How did it feel?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { id: "too_easy", label: "Too easy" },
+                  { id: "just_right", label: "Just right" },
+                  { id: "too_hard", label: "Too hard" },
+                ] as const
+              ).map((option) => (
                 <Button
+                  aria-pressed={perception === option.id}
+                  className={cn(
+                    "h-11 text-sm sm:h-9",
+                    perception === option.id && "border-foreground bg-inset"
+                  )}
+                  disabled={Boolean(perception) || perceptionSaving}
+                  key={option.id}
+                  onClick={() => void submitPerception(option.id)}
                   type="button"
                   variant="outline"
-                  disabled={qualityVoteSaving}
-                  onClick={() => void submitQualityVote("like")}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            {perception && (
+              <p className="text-muted-foreground text-xs">
+                Thanks, this tunes tomorrow&apos;s puzzle.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2.5 border-border border-t pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-medium text-foreground text-sm">Good puzzle?</p>
+              <div className="flex gap-2">
+                <Button
+                  aria-label="Like this puzzle"
+                  aria-pressed={qualityVote === "like"}
                   className={cn(
-                    "gap-2",
+                    "h-11 sm:h-9",
                     qualityVote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
+                  disabled={qualityVoteSaving}
+                  onClick={() => void submitQualityVote("like")}
+                  type="button"
+                  variant="outline"
                 >
                   <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
                   Like
                 </Button>
                 <Button
-                  type="button"
-                  variant="outline"
-                  disabled={qualityVoteSaving}
-                  onClick={() => void submitQualityVote("dislike")}
+                  aria-label="Dislike this puzzle"
+                  aria-pressed={qualityVote === "dislike"}
                   className={cn(
-                    "gap-2",
+                    "h-11 sm:h-9",
                     qualityVote === "dislike" &&
                       "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
+                  disabled={qualityVoteSaving}
+                  onClick={() => void submitQualityVote("dislike")}
+                  type="button"
+                  variant="outline"
                 >
                   <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
                   Dislike
                 </Button>
               </div>
-              {qualityVote === "dislike" && (
-                <QualityReasonPicker
-                  selected={qualityReasons}
-                  saving={qualityVoteSaving}
-                  onToggle={toggleQualityReason}
-                />
-              )}
-              {qualityVote && (
-                <p className="text-muted-foreground text-xs">
-                  Saved — likes help Eve craft better boards
-                </p>
-              )}
             </div>
-
-            {/* Guess History */}
-            {completionData?.guessHistory && completionData.guessHistory.length > 0 && (
-              <div className="space-y-3">
-                <p className="eyebrow text-center">Your Guesses</p>
-                <div className="space-y-2">
-                  {completionData.guessHistory.map((attempt, index) => {
-                    const isWinning = index === completionData.guessHistory.length - 1;
-                    return (
-                      <div
-                        key={`guess-${attempt.attemptNumber}-${attempt.text}`}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg border p-3",
-                          isWinning
-                            ? "border-success/25 bg-success/[0.07]"
-                            : "border-border bg-card"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px]",
-                            isWinning ? "bg-success text-background" : "bg-inset text-subtle"
-                          )}
-                        >
-                          {isWinning ? <Check className="h-3.5 w-3.5" /> : attempt.attemptNumber}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {attempt.wordResults.map((result) => (
-                            <span
-                              key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
-                              className={cn(
-                                "rounded px-1.5 py-0.5 font-medium text-xs",
-                                result.correct
-                                  ? "bg-success/15 text-success"
-                                  : "bg-destructive/10 text-destructive"
-                              )}
-                            >
-                              {result.word}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            {qualityVote === "dislike" && (
+              <QualityReasonPicker
+                onToggle={toggleQualityReason}
+                saving={qualityVoteSaving}
+                selected={qualityReasons}
+              />
             )}
+            {qualityVote && (
+              <p className="text-muted-foreground text-xs">
+                Saved. Votes help Eve craft better boards.
+              </p>
+            )}
+          </div>
+        </section>
 
-            {/* Share Button */}
-            <EnhancedShareButton
-              attempts={attempts}
-              answer={solution.answer}
-              className="w-full"
-              difficulty={gameData.difficulty}
-              maxAttempts={gameSettings.maxAttempts}
-              puzzleType={gameData.puzzleType || gameData.metadata?.puzzleType}
-              streak={streak}
-              success={success}
-            />
+        {playtestEligible && <PlaytestInvitation />}
 
-            {/* Secondary Actions */}
-            <div className="flex gap-3">
-              <Button asChild variant="outline" className="w-full">
-                <Link className="flex-1" href="/leaderboard">
-                  Leaderboard
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link className="flex-1" href="/blog">
-                  Tips
-                </Link>
-              </Button>
-            </div>
-
-            {playtestEligible && <PlaytestInvitation />}
-
-            {/* Guest → account CTA (after play, never blocks the win) */}
-            {showSignupCta && (
-              <div className="rounded-xl border border-border bg-inset px-5 py-5 text-center space-y-3">
-                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-foreground/5">
-                  <UserPlus className="h-4 w-4 text-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium text-foreground text-sm">Keep your streak going</p>
-                  <p className="text-muted-foreground text-xs leading-5">
-                    Create a free account to save progress across devices. You already played as a
-                    guest — signing up won&apos;t lose today&apos;s solve.
-                  </p>
-                </div>
-                <Button asChild className="w-full">
-                  <Link href="/signup" className="block">
-                    Create a free account
-                  </Link>
-                </Button>
-                <p className="text-muted-foreground text-xs">
-                  Already have one?{" "}
+        {/* Guest → account CTA (after play, never blocks the result) */}
+        {showSignupCta && (
+          <section className="flex flex-col gap-4 rounded-xl border border-border bg-inset px-5 py-5 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground/5">
+                <UserPlus aria-hidden className="h-4 w-4 text-foreground" />
+              </span>
+              <div className="space-y-1">
+                <p className="font-medium text-foreground text-sm">Keep your streak going</p>
+                <p className="text-muted-foreground text-xs leading-5">
+                  Save progress across devices. Signing up keeps today&apos;s{" "}
+                  {success ? "solve" : "result"}.{" "}
                   <Link
                     className="text-foreground underline-offset-2 hover:underline"
                     href="/login"
                   >
-                    Sign in
+                    Log in
                   </Link>
                 </p>
               </div>
-            )}
-
-            {/* Countdown */}
-            <div className="border-border border-t pt-6 text-center">
-              <p className="eyebrow mb-2">Next puzzle in</p>
-              <CountdownTimer />
             </div>
-          </div>
-        ) : (
-          /* FAILURE STATE - Minimal & Clean */
-          <div className="fade-in-up space-y-10">
-            {/* Header */}
-            <div className="space-y-3 text-center">
-              <div className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-inset">
-                <X className="h-8 w-8 text-muted-foreground" strokeWidth={2} />
-              </div>
-              <p className="font-semibold text-4xl text-foreground tracking-[-0.045em]">
-                Not quite
-              </p>
-              <p className="text-muted-foreground text-sm">Better luck tomorrow</p>
-            </div>
-
-            {/* Answer */}
-            <div className="border-border border-y py-8 text-center">
-              <p className="eyebrow mb-3">The Answer Was</p>
-              <h2 className="text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
-                {solution.answer}
-              </h2>
-              {solution.explanation && (
-                <p className="mx-auto mt-5 max-w-sm text-balance text-muted-foreground text-sm leading-6">
-                  {solution.explanation}
-                </p>
-              )}
-            </div>
-
-            {/* Difficulty perception — still valuable on losses */}
-            <div className="space-y-3 text-center">
-              <p className="eyebrow">How did it feel?</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { id: "too_easy", label: "Too easy" },
-                    { id: "just_right", label: "Just right" },
-                    { id: "too_hard", label: "Too hard" },
-                  ] as const
-                ).map((option) => {
-                  const selected = perception === option.id;
-                  return (
-                    <Button
-                      key={option.id}
-                      type="button"
-                      variant="outline"
-                      disabled={Boolean(perception) || perceptionSaving}
-                      onClick={() => void submitPerception(option.id)}
-                      className={cn(
-                        "h-auto py-3 text-xs sm:text-sm",
-                        selected && "border-foreground bg-inset"
-                      )}
-                    >
-                      {option.label}
-                    </Button>
-                  );
-                })}
-              </div>
-              {perception && (
-                <p className="text-muted-foreground text-xs">
-                  Thanks — this tunes tomorrow&apos;s puzzle
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-3 text-center">
-              <p className="eyebrow">Did you enjoy this puzzle?</p>
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={qualityVoteSaving}
-                  onClick={() => void submitQualityVote("like")}
-                  className={cn(
-                    "gap-2",
-                    qualityVote === "like" && "border-success/50 bg-success/10 text-success"
-                  )}
-                >
-                  <ThumbsUp className="h-4 w-4" data-icon="inline-start" />
-                  Like
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={qualityVoteSaving}
-                  onClick={() => void submitQualityVote("dislike")}
-                  className={cn(
-                    "gap-2",
-                    qualityVote === "dislike" &&
-                      "border-destructive/50 bg-destructive/10 text-destructive"
-                  )}
-                >
-                  <ThumbsDown className="h-4 w-4" data-icon="inline-start" />
-                  Dislike
-                </Button>
-              </div>
-              {qualityVote === "dislike" && (
-                <QualityReasonPicker
-                  selected={qualityReasons}
-                  saving={qualityVoteSaving}
-                  onToggle={toggleQualityReason}
-                />
-              )}
-              {qualityVote && (
-                <p className="text-muted-foreground text-xs">
-                  Saved — likes help Eve craft better boards
-                </p>
-              )}
-            </div>
-
-            {/* Guess History */}
-            {completionData?.guessHistory && completionData.guessHistory.length > 0 && (
-              <div className="space-y-3">
-                <p className="eyebrow text-center">Your Attempts</p>
-                <div className="space-y-2">
-                  {completionData.guessHistory.map((attempt) => (
-                    <div
-                      key={`attempt-${attempt.attemptNumber}-${attempt.wordResults.map((r) => r.word).join("-")}`}
-                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
-                    >
-                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-inset font-mono text-[10px] text-subtle">
-                        {attempt.attemptNumber}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {attempt.wordResults.map((result) => (
-                          <span
-                            key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
-                            className={cn(
-                              "rounded px-1.5 py-0.5 font-medium text-xs",
-                              result.correct
-                                ? "bg-success/15 text-success"
-                                : "bg-destructive/10 text-destructive"
-                            )}
-                          >
-                            {result.word}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Comeback Encouragement - Psychology: Positive reinforcement for return */}
-            <div className="rounded-xl border border-border bg-inset px-6 py-5 text-center">
-              <p className="font-medium text-foreground text-sm">Every puzzle makes you sharper</p>
-              <p className="mt-1 text-muted-foreground text-xs">
-                {todaySolves !== null && todaySolves > 0
-                  ? `${todaySolves.toLocaleString()} players solved today. Come back tomorrow for a fresh start!`
-                  : "Come back tomorrow for a fresh start!"}
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <Button asChild variant="outline" className="w-full">
-                <Link className="flex-1" href="/leaderboard">
-                  Leaderboard
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link className="flex-1" href="/blog">
-                  Tips
-                </Link>
-              </Button>
-            </div>
-
-            {playtestEligible && <PlaytestInvitation />}
-
-            {/* Countdown */}
-            <div className="border-border border-t pt-6 text-center">
-              <p className="eyebrow mb-2">Next puzzle in</p>
-              <CountdownTimer />
-            </div>
-          </div>
+            <Button asChild className="h-11 shrink-0 sm:h-9">
+              <Link href="/signup">Create account</Link>
+            </Button>
+          </section>
         )}
+
+        <section className="border-border border-t pt-8 text-center">
+          <p className="eyebrow mb-3">Next puzzle in</p>
+          <CountdownTimer />
+        </section>
       </div>
     </Layout>
   );

@@ -241,10 +241,9 @@ export function EnhancedShareButton({
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Share options"
-          className={cn(
-            hasNativeShare || !success ? "flex-1" : "w-full",
-            !hasNativeShare && "w-full"
-          )}
+          // Without native share this sits beside Copy, so it must flex rather
+          // than fill the row (w-full pushed Copy past the column edge).
+          className={hasNativeShare ? "flex-1" : "flex-[1.4]"}
           disabled={isSharing}
           size={size}
           variant={hasNativeShare ? "outline" : "default"}

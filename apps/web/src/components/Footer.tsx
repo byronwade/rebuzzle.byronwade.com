@@ -42,15 +42,16 @@ const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[
 ];
 
 /**
- * Four-column footer. Column headings are set in the mono caption voice; the
+ * Four link columns: two-up on phones so the footer isn't a long single list,
+ * four-up beside the brand on desktop. Column headings are set in the mono caption voice; the
  * link rows stay in body-sm and only reach full ink on hover.
  */
 export function Footer() {
   return (
     <footer className="border-border border-t bg-background">
-      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-16">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="lg:col-span-1">
+      <div className="mx-auto max-w-page px-4 py-12 md:px-6 md:py-16">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 lg:grid-cols-5">
+          <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <Link className="inline-flex transition-opacity hover:opacity-70" href="/">
               <RebuzzleLogo size="md" />
             </Link>

@@ -197,7 +197,7 @@ export default function LoginPage() {
         <AuthField
           aside={
             <Link
-              className="rounded text-muted-foreground text-xs transition-colors hover:text-foreground focus-ring"
+              className="relative rounded text-muted-foreground text-xs transition-colors after:absolute after:-inset-x-2 after:-top-4 after:-bottom-1.5 after:content-[''] hover:text-foreground focus-ring"
               href="/forgot-password"
             >
               Forgot password?

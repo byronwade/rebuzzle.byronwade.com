@@ -17,7 +17,7 @@ export function StatusPage({
   className,
 }: {
   icon?: LucideIcon;
-  tone?: "neutral" | "warning" | "destructive";
+  tone?: "neutral" | "success" | "warning" | "destructive";
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
@@ -38,6 +38,7 @@ export function StatusPage({
             aria-hidden
             className={cn(
               "h-5 w-5",
+              tone === "success" && "text-success",
               tone === "warning" && "text-warning",
               tone === "destructive" && "text-destructive",
               tone === "neutral" && "text-muted-foreground"

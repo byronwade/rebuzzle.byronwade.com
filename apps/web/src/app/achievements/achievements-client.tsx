@@ -5,6 +5,7 @@ import {
   Brain,
   Calendar,
   CheckCircle,
+  ChevronDown,
   Clock,
   Crown,
   Flame,
@@ -121,6 +122,27 @@ const rarityConfig = {
   },
 };
 
+/** Rows each category shows before folding the remaining locked ones away. */
+const COLLAPSED_ROWS = 5;
+
+/** Expanded categories live in `?open=a,b` so the view survives refresh and deep links. */
+const EXPANDED_PARAM = "open";
+
+function readExpandedFromUrl(): string[] {
+  const raw = new URLSearchParams(window.location.search).get(EXPANDED_PARAM);
+  return raw ? raw.split(",").filter(Boolean) : [];
+}
+
+function writeExpandedToUrl(categories: string[]) {
+  const url = new URL(window.location.href);
+  if (categories.length > 0) {
+    url.searchParams.set(EXPANDED_PARAM, categories.join(","));
+  } else {
+    url.searchParams.delete(EXPANDED_PARAM);
+  }
+  window.history.replaceState(window.history.state, "", url);
+}
+
 const categoryConfig: Record<
   string,
   { name: string; icon: React.ComponentType<{ className?: string }> }
@@ -169,6 +191,7 @@ export default function AchievementsPage() {
   const [progress, setProgress] = useState<AchievementProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRarity, setSelectedRarity] = useState<string>("all");
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -185,6 +208,7 @@ export default function AchievementsPage() {
           if (data.success) {
             setAchievements(data.achievements);
             setProgress(data.progress);
+            setExpandedCategories(readExpandedFromUrl());
           }
         } catch (error) {
           console.error("Error fetching achievements:", error);
@@ -215,6 +239,14 @@ export default function AchievementsPage() {
   );
 
   const rarities = Object.keys(rarityConfig) as Array<keyof typeof rarityConfig>;
+
+  function toggleCategory(category: string) {
+    const next = expandedCategories.includes(category)
+      ? expandedCategories.filter((candidate) => candidate !== category)
+      : [...expandedCategories, category];
+    setExpandedCategories(next);
+    writeExpandedToUrl(next);
+  }
 
   return (
     <Layout>
@@ -313,6 +345,15 @@ export default function AchievementsPage() {
                   const config = categoryConfig[category];
                   const Icon = config?.icon || Star;
                   const unlockedCount = categoryAchievements.filter((a) => a.unlocked).length;
+                  // Unlocked first, then the nearest locked ones; the rest fold away so
+                  // 100+ rows don't bury the categories below.
+                  const sorted = [...categoryAchievements].sort(
+                    (a, b) => Number(b.unlocked) - Number(a.unlocked)
+                  );
+                  const expanded = expandedCategories.includes(category);
+                  const visibleCount = Math.max(unlockedCount + 3, COLLAPSED_ROWS);
+                  const visible = expanded ? sorted : sorted.slice(0, visibleCount);
+                  const hiddenCount = sorted.length - visible.length;
 
                   return (
                     <div key={category}>
@@ -327,7 +368,7 @@ export default function AchievementsPage() {
 
                       {/* Achievement Rows */}
                       <Card className="divide-y divide-border overflow-hidden">
-                        {categoryAchievements.map((achievement) => {
+                        {visible.map((achievement) => {
                           const rarity = rarityConfig[achievement.rarity] || rarityConfig.common;
                           const IconComponent = iconMap[achievement.icon] || Star;
 
@@ -387,6 +428,26 @@ export default function AchievementsPage() {
                           );
                         })}
                       </Card>
+                      {hiddenCount > 0 || expanded ? (
+                        <Button
+                          aria-expanded={expanded}
+                          className="mt-1.5 h-11 px-2 text-muted-foreground text-xs sm:h-8"
+                          onClick={() => toggleCategory(category)}
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          {expanded ? "Show fewer" : `Show ${hiddenCount} more`}
+                          <ChevronDown
+                            aria-hidden
+                            className={cn(
+                              "size-3.5 transition-transform",
+                              expanded && "rotate-180"
+                            )}
+                            data-icon="inline-end"
+                          />
+                        </Button>
+                      ) : null}
                     </div>
                   );
                 })}

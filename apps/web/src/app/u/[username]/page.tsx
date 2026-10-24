@@ -88,7 +88,7 @@ async function CreatorProfilePageContent({ params }: Params) {
       <div className="mx-auto max-w-page px-4 py-12 md:px-6 md:py-16">
         <PageHeader
           actions={
-            <Button asChild variant="outline">
+            <Button asChild className="h-11 sm:h-9" variant="outline">
               <Link href="/studio">Make your own</Link>
             </Button>
           }
@@ -97,11 +97,11 @@ async function CreatorProfilePageContent({ params }: Params) {
           title={user.username}
         />
 
-        <dl className="hairline-grid grid grid-cols-2 rounded-lg bg-card sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
           {creatorStats.map(([label, value]) => (
-            <div className="px-5 py-4" key={label}>
-              <dt className="text-muted-foreground text-xs">{label}</dt>
-              <dd className="mt-1 font-semibold text-2xl tabular-nums tracking-[-0.03em]">
+            <div className="flex flex-col-reverse bg-card px-5 py-4" key={label}>
+              <dt className="mt-1 text-muted-foreground text-xs">{label}</dt>
+              <dd className="font-semibold text-2xl text-foreground tabular-nums tracking-[-0.04em]">
                 {value}
               </dd>
             </div>
