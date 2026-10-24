@@ -34,6 +34,11 @@ export type SelectedReservePuzzle = {
   puzzle: ReservePuzzle;
   noveltyEvidence: PuzzleNoveltyEvidence;
   corpusVersion: typeof RESERVE_PUZZLE_CORPUS_VERSION;
+  /**
+   * Soft novelty limits (weekly family/topology quotas) that were waived because
+   * every unused reserve tripped one. Absent when the pick satisfied the policy.
+   */
+  waivedNoveltyLimits?: string[];
 };
 
 type ReserveDefinition = {
@@ -658,6 +663,13 @@ function stableDateSeed(dateString: string): number {
   return hash >>> 0;
 }
 
+function isWeeklyQuotaBlocker(blocker: string): boolean {
+  return (
+    blocker.startsWith("Mechanism family already used") ||
+    blocker.startsWith("Visual topology already used")
+  );
+}
+
 export class ReservePuzzleExhaustedError extends Error {
   constructor(
     message: string,
@@ -706,6 +718,11 @@ export async function selectReservePuzzle(input: {
   };
   const novelty = createPuzzleNoveltyModule({ archive, now: input.now });
   const rejections: string[] = [];
+  let leastConflicting: {
+    puzzle: ReservePuzzle;
+    evidence: PuzzleNoveltyEvidence;
+    blockers: string[];
+  } | null = null;
   for (const puzzle of ordered) {
     const assessment = await novelty.evaluate(puzzle);
     if (assessment.isUnique) {
@@ -716,6 +733,27 @@ export async function selectReservePuzzle(input: {
       };
     }
     rejections.push(`${puzzle.id}: ${assessment.blockers.join("; ")}`);
+    const onlyQuotaBlockers = assessment.blockers.every(isWeeklyQuotaBlocker);
+    if (
+      onlyQuotaBlockers &&
+      (!leastConflicting ||
+        assessment.blockers.length < leastConflicting.blockers.length ||
+        (assessment.blockers.length === leastConflicting.blockers.length &&
+          assessment.evidence.closestStructuralSimilarity <
+            leastConflicting.evidence.closestStructuralSimilarity))
+    ) {
+      leastConflicting = { puzzle, evidence: assessment.evidence, blockers: assessment.blockers };
+    }
+  }
+  // A blank daily page is worse than a third rebus from the same family this week.
+  // Answer and composition repeats still fail closed; only weekly quotas are waived.
+  if (leastConflicting) {
+    return {
+      puzzle: leastConflicting.puzzle,
+      noveltyEvidence: leastConflicting.evidence,
+      corpusVersion: RESERVE_PUZZLE_CORPUS_VERSION,
+      waivedNoveltyLimits: leastConflicting.blockers,
+    };
   }
   throw new ReservePuzzleExhaustedError(
     `Unused reserve puzzles remain, but all violate current novelty policy. First conflicts: ${rejections.slice(0, 3).join(" | ")}`,

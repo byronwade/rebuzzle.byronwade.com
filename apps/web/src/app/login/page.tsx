@@ -1,18 +1,13 @@
 "use client";
 
-import { Lock, LogIn, Mail } from "lucide-react";
+import { Loader2, Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
-import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
-import Layout from "@/components/Layout";
+import { AuthField, AuthNotice, AuthShell, authFooterLink } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { safeInternalRedirect } from "@/lib/safe-internal-redirect";
 import { safeJsonParse } from "@/lib/utils";
@@ -92,7 +87,6 @@ export default function LoginPage() {
       const firstError = Object.keys(newErrors)[0];
       if (firstError) {
         focusField(firstError);
-        document.getElementById(firstError)?.focus();
       }
       return;
     }
@@ -157,179 +151,89 @@ export default function LoginPage() {
   };
 
   return (
-    <Layout>
-      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
-        <div className="flex justify-center">
-          <Card className="w-full max-w-[400px] p-8" variant="float">
-            {/* Header */}
-            <div className="mb-7 text-center">
-              <div className="mb-5 flex justify-center">
-                <RebuzzleLogo size="lg" showWordmark={false} />
-              </div>
-              <h1 className="mb-2 font-semibold text-2xl tracking-[-0.04em]">Welcome back.</h1>
-              <p className="mt-2 text-muted-foreground text-sm">
-                Log in to track your progress and compete
-              </p>
-            </div>
+    <AuthShell
+      description="Keep your streak, points and achievements on every device."
+      footer={
+        <>
+          <p>
+            New to Rebuzzle?{" "}
+            <Link className={authFooterLink} href="/signup">
+              Create an account
+            </Link>
+          </p>
+          <p>
+            <button
+              className="inline-flex min-h-11 items-center rounded-md px-3 text-muted-foreground transition-colors hover:text-foreground focus-ring sm:min-h-9"
+              onClick={handleGuestPlay}
+              type="button"
+            >
+              Or keep playing as a guest
+            </button>
+          </p>
+        </>
+      }
+      title="Welcome back."
+    >
+      <form aria-label="Log in" className="space-y-4" noValidate onSubmit={handleSubmit}>
+        {errors.form ? <AuthNotice>{errors.form}</AuthNotice> : null}
 
-            {/* Form */}
-            <form aria-label="Login form" className="space-y-4" noValidate onSubmit={handleSubmit}>
-              {/* Form-level error */}
-              {errors.form && (
-                <div
-                  aria-live="polite"
-                  className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5 text-destructive text-sm"
-                  role="alert"
-                >
-                  {errors.form}
-                </div>
-              )}
+        <AuthField
+          autoComplete="email"
+          error={errors.email}
+          icon={Mail}
+          id="email"
+          inputMode="email"
+          label="Email"
+          name="email"
+          onBlur={handleBlur}
+          onChange={handleChange}
+          placeholder="you@example.com"
+          required
+          spellCheck={false}
+          type="email"
+          value={formData.email}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail
-                    aria-hidden="true"
-                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
-                  />
-                  <Input
-                    aria-describedby={errors.email ? "email-error" : undefined}
-                    aria-invalid={!!errors.email}
-                    autoComplete="email"
-                    className={
-                      errors.email
-                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
-                        : "pl-10"
-                    }
-                    id="email"
-                    inputMode="email"
-                    name="email"
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    placeholder="your@email.com…"
-                    required
-                    spellCheck="false"
-                    type="email"
-                    value={formData.email}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-destructive text-xs" id="email-error" role="alert">
-                    {errors.email}
-                  </p>
-                )}
-              </div>
+        <AuthField
+          aside={
+            <Link
+              className="rounded text-muted-foreground text-xs transition-colors hover:text-foreground focus-ring"
+              href="/forgot-password"
+            >
+              Forgot password?
+            </Link>
+          }
+          autoComplete="current-password"
+          error={errors.password}
+          icon={Lock}
+          id="password"
+          label="Password"
+          minLength={6}
+          name="password"
+          onBlur={handleBlur}
+          onChange={handleChange}
+          required
+          type="password"
+          value={formData.password}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock
-                    aria-hidden="true"
-                    className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-subtle"
-                  />
-                  <Input
-                    aria-describedby={errors.password ? "password-error" : "password-help"}
-                    aria-invalid={!!errors.password}
-                    autoComplete="current-password"
-                    className={
-                      errors.password
-                        ? "border-destructive/60 pl-10 focus-visible:border-destructive focus-visible:ring-destructive/15"
-                        : "pl-10"
-                    }
-                    id="password"
-                    minLength={6}
-                    name="password"
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    placeholder="Enter your password…"
-                    required
-                    type="password"
-                    value={formData.password}
-                  />
-                </div>
-                {errors.password ? (
-                  <p className="text-destructive text-xs" id="password-error" role="alert">
-                    {errors.password}
-                  </p>
-                ) : (
-                  <p className="text-subtle text-xs" id="password-help">
-                    Must be at least 6 characters
-                  </p>
-                )}
-              </div>
-
-              {/* Forgot Password Link */}
-              <div className="flex justify-end">
-                <Link
-                  className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-                  href="/forgot-password"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
-              <Button
-                aria-busy={isLoading}
-                className="w-full"
-                disabled={isLoading}
-                size="lg"
-                type="submit"
-              >
-                {isLoading ? (
-                  <>
-                    <div
-                      aria-hidden="true"
-                      className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-60"
-                    />
-                    <span>Logging in…</span>
-                  </>
-                ) : (
-                  <>
-                    <LogIn aria-hidden="true" className="h-4 w-4" data-icon="inline-end" />
-                    Log in
-                  </>
-                )}
-              </Button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <Separator />
-              <span className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 bg-card px-3 font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
-                or
-              </span>
-            </div>
-
-            {/* Guest Play */}
-            <Button className="w-full" onClick={handleGuestPlay} size="lg" variant="outline">
-              Continue as guest
-            </Button>
-
-            {/* Signup Link */}
-            <div className="mt-6 text-center text-sm">
-              <p className="text-muted-foreground">
-                Don't have an account?{" "}
-                <Link
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
-                  href="/signup"
-                >
-                  Sign up
-                </Link>
-              </p>
-            </div>
-
-            {/* Back Link */}
-            <div className="mt-6 text-center">
-              <Link
-                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-                href="/"
-              >
-                ← Back to the puzzle
-              </Link>
-            </div>
-          </Card>
-        </div>
-      </div>
-    </Layout>
+        <Button
+          aria-busy={isLoading}
+          className="w-full"
+          disabled={isLoading}
+          size="lg"
+          type="submit"
+        >
+          {isLoading ? (
+            <Loader2
+              aria-hidden
+              className="h-4 w-4 motion-safe:animate-spin"
+              data-icon="inline-start"
+            />
+          ) : null}
+          {isLoading ? "Logging in…" : "Log in"}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

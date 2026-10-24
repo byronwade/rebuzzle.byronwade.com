@@ -72,7 +72,7 @@ export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
 
         {!wasSuccessful && answer ? (
           <div className="mt-4 rounded-xl border border-border/70 bg-background/70 px-3.5 py-3">
-            <p className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">Answer</p>
+            <p className="font-medium text-xs text-subtle">Answer</p>
             <p className="mt-1 font-semibold text-foreground text-lg tracking-tight">{answer}</p>
           </div>
         ) : null}

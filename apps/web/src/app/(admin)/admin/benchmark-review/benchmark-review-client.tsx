@@ -266,9 +266,7 @@ function BenchmarkReviewPageInner() {
     <div className="mx-auto min-h-[calc(100vh-120px)] max-w-6xl space-y-6 px-4 py-6 md:px-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <p className="font-medium text-muted-foreground text-xs uppercase tracking-[0.18em]">
-            Human calibration
-          </p>
+          <p className="font-medium text-muted-foreground text-xs">Human calibration</p>
           <h1 className="font-semibold text-3xl tracking-tight">Benchmark review</h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
             Verify source rights, visible quality, and intended answers before a public puzzle can
@@ -308,14 +306,14 @@ function BenchmarkReviewPageInner() {
       {progress && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Approved", progress.approved, "text-emerald-600"],
-            ["Pending", progress.pending, "text-amber-600"],
-            ["Rejected", progress.rejected, "text-rose-600"],
+            ["Approved", progress.approved, "text-success"],
+            ["Pending", progress.pending, "text-warning"],
+            ["Rejected", progress.rejected, "text-destructive"],
             ["Total originals", progress.total, "text-foreground"],
           ].map(([label, value, color]) => (
             <Card key={String(label)}>
               <CardContent className="pt-5">
-                <p className="text-muted-foreground text-xs uppercase tracking-wider">{label}</p>
+                <p className="text-muted-foreground text-xs">{label}</p>
                 <p className={`mt-1 font-semibold text-3xl ${color}`}>{value}</p>
               </CardContent>
             </Card>
@@ -427,9 +425,7 @@ function BenchmarkReviewPageInner() {
                 <span className="ml-auto text-muted-foreground text-xs">v{current.version}</span>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wider">
-                  Intended answer
-                </p>
+                <p className="text-muted-foreground text-xs">Intended answer</p>
                 <p className="mt-1 font-semibold text-2xl">{current.answer}</p>
                 {current.hint && (
                   <p className="mt-2 text-muted-foreground text-sm">Hint: {current.hint}</p>
@@ -515,7 +511,7 @@ function BenchmarkReviewPageInner() {
       ) : queue ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <Check className="mb-3 h-10 w-10 text-emerald-600" />
+            <Check className="mb-3 h-10 w-10 text-success" />
             <p className="font-medium text-lg">
               No {status === "all" ? "" : status} reviews in this queue
             </p>

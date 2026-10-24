@@ -1480,7 +1480,7 @@ export function PuzzleStudio() {
                         <span className="block truncate font-medium tracking-[-0.01em]">
                           {row.title || row.answer}
                         </span>
-                        <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.14em]">
+                        <span className="font-medium text-xs text-subtle">
                           {row.status}
                           {row.featuredOn ? ` · daily ${row.featuredOn}` : ""}
                         </span>

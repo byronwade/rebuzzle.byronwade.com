@@ -20,9 +20,9 @@ interface BlogSearchProps {
 }
 
 const PUZZLE_TYPES = [
-  { id: "all", name: "All Types" },
+  { id: "all", name: "All types" },
   { id: "rebus", name: "Rebus" },
-  { id: "logic-grid", name: "Logic Grid" },
+  { id: "logic-grid", name: "Logic grid" },
   { id: "cryptic-crossword", name: "Cryptic" },
   { id: "number-sequence", name: "Sequence" },
   { id: "pattern-recognition", name: "Pattern" },
@@ -77,7 +77,7 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
           <Input
             aria-label="Search blog posts"
             type="search"
-            placeholder="Search puzzles, solutions, tips..."
+            placeholder="Search puzzles, solutions, tips…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -99,7 +99,9 @@ export function BlogSearch({ className, showTypeFilter = true }: BlogSearchProps
         {showTypeFilter && (
           <Select value={puzzleType} onValueChange={setPuzzleType}>
             <SelectTrigger aria-label="Filter by puzzle type" className="h-11 w-[140px]">
-              <SelectValue placeholder="Type" />
+              <SelectValue placeholder="Type">
+                {PUZZLE_TYPES.find((type) => type.id === puzzleType)?.name ?? "All types"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>

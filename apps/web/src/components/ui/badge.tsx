@@ -13,10 +13,10 @@ const badgeVariants = cva(
         destructive: "border-destructive/25 bg-destructive/10 text-destructive",
         success: "border-success/25 bg-success/10 text-success",
         warning: "border-warning/30 bg-warning/10 text-warning",
-        info: "border-link/25 bg-link/10 text-link",
+        info: "border-brand/25 bg-brand/10 text-link",
         outline: "border-border text-foreground",
         // Technical metadata — the mono voice, at caption scale.
-        mono: "border-border bg-inset font-mono text-[11px] text-muted-foreground uppercase tracking-[0.08em]",
+        mono: "border-border bg-inset font-mono text-[11px] text-muted-foreground tabular-nums",
       },
     },
     defaultVariants: {

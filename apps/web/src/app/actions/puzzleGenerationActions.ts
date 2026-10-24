@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
 import { generateMasterPuzzle } from "@/ai/advanced";
 import {
   baselineDifficultyForDate,
@@ -12,7 +11,8 @@ import {
 import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
 import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
 import { db } from "@/db";
-import { getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
+import { formatPuzzleFromDb, getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
+import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
 import { logger } from "@/lib/logger";
 
@@ -63,8 +63,7 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
     const { trySelectUgcLotteryFiller } = await import("@/lib/ugc/lottery");
     const ugc = await trySelectUgcLotteryFiller({ dateString, fallbackReason });
     if (ugc) {
-      revalidateTag("daily-puzzle", "max");
-      revalidateTag(`daily-puzzle-${dateString}`, "max");
+      revalidateDailyPuzzle(dateString);
       return {
         id: ugc.id,
         rebusPuzzle: ugc.rebusPuzzle,
@@ -95,7 +94,21 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
     });
   }
 
+  // Another request may have published today while we waited; never pair that
+  // puzzle's id with a different reserve board (guesses validate by id).
+  const alreadyPublished = await db.puzzleOps.findByDate(dateString);
+  if (alreadyPublished) {
+    return formatPuzzleFromDb(alreadyPublished, dateString);
+  }
+
   const selected = await selectMongoReservePuzzle({ dateString });
+  if (selected.waivedNoveltyLimits?.length) {
+    logger.warn("Reserve pick waived weekly novelty quotas", {
+      dateString,
+      reserveId: selected.puzzle.id,
+      waived: selected.waivedNoveltyLimits,
+    });
+  }
   const reserve = selected.puzzle;
   const persisted = await persistDailyPuzzle({
     dateString,
@@ -114,6 +127,7 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
       fingerprint: selected.noveltyEvidence.fingerprint,
       uniquenessScore: selected.noveltyEvidence.score,
       noveltyEvidence: selected.noveltyEvidence,
+      waivedNoveltyLimits: selected.waivedNoveltyLimits,
       techniqueId: reserve.techniqueId,
       visualStyleId: reserve.visual.styleId,
       difficultyLevel: reserve.difficultyLevel,
@@ -124,6 +138,10 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
       },
     },
   });
+  if (persisted.alreadyExisted) {
+    const concurrent = await db.puzzleOps.findByDate(dateString);
+    if (concurrent) return formatPuzzleFromDb(concurrent, dateString);
+  }
   return {
     ...reserve,
     id: persisted.id,
@@ -179,11 +197,9 @@ async function getOrGenerateDailyPuzzle(
   try {
     const raceCheck = await db.puzzleOps.findByDate(dateString);
     if (raceCheck) {
-      revalidateTag("daily-puzzle", "max");
-      const cached = await getCachedDailyPuzzleFromDb(dateString);
-      if (cached) {
-        return cached;
-      }
+      // The cached miss is stale; serve the row we just read instead of generating.
+      revalidateDailyPuzzle(dateString);
+      return formatPuzzleFromDb(raceCheck, dateString);
     }
   } catch (finalCheckError) {
     logger.error(

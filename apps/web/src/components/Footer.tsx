@@ -81,9 +81,7 @@ export function Footer() {
         <div className="mt-12 flex flex-col gap-3 border-border border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
           {/* No live year — this renders inside a prerendered shell. */}
           <p className="text-subtle text-xs">© Rebuzzle. All rights reserved.</p>
-          <p className="font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
-            A new puzzle every day at midnight
-          </p>
+          <p className="font-medium text-xs text-subtle">A new puzzle every day at midnight</p>
         </div>
       </div>
     </footer>

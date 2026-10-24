@@ -450,7 +450,7 @@ export function StatsTab({
                   <div className="font-medium text-muted-foreground text-sm">
                     First Puzzle Completed
                   </div>
-                  <div className="font-medium text-neutral-700 text-xs dark:text-neutral-400">
+                  <div className="font-medium text-muted-foreground text-xs">
                     {stats.advancedAnalytics.progressionFunnel.conversionToFirstPuzzle.toFixed(1)}%
                     conversion
                   </div>
@@ -462,7 +462,7 @@ export function StatsTab({
                   <div className="font-medium text-muted-foreground text-sm">
                     Regular Players (10+ games)
                   </div>
-                  <div className="font-medium text-neutral-700 text-xs dark:text-neutral-400">
+                  <div className="font-medium text-muted-foreground text-xs">
                     {stats.advancedAnalytics.progressionFunnel.conversionToRegular.toFixed(1)}%
                     conversion
                   </div>
@@ -519,7 +519,7 @@ export function StatsTab({
       </div>
 
       {/* Recent Activity */}
-      <Card className="border-2 bg-gradient-to-br from-card to-card/50 p-6">
+      <Card className="p-6">
         <CardHeader>
           <CardTitle>Recent Activity (Last 7 Days)</CardTitle>
           <CardDescription>Quick overview of platform activity in the past week</CardDescription>

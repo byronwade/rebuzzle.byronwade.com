@@ -2,11 +2,11 @@
  * Persist a daily puzzle with a real UUID so /api/puzzles/guess can resolve it.
  */
 
-import { revalidateTag } from "next/cache";
 import { isAnswerRegistered, normalizeAnswerKey } from "@/ai/learning/answer-registry";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { db } from "@/db";
 import type { PuzzleVisual } from "@/db/models";
+import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
 import { logger } from "@/lib/logger";
 import { toLegacyDifficultyLabel } from "./published-puzzle";
 
@@ -122,8 +122,7 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
     }
   }
 
-  revalidateTag("daily-puzzle", "max");
-  revalidateTag(`daily-puzzle-${input.dateString}`, "max");
+  revalidateDailyPuzzle(input.dateString);
 
   logger.info("Persisted daily puzzle", {
     puzzleId: id,

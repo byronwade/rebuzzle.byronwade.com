@@ -93,21 +93,15 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
             <div className="font-mono font-medium text-foreground text-sm leading-none tabular-nums">
               {new Date(post.date).getDate()}
             </div>
-            <div className="mt-1 font-mono text-[9px] text-subtle uppercase tracking-[0.08em]">
+            <div className="mt-1 font-mono text-subtle text-xs">
               {formatDateFns(new Date(post.date), "MMM")}
             </div>
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-2">
-              <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                {typeLabel}
-              </span>
-              {isToday && (
-                <span className="font-mono text-[10px] text-warning uppercase tracking-[0.08em]">
-                  New
-                </span>
-              )}
+              <span className="font-medium text-xs text-subtle">{typeLabel}</span>
+              {isToday && <span className="font-medium text-xs text-warning">New</span>}
             </div>
             <h2 className="truncate font-medium text-foreground text-sm">{post.title}</h2>
           </div>

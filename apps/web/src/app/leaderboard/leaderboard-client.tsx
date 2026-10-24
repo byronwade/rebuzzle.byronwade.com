@@ -1,5 +1,6 @@
 "use client";
 
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import {
   ArrowDown,
   Award,
@@ -7,7 +8,6 @@ import {
   Crown,
   Flame,
   Medal,
-  Sparkles,
   Target,
   TrendingUp,
   Trophy,
@@ -17,10 +17,11 @@ import { useEffect, useRef, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
+import { PageHeader } from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
@@ -162,9 +163,9 @@ export default function LeaderboardClient({
         behavior: "smooth",
         block: "center",
       });
-      userEntryRef.current.classList.add("ring-2", "ring-warning", "ring-offset-2");
+      userEntryRef.current.classList.add("ring-2", "ring-brand", "ring-offset-2");
       setTimeout(() => {
-        userEntryRef.current?.classList.remove("ring-2", "ring-warning", "ring-offset-2");
+        userEntryRef.current?.classList.remove("ring-2", "ring-brand", "ring-offset-2");
       }, 2000);
     }
   };
@@ -202,81 +203,77 @@ export default function LeaderboardClient({
       )}
 
       <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
-        {/* Header */}
-        <header className="mb-8 text-center md:mb-10">
-          <p className="eyebrow">Standings</p>
-          <h1 className="mt-3 font-semibold text-3xl tracking-[-0.045em] sm:text-4xl">
-            Leaderboard.
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-muted-foreground text-sm leading-relaxed">
-            The best puzzle solvers today, ranked.
-          </p>
-        </header>
+        <PageHeader
+          align="center"
+          description={
+            sortBy === "streak"
+              ? "Players with the longest active win streaks."
+              : "The sharpest solvers, ranked by points."
+          }
+          eyebrow="Standings"
+          title="Leaderboard."
+        />
 
-        {/* Sort By Toggle - Points vs Streaks */}
-        <div className="mb-5 flex justify-center gap-2">
-          <Button
-            variant={sortBy === "points" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSortBy("points")}
-            className="h-10 gap-1.5 px-4"
+        {/* Ranking controls — what to rank by, and over what window */}
+        <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <RadioGroupPrimitive.Root
+            aria-label="Rank by"
+            className="inline-grid grid-cols-2 gap-1 rounded-lg bg-inset p-1"
+            onValueChange={(value) => setSortBy(value as typeof sortBy)}
+            orientation="horizontal"
+            value={sortBy}
           >
-            <Trophy className="size-4" data-icon="inline-start" />
-            Points
-          </Button>
-          <Button
-            variant={sortBy === "streak" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSortBy("streak")}
-            className="h-10 gap-1.5 px-4"
-          >
-            <Flame className="size-4" data-icon="inline-start" />
-            Streaks
-          </Button>
-        </div>
+            {(
+              [
+                { value: "points", label: "Points", icon: Trophy },
+                { value: "streak", label: "Streaks", icon: Flame },
+              ] as const
+            ).map(({ value, label, icon: Icon }) => (
+              <RadioGroupPrimitive.Item
+                className={`inline-flex h-11 items-center justify-center gap-1.5 rounded-md sm:h-9 px-4 font-medium text-sm transition-colors focus-ring ${
+                  sortBy === value
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                key={value}
+                value={value}
+              >
+                <Icon aria-hidden className="size-4" />
+                {label}
+              </RadioGroupPrimitive.Item>
+            ))}
+          </RadioGroupPrimitive.Root>
 
-        {/* Timeframe Selector - only show for points ranking */}
-        {sortBy === "points" && (
-          <div className="mb-6 flex justify-center">
+          {sortBy === "points" && (
             <Tabs
-              value={timeframe}
               onValueChange={(value) => setTimeframe(value as typeof timeframe)}
-              className="w-full max-w-md"
+              value={timeframe}
             >
-              <TabsList className="grid h-11 w-full grid-cols-4">
-                <TabsTrigger value="today" className="px-1 font-medium text-xs sm:text-sm">
+              <TabsList className="h-11">
+                <TabsTrigger className="px-3.5" value="today">
                   Today
                 </TabsTrigger>
-                <TabsTrigger value="week" className="px-1 font-medium text-xs sm:text-sm">
+                <TabsTrigger className="px-3.5" value="week">
                   Week
                 </TabsTrigger>
-                <TabsTrigger value="month" className="px-1 font-medium text-xs sm:text-sm">
+                <TabsTrigger className="px-3.5" value="month">
                   Month
                 </TabsTrigger>
-                <TabsTrigger value="allTime" className="px-1 font-medium text-xs sm:text-sm">
-                  All
+                <TabsTrigger className="px-3.5" value="allTime">
+                  All time
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
-        )}
-
-        {/* Streak leaderboard description */}
-        {sortBy === "streak" && (
-          <div className="mb-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Players with the longest active win streaks
-            </p>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* User's Rank Highlight */}
         {userRank && userEntry && (
-          <Card className="mb-6 border-warning/25 bg-warning/[0.06]">
+          <Card className="mb-6 border-brand/25 bg-brand/[0.05]">
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-warning font-mono font-medium text-background text-sm tabular-nums">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand font-mono font-medium text-brand-foreground text-sm tabular-nums">
                     #{userRank}
                   </div>
                   <div>
@@ -287,13 +284,13 @@ export default function LeaderboardClient({
                     {/* XP Progress Bar */}
                     {userEntry.stats.level > 0 && (
                       <div className="mt-2 w-40">
-                        <div className="mb-1.5 flex justify-between font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                        <div className="mb-1.5 flex justify-between font-medium text-xs text-subtle">
                           <span>Lvl {userEntry.stats.level}</span>
                           <span>Lvl {userEntry.stats.level + 1}</span>
                         </div>
                         <div className="h-1 overflow-hidden rounded-full bg-inset">
                           <div
-                            className="h-full bg-warning rounded-full transition-[width,colors] duration-500"
+                            className="h-full rounded-full bg-brand transition-[width] duration-500"
                             style={{
                               width: `${getLevelProgress(userEntry.stats.level, userEntry.stats.points)}%`,
                             }}
@@ -315,12 +312,7 @@ export default function LeaderboardClient({
                       Find me
                     </Button>
                   )}
-                  {userRank <= 25 && (
-                    <Badge variant="secondary" className="gap-1.5">
-                      <Flame className="size-3.5 text-warning" />
-                      Top 25
-                    </Badge>
-                  )}
+                  {userRank <= 25 && <Badge variant="secondary">Top 25</Badge>}
                 </div>
               </div>
             </CardContent>
@@ -349,17 +341,17 @@ export default function LeaderboardClient({
             </CardContent>
           </Card>
         ) : leaderboard.length === 0 ? (
-          <Card className="border-dashed border-2">
-            <CardContent className="p-12 text-center">
-              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
-                <Trophy className="size-8 text-muted-foreground" />
-              </div>
-              <p className="mb-2 font-semibold text-lg text-foreground">No champions yet</p>
-              <p className="text-muted-foreground text-sm mb-4">
-                Be the first to solve a puzzle and claim the top spot!
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center px-6 py-14 text-center sm:px-6 sm:py-14">
+              <Trophy aria-hidden className="size-7 text-subtle" />
+              <p className="mt-4 font-semibold text-foreground text-lg tracking-[-0.02em]">
+                No one on the board yet
               </p>
-              <Button asChild>
-                <Link href="/">Start Playing</Link>
+              <p className="mt-1.5 max-w-xs text-muted-foreground text-sm">
+                Solve today's puzzle and the top spot is yours.
+              </p>
+              <Button asChild className="mt-6" size="lg">
+                <Link href="/">Play today's puzzle</Link>
               </Button>
             </CardContent>
           </Card>
@@ -463,7 +455,7 @@ export default function LeaderboardClient({
                       ref={isCurrentUser ? userEntryRef : null}
                       className={`
                         transition-colors hover:bg-accent/50
-                        ${isCurrentUser ? "bg-warning/[0.06] border-l-2 border-l-warning" : ""}
+                        ${isCurrentUser ? "bg-brand/[0.05] shadow-[inset_2px_0_0_hsl(var(--brand))]" : ""}
                       `}
                     >
                       <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
@@ -490,9 +482,7 @@ export default function LeaderboardClient({
                               <p className="truncate font-semibold text-foreground text-sm sm:text-base">
                                 {entry.user.username}
                                 {isCurrentUser && (
-                                  <span className="ml-2 font-normal text-warning text-xs">
-                                    (You)
-                                  </span>
+                                  <span className="ml-2 font-normal text-brand text-xs">(You)</span>
                                 )}
                               </p>
                               {entry.stats.level > 0 && (
@@ -509,7 +499,7 @@ export default function LeaderboardClient({
                                 {entry.stats.totalGames} games
                               </span>
                               {entry.stats.streak > 0 && (
-                                <span className="flex items-center gap-1 text-warning">
+                                <span className="flex items-center gap-1">
                                   <Flame className="size-3.5" />
                                   {entry.stats.streak} day streak
                                 </span>
@@ -536,17 +526,19 @@ export default function LeaderboardClient({
                     <div className="border-t-2 border-dashed border-border" />
                     <div
                       ref={userEntryRef}
-                      className="bg-warning/[0.06] border-l-2 border-l-warning transition-colors"
+                      className="bg-brand/[0.05] shadow-[inset_2px_0_0_hsl(var(--brand))] transition-colors"
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3 md:gap-4">
                           {/* Rank Display */}
                           <div className="flex-shrink-0 w-8 text-center">
-                            <span className="font-semibold text-base text-warning">{userRank}</span>
+                            <span className="font-semibold text-base text-brand tabular-nums">
+                              {userRank}
+                            </span>
                           </div>
 
                           {/* Avatar */}
-                          <Avatar className="size-10 flex-shrink-0 border border-warning">
+                          <Avatar className="size-10 flex-shrink-0 border border-brand">
                             <AvatarImage
                               src={getAvatarFallback(userEntry.user.username)}
                               alt={userEntry.user.username}
@@ -561,7 +553,7 @@ export default function LeaderboardClient({
                             <div className="flex items-center gap-2">
                               <p className="truncate font-semibold text-sm md:text-base text-foreground">
                                 {userEntry.user.username}
-                                <span className="ml-2 text-warning text-xs font-normal">(You)</span>
+                                <span className="ml-2 font-normal text-brand text-xs">(You)</span>
                               </p>
                               {userEntry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-xs">
@@ -577,7 +569,7 @@ export default function LeaderboardClient({
                                 {userEntry.stats.totalGames} games
                               </span>
                               {userEntry.stats.streak > 0 && (
-                                <span className="flex items-center gap-1 text-warning">
+                                <span className="flex items-center gap-1">
                                   <Flame className="size-3" />
                                   {userEntry.stats.streak} day streak
                                 </span>
@@ -602,78 +594,53 @@ export default function LeaderboardClient({
           </>
         )}
 
-        {/* Call to Action */}
-        <div className="mt-8 text-center">
-          <Button asChild size="lg" className="font-medium">
-            <Link href="/">Play Today's Puzzle</Link>
-          </Button>
-        </div>
+        {leaderboard.length > 0 && !loading ? (
+          <div className="mt-8 text-center">
+            <Button asChild size="lg">
+              <Link href="/">Play today's puzzle</Link>
+            </Button>
+          </div>
+        ) : null}
 
-        {/* Achievements & Levels Link */}
-        <Link href="/achievements">
-          <Card className="group mt-8 cursor-pointer border-border transition-colors hover:border-border-strong/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[#7928ca] to-[#ff0080]">
-                    <Sparkles className="size-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-base text-foreground">Achievements & Levels</p>
-                    <p className="text-muted-foreground text-sm">
-                      View all 100 achievements and 8 rank tiers
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        {/* How Scoring Works */}
-        <Card className="mt-4 bg-muted/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-semibold text-base">
-              <Trophy className="size-5 text-warning" />
-              How Scoring Works
-            </CardTitle>
-            <CardDescription className="text-sm">Learn how points are calculated</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <Zap className="size-4 flex-shrink-0 text-warning mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm text-foreground">Speed Bonus</p>
-                  <p className="text-muted-foreground text-xs">Solve faster for more points</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <Target className="size-4 flex-shrink-0 text-warning mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm text-foreground">Accuracy Matters</p>
-                  <p className="text-muted-foreground text-xs">Fewer attempts = higher score</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <Flame className="size-4 flex-shrink-0 text-warning mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm text-foreground">Streak Multiplier</p>
-                  <p className="text-muted-foreground text-xs">Build streaks for bonus points</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-lg bg-background p-3">
-                <TrendingUp className="size-4 flex-shrink-0 text-warning mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm text-foreground">Difficulty Bonus</p>
-                  <p className="text-muted-foreground text-xs">Harder puzzles = bigger rewards</p>
-                </div>
-              </div>
+        {/* How scoring works */}
+        <section className="mt-14">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-base text-foreground tracking-[-0.02em]">
+                How scoring works
+              </h2>
+              <p className="mt-0.5 text-muted-foreground text-sm">
+                Four things move your score on every solve.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <Link
+              className="inline-flex shrink-0 items-center gap-0.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
+              href="/achievements"
+            >
+              Achievements and levels
+              <ChevronRight aria-hidden className="size-4" />
+            </Link>
+          </div>
+          <dl className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+            {SCORING_RULES.map(({ icon: Icon, title, body }) => (
+              <div className="flex items-start gap-3 bg-card p-4" key={title}>
+                <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-subtle" />
+                <div>
+                  <dt className="font-medium text-foreground text-sm">{title}</dt>
+                  <dd className="mt-0.5 text-muted-foreground text-sm">{body}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
     </Layout>
   );
 }
+
+const SCORING_RULES = [
+  { icon: Zap, title: "Speed", body: "Solve faster for more points." },
+  { icon: Target, title: "Accuracy", body: "Fewer attempts means a higher score." },
+  { icon: Flame, title: "Streaks", body: "Consecutive days multiply your points." },
+  { icon: TrendingUp, title: "Difficulty", body: "Harder puzzles pay bigger rewards." },
+] as const;

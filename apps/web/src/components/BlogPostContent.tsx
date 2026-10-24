@@ -183,9 +183,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             <div className="border-border border-b px-5 py-5">
               <div className="flex items-center gap-2">
                 <CheckCircle className="size-3.5 text-success" />
-                <span className="font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
-                  Answer
-                </span>
+                <span className="font-medium text-xs text-subtle">Answer</span>
               </div>
               <p className="mt-2 font-semibold text-2xl text-foreground tracking-[-0.04em]">
                 {post.answer}
@@ -195,9 +193,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             <div className="px-5 py-5">
               <div className="flex items-center gap-2">
                 <Lightbulb className="size-3.5 text-subtle" />
-                <span className="font-mono text-[11px] text-subtle uppercase tracking-[0.1em]">
-                  Explanation
-                </span>
+                <span className="font-medium text-xs text-subtle">Explanation</span>
               </div>
               <p className="mt-2 text-muted-foreground text-sm leading-6">{post.explanation}</p>
             </div>

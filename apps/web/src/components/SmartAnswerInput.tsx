@@ -111,7 +111,7 @@ export function SmartAnswerInput({
     <div className={cn("w-full", className)}>
       <div
         className={cn(
-          "answer-bar flex items-end gap-2 rounded-2xl border border-border bg-card py-1.5 pr-1.5 pl-4",
+          "answer-bar flex items-end gap-2 rounded-xl border border-input bg-inset py-1.5 pr-1.5 pl-4 shadow-[var(--shadow-field)]",
           (disabled || isSubmitting) && "opacity-60"
         )}
       >
@@ -144,8 +144,8 @@ export function SmartAnswerInput({
           aria-label="Submit answer"
           className={cn(
             "answer-send mb-0.5 flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full",
-            "bg-foreground text-background focus-ring",
-            "hover:bg-foreground/85 disabled:pointer-events-none"
+            "bg-brand text-brand-foreground shadow-[var(--shadow-accent)] focus-ring",
+            "hover:bg-brand-hover disabled:pointer-events-none disabled:shadow-none"
           )}
           disabled={!canSubmit}
           onClick={submit}

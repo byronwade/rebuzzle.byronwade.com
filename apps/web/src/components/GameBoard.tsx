@@ -603,8 +603,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         fail(`Guess failed (${response.status})`);
       }
 
-      // Already locked / replay blocked — stay in-thread, don't hard-cut away
-      if (response.status === 409 || result.locked) {
+      // Already locked / replay blocked — stay in-thread, don't hard-cut away.
+      // A winning or final guess also reports `locked: true` (the day is now
+      // closed) but with `success: true`; that must fall through to the
+      // celebration path with the real attempt count, streak and points.
+      if (response.status === 409 || (result.locked && result.success !== true)) {
         void playInterfaceSound("notification");
         setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts, {
           celebrate: false,
@@ -1203,9 +1206,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                             : "text-muted-foreground"
                         )}
                       >
-                        <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                          {lastTurn.text}
-                        </span>
+                        <span className="font-medium text-xs text-subtle">{lastTurn.text}</span>
                         <span className="mx-1.5 text-border-strong">·</span>
                         Eve · {lastTurn.line}
                       </p>

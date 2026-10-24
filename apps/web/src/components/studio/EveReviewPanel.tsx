@@ -118,11 +118,11 @@ export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
       {state.running || latestThinking || latestAnswer ? (
         <div className="rounded-lg border border-border bg-card px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
+            <p className="font-medium text-xs text-subtle">
               {state.running ? "Eve is thinking" : "Latest answer"}
             </p>
             {activePhase ? (
-              <span className="rounded-full border border-border bg-inset px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em]">
+              <span className="rounded-full border border-border bg-inset px-2 py-0.5 font-medium text-xs">
                 {activePhase.label}
               </span>
             ) : null}
@@ -142,7 +142,7 @@ export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em]",
+                  "rounded-full px-2 py-0.5 font-medium text-xs font-semibold",
                   STATUS_STYLES[check.status]
                 )}
               >
@@ -150,9 +150,7 @@ export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
               </span>
               <span className="font-medium text-sm">{check.label}</span>
               {check.spend && check.spend !== "none" ? (
-                <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.1em]">
-                  {check.spend}
-                </span>
+                <span className="font-medium text-xs text-subtle">{check.spend}</span>
               ) : null}
             </div>
             <p className="mt-1 text-muted-foreground text-xs">Looking for: {check.lookingFor}</p>

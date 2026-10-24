@@ -52,9 +52,7 @@ export function PuzzleStatsCard({ stats, className }: PuzzleStatsCardProps) {
           <div className="px-4 py-5 text-center" key={metric.label}>
             <div className="mb-2 flex items-center justify-center gap-1.5">
               <metric.icon className="size-3 text-subtle" />
-              <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                {metric.label}
-              </span>
+              <span className="font-medium text-xs text-subtle">{metric.label}</span>
             </div>
             <p className="font-semibold text-2xl text-foreground tracking-[-0.04em] tabular-nums">
               {metric.value}
@@ -64,9 +62,7 @@ export function PuzzleStatsCard({ stats, className }: PuzzleStatsCardProps) {
       </div>
 
       <div className="flex items-center justify-between border-border border-t bg-inset px-4 py-3">
-        <span className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-          Difficulty rating
-        </span>
+        <span className="font-medium text-xs text-subtle">Difficulty rating</span>
         <Badge
           className="capitalize"
           variant={DIFFICULTY_VARIANTS[stats.difficultyComparison] ?? "secondary"}

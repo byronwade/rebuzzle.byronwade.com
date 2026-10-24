@@ -261,7 +261,7 @@ export function SolveResultCard({
             {streakTease}
           </p>
           {unlockedAchievementName && scoreDone ? (
-            <p className="rb-enter mt-1 font-mono text-[11px] text-subtle uppercase tracking-[0.08em] ">
+            <p className="rb-enter mt-1 font-medium text-xs text-subtle">
               Unlocked · {unlockedAchievementName}
             </p>
           ) : null}
@@ -271,11 +271,9 @@ export function SolveResultCard({
       {showAnswer ? (
         <div className="mt-4 rounded-xl border border-border/70 bg-background/70 px-3.5 py-3">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">Answer</p>
+            <p className="font-medium text-xs text-subtle">Answer</p>
             {typeof closestSimilarity === "number" && closestSimilarity > 0 ? (
-              <p className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                Closest · {closestSimilarity}%
-              </p>
+              <p className="font-medium text-xs text-subtle">Closest · {closestSimilarity}%</p>
             ) : null}
           </div>
           <p className="mt-1 font-semibold text-foreground text-lg tracking-tight">{answer}</p>
@@ -293,41 +291,31 @@ export function SolveResultCard({
             <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
               {attempts}
             </p>
-            <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+            <p className="mt-0.5 font-medium text-xs text-subtle">
               {attempts === 1 ? "Guess" : "Guesses"}
             </p>
             {cleanSolve && scoreDone ? (
-              <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
+              <p className="rb-enter mt-1 font-medium text-xs text-success">
                 {noHintStreak > 1 ? `No hints · ${noHintStreak}` : "No hints"}
               </p>
             ) : null}
             {clutchSolve && scoreDone ? (
-              <p className="rb-enter mt-1 font-mono text-[10px] text-warning uppercase tracking-[0.08em] ">
-                Clutch
-              </p>
+              <p className="rb-enter mt-1 font-medium text-xs text-warning">Clutch</p>
             ) : null}
           </div>
           <div>
             <p className="font-semibold text-foreground text-xl tabular-nums tracking-tight">
               {displayScore}
             </p>
-            <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-              Points
-            </p>
+            <p className="mt-0.5 font-medium text-xs text-subtle">Points</p>
             {isLucky && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                ×2
-              </p>
+              <p className="mt-1 font-medium text-xs text-subtle">×2</p>
             ) : null}
             {!isLucky && dayBonusMultiplier && dayBonusMultiplier > 1 && scoreDone ? (
-              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                ×{dayBonusMultiplier}
-              </p>
+              <p className="mt-1 font-medium text-xs text-subtle">×{dayBonusMultiplier}</p>
             ) : null}
             {success && typeof dayRank === "number" && dayRank > 0 && scoreDone ? (
-              <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
-                Day · #{dayRank}
-              </p>
+              <p className="rb-enter mt-1 font-medium text-xs text-subtle">Day · #{dayRank}</p>
             ) : null}
           </div>
           <div>
@@ -351,23 +339,15 @@ export function SolveResultCard({
                 "0"
               )}
             </p>
-            <p className="mt-0.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-              Streak
-            </p>
+            <p className="mt-0.5 font-medium text-xs text-subtle">Streak</p>
             {showBestGhost ? (
-              <p className="mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                Best {maxStreak}
-              </p>
+              <p className="mt-1 font-medium text-xs text-subtle">Best {maxStreak}</p>
             ) : null}
             {personalBest && scoreDone ? (
-              <p className="rb-enter mt-1 font-mono text-[10px] text-success uppercase tracking-[0.08em] ">
-                {personalBest}
-              </p>
+              <p className="rb-enter mt-1 font-medium text-xs text-success">{personalBest}</p>
             ) : null}
             {paceLabel && scoreDone ? (
-              <p className="rb-enter mt-1 font-mono text-[10px] text-subtle uppercase tracking-[0.08em] ">
-                {paceLabel}
-              </p>
+              <p className="rb-enter mt-1 font-medium text-xs text-subtle">{paceLabel}</p>
             ) : null}
           </div>
         </div>
@@ -382,9 +362,7 @@ export function SolveResultCard({
 
       {puzzleId ? (
         <div className="mt-3">
-          <p className="mb-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-            How was it?
-          </p>
+          <p className="mb-1.5 font-medium text-xs text-subtle">How was it?</p>
           <div className="flex gap-1.5">
             {PERCEPTION_OPTIONS.map((option) => {
               const selected = perception === option.id;
@@ -424,7 +402,7 @@ export function SolveResultCard({
       {scoreDone && (guessDistribution || played > 0) ? (
         <div className="mt-3">
           <button
-            className="font-mono text-[10px] text-subtle uppercase tracking-[0.08em] underline-offset-2 hover:text-foreground hover:underline"
+            className="font-medium text-xs text-subtle underline-offset-2 hover:text-foreground hover:underline"
             onClick={() => setShowStats((open) => !open)}
             type="button"
           >

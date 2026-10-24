@@ -64,6 +64,7 @@ export async function generateMetadata({
       return {
         title: "Blog - Rebuzzle",
         description: "Daily puzzle write-ups and solutions.",
+        robots: { index: false, follow: false },
       };
     }
     const post = await fetchBlogPost(slug);
@@ -71,6 +72,7 @@ export async function generateMetadata({
       return {
         title: "Not Found - Rebuzzle Blog",
         description: "The requested blog post could not be found.",
+        robots: { index: false, follow: false },
       };
     }
 
@@ -87,6 +89,7 @@ export async function generateMetadata({
     return {
       title: "Error - Rebuzzle Blog",
       description: "An error occurred while loading the blog post.",
+      robots: { index: false, follow: false },
     };
   }
 }

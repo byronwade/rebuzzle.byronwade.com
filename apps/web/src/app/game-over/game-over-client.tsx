@@ -143,6 +143,28 @@ interface GameOverClientProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
+type StoredFeedback = {
+  perception: PerceptionChoice | null;
+  qualityVote: QualityVote | null;
+  qualityReasons: QualityReason[];
+};
+
+const EMPTY_FEEDBACK: StoredFeedback = { perception: null, qualityVote: null, qualityReasons: [] };
+
+/**
+ * useSyncExternalStore compares snapshots by identity, so a getter that
+ * builds a fresh object each call re-renders forever. Hand back the previous
+ * object while its serialized value is unchanged.
+ */
+const snapshotCache = new Map<string, { json: string; value: unknown }>();
+function stableSnapshot<T>(slot: string, value: T): T {
+  const json = JSON.stringify(value);
+  const cached = snapshotCache.get(slot);
+  if (cached && cached.json === json) return cached.value as T;
+  snapshotCache.set(slot, { json, value });
+  return value;
+}
+
 export default function GameOverClient({ gameData, searchParams: params }: GameOverClientProps) {
   const { userId, isGuest, isAuthenticated, isLoading: authLoading } = useAuth();
   const showSignupCta = !authLoading && (!isAuthenticated || isGuest || !userId);
@@ -186,13 +208,9 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
         window.removeEventListener("rebuzzle:game-over-feedback", onCustom);
       };
     },
-    () => {
+    (): StoredFeedback => {
       if (!puzzleFeedbackKey) {
-        return {
-          perception: null as PerceptionChoice | null,
-          qualityVote: null as QualityVote | null,
-          qualityReasons: [] as QualityReason[],
-        };
+        return EMPTY_FEEDBACK;
       }
       try {
         const stored = localStorage.getItem(`difficultyPerception:${puzzleFeedbackKey}`);
@@ -211,20 +229,12 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             );
           }
         }
-        return { perception, qualityVote, qualityReasons };
+        return stableSnapshot("feedback", { perception, qualityVote, qualityReasons });
       } catch {
-        return {
-          perception: null as PerceptionChoice | null,
-          qualityVote: null as QualityVote | null,
-          qualityReasons: [] as QualityReason[],
-        };
+        return EMPTY_FEEDBACK;
       }
     },
-    () => ({
-      perception: null as PerceptionChoice | null,
-      qualityVote: null as QualityVote | null,
-      qualityReasons: [] as QualityReason[],
-    })
+    () => EMPTY_FEEDBACK
   );
   const perception = perceptionOverride ?? storedFeedback.perception;
   const qualityVote = qualityVoteOverride ?? storedFeedback.qualityVote;
@@ -244,7 +254,10 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           puzzleDate?: string;
         };
         if (parsed.answer && (!parsed.puzzleDate || parsed.puzzleDate === todayKey)) {
-          return { answer: parsed.answer, explanation: parsed.explanation || "" };
+          return stableSnapshot("solution", {
+            answer: parsed.answer,
+            explanation: parsed.explanation || "",
+          });
         }
       } catch {}
       return null;
@@ -512,7 +525,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
                   {attempts}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
+                <div className="mt-1.5 font-medium text-xs text-subtle">
                   {attempts === 1 ? "Attempt" : "Attempts"}
                 </div>
               </div>
@@ -520,9 +533,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 <div className="font-semibold text-3xl text-foreground tracking-[-0.04em] tabular-nums">
                   {displayScore}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                  Points
-                </div>
+                <div className="mt-1.5 font-medium text-xs text-subtle">Points</div>
               </div>
               <div>
                 <div className="flex items-center justify-center gap-1 font-semibold text-3xl tracking-[-0.04em] tabular-nums">
@@ -535,9 +546,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                     <span className="text-foreground">0</span>
                   )}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] text-subtle uppercase tracking-[0.08em]">
-                  Streak
-                </div>
+                <div className="mt-1.5 font-medium text-xs text-subtle">Streak</div>
               </div>
             </div>
 
@@ -662,7 +671,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                             <span
                               key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                               className={cn(
-                                "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
+                                "rounded px-1.5 py-0.5 font-medium text-xs",
                                 result.correct
                                   ? "bg-success/15 text-success"
                                   : "bg-destructive/10 text-destructive"
@@ -869,7 +878,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                           <span
                             key={`${attempt.attemptNumber}-${result.word}-${result.correct}`}
                             className={cn(
-                              "rounded px-1.5 py-0.5 font-mono text-[11px] uppercase",
+                              "rounded px-1.5 py-0.5 font-medium text-xs",
                               result.correct
                                 ? "bg-success/15 text-success"
                                 : "bg-destructive/10 text-destructive"

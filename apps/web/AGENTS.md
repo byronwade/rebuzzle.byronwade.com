@@ -77,8 +77,9 @@ Concise rules for building accessible, fast, delightful UIs Use MUST/SHOULD/NEVE
   - SHOULD: Use gap utilities for spacing between related elements (not margin)
   - MUST: Consistent button group spacing: gap-1.5 for related buttons
 - Typography hierarchy
-  - MUST: Page titles: `font-semibold text-base md:text-lg` (16px → 18px)
-  - MUST: Subtitles: `text-muted-foreground text-sm` (14px)
+  - MUST: Page titles use the shared `PageHeader` (`src/components/PageHeader.tsx`): a sentence-case `eyebrow` caption, a 36px display title (`font-semibold text-4xl tracking-[-0.045em]`, ending in a full stop) and a `text-muted-foreground` context line
+  - MUST: Section headings inside a page: `font-semibold text-base` (16px)
+  - MUST: Subtitles and row descriptions: `text-muted-foreground text-sm` (14px)
   - MUST: Button labels: `font-medium text-sm` (14px)
   - MUST: Badge text: `font-medium text-xs` (12px)
   - MUST: Menu items: `text-sm` (14px)
@@ -168,3 +169,13 @@ Concise rules for building accessible, fast, delightful UIs Use MUST/SHOULD/NEVE
 - Visual hierarchy
   - MUST: Consistent use of muted colors for secondary content (`text-muted-foreground`)
   - SHOULD: Use semantic color tokens (primary, destructive, success, warning) instead of raw colors
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

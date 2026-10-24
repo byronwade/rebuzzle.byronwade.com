@@ -1,5 +1,5 @@
 import { buildPuzzleSolveBenchmarkCorpus } from "../benchmark/puzzle-corpus";
-import type { PuzzleNoveltyArchiveEntry } from "../novelty";
+import { buildPuzzleNoveltySignature, type PuzzleNoveltyArchiveEntry } from "../novelty";
 import { normalizeAnswerKey } from "../quality";
 import {
   RESERVE_PUZZLES,
@@ -116,6 +116,39 @@ describe("validated reserve puzzle inventory", () => {
     }
 
     expect(selectedIds.size).toBe(30);
+  });
+
+  it("waives only weekly quotas when every unused reserve trips one", async () => {
+    // Find a reserve whose mechanism family is shared by two other reserves.
+    const byFamily = new Map<string, typeof RESERVE_PUZZLES>();
+    for (const puzzle of RESERVE_PUZZLES) {
+      const family = buildPuzzleNoveltySignature(puzzle).mechanismFamilyKey;
+      byFamily.set(family, [...(byFamily.get(family) ?? []), puzzle]);
+    }
+    const family = [...byFamily.values()].find((members) => members.length >= 3);
+    expect(family).toBeDefined();
+    const [candidate, ...siblings] = family ?? [];
+    const usedAnswerKeys = new Set(
+      RESERVE_PUZZLES.filter((puzzle) => puzzle.id !== candidate.id).map((puzzle) =>
+        normalizeAnswerKey(puzzle.answer)
+      )
+    );
+    const recentPuzzles: PuzzleNoveltyArchiveEntry[] = siblings
+      .slice(0, 2)
+      .map((puzzle, index) => ({ ...puzzle, createdAt: dateAt(-1 - index) }));
+
+    const selection = await selectReservePuzzle({
+      dateString: "2026-08-01",
+      usedAnswerKeys,
+      recentPuzzles,
+      now: () => dateAt(0),
+    });
+
+    expect(selection.puzzle.id).toBe(candidate.id);
+    expect(selection.waivedNoveltyLimits?.length).toBeGreaterThan(0);
+    expect(
+      selection.waivedNoveltyLimits?.every((limit) => /already used \d+ times/.test(limit))
+    ).toBe(true);
   });
 
   it("fails closed instead of recycling after the reserve is exhausted", async () => {

@@ -31,7 +31,6 @@ interface LayoutProps {
  * Main layout component wrapping all pages
  *
  * Provides consistent structure with:
- * - Atmospheric mesh backdrop (hero scale, top of page only)
  * - Header with navigation
  * - Main content area
  * - Four-column footer on scrolling pages
@@ -71,15 +70,7 @@ function LayoutContent({
 
   const chrome = (
     <>
-      <a
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:font-medium focus:text-background focus:text-sm"
-        href="#main-content"
-      >
-        Skip to main content
-      </a>
-
-      <AtmosphericBackdrop />
-
+      {/* The skip link lives once, in the root layout, targeting #main-content. */}
       <Header gameState={gameState} nextPlayTime={nextPlayTime ?? null} puzzleType={puzzleType} />
 
       <main
@@ -109,19 +100,4 @@ function LayoutContent({
   }
 
   return <div className="relative flex min-h-screen flex-col bg-background">{chrome}</div>;
-}
-
-function AtmosphericBackdrop() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[520px] overflow-hidden"
-    >
-      <div className="absolute inset-0 grid-texture opacity-[0.5] [mask-image:linear-gradient(to_bottom,black,transparent_75%)] dark:opacity-[0.35]" />
-      <div className="absolute -top-56 left-1/2 h-[560px] w-[1100px] -translate-x-1/2">
-        <div className="mesh-gradient h-full w-full opacity-[0.14] blur-[80px] motion-safe:animate-mesh-drift dark:opacity-[0.22]" />
-      </div>
-      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background" />
-    </div>
-  );
 }

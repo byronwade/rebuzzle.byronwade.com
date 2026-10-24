@@ -1,17 +1,15 @@
 "use client";
 
 import { format as formatDateFns } from "date-fns";
-import { Award, Calendar, Clock, Edit, Trophy } from "lucide-react";
+import { Award, ChevronRight, ExternalLink, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { WordleStatsPanel } from "@/components/WordleStatsPanel";
 import { type AvatarPreferences, generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
 import { profilePathForUsername } from "@/lib/ugc/slug";
@@ -254,211 +252,172 @@ export default function ProfilePage() {
       ? 0
       : Math.round((stats.wins / stats.totalGames) * PERCENTAGE_MULTIPLIER);
 
+  const avatar = generateAvatarProps(username, avatarPreferences || undefined);
+  const formatNumber = (value: number) => value.toLocaleString("en-US", { useGrouping: true });
+
+  const headline = [
+    { label: "Points", value: formatNumber(stats.points) },
+    { label: "Played", value: formatNumber(stats.totalGames) },
+    { label: "Win rate", value: `${winRate}%` },
+    { label: "Streak", value: formatNumber(stats.streak) },
+    { label: "Best streak", value: formatNumber(Math.max(stats.maxStreak, stats.streak)) },
+    { label: "Daily streak", value: formatNumber(stats.dailyChallengeStreak) },
+  ];
+
   return (
     <Layout>
-      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
-        {/* Header */}
-        <div className="mb-8">
-          <p className="eyebrow mb-5">Profile</p>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16 border-2 border-border sm:h-20 sm:w-20 sm:border-4">
-                <AvatarFallback
-                  className={`font-semibold text-2xl tracking-[-0.04em] sm:text-3xl ${getAvatarClassName(
-                    generateAvatarProps(username, avatarPreferences || undefined),
-                    true
-                  )}`}
-                >
-                  {generateAvatarProps(username, avatarPreferences || undefined).initials}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h1 className="font-semibold text-2xl text-foreground tracking-[-0.04em] md:text-3xl">
-                  {username}
-                </h1>
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  <Badge variant="secondary" className="font-medium text-xs">
-                    Level {currentLevel}
-                  </Badge>
-                  <Badge variant="outline" className="font-medium text-xs">
-                    {stats.points.toLocaleString("en-US", { useGrouping: true })} points
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild size="sm" className="font-medium text-sm">
-                <Link href="/studio">Studio</Link>
-              </Button>
-              {isAuthenticated && user?.username ? (
-                <Button asChild size="sm" variant="outline" className="font-medium text-sm">
-                  <Link href={profilePathForUsername(user.username)}>Public page</Link>
-                </Button>
-              ) : null}
-              <Button asChild size="sm" variant="outline" className="font-medium text-sm">
-                <Link href="/settings">
-                  <Edit data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Link>
-              </Button>
+      <div className="mx-auto max-w-4xl px-4 py-12 md:px-6 md:py-16">
+        {/* Identity */}
+        <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between md:mb-10">
+          <div className="flex min-w-0 items-center gap-4 sm:gap-5">
+            <Avatar className="h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+              <AvatarFallback
+                className={`font-semibold text-2xl tracking-[-0.04em] sm:text-3xl ${getAvatarClassName(avatar, true)}`}
+              >
+                {avatar.initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="eyebrow">Profile</p>
+              <h1 className="mt-1 truncate font-semibold text-3xl text-foreground tracking-[-0.045em] sm:text-4xl">
+                {username}
+              </h1>
+              <p className="mt-1.5 text-muted-foreground text-sm">
+                Level {currentLevel}
+                {stats.lastPlayDate ? (
+                  <>
+                    {" · "}Last played {formatDateFns(new Date(stats.lastPlayDate), "MMM d, yyyy")}
+                  </>
+                ) : null}
+              </p>
             </div>
           </div>
-        </div>
+          <div className="flex flex-wrap gap-2">
+            {isAuthenticated && user?.username ? (
+              <Button asChild size="sm" variant="outline">
+                <Link href={profilePathForUsername(user.username)}>
+                  <ExternalLink aria-hidden className="h-4 w-4" data-icon="inline-start" />
+                  Public page
+                </Link>
+              </Button>
+            ) : null}
+            <Button asChild size="sm" variant="outline">
+              <Link href="/studio">Studio</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/settings">
+                <Settings aria-hidden className="h-4 w-4" data-icon="inline-start" />
+                Settings
+              </Link>
+            </Button>
+          </div>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Stats Overview */}
-          <Card className="p-6">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-base tracking-[-0.02em]">
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-              Statistics
-            </h2>
-
-            <div className="space-y-4">
-              {/* Level Progress */}
-              <div>
-                <div className="mb-2 flex justify-between text-sm">
-                  <span className="text-muted-foreground">Level Progress</span>
-                  <span className="font-semibold text-foreground">
-                    {stats.points.toLocaleString("en-US", { useGrouping: true })} /{" "}
-                    {nextLevelThreshold.toLocaleString("en-US", { useGrouping: true })}
-                  </span>
-                </div>
-                <Progress className="h-3" value={progressToNextLevel} />
-                <p className="mt-1.5 text-muted-foreground text-xs">
-                  {pointsToNextLevel > 0
-                    ? `${pointsToNextLevel.toLocaleString("en-US", { useGrouping: true })} points to Level ${currentLevel + 1}`
-                    : "Max level reached!"}
-                </p>
-              </div>
-
-              <Separator />
-
-              <WordleStatsPanel
-                stats={{
-                  played: stats.totalGames,
-                  winRate,
-                  currentStreak: stats.streak,
-                  maxStreak: Math.max(stats.maxStreak, stats.streak),
-                  guessDistribution: stats.guessDistribution,
-                  recentPlayDates: stats.recentPlayDates,
-                  streakFreezes: stats.streakFreezes,
-                }}
-              />
-
-              {stats.lastPlayDate && (
-                <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm">
-                  <Clock className="h-4 w-4" />
-                  <span>
-                    Last played: {formatDateFns(new Date(stats.lastPlayDate), "MMM d, yyyy")}
-                  </span>
-                </div>
-              )}
+        {/* Level progress + headline numbers */}
+        <Card className="overflow-hidden">
+          <div className="p-5 sm:p-6">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="font-medium text-foreground text-sm">Level {currentLevel}</p>
+              <p className="font-mono text-subtle text-xs tabular-nums">
+                {formatNumber(stats.points)} / {formatNumber(nextLevelThreshold)}
+              </p>
             </div>
+            <Progress
+              aria-label={`Progress to level ${currentLevel + 1}`}
+              className="mt-3 h-2"
+              value={progressToNextLevel}
+            />
+            <p className="mt-2 text-muted-foreground text-xs">
+              {pointsToNextLevel > 0
+                ? `${formatNumber(pointsToNextLevel)} points to level ${currentLevel + 1}`
+                : "Max level reached."}
+            </p>
+          </div>
+          <dl className="grid grid-cols-2 gap-px border-border border-t bg-border sm:grid-cols-3 lg:grid-cols-6">
+            {headline.map((item) => (
+              <div className="flex flex-col-reverse bg-card px-5 py-4" key={item.label}>
+                <dt className="mt-1 text-muted-foreground text-xs">{item.label}</dt>
+                <dd className="font-semibold text-2xl text-foreground tabular-nums tracking-[-0.04em]">
+                  {item.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Card className="p-5 sm:p-6">
+            <h2 className="mb-5 font-semibold text-base text-foreground tracking-[-0.02em]">
+              History
+            </h2>
+            <WordleStatsPanel
+              showTiles={false}
+              stats={{
+                played: stats.totalGames,
+                winRate,
+                currentStreak: stats.streak,
+                maxStreak: Math.max(stats.maxStreak, stats.streak),
+                guessDistribution: stats.guessDistribution,
+                recentPlayDates: stats.recentPlayDates,
+                streakFreezes: stats.streakFreezes,
+              }}
+            />
           </Card>
 
           {/* Achievements — catalog-backed from /api/user/achievements */}
-          <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 font-semibold text-base tracking-[-0.02em]">
-                <Award className="h-4 w-4 text-muted-foreground" />
-                Achievements ({unlockedAchievements.length})
+          <Card className="flex flex-col p-5 sm:p-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2 className="font-semibold text-base text-foreground tracking-[-0.02em]">
+                Achievements
+                <span className="ml-2 font-mono font-normal text-subtle text-xs tabular-nums">
+                  {unlockedAchievements.length}
+                </span>
               </h2>
               <Link
-                className="font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
+                className="inline-flex items-center gap-0.5 font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
                 href="/achievements"
               >
-                View all
+                View all<span className="sr-only"> achievements</span>
+                <ChevronRight aria-hidden className="h-3.5 w-3.5" />
               </Link>
             </div>
 
             {unlockedAchievements.length > 0 ? (
-              <div className="space-y-3">
-                {unlockedAchievements.map((achievement) => (
-                  <div
-                    className="flex items-center gap-3 rounded-lg border border-border bg-inset p-3"
-                    key={achievement.id}
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-lg">
+              <ul className="-mx-2 space-y-0.5">
+                {unlockedAchievements.slice(0, 6).map((achievement) => (
+                  <li className="flex items-center gap-3 rounded-md p-2" key={achievement.id}>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-inset text-base">
                       {achievement.icon || "🏅"}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-semibold text-foreground text-sm">
+                      <p className="truncate font-medium text-foreground text-sm">
                         {achievement.name}
-                      </div>
-                      <div className="line-clamp-2 text-muted-foreground text-xs">
+                      </p>
+                      <p className="truncate text-muted-foreground text-xs">
                         {achievement.description}
-                      </div>
+                      </p>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : (
-              <div className="py-8 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-inset">
-                  <Award className="h-6 w-6 text-muted-foreground/60" />
-                </div>
-                <p className="mb-2 font-medium text-foreground text-sm">No achievements yet</p>
-                <p className="text-muted-foreground text-xs">
-                  Keep playing to unlock achievements!
+              <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-border border-dashed px-6 py-10 text-center">
+                <Award aria-hidden className="h-6 w-6 text-subtle" />
+                <p className="mt-3 font-medium text-foreground text-sm">No achievements yet</p>
+                <p className="mt-1 max-w-[16rem] text-muted-foreground text-xs leading-5">
+                  Solve your first puzzle to start unlocking them.
                 </p>
               </div>
             )}
           </Card>
         </div>
 
-        {/* Activity Section */}
-        <Card className="mt-6 p-6">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-base tracking-[-0.02em]">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            Activity Summary
-          </h2>
-
-          <dl className="hairline-grid grid grid-cols-1 rounded-lg sm:grid-cols-3">
-            <div className="px-5 py-4">
-              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-                Total Points
-              </dt>
-              <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
-                {stats.points.toLocaleString("en-US", { useGrouping: true })}
-              </dd>
-            </div>
-
-            <div className="px-5 py-4">
-              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-                Current Streak
-              </dt>
-              <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
-                {stats.streak}
-              </dd>
-            </div>
-
-            <div className="px-5 py-4">
-              <dt className="font-mono text-[11px] text-subtle uppercase tracking-[0.14em]">
-                Daily Streak
-              </dt>
-              <dd className="mt-1.5 font-semibold text-2xl text-foreground tracking-[-0.04em]">
-                {stats.dailyChallengeStreak}
-              </dd>
-            </div>
-          </dl>
-        </Card>
-
-        {/* Actions */}
-        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
-          <Button asChild size="lg" className="w-full font-medium text-sm sm:w-auto">
-            <Link href="/" className="w-full sm:w-auto">
-              Play Today's Puzzle
-            </Link>
+        <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Button asChild className="w-full sm:w-auto" size="lg">
+            <Link href="/">Play today's puzzle</Link>
           </Button>
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="w-full font-medium text-sm sm:w-auto"
-          >
-            <Link href="/leaderboard" className="w-full sm:w-auto">
-              View Leaderboard
-            </Link>
+          <Button asChild className="w-full sm:w-auto" size="lg" variant="ghost">
+            <Link href="/leaderboard">See the leaderboard</Link>
           </Button>
         </div>
       </div>

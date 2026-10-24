@@ -6,6 +6,7 @@ import { AppLink as Link } from "@/components/AppLink";
 import BlogPost from "@/components/BlogPost";
 import { BlogPagination, BlogSearch } from "@/components/blog";
 import Layout from "@/components/Layout";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -167,16 +168,14 @@ async function BlogContent() {
 
       <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
         {/* Header */}
-        <header className="border-border border-b pb-8">
-          <p className="eyebrow">Blog</p>
-          <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Puzzle solutions.</h1>
-          <p className="mt-3 text-muted-foreground leading-7">
-            Daily write-ups, strategies and the reasoning behind each puzzle.
-          </p>
-        </header>
+        <PageHeader
+          description="Daily write-ups, strategies and the reasoning behind each puzzle."
+          eyebrow="Blog"
+          title="Puzzle solutions."
+        />
 
         {/* Search */}
-        <div className="mt-8 mb-8">
+        <div className="mb-8">
           <Suspense fallback={<Skeleton className="h-10 w-full rounded-lg" />}>
             <BlogSearch />
           </Suspense>

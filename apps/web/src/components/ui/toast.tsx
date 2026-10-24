@@ -30,8 +30,10 @@ const toastVariants = cva(
     variants: {
       variant: {
         default: "border-border bg-card text-foreground",
+        // Thorbis: a status is a quiet rim plus the word, not a red slab —
+        // the description stays readable at body contrast.
         destructive:
-          "destructive group border-destructive/30 bg-destructive text-destructive-foreground",
+          "destructive group border-destructive/40 bg-card text-foreground [&_[data-toast-title]]:text-destructive",
         success: "border-success/25 bg-card text-foreground",
       },
     },
@@ -59,7 +61,7 @@ const ToastAction = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Action
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-card px-3 font-medium text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:focus:ring-destructive group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground",
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-card px-3 font-medium text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-destructive/30 group-[.destructive]:text-destructive",
       className
     )}
     ref={ref}
@@ -74,14 +76,15 @@ const ToastClose = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Close
     className={cn(
-      "absolute top-2 right-2 rounded-md p-1 text-subtle opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover:opacity-100 group-[.destructive]:text-destructive-foreground/70 group-[.destructive]:hover:text-destructive-foreground",
+      "absolute top-2 right-2 inline-flex size-7 items-center justify-center rounded-full text-subtle transition-colors hover:bg-muted hover:text-foreground",
       className
     )}
     ref={ref}
     toast-close=""
     {...props}
   >
-    <X className="h-4 w-4" />
+    <X aria-hidden="true" className="h-4 w-4" />
+    <span className="sr-only">Dismiss</span>
   </ToastPrimitives.Close>
 ));
 ToastClose.displayName = ToastPrimitives.Close.displayName;
@@ -92,6 +95,7 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     className={cn("font-semibold text-sm [&+div]:text-xs", className)}
+    data-toast-title=""
     ref={ref}
     {...props}
   />

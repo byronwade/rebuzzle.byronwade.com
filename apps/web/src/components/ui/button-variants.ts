@@ -1,38 +1,43 @@
 import { cva, type VariantProps } from "class-variance-authority";
 
 /**
- * Two button scales coexist deliberately:
+ * Thorbis controls (https://design.thorbis.com):
  *
- * - In-app chrome uses the 6px `rounded-md` shape (nav, forms, dialogs).
- * - Marketing CTAs use the `pill` variants at `rounded-pill`.
+ * - A commit is ink: type-colour fill, inverse type, 10px radius, 1px rim.
+ * - `brand` is the electric-blue action — one per view, for the move that
+ *   starts play (Play, Submit guess, Share result).
+ * - Utilities stay quiet (outline / secondary / ghost). Icon-only is a circle.
+ * - Hover is colour only and gated to a real mouse; press is a 120ms nudge.
  *
- * Pick one scale per screen — never mix them in the same view.
+ * Peers in one action neighbourhood share height and radius (D-023).
  */
 export const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium text-sm focus-ring transition-[color,background-color,border-color,opacity,box-shadow] duration-150 disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-medium text-sm focus-ring transition-[color,background-color,border-color,box-shadow,transform] duration-fast ease-thorbis active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        // Ink is the conversion target — one primary per view.
-        default: "bg-foreground text-background hover:bg-foreground/85",
+        default:
+          "bg-foreground text-background shadow-[var(--shadow-commit)] hover:bg-foreground/85",
+        brand: "bg-brand text-brand-foreground shadow-[var(--shadow-accent)] hover:bg-brand-hover",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-border bg-card text-foreground shadow-border hover:border-border-strong/60 hover:bg-muted",
+          "border border-border bg-card text-foreground hover:border-border-strong/70 hover:bg-muted",
         secondary: "bg-secondary text-secondary-foreground hover:bg-accent",
         ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
-        link: "text-link underline-offset-4 hover:underline",
-        // Marketing scale — 100px pill.
-        pill: "rounded-pill bg-foreground px-5 text-background hover:bg-foreground/85",
+        link: "text-link underline-offset-4 active:scale-100 hover:underline",
+        // Showcase scale — same ink commit with a pill silhouette.
+        pill: "rounded-pill bg-foreground px-5 text-background shadow-[var(--shadow-commit)] hover:bg-foreground/85",
         "pill-outline":
-          "rounded-pill border border-border bg-card px-5 text-foreground shadow-border hover:bg-muted",
+          "rounded-pill border border-border bg-card px-5 text-foreground hover:bg-muted",
       },
       size: {
         default: "h-9 px-3.5",
         sm: "h-8 px-3 text-[13px]",
         lg: "h-11 px-5 text-[15px]",
         xl: "h-12 px-6 text-base",
-        icon: "h-9 w-9",
-        "icon-sm": "h-8 w-8",
+        // Icon-only is a circle; the hit area stays at least 36px.
+        icon: "size-9 rounded-full",
+        "icon-sm": "size-8 rounded-full",
       },
     },
     defaultVariants: {

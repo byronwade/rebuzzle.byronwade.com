@@ -31,7 +31,7 @@ export type CachedDailyPuzzle = {
   };
 };
 
-function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDailyPuzzle {
+export function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDailyPuzzle {
   let puzzleDisplay = puzzle.puzzle || puzzle.rebusPuzzle || "";
 
   // Safety check: If puzzle text matches answer, it's likely corrupted data

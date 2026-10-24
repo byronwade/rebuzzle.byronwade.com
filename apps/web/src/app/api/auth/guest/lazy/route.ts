@@ -27,7 +27,7 @@ const GUEST_TOKEN_COOKIE = "rebuzzle_guest_token";
 
 export async function POST(request: Request) {
   try {
-    const limit = await rateLimiters.auth(request);
+    const limit = await rateLimiters.guest(request);
     if (limit && !limit.success) {
       return NextResponse.json(
         { success: false, error: "Too many guest sessions. Try again later." },

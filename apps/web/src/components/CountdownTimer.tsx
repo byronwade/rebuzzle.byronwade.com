@@ -54,12 +54,10 @@ export function CountdownTimer() {
     <div className="inline-flex items-center gap-3 rounded-lg border border-border bg-card px-5 py-3 shadow-sm">
       <Clock className="h-6 w-6 animate-pulse" />
       <div className="text-center">
-        <div className="font-semibold text-xs uppercase tracking-wide opacity-90">
-          Next Puzzle In
-        </div>
+        <div className="font-semibold text-xs opacity-90">Next Puzzle In</div>
         <div className="font-bold text-3xl tabular-nums">{timeLeft}</div>
         {nextAt && (
-          <div className="mt-1 text-[10px] uppercase tracking-wide opacity-75">
+          <div className="mt-1 text-xs opacity-75">
             Resets at local midnight (
             {nextAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })})
           </div>
