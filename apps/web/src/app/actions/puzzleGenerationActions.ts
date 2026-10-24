@@ -208,13 +208,10 @@ async function getOrGenerateDailyPuzzle(
     );
   }
 
-  // Interactive play path: never block TTFB on reserve persistence / UGC lottery.
-  // Cron owns generation; if today's puzzle isn't ready, surface the empty state.
+  // Interactive play path: never block TTFB on Eve — persist a validated reserve puzzle.
+  // Cron / regenerate / admin regenerate should call with allowAiGenerate: true.
   if (!allowAiGenerate) {
-    logger.warn("Play-path cache miss — refusing reserve persist to keep TTFB fast", {
-      dateString,
-    });
-    return null;
+    return persistReservePuzzle(dateString, "Play-path reserve (AI deferred to cron)");
   }
 
   const genStarted = Date.now();
@@ -556,14 +553,6 @@ export async function getTodaysPuzzle(
     const todayString = dateString || getTodayDateString();
     const puzzle = await getOrGenerateDailyPuzzle(todayString, puzzleType, options);
 
-    if (!puzzle) {
-      return {
-        success: false,
-        error: "Today's puzzle is not ready yet",
-        generatedAt: new Date().toISOString(),
-      };
-    }
-
     return {
       success: true,
       puzzle,
@@ -580,15 +569,6 @@ export async function getTodaysPuzzle(
     // Dev/admin regenerate must not paper over AI Gateway auth failures.
     if (options?.failOnAiError) {
       throw error instanceof Error ? error : new Error(String(error));
-    }
-
-    // Play path: fail soft without emergency reserve (that path is multi-second).
-    if (options?.allowAiGenerate === false) {
-      return {
-        success: false,
-        error: "Unable to load today's puzzle",
-        generatedAt: new Date().toISOString(),
-      };
     }
 
     // Last resort still uses the archive-aware reserve; never recycle a known answer.
@@ -629,14 +609,6 @@ export async function getPuzzleForDate(dateString: string) {
     }
 
     const puzzle = await getOrGenerateDailyPuzzle(dateString);
-
-    if (!puzzle) {
-      return {
-        success: false,
-        error: "Puzzle not available for this date",
-        generatedAt: new Date().toISOString(),
-      };
-    }
 
     return {
       success: true,
