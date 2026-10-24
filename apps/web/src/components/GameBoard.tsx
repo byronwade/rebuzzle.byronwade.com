@@ -1179,11 +1179,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     "play-stage flex min-h-0 flex-1 flex-col items-center px-4 md:px-6",
                     stageScrollable
                       ? "touch-pan-y justify-start gap-3 overflow-y-auto overscroll-y-contain py-[clamp(0.5rem,2vh,1rem)] pb-4"
-                      : "overflow-hidden",
+                      : keyboardOpen
+                        ? "overflow-hidden"
+                        : "overflow-y-auto overscroll-y-contain",
                     !(stageScrollable || keyboardOpen) &&
                       (hasThread && isNarrowViewport && !stageExpanded
                         ? "justify-start py-[clamp(0.5rem,2vh,1rem)]"
-                        : "justify-center py-[clamp(0.5rem,2vh,1rem)]"),
+                        : "justify-center justify-[safe_center] py-[clamp(0.5rem,2vh,1rem)]"),
                     keyboardOpen && !stageScrollable && "justify-start gap-1 pt-1 pb-0"
                   )}
                 >
