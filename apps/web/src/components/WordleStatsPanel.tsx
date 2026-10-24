@@ -82,7 +82,7 @@ export function WordleStatsPanel({
                 <div className="h-5 flex-1">
                   <div
                     className={cn(
-                      "flex h-full min-w-[1.5rem] items-center justify-end rounded-sm px-1.5 font-mono text-[11px] tabular-nums transition-[width] duration-500",
+                      "flex h-full min-w-[1.5rem] items-center justify-end rounded-sm px-1.5 font-mono text-xs tabular-nums transition-[width] duration-500",
                       isTop
                         ? "bg-foreground text-background"
                         : count > 0
@@ -132,7 +132,7 @@ export function WordleStatsPanel({
 function StatTile({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col-reverse items-center px-2 py-3 text-center">
-      <dt className="mt-0.5 text-[11px] text-muted-foreground">{label}</dt>
+      <dt className="mt-0.5 text-muted-foreground text-xs">{label}</dt>
       <dd className="font-semibold text-foreground text-xl tabular-nums tracking-[-0.03em]">
         {value}
       </dd>

@@ -377,7 +377,7 @@ export default function ProfilePage() {
                 className="inline-flex items-center gap-0.5 font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
                 href="/achievements"
               >
-                View all
+                View all<span className="sr-only"> achievements</span>
                 <ChevronRight aria-hidden className="h-3.5 w-3.5" />
               </Link>
             </div>
