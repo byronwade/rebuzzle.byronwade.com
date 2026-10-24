@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { BlogPostSections } from "@/db/models";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
+import { separateInlineSteps } from "@/lib/blog-markdown";
 import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
@@ -71,8 +72,8 @@ function SectionBlock({ title, body }: { title: string; body: string }) {
   return (
     <section className="mt-10">
       <h2 className="font-semibold text-foreground text-xl tracking-[-0.03em]">{title}</h2>
-      <div className="prose prose-sm mt-3 max-w-none dark:prose-invert">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+      <div className="prose prose-sm mt-3 max-w-none sm:prose-base dark:prose-invert">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{separateInlineSteps(body)}</ReactMarkdown>
       </div>
     </section>
   );

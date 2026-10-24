@@ -268,7 +268,10 @@ async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
         )}
 
         <div className="mt-12 text-center">
-          <Link className="text-link text-sm underline-offset-4 hover:underline" href="/blog">
+          <Link
+            className="inline-flex h-11 items-center text-muted-foreground text-sm transition-colors hover:text-foreground"
+            href="/blog"
+          >
             ← Back to blog
           </Link>
         </div>
