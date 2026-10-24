@@ -562,7 +562,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           ) : (
             <p className="border-border border-t bg-inset/60 px-6 py-4 text-muted-foreground text-sm">
               {todaySolves !== null && todaySolves > 0
-                ? `${todaySolves.toLocaleString()} players solved it today. A fresh one unlocks at midnight.`
+                ? `${todaySolves.toLocaleString()} ${todaySolves === 1 ? "player" : "players"} solved it today. A fresh one unlocks at midnight.`
                 : "A fresh puzzle unlocks at midnight."}
             </p>
           )}

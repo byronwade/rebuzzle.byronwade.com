@@ -333,7 +333,7 @@ export default function ProfilePage() {
             />
             <p className="mt-2 text-muted-foreground text-xs">
               {pointsToNextLevel > 0
-                ? `${formatNumber(pointsToNextLevel)} points to go`
+                ? `${formatNumber(pointsToNextLevel)} ${pointsToNextLevel === 1 ? "point" : "points"} to go`
                 : "Max level reached."}
             </p>
           </div>

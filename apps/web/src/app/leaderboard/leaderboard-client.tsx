@@ -496,7 +496,8 @@ export default function LeaderboardClient({
                             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
                               <span className="flex items-center gap-1">
                                 <Target className="size-3.5" />
-                                {entry.stats.totalGames} games
+                                {entry.stats.totalGames}{" "}
+                                {entry.stats.totalGames === 1 ? "game" : "games"}
                               </span>
                               {entry.stats.streak > 0 && (
                                 <span className="flex items-center gap-1">
@@ -566,7 +567,8 @@ export default function LeaderboardClient({
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs mt-1">
                               <span className="flex items-center gap-1">
                                 <Target className="size-3" />
-                                {userEntry.stats.totalGames} games
+                                {userEntry.stats.totalGames}{" "}
+                                {userEntry.stats.totalGames === 1 ? "game" : "games"}
                               </span>
                               {userEntry.stats.streak > 0 && (
                                 <span className="flex items-center gap-1">
