@@ -16,23 +16,28 @@ export async function GET(req: Request) {
       );
     }
 
-    // Security: Verify authentication - user can only check their own subscription
     const authUser = await getAuthenticatedUser(req);
-    if (!authUser) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
-      );
+
+    // userId lookups require a matching session — prevents probing other users.
+    if (userId) {
+      if (!authUser) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+        );
+      }
+      if (authUser.userId !== userId) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+        );
+      }
     }
 
-    // Verify the requested userId/email matches the authenticated user
-    if (userId && authUser.userId !== userId) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
-      );
-    }
-    if (email && authUser.email.toLowerCase() !== email.toLowerCase().trim()) {
+    // Email-only lookups are allowed without auth so guest subscribers (who
+    // signed up via /subscribe with an email) can check status. When a session
+    // is present, the email must match the authenticated account.
+    if (email && authUser && authUser.email.toLowerCase() !== email.toLowerCase().trim()) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
@@ -54,7 +59,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         success: true,
-        enabled: subscription?.enabled,
+        enabled: Boolean(subscription?.enabled),
         subscriptionId: subscription?.id,
       },
       { headers: { "Cache-Control": buildCacheControl({ private: true }) } }

@@ -179,7 +179,7 @@ export const ANSWER_VALIDATION_CONFIG: AnswerValidationConfig = {
   alwaysUseAI: false,
   quickAcceptThreshold: 0.98, // Skip AI if nearly exact
   aiMinimumSimilarity: 0.45, // Don't bother AI for very different answers
-  aiTimeoutMs: 1800, // Keep guess INP snappy
+  aiTimeoutMs: 900, // Fail fast to fuzzy — production often hit the old 1800ms ceiling
   tolerateWordOrderVariations: true,
   expandContractions: true,
   ignorePunctuation: true,

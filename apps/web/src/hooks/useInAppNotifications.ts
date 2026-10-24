@@ -41,8 +41,27 @@ export function useInAppNotifications(enabled: boolean) {
   }, [enabled]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!enabled) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    // Defer inbox fetch so play/auth cold paths aren't competing for Mongo.
+    // Badge still refreshes immediately when the popover opens.
+    const run = () => {
+      void refresh();
+    };
+
+    if (typeof globalThis !== "undefined" && "requestIdleCallback" in globalThis) {
+      const idleWindow = globalThis as Window & typeof globalThis;
+      const id = idleWindow.requestIdleCallback(run, { timeout: 4000 });
+      return () => idleWindow.cancelIdleCallback(id);
+    }
+
+    const timeout = globalThis.setTimeout(run, 1500);
+    return () => globalThis.clearTimeout(timeout);
+  }, [enabled, refresh]);
 
   const markRead = useCallback(async (notificationId: string) => {
     try {
