@@ -1,16 +1,13 @@
 "use client";
 
+import { Loader2, Lock } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
-import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
-import Layout from "@/components/Layout";
+import { AuthField, AuthNotice, AuthShell, authFooterLink } from "@/components/auth/AuthShell";
 import { AuthFormSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
 
@@ -175,114 +172,83 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <Layout>
-      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
-        <div className="flex justify-center">
-          <Card className="w-full max-w-[400px] p-8" variant="float">
-            {/* Header */}
-            <div className="mb-7 text-center">
-              <div className="mb-5 flex justify-center">
-                <RebuzzleLogo size="lg" showWordmark={false} />
-              </div>
-              <h1 className="font-semibold text-2xl tracking-[-0.04em]">Reset password</h1>
-              <p className="mt-2 text-muted-foreground text-sm">
-                {success
-                  ? "Password reset successful! Redirecting to login..."
-                  : "Enter your new password"}
-              </p>
-            </div>
-
-            {success ? (
-              <div
-                className="rounded-lg border border-success/25 bg-success/[0.07] p-4 text-center"
-                role="status"
-              >
-                <p className="text-foreground text-sm">
-                  Your password has been reset successfully. Redirecting to login...
-                </p>
-              </div>
-            ) : (
-              <form className="space-y-4" noValidate onSubmit={handleSubmit}>
-                <div>
-                  <Label htmlFor="password">New Password</Label>
-                  <Input
-                    autoComplete="new-password"
-                    autoFocus
-                    disabled={isLoading}
-                    id="password"
-                    minLength={6}
-                    name="password"
-                    onBlur={(e) => {
-                      const error = validateField("password", e.target.value);
-                      setErrors((prev) => ({ ...prev, password: error }));
-                    }}
-                    onChange={handleChange}
-                    placeholder="Enter new password"
-                    required
-                    type="password"
-                    value={formData.password}
-                  />
-                  {errors.password && (
-                    <p className="mt-1.5 text-destructive text-xs" role="alert">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    autoComplete="new-password"
-                    disabled={isLoading}
-                    id="confirmPassword"
-                    minLength={6}
-                    name="confirmPassword"
-                    onBlur={(e) => {
-                      const error = validateField("confirmPassword", e.target.value, formData);
-                      setErrors((prev) => ({
-                        ...prev,
-                        confirmPassword: error,
-                      }));
-                    }}
-                    onChange={handleChange}
-                    placeholder="Confirm new password"
-                    required
-                    type="password"
-                    value={formData.confirmPassword}
-                  />
-                  {errors.confirmPassword && (
-                    <p className="mt-1.5 text-destructive text-xs" role="alert">
-                      {errors.confirmPassword}
-                    </p>
-                  )}
-                </div>
-
-                {errors.form && (
-                  <div
-                    className="rounded-md border border-destructive/25 bg-destructive/[0.07] px-3 py-2.5"
-                    role="alert"
-                  >
-                    <p className="text-destructive text-sm">{errors.form}</p>
-                  </div>
-                )}
-
-                <Button className="w-full" disabled={isLoading} type="submit">
-                  {isLoading ? "Resetting..." : "Reset Password"}
-                </Button>
-              </form>
-            )}
-
-            <div className="mt-6 text-center">
-              <Link
-                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-                href="/login"
-              >
-                ← Back to Login
-              </Link>
-            </div>
-          </Card>
-        </div>
-      </div>
-    </Layout>
+    <AuthShell
+      description={
+        success
+          ? "Taking you to log in with your new password…"
+          : "Pick something you haven't used here before."
+      }
+      footer={
+        <p>
+          <Link className={authFooterLink} href="/login">
+            Back to log in
+          </Link>
+        </p>
+      }
+      title={success ? "Password updated." : "Choose a new password."}
+    >
+      {success ? (
+        <AuthNotice tone="success">Your password has been reset.</AuthNotice>
+      ) : (
+        <form
+          aria-label="Choose a new password"
+          className="space-y-4"
+          noValidate
+          onSubmit={handleSubmit}
+        >
+          {errors.form ? <AuthNotice>{errors.form}</AuthNotice> : null}
+          <AuthField
+            autoComplete="new-password"
+            autoFocus
+            disabled={isLoading}
+            error={errors.password}
+            help="At least 6 characters."
+            icon={Lock}
+            id="password"
+            label="New password"
+            minLength={6}
+            name="password"
+            onBlur={(e) => {
+              const error = validateField("password", e.target.value);
+              setErrors((prev) => ({ ...prev, password: error }));
+            }}
+            onChange={handleChange}
+            required
+            type="password"
+            value={formData.password}
+          />
+          <AuthField
+            autoComplete="new-password"
+            disabled={isLoading}
+            error={errors.confirmPassword}
+            icon={Lock}
+            id="confirmPassword"
+            label="Confirm new password"
+            minLength={6}
+            name="confirmPassword"
+            onBlur={(e) => {
+              const error = validateField("confirmPassword", e.target.value, formData);
+              setErrors((prev) => ({ ...prev, confirmPassword: error }));
+            }}
+            onChange={handleChange}
+            required
+            type="password"
+            value={formData.confirmPassword}
+          />
+          <Button
+            aria-busy={isLoading}
+            className="w-full"
+            disabled={isLoading}
+            size="lg"
+            type="submit"
+          >
+            {isLoading ? (
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" data-icon="inline-start" />
+            ) : null}
+            {isLoading ? "Saving…" : "Save new password"}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

@@ -1,21 +1,28 @@
 import { AppLink as Link } from "@/components/AppLink";
 import { RebuzzleMark } from "@/components/brand/RebuzzleLogo";
+import { StatusPage } from "@/components/StatusPage";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 py-16 text-center">
-      <RebuzzleMark className="mb-6 size-12" title="Rebuzzle" />
-      <p className="font-mono text-muted-foreground text-xs">404</p>
-      <h1 className="mt-3 font-semibold text-3xl text-foreground tracking-[-0.04em] md:text-4xl">
-        Page not found
-      </h1>
-      <p className="mt-3 max-w-md text-muted-foreground text-sm leading-6">
-        That route doesn&apos;t exist in Rebuzzle. Head home and pick up today&apos;s puzzle.
-      </p>
-      <Button asChild className="mt-8" size="lg">
-        <Link href="/">Back to home</Link>
-      </Button>
+    <div className="flex flex-col items-center">
+      <RebuzzleMark className="mt-16 size-12" title="Rebuzzle" />
+      <StatusPage
+        actions={
+          <>
+            <Button asChild size="lg">
+              <Link href="/">Play today's puzzle</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/blog">Browse the blog</Link>
+            </Button>
+          </>
+        }
+        className="min-h-0 pt-6"
+        description="That page doesn't exist, or it moved. Today's puzzle is right where you left it."
+        eyebrow="404"
+        title="Page not found."
+      />
     </div>
   );
 }

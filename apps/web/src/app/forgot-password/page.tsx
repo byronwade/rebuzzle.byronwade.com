@@ -1,15 +1,12 @@
 "use client";
 
+import { Loader2, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
-import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
-import Layout from "@/components/Layout";
+import { AuthField, AuthNotice, AuthShell, authFooterLink } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
 
@@ -91,94 +88,83 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <Layout>
-      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
-        <div className="flex justify-center">
-          <Card className="w-full max-w-[400px] p-8" variant="float">
-            {/* Header */}
-            <div className="mb-7 text-center">
-              <div className="mb-5 flex justify-center">
-                <RebuzzleLogo size="lg" showWordmark={false} />
-              </div>
-              <h1 className="font-semibold text-2xl tracking-[-0.04em]">Forgot password?</h1>
-              <p className="mt-2 text-muted-foreground text-sm">
-                {success
-                  ? "Check your email for reset instructions"
-                  : "Enter your email and we'll send you a reset link"}
-              </p>
-            </div>
-
-            {success ? (
-              <div className="space-y-4">
-                <div className="rounded-lg bg-accent/50 p-4 text-center" role="status">
-                  <p className="text-foreground text-sm">
-                    If an account exists with this email, a password reset link has been sent. Check
-                    your inbox and follow the instructions.
-                  </p>
-                </div>
-                <div className="mt-7 flex flex-col gap-2">
-                  <Button className="w-full" onClick={() => router.push("/login")}>
-                    Back to Login
-                  </Button>
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      setSuccess(false);
-                      setEmail("");
-                    }}
-                    variant="outline"
-                  >
-                    Send Another Email
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    autoComplete="email"
-                    autoFocus
-                    disabled={isLoading}
-                    id="email"
-                    name="email"
-                    onBlur={(e) => {
-                      const emailError = validateEmail(e.target.value);
-                      setError(emailError || null);
-                    }}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setError(null);
-                    }}
-                    placeholder="your@email.com"
-                    required
-                    type="email"
-                    value={email}
-                  />
-                  {error && (
-                    <p className="mt-1.5 text-destructive text-xs" role="alert">
-                      {error}
-                    </p>
-                  )}
-                </div>
-
-                <Button className="w-full" disabled={isLoading} type="submit">
-                  {isLoading ? "Sending..." : "Send Reset Link"}
-                </Button>
-              </form>
-            )}
-
-            <div className="mt-6 text-center">
-              <Link
-                className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-                href="/login"
-              >
-                ← Back to Login
-              </Link>
-            </div>
-          </Card>
+    <AuthShell
+      description={
+        success
+          ? "If an account uses that email, a reset link is on its way. It expires in an hour."
+          : "Enter the email you signed up with and we'll send you a reset link."
+      }
+      footer={
+        <p>
+          Remembered it?{" "}
+          <Link className={authFooterLink} href="/login">
+            Back to log in
+          </Link>
+        </p>
+      }
+      title={success ? "Check your inbox." : "Reset your password."}
+    >
+      {success ? (
+        <div className="space-y-4">
+          <AuthNotice tone="success">
+            Didn't get it? Check spam, or send it again in a minute.
+          </AuthNotice>
+          <div className="grid gap-2">
+            <Button className="w-full" onClick={() => router.push("/login")}>
+              Back to log in
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setSuccess(false);
+                setEmail("");
+              }}
+              variant="outline"
+            >
+              Use a different email
+            </Button>
+          </div>
         </div>
-      </div>
-    </Layout>
+      ) : (
+        <form aria-label="Reset password" className="space-y-4" noValidate onSubmit={handleSubmit}>
+          <AuthField
+            autoComplete="email"
+            autoFocus
+            disabled={isLoading}
+            error={error}
+            icon={Mail}
+            id="email"
+            inputMode="email"
+            label="Email"
+            name="email"
+            onBlur={(e) => {
+              const emailError = validateEmail(e.target.value);
+              setError(emailError || null);
+            }}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError(null);
+            }}
+            placeholder="you@example.com"
+            required
+            spellCheck={false}
+            type="email"
+            value={email}
+          />
+          <Button
+            aria-busy={isLoading}
+            className="w-full"
+            disabled={isLoading}
+            size="lg"
+            type="submit"
+          >
+            {isLoading ? (
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" data-icon="inline-start" />
+            ) : null}
+            {isLoading ? "Sending…" : "Send reset link"}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }
