@@ -965,9 +965,11 @@ export function PuzzleStudio() {
                   "rounded-md px-2 py-2.5 text-left transition-colors md:px-3",
                   active
                     ? "bg-foreground text-background"
-                    : "text-foreground hover:bg-card hover:shadow-sm",
-                  locked && !active && "opacity-45"
+                    : locked
+                      ? "cursor-not-allowed text-subtle"
+                      : "text-foreground hover:bg-card hover:shadow-sm"
                 )}
+                aria-current={active ? "step" : undefined}
                 disabled={locked && !active}
                 key={item.id}
                 onClick={() => setStep(item.id)}
@@ -976,8 +978,8 @@ export function PuzzleStudio() {
                 <span className="block font-semibold text-sm">{item.label}</span>
                 <span
                   className={cn(
-                    "text-[11px]",
-                    active ? "text-background/60" : "text-muted-foreground"
+                    "text-xs",
+                    active ? "text-background/70" : locked ? "text-subtle" : "text-muted-foreground"
                   )}
                 >
                   {item.hint}
