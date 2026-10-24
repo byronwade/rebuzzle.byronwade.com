@@ -42,9 +42,11 @@ async function CommunityPageContent() {
       <div className="mx-auto max-w-page px-4 py-10 md:px-6 md:py-14">
         <PageHeader
           actions={
-            <Button asChild>
-              <Link href="/studio">Open Studio</Link>
-            </Button>
+            puzzles.length > 0 ? (
+              <Button asChild className="h-11 sm:h-9">
+                <Link href="/studio">Open Studio</Link>
+              </Button>
+            ) : null
           }
           description="Boards made in Studio, graded by Eve, playable anytime. Featured ones can land in the daily rotation."
           eyebrow="Community"
@@ -60,7 +62,7 @@ async function CommunityPageContent() {
             <p className="mx-auto mt-3 max-w-sm text-muted-foreground text-sm leading-6">
               Be the first — compose a rebus in Studio and publish it.
             </p>
-            <Button asChild className="mt-7">
+            <Button asChild className="mt-7" size="lg">
               <Link href="/studio">Make a puzzle</Link>
             </Button>
           </div>
