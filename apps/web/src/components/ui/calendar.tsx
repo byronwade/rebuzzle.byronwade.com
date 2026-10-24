@@ -2,11 +2,19 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type * as React from "react";
-import { DayPicker } from "react-day-picker";
+import { type ChevronProps, DayPicker } from "react-day-picker";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+
+function CalendarChevron({ className, orientation, ...rest }: ChevronProps) {
+  return orientation === "left" ? (
+    <ChevronLeft className={cn("size-4", className)} {...rest} />
+  ) : (
+    <ChevronRight className={cn("size-4", className)} {...rest} />
+  );
+}
 
 /** shadcn Calendar mapped onto the react-day-picker v10 class and slot names. */
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
@@ -49,14 +57,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         hidden: "invisible",
         ...classNames,
       }}
-      components={{
-        Chevron: ({ className, orientation, ...rest }) =>
-          orientation === "left" ? (
-            <ChevronLeft className={cn("size-4", className)} {...rest} />
-          ) : (
-            <ChevronRight className={cn("size-4", className)} {...rest} />
-          ),
-      }}
+      components={{ Chevron: CalendarChevron }}
       showOutsideDays={showOutsideDays}
       {...props}
     />
