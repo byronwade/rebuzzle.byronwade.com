@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { isPuzzleTypeSlug } from "./lib/seo/puzzle-types";
 import { ensureValidated } from "./lib/startup-validation";
 
 /**
@@ -8,7 +9,7 @@ import { ensureValidated } from "./lib/startup-validation";
  * Runs on every request before the route handler
  * Validates environment on first request
  */
-export function proxy(_request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Validate environment on first request
   try {
     ensureValidated();
@@ -21,6 +22,13 @@ export function proxy(_request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+
+  // Unknown puzzle types get a real 404 status. notFound() in the page runs
+  // after Cache Components has streamed a 200 shell.
+  const puzzleType = request.nextUrl.pathname.match(/^\/puzzles\/([^/]+)\/?$/)?.[1];
+  if (puzzleType && !isPuzzleTypeSlug(puzzleType)) {
+    return NextResponse.rewrite(new URL("/404", request.url), { status: 404 });
   }
 
   // Continue to route handler
