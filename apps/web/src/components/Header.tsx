@@ -93,7 +93,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
             <Button
               aria-controls={mobileNavId}
               aria-expanded={mobileNavOpen}
-              aria-label="Menu"
+              aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
               className="md:hidden"
               onClick={() => setMobileNavOpen((open) => !open)}
               size="icon-sm"
@@ -105,7 +105,6 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
               ) : (
                 <Menu className="h-4 w-4" data-icon="inline-end" />
               )}
-              <span className="sr-only">Menu</span>
             </Button>
 
             {mounted && <NotificationBadge />}

@@ -268,7 +268,7 @@ export function PlaytestClient() {
               <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <select
                   aria-label="Reason puzzle was not playable"
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-base sm:text-sm"
                   disabled={isSubmitting}
                   onChange={(event) =>
                     setFailureReason(event.target.value as PuzzlePlaytestFailureReason | "")
