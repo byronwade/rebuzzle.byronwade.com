@@ -28,7 +28,7 @@ const PUZZLE_TYPE_INFO: Record<
   }
 > = {
   rebus: {
-    name: "Rebus Puzzles",
+    name: "Rebus puzzles",
     description:
       "Visual word puzzles using emojis, symbols, and text positioning. Combine visual elements to form words and phrases.",
     keywords: [
@@ -41,7 +41,7 @@ const PUZZLE_TYPE_INFO: Record<
     examples: ["🐝 + 4️⃣ = before", "☀️ + 🌻 = sunflower", "🧠 + ⛈️ = brainstorm"],
   },
   "logic-grid": {
-    name: "Logic Grid Puzzles",
+    name: "Logic grid puzzles",
     description:
       "Einstein-style puzzles requiring deductive reasoning to solve relationships between multiple categories.",
     keywords: [
@@ -54,7 +54,7 @@ const PUZZLE_TYPE_INFO: Record<
     examples: ["Who lives where?", "What color is each house?", "Solve the relationships"],
   },
   "cryptic-crossword": {
-    name: "Cryptic Crosswords",
+    name: "Cryptic crosswords",
     description:
       "British-style cryptic clues using wordplay, anagrams, homophones, and double definitions.",
     keywords: [
@@ -67,7 +67,7 @@ const PUZZLE_TYPE_INFO: Record<
     examples: ["Brave insect goes back and forth (4) = LION", "Part of tree in forest (4) = ROOT"],
   },
   "number-sequence": {
-    name: "Number Sequence Puzzles",
+    name: "Number sequence puzzles",
     description: "Identify mathematical patterns and predict the next number(s) in a sequence.",
     keywords: [
       "number sequence",
@@ -79,7 +79,7 @@ const PUZZLE_TYPE_INFO: Record<
     examples: ["3, 7, 11, 15, ? = 19", "2, 6, 18, 54, ? = 162"],
   },
   "pattern-recognition": {
-    name: "Pattern Recognition Puzzles",
+    name: "Pattern recognition puzzles",
     description: "Visual pattern identification requiring observation and logical thinking.",
     keywords: [
       "pattern recognition",
@@ -91,7 +91,7 @@ const PUZZLE_TYPE_INFO: Record<
     examples: ["Find the pattern", "What comes next?", "Identify the rule"],
   },
   "caesar-cipher": {
-    name: "Caesar Cipher Puzzles",
+    name: "Caesar cipher puzzles",
     description: "Decode encrypted messages using Caesar cipher (letter shifting) techniques.",
     keywords: [
       "caesar cipher",
@@ -103,7 +103,7 @@ const PUZZLE_TYPE_INFO: Record<
     examples: ["ABC → DEF (shift 3)", "Encrypted message decoding"],
   },
   trivia: {
-    name: "Trivia Puzzles",
+    name: "Trivia puzzles",
     description:
       "Knowledge-based questions about geography, history, science, pop culture, and more.",
     keywords: [
@@ -181,7 +181,7 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
             slug: post.slug,
             title: post.title,
           })),
-          name: `${puzzleInfo.name} Blog Posts`,
+          name: `${puzzleInfo.name} blog posts`,
           description: `Collection of ${puzzleInfo.name.toLowerCase()} puzzle solutions`,
           url: `/puzzles/${type}`,
         })

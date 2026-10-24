@@ -604,7 +604,7 @@ export default function LeaderboardClient({
 
         {/* How scoring works */}
         <section className="mt-14">
-          <div className="mb-4 flex items-end justify-between gap-4">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <div>
               <h2 className="font-semibold text-base text-foreground tracking-[-0.02em]">
                 How scoring works
