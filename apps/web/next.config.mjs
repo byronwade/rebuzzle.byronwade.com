@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  // Playwright drives `next dev` on 127.0.0.1; Next 16.4 blocks dev resources
+  // (HMR, client chunks) for hosts not listed here, so pages never hydrate.
+  allowedDevOrigins: ["127.0.0.1"],
+
   // Cache Components (PPR + "use cache" / cacheLife / cacheTag)
   cacheComponents: true,
 
