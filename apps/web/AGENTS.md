@@ -77,8 +77,9 @@ Concise rules for building accessible, fast, delightful UIs Use MUST/SHOULD/NEVE
   - SHOULD: Use gap utilities for spacing between related elements (not margin)
   - MUST: Consistent button group spacing: gap-1.5 for related buttons
 - Typography hierarchy
-  - MUST: Page titles: `font-semibold text-base md:text-lg` (16px → 18px)
-  - MUST: Subtitles: `text-muted-foreground text-sm` (14px)
+  - MUST: Page titles use the shared `PageHeader` (`src/components/PageHeader.tsx`): a sentence-case `eyebrow` caption, a 36px display title (`font-semibold text-4xl tracking-[-0.045em]`, ending in a full stop) and a `text-muted-foreground` context line
+  - MUST: Section headings inside a page: `font-semibold text-base` (16px)
+  - MUST: Subtitles and row descriptions: `text-muted-foreground text-sm` (14px)
   - MUST: Button labels: `font-medium text-sm` (14px)
   - MUST: Badge text: `font-medium text-xs` (12px)
   - MUST: Menu items: `text-sm` (14px)

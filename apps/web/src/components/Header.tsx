@@ -83,6 +83,13 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
           </div>
 
           <div className="flex items-center gap-1.5">
+            {isPlaying ? null : (
+              <Timer
+                className="mr-1 hidden h-8 items-center gap-1.5 rounded-full border border-border px-3 text-muted-foreground sm:inline-flex"
+                nextPlayTime={nextPlayTime}
+                showClock
+              />
+            )}
             <Button
               aria-controls={mobileNavId}
               aria-expanded={mobileNavOpen}
@@ -144,84 +151,89 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
                 </Link>
               </li>
             ))}
+            {isPlaying ? null : (
+              <li className="mt-1 border-border border-t px-2.5 pt-3 pb-1">
+                <Timer className="text-muted-foreground" nextPlayTime={nextPlayTime} />
+              </li>
+            )}
           </ul>
         </nav>
 
-        {/* Status rail — difficulty, countdown and attempts, in the mono voice */}
-        <div className="border-border border-t">
-          <div className="mx-auto flex h-10 max-w-page items-center justify-between gap-3 px-4 md:px-6">
-            <div className="flex min-w-0 items-center gap-3">
-              {isPlaying && gameState?.difficulty !== undefined ? (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      aria-label={`Difficulty: ${getDifficultyName(gameState.difficulty)}. Click for tiers.`}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium text-xs focus-ring transition-colors",
-                        DIFFICULTY_ACCENTS[getDifficultyName(gameState.difficulty)].badge
-                      )}
-                      type="button"
-                    >
-                      <span
-                        aria-hidden
+        {/* Status rail — difficulty, countdown and attempts — only while a puzzle is in play */}
+        {isPlaying ? (
+          <div className="border-border border-t">
+            <div className="mx-auto flex h-10 max-w-page items-center justify-between gap-3 px-4 md:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                {gameState?.difficulty !== undefined ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        aria-label={`Difficulty: ${getDifficultyName(gameState.difficulty)}. Click for tiers.`}
                         className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          DIFFICULTY_ACCENTS[getDifficultyName(gameState.difficulty)].dot
+                          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium text-xs focus-ring transition-colors",
+                          DIFFICULTY_ACCENTS[getDifficultyName(gameState.difficulty)].badge
                         )}
-                      />
-                      {getDifficultyName(gameState.difficulty)}
-                      <Info aria-hidden className="h-3 w-3 opacity-50" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-80 p-0">
-                    <div className="border-border border-b px-4 py-3">
-                      <p className="eyebrow">Difficulty tiers</p>
-                      <p className="mt-1.5 text-muted-foreground text-xs leading-5">
-                        Every day lands in one band — Hard, Difficult, Evil, or Impossible.
-                      </p>
-                    </div>
-                    <div className="divide-y divide-border">
-                      {getGroupedDailyDifficulties().map((difficulty) => {
-                        const isCurrent = difficulty.levels.includes(gameState.difficulty ?? 0);
-                        return (
-                          <div
-                            className={cn("px-4 py-3", isCurrent && "bg-inset")}
-                            key={difficulty.name}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-foreground text-sm">
-                                {difficulty.name}
-                              </span>
-                              <span className="font-mono text-subtle text-xs tabular-nums">
-                                {difficulty.levels.join("–")}/10
-                              </span>
+                        type="button"
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            DIFFICULTY_ACCENTS[getDifficultyName(gameState.difficulty)].dot
+                          )}
+                        />
+                        {getDifficultyName(gameState.difficulty)}
+                        <Info aria-hidden className="h-3 w-3 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-0">
+                      <div className="border-border border-b px-4 py-3">
+                        <p className="eyebrow">Difficulty tiers</p>
+                        <p className="mt-1.5 text-muted-foreground text-xs leading-5">
+                          Every day lands in one band — Hard, Difficult, Evil, or Impossible.
+                        </p>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {getGroupedDailyDifficulties().map((difficulty) => {
+                          const isCurrent = difficulty.levels.includes(gameState.difficulty ?? 0);
+                          return (
+                            <div
+                              className={cn("px-4 py-3", isCurrent && "bg-inset")}
+                              key={difficulty.name}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium text-foreground text-sm">
+                                  {difficulty.name}
+                                </span>
+                                <span className="font-mono text-subtle text-xs tabular-nums">
+                                  {difficulty.levels.join("–")}/10
+                                </span>
+                              </div>
+                              <p className="mt-1 text-muted-foreground text-xs leading-5">
+                                {difficulty.description}
+                              </p>
                             </div>
-                            <p className="mt-1 text-muted-foreground text-xs leading-5">
-                              {difficulty.description}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ) : null}
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : null}
 
-              <Timer
-                className="font-mono text-subtle text-xs tabular-nums"
-                nextPlayTime={nextPlayTime}
-              />
-            </div>
+                <Timer
+                  className="font-mono text-subtle text-xs tabular-nums"
+                  nextPlayTime={nextPlayTime}
+                />
+              </div>
 
-            {isPlaying && (
               <AttemptsIndicator
                 animateOnChange
                 currentAttempts={gameState?.currentAttempts ?? 0}
                 maxAttempts={gameState?.maxAttempts ?? 3}
               />
-            )}
+            </div>
           </div>
-        </div>
+        ) : null}
       </header>
     </TooltipProvider>
   );

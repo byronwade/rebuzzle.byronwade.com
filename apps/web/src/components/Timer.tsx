@@ -1,5 +1,6 @@
 "use client";
 
+import { Clock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getNextLocalMidnight } from "@/lib/game/daily-lock";
@@ -11,6 +12,8 @@ interface TimerProps {
   className?: string;
   /** Digits only — for docks / cards that already label "Next puzzle". */
   compact?: boolean;
+  /** Header chip: a clock glyph and a short label instead of the sentence. */
+  showClock?: boolean;
 }
 
 function formatCountdown(diffMs: number): string {
@@ -23,7 +26,7 @@ function formatCountdown(diffMs: number): string {
     .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function Timer({ nextPlayTime, className, compact = false }: TimerProps) {
+export function Timer({ nextPlayTime, className, compact = false, showClock = false }: TimerProps) {
   const [timeLeft, setTimeLeft] = useState("--:--:--");
   const [underHour, setUnderHour] = useState(false);
   const [minuteTick, setMinuteTick] = useState(false);
@@ -110,7 +113,12 @@ export function Timer({ nextPlayTime, className, compact = false }: TimerProps) 
               className
             )}
           >
-            {compact ? null : (
+            {compact ? null : showClock ? (
+              <>
+                <Clock aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                <span className="sr-only">Next puzzle in </span>
+              </>
+            ) : (
               <>
                 <span className="xs:inline hidden">Next puzzle in </span>
                 <span className="xs:hidden">Next </span>

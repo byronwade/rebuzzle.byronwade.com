@@ -1,8 +1,11 @@
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AppLink as Link } from "@/components/AppLink";
 import BlogPost from "@/components/BlogPost";
 import Layout from "@/components/Layout";
+import { PageHeader } from "@/components/PageHeader";
+import { Card } from "@/components/ui/card";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePuzzleTypeMetadata } from "@/lib/seo/metadata";
 import {
@@ -243,68 +246,87 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
           </ol>
         </nav>
 
-        {/* Header */}
-        <div className="mt-10">
-          <h1 className="mb-4 font-semibold text-xl tracking-[-0.03em]">{puzzleInfo.name}</h1>
-          <p className="mb-4 text-muted-foreground text-sm">{puzzleInfo.description}</p>
+        <PageHeader
+          className="mt-8"
+          description={puzzleInfo.description}
+          eyebrow="Puzzle type"
+          title={`${puzzleInfo.name}.`}
+        />
 
-          {/* Examples */}
-          {puzzleInfo.examples.length > 0 && (
-            <div className="rounded-lg border border-border bg-inset p-4">
-              <h2 className="mb-2 font-medium text-sm">Examples:</h2>
-              <ul className="space-y-1 text-muted-foreground text-sm">
-                {puzzleInfo.examples.map((example) => (
-                  <li className="flex items-start gap-2" key={example}>
-                    <span className="text-primary">•</span>
-                    <span>{example}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        {/* Examples */}
+        {puzzleInfo.examples.length > 0 && (
+          <section aria-labelledby="examples-heading">
+            <h2 className="eyebrow" id="examples-heading">
+              Examples
+            </h2>
+            <ul className="mt-3 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
+              {puzzleInfo.examples.map((example) => (
+                <li className="bg-card px-4 py-3.5 text-foreground text-sm" key={example}>
+                  {example}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Blog Posts */}
-        {typePosts.length > 0 ? (
-          <div className="space-y-6">
-            <h2 className="font-semibold text-base">Recent {puzzleInfo.name} Solutions</h2>
-            <div className="grid gap-6 md:grid-cols-2">
+        <section aria-labelledby="solutions-heading" className="mt-14">
+          <h2
+            className="font-semibold text-base text-foreground tracking-[-0.02em]"
+            id="solutions-heading"
+          >
+            Recent solutions
+          </h2>
+          {typePosts.length > 0 ? (
+            <div className="mt-2 divide-y divide-border border-border border-t">
               {typePosts.map((post) => (
                 <BlogPost key={post.slug} post={post} />
               ))}
             </div>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-inset px-6 py-12 text-center">
-            <p className="text-muted-foreground text-sm">
-              No {puzzleInfo.name.toLowerCase()} solutions yet. Check back soon!
-            </p>
-          </div>
-        )}
+          ) : (
+            <Card className="mt-4" variant="inset">
+              <p className="px-6 py-12 text-center text-muted-foreground text-sm">
+                No {puzzleInfo.name.toLowerCase()} write-ups yet. They go up alongside each day's
+                puzzle.
+              </p>
+            </Card>
+          )}
+        </section>
 
         {/* Related Puzzle Types */}
         {relatedTypes.length > 0 && (
-          <div className="mt-16 border-border border-t pt-8">
-            <h2 className="mb-4 font-semibold text-base">Other Puzzle Types</h2>
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <section aria-labelledby="related-heading" className="mt-16 border-border border-t pt-10">
+            <h2
+              className="font-semibold text-base text-foreground tracking-[-0.02em]"
+              id="related-heading"
+            >
+              Other puzzle types
+            </h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {relatedTypes.slice(0, 6).map((relatedType) => {
                 const relatedInfo = PUZZLE_TYPE_INFO[relatedType];
                 if (!relatedInfo) return null;
                 return (
                   <Link
-                    className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong/50"
+                    className="group flex items-start justify-between gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-border-strong/60"
                     href={`/puzzles/${relatedType}`}
                     key={relatedType}
                   >
-                    <h3 className="mb-1 font-medium text-sm">{relatedInfo.name}</h3>
-                    <p className="line-clamp-2 text-muted-foreground text-xs">
-                      {relatedInfo.description}
-                    </p>
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-foreground text-sm">{relatedInfo.name}</h3>
+                      <p className="mt-1 line-clamp-2 text-muted-foreground text-sm leading-6">
+                        {relatedInfo.description}
+                      </p>
+                    </div>
+                    <ArrowRight
+                      aria-hidden
+                      className="mt-0.5 size-4 shrink-0 text-subtle transition-transform group-hover:translate-x-0.5"
+                    />
                   </Link>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
       </div>
     </Layout>

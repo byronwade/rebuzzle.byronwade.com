@@ -145,6 +145,7 @@
     --link-deep: 223 75% 76%;
     --success: 142 60% 45%;
     --warning: 43 100% 50.1%;
+    --pumpkin: 23 77% 60%;
     --destructive: 358 75% 59.1%;
     --destructive-foreground: 0 0% 100%;
 
@@ -402,6 +403,41 @@
   /* Caption label — 12px, medium, sentence case. Thorbis has no all-caps kickers. */
   .eyebrow {
     @apply font-medium text-muted-foreground text-xs;
+  }
+
+  /* Long-form legal copy: 15px body on a 28px line, numbered sections. */
+  .legal-prose {
+    @apply text-[15px] text-muted-foreground leading-7;
+  }
+
+  .legal-section {
+    @apply scroll-mt-24 border-border border-t pt-8 first:border-t-0 first:pt-0;
+  }
+
+  .legal-section + .legal-section {
+    @apply mt-10;
+  }
+
+  .legal-prose h2 {
+    @apply mb-3 font-semibold text-foreground text-lg tracking-[-0.02em];
+  }
+
+  .legal-prose h3 {
+    @apply mt-6 mb-1.5 font-medium text-foreground text-[15px];
+  }
+
+  .legal-prose p + p,
+  .legal-prose p + ul,
+  .legal-prose ul + p {
+    @apply mt-3;
+  }
+
+  .legal-prose ul {
+    @apply mt-2 ml-5 list-disc space-y-1.5 marker:text-border-strong;
+  }
+
+  .legal-prose strong {
+    @apply font-medium text-foreground;
   }
 
   /* Showcase commit: ink, 44px touch, 10px radius with the commit rim. */
