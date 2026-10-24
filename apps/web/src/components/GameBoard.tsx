@@ -1040,7 +1040,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     let cancelled = false;
     void (async () => {
       try {
-        const response = await fetch("/api/user/stats?timeframe=today");
+        const response = await fetch("/api/user/stats?timeframe=today&includeRank=true");
         if (!response.ok) return;
         const data = (await response.json()) as { rank?: number };
         if (!cancelled && typeof data.rank === "number" && data.rank > 0) {

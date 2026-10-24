@@ -561,12 +561,25 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
   },
 ];
 
-/** Stable serialization of an index key pattern for equivalence checks. */
-export function indexKeySignature(spec: IndexSpecification | Record<string, unknown>): string {
-  const entries = Object.entries(spec as Record<string, unknown>).sort(([a], [b]) =>
-    a.localeCompare(b)
-  );
-  return entries.map(([key, value]) => `${key}:${String(value)}`).join("|");
+/**
+ * Stable serialization of an index for equivalence checks. Key order is kept
+ * because it matters for compound indexes, and the options that make two
+ * indexes on the same keys different (uniqueness, sparse, partial filter) are
+ * included so a unique partial index is not skipped next to a sparse one.
+ */
+export function indexKeySignature(
+  spec: IndexSpecification | Record<string, unknown>,
+  options: { unique?: boolean; sparse?: boolean; partialFilterExpression?: unknown } = {}
+): string {
+  const keys = Object.entries(spec as Record<string, unknown>)
+    .map(([key, value]) => `${key}:${String(value)}`)
+    .join("|");
+  const unique = options.unique ? "unique" : "";
+  const sparse = options.sparse ? "sparse" : "";
+  const partial = options.partialFilterExpression
+    ? `partial:${JSON.stringify(options.partialFilterExpression)}`
+    : "";
+  return [keys, unique, sparse, partial].join("#");
 }
 
 export function isBenignIndexConflict(error: unknown): boolean {
@@ -607,14 +620,14 @@ async function createCollectionIndexes(
     existingSignatures = new Set(
       existing
         .filter((idx) => idx.name !== "_id_")
-        .map((idx) => indexKeySignature(idx.key as Record<string, unknown>))
+        .map((idx) => indexKeySignature(idx.key as Record<string, unknown>, idx))
     );
   } catch {
     // Collection may not exist yet — createIndex will create it
   }
 
   for (const indexDef of definition.indexes) {
-    const desiredSignature = indexKeySignature(indexDef.spec);
+    const desiredSignature = indexKeySignature(indexDef.spec, indexDef.options);
     if (existingSignatures.has(desiredSignature)) {
       skipped++;
       continue;

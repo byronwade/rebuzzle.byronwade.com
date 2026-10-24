@@ -3,10 +3,19 @@ import { indexKeySignature, isBenignIndexConflict } from "../indexes";
 
 describe("DB index bootstrap helpers", () => {
   describe("indexKeySignature", () => {
-    it("normalizes key order so equivalent specs match", () => {
-      expect(indexKeySignature({ publishedAt: -1, active: 1 })).toBe(
+    it("keeps key order, which matters for compound indexes", () => {
+      expect(indexKeySignature({ publishedAt: -1, active: 1 })).not.toBe(
         indexKeySignature({ active: 1, publishedAt: -1 })
       );
+    });
+
+    it("tells apart indexes on the same keys with different options", () => {
+      const sparse = indexKeySignature({ "metadata.answerKey": 1 }, { sparse: true });
+      const uniquePartial = indexKeySignature(
+        { "metadata.answerKey": 1 },
+        { unique: true, partialFilterExpression: { "metadata.uniquenessContract": "archive-v1" } }
+      );
+      expect(sparse).not.toBe(uniquePartial);
     });
 
     it("distinguishes different key patterns", () => {

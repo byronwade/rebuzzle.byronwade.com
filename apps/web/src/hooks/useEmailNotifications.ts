@@ -27,11 +27,10 @@ export function useEmailNotifications() {
       return;
     }
 
-    // Guests and logged-out users: localStorage only. Avoid a Mongo round-trip
-    // that contends with puzzle/guess on cold instances.
-    const isGuestUser =
-      Boolean(user?.isGuest) || Boolean(user?.email?.endsWith("@guest.rebuzzle.local"));
-    if (!(isAuthenticated && userId) || isGuestUser) {
+    // Logged-out users: localStorage only. Avoid a Mongo round-trip that
+    // contends with puzzle/guess on cold instances. Authenticated guests still
+    // ask the server, since subscribe() stores their subscription by userId.
+    if (!(isAuthenticated && userId)) {
       setEnabled(Boolean(getStoredNotificationEmail()));
       return;
     }
@@ -55,7 +54,7 @@ export function useEmailNotifications() {
     } catch (err) {
       console.error("[Notifications] Status check failed:", err);
     }
-  }, [authLoading, isAuthenticated, userId, user?.email, user?.isGuest]);
+  }, [authLoading, isAuthenticated, userId]);
 
   // Check status on mount and when auth state changes
   useEffect(() => {
