@@ -109,7 +109,7 @@ export function EmailNotificationForm() {
         <Input
           autoComplete="email"
           className={cn(
-            "flex-1",
+            "sm:flex-1",
             emailError &&
               "border-destructive/60 focus-visible:border-destructive focus-visible:ring-destructive/15"
           )}
