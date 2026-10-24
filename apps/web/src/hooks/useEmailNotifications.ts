@@ -27,11 +27,11 @@ export function useEmailNotifications() {
       return;
     }
 
-    // Logged-out users: localStorage only. Avoid a Mongo round-trip that
-    // contends with puzzle/guess on cold instances. Authenticated guests still
-    // ask the server, since subscribe() stores their subscription by userId.
+    // Logged-out users can't read subscription status (the endpoint needs a
+    // session), so show reminders as off and skip a guaranteed 401. Authenticated
+    // guests still ask the server, since subscribe() stores theirs by userId.
     if (!(isAuthenticated && userId)) {
-      setEnabled(Boolean(getStoredNotificationEmail()));
+      setEnabled(false);
       return;
     }
 
