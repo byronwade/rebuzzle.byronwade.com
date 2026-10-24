@@ -249,7 +249,7 @@ export default function LeaderboardClient({
               onValueChange={(value) => setTimeframe(value as typeof timeframe)}
               value={timeframe}
             >
-              <TabsList className="h-11">
+              <TabsList className="touch-targets h-11">
                 <TabsTrigger className="px-3.5" value="today">
                   Today
                 </TabsTrigger>

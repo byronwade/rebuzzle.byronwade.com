@@ -140,10 +140,13 @@ export function DeveloperDeepDive() {
           </p>
 
           <nav aria-label="Technical topics" className="mt-10">
-            <ul className="flex flex-wrap gap-x-5 gap-y-2 border-border border-y py-4 font-medium text-xs text-muted-foreground">
+            <ul className="flex flex-wrap gap-x-5 border-border border-y py-1 font-medium text-xs text-muted-foreground sm:gap-y-2 sm:py-4">
               {toc.map((item) => (
                 <li key={item.href}>
-                  <a className="transition-colors hover:text-foreground" href={item.href}>
+                  <a
+                    className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0"
+                    href={item.href}
+                  >
                     {item.label}
                   </a>
                 </li>

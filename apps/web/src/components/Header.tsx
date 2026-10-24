@@ -82,7 +82,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
             </nav>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="touch-targets flex items-center gap-2.5 md:gap-1.5">
             {isPlaying ? null : (
               <Timer
                 className="mr-1 hidden h-8 items-center gap-1.5 rounded-full border border-border px-3 text-muted-foreground sm:inline-flex"
@@ -165,7 +165,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
         {isPlaying ? (
           <div className="border-border border-t">
             <div className="mx-auto flex h-10 max-w-page items-center justify-between gap-3 px-4 md:px-6">
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="touch-targets flex min-w-0 items-center gap-3">
                 {gameState?.difficulty !== undefined ? (
                   <Popover>
                     <PopoverTrigger asChild>

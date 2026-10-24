@@ -280,7 +280,7 @@ export default function AchievementsPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="achievements" className="space-y-6">
-          <TabsList className="w-full max-w-xs">
+          <TabsList className="touch-targets h-11 w-full max-w-xs">
             <TabsTrigger value="achievements" className="flex-1">
               Achievements
             </TabsTrigger>
@@ -305,7 +305,7 @@ export default function AchievementsPage() {
             )}
 
             {/* Rarity Filter */}
-            <div className="flex flex-wrap gap-2">
+            <div className="touch-targets flex flex-wrap gap-x-2 gap-y-3">
               <Button
                 variant={selectedRarity === "all" ? "default" : "ghost"}
                 size="sm"
