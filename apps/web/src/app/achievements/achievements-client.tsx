@@ -125,6 +125,24 @@ const rarityConfig = {
 /** Rows each category shows before folding the remaining locked ones away. */
 const COLLAPSED_ROWS = 5;
 
+/** Expanded categories live in `?open=a,b` so the view survives refresh and deep links. */
+const EXPANDED_PARAM = "open";
+
+function readExpandedFromUrl(): string[] {
+  const raw = new URLSearchParams(window.location.search).get(EXPANDED_PARAM);
+  return raw ? raw.split(",").filter(Boolean) : [];
+}
+
+function writeExpandedToUrl(categories: string[]) {
+  const url = new URL(window.location.href);
+  if (categories.length > 0) {
+    url.searchParams.set(EXPANDED_PARAM, categories.join(","));
+  } else {
+    url.searchParams.delete(EXPANDED_PARAM);
+  }
+  window.history.replaceState(window.history.state, "", url);
+}
+
 const categoryConfig: Record<
   string,
   { name: string; icon: React.ComponentType<{ className?: string }> }
@@ -190,6 +208,7 @@ export default function AchievementsPage() {
           if (data.success) {
             setAchievements(data.achievements);
             setProgress(data.progress);
+            setExpandedCategories(readExpandedFromUrl());
           }
         } catch (error) {
           console.error("Error fetching achievements:", error);
@@ -222,11 +241,11 @@ export default function AchievementsPage() {
   const rarities = Object.keys(rarityConfig) as Array<keyof typeof rarityConfig>;
 
   function toggleCategory(category: string) {
-    setExpandedCategories((current) =>
-      current.includes(category)
-        ? current.filter((candidate) => candidate !== category)
-        : [...current, category]
-    );
+    const next = expandedCategories.includes(category)
+      ? expandedCategories.filter((candidate) => candidate !== category)
+      : [...expandedCategories, category];
+    setExpandedCategories(next);
+    writeExpandedToUrl(next);
   }
 
   return (
