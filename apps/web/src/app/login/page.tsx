@@ -163,7 +163,7 @@ export default function LoginPage() {
           </p>
           <p>
             <button
-              className="rounded text-muted-foreground transition-colors hover:text-foreground focus-ring"
+              className="inline-flex min-h-11 items-center rounded-md px-3 text-muted-foreground transition-colors hover:text-foreground focus-ring sm:min-h-9"
               onClick={handleGuestPlay}
               type="button"
             >
