@@ -1,5 +1,10 @@
+import Layout from "@/components/Layout";
 import { PlaytestClient } from "./playtest-client";
 
 export default function PlaytestPage() {
-  return <PlaytestClient />;
+  return (
+    <Layout>
+      <PlaytestClient />
+    </Layout>
+  );
 }

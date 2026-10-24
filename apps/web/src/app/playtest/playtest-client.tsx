@@ -138,15 +138,15 @@ export function PlaytestClient() {
 
   if (showLoading) {
     return (
-      <main className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </main>
+      </div>
     );
   }
 
   if (!isAuthenticated || isGuest) {
     return (
-      <main className="mx-auto w-full max-w-xl px-4 py-16">
+      <div className="mx-auto w-full max-w-xl px-4 py-16">
         <Card>
           <CardHeader>
             <CardTitle>Join the blind puzzle panel</CardTitle>
@@ -166,14 +166,14 @@ export function PlaytestClient() {
             </Button>
           </CardContent>
         </Card>
-      </main>
+      </div>
     );
   }
 
   const completion = progress ? (progress.completed / Math.max(1, progress.available)) * 100 : 0;
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:px-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:px-6">
       <header className="space-y-2">
         <div className="flex items-center gap-2">
           <FlaskConical className="h-6 w-6 text-primary" />
@@ -313,6 +313,6 @@ export function PlaytestClient() {
           </Alert>
         )
       )}
-    </main>
+    </div>
   );
 }

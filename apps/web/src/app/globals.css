@@ -305,6 +305,13 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Page roots centered with mx-auto shrink to their min-content width in the
+     flex-column <main>, so one nowrap row or wide table pushed the whole page
+     sideways on phones. Fill the column instead (max-w-* still caps it). */
+  :where(#main-content > .mx-auto) {
+    width: 100%;
+  }
+
   /* Headings: sentence case, weight 500–600, tracked tight only at display. */
   h1,
   h2,
@@ -1382,7 +1389,9 @@
  * doesn't hard-cut and fight the shell resize.
  */
 .visual-viewport-shell .play-chrome {
-  max-height: 12rem;
+  /* Cap at the visible band, not a fixed 12rem: the open mobile menu lives
+     inside the header and was clipped after three links on the game page. */
+  max-height: var(--vv-height, 100dvh);
   opacity: 1;
   overflow: hidden;
   transition:
