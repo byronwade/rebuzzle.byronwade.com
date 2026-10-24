@@ -86,8 +86,8 @@ export function CommunityPuzzlePlay({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium text-xs text-subtle">Technique · {techniqueLabel}</p>
         {attemptsLeft !== null ? (
-          <p className="font-mono text-[11px] text-subtle tabular-nums">
-            {attemptsLeft} attempts left
+          <p className="font-mono text-subtle text-xs tabular-nums">
+            {attemptsLeft} {attemptsLeft === 1 ? "attempt" : "attempts"} left
           </p>
         ) : null}
       </div>
