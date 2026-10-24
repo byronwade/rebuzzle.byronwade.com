@@ -1,7 +1,7 @@
 "use client";
 
 import { format as formatDateFns } from "date-fns";
-import { Award, ChevronRight, ExternalLink, Settings } from "lucide-react";
+import { Award, CalendarDays, ChevronRight, ExternalLink, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
@@ -268,7 +268,7 @@ export default function ProfilePage() {
     <Layout>
       <div className="mx-auto max-w-4xl px-4 py-12 md:px-6 md:py-16">
         {/* Identity */}
-        <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between md:mb-10">
+        <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between md:mb-10">
           <div className="flex min-w-0 items-center gap-4 sm:gap-5">
             <Avatar className="h-16 w-16 shrink-0 sm:h-20 sm:w-20">
               <AvatarFallback
@@ -294,17 +294,17 @@ export default function ProfilePage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {isAuthenticated && user?.username ? (
-              <Button asChild size="sm" variant="outline">
+              <Button asChild className="h-11 sm:h-8" size="sm" variant="outline">
                 <Link href={profilePathForUsername(user.username)}>
                   <ExternalLink aria-hidden className="h-4 w-4" data-icon="inline-start" />
                   Public page
                 </Link>
               </Button>
             ) : null}
-            <Button asChild size="sm" variant="outline">
+            <Button asChild className="h-11 sm:h-8" size="sm" variant="outline">
               <Link href="/studio">Studio</Link>
             </Button>
-            <Button asChild size="sm" variant="outline">
+            <Button asChild className="h-11 sm:h-8" size="sm" variant="outline">
               <Link href="/settings">
                 <Settings aria-hidden className="h-4 w-4" data-icon="inline-start" />
                 Settings
@@ -317,7 +317,11 @@ export default function ProfilePage() {
         <Card className="overflow-hidden">
           <div className="p-5 sm:p-6">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="font-medium text-foreground text-sm">Level {currentLevel}</p>
+              <p className="font-medium text-foreground text-sm">
+                {pointsToNextLevel > 0
+                  ? `Progress to level ${currentLevel + 1}`
+                  : `Level ${currentLevel}`}
+              </p>
               <p className="font-mono text-subtle text-xs tabular-nums">
                 {formatNumber(stats.points)} / {formatNumber(nextLevelThreshold)}
               </p>
@@ -329,7 +333,7 @@ export default function ProfilePage() {
             />
             <p className="mt-2 text-muted-foreground text-xs">
               {pointsToNextLevel > 0
-                ? `${formatNumber(pointsToNextLevel)} points to level ${currentLevel + 1}`
+                ? `${formatNumber(pointsToNextLevel)} points to go`
                 : "Max level reached."}
             </p>
           </div>
@@ -346,22 +350,32 @@ export default function ProfilePage() {
         </Card>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <Card className="p-5 sm:p-6">
+          <Card className="flex flex-col p-5 sm:p-6">
             <h2 className="mb-5 font-semibold text-base text-foreground tracking-[-0.02em]">
               History
             </h2>
-            <WordleStatsPanel
-              showTiles={false}
-              stats={{
-                played: stats.totalGames,
-                winRate,
-                currentStreak: stats.streak,
-                maxStreak: Math.max(stats.maxStreak, stats.streak),
-                guessDistribution: stats.guessDistribution,
-                recentPlayDates: stats.recentPlayDates,
-                streakFreezes: stats.streakFreezes,
-              }}
-            />
+            {stats.totalGames === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-border border-dashed px-6 py-10 text-center">
+                <CalendarDays aria-hidden className="h-6 w-6 text-subtle" />
+                <p className="mt-3 font-medium text-foreground text-sm">No games yet</p>
+                <p className="mt-1 max-w-[16rem] text-muted-foreground text-xs leading-5">
+                  Your guess distribution and play calendar fill in as you solve.
+                </p>
+              </div>
+            ) : (
+              <WordleStatsPanel
+                showTiles={false}
+                stats={{
+                  played: stats.totalGames,
+                  winRate,
+                  currentStreak: stats.streak,
+                  maxStreak: Math.max(stats.maxStreak, stats.streak),
+                  guessDistribution: stats.guessDistribution,
+                  recentPlayDates: stats.recentPlayDates,
+                  streakFreezes: stats.streakFreezes,
+                }}
+              />
+            )}
           </Card>
 
           {/* Achievements — catalog-backed from /api/user/achievements */}
