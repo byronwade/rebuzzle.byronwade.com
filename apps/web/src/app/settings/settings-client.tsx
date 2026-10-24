@@ -483,7 +483,7 @@ export default function SettingsPage() {
                   {isChangingPassword ? (
                     <Loader2
                       aria-hidden
-                      className="h-4 w-4 animate-spin"
+                      className="h-4 w-4 motion-safe:animate-spin"
                       data-icon="inline-start"
                     />
                   ) : null}

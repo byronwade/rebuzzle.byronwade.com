@@ -167,7 +167,11 @@ export default function ForgotPasswordPage() {
             type="submit"
           >
             {isLoading ? (
-              <Loader2 aria-hidden className="h-4 w-4 animate-spin" data-icon="inline-start" />
+              <Loader2
+                aria-hidden
+                className="h-4 w-4 motion-safe:animate-spin"
+                data-icon="inline-start"
+              />
             ) : null}
             {isLoading ? "Sending…" : "Send reset link"}
           </Button>

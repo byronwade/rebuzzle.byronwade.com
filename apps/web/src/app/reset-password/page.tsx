@@ -244,7 +244,11 @@ export default function ResetPasswordPage() {
             type="submit"
           >
             {isLoading ? (
-              <Loader2 aria-hidden className="h-4 w-4 animate-spin" data-icon="inline-start" />
+              <Loader2
+                aria-hidden
+                className="h-4 w-4 motion-safe:animate-spin"
+                data-icon="inline-start"
+              />
             ) : null}
             {isLoading ? "Saving…" : "Save new password"}
           </Button>
