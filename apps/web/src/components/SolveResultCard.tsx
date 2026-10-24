@@ -369,7 +369,7 @@ export function SolveResultCard({
               return (
                 <button
                   className={cn(
-                    "flex-1 rounded-lg border px-2 py-1.5 font-medium text-xs transition-colors",
+                    "min-h-11 flex-1 rounded-lg border px-2 py-1.5 font-medium text-xs transition-colors sm:min-h-0",
                     selected
                       ? "border-foreground bg-foreground text-background"
                       : "border-border bg-background/50 text-muted-foreground hover:text-foreground"
@@ -385,7 +385,7 @@ export function SolveResultCard({
             })}
           </div>
           {perception ? (
-            <p className="mt-1.5 text-center text-[11px] text-subtle">Tunes tomorrow.</p>
+            <p className="mt-1.5 text-center text-subtle text-xs">Tunes tomorrow.</p>
           ) : null}
         </div>
       ) : null}
@@ -402,7 +402,8 @@ export function SolveResultCard({
       {scoreDone && (guessDistribution || played > 0) ? (
         <div className="mt-3">
           <button
-            className="font-medium text-xs text-subtle underline-offset-2 hover:text-foreground hover:underline"
+            aria-expanded={showStats}
+            className="inline-flex min-h-11 items-center font-medium text-xs text-subtle underline-offset-2 hover:text-foreground hover:underline sm:min-h-0"
             onClick={() => setShowStats((open) => !open)}
             type="button"
           >
@@ -438,7 +439,7 @@ export function SolveResultCard({
         />
         <Button
           asChild
-          className="flex-1"
+          className="h-11 sm:h-8 sm:flex-1"
           size="sm"
           variant={success || showAnswer ? "outline" : "default"}
         >
