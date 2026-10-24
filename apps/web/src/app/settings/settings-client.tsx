@@ -4,28 +4,24 @@ import {
   Check,
   ChevronRight,
   FlaskConical,
-  Gamepad2,
-  Lock,
-  Palette,
-  Save,
-  Settings as SettingsIcon,
-  Shield,
-  Smartphone,
+  Loader2,
+  Monitor,
+  Moon,
+  RotateCcw,
+  Sun,
   Trash2,
-  Trophy,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import { EmailNotificationForm } from "@/components/EmailNotificationForm";
 import Layout from "@/components/Layout";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useVisualTheme } from "@/components/VisualThemeProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +40,6 @@ import { cn } from "@/lib/utils";
 import { VISUAL_THEME_META, VISUAL_THEMES, type VisualTheme } from "@/lib/visual-theme";
 
 export default function SettingsPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   // The provider hydrates in the root layout before this streamed page, so its
@@ -54,9 +49,6 @@ export default function SettingsPage() {
   const mounted = useIsClient();
   const [devMode, setDevMode] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(() => createDefaultAppSettings(false));
-  const [savedSettings, setSavedSettings] = useState<AppSettings>(() =>
-    createDefaultAppSettings(false)
-  );
   const [hydrated, setHydrated] = useState(false);
   const [prevTheme, setPrevTheme] = useState(theme);
 
@@ -64,7 +56,6 @@ export default function SettingsPage() {
   if (mounted && !hydrated) {
     const initial = readAppSettings(localStorage, createDefaultAppSettings(theme === "dark"));
     setSettings(initial);
-    setSavedSettings(initial);
     setDevMode(isDevModeEnabled());
     setHydrated(true);
   }
@@ -77,7 +68,14 @@ export default function SettingsPage() {
     }
   }
 
-  const hasUnsavedChanges = JSON.stringify(settings) !== JSON.stringify(savedSettings);
+  // Every control saves the moment it changes; there is no separate save step.
+  const updateSettings = (patch: Partial<AppSettings>) => {
+    setSettings((current) => {
+      const next = { ...current, ...patch };
+      writeAppSettings(next);
+      return next;
+    });
+  };
 
   // Password change state
   const [passwordForm, setPasswordForm] = useState({
@@ -136,51 +134,27 @@ export default function SettingsPage() {
     void loadProfile();
   }, [isAuthenticated, user]);
 
-  useEffect(() => {
-    // Warn before leaving page with unsaved changes
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedChanges]);
-
-  const handleSave = () => {
-    writeAppSettings(settings);
-    setSavedSettings(settings);
-    void playInterfaceSound("notification");
-    toast({
-      title: "Settings Saved",
-      description: "Your preferences have been updated.",
-    });
-  };
-
   const handleReset = () => {
-    if (confirm("Are you sure you want to reset all settings to default?")) {
+    if (confirm("Reset every setting to its default?")) {
       const defaultSettings = createDefaultAppSettings();
       setSettings(defaultSettings);
-      setSavedSettings(defaultSettings);
       writeAppSettings(defaultSettings);
       void playInterfaceSound("sound-on", { ignorePreference: true });
       toast({
-        title: "Settings Reset",
-        description: "All settings have been reset to default.",
+        title: "Settings reset",
+        description: "Everything is back to the defaults.",
       });
     }
   };
 
   const handleClearData = () => {
-    if (confirm("Are you sure you want to clear ALL your game data? This cannot be undone!")) {
+    if (confirm("Delete all game data on this device? This can't be undone.")) {
       localStorage.removeItem("userStats");
       localStorage.removeItem("gameCompletion");
       localStorage.removeItem("appSettings");
       toast({
-        title: "Data Cleared",
-        description: "All your game data has been deleted.",
+        title: "Data cleared",
+        description: "All game data on this device was deleted.",
         variant: "destructive",
       });
       setTimeout(() => {
@@ -219,7 +193,7 @@ export default function SettingsPage() {
   const handlePasswordChange = async () => {
     if (!(isAuthenticated && user)) {
       toast({
-        title: "Authentication Required",
+        title: "Log in required",
         description: "You must be logged in to change your password.",
         variant: "destructive",
       });
@@ -258,7 +232,7 @@ export default function SettingsPage() {
       setPasswordErrors({});
 
       toast({
-        title: "Password Changed",
+        title: "Password changed",
         description:
           "Your password has been changed successfully. A confirmation email has been sent.",
       });
@@ -279,404 +253,368 @@ export default function SettingsPage() {
     setIsChangingPassword(false);
   };
 
+  const colorMode = mounted ? (theme ?? "system") : "system";
+
   return (
     <Layout>
       <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="mb-2 flex items-center gap-3">
-            <SettingsIcon className="h-5 w-5 text-subtle" />
-            <h1 className="font-semibold text-base md:text-lg">Settings</h1>
-          </div>
-          <p className="text-muted-foreground text-sm">Manage your preferences and game settings</p>
-        </div>
+        <PageHeader
+          description="Changes save as you make them and stay on this device."
+          eyebrow="Preferences"
+          title="Settings."
+        />
 
-        <div className="space-y-6">
-          {/* Achievements & Levels Link */}
-          <Link href="/achievements">
-            <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-full border border-border bg-inset text-warning">
-                    <Trophy className="size-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-base">Achievements & Levels</h2>
-                    <p className="text-muted-foreground text-sm">
-                      View all 100 achievements and level ranks
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </div>
-            </Card>
-          </Link>
-
-          {/* Email Notifications Form */}
-          <EmailNotificationForm />
-
-          {/* Temporary Dev Mode */}
-          <Card className="border-warning/40 p-6">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
-              <FlaskConical className="h-5 w-5 text-warning" />
-              Dev Mode
-              <span className="rounded-full bg-warning/15 px-2 py-0.5 font-medium text-[11px] text-warning">
-                Temporary
-              </span>
-            </h2>
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label className="cursor-pointer text-base" htmlFor="dev-mode">
-                  Enable testing tools
-                </Label>
-                <p className="text-muted-foreground text-sm">
-                  Shows a floating panel on every page: regenerate today&apos;s puzzle, open the
-                  Visual Lab (pictogram / text / image / hybrid previews), unlock/replay the daily
-                  gate, and jump between play → locked → win/lose screens. Works for guests and
-                  signed-in accounts while this temporary tooling is enabled.
-                </p>
-              </div>
-              <Switch
-                checked={devMode}
-                disabled={!mounted}
-                id="dev-mode"
-                onCheckedChange={(checked) => {
-                  setDevMode(checked);
-                  setDevModeEnabled(checked);
-                  toast({
-                    title: checked ? "Dev Mode on" : "Dev Mode off",
-                    description: checked
-                      ? "Look for the amber Dev Mode panel (bottom-right)."
-                      : "Testing tools hidden.",
-                  });
-                }}
-              />
-            </div>
-            {devMode && (
-              <div className="mt-4 border-warning/20 border-t pt-4">
-                <Link
-                  className="inline-flex items-center gap-2 text-warning text-sm underline-offset-2 hover:underline"
-                  href="/dev/visual-lab"
-                >
-                  <Palette className="h-4 w-4" />
-                  Open Visual Lab — test pictogram / text / image generation
-                </Link>
-              </div>
-            )}
-          </Card>
-
-          {/* Gameplay */}
-          <Card className="p-6">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
-              <Smartphone className="h-5 w-5" />
-              Gameplay
-            </h2>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="cursor-pointer text-base" htmlFor="sound">
-                    Sound Effects
-                  </Label>
-                  <p className="text-muted-foreground text-sm">
-                    Audio cues for guesses, hints, solve results, and key actions
-                  </p>
-                </div>
+        <div className="space-y-10">
+          <SettingsSection title="Gameplay">
+            <SettingsRow
+              control={
                 <Switch
                   checked={settings.sound}
                   id="sound"
                   onCheckedChange={(checked) => {
-                    setSettings((current) => ({ ...current, sound: checked }));
+                    updateSettings({ sound: checked });
                     void playInterfaceSound(checked ? "sound-on" : "sound-off", {
                       ignorePreference: true,
                     });
                   }}
                 />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="cursor-pointer text-base" htmlFor="show-hints">
-                    Show Hints
-                  </Label>
-                  <p className="text-muted-foreground text-sm">
-                    Display hint button during gameplay
-                  </p>
-                </div>
+              }
+              description="Audio cues for guesses, hints, results and key actions."
+              htmlFor="sound"
+              label="Sound effects"
+            />
+            <SettingsRow
+              control={
                 <Switch
                   checked={settings.showHints}
                   id="show-hints"
-                  onCheckedChange={(checked) => setSettings({ ...settings, showHints: checked })}
+                  onCheckedChange={(checked) => updateSettings({ showHints: checked })}
                 />
+              }
+              description="Show the hint button while you play."
+              htmlFor="show-hints"
+              label="Hints"
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Appearance">
+            <div className="space-y-3 p-4 sm:p-5">
+              <div>
+                <p className="font-medium text-foreground text-sm">Color mode</p>
+                <p className="mt-0.5 text-muted-foreground text-sm">
+                  System follows your device. Works with every style.
+                </p>
+              </div>
+              <div
+                aria-label="Color mode"
+                className="inline-grid w-full grid-cols-3 gap-1 rounded-lg bg-inset p-1 sm:w-auto"
+                role="radiogroup"
+              >
+                {COLOR_MODES.map(({ value, label, icon: Icon }) => {
+                  const selected = colorMode === value;
+                  return (
+                    <button
+                      aria-checked={selected}
+                      className={cn(
+                        "inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 font-medium text-sm transition-colors focus-ring",
+                        selected
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                      disabled={!mounted}
+                      key={value}
+                      onClick={() => {
+                        setTheme(value);
+                        if (value !== "system") updateSettings({ darkMode: value === "dark" });
+                      }}
+                      role="radio"
+                      type="button"
+                    >
+                      <Icon aria-hidden className="h-4 w-4" />
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </Card>
 
-          {/* Appearance */}
-          <Card className="p-6">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
-              <Palette className="h-5 w-5" />
-              Appearance
-            </h2>
-
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-base">Theme</Label>
-                  <p className="text-muted-foreground text-sm">
-                    Visual style for the whole app. Default is the current Rebuzzle look; 8-bit is
-                    inspired by{" "}
-                    <a
-                      className="text-link underline-offset-2 hover:underline"
-                      href="https://www.8bitcn.com/docs"
-                      rel="noopener noreferrer"
-                      target="_blank"
+            <div className="space-y-3 p-4 sm:p-5">
+              <div>
+                <p className="font-medium text-foreground text-sm">Style</p>
+                <p className="mt-0.5 text-muted-foreground text-sm">
+                  The look of the whole app. 8-bit is inspired by{" "}
+                  <a
+                    className="text-link underline-offset-2 hover:underline"
+                    href="https://www.8bitcn.com/docs"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    8bitcn/ui
+                  </a>
+                  .
+                </p>
+              </div>
+              <div aria-label="Style" className="grid gap-3 sm:grid-cols-2" role="radiogroup">
+                {VISUAL_THEMES.map((id) => {
+                  const meta = VISUAL_THEME_META[id];
+                  const selected = mounted && visualTheme === id;
+                  const isPixel = id === "8bit";
+                  return (
+                    <button
+                      aria-checked={selected}
+                      className={cn(
+                        "group relative overflow-hidden rounded-lg border text-left transition-colors focus-ring",
+                        selected
+                          ? "border-foreground ring-1 ring-foreground"
+                          : "border-border hover:border-border-strong"
+                      )}
+                      disabled={!mounted}
+                      key={id}
+                      onClick={() => {
+                        setVisualTheme(id as VisualTheme);
+                        toast({ title: `${meta.label} style`, description: meta.description });
+                      }}
+                      role="radio"
+                      type="button"
                     >
-                      8bitcn/ui
-                    </a>
-                    .
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {VISUAL_THEMES.map((id) => {
-                    const meta = VISUAL_THEME_META[id];
-                    const selected = mounted && visualTheme === id;
-                    const Icon = id === "8bit" ? Gamepad2 : Palette;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        disabled={!mounted}
-                        onClick={() => {
-                          setVisualTheme(id as VisualTheme);
-                          toast({
-                            title: `${meta.label} theme`,
-                            description: meta.description,
-                          });
-                        }}
+                      {/* Miniature of the style: a puzzle tile and a commit button */}
+                      <div
+                        aria-hidden
                         className={cn(
-                          "relative flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-colors",
-                          "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          selected ? "border-foreground bg-muted/40" : "border-border bg-card"
+                          "flex h-24 items-center justify-center gap-3 border-border border-b bg-inset",
+                          isPixel &&
+                            "[background-image:radial-gradient(hsl(var(--border))_1px,transparent_1px)] [background-size:8px_8px]"
                         )}
                       >
-                        <div className="flex w-full items-center gap-2">
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="font-medium text-sm">{meta.label}</span>
-                          {selected && <Check data-icon="inline-end" className="ml-auto h-4 w-4" />}
+                        <span
+                          className={cn(
+                            "flex h-12 items-center bg-card px-3 font-semibold text-foreground text-sm",
+                            isPixel
+                              ? "border-2 border-foreground shadow-[3px_3px_0_hsl(var(--foreground))]"
+                              : "rounded-lg border border-border shadow-sm"
+                          )}
+                          style={
+                            isPixel ? { fontFamily: "var(--font-pixel), monospace" } : undefined
+                          }
+                        >
+                          {isPixel ? "REBUS" : "Rebus"}
+                        </span>
+                        <span
+                          className={cn(
+                            "h-8 w-8 bg-foreground",
+                            isPixel ? "shadow-[3px_3px_0_hsl(var(--brand))]" : "rounded-full"
+                          )}
+                        />
+                      </div>
+                      <div className="flex items-start gap-2 p-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground text-sm">{meta.label}</p>
+                          <p className="mt-0.5 text-muted-foreground text-xs leading-snug">
+                            {meta.description}
+                          </p>
                         </div>
-                        <p className="text-muted-foreground text-xs leading-snug">
-                          {meta.description}
-                        </p>
-                        {id === "8bit" && (
-                          <span
-                            className="mt-1 font-normal text-xs text-subtle"
-                            style={{ fontFamily: "var(--font-pixel), monospace" }}
-                          >
-                            PRESS START
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                            selected
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-border-strong"
+                          )}
+                        >
+                          {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
+          </SettingsSection>
 
-              <Separator />
+          <SettingsSection description="A nudge when the new puzzle drops." title="Daily reminder">
+            <div className="p-4 sm:p-5">
+              <EmailNotificationForm />
+            </div>
+          </SettingsSection>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="cursor-pointer text-base" htmlFor="dark-mode">
-                    Dark Mode
-                  </Label>
-                  <p className="text-muted-foreground text-sm">
-                    Works with every theme (Default and 8-bit)
-                  </p>
-                </div>
+          {isAuthenticated && user && (
+            <SettingsSection title="Password">
+              <form
+                className="space-y-4 p-4 sm:p-5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handlePasswordChange();
+                }}
+              >
+                {(
+                  [
+                    ["currentPassword", "current-password", "Current password", "current-password"],
+                    ["newPassword", "new-password", "New password", "new-password"],
+                    ["confirmPassword", "confirm-password", "Confirm new password", "new-password"],
+                  ] as const
+                ).map(([field, id, label, autoComplete]) => (
+                  <div key={field}>
+                    <Label className="text-sm" htmlFor={id}>
+                      {label}
+                    </Label>
+                    <Input
+                      aria-invalid={Boolean(passwordErrors[field])}
+                      autoComplete={autoComplete}
+                      className="mt-1.5"
+                      id={id}
+                      minLength={field === "currentPassword" ? undefined : 6}
+                      name={id}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, [field]: e.target.value })
+                      }
+                      type="password"
+                      value={passwordForm[field]}
+                    />
+                    {passwordErrors[field] ? (
+                      <p className="mt-1.5 text-destructive text-xs" role="alert">
+                        {passwordErrors[field]}
+                      </p>
+                    ) : field === "newPassword" ? (
+                      <p className="mt-1.5 text-muted-foreground text-xs">At least 6 characters.</p>
+                    ) : null}
+                  </div>
+                ))}
+                <Button disabled={isChangingPassword} type="submit">
+                  {isChangingPassword ? (
+                    <Loader2
+                      aria-hidden
+                      className="h-4 w-4 animate-spin"
+                      data-icon="inline-start"
+                    />
+                  ) : null}
+                  {isChangingPassword ? "Changing…" : "Change password"}
+                </Button>
+              </form>
+            </SettingsSection>
+          )}
+
+          <SettingsSection
+            description="Your stats live on this device. We don't sell or share them."
+            title="Data"
+          >
+            <SettingsRow
+              control={
+                <Button onClick={handleReset} size="sm" variant="outline">
+                  <RotateCcw aria-hidden className="h-4 w-4" data-icon="inline-start" />
+                  Reset
+                </Button>
+              }
+              description="Put every preference back to its default."
+              label="Reset settings"
+            />
+            <SettingsRow
+              control={
+                <Button onClick={handleClearData} size="sm" variant="destructive">
+                  <Trash2 aria-hidden className="h-4 w-4" data-icon="inline-start" />
+                  Clear…
+                </Button>
+              }
+              description="Delete stats, streaks and saved games on this device."
+              label="Clear game data"
+            />
+          </SettingsSection>
+
+          <SettingsSection
+            description="Temporary tools for testing puzzles. Hidden from players by default."
+            title="Developer"
+          >
+            <SettingsRow
+              control={
                 <Switch
-                  checked={settings.darkMode}
+                  checked={devMode}
                   disabled={!mounted}
-                  id="dark-mode"
+                  id="dev-mode"
                   onCheckedChange={(checked) => {
-                    setTheme(checked ? "dark" : "light");
-                    setSettings({ ...settings, darkMode: checked });
+                    setDevMode(checked);
+                    setDevModeEnabled(checked);
+                    toast({
+                      title: checked ? "Dev mode on" : "Dev mode off",
+                      description: checked
+                        ? "Look for the Dev Mode panel in the bottom-right corner."
+                        : "Testing tools hidden.",
+                    });
                   }}
                 />
-              </div>
-            </div>
-          </Card>
-
-          {/* Password Change - Only for authenticated users */}
-          {isAuthenticated && user && (
-            <Card className="p-6">
-              <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
-                <Lock className="h-5 w-5" />
-                Change Password
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm" htmlFor="current-password">
-                    Current Password
-                  </Label>
-                  <Input
-                    autoComplete="current-password"
-                    className="mt-1"
-                    id="current-password"
-                    onChange={(e) =>
-                      setPasswordForm({
-                        ...passwordForm,
-                        currentPassword: e.target.value,
-                      })
-                    }
-                    placeholder="Enter your current password"
-                    type="password"
-                    value={passwordForm.currentPassword}
-                  />
-                  {passwordErrors.currentPassword && (
-                    <p className="mt-1.5 text-destructive text-xs" role="alert">
-                      {passwordErrors.currentPassword}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label className="text-sm" htmlFor="new-password">
-                    New Password
-                  </Label>
-                  <Input
-                    autoComplete="new-password"
-                    className="mt-1"
-                    id="new-password"
-                    minLength={6}
-                    onChange={(e) =>
-                      setPasswordForm({
-                        ...passwordForm,
-                        newPassword: e.target.value,
-                      })
-                    }
-                    placeholder="Enter your new password (min. 6 characters)"
-                    type="password"
-                    value={passwordForm.newPassword}
-                  />
-                  {passwordErrors.newPassword && (
-                    <p className="mt-1.5 text-destructive text-xs" role="alert">
-                      {passwordErrors.newPassword}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label className="text-sm" htmlFor="confirm-password">
-                    Confirm New Password
-                  </Label>
-                  <Input
-                    autoComplete="new-password"
-                    className="mt-1"
-                    id="confirm-password"
-                    minLength={6}
-                    onChange={(e) =>
-                      setPasswordForm({
-                        ...passwordForm,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handlePasswordChange();
-                      }
-                    }}
-                    placeholder="Confirm your new password"
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                  />
-                  {passwordErrors.confirmPassword && (
-                    <p className="mt-1.5 text-destructive text-xs" role="alert">
-                      {passwordErrors.confirmPassword}
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={isChangingPassword}
-                  onClick={handlePasswordChange}
-                  size="sm"
-                >
-                  {isChangingPassword ? "Changing..." : "Change Password"}
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {/* Data & Privacy */}
-          <Card className="p-6">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-xl">
-              <Shield className="h-5 w-5" />
-              Data & Privacy
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <h3 className="mb-2 font-medium">Your Data</h3>
-                <p className="mb-4 text-muted-foreground text-sm">
-                  Your game statistics are stored locally on your device. We don't sell or share
-                  your data.
-                </p>
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={handleClearData}
-                  size="sm"
-                  variant="destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" data-icon="inline-start" />
-                  Clear All Game Data
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <Button
-              aria-label="Save settings"
-              className="flex-1"
-              disabled={!hasUnsavedChanges}
-              onClick={handleSave}
-              size="lg"
-            >
-              <Save className="mr-2 h-4 w-4" data-icon="inline-start" />
-              {hasUnsavedChanges ? "Save Settings" : "Saved"}
-            </Button>
-            <Button onClick={handleReset} size="lg" variant="outline">
-              Reset to Default
-            </Button>
-          </div>
-          {hasUnsavedChanges && (
-            <p className="text-center text-muted-foreground text-sm">You have unsaved changes</p>
-          )}
-
-          {/* Back Link */}
-          <div className="text-center">
-            <Link
-              className="text-muted-foreground text-sm hover:text-foreground"
-              href="/"
-              onClick={(e) => {
-                if (hasUnsavedChanges) {
-                  e.preventDefault();
-                  if (confirm("You have unsaved changes. Are you sure you want to leave?")) {
-                    router.push("/");
-                  }
-                }
-              }}
-            >
-              ← Back to Game
-            </Link>
-          </div>
+              }
+              description="A floating panel to regenerate today's puzzle, open the Visual Lab, unlock the daily gate and jump between game screens."
+              htmlFor="dev-mode"
+              label="Testing tools"
+            />
+            {devMode && (
+              <Link
+                className="flex items-center justify-between gap-3 p-4 text-sm transition-colors hover:bg-muted/60 sm:px-5"
+                href="/dev/visual-lab"
+              >
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <FlaskConical aria-hidden className="h-4 w-4 text-subtle" />
+                  Open the Visual Lab
+                </span>
+                <ChevronRight aria-hidden className="h-4 w-4 text-subtle" />
+              </Link>
+            )}
+          </SettingsSection>
         </div>
       </div>
     </Layout>
+  );
+}
+
+const COLOR_MODES = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+] as const;
+
+function SettingsSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-3">
+        <h2 className="font-semibold text-base text-foreground tracking-[-0.02em]">{title}</h2>
+        {description ? <p className="mt-0.5 text-muted-foreground text-sm">{description}</p> : null}
+      </div>
+      <Card className="divide-y divide-border overflow-hidden">{children}</Card>
+    </section>
+  );
+}
+
+function SettingsRow({
+  label,
+  description,
+  htmlFor,
+  control,
+}: {
+  label: string;
+  description?: string;
+  htmlFor?: string;
+  control: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-4 sm:px-5">
+      <div className="min-w-0 space-y-0.5">
+        {htmlFor ? (
+          <Label className="cursor-pointer text-sm" htmlFor={htmlFor}>
+            {label}
+          </Label>
+        ) : (
+          <p className="font-medium text-foreground text-sm">{label}</p>
+        )}
+        {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+      </div>
+      <div className="shrink-0">{control}</div>
+    </div>
   );
 }

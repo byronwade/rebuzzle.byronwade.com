@@ -3,9 +3,7 @@
 import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
@@ -97,140 +95,73 @@ export function EmailNotificationForm() {
   };
 
   if (!mounted) {
-    return (
-      <Card className="p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <Mail className="h-4 w-4 text-subtle" />
-          <h3 className="font-semibold text-base">Email Notifications</h3>
-        </div>
-        <div className="h-20 animate-pulse rounded-md bg-inset" />
-      </Card>
-    );
+    return <div aria-hidden className="h-[4.5rem] animate-pulse rounded-md bg-inset" />;
   }
 
+  const busy = isSubmitting || isLoading;
+
   return (
-    <Card className="p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <Mail className="h-4 w-4 text-subtle" />
-        <h3 className="font-semibold text-base">Email Notifications</h3>
-      </div>
-
-      <div className="space-y-4">
-        {/* Description */}
-        <p className="text-muted-foreground text-sm">
-          Receive daily puzzle reminders around 4 PM UTC via email. We'll never spam you or share
-          your email.
-          {isAuthenticated && user?.email && (
-            <span className="mt-1 block text-xs">
-              Your account email ({user.email}) is pre-filled, but you can use a different email if
-              you prefer.
-            </span>
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Label className="sr-only" htmlFor="notification-email">
+          Email address
+        </Label>
+        <Input
+          autoComplete="email"
+          className={cn(
+            "flex-1",
+            emailError &&
+              "border-destructive/60 focus-visible:border-destructive focus-visible:ring-destructive/15"
           )}
-        </p>
-
-        {/* Email Input Form */}
-        <div className="space-y-2">
-          <Label className="font-medium text-sm" htmlFor="notification-email">
-            Email Address
-          </Label>
-          <div className="flex gap-2">
-            <Input
-              autoComplete="email"
-              className={cn(
-                "flex-1",
-                emailError &&
-                  "border-destructive/60 focus-visible:border-destructive focus-visible:ring-destructive/15"
-              )}
-              disabled={isSubmitting || isLoading}
-              id="notification-email"
-              inputMode="email"
-              onChange={handleEmailChange}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isSubmitting && email && validateEmail(email)) {
-                  void handleSubscribe();
-                }
-              }}
-              placeholder="your-email@example.com"
-              type="email"
-              value={email}
-            />
-            {enabled && (
-              <div className="flex items-center gap-1 px-2 text-success">
-                <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
-                <span className="sr-only">Subscribed</span>
-              </div>
-            )}
-          </div>
-
-          {/* Error Message */}
-          {(emailError || error) && (
-            <Alert className="py-2" variant="destructive">
-              <AlertTitle className="sr-only">Error</AlertTitle>
-              <AlertDescription className="text-sm">{emailError || error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Success Message */}
-          {enabled && !emailError && !error && (
-            <Alert className="py-2.5" variant="success">
-              <AlertTitle className="sr-only">Success</AlertTitle>
-              <AlertDescription className="text-foreground text-sm">
-                Email notifications are enabled. You'll receive daily reminders around 4 PM UTC.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div aria-live="polite" className="flex gap-2 pt-2">
+          disabled={busy || enabled}
+          id="notification-email"
+          inputMode="email"
+          onChange={handleEmailChange}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !isSubmitting && email && validateEmail(email)) {
+              void handleSubscribe();
+            }
+          }}
+          placeholder="you@example.com…"
+          spellCheck={false}
+          type="email"
+          value={email}
+        />
+        <div aria-live="polite" className="contents">
           {enabled ? (
-            <Button
-              className="flex-1"
-              disabled={isSubmitting || isLoading}
-              onClick={handleUnsubscribe}
-              variant="outline"
-            >
-              {isSubmitting || isLoading ? (
-                <>
-                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
-                  Disabling...
-                </>
-              ) : (
-                <>
-                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  Disable Notifications
-                </>
-              )}
+            <Button disabled={busy} onClick={handleUnsubscribe} variant="outline">
+              {busy ? (
+                <Loader2 aria-hidden className="h-4 w-4 animate-spin" data-icon="inline-start" />
+              ) : null}
+              Turn off
             </Button>
           ) : (
-            <Button
-              className="flex-1"
-              disabled={!(email && validateEmail(email)) || isSubmitting || isLoading}
-              onClick={handleSubscribe}
-            >
-              {isSubmitting || isLoading ? (
-                <>
-                  <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
-                  Enabling...
-                </>
+            <Button disabled={!(email && validateEmail(email)) || busy} onClick={handleSubscribe}>
+              {busy ? (
+                <Loader2 aria-hidden className="h-4 w-4 animate-spin" data-icon="inline-start" />
               ) : (
-                <>
-                  <Mail data-icon="inline-start" className="mr-2 h-4 w-4" />
-                  Enable Notifications
-                </>
+                <Mail aria-hidden className="h-4 w-4" data-icon="inline-start" />
               )}
+              Remind me
             </Button>
           )}
         </div>
-
-        {/* Help Text */}
-        {!enabled && (
-          <p className="text-muted-foreground text-xs">
-            Enter your email address above and click "Enable Notifications" to start receiving daily
-            puzzle reminders.
-          </p>
-        )}
       </div>
-    </Card>
+
+      {emailError || error ? (
+        <p className="text-destructive text-xs" role="alert">
+          {emailError || error}
+        </p>
+      ) : enabled ? (
+        <p className="flex items-center gap-1.5 text-success text-xs">
+          <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+          Reminders on. One email a day, around 4 PM UTC.
+        </p>
+      ) : (
+        <p className="text-muted-foreground text-xs">
+          One email a day, around 4 PM UTC. Never shared, never spam.
+        </p>
+      )}
+    </div>
   );
 }

@@ -27,6 +27,7 @@ import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
+import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -90,26 +91,31 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 const rarityConfig = {
   common: {
     label: "Common",
+    dot: "bg-subtle",
     color: "text-muted-foreground",
     bg: "bg-inset",
   },
   uncommon: {
     label: "Uncommon",
+    dot: "bg-success",
     color: "text-success",
     bg: "bg-success/10",
   },
   rare: {
     label: "Rare",
+    dot: "bg-brand",
     color: "text-link",
     bg: "bg-brand/10",
   },
   epic: {
     label: "Epic",
+    dot: "bg-pumpkin",
     color: "text-pumpkin dark:text-[hsl(23_77%_60%)]",
     bg: "bg-pumpkin/10",
   },
   legendary: {
     label: "Legendary",
+    dot: "bg-warning",
     color: "text-warning",
     bg: "bg-warning/10",
   },
@@ -214,13 +220,31 @@ export default function AchievementsPage() {
     <Layout>
       <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
-        <header className="mb-8">
-          <p className="eyebrow">Progress</p>
-          <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Achievements.</h1>
-          <p className="mt-3 text-muted-foreground text-sm">
-            Track what you've unlocked and what's still ahead.
-          </p>
-        </header>
+        <PageHeader
+          description="Track what you've unlocked and what's still ahead."
+          eyebrow="Progress"
+          title="Achievements."
+        />
+
+        {/* Guests learn up front that progress needs an account */}
+        {!isAuthenticated && (
+          <Card className="mb-8 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <p className="font-medium text-foreground text-sm">Log in to keep your progress</p>
+              <p className="mt-0.5 text-muted-foreground text-sm">
+                Achievements and levels are saved to your account.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/signup">Sign up</Link>
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {/* Tabs */}
         <Tabs defaultValue="achievements" className="space-y-6">
@@ -266,8 +290,9 @@ export default function AchievementsPage() {
                     variant={selectedRarity === rarity ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setSelectedRarity(rarity)}
-                    className={cn("h-8", selectedRarity !== rarity && config.color)}
+                    className="h-8 gap-1.5"
                   >
+                    <span aria-hidden className={cn("size-1.5 rounded-full", config.dot)} />
                     {config.label}
                   </Button>
                 );
@@ -301,7 +326,7 @@ export default function AchievementsPage() {
                       </div>
 
                       {/* Achievement Rows */}
-                      <div className="space-y-1.5">
+                      <Card className="divide-y divide-border overflow-hidden">
                         {categoryAchievements.map((achievement) => {
                           const rarity = rarityConfig[achievement.rarity] || rarityConfig.common;
                           const IconComponent = iconMap[achievement.icon] || Star;
@@ -309,29 +334,31 @@ export default function AchievementsPage() {
                           return (
                             <div
                               key={achievement.id}
-                              className={cn(
-                                "flex items-center gap-3 p-3 rounded-lg transition-colors",
-                                achievement.unlocked ? rarity.bg : "bg-muted/40 opacity-60"
-                              )}
+                              className="flex items-center gap-3 p-3 sm:px-4"
                             >
                               {/* Icon */}
                               <div
                                 className={cn(
-                                  "flex size-9 items-center justify-center rounded-full flex-shrink-0",
-                                  achievement.unlocked ? rarity.bg : "bg-muted"
+                                  "flex size-9 flex-shrink-0 items-center justify-center rounded-full",
+                                  achievement.unlocked ? rarity.bg : "bg-inset"
                                 )}
                               >
                                 {achievement.unlocked ? (
                                   <IconComponent className={cn("size-4", rarity.color)} />
                                 ) : (
-                                  <Lock className="size-4 text-muted-foreground" />
+                                  <Lock className="size-4 text-subtle" />
                                 )}
                               </div>
 
                               {/* Content */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-medium text-sm truncate">
+                                  <span
+                                    className={cn(
+                                      "truncate font-medium text-sm",
+                                      !achievement.unlocked && "text-muted-foreground"
+                                    )}
+                                  >
                                     {achievement.name}
                                   </span>
                                   {achievement.unlocked && (
@@ -345,7 +372,13 @@ export default function AchievementsPage() {
 
                               {/* Points */}
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className={cn("text-xs", rarity.color)}>{rarity.label}</span>
+                                <span className="hidden items-center gap-1.5 text-muted-foreground text-xs sm:inline-flex">
+                                  <span
+                                    aria-hidden
+                                    className={cn("size-1.5 rounded-full", rarity.dot)}
+                                  />
+                                  {rarity.label}
+                                </span>
                                 <Badge variant="secondary" className="text-xs font-medium">
                                   +{achievement.points}
                                 </Badge>
@@ -353,7 +386,7 @@ export default function AchievementsPage() {
                             </div>
                           );
                         })}
-                      </div>
+                      </Card>
                     </div>
                   );
                 })}
@@ -434,33 +467,6 @@ export default function AchievementsPage() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Sign in CTA */}
-        {!isAuthenticated && (
-          <Card className="mt-8 border-dashed">
-            <CardContent className="p-6 text-center">
-              <p className="font-medium text-sm mb-1">Sign in to track progress</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Create an account to save your achievements
-              </p>
-              <div className="flex justify-center gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/login">Login</Link>
-                </Button>
-                <Button asChild size="sm">
-                  <Link href="/signup">Sign up</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Back link */}
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Back to Game
-          </Link>
-        </div>
       </div>
     </Layout>
   );

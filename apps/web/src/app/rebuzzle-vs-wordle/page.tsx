@@ -1,4 +1,4 @@
-import { Check, Puzzle, Sparkles } from "lucide-react";
+import { Check, Lightbulb, Puzzle, Sparkles, WifiOff } from "lucide-react";
 import type { Metadata } from "next";
 import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
@@ -32,14 +32,14 @@ export const metadata: Metadata = generatePageMetadata({
 export default function RebuzzleVsWordlePage() {
   const comparisonFeatures = [
     {
-      feature: "Puzzle Types",
+      feature: "Puzzle types",
       rebuzzle:
         "7 types (rebus, logic-grid, cryptic-crossword, number-sequence, pattern-recognition, caesar-cipher, trivia)",
       wordle: "1 type (5-letter word guessing)",
       winner: "rebuzzle",
     },
     {
-      feature: "Daily Puzzles",
+      feature: "Daily puzzles",
       rebuzzle: "Yes - AI-generated unique puzzles",
       wordle: "Yes - One word per day",
       winner: "tie",
@@ -51,25 +51,25 @@ export default function RebuzzleVsWordlePage() {
       winner: "tie",
     },
     {
-      feature: "Mobile App",
+      feature: "Mobile app",
       rebuzzle: "Progressive Web App (PWA) - Install on any device",
       wordle: "Mobile app available",
       winner: "tie",
     },
     {
-      feature: "Hints System",
+      feature: "Hints",
       rebuzzle: "Progressive hint system with multiple levels",
       wordle: "No hints available",
       winner: "rebuzzle",
     },
     {
-      feature: "Educational Value",
+      feature: "Skills trained",
       rebuzzle: "Multiple cognitive skills (logic, pattern recognition, vocabulary, etc.)",
       wordle: "Vocabulary building",
       winner: "rebuzzle",
     },
     {
-      feature: "Offline Play",
+      feature: "Offline play",
       rebuzzle: "Yes - Full offline support",
       wordle: "Requires internet",
       winner: "rebuzzle",
@@ -81,13 +81,13 @@ export default function RebuzzleVsWordlePage() {
       winner: "rebuzzle",
     },
     {
-      feature: "AI-Generated",
+      feature: "AI-generated",
       rebuzzle: "Yes - Unique puzzles every day",
       wordle: "Pre-selected words",
       winner: "rebuzzle",
     },
     {
-      feature: "Difficulty Levels",
+      feature: "Difficulty",
       rebuzzle: "Adaptive difficulty (5-10 scale)",
       wordle: "Single difficulty",
       winner: "rebuzzle",
@@ -197,16 +197,21 @@ export default function RebuzzleVsWordlePage() {
             Feature comparison
           </h2>
           <div className="mt-6 overflow-x-auto rounded-xl border border-border">
-            <table className="w-full border-collapse">
+            <table className="w-full min-w-[36rem] table-fixed border-collapse">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[44%]" />
+                <col className="w-[32%]" />
+              </colgroup>
               <thead>
                 <tr className="border-border border-b bg-inset">
-                  <th className="px-4 py-2.5 text-left font-medium font-normal text-xs text-muted-foreground">
+                  <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
                     Feature
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium font-normal text-xs text-muted-foreground">
+                  <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
                     Rebuzzle
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium font-normal text-xs text-muted-foreground">
+                  <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
                     Wordle
                   </th>
                 </tr>
@@ -214,12 +219,19 @@ export default function RebuzzleVsWordlePage() {
               <tbody className="bg-card">
                 {comparisonFeatures.map((feature) => (
                   <tr className="border-border border-b last:border-b-0" key={feature.feature}>
-                    <td className="px-4 py-3 font-medium text-foreground text-sm">
+                    <td className="px-4 py-3 align-top font-medium text-foreground text-sm">
                       {feature.feature}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-sm">
+                    <td
+                      className={`px-4 py-3 align-top text-sm ${
+                        feature.winner === "rebuzzle"
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
                       <div className="flex items-start gap-2">
                         <Check
+                          aria-label={feature.winner === "rebuzzle" ? "Better" : undefined}
                           className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
                             feature.winner === "rebuzzle" ? "text-success" : "invisible"
                           }`}
@@ -227,9 +239,16 @@ export default function RebuzzleVsWordlePage() {
                         <span>{feature.rebuzzle}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-sm">
+                    <td
+                      className={`px-4 py-3 align-top text-sm ${
+                        feature.winner === "wordle"
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
                       <div className="flex items-start gap-2">
                         <Check
+                          aria-label={feature.winner === "wordle" ? "Better" : undefined}
                           className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
                             feature.winner === "wordle" ? "text-success" : "invisible"
                           }`}
@@ -262,12 +281,12 @@ export default function RebuzzleVsWordlePage() {
                 body: "No pre-selected word list. Each puzzle is written fresh daily with difficulty calibrated against real solve data.",
               },
               {
-                icon: Check,
+                icon: Lightbulb,
                 title: "Progressive hints",
                 body: "Stuck? The hint ladder walks you toward the solution without spoiling it. Wordle offers no hints at all.",
               },
               {
-                icon: Sparkles,
+                icon: WifiOff,
                 title: "Offline play",
                 body: "Installable as a PWA with full offline support — solve on planes, trains, or anywhere with no signal.",
               },
@@ -303,13 +322,6 @@ export default function RebuzzleVsWordlePage() {
             Play today's puzzle
           </Link>
         </section>
-
-        {/* Back Link */}
-        <div className="mt-12 text-center">
-          <Link className="text-link text-sm underline-offset-4 hover:underline" href="/">
-            ← Back to today's puzzle
-          </Link>
-        </div>
       </div>
     </Layout>
   );
