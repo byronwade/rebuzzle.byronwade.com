@@ -81,7 +81,7 @@ function QualityReasonPicker({
             disabled={saving}
             onClick={() => onToggle(option.id)}
             className={cn(
-              "h-8 rounded-full px-3 text-xs",
+              "h-11 rounded-full px-3 text-xs sm:h-8",
               selected.includes(option.id) &&
                 "border-destructive/40 bg-destructive/10 text-destructive"
             )}
@@ -592,7 +592,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                   >
                     <span
                       className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px]",
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs",
                         isWinning ? "bg-success text-background" : "bg-inset text-subtle"
                       )}
                     >
@@ -632,15 +632,15 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             difficulty={gameData.difficulty}
             maxAttempts={gameSettings.maxAttempts}
             puzzleType={gameData.puzzleType || gameData.metadata?.puzzleType}
-            size="default"
+            size="lg"
             streak={streak}
             success={success}
           />
           <div className="grid grid-cols-2 gap-2">
-            <Button asChild variant="outline">
+            <Button asChild className="h-11 sm:h-9" variant="outline">
               <Link href="/leaderboard">Leaderboard</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild className="h-11 sm:h-9" variant="outline">
               <Link href="/blog">Puzzle tips</Link>
             </Button>
           </div>
@@ -661,7 +661,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 <Button
                   aria-pressed={perception === option.id}
                   className={cn(
-                    "h-9 text-xs sm:text-sm",
+                    "h-11 text-sm sm:h-9",
                     perception === option.id && "border-foreground bg-inset"
                   )}
                   disabled={Boolean(perception) || perceptionSaving}
@@ -689,11 +689,11 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                   aria-label="Like this puzzle"
                   aria-pressed={qualityVote === "like"}
                   className={cn(
+                    "h-11 sm:h-9",
                     qualityVote === "like" && "border-success/50 bg-success/10 text-success"
                   )}
                   disabled={qualityVoteSaving}
                   onClick={() => void submitQualityVote("like")}
-                  size="sm"
                   type="button"
                   variant="outline"
                 >
@@ -704,12 +704,12 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                   aria-label="Dislike this puzzle"
                   aria-pressed={qualityVote === "dislike"}
                   className={cn(
+                    "h-11 sm:h-9",
                     qualityVote === "dislike" &&
                       "border-destructive/50 bg-destructive/10 text-destructive"
                   )}
                   disabled={qualityVoteSaving}
                   onClick={() => void submitQualityVote("dislike")}
-                  size="sm"
                   type="button"
                   variant="outline"
                 >
@@ -756,7 +756,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 </p>
               </div>
             </div>
-            <Button asChild className="shrink-0">
+            <Button asChild className="h-11 shrink-0 sm:h-9">
               <Link href="/signup">Create account</Link>
             </Button>
           </section>

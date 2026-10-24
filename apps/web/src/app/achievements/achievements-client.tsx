@@ -412,7 +412,7 @@ export default function AchievementsPage() {
                       {hiddenCount > 0 || expanded ? (
                         <Button
                           aria-expanded={expanded}
-                          className="mt-1.5 h-8 px-2 text-muted-foreground text-xs"
+                          className="mt-1.5 h-11 px-2 text-muted-foreground text-xs sm:h-8"
                           onClick={() => toggleCategory(category)}
                           size="sm"
                           type="button"
