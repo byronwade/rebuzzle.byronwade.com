@@ -42,6 +42,7 @@ export default function ForgotPasswordPage() {
     const emailError = validateEmail(email);
     if (emailError) {
       setError(emailError);
+      document.getElementById("email")?.focus();
       return;
     }
 

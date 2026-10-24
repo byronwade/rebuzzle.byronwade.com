@@ -322,7 +322,7 @@ export default function SettingsPage() {
                   return (
                     <RadioGroupPrimitive.Item
                       className={cn(
-                        "inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 font-medium text-sm transition-colors focus-ring",
+                        "inline-flex h-11 items-center justify-center gap-1.5 rounded-md sm:h-9 px-3 font-medium text-sm transition-colors focus-ring",
                         selected
                           ? "bg-card text-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground"

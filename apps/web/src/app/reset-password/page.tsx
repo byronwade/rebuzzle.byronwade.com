@@ -106,6 +106,7 @@ export default function ResetPasswordPage() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      document.getElementById(newErrors.password ? "password" : "confirmPassword")?.focus();
       return;
     }
 

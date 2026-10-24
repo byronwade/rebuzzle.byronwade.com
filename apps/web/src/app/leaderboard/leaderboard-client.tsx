@@ -230,7 +230,7 @@ export default function LeaderboardClient({
               ] as const
             ).map(({ value, label, icon: Icon }) => (
               <RadioGroupPrimitive.Item
-                className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-4 font-medium text-sm transition-colors focus-ring ${
+                className={`inline-flex h-11 items-center justify-center gap-1.5 rounded-md sm:h-9 px-4 font-medium text-sm transition-colors focus-ring ${
                   sortBy === value
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
