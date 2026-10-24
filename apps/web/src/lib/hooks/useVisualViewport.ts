@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { acquireDocumentScrollLock, releaseDocumentScrollLock } from "@/lib/document-scroll-lock";
 
 export interface VisualViewportFrame {
   /** visualViewport.offsetTop — iOS pans this when the keyboard opens */
@@ -218,21 +219,13 @@ export function useVisualViewportFrame(): VisualViewportFrame {
   );
 
   // Soft lock: hide document scroll chrome while the OSK is up.
-  // Avoid scrollTo() loops — they fight iOS visual-viewport pan and cause jitter.
+  // Ref-counted so VisualViewportShell + KeyboardAwareLayout don't leave
+  // html/body overflow:hidden after stacked unmount (signup couldn't scroll).
   useEffect(() => {
     if (!frame.isKeyboardOpen) return;
-    const root = document.documentElement;
-    const body = document.body;
-    const prevRootOverflow = root.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    const prevBodyOverscroll = body.style.overscrollBehavior;
-    root.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.overscrollBehavior = "none";
+    acquireDocumentScrollLock();
     return () => {
-      root.style.overflow = prevRootOverflow;
-      body.style.overflow = prevBodyOverflow;
-      body.style.overscrollBehavior = prevBodyOverscroll;
+      releaseDocumentScrollLock();
     };
   }, [frame.isKeyboardOpen]);
 

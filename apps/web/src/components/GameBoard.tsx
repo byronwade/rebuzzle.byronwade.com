@@ -30,6 +30,7 @@ import { haptics } from "@/lib/haptics";
 import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useIsNarrowViewport } from "@/lib/hooks/useMediaQuery";
 import { playInterfaceSound } from "@/lib/interface-sounds";
+import { isPlayStageScrollable } from "@/lib/play-stage-layout";
 import { getPuzzleQuestion } from "@/lib/puzzle-questions";
 import { isReturningUser } from "@/lib/session-tracker";
 import { cn } from "@/lib/utils";
@@ -1154,8 +1155,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         {({ isKeyboardVisible }) => {
           // After lock, keep the full thread — don't collapse for the keyboard.
           const keyboardOpen = isKeyboardVisible && !gameState.gameOver;
-          // Locked days need a page scroller: result card + docked puzzle rarely fit.
-          const stageScrollable = gameState.gameOver && !keyboardOpen;
+          // Locked days and an expanded mobile puzzle need a page scroller so
+          // the thread sits in flow (pushed down) instead of sitting under the plate.
+          const stageScrollable = isPlayStageScrollable({
+            gameOver: gameState.gameOver,
+            stageExpanded,
+            keyboardOpen,
+          });
           // Desktop keeps hero scale once chat appears; mobile docks and can toggle.
           const stageState = keyboardOpen
             ? "compact"
