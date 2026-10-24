@@ -17,6 +17,19 @@ describe("separateInlineSteps", () => {
     expect(separateInlineSteps(body)).toBe(body);
   });
 
+  it("splits steps that follow a space", () => {
+    expect(separateInlineSteps("Try this. 1. **Look** first. 2. **Say** it.")).toBe(
+      "Try this.\n\n1. **Look** first.\n\n2. **Say** it."
+    );
+  });
+
+  it("leaves nested and blockquoted lists alone", () => {
+    const nested = "1. **Parent**\n   1. **Child**\n   2. **Sibling**";
+    expect(separateInlineSteps(nested)).toBe(nested);
+    const quoted = "> 1. **Look**\n> 2. **Say**";
+    expect(separateInlineSteps(quoted)).toBe(quoted);
+  });
+
   it("leaves well-formed lists and plain numbers alone", () => {
     const body = "Intro\n\n1. **One**\n2. **Two**\n\nRated 5/10. Plain 3. text";
     expect(separateInlineSteps(body)).toBe(body);
