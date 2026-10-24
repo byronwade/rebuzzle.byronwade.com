@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
+import { PageHeader } from "@/components/PageHeader";
 import { PuzzleVisualBoard } from "@/components/PuzzleVisualBoard";
 import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
@@ -38,25 +39,20 @@ async function CommunityPageContent() {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         type="application/ld+json"
       />
-      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow">Community</p>
-            <h1 className="mt-4 text-balance font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
-              Player puzzles
-            </h1>
-            <p className="mt-4 max-w-xl text-pretty text-muted-foreground leading-7">
-              Boards made in Studio, graded by Eve, playable anytime. Featured ones can land in the
-              daily rotation.
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/studio">Open Studio</Link>
-          </Button>
-        </div>
+      <div className="mx-auto max-w-page px-4 py-10 md:px-6 md:py-14">
+        <PageHeader
+          actions={
+            <Button asChild>
+              <Link href="/studio">Open Studio</Link>
+            </Button>
+          }
+          description="Boards made in Studio, graded by Eve, playable anytime. Featured ones can land in the daily rotation."
+          eyebrow="Community"
+          title="Player puzzles."
+        />
 
         {puzzles.length === 0 ? (
-          <div className="mt-14 rounded-xl border border-border bg-card px-6 py-14 text-center shadow-lg">
+          <div className="rounded-xl border border-border border-dashed bg-card px-6 py-14 text-center">
             <p className="eyebrow">Empty board</p>
             <p className="mt-3 font-semibold text-2xl tracking-[-0.04em]">
               No community boards yet
@@ -69,7 +65,7 @@ async function CommunityPageContent() {
             </Button>
           </div>
         ) : (
-          <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {puzzles.map((puzzle) => (
               <li className="group" key={puzzle.id}>
                 <Link

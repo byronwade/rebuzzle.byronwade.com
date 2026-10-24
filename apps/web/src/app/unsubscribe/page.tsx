@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import Layout from "@/components/Layout";
 import { ContentPageSkeleton } from "@/components/page-skeletons";
+import { StatusPage } from "@/components/StatusPage";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { getCollection } from "@/db/mongodb";
 
 type SearchParams = Promise<{
@@ -64,84 +64,65 @@ async function UnsubscribePageContent({ searchParams }: { searchParams: SearchPa
 
   return (
     <Layout>
-      <div className="mx-auto max-w-page px-4 py-14 md:px-6 md:py-20">
-        <div className="flex justify-center">
-          <Card className="w-full max-w-[400px] p-8" variant="float">
-            <h1 className="sr-only">Email unsubscribe</h1>
-            {status === "success" && (
-              <div className="text-center">
-                <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
-                  <CheckCircle2 className="h-5 w-5 text-success" />
-                </div>
-                <h2 className="font-semibold text-2xl tracking-[-0.04em]">Unsubscribed</h2>
-                <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  {email ? (
-                    <>
-                      You&apos;ve been unsubscribed from email notifications for{" "}
-                      <strong>{email}</strong>.
-                    </>
-                  ) : (
-                    "You've been unsubscribed from email notifications."
-                  )}
-                </p>
-                <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  You won&apos;t receive any more email notifications from Rebuzzle. You can
-                  resubscribe at any time from your account settings.
-                </p>
-                <div className="mt-7 flex flex-col gap-2">
-                  <Button asChild className="w-full">
-                    <Link href="/">Back to the puzzle</Link>
-                  </Button>
-                  <Button asChild className="w-full" variant="outline">
-                    <Link href="/settings">Manage settings</Link>
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {status === "error" && (
-              <div className="text-center">
-                <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
-                  <XCircle className="h-5 w-5 text-destructive" />
-                </div>
-                <h2 className="font-semibold text-2xl tracking-[-0.04em]">
-                  Unsubscribe didn&apos;t go through
-                </h2>
-                <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  We couldn&apos;t process your unsubscribe request. This might be because the link
-                  has expired or is invalid.
-                </p>
-                <div className="mt-7 flex flex-col gap-2">
-                  <Button asChild className="w-full">
-                    <Link href="/settings">Manage settings</Link>
-                  </Button>
-                  <Button asChild className="w-full" variant="outline">
-                    <Link href="/">Back to the puzzle</Link>
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {status === "not-found" && (
-              <div className="text-center">
-                <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-inset">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <h2 className="font-semibold text-2xl tracking-[-0.04em]">Missing email</h2>
-                <p className="mt-3 text-muted-foreground text-sm leading-6">
-                  This unsubscribe link is missing an email address. Open the link from your
-                  notification email, or manage preferences in settings.
-                </p>
-                <div className="mt-7">
-                  <Button asChild className="w-full">
-                    <Link href="/settings">Manage settings</Link>
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-      </div>
+      {status === "success" ? (
+        <StatusPage
+          actions={
+            <>
+              <Button asChild size="lg">
+                <Link href="/">Back to the puzzle</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/settings">Manage settings</Link>
+              </Button>
+            </>
+          }
+          description={
+            email ? (
+              <>
+                <strong className="font-medium text-foreground">{email}</strong> won&apos;t get
+                Rebuzzle notification emails anymore.
+              </>
+            ) : (
+              "You won't get Rebuzzle notification emails anymore."
+            )
+          }
+          eyebrow="Email preferences"
+          footnote="Changed your mind? Turn notifications back on any time in settings."
+          icon={CheckCircle2}
+          title="You're unsubscribed."
+          tone="success"
+        />
+      ) : status === "error" ? (
+        <StatusPage
+          actions={
+            <>
+              <Button asChild size="lg">
+                <Link href="/settings">Manage settings</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/">Back to the puzzle</Link>
+              </Button>
+            </>
+          }
+          description="The link may have expired or been copied incompletely. You can turn emails off directly in settings."
+          eyebrow="Email preferences"
+          icon={XCircle}
+          title="That didn't go through."
+          tone="destructive"
+        />
+      ) : (
+        <StatusPage
+          actions={
+            <Button asChild size="lg">
+              <Link href="/settings">Manage settings</Link>
+            </Button>
+          }
+          description="This unsubscribe link is missing an email address. Open the link from your notification email, or manage preferences in settings."
+          eyebrow="Email preferences"
+          icon={Mail}
+          title="Missing email."
+        />
+      )}
     </Layout>
   );
 }
