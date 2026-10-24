@@ -24,12 +24,12 @@
     "electron-store": "^11.0.2"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^26.3.0",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.0",
     "typescript": "^5.9.3",
     "vite": "^6.0.0",
-    "vite-plugin-electron": "^0.28.0",
+    "vite-plugin-electron": "^1.1.1",
     "vite-plugin-electron-renderer": "^0.14.6"
   },
   "build": {
@@ -49,7 +49,9 @@
     "protocols": [
       {
         "name": "Rebuzzle",
-        "schemes": ["rebuzzle"]
+        "schemes": [
+          "rebuzzle"
+        ]
       }
     ],
     "mac": {

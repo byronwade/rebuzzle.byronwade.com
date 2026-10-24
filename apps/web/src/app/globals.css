@@ -340,6 +340,9 @@
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    /* clip, not hidden — overflow-x:hidden on html/body is a known iOS
+       vertical-scroll lock when the page is taller than the viewport. */
+    overflow-x: clip;
   }
 
   /* Focus is an accent ring — visible, and never the same as selected. */
@@ -928,6 +931,15 @@
   --stage-min: clamp(64px, 9vh, 92px);
   --stage-scale: 0.58;
   --stage-radius: 12px;
+}
+
+/*
+ * Expanded mobile plate: keep scale at 1 so the visual size matches layout.
+ * A 1.2 transform (hero) paints outside the plate and overlaps the thread.
+ */
+.puzzle-stage[data-expanded="true"] {
+  --stage-scale: 1;
+  --stage-min: clamp(168px, 32vh, 300px);
 }
 
 /*

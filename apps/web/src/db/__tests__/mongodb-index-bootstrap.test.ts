@@ -1,8 +1,15 @@
 import { shouldAutoInitializeIndexes } from "../mongodb";
 
 describe("MongoDB automatic index bootstrap boundary", () => {
-  it("is enabled for normal runtime initialization", () => {
-    expect(shouldAutoInitializeIndexes({ NODE_ENV: "production" })).toBe(true);
+  it("is enabled in local development", () => {
+    expect(shouldAutoInitializeIndexes({ NODE_ENV: "development" })).toBe(true);
+  });
+
+  it("is disabled in production unless explicitly opted in", () => {
+    expect(shouldAutoInitializeIndexes({ NODE_ENV: "production" })).toBe(false);
+    expect(
+      shouldAutoInitializeIndexes({ NODE_ENV: "production", REBUZZLE_AUTO_INDEXES: "1" })
+    ).toBe(true);
   });
 
   it("is disabled for explicit read-only operations", () => {

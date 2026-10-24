@@ -83,11 +83,16 @@ export function PuzzleStage({
   );
 
   return (
-    <div className="puzzle-stage w-full" data-state={state} data-surface={surface.mode}>
+    <div
+      className="puzzle-stage w-full"
+      data-expanded={sizeExpanded ? "true" : undefined}
+      data-state={state}
+      data-surface={surface.mode}
+    >
       {toggleable ? (
         <button
           aria-expanded={sizeExpanded}
-          aria-label={sizeExpanded ? "Puzzle — tap to shrink" : "Puzzle — tap to enlarge"}
+          aria-label={sizeExpanded ? "Puzzle — collapse" : "Puzzle — expand"}
           className={plateClassName}
           onClick={onToggleSize}
           style={plateStyle}

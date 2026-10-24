@@ -6,54 +6,55 @@ import { useToast } from "@/hooks/use-toast";
 import { fail } from "@/lib/fail";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
 
+const NOTIFICATION_EMAIL_KEY = "notification_email";
+
+function getStoredNotificationEmail(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(NOTIFICATION_EMAIL_KEY);
+}
+
 export function useEmailNotifications() {
-  const { isAuthenticated, userId, user } = useAuth();
+  const { isAuthenticated, userId, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const checkStatus = useCallback(async () => {
-    // Check localStorage for email-based subscription (for unauthenticated users)
-    if (!(isAuthenticated || userId)) {
-      const storedEmail = localStorage.getItem("notification_email");
-      if (storedEmail) {
-        // Check API with email
-        try {
-          const response = await fetch(
-            `/api/notifications/email/status?${new URLSearchParams({
-              email: storedEmail,
-            })}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            setEnabled(data.enabled);
-            return;
-          }
-        } catch (err) {
-          console.error("[Notifications] Status check failed:", err);
-        }
-      }
+    // Wait for auth to settle — calling the status API before the session cookie
+    // exists floods production logs with 401s (header + game-over remounts).
+    if (authLoading) {
+      return;
+    }
+
+    // Logged-out users can't read subscription status (the endpoint needs a
+    // session), so show reminders as off and skip a guaranteed 401. Authenticated
+    // guests still ask the server, since subscribe() stores theirs by userId.
+    if (!(isAuthenticated && userId)) {
       setEnabled(false);
       return;
     }
 
     try {
-      // Check subscription status via API
       const response = await fetch(
-        `/api/notifications/email/status?${new URLSearchParams({
-          ...(userId ? { userId } : {}),
-        })}`
+        `/api/notifications/email/status?${new URLSearchParams({ userId })}`,
+        { credentials: "include", cache: "no-store" }
       );
 
       if (response.ok) {
-        const data = await response.json();
-        setEnabled(data.enabled);
+        const data = (await response.json()) as { enabled?: boolean };
+        setEnabled(Boolean(data.enabled));
+        return;
+      }
+
+      // 401 during a brief session race — treat as off without retry storms
+      if (response.status === 401) {
+        setEnabled(false);
       }
     } catch (err) {
       console.error("[Notifications] Status check failed:", err);
     }
-  }, [isAuthenticated, userId]);
+  }, [authLoading, isAuthenticated, userId]);
 
   // Check status on mount and when auth state changes
   useEffect(() => {
@@ -82,6 +83,7 @@ export function useEmailNotifications() {
 
           const response = await fetch("/api/notifications/email/subscribe", {
             method: "POST",
+            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email: userEmail,
@@ -98,7 +100,7 @@ export function useEmailNotifications() {
 
             // Store email in localStorage for guests so we can unsubscribe later
             if (!isAuthenticated && userEmail) {
-              localStorage.setItem("notification_email", userEmail.toLowerCase().trim());
+              localStorage.setItem(NOTIFICATION_EMAIL_KEY, userEmail.toLowerCase().trim());
             }
 
             toast({
@@ -132,10 +134,11 @@ export function useEmailNotifications() {
 
         // For guests, get email from localStorage
         // For authenticated users, use userId
-        const storedEmail = !isAuthenticated ? localStorage.getItem("notification_email") : null;
+        const storedEmail = !isAuthenticated ? getStoredNotificationEmail() : null;
 
         const response = await fetch("/api/notifications/email/unsubscribe", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId,
@@ -151,7 +154,7 @@ export function useEmailNotifications() {
 
         // Clear stored email for guests
         if (!isAuthenticated) {
-          localStorage.removeItem("notification_email");
+          localStorage.removeItem(NOTIFICATION_EMAIL_KEY);
         }
 
         toast({

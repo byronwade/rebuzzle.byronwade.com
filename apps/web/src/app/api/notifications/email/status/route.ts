@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         success: true,
-        enabled: subscription?.enabled,
+        enabled: Boolean(subscription?.enabled),
         subscriptionId: subscription?.id,
       },
       { headers: { "Cache-Control": buildCacheControl({ private: true }) } }

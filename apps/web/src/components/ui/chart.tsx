@@ -3,10 +3,12 @@
 import * as React from "react";
 import {
   Legend,
+  type LegendPayload,
   type LegendProps,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  type TooltipProps,
+  type TooltipContentProps,
+  type TooltipValueType,
 } from "recharts";
 
 import { cn } from "@/lib/utils";
@@ -105,7 +107,7 @@ const ChartTooltip = RechartsTooltip;
 
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
-  TooltipProps<number, string> &
+  Partial<TooltipContentProps<TooltipValueType, string | number>> &
     React.ComponentProps<"div"> & {
       hideLabel?: boolean;
       hideIndicator?: boolean;
@@ -187,10 +189,10 @@ const ChartTooltipContent = React.forwardRef<
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center"
                 )}
-                key={item.dataKey}
+                key={`${key}-${index}`}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, item.name, item, index, payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -252,7 +254,7 @@ const ChartLegend = Legend;
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
-    payload?: LegendProps["payload"];
+    payload?: readonly LegendPayload[];
     verticalAlign?: LegendProps["verticalAlign"];
     hideIcon?: boolean;
     nameKey?: string;

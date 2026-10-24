@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
+import { clearDocumentScrollLock } from "@/lib/document-scroll-lock";
 import { cn } from "@/lib/utils";
 import { Footer } from "./Footer";
 import { GameProvider, useGameContext } from "./GameContext";
@@ -67,6 +68,11 @@ function LayoutContent({
   isGamePage = false,
 }: LayoutProps) {
   const { gameState } = useGameContext();
+
+  useEffect(() => {
+    if (isGamePage) return;
+    clearDocumentScrollLock();
+  }, [isGamePage]);
 
   const chrome = (
     <>

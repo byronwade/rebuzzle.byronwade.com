@@ -126,7 +126,13 @@ export async function generateWithChainOfThought(params: {
   );
 
   // Extract puzzle and thinking based on schema structure
-  if (useChainOfThought && "thinking" in result && "puzzle" in result) {
+  if (
+    useChainOfThought &&
+    typeof result === "object" &&
+    result !== null &&
+    "thinking" in result &&
+    "puzzle" in result
+  ) {
     return {
       puzzle: result.puzzle,
       thinking: result.thinking,
