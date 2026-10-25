@@ -4,6 +4,8 @@
  * Clean TypeScript interfaces for MongoDB documents
  */
 
+import type { StoredAnswerResearch } from "@/ai/research/types";
+
 export interface User {
   _id?: string;
   id: string;
@@ -212,6 +214,8 @@ export interface Puzzle {
     learningDifficultyDelta?: number;
     learningReason?: string;
     selfLearning?: boolean;
+    /** Corroborated web research about the answer (meaning, wordings, cited origin). */
+    answerResearch?: StoredAnswerResearch;
     /** Apex player-sim estimate at publish time (0–1) */
     estimatedSolveRate?: number;
     /** Rolling sim bias applied when publishing */

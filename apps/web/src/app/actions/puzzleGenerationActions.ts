@@ -404,6 +404,7 @@ async function getOrGenerateDailyPuzzle(
         engine: result.metadata.engine ?? "eve",
         answerSeed: result.metadata.answerSeed,
         answerSeedCuePlan: result.metadata.answerSeedCuePlan,
+        answerResearch: result.metadata.answerResearch,
         learningBaselineDifficulty: difficultyPlan.baseline,
         learningDifficultyDelta: difficultyPlan.delta,
         learningReason: difficultyPlan.reason,
