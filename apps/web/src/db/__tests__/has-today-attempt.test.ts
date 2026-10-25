@@ -14,6 +14,6 @@ describe("puzzleAttemptOps.hasTodayAttempt", () => {
     const result = await puzzleAttemptOps.hasTodayAttempt("u1", "2026-10-25");
     expect(result.hasAttempt).toBe(false);
     const legacyQuery = findOne.mock.calls[1][0];
-    expect(legacyQuery).toMatchObject({ userId: "u1", puzzleDate: null });
+    expect(legacyQuery).toMatchObject({ userId: "u1", puzzleDate: { $exists: false } });
   });
 });

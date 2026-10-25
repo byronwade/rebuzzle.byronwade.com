@@ -465,7 +465,7 @@ export const puzzleAttemptOps = {
       (await collection.findOne(
         {
           userId,
-          puzzleDate: null,
+          puzzleDate: { $exists: false },
           attemptedAt: {
             $gte: new Date(`${dateKey}T00:00:00.000Z`),
             $lt: new Date(`${dateKey}T23:59:59.999Z`),
