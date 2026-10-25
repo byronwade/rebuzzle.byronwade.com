@@ -898,7 +898,7 @@ export function PuzzleStudio() {
 
   if (!isAuthenticated || isGuest) {
     return (
-      <div className="mx-auto max-w-page px-4 py-10 md:px-6 md:py-14">
+      <div className="mx-auto max-w-page px-4 py-12 md:px-6 md:py-16">
         <div className="max-w-2xl">
           <PageHeader
             className="mb-0 md:mb-0"

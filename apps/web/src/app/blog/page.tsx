@@ -55,7 +55,7 @@ async function BlogContent() {
   } catch (_error) {
     return (
       <Layout>
-        <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
+        <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
           <PageHeader
             description="Daily write-ups, strategies and the reasoning behind each puzzle."
             eyebrow="Blog"
@@ -87,7 +87,7 @@ async function BlogContent() {
   if (!blogPosts || blogPosts.length === 0) {
     return (
       <Layout>
-        <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
+        <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
           <PageHeader
             description="Daily write-ups, strategies and the reasoning behind each puzzle."
             eyebrow="Blog"
@@ -165,7 +165,7 @@ async function BlogContent() {
         type="application/ld+json"
       />
 
-      <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
+      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
         <PageHeader
           description="Daily write-ups, strategies and the reasoning behind each puzzle."
