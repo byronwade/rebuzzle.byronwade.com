@@ -1374,7 +1374,7 @@ export function PuzzleStudio() {
                     Deep review (vision player-sim)
                     <span className="mt-0.5 block text-muted-foreground text-xs">
                       Extra spend — only when server flags allow (
-                      <code className="text-[11px]">STUDIO_EVE_PLAYER_SIM</code>).
+                      <code>STUDIO_EVE_PLAYER_SIM</code>).
                     </span>
                   </span>
                 </label>
