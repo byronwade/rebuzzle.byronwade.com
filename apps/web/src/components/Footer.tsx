@@ -1,6 +1,6 @@
 import { AppLink as Link } from "@/components/AppLink";
 import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
-import { SignedOutOnly } from "@/components/SignedOutOnly";
+import { SignedOutOnly } from "@/components/signed-out-only-client";
 
 const FOOTER_COLUMNS: {
   heading: string;
