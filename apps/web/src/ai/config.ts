@@ -85,6 +85,37 @@ export const AI_CONFIG = {
     },
   },
 
+  /**
+   * Live web research (AI Gateway provider-executed search tools).
+   * Disable with REBUZZLE_RESEARCH=0. Off under Jest unless explicitly set to 1.
+   */
+  research: {
+    enabled:
+      process.env.REBUZZLE_RESEARCH === "1" ||
+      (process.env.NODE_ENV !== "test" &&
+        process.env.REBUZZLE_RESEARCH !== "0" &&
+        process.env.REBUZZLE_RESEARCH !== "false"),
+    provider: (["perplexity", "exa", "parallel"].includes(
+      process.env.REBUZZLE_RESEARCH_PROVIDER ?? ""
+    )
+      ? process.env.REBUZZLE_RESEARCH_PROVIDER
+      : "perplexity") as "perplexity" | "exa" | "parallel",
+    // Plan → search → follow-up search → finish. Each step may batch queries.
+    maxSearchSteps: Math.max(
+      1,
+      Math.min(6, Number(process.env.REBUZZLE_RESEARCH_MAX_STEPS || 3) || 3)
+    ),
+    maxResultsPerSearch: 6,
+    maxSources: 14,
+    timeoutMs: 60_000,
+    cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
+    /** Research Apex answer seeds and swap out ones the evidence says to avoid. */
+    seedGate: process.env.REBUZZLE_RESEARCH_SEED_GATE !== "0",
+    maxSeedReplacements: 3,
+    /** Seeds still unresearched after this are generated without a brief. */
+    seedDeadlineMs: 35_000,
+  },
+
   /** Pixel-level blind recognition gate for generated pictograms. */
   visualRecognition: {
     models: VISION_RECOGNITION_MODELS,

@@ -3,6 +3,7 @@
  * The post is published only after the PR is merged and deployed.
  */
 
+import { formatBlogResearchNotes } from "@/ai/research/blog-research";
 import { type GeneratedBlogPost, generateBlogPost } from "@/ai/services/blog-generator";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
@@ -162,6 +163,7 @@ export async function proposeBlogForPuzzle(
     puzzleId: puzzle.id,
     publishedAt: repositoryPost.publishedAt,
     content: serialized,
+    researchNotes: formatBlogResearchNotes(generated.research),
   });
 
   const now = new Date();

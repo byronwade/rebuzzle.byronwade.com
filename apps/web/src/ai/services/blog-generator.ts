@@ -10,6 +10,14 @@ import { join } from "node:path";
 import { z } from "zod";
 import { generateAIObject } from "@/ai/client";
 import { BLOG_CONFIG } from "@/ai/config/blog";
+import { isHardAIBudgetError } from "@/ai/errors";
+import {
+  type BlogResearchNotes,
+  type BlogResearchPack,
+  formatBlogResearchForPrompt,
+  gatherBlogResearch,
+  getBlogResearchIssues,
+} from "@/ai/research/blog-research";
 import type { BlogPostSEOMetadata, BlogPostSections } from "@/db/models";
 import type { PuzzleLike } from "@/lib/puzzleUtils";
 import { getPuzzleDisplay, getPuzzleType } from "@/lib/puzzleUtils";
@@ -21,6 +29,8 @@ export interface GeneratedBlogPost {
   excerpt: string;
   sections?: BlogPostSections;
   seoMetadata?: BlogPostSEOMetadata;
+  /** Web-verified facts the post was grounded in, for the review PR. */
+  research?: BlogResearchNotes;
 }
 
 const aiBlogResponseSchema = z.object({
@@ -166,6 +176,7 @@ export async function generateBlogPost(
     explanation?: string;
     publishedAt?: Date | string;
     hints?: unknown[];
+    metadata?: { answerResearch?: unknown } | Record<string, unknown>;
   }
 ): Promise<GeneratedBlogPost> {
   console.log(`[Blog Generator] Eve generating post for puzzle: ${puzzle.answer}`);
@@ -200,11 +211,31 @@ export async function generateBlogPost(
       ? new Date(puzzle.publishedAt).toISOString().slice(0, 10)
       : "yesterday";
 
+  // Research is advisory: a failure leaves the post ungrounded, not unwritten.
+  let research: BlogResearchPack = { facts: [], status: "unavailable" };
+  try {
+    research = await gatherBlogResearch({
+      answer: puzzle.answer,
+      typeName,
+      storedAnswerResearch: (puzzle.metadata as { answerResearch?: unknown } | undefined)
+        ?.answerResearch,
+    });
+    console.log("[Blog Generator] Research", {
+      status: research.status,
+      facts: research.facts.length,
+    });
+  } catch (error) {
+    if (isHardAIBudgetError(error)) throw error;
+    console.warn("[Blog Generator] Research unavailable", error);
+  }
+  const researchBrief = formatBlogResearchForPrompt(research);
+
   try {
     let retryFeedback = "";
     let lastIssues: string[] = [];
+    const maxAttempts = 3;
 
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const parsedResponse: AIBlogResponse = await generateAIObject({
         operation: "blog",
         system,
@@ -213,6 +244,8 @@ export async function generateBlogPost(
           "",
           `Puzzle live date (UTC): ${publishedKey}`,
           "Write the archive post for that day — consistent series voice, lightly unique.",
+          "",
+          researchBrief,
           retryFeedback,
         ]
           .filter(Boolean)
@@ -255,20 +288,49 @@ export async function generateBlogPost(
         .toLowerCase()
         .replace(/[^\w\s-]/g, "")
         .replace(/\s+/g, "-");
-      const generated = { title, content, slug, excerpt, sections, seoMetadata };
+      const generated: GeneratedBlogPost = {
+        title,
+        content,
+        slug,
+        excerpt,
+        sections,
+        seoMetadata,
+      };
 
       lastIssues = getBlogEditorialIssues(generated, puzzle.answer);
-      if (lastIssues.length === 0) return generated;
+      const researchIssues = getBlogResearchIssues(
+        [
+          content,
+          ...Object.values(parsedResponse.sections),
+          ...parsedResponse.faq.map((f) => f.answer),
+        ].join("\n"),
+        research,
+        publishedKey
+      );
+      // Unverified dates earn a rewrite, but never block the post: the
+      // review PR lists them for the human editor on the final attempt.
+      if (lastIssues.length === 0 && (researchIssues.length === 0 || attempt === maxAttempts)) {
+        return {
+          ...generated,
+          research: { status: research.status, facts: research.facts, warnings: researchIssues },
+        };
+      }
 
       console.warn(`[Blog Generator] Editorial validation failed (attempt ${attempt})`, {
         issues: lastIssues,
+        researchIssues,
       });
       retryFeedback = [
         "",
-        `Your previous draft failed validation: ${lastIssues.join("; ")}.`,
+        `Your previous draft failed validation: ${[...lastIssues, ...researchIssues].join("; ")}.`,
         `Rewrite the entire JSON. The exact answer "${puzzle.answer}" may appear ONLY under the ## The Solution heading and in sections.solution.`,
         "Do not put the answer in metadata, excerpt, FAQ, CTA, or any other section. Remove repetitive wording.",
-      ].join("\n");
+        researchIssues.length
+          ? "Remove or replace every date the research brief does not state; use only the numbered facts for history."
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
     }
 
     throw new Error(`Generated blog post failed editorial validation: ${lastIssues.join("; ")}`);

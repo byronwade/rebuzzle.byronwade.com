@@ -82,6 +82,8 @@ export interface PuzzleGenerationParams {
   answerSeed?: string;
   /** Host-owned visual ingredients that the composed board must contain. */
   answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
+  /** Corroborated web-research brief about the answer (meaning, wordings, origin). */
+  answerResearch?: string;
   /** Banned normalized answer keys */
   bannedAnswerKeys?: string[];
   /** Tournament candidate slot (1-based) — encourages diversity across slots */
@@ -197,6 +199,7 @@ function buildUserMessage(
           "Text/operator cues must remain visibly present and support the named technique. Keep the complete answer hidden as a contiguous phrase.",
         ].join("\n")
       : null,
+    params.answerResearch ?? null,
     preflight
       ? [
           "HOST CUE-PLAN PREFLIGHT (already composed, zero invent): reuse these exact ingredients.",

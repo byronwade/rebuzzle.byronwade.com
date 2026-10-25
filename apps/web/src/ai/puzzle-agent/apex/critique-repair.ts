@@ -17,6 +17,8 @@ export type CritiqueRepairRequest = {
   avoidTechniques?: string[];
   bannedAnswerKeys?: string[];
   briefSummary?: string;
+  /** Corroborated web-research brief about the locked answer. */
+  answerResearch?: string;
   qualityThreshold?: number;
   targetDifficulty: number;
   puzzleType?: string;
@@ -65,6 +67,7 @@ export function buildCritiqueRepairParams(
     theme: request.theme,
     qualityThreshold: request.qualityThreshold,
     briefSummary: request.briefSummary,
+    answerResearch: request.answerResearch,
     preferredTechniques: [
       request.techniqueId,
       ...(request.preferredTechniques ?? []).filter((id) => id !== request.techniqueId),
