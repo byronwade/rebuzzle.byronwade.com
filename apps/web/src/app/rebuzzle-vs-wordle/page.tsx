@@ -40,19 +40,19 @@ export default function RebuzzleVsWordlePage() {
     },
     {
       feature: "Daily puzzles",
-      rebuzzle: "Yes - AI-generated unique puzzles",
-      wordle: "Yes - One word per day",
+      rebuzzle: "Yes, AI-generated unique puzzles",
+      wordle: "Yes, one word per day",
       winner: "tie",
     },
     {
       feature: "Cost",
-      rebuzzle: "100% Free - No ads, no subscriptions",
+      rebuzzle: "100% free, no ads or subscriptions",
       wordle: "Free (owned by NYT)",
       winner: "tie",
     },
     {
       feature: "Mobile app",
-      rebuzzle: "Progressive Web App (PWA) - Install on any device",
+      rebuzzle: "Installable web app (PWA) on any device",
       wordle: "Mobile app available",
       winner: "tie",
     },
@@ -70,7 +70,7 @@ export default function RebuzzleVsWordlePage() {
     },
     {
       feature: "Offline play",
-      rebuzzle: "Yes - Full offline support",
+      rebuzzle: "Yes, full offline support",
       wordle: "Requires internet",
       winner: "rebuzzle",
     },
@@ -82,13 +82,13 @@ export default function RebuzzleVsWordlePage() {
     },
     {
       feature: "AI-generated",
-      rebuzzle: "Yes - Unique puzzles every day",
+      rebuzzle: "Yes, unique puzzles every day",
       wordle: "Pre-selected words",
       winner: "rebuzzle",
     },
     {
       feature: "Difficulty",
-      rebuzzle: "Adaptive difficulty (5-10 scale)",
+      rebuzzle: "Adaptive difficulty (5–10 scale)",
       wordle: "Single difficulty",
       winner: "rebuzzle",
     },
@@ -176,14 +176,14 @@ export default function RebuzzleVsWordlePage() {
         </header>
 
         {/* Quick Stats — one hairline-divided row, mono numerals */}
-        <div className="mt-14 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="mt-14 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-card">
           {[
             { label: "Rebuzzle wins", value: rebuzzleWins },
             { label: "Tied", value: ties },
             { label: "Wordle wins", value: wordleWins },
           ].map((stat) => (
-            <div className="px-6 py-7 text-center" key={stat.label}>
-              <div className="font-semibold text-4xl text-foreground tracking-[-0.045em] tabular-nums">
+            <div className="px-3 py-5 text-center sm:px-6 sm:py-7" key={stat.label}>
+              <div className="font-semibold text-3xl sm:text-4xl text-foreground tracking-[-0.045em] tabular-nums">
                 {stat.value}
               </div>
               <p className="mt-2 font-medium text-xs text-subtle">{stat.label}</p>
@@ -196,9 +196,40 @@ export default function RebuzzleVsWordlePage() {
           <h2 className="font-semibold text-2xl tracking-[-0.04em] md:text-[32px]">
             Feature comparison
           </h2>
+          {/* Phones: one card per feature, so the Wordle column never scrolls out of view */}
+          <dl className="mt-6 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:hidden">
+            {comparisonFeatures.map((feature) => (
+              <div className="px-4 py-4" key={feature.feature}>
+                <dt className="font-medium text-foreground text-sm">{feature.feature}</dt>
+                {(["rebuzzle", "wordle"] as const).map((side) => (
+                  <dd
+                    className={`mt-2 grid grid-cols-[4.5rem_1fr] gap-2 text-sm ${
+                      feature.winner === side
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                    key={side}
+                  >
+                    <span className="font-medium text-subtle text-xs leading-5">
+                      {side === "rebuzzle" ? "Rebuzzle" : "Wordle"}
+                    </span>
+                    <span className="flex items-start gap-2">
+                      <Check
+                        aria-label={feature.winner === side ? "Better" : undefined}
+                        className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                          feature.winner === side ? "text-success" : "invisible"
+                        }`}
+                      />
+                      <span>{feature[side]}</span>
+                    </span>
+                  </dd>
+                ))}
+              </div>
+            ))}
+          </dl>
           <div
             aria-label="Feature comparison table"
-            className="mt-6 overflow-x-auto rounded-xl border border-border focus-ring"
+            className="mt-6 hidden overflow-x-auto rounded-xl border border-border focus-ring sm:block"
             role="region"
             // biome-ignore lint/a11y/noNoninteractiveTabindex: lets keyboard users scroll the table sideways on phones
             tabIndex={0}
