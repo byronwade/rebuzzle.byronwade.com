@@ -34,7 +34,7 @@ export default function RebuzzleVsWordlePage() {
     {
       feature: "Puzzle types",
       rebuzzle:
-        "7 types (rebus, logic-grid, cryptic-crossword, number-sequence, pattern-recognition, caesar-cipher, trivia)",
+        "7 types (rebus, logic grid, cryptic crossword, number sequence, pattern recognition, Caesar cipher, trivia)",
       wordle: "1 type (5-letter word guessing)",
       winner: "rebuzzle",
     },
@@ -64,7 +64,7 @@ export default function RebuzzleVsWordlePage() {
     },
     {
       feature: "Skills trained",
-      rebuzzle: "Multiple cognitive skills (logic, pattern recognition, vocabulary, etc.)",
+      rebuzzle: "Logic, pattern recognition, vocabulary, and more",
       wordle: "Vocabulary building",
       winner: "rebuzzle",
     },
@@ -123,7 +123,7 @@ export default function RebuzzleVsWordlePage() {
     {
       question: "What makes Rebuzzle different from Wordle?",
       answer:
-        "Rebuzzle offers 7 puzzle types (rebus, logic-grid, cryptic-crossword, number-sequence, pattern-recognition, caesar-cipher, trivia) compared to Wordle’s single word-guessing format. Rebuzzle also features progressive hints, offline play, and AI-generated unique puzzles.",
+        "Rebuzzle offers 7 puzzle types (rebus, logic grid, cryptic crossword, number sequence, pattern recognition, Caesar cipher, trivia) compared to Wordle’s single word-guessing format. Rebuzzle also features progressive hints, offline play, and AI-generated unique puzzles.",
     },
     {
       question: "Does Rebuzzle have a mobile app?",
@@ -245,10 +245,12 @@ export default function RebuzzleVsWordlePage() {
                   <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
                     Feature
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
+                  {/* Indented past the check slot so the label lines up with the values */}
+                  <th className="py-2.5 pr-4 pl-[2.375rem] text-left font-medium text-xs text-muted-foreground">
                     Rebuzzle
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
+                  {/* Indented past the check slot so the label lines up with the values */}
+                  <th className="py-2.5 pr-4 pl-[2.375rem] text-left font-medium text-xs text-muted-foreground">
                     Wordle
                   </th>
                 </tr>

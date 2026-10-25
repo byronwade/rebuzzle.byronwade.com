@@ -56,7 +56,7 @@ export function StatusPage({
         {title}
       </h1>
       {description ? (
-        <p className="mt-3 text-pretty text-muted-foreground text-sm leading-6">{description}</p>
+        <p className="mt-3 text-balance text-muted-foreground text-sm leading-6">{description}</p>
       ) : null}
       {actions ? (
         <div className="mt-8 flex w-full flex-col justify-center gap-2 sm:w-auto sm:flex-row">
@@ -64,7 +64,9 @@ export function StatusPage({
         </div>
       ) : null}
       {footnote ? (
-        <p className="mt-8 border-border border-t pt-6 text-subtle text-xs leading-5">{footnote}</p>
+        <p className="mt-8 text-balance border-border border-t pt-6 text-subtle text-xs leading-5">
+          {footnote}
+        </p>
       ) : null}
     </div>
   );
