@@ -62,6 +62,7 @@ export interface GeneratedPuzzleResult {
     engine?: "apex" | "eve";
     answerSeed?: string;
     answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
+    answerResearch?: PuzzleAgentResult["metadata"]["answerResearch"];
     estimatedSolveRate?: number;
     playabilityEvidence?: PuzzleAgentResult["metadata"]["playabilityEvidence"];
     simCalibrationBias?: number;
@@ -132,6 +133,7 @@ function toGeneratedResult(
       engine,
       answerSeed: result.metadata.answerSeed,
       answerSeedCuePlan: result.metadata.answerSeedCuePlan,
+      answerResearch: result.metadata.answerResearch,
       estimatedSolveRate: result.metadata.estimatedSolveRate,
       playabilityEvidence: result.metadata.playabilityEvidence,
       simCalibrationBias: result.metadata.simCalibrationBias,

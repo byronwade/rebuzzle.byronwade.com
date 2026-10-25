@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { PuzzleVisual, VisualLayer } from "@/ai/puzzle-agent/visual/composition";
 import { defaultPositionForIndex, snapPosition } from "@/ai/puzzle-agent/visual/layer-position";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
@@ -299,6 +299,22 @@ function applyReviewEvent(
   return prev;
 }
 
+const SUBMISSION_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  // Held after a review asked for changes (the brief staging during publish never lingers).
+  pending_grade: "Needs changes",
+  approved: "Published",
+  featured: "Featured",
+  rejected: "Not published",
+};
+
+function submissionStatusLabel(status: string) {
+  return SUBMISSION_STATUS_LABELS[status] ?? labelFromSlug(status);
+}
+
+const MIN_ANSWER_LENGTH = 2;
+const MIN_EXPLANATION_LENGTH = 24;
+
 export function PuzzleStudio() {
   const { isAuthenticated, isGuest, isLoading, user } = useAuth();
   const [pending, startTransition] = useTransition();
@@ -329,6 +345,9 @@ export function PuzzleStudio() {
   const [grade, setGrade] = useState<GradeSnapshot | null>(null);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  /** Confirms a palette tap, since on phones the board sits above the palette, out of view. */
+  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -343,7 +362,25 @@ export function PuzzleStudio() {
   const canDetails = layers.some(
     (l) => l.kind === "pictogram" || l.kind === "text" || l.kind === "image"
   );
-  const canPublish = canDetails && answer.trim().length >= 2 && explanation.trim().length >= 24;
+  const canPublish =
+    canDetails &&
+    answer.trim().length >= MIN_ANSWER_LENGTH &&
+    explanation.trim().length >= MIN_EXPLANATION_LENGTH;
+  const explanationShortBy = Math.max(0, MIN_EXPLANATION_LENGTH - explanation.trim().length);
+  /** Why "Continue to publish" is disabled, so the button never just sits there greyed out. */
+  const detailsBlocker =
+    answer.trim().length < MIN_ANSWER_LENGTH
+      ? "Add the answer players should type."
+      : explanationShortBy > 0
+        ? `Explain the board in ${explanationShortBy} more ${explanationShortBy === 1 ? "character" : "characters"}.`
+        : null;
+  /** Coarse version for screen readers: changes per requirement, not per keystroke. */
+  const detailsStatus =
+    answer.trim().length < MIN_ANSWER_LENGTH
+      ? "Add the answer players should type."
+      : explanationShortBy > 0
+        ? `The explanation needs at least ${MIN_EXPLANATION_LENGTH} characters.`
+        : "Ready to continue to publish.";
   const currentFingerprint = useMemo(
     () =>
       studioContentFingerprint({
@@ -605,6 +642,7 @@ export function PuzzleStudio() {
     setDifficulty(template.difficulty);
     setLayout("free");
     setLayers(nextLayers);
+    setLastAdded(null);
     setSelectedIndex(Math.max(0, nextLayers.length - 1));
     setStatusMessage(`Loaded “${template.label}” — drag pieces anywhere, then continue.`);
     setStep("board");
@@ -625,6 +663,7 @@ export function PuzzleStudio() {
       return joined;
     });
     setLayout("free");
+    setLastAdded(labelFromSlug(item.concept));
   }
 
   function addMark(mark: StudioMark) {
@@ -642,6 +681,7 @@ export function PuzzleStudio() {
       return joined;
     });
     setLayout("free");
+    setLastAdded(mark.label);
   }
 
   function addText() {
@@ -1047,7 +1087,7 @@ export function PuzzleStudio() {
                 ))}
               </div>
 
-              <div className="mt-5">
+              <div className="mt-5 scroll-mt-20" ref={boardRef}>
                 <StudioArtboard
                   onMove={moveLayerPosition}
                   onSelect={setSelectedIndex}
@@ -1075,7 +1115,7 @@ export function PuzzleStudio() {
                       </button>
                     ))}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-3 text-muted-foreground text-xs [&>button:hover]:text-foreground [&>button]:transition-colors">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs [&>button:hover]:text-foreground [&>button]:min-h-11 [&>button]:transition-colors sm:gap-3 sm:[&>button]:min-h-0">
                     <button onClick={() => sendBackward(selectedIndex)} type="button">
                       Send back
                     </button>
@@ -1146,8 +1186,18 @@ export function PuzzleStudio() {
                 </div>
               ) : null}
 
-              <div className="mt-6 flex justify-end">
-                <Button disabled={!canDetails} onClick={() => setStep("details")} type="button">
+              <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+                {canDetails ? null : (
+                  <p className="text-muted-foreground text-xs" id="board-blocker">
+                    Add an icon, image or word to continue.
+                  </p>
+                )}
+                <Button
+                  aria-describedby={canDetails ? undefined : "board-blocker"}
+                  disabled={!canDetails}
+                  onClick={() => setStep("details")}
+                  type="button"
+                >
                   Continue to answer
                 </Button>
               </div>
@@ -1169,6 +1219,7 @@ export function PuzzleStudio() {
                         ? "bg-card text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     )}
+                    aria-pressed={catalogTab === id}
                     key={id}
                     onClick={() => setCatalogTab(id)}
                     type="button"
@@ -1180,8 +1231,10 @@ export function PuzzleStudio() {
 
               {catalogTab !== "ai" ? (
                 <input
+                  aria-label={catalogTab === "icons" ? "Search icons" : "Search marks"}
                   className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring md:text-sm"
                   onChange={(e) => setCatalogQuery(e.target.value)}
+                  type="search"
                   placeholder={catalogTab === "icons" ? "Search icons…" : "Search marks…"}
                   value={catalogQuery}
                 />
@@ -1225,6 +1278,27 @@ export function PuzzleStudio() {
                       <span className="w-full truncate text-center">{mark.label}</span>
                     </button>
                   ))}
+                </div>
+              ) : null}
+
+              {catalogTab !== "ai" ? (
+                <div className="mt-3 flex min-h-6 items-center justify-between gap-2 text-xs">
+                  <p aria-live="polite" className="truncate text-muted-foreground">
+                    {lastAdded
+                      ? `Added ${lastAdded} · ${layers.length} ${layers.length === 1 ? "piece" : "pieces"} on the board`
+                      : "Tap a tile to add it to the board."}
+                  </p>
+                  {lastAdded ? (
+                    <button
+                      className="-my-2.5 -mr-2 inline-flex min-h-11 shrink-0 items-center rounded px-2 font-medium text-foreground underline-offset-4 hover:underline focus-ring lg:hidden"
+                      onClick={() =>
+                        boardRef.current?.scrollIntoView({ behavior: "auto", block: "start" })
+                      }
+                      type="button"
+                    >
+                      View board
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -1282,8 +1356,12 @@ export function PuzzleStudio() {
                 <label className="block text-sm">
                   <span className="text-muted-foreground">Answer players should type</span>
                   <input
+                    autoCapitalize="off"
+                    autoComplete="off"
+                    autoCorrect="off"
                     className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2.5 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring"
                     onChange={(e) => setAnswer(e.target.value)}
+                    spellCheck={false}
                     placeholder="e.g. sunflower"
                     value={answer}
                   />
@@ -1298,6 +1376,12 @@ export function PuzzleStudio() {
                     placeholder="Sun + flower reads as the compound sunflower…"
                     value={explanation}
                   />
+                  <span className="mt-1 block text-subtle text-xs">
+                    Shown to players after they solve it.
+                    {explanationShortBy > 0
+                      ? ` At least ${MIN_EXPLANATION_LENGTH} characters, ${explanationShortBy} to go.`
+                      : null}
+                  </span>
                 </label>
                 <div className="grid gap-2 md:grid-cols-3">
                   {hints.map((hint, index) => (
@@ -1358,13 +1442,28 @@ export function PuzzleStudio() {
                 </details>
               </div>
             </div>
-            <div className="mt-6 flex flex-wrap justify-between gap-2">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
               <Button onClick={() => setStep("board")} type="button" variant="ghost">
                 Back
               </Button>
-              <Button disabled={!canPublish} onClick={() => setStep("publish")} type="button">
-                Continue to publish
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <p aria-live="polite" className="sr-only">
+                  {detailsStatus}
+                </p>
+                {detailsBlocker ? (
+                  <p className="text-muted-foreground text-xs" id="details-blocker">
+                    {detailsBlocker}
+                  </p>
+                ) : null}
+                <Button
+                  aria-describedby={detailsBlocker ? "details-blocker" : undefined}
+                  disabled={!canPublish}
+                  onClick={() => setStep("publish")}
+                  type="button"
+                >
+                  Continue to publish
+                </Button>
+              </div>
             </div>
           </section>
         ) : null}
@@ -1381,10 +1480,10 @@ export function PuzzleStudio() {
                 <p className="mt-3 text-center font-medium text-sm">{answer || "Your answer"}</p>
               </div>
               <div>
-                <h2 className="font-semibold text-xl tracking-[-0.04em]">Eve’s extensive review</h2>
+                <h2 className="font-semibold text-xl tracking-[-0.04em]">Check and publish</h2>
                 <p className="mt-1 text-muted-foreground text-sm leading-6">
-                  Watch status, thinking, and answers for every check. Safety runs before any model
-                  spend. Publish only ships when Eve’s verdict is ship — servers re-check on submit.
+                  Eve, our puzzle checker, makes sure your board is fair, safe and solvable. Run the
+                  check, fix anything it flags, then publish.
                 </p>
 
                 <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
@@ -1395,10 +1494,10 @@ export function PuzzleStudio() {
                     type="checkbox"
                   />
                   <span>
-                    Deep review (vision player-sim)
+                    Deep review
                     <span className="mt-0.5 block text-muted-foreground text-xs">
-                      Extra spend — only when server flags allow (<code>STUDIO_EVE_PLAYER_SIM</code>
-                      ).
+                      Eve also tries to solve it like a player would. Slower, and not always
+                      available.
                     </span>
                   </span>
                 </label>
@@ -1410,7 +1509,11 @@ export function PuzzleStudio() {
                     type="button"
                     variant="outline"
                   >
-                    {reviewing ? "Eve reviewing…" : "Run Eve review"}
+                    {reviewing
+                      ? "Eve is checking…"
+                      : eveShipReady
+                        ? "Check again"
+                        : "Run the check"}
                   </Button>
                   <Button
                     disabled={pending || reviewing || !canPublish}
@@ -1430,8 +1533,8 @@ export function PuzzleStudio() {
                 </div>
                 {!eveShipReady && canPublish ? (
                   <p className="mt-2 text-muted-foreground text-xs leading-5">
-                    Publish unlocks after Eve returns <span className="font-medium">ship</span> on
-                    this exact board. Re-run review if you change anything.
+                    Publish unlocks once Eve says the board is ready. If you change anything, run
+                    the check again.
                   </p>
                 ) : null}
 
@@ -1445,7 +1548,7 @@ export function PuzzleStudio() {
                     )}
                   >
                     <p className="font-medium">
-                      Deterministic score
+                      Quick check
                       <span className="ml-2 font-normal opacity-70">
                         quality {grade.score} · fun {grade.funScore}
                       </span>
@@ -1457,7 +1560,7 @@ export function PuzzleStudio() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="mt-2 opacity-80">No deterministic blockers.</p>
+                      <p className="mt-2 opacity-80">Nothing blocking.</p>
                     )}
                   </div>
                 ) : null}
@@ -1503,7 +1606,7 @@ export function PuzzleStudio() {
                           {row.title || row.answer}
                         </span>
                         <span className="font-medium text-xs text-subtle">
-                          {row.status}
+                          {submissionStatusLabel(row.status)}
                           {row.featuredOn ? ` · daily ${row.featuredOn}` : ""}
                         </span>
                       </button>

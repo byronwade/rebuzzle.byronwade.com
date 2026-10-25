@@ -16,11 +16,8 @@ import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-ge
 import type { PuzzleAgentResult } from "../schemas";
 import type { TechniqueId } from "../technique-library";
 import { stableId } from "../tool-impl";
-import {
-  AnswerFirstSeedUnavailableError,
-  answerFirstSeedKey,
-  selectAnswerFirstSeeds,
-} from "./answer-first";
+import { AnswerFirstSeedUnavailableError, answerFirstSeedKey } from "./answer-first";
+import { screenAnswerSeedsWithResearch } from "./answer-research";
 import { toPlayabilityEvidence } from "./blind-solve-consensus";
 import { critiqueCandidate } from "./critique";
 import { buildCritiqueRepairParams, critiqueRepairIssues } from "./critique-repair";
@@ -124,6 +121,7 @@ async function enrichCandidate(
       tierLabel: brief.tierLabel,
       unicodeFallback: candidate.visual.unicodeFallback,
       pictogramConcepts,
+      answerResearch: candidate.answerResearchBrief,
     });
     const creativityScore = critique.creativityScore ?? 60;
     const iconRecognizability = critique.iconRecognizability ?? 70;
@@ -200,7 +198,8 @@ export async function runApexGeneration(
   const generateStarted = Date.now();
   const candidates: ApexCandidate[] = [];
   const failures: string[] = [];
-  const answerSeedEntries = selectAnswerFirstSeeds({
+  // Research every reserved answer before spending generation budget on it.
+  const screen = await screenAnswerSeedsWithResearch({
     entries: brief.phraseSuggestions,
     techniqueIds: brief.preferredTechniques,
     count: brief.candidateCount,
@@ -208,21 +207,31 @@ export async function runApexGeneration(
     requireVisualCuePlan: true,
     targetDifficulty: params.targetDifficulty,
   });
-  if (answerSeedEntries.length !== brief.candidateCount) {
+  if (screen.inventoryShort || !screen.seeds.length) {
     throw new AnswerFirstSeedUnavailableError({
       requestedCount: brief.candidateCount,
-      selectedCount: answerSeedEntries.length,
+      selectedCount: screen.seeds.length,
     });
   }
+  for (const rejected of screen.rejected) {
+    failures.push(
+      `Research rejected seed "${rejected.answer}": ${rejected.reasons.join("; ") || "avoid"}`
+    );
+  }
+  const researchedSeeds = screen.seeds;
+  const slotCount = researchedSeeds.length;
 
   // Sequential slots — safer for gateway quota; each slot has a reserved answer
   // contract and a distinct brief nudge.
-  for (let slot = 1; slot <= brief.candidateCount; slot++) {
+  for (let slot = 1; slot <= slotCount; slot++) {
     try {
-      // Rotate preferred technique focus per slot
+      const researchedSeed = researchedSeeds[slot - 1];
+      // Keep the technique the seed was reserved for, even after research
+      // filtering compacts the slot list.
       const focusTechnique =
+        (researchedSeed?.techniqueId as TechniqueId | undefined) ??
         brief.preferredTechniques[(slot - 1) % Math.max(1, brief.preferredTechniques.length)];
-      const answerSeedEntry = answerSeedEntries[slot - 1];
+      const answerSeedEntry = researchedSeed?.entry;
       const answerSeed = answerFirstSeedKey(answerSeedEntry);
       const antiCopySuggestions = brief.phraseSuggestions.filter(
         (entry) => answerFirstSeedKey(entry) !== answerSeed
@@ -248,14 +257,19 @@ export async function runApexGeneration(
           : antiCopySuggestions.slice(0, 3).map((p) => p.answer),
         answerSeed: answerSeedEntry?.answer,
         answerSeedCuePlan: answerSeedEntry?.visualCues,
+        answerResearch: researchedSeed?.brief,
         bannedAnswerKeys: brief.diversity.bannedAnswerKeys,
         candidateIndex: slot,
-        candidateCount: brief.candidateCount,
+        candidateCount: slotCount,
         useLearningFeedback: params.useLearningFeedback,
         deferRenderedEvaluation: true,
       });
 
-      candidates.push(toCandidate(result, brief, slot));
+      candidates.push({
+        ...toCandidate(result, brief, slot),
+        answerResearch: researchedSeed?.research,
+        answerResearchBrief: researchedSeed?.brief,
+      });
     } catch (error) {
       if (isHardAIBudgetError(error)) {
         throw parseAIError(error);
@@ -351,6 +365,7 @@ export async function runApexGeneration(
               avoidTechniques: brief.avoidTechniques,
               bannedAnswerKeys: Array.from(new Set(brief.diversity.bannedAnswerKeys)),
               briefSummary: brief.briefSummary,
+              answerResearch: candidate.answerResearchBrief,
               qualityThreshold: brief.qualityThreshold,
               targetDifficulty: params.targetDifficulty,
               puzzleType: params.puzzleType,
@@ -360,7 +375,11 @@ export async function runApexGeneration(
             params
           )
         );
-        return toCandidate(result, brief, brief.candidateCount + 1);
+        return {
+          ...toCandidate(result, brief, brief.candidateCount + 1),
+          answerResearch: candidate.answerResearch,
+          answerResearchBrief: candidate.answerResearchBrief,
+        };
       } catch (error) {
         if (isHardAIBudgetError(error)) throw parseAIError(error);
         return null;
@@ -450,6 +469,9 @@ async function finalizeWinner(
     `technique ${chosen.techniqueId}`,
     `candidates ${ranked.length}`,
     revisionAttempts ? `critique revisions ${revisionAttempts}` : null,
+    chosen.answerResearch
+      ? `research ${chosen.answerResearch.verdict} (${chosen.answerResearch.sources.length} sources)`
+      : null,
     failures.length ? `slot failures ${failures.length}` : null,
     learningNote(brief),
     `${phases.totalMs}ms`,
@@ -488,6 +510,7 @@ async function finalizeWinner(
       visualStyleId: chosen.visual.styleId,
       answerSeed: chosen.answerSeed,
       answerSeedCuePlan: chosen.answerSeedCuePlan ? [...chosen.answerSeedCuePlan] : undefined,
+      answerResearch: chosen.answerResearch,
       estimatedSolveRate: chosen.playerSim?.estimatedSolveRate,
       playabilityEvidence: chosen.playerSim ? toPlayabilityEvidence(chosen.playerSim) : undefined,
       boardRecognitionConfidence: chosen.boardRecognitionConfidence,

@@ -4,6 +4,8 @@
  * Clean TypeScript interfaces for MongoDB documents
  */
 
+import type { StoredAnswerResearch } from "@/ai/research/types";
+
 export interface User {
   _id?: string;
   id: string;
@@ -64,6 +66,7 @@ export interface UserStats {
   streakShields: number; // Earned streak shields from achievements
   lastFreezeUsed?: Date; // When last freeze was used
   streakFreezeWeekStart?: Date; // Start of current week for freeze reset
+  streakTimeZone?: string; // Player's IANA zone at their last daily play (streak calendar)
   // Lucky solve tracking
   lastLuckySolve?: Date; // When last lucky solve occurred
   luckySolveCount: number; // Total lucky solves earned
@@ -210,6 +213,8 @@ export interface Puzzle {
     learningDifficultyDelta?: number;
     learningReason?: string;
     selfLearning?: boolean;
+    /** Corroborated web research about the answer (meaning, wordings, cited origin). */
+    answerResearch?: StoredAnswerResearch;
     /** Apex player-sim estimate at publish time (0–1) */
     estimatedSolveRate?: number;
     /** Rolling sim bias applied when publishing */
@@ -593,6 +598,7 @@ export interface NewUserStats {
   streakShields: number;
   lastFreezeUsed?: Date;
   streakFreezeWeekStart?: Date;
+  streakTimeZone?: string;
   // Lucky solve tracking
   lastLuckySolve?: Date;
   luckySolveCount: number;

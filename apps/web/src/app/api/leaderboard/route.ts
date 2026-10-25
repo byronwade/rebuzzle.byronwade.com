@@ -6,12 +6,21 @@ import {
 } from "@/lib/cache/leaderboard";
 import { buildCacheControl } from "@/lib/http/cache-headers";
 
+const TIMEFRAMES: readonly LeaderboardTimeframe[] = ["today", "week", "month", "allTime"];
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Number.parseInt(searchParams.get("limit") || "10", 10);
-    const timeframe = (searchParams.get("timeframe") || "allTime") as LeaderboardTimeframe;
-    const sortBy = (searchParams.get("sortBy") || "points") as LeaderboardSortBy;
+    // Clamp inputs: each distinct value is its own cache entry and DB query.
+    const parsedLimit = Number.parseInt(searchParams.get("limit") || "10", 10);
+    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 10;
+    const rawTimeframe = searchParams.get("timeframe");
+    const timeframe: LeaderboardTimeframe = TIMEFRAMES.includes(
+      rawTimeframe as LeaderboardTimeframe
+    )
+      ? (rawTimeframe as LeaderboardTimeframe)
+      : "allTime";
+    const sortBy: LeaderboardSortBy = searchParams.get("sortBy") === "streak" ? "streak" : "points";
 
     const leaderboard = await getCachedLeaderboardData(limit, timeframe, sortBy);
 

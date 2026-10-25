@@ -371,7 +371,7 @@ export function DevVisualLab() {
 
       {allowed === false && (
         <p className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-destructive text-sm">
-          Sign in as guest or account to run generation.
+          Visual Lab is for admins only. Sign in with an admin account to run generation.
         </p>
       )}
 

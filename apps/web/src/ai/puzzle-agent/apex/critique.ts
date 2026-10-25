@@ -17,6 +17,8 @@ export async function critiqueCandidate(input: {
   tierLabel: string;
   unicodeFallback?: string;
   pictogramConcepts?: string[];
+  /** Corroborated web-research brief about the answer. */
+  answerResearch?: string;
 }): Promise<CritiqueResult> {
   try {
     const raw = await generateAIObject({
@@ -40,6 +42,13 @@ Be specific and ruthless but fair.`,
           : null,
         `Explanation: ${input.explanation}`,
         `Hints: ${input.hints.map((h, i) => `${i + 1}. ${h}`).join(" | ")}`,
+        input.answerResearch
+          ? [
+              "",
+              input.answerResearch,
+              "Use this evidence: flag unfair obscurity only if the research supports it, and give reviseInstructions when the explanation or hints contradict the researched meaning or add unsourced history.",
+            ].join("\n")
+          : null,
         "",
         "Judge whether each pictured object would be instantly recognizable as a simple icon.",
         "Set overusedTrope=true if the answer/mechanism is a classic rebus cliché without a fresh twist.",

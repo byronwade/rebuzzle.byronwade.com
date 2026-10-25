@@ -122,10 +122,12 @@ export function getDailyBonusMultiplier(date: Date = new Date()): {
  * @param lastFreezeWeekStart - Start of the week when freeze was last given
  * @returns Whether to grant a new freeze
  */
-export function shouldResetStreakFreeze(lastFreezeWeekStart?: Date): boolean {
+export function shouldResetStreakFreeze(
+  lastFreezeWeekStart?: Date,
+  now: Date = new Date()
+): boolean {
   if (!lastFreezeWeekStart) return true;
 
-  const now = new Date();
   const currentWeekStart = getWeekStart(now);
   const lastWeekStart = getWeekStart(lastFreezeWeekStart);
 

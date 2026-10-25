@@ -1,26 +1,25 @@
 /**
- * Temporary Dev Mode APIs.
- * Available to any signed-in user (including guests) while testing.
- * Do not ship long-term without tightening access again.
+ * Dev Mode APIs. Admin-only outside local development (see lib/dev-access).
  */
 
 import { NextResponse } from "next/server";
 import { getGatewayAuthDiagnostics, probeGatewayAuth } from "@/ai/client";
 import { regenerateTodaysPuzzle } from "@/app/actions/regeneratePuzzleActions";
 import { db } from "@/db";
-import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { authorizeDevMode } from "@/lib/dev-access";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
 import { toPublicPuzzle } from "@/lib/game/public-puzzle";
 import { buildCacheControl } from "@/lib/http/cache-headers";
 
 export async function GET(request: Request) {
-  const authUser = await getAuthenticatedUser(request);
-  if (!authUser) {
+  const access = await authorizeDevMode(request);
+  if (!access.ok) {
     return NextResponse.json(
-      { success: false, allowed: false },
-      { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+      { success: false, allowed: false, error: access.error },
+      { status: access.status, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
     );
   }
+  const authUser = access.user;
 
   const puzzleDate = getUtcPuzzleDate();
   const [puzzle, lock] = await Promise.all([
@@ -52,13 +51,17 @@ type DevAction = "clear-attempts" | "lock-win" | "lock-lose" | "regenerate";
 
 export async function POST(request: Request) {
   try {
-    const authUser = await getAuthenticatedUser(request);
-    if (!authUser) {
+    const access = await authorizeDevMode(request);
+    if (!access.ok) {
       return NextResponse.json(
-        { success: false, error: "Sign in (guest or account) to use Dev Mode actions" },
-        { status: 401, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+        { success: false, error: access.error },
+        {
+          status: access.status,
+          headers: { "Cache-Control": buildCacheControl({ private: true }) },
+        }
       );
     }
+    const authUser = access.user;
 
     const body = (await request.json().catch(() => ({}))) as {
       action?: DevAction;

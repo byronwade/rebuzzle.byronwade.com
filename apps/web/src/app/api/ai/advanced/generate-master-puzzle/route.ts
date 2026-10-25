@@ -7,8 +7,17 @@
 
 import { NextResponse } from "next/server";
 import { generateMasterBatch, generateMasterPuzzle } from "@/ai/advanced";
+import { verifyAdminAccess } from "@/lib/admin-auth";
+
+const MAX_BATCH = 10;
 
 export async function POST(req: Request) {
+  // Each call runs several AI generations; only admins may spend that.
+  const admin = await verifyAdminAccess(req);
+  if (!admin) {
+    return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 });
+  }
+
   try {
     const body = await req.json();
     const {
@@ -37,7 +46,7 @@ export async function POST(req: Request) {
     if (mode === "batch") {
       // Generate batch of puzzles
       const results = await generateMasterBatch({
-        count,
+        count: Math.min(Math.max(1, Math.floor(Number(count) || 1)), MAX_BATCH),
         startDifficulty: targetDifficulty,
         difficultyProgression,
         ensureVariety,

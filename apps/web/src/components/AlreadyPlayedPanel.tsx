@@ -42,7 +42,7 @@ export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
 
   const [nextPlayTime] = useState(() => getNextLocalMidnight());
 
-  const tease = getStreakTease(wasSuccessful ? streak : 0, wasSuccessful);
+  const tease = getStreakTease(streak, wasSuccessful);
   const resultsHref = wasSuccessful ? "/game-over?success=true" : "/game-over?success=false";
 
   return (

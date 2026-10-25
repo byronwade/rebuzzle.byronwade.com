@@ -95,12 +95,14 @@ export function CommunityPuzzlePlay({
         <input
           aria-label="Your answer"
           className="rounded-md border border-border bg-card px-3 py-2.5 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring sm:flex-1 md:text-sm"
-          disabled={solved || busy}
+          disabled={solved}
           onChange={(e) => setGuess(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") void submitGuess();
           }}
           placeholder="Type your answer…"
+          // Read-only rather than disabled while checking, so focus stays put for the next guess.
+          readOnly={busy}
           value={guess}
         />
         <Button
@@ -129,11 +131,13 @@ export function CommunityPuzzlePlay({
           ))}
         </ul>
       ) : null}
-      {message ? (
-        <p className={cn("text-sm leading-6", solved ? "font-medium text-success" : "")}>
-          {message}
-        </p>
-      ) : null}
+      <p
+        aria-live="polite"
+        className={cn("text-sm leading-6 empty:hidden", solved && "font-medium text-success")}
+        role="status"
+      >
+        {message}
+      </p>
     </div>
   );
 }

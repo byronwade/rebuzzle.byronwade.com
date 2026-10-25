@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
+import { useAuth } from "@/components/AuthProvider";
 import { AuthField, AuthNotice, AuthShell, authFooterLink } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ import { withLoadingFlag } from "@/lib/with-loading-flag";
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshAuth } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -126,7 +128,6 @@ export default function SignupPage() {
       const firstError = Object.keys(newErrors)[0];
       if (firstError) {
         focusField(firstError);
-        document.getElementById(firstError)?.focus();
       }
       return;
     }
@@ -157,20 +158,22 @@ export default function SignupPage() {
           const data = await response.json();
 
           if (data.success) {
+            // The signup response already sets the session cookie, so go straight on
+            // rather than making the player log in again.
+            await refreshAuth();
             toast({
-              title: "Account created!",
-              description: "Your account has been created successfully. Redirecting to login…",
+              title: "You're in!",
+              description: data.convertedFromGuest
+                ? "Your account is ready and today's progress came with you."
+                : "Your account is ready.",
             });
 
             // Store user data temporarily
             localStorage.setItem("username", formData.username.trim());
 
-            const nextPath = safeInternalRedirect(
-              new URLSearchParams(window.location.search).get("next")
+            router.push(
+              safeInternalRedirect(new URLSearchParams(window.location.search).get("next"))
             );
-            setTimeout(() => {
-              router.push(`/login?next=${encodeURIComponent(nextPath)}`);
-            }, 1500);
           } else {
             const errorMessage = data.error || "Something went wrong. Please try again.";
             setErrors({ form: errorMessage });

@@ -23,6 +23,8 @@ export interface BlogPullRequestInput {
   puzzleId: string;
   publishedAt: string;
   content: string;
+  /** Markdown lines describing the research the post was grounded in. */
+  researchNotes?: string[];
 }
 
 export type BlogPullRequestSkipped = "already_published" | "pull_request_exists";
@@ -256,8 +258,10 @@ export async function createBlogPostPullRequest(
           "- [ ] The title does not reveal the answer",
           "- [ ] The puzzle display and explanation are accurate",
           "- [ ] The answer appears only in the solution section",
+          "- [ ] Historical claims match the research notes and their sources",
           "- [ ] The article is useful, original, and ready to publish",
           "",
+          ...(input.researchNotes ?? []),
           "Merging this pull request publishes the post on the next deployment.",
         ].join("\n"),
       }),

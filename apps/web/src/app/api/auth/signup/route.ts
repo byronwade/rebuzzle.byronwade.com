@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { analyticsEventOps } from "@/db/analytics-ops";
 import type { NewEmailSubscription } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { isValidEmail, normalizeEmail, validateUsername } from "@/lib/account-validation";
 import { createOrUpdateUser } from "@/lib/auth";
 import { setAuthCookie } from "@/lib/cookies";
 import { signToken } from "@/lib/jwt";
@@ -29,13 +30,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { username, email, password } = await request.json();
+    const body = (await request.json()) as {
+      username?: unknown;
+      email?: unknown;
+      password?: unknown;
+    };
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!(username && email && password)) {
       return NextResponse.json(
         { error: "Username, email, and password are required" },
         { status: 400 }
       );
+    }
+
+    const usernameError = validateUsername(username);
+    if (usernameError) {
+      return NextResponse.json({ error: usernameError }, { status: 400 });
     }
 
     // Validate password length
@@ -47,8 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
@@ -59,6 +71,11 @@ export async function POST(request: Request) {
         { error: "An account with this email already exists." },
         { status: 409 }
       );
+    }
+
+    // Usernames are public profile URLs, so they must be unique.
+    if (await db.userOps.isUsernameTaken(username)) {
+      return NextResponse.json({ error: "That username is taken." }, { status: 409 });
     }
 
     // Hash the password
@@ -179,7 +196,7 @@ export async function POST(request: Request) {
     // Auto-subscribe to email notifications (opt-in by default)
     try {
       const subscriptionsCollection = getCollection<NewEmailSubscription>("emailSubscriptions");
-      const normalizedEmail = email.toLowerCase().trim();
+      const normalizedEmail = email;
 
       // Check if subscription already exists
       const existing = await subscriptionsCollection.findOne({

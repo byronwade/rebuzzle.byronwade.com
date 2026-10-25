@@ -4,6 +4,7 @@
  * Clean, efficient MongoDB operations for Rebuzzle
  */
 
+import type { Filter } from "mongodb";
 import type {
   Achievement,
   BlogPost,
@@ -46,7 +47,26 @@ export const userOps = {
 
   async findByEmail(email: string): Promise<User | null> {
     const collection = getCollection<User>("users");
-    return await collection.findOne({ email });
+    const exact = await collection.findOne({ email });
+    if (exact) return exact;
+    // Older accounts kept the casing they signed up with; match those too.
+    const escaped = email.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return await collection.findOne({ email: { $regex: `^${escaped}$`, $options: "i" } });
+  },
+
+  /** Case-insensitive check against real (non-guest) accounts. */
+  async isUsernameTaken(username: string, excludeUserId?: string): Promise<boolean> {
+    const collection = getCollection<User>("users");
+    const escaped = username.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = await collection.findOne(
+      {
+        username: { $regex: `^${escaped}$`, $options: "i" },
+        isGuest: { $ne: true },
+        ...(excludeUserId ? { id: { $ne: excludeUserId } } : {}),
+      },
+      { projection: { id: 1 } }
+    );
+    return Boolean(match);
   },
 
   async findByUsername(username: string): Promise<User | null> {
@@ -165,7 +185,12 @@ export const userStatsOps = {
 
   async updateStats(userId: string, updates: Partial<UserStats>): Promise<void> {
     const collection = getCollection<UserStats>("userStats");
-    await collection.updateOne({ userId }, { $set: { ...updates, updatedAt: new Date() } });
+    // The driver writes undefined as null, which would wipe fields such as
+    // lastPlayDate. Leave unset fields alone instead.
+    const defined = Object.fromEntries(
+      Object.entries(updates).filter(([, value]) => value !== undefined)
+    ) as Partial<UserStats>;
+    await collection.updateOne({ userId }, { $set: { ...defined, updatedAt: new Date() } });
   },
 
   async getLeaderboard(
@@ -232,14 +257,26 @@ export const userStatsOps = {
    * Get leaderboard sorted by current active streak
    * Only includes users with active streaks (streak > 0)
    */
-  async getStreakLeaderboard(limit = 25): Promise<Array<UserStats & { user: User }>> {
+  async getStreakLeaderboard(limit = 25, skip = 0): Promise<Array<UserStats & { user: User }>> {
     const userStatsCollection = getCollection<UserStats>("userStats");
+
+    // A streak that hasn't been played in a month has lapsed; callers apply
+    // the exact freeze rules on what comes back.
+    const lapsedBefore = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const leaderboard = await userStatsCollection
       .aggregate([
         // Only include users with active streaks
         {
-          $match: { streak: { $gt: 0 } },
+          $match: { streak: { $gt: 0 }, lastPlayDate: { $gte: lapsedBefore } },
+        },
+        // Sort by streak first, then by maxStreak as tiebreaker
+        {
+          $sort: { streak: -1, maxStreak: -1, points: -1, userId: 1 },
+        },
+        { $skip: skip },
+        {
+          $limit: limit,
         },
         {
           $lookup: {
@@ -250,14 +287,8 @@ export const userStatsOps = {
           },
         },
         {
-          $unwind: "$user",
-        },
-        // Sort by streak first, then by maxStreak as tiebreaker
-        {
-          $sort: { streak: -1, maxStreak: -1, points: -1 },
-        },
-        {
-          $limit: limit,
+          // Keep rows without a user so callers can page by raw row count.
+          $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
         },
       ])
       .toArray();
@@ -387,6 +418,24 @@ export const puzzleAttemptOps = {
   async getUserAttempts(userId: string, limit = 50): Promise<PuzzleAttempt[]> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
     return await collection.find({ userId }).sort({ attemptedAt: -1 }).limit(limit).toArray();
+  },
+
+  /** Lifetime count of a user's attempt rows matching `filter`. */
+  async countUserAttempts(userId: string, filter: Filter<PuzzleAttempt> = {}): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    return await collection.countDocuments({ ...filter, userId } as Filter<PuzzleAttempt>);
+  },
+
+  /** Hints used across finished games (each final row carries that game's hint count). */
+  async sumFinalHintsUsed(userId: string): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const [row] = await collection
+      .aggregate<{ total: number }>([
+        { $match: { userId, isFinal: true } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ["$hintsUsed", 0] } } } },
+      ])
+      .toArray();
+    return row?.total ?? 0;
   },
 
   /**

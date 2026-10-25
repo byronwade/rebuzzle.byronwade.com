@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { gameSettings } from "@/lib/gameSettings";
+import { gameSettings, scoringConfig } from "@/lib/gameSettings";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 
 interface InfoButtonProps {
@@ -77,61 +77,34 @@ export function InfoButton({ puzzleType }: InfoButtonProps) {
         }}
         open={showInfoDialog}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>How to Play</DialogTitle>
+            <DialogTitle>How to play</DialogTitle>
             <DialogDescription>
-              {howToPlay
-                ? `Learn how to play ${puzzleConfig?.name || "this puzzle"}`
-                : "Learn how to play Rebuzzle"}
+              One puzzle a day, {gameSettings.maxAttempts} guesses to solve it.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
+          <div className="space-y-5 pt-2">
+            <ol className="list-outside list-decimal space-y-2 pl-5 text-sm leading-6 marker:text-subtle">
+              <li>Work out the word or phrase the puzzle stands for.</li>
+              <li>Type your answer and press Enter. Each try uses one guess.</li>
+              <li>
+                Stuck? Reveal a hint. Each one costs {scoringConfig.hints.penaltyPerHint} points.
+              </li>
+              <li>A new puzzle unlocks at your local midnight.</li>
+            </ol>
             {howToPlay ? (
-              <>
-                <p className="text-muted-foreground text-sm">{howToPlay.description}</p>
-                <div className="space-y-2">
-                  <h4 className="font-semibold">Rules:</h4>
-                  <ul className="list-inside list-disc space-y-1 text-sm">
-                    {howToPlay.rules.map((rule) => (
-                      <li key={rule}>{rule}</li>
-                    ))}
-                  </ul>
-                </div>
-                {howToPlay.examples && howToPlay.examples.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">Examples:</h4>
-                    <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
-                      {howToPlay.examples.map((example) => (
-                        <li key={example}>{example}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <p className="text-muted-foreground text-sm">
-                  Rebuzzle is a daily puzzle game that challenges you to solve various types of
-                  brain teasers.
-                </p>
-                <div className="space-y-2">
-                  <h4 className="font-semibold">General Rules:</h4>
-                  <ul className="list-inside list-disc space-y-1 text-sm">
-                    <li>You get {gameSettings.maxAttempts} guesses, one puzzle a day</li>
-                    <li>Stuck? Hints reveal one at a time</li>
-                    <li>A new puzzle unlocks each day at your local midnight</li>
-                    <li>Each puzzle type has its own unique solving approach</li>
-                  </ul>
-                </div>
-              </>
-            )}
-            <div className="border-t pt-4">
-              <p className="text-muted-foreground text-xs">
-                A new puzzle unlocks each day at your local midnight. Email reminders go out around
-                4 PM UTC. Use the notification bell in the header to get daily reminders.
-              </p>
-            </div>
+              <section className="space-y-2 rounded-lg border border-border bg-inset p-4">
+                <h3 className="font-medium text-sm">
+                  Today’s type: {puzzleConfig?.name ?? "Puzzle"}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-6">{howToPlay.description}</p>
+              </section>
+            ) : null}
+            <p className="border-border border-t pt-4 text-muted-foreground text-xs leading-5">
+              Want a nudge? The bell in the header turns on a daily reminder email, sent around 4 PM
+              UTC.
+            </p>
           </div>
         </DialogContent>
       </Dialog>

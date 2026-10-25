@@ -275,11 +275,13 @@ export async function POST(request: Request) {
           hintsUsed,
           pointsMultiplier,
           affectsStreak: !isArchive,
+          timeZone,
           isLucky,
           hasDailyBonus,
           dailyBonusMultiplier,
         });
         pointsEarned = update.pointsEarned;
+        streakFrozen = update.streakFrozen;
         currentStreak = update.streak;
         maxStreak = update.maxStreak;
         streakFreezesLeft = update.streakFreezes;
@@ -325,6 +327,7 @@ export async function POST(request: Request) {
           hintsUsed,
           pointsMultiplier: basePointsMultiplier,
           affectsStreak: !isArchive,
+          timeZone,
         });
         streakFrozen = lossUpdate.streakFrozen;
         streakFreezesLeft = lossUpdate.streakFreezes;

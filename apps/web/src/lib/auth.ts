@@ -8,10 +8,13 @@
 import { db } from "@/db";
 import type { UserStats } from "@/db/models";
 import { getAchievementDifficultyCategory } from "@/lib/difficulty";
+import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import {
   applyStreakProtection,
   bumpGuessDistribution,
+  getStreakGap,
   recordRecentPlayDate,
+  resolveCurrentStreak,
 } from "@/lib/game/retention-stats";
 import { calculateGamePoints, calculateLevel } from "@/lib/gameSettings";
 
@@ -69,7 +72,7 @@ export async function getUserWithStats(userId: string): Promise<{
       stats: stats
         ? {
             points: stats.points,
-            streak: stats.streak,
+            streak: resolveCurrentStreak(stats),
             maxStreak: stats.maxStreak,
             totalGames: stats.totalGames,
             wins: stats.wins,
@@ -142,6 +145,8 @@ export type GameResultInput = {
   isLucky?: boolean;
   hasDailyBonus?: boolean;
   dailyBonusMultiplier?: number;
+  /** Player's IANA zone; streak days follow their calendar. Defaults to UTC. */
+  timeZone?: string;
 };
 
 export type CalculatedStatsPatch = Omit<ReturnType<typeof buildStatsPatch>, "_meta">;
@@ -154,37 +159,27 @@ export type CalculatedStatsResult = {
 };
 
 function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultInput, now: Date) {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const lastPlayDate = currentStats?.lastPlayDate
-    ? new Date(
-        currentStats.lastPlayDate.getFullYear(),
-        currentStats.lastPlayDate.getMonth(),
-        currentStats.lastPlayDate.getDate()
-      )
+  const timeZone = gameResult.timeZone ?? "UTC";
+  const todayKey = getLocalPuzzleDate(now, timeZone);
+  const lastPlayKey = currentStats?.lastPlayDate
+    ? getLocalPuzzleDate(new Date(currentStats.lastPlayDate), timeZone)
     : null;
-
-  const isNewDay = !lastPlayDate || lastPlayDate.getTime() !== today.getTime();
+  const { missedDays, isNewDay } = getStreakGap(lastPlayKey, todayKey);
   const affectsStreak = gameResult.affectsStreak !== false;
 
   const priorStreak = currentStats?.streak || 0;
   const priorDaily = currentStats?.dailyChallengeStreak || 0;
 
-  // Win: increment on a new day. Loss: protect or reset via streak freezes/shields.
-  let tentativeStreak = priorStreak;
-  let tentativeDaily = priorDaily;
-  if (affectsStreak && gameResult.won) {
-    tentativeStreak = isNewDay ? priorStreak + 1 : priorStreak;
-    tentativeDaily = isNewDay ? priorDaily + 1 : priorDaily;
-  }
-
   const protection = applyStreakProtection({
     won: gameResult.won,
     affectsStreak,
-    currentStreak: gameResult.won ? tentativeStreak : priorStreak,
-    currentDailyStreak: gameResult.won ? tentativeDaily : priorDaily,
+    currentStreak: priorStreak,
+    currentDailyStreak: priorDaily,
     streakFreezes: currentStats?.streakFreezes ?? 1,
     streakShields: currentStats?.streakShields ?? 0,
     streakFreezeWeekStart: currentStats?.streakFreezeWeekStart,
+    missedDays,
+    isNewDay,
     now,
   });
 
@@ -192,11 +187,7 @@ function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultI
   const newDailyStreak = protection.dailyChallengeStreak;
   const maxStreak = Math.max(currentStats?.maxStreak || 0, newStreak);
 
-  const streakForPoints = affectsStreak
-    ? gameResult.won
-      ? newStreak
-      : priorStreak
-    : currentStats?.streak || 0;
+  const streakForPoints = affectsStreak ? newStreak : priorStreak;
   const pointsEarned = calculatePointsEarned(gameResult, streakForPoints);
   const newPoints = (currentStats?.points || 0) + pointsEarned;
   const newWins = (currentStats?.wins || 0) + (gameResult.won ? 1 : 0);
@@ -266,7 +257,10 @@ function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultI
     wins: newWins,
     level: newLevel,
     dailyChallengeStreak: newDailyStreak,
-    lastPlayDate: affectsStreak ? now : currentStats?.lastPlayDate || now,
+    // Archive plays must not count as a daily play, or today's daily would
+    // look like a same-day replay and never add a streak day.
+    lastPlayDate: affectsStreak ? now : currentStats?.lastPlayDate,
+    streakTimeZone: affectsStreak ? timeZone : currentStats?.streakTimeZone,
     perfectSolves,
     clutchSolves,
     speedSolves,
@@ -387,6 +381,35 @@ export async function updateUserStats(
   }
 }
 
+/** Leaderboards are public: never ship email or login times. */
+export type PublicLeaderboardUser = {
+  id: string;
+  username: string;
+  createdAt: Date;
+};
+
+type LeaderboardRow = UserStats & { user: { id: string; username: string; createdAt: Date } };
+
+function toLeaderboardEntry(entry: LeaderboardRow, now: Date) {
+  return {
+    user: {
+      id: entry.user.id,
+      username: entry.user.username,
+      createdAt: entry.user.createdAt,
+    } satisfies PublicLeaderboardUser,
+    stats: {
+      points: entry.points,
+      streak: resolveCurrentStreak(entry, now),
+      maxStreak: entry.maxStreak,
+      totalGames: entry.totalGames,
+      wins: entry.wins,
+      level: entry.level,
+      dailyChallengeStreak: entry.dailyChallengeStreak,
+      lastPlayDate: entry.lastPlayDate || undefined,
+    } satisfies UserStatsData,
+  };
+}
+
 /**
  * Get leaderboard data
  */
@@ -396,31 +419,17 @@ export async function getLeaderboard(
 ): Promise<
   Array<{
     rank: number;
-    user: AuthUser;
+    user: PublicLeaderboardUser;
     stats: UserStatsData;
   }>
 > {
   try {
     const leaderboardData = await db.userStatsOps.getLeaderboard(limit, timeframe);
+    const now = new Date();
 
     return leaderboardData.map((entry, index) => ({
       rank: index + 1,
-      user: {
-        id: entry.user.id,
-        username: entry.user.username,
-        email: entry.user.email,
-        createdAt: entry.user.createdAt,
-        lastLogin: entry.user.lastLogin || undefined,
-      },
-      stats: {
-        points: entry.points,
-        streak: entry.streak,
-        totalGames: entry.totalGames,
-        wins: entry.wins,
-        level: entry.level,
-        dailyChallengeStreak: entry.dailyChallengeStreak,
-        lastPlayDate: entry.lastPlayDate || undefined,
-      },
+      ...toLeaderboardEntry(entry, now),
     }));
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -452,34 +461,35 @@ export async function getUserRank(
 export async function getStreakLeaderboard(limit = 25): Promise<
   Array<{
     rank: number;
-    user: AuthUser;
+    user: PublicLeaderboardUser;
     stats: UserStatsData;
   }>
 > {
   try {
-    // Get users sorted by streak (descending), only include users with active streaks
-    const leaderboardData = await db.userStatsOps.getStreakLeaderboard(limit);
+    // Stored streaks can have lapsed, and that check needs each player's
+    // calendar, so page through candidates until the board is full.
+    const pageSize = Math.max(limit * 2, 50);
+    const now = new Date();
+    const active: ReturnType<typeof toLeaderboardEntry>[] = [];
+    for (let skip = 0; active.length < limit && skip < 5000; skip += pageSize) {
+      const page = await db.userStatsOps.getStreakLeaderboard(pageSize, skip);
+      for (const row of page) {
+        if (!row.user) continue;
+        const entry = toLeaderboardEntry(row, now);
+        if (entry.stats.streak > 0) active.push(entry);
+      }
+      if (page.length < pageSize) break;
+    }
 
-    return leaderboardData.map((entry, index) => ({
-      rank: index + 1,
-      user: {
-        id: entry.user.id,
-        username: entry.user.username,
-        email: entry.user.email,
-        createdAt: entry.user.createdAt,
-        lastLogin: entry.user.lastLogin || undefined,
-      },
-      stats: {
-        points: entry.points,
-        streak: entry.streak,
-        totalGames: entry.totalGames,
-        wins: entry.wins,
-        level: entry.level,
-        dailyChallengeStreak: entry.dailyChallengeStreak,
-        lastPlayDate: entry.lastPlayDate || undefined,
-        maxStreak: entry.maxStreak,
-      },
-    }));
+    return active
+      .sort(
+        (a, b) =>
+          b.stats.streak - a.stats.streak ||
+          (b.stats.maxStreak ?? 0) - (a.stats.maxStreak ?? 0) ||
+          b.stats.points - a.stats.points
+      )
+      .slice(0, limit)
+      .map((entry, index) => ({ rank: index + 1, ...entry }));
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Error getting streak leaderboard:", error);

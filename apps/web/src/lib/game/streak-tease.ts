@@ -11,12 +11,14 @@ export function getStreakTease(
   options?: { streakFrozen?: boolean; freezesLeft?: number }
 ): string {
   if (!success) {
-    if (options?.streakFrozen && streak > 0) {
-      return `Streak held at ${streak}. Same time tomorrow.`;
-    }
+    // A loss keeps the streak; it just doesn't add a day.
     return streak > 0
-      ? "Streak reset. Tomorrow is a clean start — one puzzle."
+      ? `Streak held at ${streak}. Solve tomorrow to grow it.`
       : "Start a streak tomorrow. One puzzle a day.";
+  }
+
+  if (options?.streakFrozen && streak > 1) {
+    return `A streak freeze covered the day you missed. ${streak}-day streak.`;
   }
 
   if ((MILESTONES as readonly number[]).includes(streak)) {

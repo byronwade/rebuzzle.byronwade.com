@@ -3,7 +3,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import type { User } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { rateLimit } from "@/lib/middleware/rate-limit";
 import { hashPassword } from "@/lib/password";
+
+const resetPasswordLimit = rateLimit({
+  name: "reset-password",
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 10,
+});
 
 /**
  * Constant-time string comparison to prevent timing attacks
@@ -25,13 +32,21 @@ function safeCompare(a: string, b: string): boolean {
  * Reset password with token
  */
 export async function POST(request: Request) {
+  const limit = await resetPasswordLimit(request);
+  if (limit && !limit.success) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter ?? 60) } }
+    );
+  }
+
   // Add random delay to prevent timing attacks (50-200ms)
   await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 150));
 
   try {
-    const { token, password } = await request.json();
+    const { token, password } = (await request.json()) as { token?: unknown; password?: unknown };
 
-    if (!(token && password)) {
+    if (typeof token !== "string" || typeof password !== "string" || !(token && password)) {
       return NextResponse.json({ error: "Token and password are required" }, { status: 400 });
     }
 

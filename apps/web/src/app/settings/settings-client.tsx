@@ -214,14 +214,14 @@ export default function SettingsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: user.id,
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         }),
       });
 
       if (!response.ok) {
-        fail("Failed to change password");
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        fail(data?.error || "Failed to change password");
       }
 
       // Clear form
