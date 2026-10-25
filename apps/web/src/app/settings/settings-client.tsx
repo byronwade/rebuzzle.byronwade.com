@@ -308,7 +308,7 @@ export default function SettingsPage() {
               </div>
               <RadioGroupPrimitive.Root
                 aria-label="Color mode"
-                className="inline-grid w-full grid-cols-3 gap-1 rounded-lg bg-inset p-1 sm:w-auto"
+                className="touch-targets inline-grid w-full grid-cols-3 gap-1 rounded-lg border border-border bg-inset p-1 sm:w-auto"
                 disabled={!mounted}
                 onValueChange={(value) => {
                   setTheme(value);
@@ -322,7 +322,7 @@ export default function SettingsPage() {
                   return (
                     <RadioGroupPrimitive.Item
                       className={cn(
-                        "inline-flex h-11 items-center justify-center gap-1.5 rounded-md sm:h-9 px-3 font-medium text-sm transition-colors focus-ring",
+                        "inline-flex h-11 items-center justify-center gap-1.5 rounded-md px-3 font-medium sm:h-9 text-sm transition-colors focus-ring",
                         selected
                           ? "bg-card text-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground"
