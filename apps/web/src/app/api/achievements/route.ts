@@ -52,7 +52,10 @@ export async function GET(request: NextRequest) {
           achievements: filteredAchievements.map((a) => ({
             id: a.definition.id,
             name: a.definition.name,
-            description: a.definition.secret && !a.unlocked ? "Keep playing to reveal it." : a.definition.description,
+            description:
+              a.definition.secret && !a.unlocked
+                ? "Keep playing to reveal it."
+                : a.definition.description,
             hint:
               a.definition.secret && !a.unlocked
                 ? "This is a secret achievement"
