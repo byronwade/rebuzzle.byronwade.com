@@ -289,8 +289,8 @@ export default function LeaderboardClient({
                     {userEntry.stats.level > 0 && (
                       <div className="mt-2 w-40">
                         <div className="mb-1.5 flex justify-between font-medium text-xs text-subtle">
-                          <span>Lvl {userEntry.stats.level}</span>
-                          <span>Lvl {userEntry.stats.level + 1}</span>
+                          <span>Lvl&nbsp;{userEntry.stats.level}</span>
+                          <span>Lvl&nbsp;{userEntry.stats.level + 1}</span>
                         </div>
                         <div className="h-1 overflow-hidden rounded-full bg-inset">
                           <div
@@ -379,7 +379,7 @@ export default function LeaderboardClient({
                     <p className="font-semibold text-sm truncate w-full text-center">
                       {topThree[1].user.username}
                     </p>
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <p className="mb-2 text-muted-foreground text-xs tabular-nums">
                       {topThree[1].stats.points.toLocaleString()} pts
                     </p>
                     <div className="w-full h-16 md:h-20 bg-inset rounded-t-lg flex items-center justify-center">
@@ -407,7 +407,7 @@ export default function LeaderboardClient({
                     <p className="font-semibold text-base truncate w-full text-center">
                       {topThree[0].user.username}
                     </p>
-                    <p className="text-sm text-warning font-medium mb-2">
+                    <p className="mb-2 font-medium text-sm text-warning tabular-nums">
                       {topThree[0].stats.points.toLocaleString()} pts
                     </p>
                     <div className="w-full h-20 md:h-24 bg-warning/10 rounded-t-lg flex items-center justify-center">
@@ -432,7 +432,7 @@ export default function LeaderboardClient({
                     <p className="font-semibold text-sm truncate w-full text-center">
                       {topThree[2].user.username}
                     </p>
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <p className="mb-2 text-muted-foreground text-xs tabular-nums">
                       {topThree[2].stats.points.toLocaleString()} pts
                     </p>
                     <div className="w-full h-12 md:h-16 bg-inset rounded-t-lg flex items-center justify-center">
@@ -492,7 +492,7 @@ export default function LeaderboardClient({
                               {entry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-xs">
                                   <Zap className="size-3" />
-                                  Lvl {entry.stats.level}
+                                  Lvl&nbsp;{entry.stats.level}
                                 </Badge>
                               )}
                             </div>
@@ -563,7 +563,7 @@ export default function LeaderboardClient({
                               {userEntry.stats.level > 0 && (
                                 <Badge variant="outline" className="gap-1 text-xs">
                                   <Zap className="size-3" />
-                                  Lvl {userEntry.stats.level}
+                                  Lvl&nbsp;{userEntry.stats.level}
                                 </Badge>
                               )}
                             </div>
