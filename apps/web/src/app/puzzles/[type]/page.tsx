@@ -232,7 +232,9 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
                 Home
               </Link>
             </li>
-            <li className="text-muted-foreground">/</li>
+            <li aria-hidden="true" className="text-muted-foreground">
+              /
+            </li>
             <li>
               <Link
                 className="text-muted-foreground transition-colors hover:text-foreground"
@@ -241,8 +243,12 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
                 Blog
               </Link>
             </li>
-            <li className="text-muted-foreground">/</li>
-            <li className="font-medium text-foreground">{puzzleInfo.name}</li>
+            <li aria-hidden="true" className="text-muted-foreground">
+              /
+            </li>
+            <li aria-current="page" className="font-medium text-foreground">
+              {puzzleInfo.name}
+            </li>
           </ol>
         </nav>
 
@@ -280,13 +286,13 @@ export default async function PuzzleTypePage({ params }: { params: Promise<{ typ
           {typePosts.length > 0 ? (
             <div className="mt-2 divide-y divide-border border-border border-t">
               {typePosts.map((post) => (
-                <BlogPost key={post.slug} post={post} />
+                <BlogPost headingLevel="h3" key={post.slug} post={post} />
               ))}
             </div>
           ) : (
             <Card className="mt-4" variant="inset">
               <p className="px-6 py-12 text-center text-muted-foreground text-sm">
-                No {puzzleInfo.name.toLowerCase()} write-ups yet. They go up alongside each day's
+                No {puzzleInfo.name.toLowerCase()} write-ups yet. They go up alongside each day’s
                 puzzle.
               </p>
             </Card>
