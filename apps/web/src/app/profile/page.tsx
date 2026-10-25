@@ -1,7 +1,7 @@
 "use client";
 
 import { format as formatDateFns } from "date-fns";
-import { Award, CalendarDays, ChevronRight, ExternalLink, Settings } from "lucide-react";
+import { Award, CalendarDays, ChevronRight, ExternalLink, PenLine, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
@@ -302,7 +302,10 @@ export default function ProfilePage() {
               </Button>
             ) : null}
             <Button asChild className="h-11 sm:h-8" size="sm" variant="outline">
-              <Link href="/studio">Studio</Link>
+              <Link href="/studio">
+                <PenLine aria-hidden className="h-4 w-4" data-icon="inline-start" />
+                Studio
+              </Link>
             </Button>
             <Button asChild className="h-11 sm:h-8" size="sm" variant="outline">
               <Link href="/settings">
