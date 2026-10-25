@@ -481,7 +481,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
           actions={
             <>
               <Button asChild size="lg">
-                <Link href="/">Play today&apos;s puzzle</Link>
+                <Link href="/">Play today’s puzzle</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/leaderboard">See the leaderboard</Link>
@@ -675,9 +675,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               ))}
             </div>
             {perception && (
-              <p className="text-muted-foreground text-xs">
-                Thanks, this tunes tomorrow&apos;s puzzle.
-              </p>
+              <p className="text-muted-foreground text-xs">Thanks, this tunes tomorrow’s puzzle.</p>
             )}
           </div>
 
@@ -745,7 +743,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               <div className="space-y-1">
                 <p className="font-medium text-foreground text-sm">Keep your streak going</p>
                 <p className="text-muted-foreground text-xs leading-5">
-                  Save progress across devices. Signing up keeps today&apos;s{" "}
+                  Save progress across devices. Signing up keeps today’s{" "}
                   {success ? "solve" : "result"}.{" "}
                   <Link
                     className="text-foreground underline-offset-2 hover:underline"

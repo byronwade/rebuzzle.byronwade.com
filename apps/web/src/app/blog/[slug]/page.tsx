@@ -123,7 +123,7 @@ async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
             <CardContent className="px-6 py-14 text-center">
               <p className="eyebrow">Blog</p>
               <h1 className="mt-3 font-semibold text-2xl tracking-[-0.04em]">
-                We couldn&apos;t load this post.
+                We couldn’t load this post.
               </h1>
               <p className="mt-2 text-muted-foreground text-sm">Something went wrong on our end.</p>
               <div className="mt-6 flex justify-center gap-2">
@@ -131,7 +131,7 @@ async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
                   <Link href="/blog">Back to blog</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/">Play today&apos;s puzzle</Link>
+                  <Link href="/">Play today’s puzzle</Link>
                 </Button>
               </div>
             </CardContent>

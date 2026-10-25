@@ -79,8 +79,8 @@ async function UnsubscribePageContent({ searchParams }: { searchParams: SearchPa
           description={
             email ? (
               <>
-                <strong className="font-medium text-foreground">{email}</strong> won&apos;t get
-                Rebuzzle notification emails anymore.
+                <strong className="font-medium text-foreground">{email}</strong> won’t get Rebuzzle
+                notification emails anymore.
               </>
             ) : (
               "You won't get Rebuzzle notification emails anymore."

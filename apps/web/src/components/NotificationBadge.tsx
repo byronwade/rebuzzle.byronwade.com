@@ -237,7 +237,7 @@ export function NotificationBadge() {
                   {emailLoading ? (
                     <>
                       <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
-                      Disabling...
+                      Disabling…
                     </>
                   ) : (
                     <>
@@ -269,7 +269,7 @@ export function NotificationBadge() {
                   {emailLoading ? (
                     <>
                       <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
-                      Enabling...
+                      Enabling…
                     </>
                   ) : (
                     <>
@@ -361,7 +361,7 @@ export function NotificationBadge() {
               {isSubmitting || emailLoading ? (
                 <>
                   <Loader2 data-icon="inline-start" className="mr-2 h-4 w-4 animate-spin" />
-                  Enabling...
+                  Enabling…
                 </>
               ) : (
                 <>

@@ -156,7 +156,7 @@ export default function HowItWorksPage() {
                 className="group inline-flex h-11 items-center justify-center gap-2 rounded-md bg-foreground px-5 font-medium text-background text-sm transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
                 href="/"
               >
-                Play today&apos;s puzzle
+                Play today’s puzzle
                 <ArrowRight
                   aria-hidden
                   className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
@@ -334,7 +334,7 @@ export default function HowItWorksPage() {
               <h2 className="mt-7 text-balance font-semibold text-4xl tracking-[-0.055em] md:text-5xl">
                 Hard is good.
                 <br />
-                Hazy isn&apos;t.
+                Hazy isn’t.
               </h2>
               <p className="mt-5 max-w-md text-pretty text-background/60 leading-7">
                 The best puzzle makes you work, then makes perfect sense. Rebuzzle evaluates each
@@ -358,7 +358,7 @@ export default function HowItWorksPage() {
         <section className="mx-auto max-w-page px-4 py-24 text-center md:px-6 md:py-32">
           <p className="eyebrow">Now you know the language</p>
           <h2 className="mx-auto mt-5 max-w-4xl text-balance font-semibold text-[clamp(3rem,7vw,6.25rem)] leading-[0.92] tracking-[-0.07em]">
-            Today&apos;s answer is hiding in plain sight.
+            Today’s answer is hiding in plain sight.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-pretty text-muted-foreground leading-7">
             Look closely, trust the wordplay, and send the answer that makes everything click.
@@ -367,7 +367,7 @@ export default function HowItWorksPage() {
             className="group mx-auto mt-9 inline-flex h-12 items-center gap-2 rounded-md bg-foreground px-6 font-medium text-background transition-transform duration-200 hover:-translate-y-0.5 focus-ring"
             href="/"
           >
-            Start today&apos;s Rebuzzle
+            Start today’s Rebuzzle
             <ArrowRight
               aria-hidden
               className="h-4 w-4 transition-transform group-hover:translate-x-0.5"

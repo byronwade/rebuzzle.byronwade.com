@@ -246,7 +246,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
             {!canReveal && (
               <p className="mt-3 flex items-center justify-center gap-1.5 text-subtle text-xs">
                 <Clock className="size-3" />
-                Play today&apos;s puzzle to unlock the solution
+                Play today’s puzzle to unlock the solution
               </p>
             )}
             {canReveal && (
@@ -274,7 +274,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
           className="mt-6 inline-flex h-10 items-center gap-1.5 rounded-pill bg-background px-5 font-medium text-foreground text-sm transition-opacity hover:opacity-90"
           href="/"
         >
-          Play today&apos;s puzzle
+          Play today’s puzzle
           <ArrowRight className="size-3.5" />
         </Link>
       </section>
