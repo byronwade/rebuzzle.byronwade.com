@@ -216,7 +216,7 @@ export function EnhancedShareButton({
         case "email": {
           const subject = success
             ? `I solved today's Rebuzzle in ${attempts} attempts`
-            : "Try today's Rebuzzle";
+            : "Try today’s Rebuzzle";
           const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(generateShareText())}`;
           window.open(mailto, "_self");
           break;

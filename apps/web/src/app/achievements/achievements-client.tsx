@@ -253,7 +253,7 @@ export default function AchievementsPage() {
       <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
         {/* Header */}
         <PageHeader
-          description="Track what you've unlocked and what's still ahead."
+          description="Track what you’ve unlocked and what’s still ahead."
           eyebrow="Progress"
           title="Achievements."
         />

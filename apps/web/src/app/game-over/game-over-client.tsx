@@ -488,7 +488,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
               </Button>
             </>
           }
-          description="Results, the answer and your stats show up here once you finish today's puzzle."
+          description="Results, the answer and your stats show up here once you finish today’s puzzle."
           eyebrow="Results"
           icon={Lock}
           title="Solve it first."
@@ -526,7 +526,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
                 ? `Solved in ${attempts} ${attempts === 1 ? "guess" : "guesses"}`
                 : "Not this time"}
             </div>
-            <p className="eyebrow mt-6">{success ? "Today's answer" : "The answer was"}</p>
+            <p className="eyebrow mt-6">{success ? "Today’s answer" : "The answer was"}</p>
             <h2 className="mt-2 text-balance font-semibold text-4xl text-foreground tracking-[-0.045em] md:text-5xl">
               {solution.answer}
             </h2>

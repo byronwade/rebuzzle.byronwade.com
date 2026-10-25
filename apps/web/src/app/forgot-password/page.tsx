@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
       description={
         success
           ? "If an account uses that email, a reset link is on its way. It expires in an hour."
-          : "Enter the email you signed up with and we'll send you a reset link."
+          : "Enter the email you signed up with and we’ll send you a reset link."
       }
       footer={
         <p>
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
       {success ? (
         <div className="space-y-4 rounded-lg outline-none" ref={successRef} tabIndex={-1}>
           <AuthNotice tone="success">
-            Didn't get it? Check spam, or send it again in a minute.
+            Didn’t get it? Check spam, or send it again in a minute.
           </AuthNotice>
           <div className="grid gap-2">
             <Button className="w-full" onClick={() => router.push("/login")}>

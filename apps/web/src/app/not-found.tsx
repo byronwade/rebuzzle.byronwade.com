@@ -21,7 +21,7 @@ export default function NotFound() {
             </>
           }
           className="min-h-0 pt-6"
-          description="That page doesn't exist, or it moved. Today's puzzle is right where you left it."
+          description="That page doesn’t exist, or it moved. Today’s puzzle is right where you left it."
           eyebrow="404"
           title="Page not found."
         />

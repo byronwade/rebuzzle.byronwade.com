@@ -108,22 +108,22 @@ export default function RebuzzleVsWordlePage() {
     {
       question: "Is Rebuzzle better than Wordle?",
       answer:
-        "Rebuzzle offers more variety with 7 different puzzle types compared to Wordle's single word-guessing format. While both are free, Rebuzzle provides progressive hints, offline play, and AI-generated unique puzzles daily.",
+        "Rebuzzle offers more variety with 7 different puzzle types compared to Wordle’s single word-guessing format. While both are free, Rebuzzle provides progressive hints, offline play, and AI-generated unique puzzles daily.",
     },
     {
       question: "Can I play Rebuzzle if I like Wordle?",
       answer:
-        "Absolutely! If you enjoy Wordle's daily challenge format, you'll love Rebuzzle. It offers the same daily ritual but with more puzzle variety, including rebus puzzles, logic grids, cryptic crosswords, and more.",
+        "Absolutely! If you enjoy Wordle’s daily challenge format, you’ll love Rebuzzle. It offers the same daily ritual but with more puzzle variety, including rebus puzzles, logic grids, cryptic crosswords, and more.",
     },
     {
       question: "Is Rebuzzle free like Wordle?",
       answer:
-        "Yes! Rebuzzle is 100% free with no ads and no subscriptions. It's completely free to play, just like Wordle.",
+        "Yes! Rebuzzle is 100% free with no ads and no subscriptions. It’s completely free to play, just like Wordle.",
     },
     {
       question: "What makes Rebuzzle different from Wordle?",
       answer:
-        "Rebuzzle offers 7 puzzle types (rebus, logic-grid, cryptic-crossword, number-sequence, pattern-recognition, caesar-cipher, trivia) compared to Wordle's single word-guessing format. Rebuzzle also features progressive hints, offline play, and AI-generated unique puzzles.",
+        "Rebuzzle offers 7 puzzle types (rebus, logic-grid, cryptic-crossword, number-sequence, pattern-recognition, caesar-cipher, trivia) compared to Wordle’s single word-guessing format. Rebuzzle also features progressive hints, offline play, and AI-generated unique puzzles.",
     },
     {
       question: "Does Rebuzzle have a mobile app?",
@@ -171,7 +171,7 @@ export default function RebuzzleVsWordlePage() {
             Rebuzzle vs Wordle.
           </h1>
           <p className="mt-5 text-balance text-lg text-muted-foreground leading-8">
-            Same daily ritual, seven puzzle types instead of one. Here's the side-by-side.
+            Same daily ritual, seven puzzle types instead of one. Here’s the side-by-side.
           </p>
         </header>
 
@@ -310,7 +310,7 @@ export default function RebuzzleVsWordlePage() {
               {
                 icon: Puzzle,
                 title: "More variety",
-                body: "Seven puzzle types against Wordle's single word-guessing format. A different cognitive skill every day.",
+                body: "Seven puzzle types against Wordle’s single word-guessing format. A different cognitive skill every day.",
               },
               {
                 icon: Sparkles,
@@ -356,7 +356,7 @@ export default function RebuzzleVsWordlePage() {
             href="/"
           >
             <Puzzle className="h-4 w-4" />
-            Play today's puzzle
+            Play today’s puzzle
           </Link>
         </section>
       </div>
