@@ -245,10 +245,12 @@ export default function RebuzzleVsWordlePage() {
                   <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
                     Feature
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
+                  {/* Indented past the check slot so the label lines up with the values */}
+                  <th className="py-2.5 pr-4 pl-[2.375rem] text-left font-medium text-xs text-muted-foreground">
                     Rebuzzle
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground">
+                  {/* Indented past the check slot so the label lines up with the values */}
+                  <th className="py-2.5 pr-4 pl-[2.375rem] text-left font-medium text-xs text-muted-foreground">
                     Wordle
                   </th>
                 </tr>
