@@ -1246,9 +1246,9 @@ export function PuzzleStudio() {
                   </p>
                   {lastAdded ? (
                     <button
-                      className="shrink-0 rounded font-medium text-foreground underline-offset-4 hover:underline focus-ring lg:hidden"
+                      className="-my-2.5 -mr-2 inline-flex min-h-11 shrink-0 items-center rounded px-2 font-medium text-foreground underline-offset-4 hover:underline focus-ring lg:hidden"
                       onClick={() =>
-                        boardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                        boardRef.current?.scrollIntoView({ behavior: "auto", block: "start" })
                       }
                       type="button"
                     >
