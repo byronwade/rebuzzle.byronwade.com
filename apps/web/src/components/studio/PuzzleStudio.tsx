@@ -901,16 +901,31 @@ export function PuzzleStudio() {
           />
           <ol className="mt-10 border-border border-t">
             {[
-              "Compose the board from fair catalog icons",
-              "Add answer, hints, and a short mapping",
-              "Publish into the lottery",
-            ].map((line, i) => (
+              {
+                title: "Build the board",
+                detail: "Tap icons from the catalog to compose your clue.",
+              },
+              {
+                title: "Write the answer",
+                detail: "Add the answer, three progressive hints, and how each icon maps to it.",
+              },
+              {
+                title: "Publish",
+                detail:
+                  "Eve grades it for fairness. Approved boards can land in the daily lottery.",
+              },
+            ].map((step, i) => (
               <li
                 className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-border border-b py-5 md:grid-cols-[3.5rem_minmax(0,1fr)]"
-                key={line}
+                key={step.title}
               >
-                <span className="pt-0.5 font-mono text-subtle text-xs tabular-nums">0{i + 1}</span>
-                <span className="font-medium tracking-[-0.01em]">{line}</span>
+                <span className="pt-1 font-mono text-subtle text-xs tabular-nums">0{i + 1}</span>
+                <div>
+                  <p className="font-medium tracking-[-0.01em]">{step.title}</p>
+                  <p className="mt-1 text-pretty text-muted-foreground text-sm leading-6">
+                    {step.detail}
+                  </p>
+                </div>
               </li>
             ))}
           </ol>
