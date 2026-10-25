@@ -1076,7 +1076,7 @@ export function PuzzleStudio() {
                       <label className="text-sm">
                         Text
                         <input
-                          className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
+                          className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 focus-ring transition-[border-color,box-shadow] focus-visible:border-ring text-base md:text-sm"
                           onChange={(e) =>
                             setLayers((prev) =>
                               prev.map((layer, i) =>
@@ -1092,7 +1092,7 @@ export function PuzzleStudio() {
                       <label className="text-sm">
                         Size
                         <select
-                          className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
+                          className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 focus-ring transition-[border-color,box-shadow] focus-visible:border-ring text-base md:text-sm"
                           onChange={(e) =>
                             setLayers((prev) =>
                               prev.map((layer, i) =>
@@ -1158,7 +1158,7 @@ export function PuzzleStudio() {
 
               {catalogTab !== "ai" ? (
                 <input
-                  className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-base outline-none transition-colors focus:border-border-strong md:text-sm"
+                  className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring md:text-sm"
                   onChange={(e) => setCatalogQuery(e.target.value)}
                   placeholder={catalogTab === "icons" ? "Search icons…" : "Search marks…"}
                   value={catalogQuery}
@@ -1213,7 +1213,7 @@ export function PuzzleStudio() {
                   <label className="block text-sm">
                     <span className="text-muted-foreground">What should it look like?</span>
                     <input
-                      className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-base outline-none transition-colors focus:border-border-strong md:text-sm"
+                      className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring md:text-sm"
                       disabled={aiGenerating || aiQuota.remaining <= 0}
                       onChange={(e) => setAiPrompt(e.target.value)}
                       onKeyDown={(e) => {
@@ -1258,7 +1258,7 @@ export function PuzzleStudio() {
                 <label className="block text-sm">
                   <span className="text-muted-foreground">Answer players should type</span>
                   <input
-                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2.5 text-base outline-none transition-colors focus:border-border-strong"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2.5 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring"
                     onChange={(e) => setAnswer(e.target.value)}
                     placeholder="e.g. sunflower"
                     value={answer}
@@ -1269,7 +1269,7 @@ export function PuzzleStudio() {
                     How does the board become that answer?
                   </span>
                   <textarea
-                    className="mt-1 min-h-28 w-full rounded-md border border-border bg-card px-3 py-2.5 outline-none transition-colors focus:border-border-strong"
+                    className="mt-1 min-h-28 w-full rounded-md border border-border bg-card px-3 py-2.5 focus-ring transition-[border-color,box-shadow] focus-visible:border-ring text-base md:text-sm"
                     onChange={(e) => setExplanation(e.target.value)}
                     placeholder="Sun + flower reads as the compound sunflower…"
                     value={explanation}
@@ -1280,7 +1280,7 @@ export function PuzzleStudio() {
                     <label className="block text-sm" key={`hint-${index}`}>
                       <span className="text-muted-foreground">Hint {index + 1}</span>
                       <input
-                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 focus-ring transition-[border-color,box-shadow] focus-visible:border-ring text-base md:text-sm"
                         onChange={(e) =>
                           setHints((prev) =>
                             prev.map((value, i) => (i === index ? e.target.value : value))
@@ -1299,7 +1299,7 @@ export function PuzzleStudio() {
                     <label className="block text-sm">
                       Technique
                       <select
-                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 focus-ring transition-[border-color,box-shadow] focus-visible:border-ring text-base md:text-sm"
                         onChange={(e) => setTechniqueId(e.target.value)}
                         value={techniqueId}
                       >
@@ -1313,7 +1313,7 @@ export function PuzzleStudio() {
                     <label className="block text-sm">
                       Difficulty (1–10)
                       <input
-                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 focus-ring transition-[border-color,box-shadow] focus-visible:border-ring text-base md:text-sm"
                         max={10}
                         min={1}
                         onChange={(e) => setDifficulty(Number(e.target.value) || 5)}
@@ -1324,7 +1324,7 @@ export function PuzzleStudio() {
                     <label className="block text-sm md:col-span-2">
                       Title on your profile
                       <input
-                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 outline-none transition-colors focus:border-border-strong"
+                        className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 focus-ring transition-[border-color,box-shadow] focus-visible:border-ring text-base md:text-sm"
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder={answer || "Optional"}
                         value={title}
