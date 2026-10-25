@@ -21,8 +21,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { BlogPostSections } from "@/db/models";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
-import { remarkSmartQuotes, separateInlineSteps, smartQuotes } from "@/lib/blog-markdown";
+import { remarkSmartQuotes, separateInlineSteps } from "@/lib/blog-markdown";
 import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
+import { smartQuotes } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
 

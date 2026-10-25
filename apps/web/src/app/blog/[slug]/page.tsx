@@ -10,7 +10,6 @@ import Layout from "@/components/Layout";
 import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { smartQuotes } from "@/lib/blog-markdown";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generateBlogPostMetadata } from "@/lib/seo/metadata";
 import {
@@ -19,6 +18,7 @@ import {
   generateFAQPageSchema,
   generateHowToSchema,
 } from "@/lib/seo/structured-data";
+import { smartQuotes } from "@/lib/typography";
 import {
   fetchAdjacentPosts,
   fetchBlogPost,
