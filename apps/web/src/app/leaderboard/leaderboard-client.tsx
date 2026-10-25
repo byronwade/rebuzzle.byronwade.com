@@ -217,7 +217,7 @@ export default function LeaderboardClient({
         <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <RadioGroupPrimitive.Root
             aria-label="Rank by"
-            className="inline-grid grid-cols-2 gap-1 rounded-lg border border-border bg-inset p-1"
+            className="touch-targets inline-grid grid-cols-2 gap-1 rounded-lg border border-border bg-inset p-1"
             onValueChange={(value) => setSortBy(value as typeof sortBy)}
             orientation="horizontal"
             value={sortBy}
@@ -246,7 +246,7 @@ export default function LeaderboardClient({
           {sortBy === "points" && (
             <RadioGroupPrimitive.Root
               aria-label="Time window"
-              className="inline-flex items-center gap-1 rounded-lg border border-border bg-inset p-1"
+              className="touch-targets inline-flex items-center gap-1 rounded-lg border border-border bg-inset p-1"
               onValueChange={(value) => setTimeframe(value as typeof timeframe)}
               orientation="horizontal"
               value={timeframe}
