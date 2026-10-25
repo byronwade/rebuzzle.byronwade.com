@@ -111,13 +111,13 @@ export default function PrivacyPolicyPage() {
             <li>Clicking the unsubscribe link in any email</li>
             <li>
               Visiting the{" "}
-              <Link className="text-link underline-offset-4 hover:underline" href="/unsubscribe">
+              <Link className="text-link underline underline-offset-4" href="/unsubscribe">
                 unsubscribe page
               </Link>
             </li>
             <li>
               Managing preferences in your{" "}
-              <Link className="text-link underline-offset-4 hover:underline" href="/settings">
+              <Link className="text-link underline underline-offset-4" href="/settings">
                 settings
               </Link>
             </li>
@@ -239,10 +239,7 @@ export default function PrivacyPolicyPage() {
         </p>
         <p>
           Email:{" "}
-          <a
-            className="text-link underline-offset-4 hover:underline"
-            href="mailto:privacy@byronwade.com"
-          >
+          <a className="text-link underline underline-offset-4" href="mailto:privacy@byronwade.com">
             privacy@byronwade.com
           </a>
         </p>
