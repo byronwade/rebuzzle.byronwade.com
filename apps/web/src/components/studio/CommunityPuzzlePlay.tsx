@@ -94,7 +94,7 @@ export function CommunityPuzzlePlay({
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           aria-label="Your answer"
-          className="rounded-md border border-border bg-card px-3 py-2.5 text-base outline-none transition-colors focus:border-border-strong sm:flex-1 md:text-sm"
+          className="rounded-md border border-border bg-card px-3 py-2.5 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring sm:flex-1 md:text-sm"
           disabled={solved || busy}
           onChange={(e) => setGuess(e.target.value)}
           onKeyDown={(e) => {
