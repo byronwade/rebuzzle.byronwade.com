@@ -1,0 +1,7 @@
+# Optional GPU worker only. PyTorch/CUDA must match that worker's driver.
+# Versions verified on PyPI 2026-10-25; GPU compatibility has not been exercised here.
+trl==1.16.0
+peft==0.21.2
+transformers==5.20.2
+datasets==5.1.0
+accelerate==1.15.0

@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-25",
+  "policy": "External puzzles remain evaluation references. Do not use them as generation seeds, training examples or production puzzle stock. Dataset-level licenses do not establish rights to every third-party image.",
+  "datasets": [
+    {
+      "id": "columbus",
+      "title": "COLUMBUS",
+      "url": "https://huggingface.co/datasets/koen-47/COLUMBUS",
+      "paper": "https://arxiv.org/abs/2409.04053",
+      "declaredLicense": "MIT",
+      "licenseEvidence": "https://github.com/koen-47/COLUMBUS/blob/a9586b975f53bf3936f752ad43fc401798bbcbbb/LICENSE.md",
+      "revision": "d34984c1019fbf9b5ebafb3c50051dd24f42c7c4",
+      "metadataUrl": "https://huggingface.co/datasets/koen-47/COLUMBUS/resolve/d34984c1019fbf9b5ebafb3c50051dd24f42c7c4/metadata.jsonl",
+      "metadataSha256": "de6d8debae170469eb45c7d823ecf19ee1738ca0cf91a42a7df4acf9a63a4aa5",
+      "format": "columbus-jsonl",
+      "imageBase": "https://huggingface.co/datasets/koen-47/COLUMBUS/resolve/d34984c1019fbf9b5ebafb3c50051dd24f42c7c4/",
+      "use": "evaluation-reference-only",
+      "notes": "Rule/graph-based generation is the most relevant architectural reference. Icon/text variants overlap and must be grouped by answer. Multiple-choice accuracy is not open-ended solve accuracy. Source code documents scraped phrase inputs and external icons; do not assume downstream training/image rights from MIT alone."
+    },
+    {
+      "id": "movva",
+      "title": "Reasoning Riddles rebus puzzles",
+      "url": "https://huggingface.co/datasets/pmovva/rebus-puzzles",
+      "paper": "https://arxiv.org/abs/2510.02780",
+      "declaredLicense": "CC-BY-4.0",
+      "licenseEvidence": "https://huggingface.co/datasets/pmovva/rebus-puzzles/blob/b4911d5585deb11c11aa042b7d30e9344b546983/README.md",
+      "revision": "b4911d5585deb11c11aa042b7d30e9344b546983",
+      "metadataUrl": "https://huggingface.co/datasets/pmovva/rebus-puzzles/resolve/b4911d5585deb11c11aa042b7d30e9344b546983/rebus_dataset.csv",
+      "metadataSha256": "7d8f2f661c86ce8e3fefc647d93266a88132397656c5dc2c30de7256f01f8e4f",
+      "format": "movva-csv",
+      "imageBase": "https://huggingface.co/datasets/pmovva/rebus-puzzles/resolve/b4911d5585deb11c11aa042b7d30e9344b546983/rebus_dataset/",
+      "use": "evaluation-reference-only",
+      "notes": "221 cases with alternate answers and mechanism annotations. Attribution required. Third-party image provenance still needs row review; do not auto-approve source rights or answer validity."
+    },
+    {
+      "id": "re-bus",
+      "title": "RE-BUS",
+      "url": "https://huggingface.co/datasets/TrishanuDas/rebus-dataset",
+      "paper": "https://rebus-dataset.github.io/",
+      "declaredLicense": "Apache-2.0",
+      "licenseEvidence": "https://huggingface.co/datasets/TrishanuDas/rebus-dataset/blob/12233c6790bb2edc929ad7822ae428483b5c842a/README.md",
+      "revision": "12233c6790bb2edc929ad7822ae428483b5c842a",
+      "metadataUrl": "https://huggingface.co/datasets/TrishanuDas/rebus-dataset/resolve/12233c6790bb2edc929ad7822ae428483b5c842a/RebusPuzzlesFullDataset.csv",
+      "metadataSha256": "b3bf8ff2c43ec87f2a799d266393c174f2b19141870c966863484ba4e231b8d2",
+      "format": "rebus-csv",
+      "use": "evaluation-reference-only",
+      "notes": "Already supported by the strict external benchmark importer. Separate originals from augmentations. Dataset card cautions about commercial use and third-party rights. Preserve existing per-row approval requirements."
+    },
+    {
+      "id": "rebus-333",
+      "title": "REBUS",
+      "url": "https://huggingface.co/datasets/cavendishlabs/rebus",
+      "paper": "https://arxiv.org/abs/2401.05604",
+      "revision": "f49945e2ff49770328f685873ea1dfb00cda218b",
+      "declaredLicense": "not-declared",
+      "use": "quarantined",
+      "notes": "333 original examples across 13 categories. No license in inspected dataset card or GitHub API response. No content import."
+    },
+    {
+      "id": "puzzled-by-puzzles",
+      "title": "Puzzled by Puzzles",
+      "url": "https://github.com/Kyunnilee/visual_puzzles",
+      "paper": "https://visual-puzzles.github.io/",
+      "declaredLicense": "unresolved",
+      "use": "quarantined",
+      "notes": "432 cases, eleven skill types. Paper mentions MIT, but repository API reports no recognized license. Resolve exact data/image grant before import."
+    },
+    {
+      "id": "puzzleworld",
+      "title": "PuzzleWorld",
+      "url": "https://huggingface.co/datasets/hzli1202/PuzzleWorld",
+      "paper": "https://arxiv.org/abs/2506.06211",
+      "revision": "336912c603d37cb350184464040a7d502845da9c",
+      "declaredLicense": "CC-BY-NC-SA-4.0",
+      "use": "research-literature-only",
+      "notes": "667 puzzlehunt tasks, not a direct rebus generator corpus. Noncommercial restriction: exclude from commercial training. Paper reports reasoning-trace supervision outperforming answer-only supervision in its solver experiment; this is not evidence that a rebus generator will improve."
+    },
+    {
+      "id": "rebusbench",
+      "title": "RebusBench",
+      "url": "https://huggingface.co/datasets/amirkasaei/rebusbench",
+      "paper": "https://arxiv.org/abs/2604.01764",
+      "revision": "1a9802902da05532769ac5ed55e4c84a664ad330",
+      "declaredLicense": "not-declared",
+      "use": "quarantined",
+      "notes": "Relevant recent cognitive visual reasoning benchmark. No license in inspected dataset card or GitHub API response; no content import."
+    }
+  ]
+}

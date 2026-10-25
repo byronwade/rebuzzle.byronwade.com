@@ -24,6 +24,13 @@ interface IndexDefinition {
 
 const indexDefinitions: IndexDefinition[] = [
   {
+    collection: "puzzleTrainingCandidates",
+    indexes: [
+      { keys: { id: 1 }, options: { unique: true, name: "training_candidate_id_unique" } },
+      { keys: { capturedAt: -1 }, options: { name: "training_candidate_captured_desc" } },
+    ],
+  },
+  {
     collection: "puzzles",
     indexes: [
       { keys: { id: 1 }, options: { unique: true, name: "puzzles_id_unique" } },

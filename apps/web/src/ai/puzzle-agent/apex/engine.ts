@@ -8,6 +8,7 @@
  *  4. Multi-dimensional rubric + winner selection
  */
 
+import { recordTournamentCandidates } from "../../training/candidate-store";
 import { AI_CONFIG } from "../../config";
 import { isHardAIBudgetError, parseAIError } from "../../errors";
 import { isKnownTechniqueId } from "../quality";
@@ -375,6 +376,13 @@ export async function runApexGeneration(
   });
   const { winner, ranked } = selection;
   failures.push(...selection.failures);
+  await recordTournamentCandidates({
+    runId: crypto.randomUUID(),
+    candidates: Array.from(
+      new Map([...candidates, ...ranked].map((candidate) => [candidate.id, candidate])).values()
+    ),
+    winnerId: winner?.id,
+  });
   const selectMs = Math.max(0, Date.now() - selectStarted - critiqueMs);
 
   if (!winner) {

@@ -1,3 +1,6 @@
+jest.mock("../../../training/candidate-store", () => ({
+  recordTournamentCandidates: jest.fn(async () => {}),
+}));
 /**
  * Apex revise lane must refuse unlocked repairs (no cue plan) instead of
  * inventing a replacement answer/board.
