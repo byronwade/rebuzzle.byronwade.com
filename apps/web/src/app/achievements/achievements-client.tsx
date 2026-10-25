@@ -485,11 +485,11 @@ export default function AchievementsPage() {
                         <div className="flex-1">
                           <span className={cn("font-medium text-sm", tier.color)}>{tier.name}</span>
                           <span className="text-xs text-muted-foreground ml-2">
-                            Lvl {tier.levels[0]}-{tier.levels[1]}
+                            Lvl&nbsp;{tier.levels[0]}–{tier.levels[1]}
                           </span>
                         </div>
                         <span className="font-mono text-subtle text-xs tabular-nums">
-                          {startPoints.toLocaleString()}-{endPoints.toLocaleString()} pts
+                          {startPoints.toLocaleString()}–{endPoints.toLocaleString()} pts
                         </span>
                       </div>
                     );

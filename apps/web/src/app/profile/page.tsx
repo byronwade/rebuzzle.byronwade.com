@@ -283,7 +283,7 @@ export default function ProfilePage() {
                 {username}
               </h1>
               <p className="mt-1.5 text-muted-foreground text-sm">
-                Level {currentLevel}
+                Level&nbsp;{currentLevel}
                 {stats.lastPlayDate ? (
                   <>
                     {" · "}Last played {formatDateFns(new Date(stats.lastPlayDate), "MMM d, yyyy")}
