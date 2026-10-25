@@ -86,15 +86,15 @@ export function CommunityPuzzlePlay({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium text-xs text-subtle">Technique · {techniqueLabel}</p>
         {attemptsLeft !== null ? (
-          <p className="font-mono text-[11px] text-subtle tabular-nums">
-            {attemptsLeft} attempts left
+          <p className="font-mono text-subtle text-xs tabular-nums">
+            {attemptsLeft} {attemptsLeft === 1 ? "attempt" : "attempts"} left
           </p>
         ) : null}
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           aria-label="Your answer"
-          className="flex-1 rounded-md border border-border bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-border-strong"
+          className="rounded-md border border-border bg-card px-3 py-2.5 text-base outline-none transition-colors focus:border-border-strong sm:flex-1 md:text-sm"
           disabled={solved || busy}
           onChange={(e) => setGuess(e.target.value)}
           onKeyDown={(e) => {

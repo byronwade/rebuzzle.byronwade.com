@@ -175,7 +175,7 @@ export function StudioArtboard({
           );
         })}
       </div>
-      <p className="text-center text-[11px] text-subtle">
+      <p className="text-center text-subtle text-xs">
         Drag to place · snaps to grid · tap a piece to select
       </p>
     </div>

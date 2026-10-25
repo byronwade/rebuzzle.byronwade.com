@@ -486,7 +486,7 @@ export default function LeaderboardClient({
                                 )}
                               </p>
                               {entry.stats.level > 0 && (
-                                <Badge variant="outline" className="gap-1 text-[11px] sm:text-xs">
+                                <Badge variant="outline" className="gap-1 text-xs">
                                   <Zap className="size-3" />
                                   Lvl {entry.stats.level}
                                 </Badge>
@@ -606,7 +606,7 @@ export default function LeaderboardClient({
 
         {/* How scoring works */}
         <section className="mt-14">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="mb-4 touch-targets flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <div>
               <h2 className="font-semibold text-base text-foreground tracking-[-0.02em]">
                 How scoring works
