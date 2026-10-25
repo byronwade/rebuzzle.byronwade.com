@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { PuzzleVisual, VisualLayer } from "@/ai/puzzle-agent/visual/composition";
 import { defaultPositionForIndex, snapPosition } from "@/ai/puzzle-agent/visual/layer-position";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
@@ -329,6 +329,9 @@ export function PuzzleStudio() {
   const [grade, setGrade] = useState<GradeSnapshot | null>(null);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  /** Confirms a palette tap, since on phones the board sits above the palette, out of view. */
+  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -605,6 +608,7 @@ export function PuzzleStudio() {
     setDifficulty(template.difficulty);
     setLayout("free");
     setLayers(nextLayers);
+    setLastAdded(null);
     setSelectedIndex(Math.max(0, nextLayers.length - 1));
     setStatusMessage(`Loaded “${template.label}” — drag pieces anywhere, then continue.`);
     setStep("board");
@@ -625,6 +629,7 @@ export function PuzzleStudio() {
       return joined;
     });
     setLayout("free");
+    setLastAdded(labelFromSlug(item.concept));
   }
 
   function addMark(mark: StudioMark) {
@@ -642,6 +647,7 @@ export function PuzzleStudio() {
       return joined;
     });
     setLayout("free");
+    setLastAdded(mark.label);
   }
 
   function addText() {
@@ -1047,7 +1053,7 @@ export function PuzzleStudio() {
                 ))}
               </div>
 
-              <div className="mt-5">
+              <div className="mt-5 scroll-mt-20" ref={boardRef}>
                 <StudioArtboard
                   onMove={moveLayerPosition}
                   onSelect={setSelectedIndex}
@@ -1075,7 +1081,7 @@ export function PuzzleStudio() {
                       </button>
                     ))}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-3 text-muted-foreground text-xs [&>button:hover]:text-foreground [&>button]:transition-colors">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs [&>button:hover]:text-foreground [&>button]:min-h-11 [&>button]:transition-colors sm:gap-3 sm:[&>button]:min-h-0">
                     <button onClick={() => sendBackward(selectedIndex)} type="button">
                       Send back
                     </button>
@@ -1169,6 +1175,7 @@ export function PuzzleStudio() {
                         ? "bg-card text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     )}
+                    aria-pressed={catalogTab === id}
                     key={id}
                     onClick={() => setCatalogTab(id)}
                     type="button"
@@ -1180,8 +1187,10 @@ export function PuzzleStudio() {
 
               {catalogTab !== "ai" ? (
                 <input
+                  aria-label={catalogTab === "icons" ? "Search icons" : "Search marks"}
                   className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring md:text-sm"
                   onChange={(e) => setCatalogQuery(e.target.value)}
+                  type="search"
                   placeholder={catalogTab === "icons" ? "Search icons…" : "Search marks…"}
                   value={catalogQuery}
                 />
@@ -1225,6 +1234,27 @@ export function PuzzleStudio() {
                       <span className="w-full truncate text-center">{mark.label}</span>
                     </button>
                   ))}
+                </div>
+              ) : null}
+
+              {catalogTab !== "ai" ? (
+                <div className="mt-3 flex min-h-6 items-center justify-between gap-2 text-xs">
+                  <p aria-live="polite" className="truncate text-muted-foreground">
+                    {lastAdded
+                      ? `Added ${lastAdded} · ${layers.length} ${layers.length === 1 ? "piece" : "pieces"} on the board`
+                      : "Tap a tile to add it to the board."}
+                  </p>
+                  {lastAdded ? (
+                    <button
+                      className="shrink-0 rounded font-medium text-foreground underline-offset-4 hover:underline focus-ring lg:hidden"
+                      onClick={() =>
+                        boardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                      }
+                      type="button"
+                    >
+                      View board
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 
