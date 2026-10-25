@@ -50,7 +50,8 @@
     "training:research": "python3 scripts/training/research-datasets.py",
     "training:export": "tsx scripts/training/export-candidates.ts",
     "training:prepare": "tsx scripts/training/prepare.ts",
-    "training:ranker": "python3 scripts/training/train-ranker.py"
+    "training:ranker": "python3 scripts/training/train-ranker.py",
+    "benchmark:puzzles:compare": "tsx scripts/compare-puzzle-generators.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.115",

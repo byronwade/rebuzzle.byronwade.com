@@ -206,6 +206,7 @@ export async function runApexGeneration(
     count: brief.candidateCount,
     usedAnswerKeys: brief.diversity.bannedAnswerKeys,
     requireVisualCuePlan: true,
+    targetDifficulty: params.targetDifficulty,
   });
   if (answerSeedEntries.length !== brief.candidateCount) {
     throw new AnswerFirstSeedUnavailableError({

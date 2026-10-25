@@ -135,6 +135,8 @@ This creates a rank-16 LoRA adapter, trains only completion tokens, rejects exam
 
 DPO export is included for a later experiment; no DPO optimizer or production DPO job has been launched. Start with the ranker and an SFT baseline before adding that expense.
 
+See [the quality standard and paired comparison protocol](PUZZLE_SYSTEM_STANDARD.md) for executable baseline/challenger reporting.
+
 ## Promotion experiment
 
 Compare the current generator and candidate adapter on the same frozen unseen briefs, equal candidate/call budgets, and independent rendered evaluators. Report schema validity, publishable yield, complete clue coverage, ambiguity/false-accept rate, mechanism diversity, human preference win rate, median and p95 generation latency, tokens, and **cost per accepted puzzle** (including rejected candidates and retries). Stratify by tier and mechanism. Use enough independent puzzle families and a confidence interval for human comparisons; do not promote on a tiny majority or model self-scores.
