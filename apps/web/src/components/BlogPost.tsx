@@ -4,6 +4,7 @@ import { format as formatDateFns } from "date-fns";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
 import { Badge } from "@/components/ui/badge";
+import { smartQuotes } from "@/lib/blog-markdown";
 import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 
@@ -74,11 +75,11 @@ export default function BlogPost({
           </div>
 
           <h2 className="mt-4 line-clamp-2 text-balance font-semibold text-foreground text-xl tracking-[-0.03em]">
-            {post.title}
+            {smartQuotes(post.title)}
           </h2>
 
           <p className="mt-2 line-clamp-2 text-muted-foreground text-sm leading-6">
-            {post.excerpt}
+            {smartQuotes(post.excerpt)}
           </p>
 
           <span className="mt-5 inline-flex items-center gap-1.5 font-medium text-foreground text-sm">
@@ -109,7 +110,9 @@ export default function BlogPost({
               <span className="font-medium text-xs text-subtle">{typeLabel}</span>
               {isToday && <span className="font-medium text-xs text-warning">New</span>}
             </div>
-            <h2 className="truncate font-medium text-foreground text-sm">{post.title}</h2>
+            <h2 className="truncate font-medium text-foreground text-sm">
+              {smartQuotes(post.title)}
+            </h2>
           </div>
 
           <ChevronRight className="size-4 shrink-0 text-subtle transition-transform group-hover:translate-x-0.5" />
@@ -137,11 +140,11 @@ export default function BlogPost({
         </div>
 
         <Heading className="mt-3 line-clamp-2 text-balance font-semibold text-foreground text-lg tracking-[-0.03em]">
-          {post.title}
+          {smartQuotes(post.title)}
         </Heading>
 
         <p className="mt-1.5 line-clamp-2 text-muted-foreground text-sm leading-6">
-          {post.excerpt}
+          {smartQuotes(post.excerpt)}
         </p>
 
         <span className="mt-3 inline-flex items-center gap-1.5 font-medium text-foreground text-sm">
