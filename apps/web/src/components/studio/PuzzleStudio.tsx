@@ -301,7 +301,8 @@ function applyReviewEvent(
 
 const SUBMISSION_STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
-  pending_grade: "In review",
+  // Held after a review asked for changes (the brief staging during publish never lingers).
+  pending_grade: "Needs changes",
   approved: "Published",
   featured: "Featured",
   rejected: "Not published",
