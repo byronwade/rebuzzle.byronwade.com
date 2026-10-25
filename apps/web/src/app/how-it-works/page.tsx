@@ -307,7 +307,8 @@ export default function HowItWorksPage() {
                     Tricycle
                   </div>
                   <div className="max-w-[88%] rounded-xl rounded-bl-sm bg-inset px-4 py-3 text-sm leading-6">
-                    <span className="font-medium">Exactly.</span> Three “cycles” make a tri-cycle.
+                    <span className="font-medium">Exactly.</span> Three “cycles” make a{" "}
+                    <span className="whitespace-nowrap">tri-cycle.</span>
                   </div>
                 </div>
                 <div className="mt-5 flex items-center justify-between border-border border-t pt-4">

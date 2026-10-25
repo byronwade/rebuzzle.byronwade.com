@@ -294,6 +294,19 @@
 }
 
 @layer base {
+  /* Card inset. A variable rather than responsive classes on CardHeader /
+     CardContent / CardFooter, so a caller's `p-4` or `pt-6` wins at every
+     breakpoint instead of being overridden by a built-in `sm:p-6`. */
+  :root {
+    --card-pad: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --card-pad: 1.5rem;
+    }
+  }
+
   * {
     @apply border-border;
   }
