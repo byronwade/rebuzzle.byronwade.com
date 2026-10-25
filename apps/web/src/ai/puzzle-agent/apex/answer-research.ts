@@ -17,7 +17,7 @@ import {
 } from "../../research/phrase-research";
 import type { StoredAnswerResearch } from "../../research/types";
 import { normalizeAnswerKey } from "../quality";
-import { answerFirstSeedKey, selectAnswerFirstSeeds } from "./answer-first";
+import { answerFirstSeedKey, selectAnswerFirstSeed, selectAnswerFirstSeeds } from "./answer-first";
 import type { PhraseBankEntry } from "./types";
 
 interface ResearchedSeed {
@@ -85,71 +85,79 @@ export async function screenAnswerSeedsWithResearch(input: {
     Array.from(input.usedAnswerKeys ?? [], (answer) => normalizeAnswerKey(answer)).filter(Boolean)
   );
 
-  const select = () =>
-    selectAnswerFirstSeeds({
-      entries: input.entries,
-      techniqueIds: input.techniqueIds,
-      count: input.count,
-      usedAnswerKeys: used,
-      requireVisualCuePlan: input.requireVisualCuePlan,
-    });
-
   // selectAnswerFirstSeeds reserves seed i for techniqueIds[i % n].
   const slotTechnique = (index: number) =>
     input.techniqueIds[index % Math.max(1, input.techniqueIds.length)];
 
-  let selection = select();
+  const selection = selectAnswerFirstSeeds({
+    entries: input.entries,
+    techniqueIds: input.techniqueIds,
+    count: input.count,
+    usedAnswerKeys: used,
+    requireVisualCuePlan: input.requireVisualCuePlan,
+  });
   const inventoryShort = selection.length < input.count;
+  const slots = selection.map((entry, index) => ({ entry, techniqueId: slotTechnique(index) }));
   if (!enabled || inventoryShort) {
-    return {
-      seeds: selection.map((entry, index) => ({ entry, techniqueId: slotTechnique(index) })),
-      rejected: [],
-      researched: 0,
-      inventoryShort,
-    };
+    return { seeds: slots, rejected: [], researched: 0, inventoryShort };
   }
 
   const researchByKey = new Map<string, PhraseResearch | undefined>();
   const rejected: SeedScreenResult["rejected"] = [];
+  const verdictOf = (entry: PhraseBankEntry) =>
+    researchByKey.get(answerFirstSeedKey(entry) ?? "")?.verdict;
 
   for (let round = 0; round <= maxReplacements; round++) {
-    const pending = selection.filter((entry) => {
+    const pending = slots.filter(({ entry }) => {
       const key = answerFirstSeedKey(entry);
       return key && !researchByKey.has(key);
     });
     const results = await Promise.all(
-      pending.map((entry) => researchWithDeadline(entry.answer, researcher, deadlineMs))
+      pending.map(({ entry }) => researchWithDeadline(entry.answer, researcher, deadlineMs))
     );
-    pending.forEach((entry, index) => {
+    pending.forEach(({ entry }, index) => {
       const key = answerFirstSeedKey(entry);
       if (key) researchByKey.set(key, results[index]);
     });
 
-    if (!gate) break;
-    const avoid = selection.filter(
-      (entry) => researchByKey.get(answerFirstSeedKey(entry) ?? "")?.verdict === "avoid"
-    );
-    if (!avoid.length || rejected.length >= maxReplacements) break;
+    if (!gate || rejected.length >= maxReplacements) break;
+    const avoidSlots = slots.filter(({ entry }) => verdictOf(entry) === "avoid");
+    if (!avoidSlots.length) break;
 
-    for (const entry of avoid.slice(0, maxReplacements - rejected.length)) {
-      const key = answerFirstSeedKey(entry);
+    // Replace each avoided slot on its own, so healthy reservations survive.
+    let replaced = false;
+    for (const slot of avoidSlots.slice(0, maxReplacements - rejected.length)) {
+      const key = answerFirstSeedKey(slot.entry);
       if (key) used.add(key);
       rejected.push({
-        answer: entry.answer,
+        answer: slot.entry.answer,
         reasons: researchByKey.get(key ?? "")?.verdictReasons ?? [],
       });
+      const taken = new Set(used);
+      for (const other of slots) {
+        const otherKey = answerFirstSeedKey(other.entry);
+        if (otherKey) taken.add(otherKey);
+      }
+      const replacement = slot.techniqueId
+        ? selectAnswerFirstSeed({
+            entries: input.entries,
+            techniqueId: slot.techniqueId,
+            usedAnswerKeys: taken,
+            requireVisualCuePlan: input.requireVisualCuePlan,
+          })
+        : undefined;
+      if (replacement) {
+        slot.entry = replacement;
+        replaced = true;
+      }
     }
-    const next = select();
-    // Never let research shrink the tournament below one reserved seed.
-    if (!next.length) break;
-    selection = next;
+    if (!replaced) break;
   }
 
-  const seeds = selection
-    .map((entry, index) => ({ entry, techniqueId: slotTechnique(index) }))
+  const seeds = slots
     .filter(({ entry }, _index, all) => {
       if (!gate || all.length <= 1) return true;
-      return researchByKey.get(answerFirstSeedKey(entry) ?? "")?.verdict !== "avoid";
+      return verdictOf(entry) !== "avoid";
     })
     .map(({ entry, techniqueId }): ResearchedSeed => {
       const research = researchByKey.get(answerFirstSeedKey(entry) ?? "");

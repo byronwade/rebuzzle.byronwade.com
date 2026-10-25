@@ -63,9 +63,10 @@ function normalizeText(value: string): string {
     .replace(/[“”]/g, '"');
 }
 
-/** Years, decades, and other figures a claim asserts (e.g. 1830, 1830s, 17th). */
+/** Years, decades, and other figures a claim asserts (e.g. 1830, 1830s, 17th, 9th). */
 export function extractClaimNumbers(statement: string): string[] {
-  const matches = normalizeText(statement).match(/\b\d{2,4}(?:s|st|nd|rd|th)?\b/g) ?? [];
+  const matches =
+    normalizeText(statement).match(/\b(?:\d{2,4}(?:s|st|nd|rd|th)?|\d(?:st|nd|rd|th))\b/g) ?? [];
   return Array.from(new Set(matches.map((m) => m.replace(/(?:st|nd|rd|th)$/, ""))));
 }
 
@@ -120,13 +121,15 @@ export function corroborateClaims(
       // assertion that only a low-trust page makes.
       const figures = extractClaimNumbers(draft.statement);
       const sourceText = (s: ResearchSource) => `${s.title} ${s.snippet}`;
+      // Compare whole figures, so "9th" never matches inside "1599".
+      const figuresIn = (s: ResearchSource) => new Set(extractClaimNumbers(sourceText(s)));
       const missingEverywhere = figures.filter(
-        (figure) => !cited.some((s) => normalizeText(sourceText(s)).includes(figure))
+        (figure) => !cited.some((s) => figuresIn(s).has(figure))
       );
       const supporting = cited.filter((s) => {
-        const text = normalizeText(sourceText(s));
+        const sourceFigures = figuresIn(s);
         return (
-          figures.every((figure) => text.includes(figure)) &&
+          figures.every((figure) => sourceFigures.has(figure)) &&
           lexicalOverlap(draft.statement, sourceText(s)) >= 0.2
         );
       });

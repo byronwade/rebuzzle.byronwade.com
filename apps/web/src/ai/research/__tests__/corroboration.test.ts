@@ -126,6 +126,23 @@ describe("corroborateClaims", () => {
     expect(claims[0]?.sourceIds).toEqual(["S4"]);
   });
 
+  it("rejects a single-digit century the cited text does not state", () => {
+    const rebus = {
+      ...sources[0],
+      snippet: "Rebuses were popular in 16th-century France.",
+    } as ResearchSource;
+    const altered = corroborateClaims(
+      [claim("Rebuses were popular in 9th-century France.", ["S1"], "history")],
+      [rebus]
+    );
+    expect(altered.claims[0]?.support).toBe("unsupported");
+    const exact = corroborateClaims(
+      [claim("Rebuses were popular in 16th-century France.", ["S1"], "history")],
+      [rebus]
+    );
+    expect(exact.claims[0]?.support).toBe("verified");
+  });
+
   it("filters usable claims", () => {
     const { claims } = corroborateClaims(
       [claim("It means ill.", ["S1"]), claim("No citation here.", [])],
@@ -137,10 +154,11 @@ describe("corroborateClaims", () => {
 
 describe("helpers", () => {
   it("extracts years, decades, and ordinals", () => {
-    expect(extractClaimNumbers("In the 1830s, by 1843, in the 17th century")).toEqual([
+    expect(extractClaimNumbers("In the 1830s, by 1843, in the 17th and 9th centuries")).toEqual([
       "1830s",
       "1843",
       "17",
+      "9",
     ]);
   });
 

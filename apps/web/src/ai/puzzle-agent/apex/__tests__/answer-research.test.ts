@@ -124,6 +124,29 @@ describe("screenAnswerSeedsWithResearch", () => {
     ]);
   });
 
+  it("replaces only the avoided slot and keeps later reservations", async () => {
+    const mixed: PhraseBankEntry[] = [
+      { ...entries[0], answer: "keyboard", techniqueAffinity: ["simple_compound"] },
+      { ...entries[1], answer: "keystone", techniqueAffinity: ["positional_phrase"] },
+      { ...entries[2], answer: "keyhole", techniqueAffinity: ["letter_math"] },
+    ] as PhraseBankEntry[];
+    const researcher = jest.fn(async (answer: string) =>
+      research(answer, answer === "keystone" ? "avoid" : "use")
+    );
+    const result = await screenAnswerSeedsWithResearch({
+      ...base,
+      entries: mixed,
+      techniqueIds: ["simple_compound", "positional_phrase", "letter_math"],
+      count: 3,
+      researcher,
+    });
+    expect(result.seeds.map((s) => [s.entry.answer, s.techniqueId])).toEqual([
+      ["keyboard", "simple_compound"],
+      ["keyhole", "letter_math"],
+    ]);
+    expect(result.rejected.map((r) => r.answer)).toEqual(["keystone"]);
+  });
+
   it("only reports without the gate", async () => {
     const researcher = jest.fn(async (answer: string) => research(answer, "avoid"));
     const result = await screenAnswerSeedsWithResearch({ ...base, gate: false, researcher });
