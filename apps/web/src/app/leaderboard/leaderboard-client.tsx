@@ -351,7 +351,7 @@ export default function LeaderboardClient({
               <p className="mt-4 font-semibold text-foreground text-lg tracking-[-0.02em]">
                 No one on the board yet
               </p>
-              <p className="mt-1.5 max-w-xs text-muted-foreground text-sm">
+              <p className="mt-1.5 max-w-xs text-balance text-muted-foreground text-sm">
                 Solve today’s puzzle and the top spot is yours.
               </p>
               <Button asChild className="mt-6" size="lg">

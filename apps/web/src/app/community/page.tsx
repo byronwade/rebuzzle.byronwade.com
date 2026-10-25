@@ -59,7 +59,7 @@ async function CommunityPageContent() {
             <p className="mt-3 font-semibold text-2xl tracking-[-0.04em]">
               No community boards yet
             </p>
-            <p className="mx-auto mt-3 max-w-sm text-muted-foreground text-sm leading-6">
+            <p className="mx-auto mt-3 max-w-sm text-balance text-muted-foreground text-sm leading-6">
               Be the first — compose a rebus in Studio and publish it.
             </p>
             <Button asChild className="mt-7" size="lg">

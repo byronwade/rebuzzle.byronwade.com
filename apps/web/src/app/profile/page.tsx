@@ -361,7 +361,7 @@ export default function ProfilePage() {
               <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-border border-dashed px-6 py-10 text-center">
                 <CalendarDays aria-hidden className="h-6 w-6 text-subtle" />
                 <p className="mt-3 font-medium text-foreground text-sm">No games yet</p>
-                <p className="mt-1 max-w-[16rem] text-muted-foreground text-xs leading-5">
+                <p className="mt-1 max-w-[16rem] text-balance text-muted-foreground text-xs leading-5">
                   Your guess distribution and play calendar fill in as you solve.
                 </p>
               </div>
@@ -421,7 +421,7 @@ export default function ProfilePage() {
               <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-border border-dashed px-6 py-10 text-center">
                 <Award aria-hidden className="h-6 w-6 text-subtle" />
                 <p className="mt-3 font-medium text-foreground text-sm">No achievements yet</p>
-                <p className="mt-1 max-w-[16rem] text-muted-foreground text-xs leading-5">
+                <p className="mt-1 max-w-[16rem] text-balance text-muted-foreground text-xs leading-5">
                   Solve your first puzzle to start unlocking them.
                 </p>
               </div>
