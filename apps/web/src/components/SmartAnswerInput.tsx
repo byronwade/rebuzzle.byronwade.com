@@ -43,6 +43,8 @@ export function SmartAnswerInput({
   };
   /** One arming tap per focus session — commitment cue, not every keystroke. */
   const armedHapticRef = useRef(false);
+  /** The bar is disabled while a guess is checked, which drops focus; put it back after. */
+  const refocusAfterSubmitRef = useRef(false);
 
   const trimmed = value.trim();
   const canSubmit = trimmed.length > 0 && !(disabled || isSubmitting);
@@ -61,10 +63,28 @@ export function SmartAnswerInput({
   const submit = () => {
     if (!canSubmit) return;
     haptics.tap();
+    refocusAfterSubmitRef.current = document.activeElement === textareaRef.current;
     onSubmit(trimmed);
     setValue("");
     undoRedoManagerRef.current = new UndoRedoManager();
   };
+
+  useEffect(() => {
+    if (isSubmitting || disabled || !refocusAfterSubmitRef.current) return;
+    refocusAfterSubmitRef.current = false;
+    // Only when focus fell to the page; a player who moved to another control keeps it.
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    textareaRef.current?.focus({ preventScroll: true });
+  }, [isSubmitting, disabled]);
+
+  // With a mouse and keyboard, start ready to type. Touch devices wait for a tap so the
+  // keyboard doesn't cover the puzzle on load.
+  useEffect(() => {
+    if (window.matchMedia("(pointer: fine)").matches) {
+      textareaRef.current?.focus({ preventScroll: true });
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const cursor = { start: e.target.selectionStart, end: e.target.selectionEnd };
