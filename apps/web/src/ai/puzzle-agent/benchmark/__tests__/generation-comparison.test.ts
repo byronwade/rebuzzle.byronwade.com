@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import {
-  compareGenerators,
   type ComparisonObservation,
   type ComparisonReview,
+  compareGenerators,
   wilsonInterval,
 } from "../generation-comparison";
+
 const digest = (s: string) => createHash("sha256").update(s).digest("hex");
 function row(
   id: string,
@@ -192,8 +193,26 @@ it("bounds a chance-level confidence interval around one half", () => {
   expect(interval[1]).toBeGreaterThan(0.5);
 });
 
-
 it("rejects changing system versions or repeated briefs within an experiment", () => {
-  expect(() => compareGenerators({ observations: [row("a", "baseline"), row("a", "challenger"), row("b", "baseline", { systemSha256: digest("changed") })], reviews: [] })).toThrow("System changed");
-  expect(() => compareGenerators({ observations: [row("a", "baseline"), row("a", "challenger"), row("b", "baseline", { briefSha256: digest("a") }), row("b", "challenger", { briefSha256: digest("a") })], reviews: [] })).toThrow("Repeated brief");
+  expect(() =>
+    compareGenerators({
+      observations: [
+        row("a", "baseline"),
+        row("a", "challenger"),
+        row("b", "baseline", { systemSha256: digest("changed") }),
+      ],
+      reviews: [],
+    })
+  ).toThrow("System changed");
+  expect(() =>
+    compareGenerators({
+      observations: [
+        row("a", "baseline"),
+        row("a", "challenger"),
+        row("b", "baseline", { briefSha256: digest("a") }),
+        row("b", "challenger", { briefSha256: digest("a") }),
+      ],
+      reviews: [],
+    })
+  ).toThrow("Repeated brief");
 });

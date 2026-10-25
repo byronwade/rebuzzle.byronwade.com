@@ -2,6 +2,7 @@ jest.mock("../../client", () => ({
   generateAIObject: jest.fn().mockResolvedValue({}),
   withRetry: jest.fn((fn: () => Promise<unknown>) => fn()),
 }));
+
 import { generateAIObject } from "../../client";
 import { aiSelfTest } from "../difficulty-calibrator";
 

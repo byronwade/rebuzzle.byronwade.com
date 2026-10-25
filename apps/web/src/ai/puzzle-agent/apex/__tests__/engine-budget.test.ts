@@ -25,8 +25,8 @@ jest.mock("../../../learning/sim-calibration", () => ({
   loadSimCalibration: jest.fn(async () => ({ adjustment: 0, sampleSize: 0 })),
 }));
 
-import { recordTournamentCandidates } from "../../../training/candidate-store";
 import { AIBudgetExceededError } from "../../../errors";
+import { recordTournamentCandidates } from "../../../training/candidate-store";
 import { INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
 import { runApexGeneration } from "../engine";
 

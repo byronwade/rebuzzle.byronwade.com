@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { blueprintDigest, CandidateRecordSchema, type CandidateRecord } from "./candidate-record";
+import { blueprintDigest, type CandidateRecord, CandidateRecordSchema } from "./candidate-record";
 
 const identity = z.string().trim().min(1).max(200);
 export const TrainingReviewSchema = z.object({
@@ -39,7 +39,10 @@ function prompt(record: CandidateRecord) {
   const { answer, category, difficulty, techniqueId } = record.blueprint;
   return [
     { role: "system", content: SYSTEM },
-    { role: "user", content: JSON.stringify({ answerSeed: answer, category, difficulty, techniqueId }) },
+    {
+      role: "user",
+      content: JSON.stringify({ answerSeed: answer, category, difficulty, techniqueId }),
+    },
   ];
 }
 

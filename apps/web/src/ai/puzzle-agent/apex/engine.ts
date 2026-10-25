@@ -8,9 +8,9 @@
  *  4. Multi-dimensional rubric + winner selection
  */
 
-import { recordTournamentCandidates } from "../../training/candidate-store";
 import { AI_CONFIG } from "../../config";
 import { isHardAIBudgetError, parseAIError } from "../../errors";
+import { recordTournamentCandidates } from "../../training/candidate-store";
 import { isKnownTechniqueId } from "../quality";
 import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-generation";
 import type { PuzzleAgentResult } from "../schemas";

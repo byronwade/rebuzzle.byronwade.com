@@ -1,6 +1,6 @@
+import type { ApexCandidate } from "../../puzzle-agent/apex/types";
 import { blueprintDigest, type CandidateRecord, snapshotCandidate } from "../candidate-record";
 import { prepareTrainingDataset, type TrainingReview } from "../prepare-dataset";
-import type { ApexCandidate } from "../../puzzle-agent/apex/types";
 
 function record(id: string, overrides: Partial<CandidateRecord> = {}): CandidateRecord {
   const blueprint = {
@@ -109,7 +109,11 @@ it("deduplicates identical targets and keeps duplicate boards together", () => {
 });
 it("requires explicit preference reviews and keeps labels out of features", () => {
   const a = record("a");
-  const b = record("b", { familyKey: a.familyKey, selected: false, blueprint: { ...record("b").blueprint, answer: a.blueprint.answer } });
+  const b = record("b", {
+    familyKey: a.familyKey,
+    selected: false,
+    blueprint: { ...record("b").blueprint, answer: a.blueprint.answer },
+  });
   const out = build(
     [a, b],
     [review(a), review(b, { decision: "reject" })],
@@ -204,6 +208,8 @@ it("captures a portable blueprint without assets, URLs or arbitrary metadata", (
 
 it("does not promote an untested draft just because its initial quality score passed", () => {
   const base = record("draft");
-  const draft = record("draft", { evaluation: { ...base.evaluation, blindTopVotes: 0, blindRequiredVotes: 0 } });
+  const draft = record("draft", {
+    evaluation: { ...base.evaluation, blindTopVotes: 0, blindRequiredVotes: 0 },
+  });
   expect(total(build([draft], [review(draft)]).sft)).toBe(0);
 });

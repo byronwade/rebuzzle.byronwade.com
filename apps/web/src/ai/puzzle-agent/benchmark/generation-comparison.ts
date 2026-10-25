@@ -93,10 +93,16 @@ export function compareGenerators(input: { observations: unknown[]; reviews: unk
   >();
   for (const row of rows) {
     const priorSystem = systemByVariant.get(row.variant);
-    if (priorSystem && priorSystem !== row.systemSha256) throw new Error(`System changed within ${row.variant}`);
+    if (priorSystem && priorSystem !== row.systemSha256)
+      throw new Error(`System changed within ${row.variant}`);
     systemByVariant.set(row.variant, row.systemSha256);
-    if ((archive && archive !== row.archiveSha256) || (evaluator && evaluator !== row.evaluatorVersion)) throw new Error("Archive or evaluator changed during experiment");
-    archive = row.archiveSha256; evaluator = row.evaluatorVersion;
+    if (
+      (archive && archive !== row.archiveSha256) ||
+      (evaluator && evaluator !== row.evaluatorVersion)
+    )
+      throw new Error("Archive or evaluator changed during experiment");
+    archive = row.archiveSha256;
+    evaluator = row.evaluatorVersion;
     const pair = pairs.get(row.briefId) ?? {};
     if (pair[row.variant])
       throw new Error(`Duplicate ${row.variant} observation for ${row.briefId}`);
@@ -212,7 +218,8 @@ export function compareGenerators(input: { observations: unknown[]; reviews: unk
   return {
     schemaVersion: 1,
     systems: Object.fromEntries(systemByVariant),
-    archiveSha256: archive ?? null, evaluatorVersion: evaluator ?? null,
+    archiveSha256: archive ?? null,
+    evaluatorVersion: evaluator ?? null,
     baseline,
     challenger,
     pairedBriefs: pairs.size,
