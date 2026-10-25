@@ -361,6 +361,13 @@ export function PuzzleStudio() {
       : explanationShortBy > 0
         ? `Explain the board in ${explanationShortBy} more ${explanationShortBy === 1 ? "character" : "characters"}.`
         : null;
+  /** Coarse version for screen readers: changes per requirement, not per keystroke. */
+  const detailsStatus =
+    answer.trim().length < MIN_ANSWER_LENGTH
+      ? "Add the answer players should type."
+      : explanationShortBy > 0
+        ? `The explanation needs at least ${MIN_EXPLANATION_LENGTH} characters.`
+        : "Ready to continue to publish.";
   const currentFingerprint = useMemo(
     () =>
       studioContentFingerprint({
@@ -1427,6 +1434,9 @@ export function PuzzleStudio() {
                 Back
               </Button>
               <div className="flex flex-wrap items-center justify-end gap-3">
+                <p aria-live="polite" className="sr-only">
+                  {detailsStatus}
+                </p>
                 {detailsBlocker ? (
                   <p className="text-muted-foreground text-xs" id="details-blocker">
                     {detailsBlocker}
