@@ -165,13 +165,17 @@ export function getBlogEditorialIssues(post: GeneratedBlogPost, answer: string):
   return [...new Set(issues)];
 }
 
+/** Every published string, metadata included, that could carry a claim. */
 function researchIssueText(post: GeneratedBlogPost): string {
   return [
+    post.title,
+    post.excerpt,
+    post.seoMetadata?.metaDescription ?? "",
     post.content,
     ...Object.values(post.sections ?? {}).filter(
       (value): value is string => typeof value === "string"
     ),
-    ...(post.sections?.faq ?? []).map((item) => item.answer),
+    ...(post.sections?.faq ?? []).flatMap((item) => [item.question, item.answer]),
   ].join("\n");
 }
 
@@ -343,11 +347,7 @@ export async function generateBlogPost(
 
       lastIssues = getBlogEditorialIssues(generated, puzzle.answer);
       const researchIssues = getBlogResearchIssues(
-        [
-          content,
-          ...Object.values(parsedResponse.sections),
-          ...parsedResponse.faq.map((f) => f.answer),
-        ].join("\n"),
+        researchIssueText(generated),
         research,
         publishedKey
       );

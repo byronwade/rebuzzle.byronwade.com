@@ -102,6 +102,19 @@ describe("generateBlogPost research grounding", () => {
     ]);
   });
 
+  it("checks the meta description for unverified dates", async () => {
+    generateAIObject.mockResolvedValue({
+      ...aiResponse("Rebuses mix pictures and sounds."),
+      metaDescription:
+        "Discover how rebuses began in 1843 and learn a spoiler-free way to read the board.",
+    });
+    const post = await generateBlogPost(puzzle);
+    expect(generateAIObject).toHaveBeenCalledTimes(3);
+    expect(post.research?.warnings).toEqual([
+      'mentions "1843" but no researched fact supports that date',
+    ]);
+  });
+
   it("still writes the post when research is unavailable", async () => {
     gatherBlogResearch.mockRejectedValue(new Error("search down"));
     generateAIObject.mockResolvedValue(aiResponse("Rebuses mix pictures and sounds."));

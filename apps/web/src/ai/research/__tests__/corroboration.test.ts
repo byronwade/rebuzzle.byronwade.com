@@ -111,6 +111,21 @@ describe("corroborateClaims", () => {
     expect(claims[0]?.support).toBe("unsupported");
   });
 
+  it("does not let an unrelated reference vouch for a low-trust assertion", () => {
+    const { claims } = corroborateClaims(
+      [claim("Shakespeare popularized under the weather in 1599.", ["S1", "S4"], "origin")],
+      [
+        { ...sources[0], snippet: "Under the weather: somewhat ill." } as ResearchSource,
+        {
+          ...sources[3],
+          snippet: "shakespeare popularized under the weather in 1599 trust me",
+        } as ResearchSource,
+      ]
+    );
+    expect(claims[0]?.support).toBe("unsupported");
+    expect(claims[0]?.sourceIds).toEqual(["S4"]);
+  });
+
   it("filters usable claims", () => {
     const { claims } = corroborateClaims(
       [claim("It means ill.", ["S1"]), claim("No citation here.", [])],

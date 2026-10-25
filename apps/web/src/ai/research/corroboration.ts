@@ -115,50 +115,56 @@ export function corroborateClaims(
         notes.push("cited a source that was never retrieved");
       }
 
+      // A citation only counts when its own text carries the claim's figures
+      // and wording, so an unrelated reference page cannot vouch for an
+      // assertion that only a low-trust page makes.
+      const figures = extractClaimNumbers(draft.statement);
+      const sourceText = (s: ResearchSource) => `${s.title} ${s.snippet}`;
+      const missingEverywhere = figures.filter(
+        (figure) => !cited.some((s) => normalizeText(sourceText(s)).includes(figure))
+      );
+      const supporting = cited.filter((s) => {
+        const text = normalizeText(sourceText(s));
+        return (
+          figures.every((figure) => text.includes(figure)) &&
+          lexicalOverlap(draft.statement, sourceText(s)) >= 0.2
+        );
+      });
+
       const bestWeightByDomain = new Map<string, number>();
-      for (const source of cited) {
+      for (const source of supporting) {
         const weight = SOURCE_TIER_WEIGHT[source.tier];
         bestWeightByDomain.set(
           source.domain,
           Math.max(weight, bestWeightByDomain.get(source.domain) ?? 0)
         );
       }
-      const trustedDomains = cited.filter((s) => s.tier !== "low").map((s) => s.domain);
+      const trustedDomains = supporting.filter((s) => s.tier !== "low").map((s) => s.domain);
       const distinctTrusted = new Set(trustedDomains).size;
-      const hasReference = cited.some((s) => s.tier === "reference");
+      const hasReference = supporting.some((s) => s.tier === "reference");
 
-      let support: ClaimSupport =
+      const support: ClaimSupport =
         distinctTrusted >= 2 || hasReference
           ? "verified"
           : distinctTrusted === 1
             ? "single-source"
             : "unsupported";
       if (!cited.length) notes.push("no retrieved citation");
+      else if (missingEverywhere.length) {
+        notes.push(`figures not found in cited text: ${missingEverywhere.join(", ")}`);
+      } else if (!supporting.length) notes.push("cited text barely overlaps the claim");
       else if (!distinctTrusted) notes.push("only low-trust sources");
-
-      let confidence =
-        1 - [...bestWeightByDomain.values()].reduce((acc, weight) => acc * (1 - weight * 0.7), 1);
-
-      const evidence = cited.map((s) => `${s.title} ${s.snippet}`).join(" ");
-      const evidenceText = normalizeText(evidence);
-      const missingNumbers = extractClaimNumbers(draft.statement).filter(
-        (figure) => !evidenceText.includes(figure)
-      );
-      if (cited.length && missingNumbers.length) {
-        support = "unsupported";
-        confidence *= 0.3;
-        notes.push(`figures not found in cited text: ${missingNumbers.join(", ")}`);
-      } else if (cited.length && lexicalOverlap(draft.statement, evidence) < 0.2) {
-        // The citation does not say this; never pass it to writers as fact.
-        support = "unsupported";
-        confidence *= 0.3;
-        notes.push("cited text barely overlaps the claim");
+      if (supporting.length < cited.length) {
+        notes.push(`${cited.length - supporting.length} citation(s) do not state the claim`);
       }
+
+      const confidence =
+        1 - [...bestWeightByDomain.values()].reduce((acc, weight) => acc * (1 - weight * 0.7), 1);
 
       return {
         statement: draft.statement.trim(),
         kind: draft.kind || "fact",
-        sourceIds: cited.map((s) => s.id),
+        sourceIds: supporting.map((s) => s.id),
         support,
         confidence: Math.round(Math.max(0, Math.min(1, confidence)) * 100) / 100,
         notes,
