@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { beatMeShareLine, buildBeatMeUrl } from "@/lib/game/share-challenge";
+import { beatMeShareLine, buildBeatMeUrl, buildShareSquares } from "@/lib/game/share-challenge";
 import { haptics } from "@/lib/haptics";
 import { useIsClient } from "@/lib/hooks/use-is-client";
 import { playInterfaceSound } from "@/lib/interface-sounds";
@@ -81,7 +81,7 @@ export function EnhancedShareButton({
     if (typeof window !== "undefined") {
       return window.location.origin;
     }
-    return "https://rebuzzle.com";
+    return "https://rebuzzle.byronwade.com";
   };
 
   const generateShareUrl = () => buildBeatMeUrl(getBaseUrl(), userId);
@@ -91,11 +91,10 @@ export function EnhancedShareButton({
     const today = new Date().toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
+      timeZone: "UTC",
     });
 
-    const squares = success
-      ? "🟩".repeat(attempts) + "⬜".repeat(maxAttempts - attempts)
-      : "🟥".repeat(Math.max(1, attempts));
+    const squares = buildShareSquares(success, attempts, maxAttempts);
 
     let message = `Rebuzzle ${today} · ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
 
@@ -126,10 +125,9 @@ export function EnhancedShareButton({
     const today = new Date().toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
+      timeZone: "UTC",
     });
-    const squares = success
-      ? "🟩".repeat(attempts) + "⬜".repeat(maxAttempts - attempts)
-      : "🟥".repeat(Math.max(1, attempts));
+    const squares = buildShareSquares(success, attempts, maxAttempts);
 
     let tweet = `Rebuzzle ${today} ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
     if (success) {

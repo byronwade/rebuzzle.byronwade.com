@@ -636,7 +636,8 @@ export async function calibratePuzzleDifficulty(
       rebusPuzzle: input.rebusPuzzle,
       answer: input.answer,
       proposedDifficulty: input.difficulty,
-      hints: input.hints,
+      explanation: input.explanation,
+      category: input.category,
     });
     calibratedDifficulty = calibration.calibratedDifficulty;
     profile = calibration.difficultyProfile;

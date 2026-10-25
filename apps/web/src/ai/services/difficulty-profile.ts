@@ -14,7 +14,7 @@ export function calculateDifficultyProfile(puzzle: {
   explanation: string;
   category: string;
 }): DifficultyProfile {
-  const emojiCount = (puzzle.rebusPuzzle.match(/[\p{Emoji}]/gu) || []).length;
+  const emojiCount = (puzzle.rebusPuzzle.match(/\p{Extended_Pictographic}/gu) || []).length;
   const visualAmbiguity = Math.min(10, Math.max(1, emojiCount * 1.5));
   const stepIndicators = ["+", "→", "=", "sounds like", "positioned", "represents"];
   const cognitiveSteps = Math.min(
@@ -23,7 +23,7 @@ export function calculateDifficultyProfile(puzzle: {
       .length * 2
   );
   const isIdiom = puzzle.category.includes("idiom") || puzzle.category.includes("phrase");
-  const culturalKnowledge = isIdiom ? 7 : puzzle.answer.split(/\s+/).length * 2;
+  const culturalKnowledge = Math.min(10, isIdiom ? 7 : puzzle.answer.split(/\s+/).length * 2);
   const vocabularyLevel = Math.min(
     10,
     Math.max(1, puzzle.answer.length / 3 + (puzzle.answer.split(/\s+/).length - 1) * 2)

@@ -5,8 +5,8 @@
 import { getDifficultyLevelForScore } from "../puzzle-agent/difficulty-levels";
 import type { WindowPerformance } from "./performance-monitor";
 
-/** Canonical weekly spine (UTC day index). Hard→Impossible vocabulary. */
-export const WEEKLY_DIFFICULTY_SPINE = [5, 4, 6, 8, 7, 5, 4] as const;
+/** Canonical weekly spine (UTC day index). Monday is the on-ramp; the weekend is the expert summit. */
+export const WEEKLY_DIFFICULTY_SPINE = [8, 6, 7, 8, 7, 8, 9] as const;
 
 export function baselineDifficultyForDate(date: Date = new Date()): number {
   const dayOfWeek = date.getUTCDay();
@@ -56,7 +56,7 @@ export function computeAdaptiveDifficulty(input: {
   const tier = getDifficultyLevelForScore(target);
 
   const reason = [
-    `Baseline ${baseline} (${tier.label} spine for UTC day ${date.getUTCDay()})`,
+    `Baseline ${baseline} (${getDifficultyLevelForScore(baseline).label} spine for UTC day ${date.getUTCDay()})`,
     delta !== 0 ? `learning delta ${delta > 0 ? "+" : ""}${delta}` : "no learning delta",
     input.performance.notes[0] ?? "",
   ]

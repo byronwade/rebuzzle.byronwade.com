@@ -177,6 +177,10 @@ function buildUserMessage(
     `Generate one publishable ${puzzleType} puzzle.`,
     `Target difficulty: ${params.targetDifficulty}/10 → tier ${level.label} (band ${level.min}–${level.max}).`,
     `Component budget: ${level.componentBudget.min}–${level.componentBudget.max} parts.`,
+    "Earn difficulty through interacting deductions, not extra symbols, obscure vocabulary, or a longer answer.",
+    "For Evil and Impossible, require at least two linked transformations: solving one clue must change how another is read. Every transformation must be evidenced on the board.",
+    "Design the aha before the artwork: identify the tempting first reading, the visible cue that defeats it, and the unique answer that accounts for every meaningful element.",
+    "Hints are a progressive unlock: first direct attention without naming the mechanism; next reveal the relationship; finally scaffold the decisive deduction. Never reveal the full answer or repeat the same clue.",
     `Preferred techniques: ${preferred.join(", ")}.`,
     params.avoidTechniques?.length
       ? `Avoid overused techniques when possible: ${params.avoidTechniques.join(", ")}.`
