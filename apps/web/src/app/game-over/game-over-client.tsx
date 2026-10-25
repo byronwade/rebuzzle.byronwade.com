@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { consumeJustSolvedSessionFlag } from "@/lib/game/game-over-href";
 import { calculateGamePoints, gameSettings } from "@/lib/gameSettings";
 import { haptics } from "@/lib/haptics";
+import { smartQuotes } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 interface GameData {
@@ -532,7 +533,7 @@ export default function GameOverClient({ gameData, searchParams: params }: GameO
             </h2>
             {solution.explanation && (
               <p className="mx-auto mt-4 max-w-sm text-pretty text-muted-foreground text-sm leading-6">
-                {solution.explanation}
+                {smartQuotes(solution.explanation)}
               </p>
             )}
           </div>

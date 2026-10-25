@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { remarkSmartQuotes, separateInlineSteps, smartQuotes } from "../blog-markdown";
+import { remarkSmartQuotes, separateInlineSteps } from "../blog-markdown";
+import { smartQuotes } from "../typography";
 
 describe("separateInlineSteps", () => {
   it("breaks bold-led steps run into a paragraph onto list lines", () => {

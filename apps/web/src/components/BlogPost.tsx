@@ -4,8 +4,8 @@ import { format as formatDateFns } from "date-fns";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { AppLink as Link } from "@/components/AppLink";
 import { Badge } from "@/components/ui/badge";
-import { smartQuotes } from "@/lib/blog-markdown";
 import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
+import { smartQuotes } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 interface BlogPostProps {

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
+import { smartQuotes } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 interface HintBadgeProps {
@@ -148,7 +149,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                       isRevealed ? "text-foreground" : "text-muted-foreground"
                     )}
                   >
-                    {isRevealed ? hint : "This hint is still locked"}
+                    {isRevealed ? smartQuotes(hint) : "This hint is still locked"}
                   </div>
                 </div>
               );
