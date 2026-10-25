@@ -24,7 +24,7 @@ const SECTIONS = [
   { id: "data-retention", title: "Data retention" },
   { id: "your-rights", title: "Your rights (GDPR compliance)" },
   { id: "data-security", title: "Data security" },
-  { id: "children-s-privacy", title: "Children's privacy" },
+  { id: "children-s-privacy", title: "Children’s privacy" },
   { id: "changes-to-this-privacy-policy", title: "Changes to this privacy policy" },
   { id: "contact-us", title: "Contact us" },
 ] as const;
@@ -214,7 +214,7 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section className="legal-section" id="children-s-privacy">
-        <h2>10. Children's privacy</h2>
+        <h2>10. Children’s privacy</h2>
         <p>
           Our service is not intended for children under 13 years of age. We do not knowingly
           collect personal information from children under 13. If you believe we have collected

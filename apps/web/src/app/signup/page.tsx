@@ -67,7 +67,7 @@ export default function SignupPage() {
         return "Please confirm your password";
       }
       if (allData && value !== allData.password) {
-        return "Passwords don't match";
+        return "Passwords don’t match";
       }
     }
     return;

@@ -113,7 +113,7 @@ export default function LoginPage() {
 
           toast({
             title: "Welcome back!",
-            description: "You've successfully logged in.",
+            description: "You’ve successfully logged in.",
           });
 
           const nextPath = safeInternalRedirect(

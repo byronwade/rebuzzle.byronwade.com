@@ -130,7 +130,7 @@ function ErrorDisplay({ error }: { error: Error }) {
         role="alert"
         title="Something went wrong."
       >
-        We're having trouble loading today's puzzle. Refreshing the page usually fixes it.
+        We’re having trouble loading today’s puzzle. Refreshing the page usually fixes it.
       </StatusPanel>
     </Layout>
   );
@@ -146,7 +146,7 @@ function NoPuzzleDisplay() {
         eyebrow="No puzzle yet"
         headingId="no-puzzle-title"
         secondaryAction={{ href: "/blog", label: "Read the blog while you wait" }}
-        title="Today's puzzle isn't live."
+        title="Today’s puzzle isn’t live."
       >
         A new puzzle unlocks every day at your local midnight. Check back shortly.
       </StatusPanel>
@@ -214,7 +214,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
   const gameSchema = generateGameSchema({
     id: gameData.id,
     puzzle: gameData.puzzle || gameData.rebusPuzzle || "",
-    answer: "Solve today's Rebuzzle puzzle",
+    answer: "Solve today’s Rebuzzle puzzle",
     difficulty: gameData.difficulty,
     puzzleType: gameData.puzzleType,
     explanation:
@@ -263,7 +263,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
     {
       question: "How do you solve rebus puzzles?",
       answer:
-        "To solve rebus puzzles, look at the visual elements and think about what they represent. Combine sounds, words, and symbols to form the answer. Use hints if you're stuck, and remember that rebus puzzles often use wordplay and phonetic connections.",
+        "To solve rebus puzzles, look at the visual elements and think about what they represent. Combine sounds, words, and symbols to form the answer. Use hints if you’re stuck, and remember that rebus puzzles often use wordplay and phonetic connections.",
     },
   ]);
 
@@ -283,15 +283,15 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
       },
       {
         name: "Use Hints Strategically",
-        text: "If you're stuck, use the progressive hint system. Start with the first hint and only reveal more if needed.",
+        text: "If you’re stuck, use the progressive hint system. Start with the first hint and only reveal more if needed.",
       },
       {
         name: "Make Your Guess",
-        text: "Type your answer using the on-screen keyboard. You'll get instant feedback on whether you're correct.",
+        text: "Type your answer using the on-screen keyboard. You’ll get instant feedback on whether you’re correct.",
       },
       {
         name: "Learn from Explanations",
-        text: "After solving (or viewing the answer), read the explanation to understand the puzzle's logic and improve your skills.",
+        text: "After solving (or viewing the answer), read the explanation to understand the puzzle’s logic and improve your skills.",
       },
     ],
   });

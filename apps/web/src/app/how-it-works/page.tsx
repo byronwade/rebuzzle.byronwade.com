@@ -21,7 +21,7 @@ import {
 export const metadata: Metadata = generateStaticPageMetadata({
   title: "How to Play Rebuzzle | Decode Daily Visual Puzzles",
   description:
-    "Learn how to solve Rebuzzle's daily visual word puzzles—then dive into how Apex, Eve, publish gates, and play-loop AI actually work. Open-source notes and feedback welcome.",
+    "Learn how to solve Rebuzzle’s daily visual word puzzles—then dive into how Apex, Eve, publish gates, and play-loop AI actually work. Open-source notes and feedback welcome.",
   url: "/how-it-works",
   keywords: [
     "how to play Rebuzzle",
@@ -77,7 +77,7 @@ const dailySteps = [
   {
     number: "04",
     title: "Learn the trick",
-    copy: "See the explanation, collect your score, and carry the pattern into tomorrow's puzzle.",
+    copy: "See the explanation, collect your score, and carry the pattern into tomorrow’s puzzle.",
   },
 ] as const;
 
@@ -95,7 +95,7 @@ function serializeJsonLd(value: unknown): string {
 export default function HowItWorksPage() {
   const howToSchema = generateHowToSchema({
     name: "How to solve a Rebuzzle puzzle",
-    description: "A four-step guide to reading and solving Rebuzzle's daily visual word puzzles.",
+    description: "A four-step guide to reading and solving Rebuzzle’s daily visual word puzzles.",
     steps: dailySteps.map((step) => ({ name: step.title, text: step.copy })),
   });
 
@@ -108,7 +108,7 @@ export default function HowItWorksPage() {
     {
       question: "How do hints work in Rebuzzle?",
       answer:
-        "Hints are progressive. Each hint gives a more specific nudge toward the puzzle's visual or verbal mechanism without immediately revealing the answer.",
+        "Hints are progressive. Each hint gives a more specific nudge toward the puzzle’s visual or verbal mechanism without immediately revealing the answer.",
     },
     {
       question: "Do I need special knowledge to play?",

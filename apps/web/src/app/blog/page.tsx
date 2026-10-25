@@ -99,7 +99,7 @@ async function BlogContent() {
               <FileText className="mx-auto mb-4 size-8 text-subtle" />
               <h2 className="font-semibold text-lg tracking-[-0.03em]">No posts yet</h2>
               <p className="mx-auto mt-2 max-w-xs text-balance text-muted-foreground text-sm leading-6">
-                Write-ups go up alongside each day's puzzle. Check back soon.
+                Write-ups go up alongside each day’s puzzle. Check back soon.
               </p>
               <Button asChild className="mt-6" size="lg" variant="pill">
                 <Link href="/">Play today's puzzle</Link>

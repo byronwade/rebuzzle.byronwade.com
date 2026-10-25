@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   ...generateStaticPageMetadata({
     title: "AI Quota Exceeded | Rebuzzle",
     description:
-      "AI quota limit reached. We've hit our daily limit for AI puzzle generation. Pre-generated puzzles are still available.",
+      "AI quota limit reached. We’ve hit our daily limit for AI puzzle generation. Pre-generated puzzles are still available.",
     url: "/ai-quota-exceeded",
     keywords: ["quota", "limit", "service status"],
   }),
@@ -38,7 +38,7 @@ export default function AIQuotaExceededPage() {
         eyebrow="Daily limit reached"
         footnote="A daily cap on AI generation is part of how Rebuzzle stays free for everyone."
         icon={Hourglass}
-        title="That's all the new puzzles for today."
+        title="That’s all the new puzzles for today."
         tone="warning"
       />
     </Layout>

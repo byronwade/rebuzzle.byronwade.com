@@ -579,7 +579,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         toast({
           title: "Session error",
           description:
-            "Couldn't start your guest session. Check your connection, then refresh and try again.",
+            "Couldn’t start your guest session. Check your connection, then refresh and try again.",
           variant: "destructive",
         });
         void playInterfaceSound("failure");

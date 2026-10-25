@@ -352,7 +352,7 @@ export default function LeaderboardClient({
                 No one on the board yet
               </p>
               <p className="mt-1.5 max-w-xs text-muted-foreground text-sm">
-                Solve today's puzzle and the top spot is yours.
+                Solve today’s puzzle and the top spot is yours.
               </p>
               <Button asChild className="mt-6" size="lg">
                 <Link href="/">Play today's puzzle</Link>

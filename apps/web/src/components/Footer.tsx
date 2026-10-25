@@ -5,7 +5,7 @@ const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[
   {
     heading: "Play",
     links: [
-      { href: "/", label: "Today's puzzle" },
+      { href: "/", label: "Today’s puzzle" },
       { href: "/studio", label: "Studio" },
       { href: "/community", label: "Community puzzles" },
       { href: "/leaderboard", label: "Leaderboard" },

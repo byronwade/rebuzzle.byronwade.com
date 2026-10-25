@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
         return "Please confirm your password";
       }
       if (allData && value !== allData.password) {
-        return "Passwords don't match";
+        return "Passwords don’t match";
       }
     }
     return;
@@ -177,7 +177,7 @@ export default function ResetPasswordPage() {
       description={
         success
           ? "Taking you to log in with your new password…"
-          : "Pick something you haven't used here before."
+          : "Pick something you haven’t used here before."
       }
       footer={
         <p>

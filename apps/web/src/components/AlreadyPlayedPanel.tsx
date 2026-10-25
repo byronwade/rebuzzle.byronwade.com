@@ -59,7 +59,7 @@ export function AlreadyPlayedPanel({ wasSuccessful }: AlreadyPlayedPanelProps) {
           className="mt-3 text-balance font-semibold text-2xl text-foreground tracking-[-0.04em]"
           id="puzzle-attempted-title"
         >
-          {wasSuccessful ? "You already solved today." : "You've used today's attempt."}
+          {wasSuccessful ? "You already solved today." : "You’ve used today’s attempt."}
         </h1>
         <p className="mt-3 text-balance text-muted-foreground text-sm leading-6">{tease}</p>
 

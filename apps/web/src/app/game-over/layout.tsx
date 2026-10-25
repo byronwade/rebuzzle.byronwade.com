@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   ...generateStaticPageMetadata({
     title: "Game Over - Puzzle Completed | Rebuzzle",
     description:
-      "Congratulations! You've completed today's puzzle. View your stats and share your results.",
+      "Congratulations! You’ve completed today’s puzzle. View your stats and share your results.",
     url: "/game-over",
     keywords: ["puzzle completed", "game over", "puzzle solved"],
   }),

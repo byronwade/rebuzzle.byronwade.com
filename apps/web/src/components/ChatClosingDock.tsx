@@ -21,7 +21,7 @@ export function ChatClosingDock({ success, className }: ChatClosingDockProps) {
           <p className="truncate text-muted-foreground text-xs">
             {success
               ? "One last line — then the day locks."
-              : "One last line — then you'll see the answer."}
+              : "One last line — then you’ll see the answer."}
           </p>
         </div>
         <MessageTyping className="shrink-0" />

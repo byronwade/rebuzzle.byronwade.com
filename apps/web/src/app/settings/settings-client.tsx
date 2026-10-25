@@ -149,7 +149,7 @@ export default function SettingsPage() {
   };
 
   const handleClearData = () => {
-    if (confirm("Delete all game data on this device? This can't be undone.")) {
+    if (confirm("Delete all game data on this device? This can’t be undone.")) {
       localStorage.removeItem("userStats");
       localStorage.removeItem("gameCompletion");
       localStorage.removeItem("appSettings");
@@ -494,7 +494,7 @@ export default function SettingsPage() {
           )}
 
           <SettingsSection
-            description="Your stats live on this device. We don't sell or share them."
+            description="Your stats live on this device. We don’t sell or share them."
             title="Data"
           >
             <SettingsRow
@@ -541,7 +541,7 @@ export default function SettingsPage() {
                   }}
                 />
               }
-              description="A floating panel to regenerate today's puzzle, open the Visual Lab, unlock the daily gate and jump between game screens."
+              description="A floating panel to regenerate today’s puzzle, open the Visual Lab, unlock the daily gate and jump between game screens."
               htmlFor="dev-mode"
               label="Testing tools"
             />

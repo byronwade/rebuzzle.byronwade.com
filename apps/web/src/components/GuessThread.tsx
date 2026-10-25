@@ -163,7 +163,7 @@ export function GuessThread({ turns, footer, className, layout = "scroll" }: Gue
   if (layout === "stack") {
     return (
       <div
-        aria-label="Your guesses and Eve's replies"
+        aria-label="Your guesses and Eve’s replies"
         aria-live="polite"
         className={cn("guess-thread flex w-full flex-none flex-col gap-5 px-0.5 pb-3", className)}
         role="log"
@@ -180,7 +180,7 @@ export function GuessThread({ turns, footer, className, layout = "scroll" }: Gue
     <div className={cn("guess-thread flex min-h-0 w-full flex-1 flex-col", className)}>
       <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
         <MessageScroller>
-          <MessageScrollerViewport aria-label="Your guesses and Eve's replies">
+          <MessageScrollerViewport aria-label="Your guesses and Eve’s replies">
             <MessageScrollerContent className="px-0.5 pb-3" role="log" aria-live="polite">
               {turns.map((turn) => (
                 <MessageScrollerItem key={turn.id} messageId={`guess-${turn.id}`} scrollAnchor>

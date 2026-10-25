@@ -83,13 +83,13 @@ async function UnsubscribePageContent({ searchParams }: { searchParams: SearchPa
                 notification emails anymore.
               </>
             ) : (
-              "You won't get Rebuzzle notification emails anymore."
+              "You won’t get Rebuzzle notification emails anymore."
             )
           }
           eyebrow="Email preferences"
           footnote="Changed your mind? Turn notifications back on any time in settings."
           icon={CheckCircle2}
-          title="You're unsubscribed."
+          title="You’re unsubscribed."
           tone="success"
         />
       ) : status === "error" ? (
@@ -107,7 +107,7 @@ async function UnsubscribePageContent({ searchParams }: { searchParams: SearchPa
           description="The link may have expired or been copied incompletely. You can turn emails off directly in settings."
           eyebrow="Email preferences"
           icon={XCircle}
-          title="That didn't go through."
+          title="That didn’t go through."
           tone="destructive"
         />
       ) : (

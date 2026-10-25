@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   ...generateStaticPageMetadata({
     title: "AI Service Error | Rebuzzle",
     description:
-      "AI service temporarily unavailable. We're experiencing temporary issues with our AI service. Try again or play pre-generated puzzles.",
+      "AI service temporarily unavailable. We’re experiencing temporary issues with our AI service. Try again or play pre-generated puzzles.",
     url: "/ai-error",
     keywords: ["error", "service unavailable", "technical issue"],
   }),
@@ -34,11 +34,11 @@ export default function AIErrorPage() {
             </Button>
           </>
         }
-        description="Puzzle generation hit a snag. It usually clears up within a few minutes, and today's puzzle is still playable."
+        description="Puzzle generation hit a snag. It usually clears up within a few minutes, and today’s puzzle is still playable."
         eyebrow="Service issue"
         footnote="Still seeing this after a few minutes? The AI service may be down for maintenance. Try again a little later."
         icon={CloudOff}
-        title="We couldn't reach the puzzle engine."
+        title="We couldn’t reach the puzzle engine."
         tone="warning"
       />
     </Layout>
