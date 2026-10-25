@@ -19,6 +19,13 @@ export type StreakProtectionInput = {
   streakFreezes: number;
   streakShields: number;
   streakFreezeWeekStart?: Date;
+  /**
+   * Calendar days the player skipped since their last daily play
+   * (0 when they last played yesterday or earlier today).
+   */
+  missedDays?: number;
+  /** False when the player already played a daily puzzle on this calendar day. */
+  isNewDay?: boolean;
   now?: Date;
 };
 
@@ -98,17 +105,45 @@ export function recordRecentPlayDate(
   return [key, ...prior].slice(0, RECENT_PLAY_DATES_CAP);
 }
 
+/** Whole calendar days from `fromKey` to `toKey` (YYYY-MM-DD). */
+export function calendarDaysBetween(fromKey: string, toKey: string): number {
+  const from = Date.parse(`${fromKey}T00:00:00.000Z`);
+  const to = Date.parse(`${toKey}T00:00:00.000Z`);
+  if (Number.isNaN(from) || Number.isNaN(to)) return 0;
+  return Math.round((to - from) / 86_400_000);
+}
+
 /**
- * Grant weekly freezes when the Monday UTC boundary rolls, then apply consume-on-miss.
- * Wins never consume protection. Archive plays (affectsStreak=false) leave streak alone.
+ * Days missed between the last daily play and today, plus whether today is a
+ * new play day. Keys are the player's local calendar dates (YYYY-MM-DD).
+ */
+export function getStreakGap(
+  lastPlayKey: string | null,
+  todayKey: string
+): { missedDays: number; isNewDay: boolean } {
+  if (!lastPlayKey) return { missedDays: 0, isNewDay: true };
+  const gap = calendarDaysBetween(lastPlayKey, todayKey);
+  // gap <= 0: same day, or the clock moved backwards (time-zone travel).
+  if (gap <= 0) return { missedDays: 0, isNewDay: false };
+  return { missedDays: gap - 1, isNewDay: true };
+}
+
+/**
+ * Streak rules:
+ * - A missed calendar day breaks the streak unless a freeze (then a shield)
+ *   covers it. One freeze or shield covers one missed day.
+ * - A win on a new day adds a day.
+ * - A loss keeps the streak but adds no day, and never spends protection.
+ * - Archive plays (affectsStreak=false) leave the streak alone.
+ * Weekly freezes are granted when the Monday UTC boundary rolls.
  */
 export function applyStreakProtection(input: StreakProtectionInput): StreakProtectionResult {
   const now = input.now ?? new Date();
   let streakFreezes = Math.max(0, input.streakFreezes);
-  const streakShields = Math.max(0, input.streakShields);
+  let streakShields = Math.max(0, input.streakShields);
   let streakFreezeWeekStart = input.streakFreezeWeekStart;
 
-  if (shouldResetStreakFreeze(streakFreezeWeekStart)) {
+  if (shouldResetStreakFreeze(streakFreezeWeekStart, now)) {
     streakFreezes = Math.max(streakFreezes, engagementConfig.streakFreezesPerWeek);
     streakFreezeWeekStart = getWeekStart(now);
   }
@@ -125,58 +160,81 @@ export function applyStreakProtection(input: StreakProtectionInput): StreakProte
     };
   }
 
-  if (input.won) {
-    return {
-      streak: input.currentStreak,
-      dailyChallengeStreak: input.currentDailyStreak,
-      streakFreezes,
-      streakShields,
-      streakFreezeWeekStart,
-      streakFrozen: false,
-      freezeSource: null,
-    };
+  let streak = Math.max(0, input.currentStreak);
+  let dailyChallengeStreak = Math.max(0, input.currentDailyStreak);
+  let streakFrozen = false;
+  let freezeSource: "freeze" | "shield" | null = null;
+  let lastFreezeUsed: Date | undefined;
+
+  const missedDays = Math.max(0, Math.floor(input.missedDays ?? 0));
+  if (missedDays > 0 && streak > 0) {
+    const usableShields = engagementConfig.streakShieldFromAchievements ? streakShields : 0;
+    if (streakFreezes + usableShields >= missedDays) {
+      const freezesSpent = Math.min(streakFreezes, missedDays);
+      const shieldsSpent = missedDays - freezesSpent;
+      streakFreezes -= freezesSpent;
+      streakShields -= shieldsSpent;
+      streakFrozen = true;
+      freezeSource = shieldsSpent > 0 ? "shield" : "freeze";
+      lastFreezeUsed = now;
+    } else {
+      // Not enough protection: the chain broke. Keep the inventory for later.
+      streak = 0;
+      dailyChallengeStreak = 0;
+    }
+  } else if (missedDays > 0) {
+    dailyChallengeStreak = 0;
   }
 
-  // Loss: try freeze, then shield, else reset.
-  if (input.currentStreak > 0 && streakFreezes > 0) {
-    return {
-      streak: input.currentStreak,
-      dailyChallengeStreak: input.currentDailyStreak,
-      streakFreezes: streakFreezes - 1,
-      streakShields,
-      streakFreezeWeekStart,
-      lastFreezeUsed: now,
-      streakFrozen: true,
-      freezeSource: "freeze",
-    };
-  }
-
-  if (
-    engagementConfig.streakShieldFromAchievements &&
-    input.currentStreak > 0 &&
-    streakShields > 0
-  ) {
-    return {
-      streak: input.currentStreak,
-      dailyChallengeStreak: input.currentDailyStreak,
-      streakFreezes,
-      streakShields: streakShields - 1,
-      streakFreezeWeekStart,
-      lastFreezeUsed: now,
-      streakFrozen: true,
-      freezeSource: "shield",
-    };
+  if (input.won && input.isNewDay !== false) {
+    streak += 1;
+    dailyChallengeStreak += 1;
   }
 
   return {
-    streak: 0,
-    dailyChallengeStreak: 0,
+    streak,
+    dailyChallengeStreak,
     streakFreezes,
     streakShields,
     streakFreezeWeekStart,
-    streakFrozen: false,
-    freezeSource: null,
+    ...(lastFreezeUsed ? { lastFreezeUsed } : {}),
+    streakFrozen,
+    freezeSource,
   };
+}
+
+/**
+ * The streak a player has right now, for read paths (profile, leaderboards).
+ * Stored streaks only change when the player plays, so a lapsed player would
+ * otherwise keep showing their old streak.
+ */
+export function resolveCurrentStreak(
+  stats: {
+    streak?: number;
+    lastPlayDate?: Date | string | null;
+    streakFreezes?: number;
+    streakShields?: number;
+    streakFreezeWeekStart?: Date | string | null;
+  },
+  todayKey: string,
+  toDayKey: (date: Date) => string,
+  now: Date = new Date()
+): number {
+  const streak = Math.max(0, stats.streak ?? 0);
+  if (streak === 0 || !stats.lastPlayDate) return streak;
+  const last = new Date(stats.lastPlayDate);
+  if (Number.isNaN(last.getTime())) return streak;
+  const { missedDays } = getStreakGap(toDayKey(last), todayKey);
+  if (missedDays === 0) return streak;
+  // Mirror applyStreakProtection: the weekly grant lands before misses are covered.
+  const weekStart = stats.streakFreezeWeekStart ? new Date(stats.streakFreezeWeekStart) : undefined;
+  const freezes = shouldResetStreakFreeze(weekStart, now)
+    ? Math.max(stats.streakFreezes ?? 0, engagementConfig.streakFreezesPerWeek)
+    : Math.max(0, stats.streakFreezes ?? 0);
+  const shields = engagementConfig.streakShieldFromAchievements
+    ? Math.max(0, stats.streakShields ?? 0)
+    : 0;
+  return missedDays <= freezes + shields ? streak : 0;
 }
 
 /** Server-authoritative lucky + daily bonus roll. */

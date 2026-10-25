@@ -13,7 +13,6 @@ async function LeaderboardContent() {
         user: {
           id: entry.user.id,
           username: entry.user.username,
-          email: entry.user.email,
         },
         stats: {
           points: entry.stats.points,

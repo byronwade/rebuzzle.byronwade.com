@@ -165,7 +165,12 @@ export const userStatsOps = {
 
   async updateStats(userId: string, updates: Partial<UserStats>): Promise<void> {
     const collection = getCollection<UserStats>("userStats");
-    await collection.updateOne({ userId }, { $set: { ...updates, updatedAt: new Date() } });
+    // The driver writes undefined as null, which would wipe fields such as
+    // lastPlayDate. Leave unset fields alone instead.
+    const defined = Object.fromEntries(
+      Object.entries(updates).filter(([, value]) => value !== undefined)
+    ) as Partial<UserStats>;
+    await collection.updateOne({ userId }, { $set: { ...defined, updatedAt: new Date() } });
   },
 
   async getLeaderboard(
@@ -235,11 +240,22 @@ export const userStatsOps = {
   async getStreakLeaderboard(limit = 25): Promise<Array<UserStats & { user: User }>> {
     const userStatsCollection = getCollection<UserStats>("userStats");
 
+    // A streak that hasn't been played in a month has lapsed; callers apply
+    // the exact freeze rules on what comes back.
+    const lapsedBefore = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
     const leaderboard = await userStatsCollection
       .aggregate([
         // Only include users with active streaks
         {
-          $match: { streak: { $gt: 0 } },
+          $match: { streak: { $gt: 0 }, lastPlayDate: { $gte: lapsedBefore } },
+        },
+        // Sort by streak first, then by maxStreak as tiebreaker
+        {
+          $sort: { streak: -1, maxStreak: -1, points: -1 },
+        },
+        {
+          $limit: limit,
         },
         {
           $lookup: {
@@ -251,13 +267,6 @@ export const userStatsOps = {
         },
         {
           $unwind: "$user",
-        },
-        // Sort by streak first, then by maxStreak as tiebreaker
-        {
-          $sort: { streak: -1, maxStreak: -1, points: -1 },
-        },
-        {
-          $limit: limit,
         },
       ])
       .toArray();

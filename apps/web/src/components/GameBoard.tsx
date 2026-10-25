@@ -20,6 +20,7 @@ import { parseBeatMeChallenge } from "@/lib/game/share-challenge";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
+  calculateLevel,
   checkStreakGracePeriod,
   engagementConfig,
   gameSettings,
@@ -763,6 +764,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         const cleanWin = gameState.hintsUsed === 0;
         const serverStreak =
           typeof result.streak === "number" ? result.streak : userStats.streak + 1;
+        setStreakFrozen(Boolean(result.streakFrozen));
         const newStats = { ...userStats };
         newStats.totalGames += 1;
         newStats.wins += 1;
@@ -772,7 +774,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           typeof result.maxStreak === "number" ? result.maxStreak : serverStreak
         );
         newStats.points += earnedPoints;
-        newStats.level = Math.floor(newStats.points / 1000) + 1;
+        newStats.level = calculateLevel(newStats.points);
         newStats.lastPlayDate = new Date().toISOString();
         newStats.noHintStreak = cleanWin ? (userStats.noHintStreak || 0) + 1 : 0;
         if (typeof result.streakFreezes === "number") {
@@ -827,7 +829,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
             guessHistory: winningHistory,
             timeTaken,
             usedHints: gameState.hintsUsed,
-            streak: userStats.streak + 1,
+            streak: serverStreak,
             score: earnedPoints,
           })
         );
@@ -874,12 +876,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
         const newStats = { ...userStats };
         newStats.totalGames += 1;
-        newStats.streak =
-          typeof result.streak === "number"
-            ? result.streak
-            : result.streakFrozen
-              ? userStats.streak
-              : 0;
+        // A loss keeps the streak; only a missed day can break it.
+        newStats.streak = typeof result.streak === "number" ? result.streak : userStats.streak;
         newStats.maxStreak = Math.max(
           newStats.maxStreak,
           typeof result.maxStreak === "number" ? result.maxStreak : newStats.maxStreak
@@ -934,7 +932,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           ],
           timeTaken,
           usedHints: gameState.hintsUsed,
-          streak: 0,
+          streak: newStats.streak,
           score: 0,
         };
         localStorage.setItem("lastGameCompletion:v1", JSON.stringify(completionData));
