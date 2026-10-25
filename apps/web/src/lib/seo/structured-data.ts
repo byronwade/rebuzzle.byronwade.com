@@ -440,7 +440,7 @@ export function generateSoftwareApplicationSchema() {
     ],
     featureList: [
       "Daily puzzle challenges",
-      "Multiple puzzle types (rebus, logic-grid, cryptic-crossword, number-sequence, pattern-recognition, caesar-cipher, trivia)",
+      "Multiple puzzle types (rebus, logic grid, cryptic crossword, number sequence, pattern recognition, Caesar cipher, trivia)",
       "Progressive hint system",
       "Leaderboard competition",
       "Streak tracking",
