@@ -223,10 +223,7 @@ export function TermsBody() {
         <p>If you have questions about these Terms, please contact us at:</p>
         <p>
           Email:{" "}
-          <a
-            className="text-link underline-offset-4 hover:underline"
-            href="mailto:legal@byronwade.com"
-          >
+          <a className="text-link underline underline-offset-4" href="mailto:legal@byronwade.com">
             legal@byronwade.com
           </a>
         </p>

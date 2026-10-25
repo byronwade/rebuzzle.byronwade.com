@@ -149,7 +149,9 @@ export function PlaytestClient() {
       <div className="mx-auto w-full max-w-xl px-4 py-16">
         <Card>
           <CardHeader>
-            <CardTitle>Join the blind puzzle panel</CardTitle>
+            <CardTitle>
+              <h1>Join the blind puzzle panel</h1>
+            </CardTitle>
             <CardDescription>
               An account at least 24 hours old with three completed puzzles keeps the panel tied to
               experienced players. Guest and fresh accounts are excluded from quality evidence. A
