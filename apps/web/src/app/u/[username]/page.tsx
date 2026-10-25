@@ -122,8 +122,8 @@ async function CreatorProfilePageContent({ params }: Params) {
 
         {puzzles.length === 0 ? (
           <div className="mt-4 rounded-lg border border-border border-dashed px-6 py-12 text-center">
-            <p className="font-medium text-foreground text-sm">No published boards yet.</p>
-            <p className="mt-1 text-muted-foreground text-sm">
+            <p className="font-medium text-foreground text-sm">No published boards yet</p>
+            <p className="mt-1 text-balance text-muted-foreground text-sm">
               Approved puzzles from {user.username} will show up here.
             </p>
           </div>
