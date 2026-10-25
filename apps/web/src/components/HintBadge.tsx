@@ -2,7 +2,7 @@
 
 import { LightbulbIcon, LockIcon, UnlockIcon } from "lucide-react";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -81,21 +81,22 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
         <Tooltip>
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
-              <Badge
+              <button
                 className={cn(
+                  badgeVariants({ variant: "warning" }),
                   "min-h-[36px] cursor-pointer px-3 text-xs outline-none transition-colors hover:bg-warning/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none",
                   isRevealing && "scale-105 motion-reduce:scale-100",
                   "sm:min-h-0 sm:py-1",
                   className
                 )}
-                variant="warning"
+                type="button"
               >
                 <LightbulbIcon data-icon="inline-start" className="mr-1.5 h-3.5 w-3.5" />
                 <span className="hidden sm:inline">
                   Need a hint? ({hints.length - revealedHints} left)
                 </span>
                 <span className="sm:hidden">Hint ({hints.length - revealedHints})</span>
-              </Badge>
+              </button>
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>Stuck? Click to reveal hints (-10 pts each)</TooltipContent>

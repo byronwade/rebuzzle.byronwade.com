@@ -23,7 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { getLevelProgress as getProgress } from "@/lib/gameSettings";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
@@ -245,25 +244,30 @@ export default function LeaderboardClient({
           </RadioGroupPrimitive.Root>
 
           {sortBy === "points" && (
-            <Tabs
+            <RadioGroupPrimitive.Root
+              aria-label="Time window"
+              className="touch-targets inline-flex h-11 items-center gap-0.5 rounded-md border border-border bg-inset p-1"
               onValueChange={(value) => setTimeframe(value as typeof timeframe)}
+              orientation="horizontal"
               value={timeframe}
             >
-              <TabsList className="touch-targets h-11">
-                <TabsTrigger className="px-3.5" value="today">
-                  Today
-                </TabsTrigger>
-                <TabsTrigger className="px-3.5" value="week">
-                  Week
-                </TabsTrigger>
-                <TabsTrigger className="px-3.5" value="month">
-                  Month
-                </TabsTrigger>
-                <TabsTrigger className="px-3.5" value="allTime">
-                  All time
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+              {(
+                [
+                  { value: "today", label: "Today" },
+                  { value: "week", label: "Week" },
+                  { value: "month", label: "Month" },
+                  { value: "allTime", label: "All time" },
+                ] as const
+              ).map(({ value, label }) => (
+                <RadioGroupPrimitive.Item
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3.5 py-1 font-medium text-muted-foreground text-sm focus-ring transition-colors hover:text-foreground data-[state=checked]:bg-card data-[state=checked]:text-foreground data-[state=checked]:shadow-sm"
+                  key={value}
+                  value={value}
+                >
+                  {label}
+                </RadioGroupPrimitive.Item>
+              ))}
+            </RadioGroupPrimitive.Root>
           )}
         </div>
 
@@ -625,12 +629,12 @@ export default function LeaderboardClient({
           </div>
           <dl className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
             {SCORING_RULES.map(({ icon: Icon, title, body }) => (
-              <div className="flex items-start gap-3 bg-card p-4" key={title}>
-                <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-subtle" />
-                <div>
-                  <dt className="font-medium text-foreground text-sm">{title}</dt>
-                  <dd className="mt-0.5 text-muted-foreground text-sm">{body}</dd>
-                </div>
+              <div className="bg-card p-4" key={title}>
+                <dt className="flex items-center gap-3 font-medium text-foreground text-sm">
+                  <Icon aria-hidden className="size-4 shrink-0 text-subtle" />
+                  {title}
+                </dt>
+                <dd className="mt-0.5 pl-7 text-muted-foreground text-sm">{body}</dd>
               </div>
             ))}
           </dl>
