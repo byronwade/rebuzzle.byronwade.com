@@ -280,7 +280,7 @@ export default function AchievementsPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="achievements" className="space-y-6">
-          <TabsList className="touch-targets h-11 w-full max-w-xs">
+          <TabsList className="touch-targets h-11 w-full sm:max-w-xs">
             <TabsTrigger value="achievements" className="flex-1">
               Achievements
             </TabsTrigger>

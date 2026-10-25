@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           achievements: filteredAchievements.map((a) => ({
             id: a.definition.id,
             name: a.definition.name,
-            description: a.definition.secret && !a.unlocked ? "???" : a.definition.description,
+            description: a.definition.secret && !a.unlocked ? "Keep playing to reveal it." : a.definition.description,
             hint:
               a.definition.secret && !a.unlocked
                 ? "This is a secret achievement"
@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
         success: true,
         achievements: achievements.map((a) => ({
           id: a.id,
-          name: a.secret ? "???" : a.name,
-          description: a.secret ? "???" : a.description,
+          name: a.secret ? "Secret achievement" : a.name,
+          description: a.secret ? "Keep playing to reveal it." : a.description,
           hint: a.secret ? "This is a secret achievement" : a.hint,
           icon: a.secret ? "star" : a.icon,
           category: a.category,
