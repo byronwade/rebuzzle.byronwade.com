@@ -65,13 +65,13 @@ async function BlogContent() {
           <Card variant="inset">
             <CardContent className="px-6 py-14 text-center">
               <h2 className="font-semibold text-lg tracking-[-0.03em]">Something went wrong</h2>
-              <p className="mt-2 text-muted-foreground text-sm">We couldn't load the blog posts.</p>
+              <p className="mt-2 text-muted-foreground text-sm">We couldn’t load the blog posts.</p>
               <div className="mt-6 flex justify-center gap-2">
                 <Button asChild variant="outline">
                   <Link href="/blog">Try again</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/">Play today's puzzle</Link>
+                  <Link href="/">Play today’s puzzle</Link>
                 </Button>
               </div>
             </CardContent>
@@ -102,7 +102,7 @@ async function BlogContent() {
                 Write-ups go up alongside each day’s puzzle. Check back soon.
               </p>
               <Button asChild className="mt-6" size="lg" variant="pill">
-                <Link href="/">Play today's puzzle</Link>
+                <Link href="/">Play today’s puzzle</Link>
               </Button>
             </CardContent>
           </Card>
@@ -200,7 +200,7 @@ async function BlogContent() {
         <div className="mt-14 border-border border-t pt-10 text-center">
           <p className="text-muted-foreground text-sm">Ready to test your skills?</p>
           <Button asChild className="mt-4" size="lg" variant="pill">
-            <Link href="/">Play today's puzzle</Link>
+            <Link href="/">Play today’s puzzle</Link>
           </Button>
         </div>
       </div>
