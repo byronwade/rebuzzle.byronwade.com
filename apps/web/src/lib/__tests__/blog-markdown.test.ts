@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { separateInlineSteps } from "../blog-markdown";
+import { remarkSmartQuotes, separateInlineSteps, smartQuotes } from "../blog-markdown";
 
 describe("separateInlineSteps", () => {
   it("breaks bold-led steps run into a paragraph onto list lines", () => {
@@ -33,5 +33,62 @@ describe("separateInlineSteps", () => {
   it("leaves well-formed lists and plain numbers alone", () => {
     const body = "Intro\n\n1. **One**\n2. **Two**\n\nRated 5/10. Plain 3. text";
     expect(separateInlineSteps(body)).toBe(body);
+  });
+});
+
+describe("smartQuotes", () => {
+  it("curls apostrophes and single quotes", () => {
+    expect(smartQuotes("Today's 'aha!' moment")).toBe("Today’s ‘aha!’ moment");
+  });
+
+  it("curls double quotes and keeps leading-position quotes opening", () => {
+    expect(smartQuotes('"Bee four" (or "before")')).toBe("“Bee four” (or “before”)");
+  });
+
+  it("turns three dots into an ellipsis", () => {
+    expect(smartQuotes("Wait...")).toBe("Wait…");
+  });
+});
+
+describe("remarkSmartQuotes", () => {
+  it("rewrites text nodes and leaves inline code alone", () => {
+    const tree = {
+      type: "root",
+      children: [
+        {
+          type: "paragraph",
+          children: [
+            { type: "text", value: "it's " },
+            { type: "inlineCode", value: "don't" },
+          ],
+        },
+      ],
+    };
+    remarkSmartQuotes()(tree);
+    const [paragraph] = tree.children;
+    expect(paragraph.children[0].value).toBe("it’s ");
+    expect(paragraph.children[1].value).toBe("don't");
+  });
+});
+
+describe("remarkSmartQuotes across inline nodes", () => {
+  it("closes a quote that follows emphasis", () => {
+    const tree = {
+      type: "root",
+      children: [
+        {
+          type: "paragraph",
+          children: [
+            { type: "text", value: 'say "' },
+            { type: "emphasis", children: [{ type: "text", value: "bee" }] },
+            { type: "text", value: '" out loud' },
+          ],
+        },
+      ],
+    };
+    remarkSmartQuotes()(tree);
+    const [paragraph] = tree.children;
+    expect(paragraph.children[0].value).toBe("say \u201c");
+    expect(paragraph.children[2].value).toBe("\u201d out loud");
   });
 });

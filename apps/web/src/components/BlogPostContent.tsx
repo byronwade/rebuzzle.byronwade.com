@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { BlogPostSections } from "@/db/models";
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
-import { separateInlineSteps } from "@/lib/blog-markdown";
+import { remarkSmartQuotes, separateInlineSteps, smartQuotes } from "@/lib/blog-markdown";
 import { useIsLocalCalendarDay } from "@/lib/hooks/use-calendar-day";
 import { cn } from "@/lib/utils";
 import { PuzzleDisplay } from "./PuzzleDisplay";
@@ -73,7 +73,9 @@ function SectionBlock({ title, body }: { title: string; body: string }) {
     <section className="mt-10">
       <h2 className="font-semibold text-foreground text-xl tracking-[-0.03em]">{title}</h2>
       <div className="prose prose-sm mt-3 max-w-none sm:prose-base dark:prose-invert">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{separateInlineSteps(body)}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm, remarkSmartQuotes]}>
+          {separateInlineSteps(body)}
+        </ReactMarkdown>
       </div>
     </section>
   );
@@ -140,7 +142,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
           </span>
         </div>
         <h1 className="mt-4 text-balance font-semibold text-3xl text-foreground tracking-[-0.04em] md:text-4xl">
-          {post.title}
+          {smartQuotes(post.title)}
         </h1>
       </header>
 
@@ -172,7 +174,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
       ) : (
         safe && (
           <article className="prose prose-sm mt-12 max-w-none dark:prose-invert">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{safe}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkSmartQuotes]}>{safe}</ReactMarkdown>
           </article>
         )
       )}
@@ -196,13 +198,15 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
                 <Lightbulb className="size-3.5 text-subtle" />
                 <span className="font-medium text-xs text-subtle">Explanation</span>
               </div>
-              <p className="mt-2 text-muted-foreground text-sm leading-6">{post.explanation}</p>
+              <p className="mt-2 text-muted-foreground text-sm leading-6">
+                {smartQuotes(post.explanation)}
+              </p>
             </div>
 
             {(sections?.solution || spoiler) && (
               <div className="border-border border-t px-5 py-5">
                 <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkSmartQuotes]}>
                     {sections?.solution || spoiler}
                   </ReactMarkdown>
                 </div>
@@ -211,7 +215,7 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
 
             {sections?.callToAction && (
               <div className="border-border border-t px-5 py-5 text-muted-foreground text-sm leading-6">
-                {sections.callToAction}
+                {smartQuotes(sections.callToAction)}
               </div>
             )}
 

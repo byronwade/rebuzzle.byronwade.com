@@ -10,6 +10,7 @@ import Layout from "@/components/Layout";
 import { ContentPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { smartQuotes } from "@/lib/blog-markdown";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generateBlogPostMetadata } from "@/lib/seo/metadata";
 import {
@@ -250,11 +251,11 @@ async function BlogPostBody({ params }: { params: Promise<{ slug: string }> }) {
                   key={relatedPost.slug}
                 >
                   <p className="truncate font-medium text-foreground text-sm">
-                    {relatedPost.title}
+                    {smartQuotes(relatedPost.title)}
                   </p>
                   {relatedPost.excerpt && (
                     <p className="mt-0.5 truncate text-muted-foreground text-xs">
-                      {relatedPost.excerpt}
+                      {smartQuotes(relatedPost.excerpt)}
                     </p>
                   )}
                 </Link>

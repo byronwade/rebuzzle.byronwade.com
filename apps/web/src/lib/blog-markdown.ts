@@ -21,3 +21,51 @@ export function separateInlineSteps(body: string): string {
     )
     .join("\n");
 }
+
+const OPENS_QUOTE = /[\s([{—–-]/;
+
+/**
+ * Generated posts arrive with typewriter quotes ("Today's", 'aha!').
+ * Swap them for curly quotes and turn "..." into an ellipsis. A quote opens
+ * at the start of the text or after whitespace or an opening bracket, and
+ * closes everywhere else, so apostrophes come out as ’.
+ */
+export function smartQuotes(text: string, before = ""): string {
+  return text
+    .replace(/["']/g, (quote: string, offset: number) => {
+      const prev = offset === 0 ? before : text.charAt(offset - 1);
+      const opens = prev === "" || OPENS_QUOTE.test(prev);
+      if (quote === '"') return opens ? "“" : "”";
+      return opens ? "‘" : "’";
+    })
+    .replace(/\.\.\./g, "…");
+}
+
+interface MarkdownNode {
+  type: string;
+  value?: string;
+  children?: MarkdownNode[];
+}
+
+const INLINE_PARENTS = new Set(["emphasis", "strong", "delete", "link", "linkReference"]);
+
+/**
+ * Remark plugin: apply {@link smartQuotes} to prose text, never to code.
+ * Carries the previous character across inline nodes so a quote that closes
+ * right after `*emphasis*` still curls the right way.
+ */
+export function remarkSmartQuotes() {
+  return (tree: MarkdownNode) => {
+    let last = "";
+    const walk = (node: MarkdownNode) => {
+      if (node.type === "text" && node.value) {
+        node.value = smartQuotes(node.value, last);
+      }
+      if (node.value) last = node.value.slice(-1);
+      if (!node.children) return;
+      if (!INLINE_PARENTS.has(node.type)) last = "";
+      node.children.forEach(walk);
+    };
+    walk(tree);
+  };
+}
