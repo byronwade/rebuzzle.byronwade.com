@@ -72,6 +72,9 @@ export function SmartAnswerInput({
   useEffect(() => {
     if (isSubmitting || disabled || !refocusAfterSubmitRef.current) return;
     refocusAfterSubmitRef.current = false;
+    // Only when focus fell to the page; a player who moved to another control keeps it.
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
     textareaRef.current?.focus({ preventScroll: true });
   }, [isSubmitting, disabled]);
 
