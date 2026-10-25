@@ -299,6 +299,18 @@ function applyReviewEvent(
   return prev;
 }
 
+const SUBMISSION_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  pending_grade: "In review",
+  approved: "Published",
+  featured: "Featured",
+  rejected: "Not published",
+};
+
+function submissionStatusLabel(status: string) {
+  return SUBMISSION_STATUS_LABELS[status] ?? labelFromSlug(status);
+}
+
 const MIN_ANSWER_LENGTH = 2;
 const MIN_EXPLANATION_LENGTH = 24;
 
@@ -1467,10 +1479,10 @@ export function PuzzleStudio() {
                 <p className="mt-3 text-center font-medium text-sm">{answer || "Your answer"}</p>
               </div>
               <div>
-                <h2 className="font-semibold text-xl tracking-[-0.04em]">Eve’s extensive review</h2>
+                <h2 className="font-semibold text-xl tracking-[-0.04em]">Check and publish</h2>
                 <p className="mt-1 text-muted-foreground text-sm leading-6">
-                  Watch status, thinking, and answers for every check. Safety runs before any model
-                  spend. Publish only ships when Eve’s verdict is ship — servers re-check on submit.
+                  Eve, our puzzle checker, makes sure your board is fair, safe and solvable. Run the
+                  check, fix anything it flags, then publish.
                 </p>
 
                 <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
@@ -1481,10 +1493,10 @@ export function PuzzleStudio() {
                     type="checkbox"
                   />
                   <span>
-                    Deep review (vision player-sim)
+                    Deep review
                     <span className="mt-0.5 block text-muted-foreground text-xs">
-                      Extra spend — only when server flags allow (<code>STUDIO_EVE_PLAYER_SIM</code>
-                      ).
+                      Eve also tries to solve it like a player would. Slower, and not always
+                      available.
                     </span>
                   </span>
                 </label>
@@ -1496,7 +1508,11 @@ export function PuzzleStudio() {
                     type="button"
                     variant="outline"
                   >
-                    {reviewing ? "Eve reviewing…" : "Run Eve review"}
+                    {reviewing
+                      ? "Eve is checking…"
+                      : eveShipReady
+                        ? "Check again"
+                        : "Run the check"}
                   </Button>
                   <Button
                     disabled={pending || reviewing || !canPublish}
@@ -1516,8 +1532,8 @@ export function PuzzleStudio() {
                 </div>
                 {!eveShipReady && canPublish ? (
                   <p className="mt-2 text-muted-foreground text-xs leading-5">
-                    Publish unlocks after Eve returns <span className="font-medium">ship</span> on
-                    this exact board. Re-run review if you change anything.
+                    Publish unlocks once Eve says the board is ready. If you change anything, run
+                    the check again.
                   </p>
                 ) : null}
 
@@ -1531,7 +1547,7 @@ export function PuzzleStudio() {
                     )}
                   >
                     <p className="font-medium">
-                      Deterministic score
+                      Quick check
                       <span className="ml-2 font-normal opacity-70">
                         quality {grade.score} · fun {grade.funScore}
                       </span>
@@ -1543,7 +1559,7 @@ export function PuzzleStudio() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="mt-2 opacity-80">No deterministic blockers.</p>
+                      <p className="mt-2 opacity-80">Nothing blocking.</p>
                     )}
                   </div>
                 ) : null}
@@ -1589,7 +1605,7 @@ export function PuzzleStudio() {
                           {row.title || row.answer}
                         </span>
                         <span className="font-medium text-xs text-subtle">
-                          {row.status}
+                          {submissionStatusLabel(row.status)}
                           {row.featuredOn ? ` · daily ${row.featuredOn}` : ""}
                         </span>
                       </button>
