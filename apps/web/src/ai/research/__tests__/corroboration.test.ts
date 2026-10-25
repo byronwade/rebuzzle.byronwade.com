@@ -103,12 +103,12 @@ describe("corroborateClaims", () => {
     expect(claims[0]?.support).toBe("verified");
   });
 
-  it("downgrades a claim whose wording is absent from its citation", () => {
+  it("rejects a claim whose wording is absent from its citation", () => {
     const { claims } = corroborateClaims(
       [claim("Popularized by Shakespeare's comedic plays in London theatres.", ["S1"], "origin")],
       sources
     );
-    expect(claims[0]?.support).toBe("single-source");
+    expect(claims[0]?.support).toBe("unsupported");
   });
 
   it("filters usable claims", () => {

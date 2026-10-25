@@ -22,6 +22,8 @@ import type { PhraseBankEntry } from "./types";
 
 interface ResearchedSeed {
   entry: PhraseBankEntry;
+  /** Technique slot the seed was reserved for, kept through filtering. */
+  techniqueId?: string;
   research?: StoredAnswerResearch;
   /** Prompt block with corroborated facts, when research found any. */
   brief?: string;
@@ -92,11 +94,15 @@ export async function screenAnswerSeedsWithResearch(input: {
       requireVisualCuePlan: input.requireVisualCuePlan,
     });
 
+  // selectAnswerFirstSeeds reserves seed i for techniqueIds[i % n].
+  const slotTechnique = (index: number) =>
+    input.techniqueIds[index % Math.max(1, input.techniqueIds.length)];
+
   let selection = select();
   const inventoryShort = selection.length < input.count;
   if (!enabled || inventoryShort) {
     return {
-      seeds: selection.map((entry) => ({ entry })),
+      seeds: selection.map((entry, index) => ({ entry, techniqueId: slotTechnique(index) })),
       rejected: [],
       researched: 0,
       inventoryShort,
@@ -140,15 +146,17 @@ export async function screenAnswerSeedsWithResearch(input: {
   }
 
   const seeds = selection
-    .filter((entry, _index, all) => {
+    .map((entry, index) => ({ entry, techniqueId: slotTechnique(index) }))
+    .filter(({ entry }, _index, all) => {
       if (!gate || all.length <= 1) return true;
       return researchByKey.get(answerFirstSeedKey(entry) ?? "")?.verdict !== "avoid";
     })
-    .map((entry): ResearchedSeed => {
+    .map(({ entry, techniqueId }): ResearchedSeed => {
       const research = researchByKey.get(answerFirstSeedKey(entry) ?? "");
-      if (!research) return { entry };
+      if (!research) return { entry, techniqueId };
       return {
         entry,
+        techniqueId,
         research: toStoredAnswerResearch(research),
         brief: formatPhraseResearchForPrompt(research),
       };

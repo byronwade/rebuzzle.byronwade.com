@@ -107,6 +107,19 @@ describe("gatherBlogResearch", () => {
   });
 });
 
+describe("gatherBlogResearch answer mismatch", () => {
+  it("researches afresh when the stored research is for a different answer", async () => {
+    const pack = await gatherBlogResearch({
+      answer: "over the moon",
+      typeName: "Rebus",
+      storedAnswerResearch: stored,
+    });
+    // Answer research (mocked as format history here) runs alongside format history.
+    expect(runWebResearch).toHaveBeenCalledTimes(2);
+    expect(pack.answerResearch?.answer).not.toBe("under the weather");
+  });
+});
+
 describe("getBlogResearchIssues", () => {
   const pack: BlogResearchPack = {
     status: "researched",

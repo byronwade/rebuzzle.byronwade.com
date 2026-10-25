@@ -223,10 +223,12 @@ export async function runApexGeneration(
   // contract and a distinct brief nudge.
   for (let slot = 1; slot <= slotCount; slot++) {
     try {
-      // Rotate preferred technique focus per slot
-      const focusTechnique =
-        brief.preferredTechniques[(slot - 1) % Math.max(1, brief.preferredTechniques.length)];
       const researchedSeed = researchedSeeds[slot - 1];
+      // Keep the technique the seed was reserved for, even after research
+      // filtering compacts the slot list.
+      const focusTechnique =
+        (researchedSeed?.techniqueId as TechniqueId | undefined) ??
+        brief.preferredTechniques[(slot - 1) % Math.max(1, brief.preferredTechniques.length)];
       const answerSeedEntry = researchedSeed?.entry;
       const answerSeed = answerFirstSeedKey(answerSeedEntry);
       const antiCopySuggestions = brief.phraseSuggestions.filter(

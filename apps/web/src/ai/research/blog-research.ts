@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod";
+import { normalizeAnswerKey } from "../puzzle-agent/quality";
 import { extractClaimNumbers, usableClaims } from "./corroboration";
 import {
   parseStoredAnswerResearch,
@@ -112,7 +113,11 @@ export async function gatherBlogResearch(input: {
 }): Promise<BlogResearchPack> {
   const stored = parseStoredAnswerResearch(input.storedAnswerResearch);
   const [answerResearch, formatDossier] = await Promise.all([
-    stored && stored.status === "researched"
+    // Reuse stored research only for the same answer: an admin may have
+    // edited the answer since generation.
+    stored &&
+    stored.status === "researched" &&
+    normalizeAnswerKey(stored.answer) === normalizeAnswerKey(input.answer)
       ? Promise.resolve(stored)
       : researchAnswerPhrase(input.answer).then((research) =>
           research.dossier.status === "researched" ? toStoredAnswerResearch(research) : undefined

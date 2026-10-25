@@ -165,6 +165,50 @@ export function getBlogEditorialIssues(post: GeneratedBlogPost, answer: string):
   return [...new Set(issues)];
 }
 
+function researchIssueText(post: GeneratedBlogPost): string {
+  return [
+    post.content,
+    ...Object.values(post.sections ?? {}).filter(
+      (value): value is string => typeof value === "string"
+    ),
+    ...(post.sections?.faq ?? []).map((item) => item.answer),
+  ].join("\n");
+}
+
+/**
+ * Rebuild research notes for a post that skipped the generator (an admin-edited
+ * draft), so its review PR still lists verified facts and unverified dates.
+ */
+export async function researchNotesForPost(
+  post: GeneratedBlogPost,
+  puzzle: PuzzleLike & {
+    answer: string;
+    publishedAt?: Date | string;
+    metadata?: { answerResearch?: unknown } | Record<string, unknown>;
+  }
+): Promise<BlogResearchNotes> {
+  const publishedKey =
+    puzzle.publishedAt != null
+      ? new Date(puzzle.publishedAt).toISOString().slice(0, 10)
+      : "yesterday";
+  try {
+    const research = await gatherBlogResearch({
+      answer: puzzle.answer,
+      typeName: puzzleTypeLabel(getPuzzleType(puzzle)),
+      storedAnswerResearch: (puzzle.metadata as { answerResearch?: unknown } | undefined)
+        ?.answerResearch,
+    });
+    return {
+      status: research.status,
+      facts: research.facts,
+      warnings: getBlogResearchIssues(researchIssueText(post), research, publishedKey),
+    };
+  } catch (error) {
+    console.warn("[Blog Generator] Research notes unavailable", error);
+    return { status: "unavailable", facts: [], warnings: [] };
+  }
+}
+
 /**
  * Generate a blog post for a specific puzzle (Eve blog skill + BLOG_CONFIG).
  */

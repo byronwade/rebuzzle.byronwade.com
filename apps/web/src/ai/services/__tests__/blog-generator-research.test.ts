@@ -7,7 +7,7 @@ jest.mock("@/ai/research/blog-research", () => {
   return { ...actual, gatherBlogResearch };
 });
 
-import { generateBlogPost } from "@/ai/services/blog-generator";
+import { generateBlogPost, researchNotesForPost } from "@/ai/services/blog-generator";
 
 function aiResponse(history: string) {
   return {
@@ -108,5 +108,19 @@ describe("generateBlogPost research grounding", () => {
     const post = await generateBlogPost(puzzle);
     expect(post.research?.status).toBe("unavailable");
     expect(generateAIObject.mock.calls[0][0].prompt).toContain("Format history: no verified facts");
+  });
+
+  it("rebuilds research notes for an admin-edited draft", async () => {
+    const notes = await researchNotesForPost(
+      {
+        title: "Edited",
+        slug: "edited",
+        excerpt: "An edited post.",
+        content: "## History\nThe first rebus appeared in 1843.\n## The Solution\nbefore",
+      },
+      puzzle
+    );
+    expect(notes.facts).toEqual(pack.facts);
+    expect(notes.warnings).toEqual(['mentions "1843" but no researched fact supports that date']);
   });
 });

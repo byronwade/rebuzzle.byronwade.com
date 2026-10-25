@@ -91,10 +91,6 @@ export function lexicalOverlap(statement: string, evidence: string): number {
   return hits.length / words.length;
 }
 
-function downgrade(support: ClaimSupport): ClaimSupport {
-  return support === "verified" ? "single-source" : "unsupported";
-}
-
 export function corroborateClaims(
   drafts: readonly DraftClaim[],
   sources: readonly ResearchSource[]
@@ -153,8 +149,9 @@ export function corroborateClaims(
         confidence *= 0.3;
         notes.push(`figures not found in cited text: ${missingNumbers.join(", ")}`);
       } else if (cited.length && lexicalOverlap(draft.statement, evidence) < 0.2) {
-        support = downgrade(support);
-        confidence *= 0.6;
+        // The citation does not say this; never pass it to writers as fact.
+        support = "unsupported";
+        confidence *= 0.3;
         notes.push("cited text barely overlaps the claim");
       }
 

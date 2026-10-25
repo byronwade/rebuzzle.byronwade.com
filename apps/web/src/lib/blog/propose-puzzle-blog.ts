@@ -4,7 +4,11 @@
  */
 
 import { formatBlogResearchNotes } from "@/ai/research/blog-research";
-import { type GeneratedBlogPost, generateBlogPost } from "@/ai/services/blog-generator";
+import {
+  type GeneratedBlogPost,
+  generateBlogPost,
+  researchNotesForPost,
+} from "@/ai/services/blog-generator";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { blogPostOps } from "@/db/operations";
@@ -163,7 +167,17 @@ export async function proposeBlogForPuzzle(
     puzzleId: puzzle.id,
     publishedAt: repositoryPost.publishedAt,
     content: serialized,
-    researchNotes: formatBlogResearchNotes(generated.research),
+    researchNotes: formatBlogResearchNotes(
+      generated.research ??
+        (await researchNotesForPost(generated, {
+          puzzle: puzzle.puzzle ?? puzzle.rebusPuzzle,
+          rebusPuzzle: puzzle.rebusPuzzle,
+          puzzleType: puzzle.puzzleType,
+          answer: puzzle.answer,
+          publishedAt: puzzle.publishedAt,
+          metadata: puzzle.metadata,
+        }))
+    ),
   });
 
   const now = new Date();

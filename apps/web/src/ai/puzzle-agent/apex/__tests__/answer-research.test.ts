@@ -105,6 +105,25 @@ describe("screenAnswerSeedsWithResearch", () => {
     expect(result.inventoryShort).toBe(false);
   });
 
+  it("keeps each surviving seed's reserved technique after filtering", async () => {
+    const mixed: PhraseBankEntry[] = [
+      { ...entries[0], answer: "keyboard", techniqueAffinity: ["simple_compound"] },
+      { ...entries[1], answer: "keystone", techniqueAffinity: ["positional_phrase"] },
+    ] as PhraseBankEntry[];
+    const researcher = jest.fn(async (answer: string) =>
+      research(answer, answer === "keyboard" ? "avoid" : "use")
+    );
+    const result = await screenAnswerSeedsWithResearch({
+      ...base,
+      entries: mixed,
+      techniqueIds: ["simple_compound", "positional_phrase"],
+      researcher,
+    });
+    expect(result.seeds.map((s) => [s.entry.answer, s.techniqueId])).toEqual([
+      ["keystone", "positional_phrase"],
+    ]);
+  });
+
   it("only reports without the gate", async () => {
     const researcher = jest.fn(async (answer: string) => research(answer, "avoid"));
     const result = await screenAnswerSeedsWithResearch({ ...base, gate: false, researcher });
