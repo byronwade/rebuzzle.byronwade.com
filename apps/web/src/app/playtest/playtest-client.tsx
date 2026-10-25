@@ -1,6 +1,6 @@
 "use client";
 
-import { FlaskConical, Loader2, Send } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import type {
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
+import { PageHeader } from "@/components/PageHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -146,26 +147,28 @@ export function PlaytestClient() {
 
   if (!isAuthenticated || isGuest) {
     return (
-      <div className="mx-auto w-full max-w-xl px-4 py-16">
+      <div className="mx-auto w-full max-w-xl px-4 py-8 md:px-6 md:py-12">
+        <PageHeader
+          eyebrow="Playtest"
+          title="Join the blind puzzle panel."
+          description="Solve boards cold and help us measure whether each puzzle type is fair."
+        />
         <Card>
-          <CardHeader>
-            <CardTitle>
-              <h1>Join the blind puzzle panel</h1>
-            </CardTitle>
-            <CardDescription>
+          <CardContent className="flex flex-col gap-4 pt-6">
+            <p className="text-muted-foreground text-sm leading-6">
               An account at least 24 hours old with three completed puzzles keeps the panel tied to
               experienced players. Guest and fresh accounts are excluded from quality evidence. A
               small set of known-answer calibration boards is mixed into early assignments;
               individual calibration boards are never labeled.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button asChild>
-              <Link href="/signup?next=/playtest">Create an account</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/login?next=/playtest">Sign in</Link>
-            </Button>
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href="/signup?next=/playtest">Create an account</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/login?next=/playtest">Sign in</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -176,16 +179,12 @@ export function PlaytestClient() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:px-6">
-      <header className="space-y-2">
-        <div className="flex items-center gap-2">
-          <FlaskConical className="h-6 w-6 text-primary" />
-          <h1 className="font-semibold text-2xl">Blind puzzle playtest</h1>
-        </div>
-        <p className="max-w-2xl text-muted-foreground text-sm">
-          Solve only what the board communicates. You will not see hints, difficulty, intended
-          answers, or other players&apos; results, and your first answer is final.
-        </p>
-      </header>
+      <PageHeader
+        className="mb-0 md:mb-2"
+        eyebrow="Playtest"
+        title="Blind puzzle playtest."
+        description="Solve only what the board communicates. You will not see hints, difficulty, intended answers, or other players' results, and your first answer is final."
+      />
 
       <Alert>
         <AlertTitle>Independent quality evidence</AlertTitle>
