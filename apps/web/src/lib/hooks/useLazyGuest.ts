@@ -43,16 +43,12 @@ export function useLazyGuest(): LazyGuestResult {
 
     inFlight = (async (): Promise<boolean> => {
       try {
-        // Get localStorage backup ID if available
-        const localStorageGuestId =
-          typeof window !== "undefined" ? localStorage.getItem("rebuzzle_guest_id") : null;
-
-        // Call the lazy guest creation endpoint
+        // The guest cookie identifies a returning guest
         const response = await fetch("/api/auth/guest/lazy", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ localStorageGuestId }),
+          body: "{}",
         });
 
         if (response.ok) {
@@ -64,10 +60,10 @@ export function useLazyGuest(): LazyGuestResult {
             error?: string;
           };
           if (data.success && data.user) {
-            // Store backup in localStorage
-            if (typeof window !== "undefined") {
-              localStorage.setItem("rebuzzle_guest_id", data.user.id);
-            }
+            // Drop the old id backup; the server no longer accepts it
+            try {
+              localStorage.removeItem("rebuzzle_guest_id");
+            } catch {}
             // Refresh auth context to pick up new / existing session
             await refreshAuth();
             setIsCreating(false);

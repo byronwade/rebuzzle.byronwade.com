@@ -2,9 +2,11 @@
 
 import { cacheLife, cacheTag, revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
+import { db } from "@/db";
 import type { BlogPostPuzzleOrigin, BlogPostSEOMetadata, BlogPostSections } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { isAdmin } from "@/lib/admin-auth";
+import { issuedBeforePasswordChange } from "@/lib/auth/session-revocation";
 import { loadRepositoryBlogPosts } from "@/lib/blog/repository-posts";
 import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
 import { getAppUrl } from "@/lib/env";
@@ -233,6 +235,8 @@ async function requireAdminUserId(): Promise<string | null> {
     const payload = await verifyToken(authToken);
     const userId = payload?.userId;
     if (!userId) return null;
+    const user = await db.userOps.findById(userId);
+    if (!user || issuedBeforePasswordChange(user, payload.iat)) return null;
     return (await isAdmin(userId)) ? userId : null;
   } catch {
     return null;

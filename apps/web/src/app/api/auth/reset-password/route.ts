@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import type { User } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { noteCredentialsChanged } from "@/lib/auth/session-revocation";
 import { rateLimit } from "@/lib/middleware/rate-limit";
 import { hashPassword } from "@/lib/password";
 
@@ -80,11 +81,15 @@ export async function POST(request: Request) {
     const passwordHash = await hashPassword(password);
 
     // Update user password and clear reset token
+    // A reset means the old password may be compromised: sign out everywhere.
+    const changedAt = new Date();
     await db.userOps.update(user.id, {
       passwordHash,
+      passwordChangedAt: changedAt,
       resetToken: undefined,
       resetTokenExpiry: undefined,
     });
+    noteCredentialsChanged(user.id, changedAt);
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { verifyAdminAccess } from "@/lib/admin-auth";
 
 export async function POST(req: Request) {
+  if (!(await verifyAdminAccess(req))) {
+    return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 });
+  }
   try {
     const { title, body, userId } = await req.json();
 

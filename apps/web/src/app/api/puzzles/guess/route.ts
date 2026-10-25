@@ -223,6 +223,15 @@ export async function POST(request: Request) {
       }
     );
 
+    if (!write.success && write.reason === "duplicate-attempt") {
+      // Another guess for this attempt slot landed first (double submit or a
+      // parallel request). Not a lock: 409 would close the client's board.
+      return NextResponse.json(
+        { success: false, error: "That guess is already being checked. Try again." },
+        { status: 429, headers: { "Retry-After": "1" } }
+      );
+    }
+
     if (!write.success) {
       return NextResponse.json(
         {

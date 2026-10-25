@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { getCollection } from "@/db/mongodb";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 
 // Configure web-push with VAPID keys
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_EMAIL) {
@@ -21,11 +22,15 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env
 
 export async function POST(req: Request) {
   try {
-    const { subscriptionId, email, userId } = await req.json();
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+    }
+    const { subscriptionId } = await req.json();
+    const userId = authUser.userId;
 
     console.log("[Notifications] Sending test notification:", {
       subscriptionId,
-      email,
       userId,
     });
 
@@ -53,8 +58,10 @@ export async function POST(req: Request) {
 
     // Get the subscription from database using MongoDB
     const pushSubscriptionsCollection = getCollection("pushSubscriptions");
+    // Only the caller's own subscription: no test pushes to strangers.
     const subscription = await pushSubscriptionsCollection.findOne({
       _id: subscriptionId,
+      userId,
     });
 
     if (!subscription) {

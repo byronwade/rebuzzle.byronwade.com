@@ -2,17 +2,15 @@
  * POST /api/auth/guest/lazy
  *
  * Lazy guest creation - only called when user starts viewing a puzzle.
- * Uses multi-layer identification: Device ID > cookie > IP > localStorage
- *
- * This reduces guest account spam by:
- * 1. Not creating accounts for casual visitors
- * 2. Reusing accounts based on IP (1 per IP)
- * 3. Silent auto-merge for returning users
+ * Returning guests are recognized by device ID (apps) or the guest cookie.
+ * Accounts are only created when a puzzle is viewed, and the guest rate
+ * limiter caps creation per IP.
  */
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { userOps, userStatsOps } from "@/db/operations";
+import { isSessionRevoked } from "@/lib/auth/session-revocation";
 import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME, setAuthCookie } from "@/lib/cookies";
 import { signToken, verifyToken } from "@/lib/jwt";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
@@ -42,7 +40,7 @@ export async function POST(request: Request) {
     // Valid existing session → return the user (don't fail the client)
     if (existingAuthToken) {
       const payload = await verifyToken(existingAuthToken);
-      if (payload?.userId) {
+      if (payload?.userId && !(await isSessionRevoked(payload.userId, payload.iat))) {
         const existingUser = await userOps.findById(payload.userId);
         if (existingUser) {
           const isGuest = Boolean(
@@ -60,21 +58,16 @@ export async function POST(request: Request) {
           });
         }
       }
-      // Expired / invalid token — fall through and issue a fresh guest session
+      // Expired / invalid / signed-out token — fall through and issue a fresh guest session
     }
 
-    // Get identification inputs
-    const body = await request.json().catch(() => ({}));
     const cookieGuestToken = cookieStore.get(GUEST_TOKEN_COOKIE)?.value;
     const ipAddress = extractClientIp(request);
     const deviceId = extractDeviceId(request);
-    const localStorageGuestId = body.localStorageGuestId;
 
     // Try to identify existing guest
     const identification = await identifyGuest({
       cookieGuestToken,
-      ipAddress,
-      localStorageGuestId,
       deviceId: deviceId || undefined,
     });
 

@@ -1,10 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getCollection } from "@/db/mongodb";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 
 export async function POST(req: NextRequest) {
   try {
     // Get subscription data from request body
-    const { subscription, email, userId } = await req.json();
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    const userId = authUser.userId;
+    const email = authUser.email;
+    const { subscription } = await req.json();
     console.log("[Notifications] Verifying subscription:", {
       hasSubscription: !!subscription,
       email,

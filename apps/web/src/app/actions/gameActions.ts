@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { db } from "@/db";
 import { isAdmin } from "@/lib/admin-auth";
+import { isSessionRevoked } from "@/lib/auth/session-revocation";
 import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { verifyToken } from "@/lib/jwt";
@@ -48,7 +49,9 @@ async function getCurrentUserId(): Promise<string | null> {
     }
 
     const payload = await verifyToken(authToken);
-    return payload?.userId || null;
+    if (!payload?.userId) return null;
+    if (await isSessionRevoked(payload.userId, payload.iat)) return null;
+    return payload.userId;
   } catch (error) {
     console.error("[getCurrentUserId] Error:", error);
     return null;

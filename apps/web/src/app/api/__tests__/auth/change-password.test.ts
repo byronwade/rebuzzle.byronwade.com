@@ -13,6 +13,7 @@ jest.mock("@/lib/password", () => ({
   hashPassword: jest.fn(async () => "new-hash"),
   verifyPassword: jest.fn(async () => true),
 }));
+jest.mock("@/lib/jwt", () => ({ signToken: jest.fn(async () => "fresh-token") }));
 jest.mock("@/lib/notifications/email-service", () => ({
   sendPasswordChangeEmail: jest.fn(async () => ({ success: true })),
 }));
@@ -53,6 +54,11 @@ describe("POST /api/auth/change-password", () => {
     );
     expect(res.status).toBe(200);
     expect(findOne).toHaveBeenCalledWith({ id: "me" });
-    expect(db.userOps.update).toHaveBeenCalledWith("me", { passwordHash: "new-hash" });
+    expect(db.userOps.update).toHaveBeenCalledWith("me", {
+      passwordHash: "new-hash",
+      passwordChangedAt: expect.any(Date),
+    });
+    // This device gets a token issued after the change; other devices are signed out.
+    expect(res.headers.get("set-cookie")).toContain("fresh-token");
   });
 });
