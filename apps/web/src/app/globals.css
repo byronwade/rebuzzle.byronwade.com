@@ -53,7 +53,7 @@
     /* — Status words (reserved — not a rainbow) — */
     --link: 223 73% 50%;
     --link-deep: 223 73% 42%;
-    --success: 142 76% 32%;
+    --success: 142 76% 28%; /* 4.7:1 on canvas, 5:1 on panel */
     --warning: 36 100% 36%;
     --destructive: 358 68% 50%;
     --destructive-foreground: 0 0% 100%;

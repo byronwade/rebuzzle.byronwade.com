@@ -344,7 +344,7 @@ export default function SettingsPage() {
                 <p className="mt-0.5 text-muted-foreground text-sm">
                   The look of the whole app. 8-bit is inspired by{" "}
                   <a
-                    className="text-link underline-offset-2 hover:underline"
+                    className="text-link underline underline-offset-2"
                     href="https://www.8bitcn.com/docs"
                     rel="noopener noreferrer"
                     target="_blank"
