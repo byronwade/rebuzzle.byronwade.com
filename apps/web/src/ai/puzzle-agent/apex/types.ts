@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod";
+import type { StoredAnswerResearch } from "../../research/types";
 import type { DifficultyTierLabel } from "../difficulty-levels";
 import type { PuzzleNoveltyEvidence } from "../novelty";
 import type { TechniqueId } from "../technique-library";
@@ -208,6 +209,10 @@ export type ApexCandidate = {
   funScore: number;
   answerSeed?: string;
   answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
+  /** Corroborated web research about the answer (persisted with the puzzle). */
+  answerResearch?: StoredAnswerResearch;
+  /** Prompt-ready research brief handed to generation and critique. */
+  answerResearchBrief?: string;
   boardRecognitionConfidence?: number;
   boardRecognitionModels?: string[];
   boardConceptVotes?: Record<string, number>;

@@ -49,6 +49,10 @@ Rules:
 - Images only when pictograms can't carry the idea (e.g. a specific scene). Never put the answer in the image.
 - At Difficult+, prefer false-lead / positional / typography twists over plain A+B compounds.
 
+## Researched answers
+
+Apex researches every reserved answer on the web before generation (meaning, familiarity, accepted wordings, documented origin, sensitivity). When the prompt includes a **WEB-RESEARCHED ANSWER BRIEF**, write the explanation and hints from that meaning, and do not add history or dates beyond it. Seeds the evidence marks obscure or sensitive are swapped out before you see them.
+
 ## Apex tools (use them)
 
 Daily generation runs through the **Apex tournament engine** (multi-candidate).

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { StoredAnswerResearchSchema } from "../research/types";
 import { TECHNIQUE_IDS } from "./quality";
 import { PuzzleVisualSchema } from "./visual/composition";
 import { INK_PICTOGRAM_STYLE_ID } from "./visual/style";
@@ -161,6 +162,8 @@ export const PuzzleAgentResultSchema = z.object({
     answerSeed: z.string().optional(),
     /** Host-owned visual ingredients used to ground an answer-first board. */
     answerSeedCuePlan: z.array(AnswerSeedVisualCueSchema).max(8).optional(),
+    /** Corroborated web research about the answer, with cited sources. */
+    answerResearch: StoredAnswerResearchSchema.optional(),
     visualStyleId: z.string().optional(),
     /** Calibrated player-sim solve rate (0–1) */
     estimatedSolveRate: z.number().min(0).max(1).optional(),
