@@ -1,7 +1,11 @@
 import { AppLink as Link } from "@/components/AppLink";
 import { RebuzzleLogo } from "@/components/brand/RebuzzleLogo";
+import { SignedOutOnly } from "@/components/SignedOutOnly";
 
-const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[] }[] = [
+const FOOTER_COLUMNS: {
+  heading: string;
+  links: { href: string; label: string; signedOutOnly?: boolean }[];
+}[] = [
   {
     heading: "Play",
     links: [
@@ -26,8 +30,8 @@ const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[
     links: [
       { href: "/profile", label: "Profile" },
       { href: "/settings", label: "Settings" },
-      { href: "/login", label: "Log in" },
-      { href: "/signup", label: "Sign up" },
+      { href: "/login", label: "Log in", signedOutOnly: true },
+      { href: "/signup", label: "Sign up", signedOutOnly: true },
     ],
   },
   {
@@ -64,16 +68,24 @@ export function Footer() {
             <nav aria-label={column.heading} key={column.heading}>
               <p className="eyebrow">{column.heading}</p>
               <ul className="mt-4 space-y-2.5">
-                {column.links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-                      href={link.href}
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
+                {column.links.map((link) => {
+                  const item = (
+                    <li key={link.href}>
+                      <Link
+                        className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+                        href={link.href}
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  );
+                  // Signed-in players don't need Log in / Sign up in the footer.
+                  return link.signedOutOnly ? (
+                    <SignedOutOnly key={link.href}>{item}</SignedOutOnly>
+                  ) : (
+                    item
+                  );
+                })}
               </ul>
             </nav>
           ))}
