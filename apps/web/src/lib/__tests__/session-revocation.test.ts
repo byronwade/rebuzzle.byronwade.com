@@ -39,3 +39,15 @@ describe("session revocation", () => {
     expect(await isSessionRevoked("u1", 1_000)).toBe(false);
   });
 });
+
+describe("issuedBeforePasswordChange", () => {
+  const { issuedBeforePasswordChange } = jest.requireActual("@/lib/auth/session-revocation");
+  const changedAt = new Date("2026-10-25T12:00:00Z");
+  const changedSec = Math.floor(changedAt.getTime() / 1000);
+
+  it("rejects tokens issued before the change and keeps later ones", () => {
+    expect(issuedBeforePasswordChange({ passwordChangedAt: changedAt }, changedSec - 1)).toBe(true);
+    expect(issuedBeforePasswordChange({ passwordChangedAt: changedAt }, changedSec)).toBe(false);
+    expect(issuedBeforePasswordChange({}, changedSec - 1)).toBe(false);
+  });
+});

@@ -9,6 +9,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { dropAllCustomIndexes, listAllIndexes, setupDatabaseIndexes } from "@/db/indexes";
 import { userOps } from "@/db/operations";
+import { issuedBeforePasswordChange } from "@/lib/auth/session-revocation";
 import { verifyToken } from "@/lib/jwt";
 
 const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -30,6 +31,9 @@ async function verifyAdmin(request: NextRequest): Promise<{ isAdmin: boolean; er
     }
 
     const user = await userOps.findById(payload.userId);
+    if (user && issuedBeforePasswordChange(user, payload.iat)) {
+      return { isAdmin: false, error: "Session expired" };
+    }
     if (!user?.isAdmin) {
       return { isAdmin: false, error: "Admin access required" };
     }

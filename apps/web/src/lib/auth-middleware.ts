@@ -12,6 +12,8 @@ export interface AuthenticatedUser {
   userId: string;
   username: string;
   email: string;
+  /** Token issue time (seconds), for exact revocation checks on admin paths */
+  issuedAt?: number;
 }
 
 /**
@@ -57,5 +59,6 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
     userId: payload.userId,
     username: payload.username,
     email: payload.email,
+    issuedAt: payload.iat,
   };
 }

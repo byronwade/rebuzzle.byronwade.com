@@ -6,6 +6,7 @@
 
 import { db } from "@/db";
 import type { User } from "@/db/models";
+import { issuedBeforePasswordChange } from "./auth/session-revocation";
 
 /**
  * Get admin email from environment variable
@@ -65,7 +66,8 @@ export async function verifyAdminAccess(request: Request): Promise<User | null> 
 
     const user = await db.userOps.findById(authUser.userId);
 
-    if (!user) {
+    // Exact check: the middleware's revocation cache can lag on other instances.
+    if (!user || issuedBeforePasswordChange(user, authUser.issuedAt)) {
       return null;
     }
 

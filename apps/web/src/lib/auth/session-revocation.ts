@@ -51,6 +51,18 @@ export async function isSessionRevoked(userId: string, issuedAtSec?: number): Pr
   return issuedAtSec < entry.changedAtSec;
 }
 
+/**
+ * Exact check against a user record already loaded (no cache). Use it on
+ * privileged paths, where a stale cache entry on another instance matters.
+ */
+export function issuedBeforePasswordChange(
+  user: { passwordChangedAt?: Date | null },
+  issuedAtSec?: number
+): boolean {
+  if (issuedAtSec === undefined || !user.passwordChangedAt) return false;
+  return issuedAtSec < toSeconds(new Date(user.passwordChangedAt));
+}
+
 /** Test hook. */
 export function clearSessionRevocationCache(): void {
   cache.clear();
