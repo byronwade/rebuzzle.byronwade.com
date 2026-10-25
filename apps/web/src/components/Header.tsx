@@ -69,10 +69,10 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
             </Link>
 
             {/* Desktop site nav */}
-            <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
+            <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
               {NAV_LINKS.map((link) => (
                 <Link
-                  className="rounded-md px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+                  className="whitespace-nowrap rounded-md px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
                   href={link.href}
                   key={link.href}
                 >
@@ -94,7 +94,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
               aria-controls={mobileNavId}
               aria-expanded={mobileNavOpen}
               aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
-              className="md:hidden"
+              className="lg:hidden"
               onClick={() => setMobileNavOpen((open) => !open)}
               size="icon-sm"
               type="button"
@@ -136,7 +136,7 @@ export default function Header({ nextPlayTime, puzzleType, gameState }: HeaderPr
         <nav
           aria-label="Primary mobile"
           className={cn(
-            "max-h-[calc(var(--vv-height,100dvh)-var(--header-height)-3rem)] overflow-y-auto overscroll-contain border-border border-t md:hidden",
+            "max-h-[calc(var(--vv-height,100dvh)-var(--header-height)-3rem)] overflow-y-auto overscroll-contain border-border border-t lg:hidden",
             mobileNavOpen ? "block" : "hidden"
           )}
           id={mobileNavId}
