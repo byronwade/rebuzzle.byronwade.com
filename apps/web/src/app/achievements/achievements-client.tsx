@@ -300,7 +300,11 @@ export default function AchievementsPage() {
                     {progress.unlocked}/{progress.total}
                   </span>
                 </div>
-                <Progress value={progress.percentage} className="h-2" />
+                <Progress
+                  aria-label="Achievements unlocked"
+                  className="h-2"
+                  value={progress.percentage}
+                />
               </div>
             )}
 

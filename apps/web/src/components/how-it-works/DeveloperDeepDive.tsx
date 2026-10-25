@@ -343,7 +343,7 @@ export function DeveloperDeepDive() {
       <section className="border-border border-t bg-foreground text-background" id="feedback">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-20 md:px-6 md:py-24 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
           <div>
-            <p className="font-medium text-xs text-background/50">Feedback</p>
+            <p className="font-medium text-xs text-background/70">Feedback</p>
             <h3 className="mt-4 text-balance font-semibold text-3xl tracking-[-0.04em] md:text-4xl">
               Tell us what we got wrong—or what to build next.
             </h3>
