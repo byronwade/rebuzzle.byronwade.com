@@ -100,7 +100,7 @@ export function CommunityPuzzlePlay({
           onKeyDown={(e) => {
             if (e.key === "Enter") void submitGuess();
           }}
-          placeholder="Type your answer"
+          placeholder="Type your answer…"
           value={guess}
         />
         <Button

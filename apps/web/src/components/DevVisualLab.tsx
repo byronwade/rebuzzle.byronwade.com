@@ -365,7 +365,7 @@ export function DevVisualLab() {
         <p className="text-muted-foreground text-sm">
           Exercise every generative path — custom pictograms, text devices, unicode emoji, image
           tiles, hybrid boards, composed rebuses, or a full Eve / Apex puzzle. The AI picks concept,
-          answer, and difficulty. Nothing here replaces today&apos;s published puzzle.
+          answer, and difficulty. Nothing here replaces today’s published puzzle.
         </p>
       </div>
 
