@@ -217,7 +217,7 @@ export default function LeaderboardClient({
         <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <RadioGroupPrimitive.Root
             aria-label="Rank by"
-            className="inline-grid grid-cols-2 gap-1 rounded-lg bg-inset p-1"
+            className="touch-targets inline-grid grid-cols-2 gap-1 rounded-lg border border-border bg-inset p-1"
             onValueChange={(value) => setSortBy(value as typeof sortBy)}
             orientation="horizontal"
             value={sortBy}
@@ -229,7 +229,7 @@ export default function LeaderboardClient({
               ] as const
             ).map(({ value, label, icon: Icon }) => (
               <RadioGroupPrimitive.Item
-                className={`inline-flex h-11 items-center justify-center gap-1.5 rounded-md sm:h-9 px-4 font-medium text-sm transition-colors focus-ring ${
+                className={`inline-flex h-11 items-center justify-center gap-1.5 rounded-md px-4 sm:h-9 font-medium text-sm transition-colors focus-ring ${
                   sortBy === value
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -246,7 +246,7 @@ export default function LeaderboardClient({
           {sortBy === "points" && (
             <RadioGroupPrimitive.Root
               aria-label="Time window"
-              className="touch-targets inline-flex h-11 items-center gap-0.5 rounded-md border border-border bg-inset p-1"
+              className="touch-targets inline-flex items-center gap-1 rounded-lg border border-border bg-inset p-1"
               onValueChange={(value) => setTimeframe(value as typeof timeframe)}
               orientation="horizontal"
               value={timeframe}
@@ -260,7 +260,7 @@ export default function LeaderboardClient({
                 ] as const
               ).map(({ value, label }) => (
                 <RadioGroupPrimitive.Item
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3.5 py-1 font-medium text-muted-foreground text-sm focus-ring transition-colors hover:text-foreground data-[state=checked]:bg-card data-[state=checked]:text-foreground data-[state=checked]:shadow-sm"
+                  className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-md px-3.5 font-medium sm:h-9 text-muted-foreground text-sm focus-ring transition-colors hover:text-foreground data-[state=checked]:bg-card data-[state=checked]:text-foreground data-[state=checked]:shadow-sm"
                   key={value}
                   value={value}
                 >
