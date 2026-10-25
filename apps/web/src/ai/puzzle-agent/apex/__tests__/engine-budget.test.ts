@@ -1,3 +1,6 @@
+jest.mock("../../../training/candidate-store", () => ({
+  recordTournamentCandidates: jest.fn(async () => {}),
+}));
 const runPuzzleAgentGeneration = jest.fn();
 const buildGenerationBrief = jest.fn();
 const critiqueCandidate = jest.fn();
@@ -23,6 +26,7 @@ jest.mock("../../../learning/sim-calibration", () => ({
 }));
 
 import { AIBudgetExceededError } from "../../../errors";
+import { recordTournamentCandidates } from "../../../training/candidate-store";
 import { INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
 import { runApexGeneration } from "../engine";
 
@@ -225,6 +229,15 @@ describe("Apex spending-cap behavior", () => {
 
     expect(result.status).toBe("success");
     expect(result.puzzle.answer).toBe("repaired");
+    expect(recordTournamentCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        candidates: expect.arrayContaining([
+          expect.objectContaining({ answer: "top" }),
+          expect.objectContaining({ answer: "repaired" }),
+        ]),
+        winnerId: expect.any(String),
+      })
+    );
     expect(runPuzzleAgentGeneration).toHaveBeenCalledTimes(3);
     expect(runPuzzleAgentGeneration.mock.calls[2][0]).toMatchObject({
       maxAttempts: 1,

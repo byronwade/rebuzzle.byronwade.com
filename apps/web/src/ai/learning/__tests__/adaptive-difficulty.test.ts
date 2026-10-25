@@ -52,7 +52,7 @@ describe("adaptive difficulty", () => {
   });
 
   it("eases difficulty when solve rate collapses", () => {
-    const sun = new Date("2026-07-26T12:00:00.000Z"); // baseline 5
+    const sun = new Date("2026-07-26T12:00:00.000Z"); // baseline 8
     const result = computeAdaptiveDifficulty({
       date: sun,
       performance: perf({
@@ -63,7 +63,7 @@ describe("adaptive difficulty", () => {
         notes: ["too hard"],
       }),
     });
-    expect(result.target).toBe(4);
+    expect(result.target).toBe(7);
   });
 
   it("clamps into the Hard–Impossible generation band", () => {

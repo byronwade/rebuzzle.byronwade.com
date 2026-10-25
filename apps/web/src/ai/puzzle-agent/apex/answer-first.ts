@@ -31,6 +31,7 @@ export function selectAnswerFirstSeed(input: {
   techniqueId: string;
   usedAnswerKeys?: Iterable<string>;
   requireVisualCuePlan?: boolean;
+  targetDifficulty?: number;
 }): PhraseBankEntry | undefined {
   const used = new Set(
     Array.from(input.usedAnswerKeys ?? [], (answer) => normalizeAnswerKey(answer)).filter(Boolean)
@@ -49,6 +50,13 @@ export function selectAnswerFirstSeed(input: {
   const compatible = fresh.filter((entry) =>
     entry.techniqueAffinity.some((technique) => technique === input.techniqueId)
   );
+  if (Number.isFinite(input.targetDifficulty)) {
+    compatible.sort(
+      (a, b) =>
+        Math.abs(a.difficultyHint - input.targetDifficulty!) -
+        Math.abs(b.difficultyHint - input.targetDifficulty!)
+    );
+  }
   return compatible[0];
 }
 
@@ -63,27 +71,66 @@ export function selectAnswerFirstSeeds(input: {
   count: number;
   usedAnswerKeys?: Iterable<string>;
   requireVisualCuePlan?: boolean;
+  targetDifficulty?: number;
 }): PhraseBankEntry[] {
+  if (!Number.isSafeInteger(input.count) || input.count <= 0 || !input.techniqueIds.length)
+    return [];
   const used = new Set(
     Array.from(input.usedAnswerKeys ?? [], (answer) => normalizeAnswerKey(answer)).filter(Boolean)
   );
+  const fresh = input.entries.filter((entry) => {
+    const key = answerFirstSeedKey(entry);
+    return (
+      key &&
+      !used.has(key) &&
+      !entry.overused &&
+      (!input.requireVisualCuePlan || Boolean(entry.visualCues?.length))
+    );
+  });
+  const choices: Array<Array<{ key: string; entry: PhraseBankEntry }>> = [];
+  const owner = new Map<string, number>();
   const selected: PhraseBankEntry[] = [];
 
-  for (let index = 0; index < input.count; index++) {
-    const techniqueId = input.techniqueIds[index % Math.max(1, input.techniqueIds.length)];
-    if (!techniqueId) break;
-    const seed = selectAnswerFirstSeed({
-      entries: input.entries,
-      techniqueId,
-      usedAnswerKeys: used,
-      requireVisualCuePlan: input.requireVisualCuePlan,
-    });
-    const key = answerFirstSeedKey(seed);
-    if (!seed || !key) break;
-    selected.push(seed);
-    used.add(key);
+  // Augmenting paths can move a flexible earlier seed to another valid answer,
+  // freeing the only compatible answer for a constrained later slot. Collisions
+  // use normalized answer keys, even when the bank contains duplicate variants.
+  const reserve = (slot: number, visited: Set<string>): boolean => {
+    const options = choices[slot]!;
+    // Preserve earlier preferences when a free answer can satisfy this slot.
+    for (const occupied of [false, true]) {
+      for (const option of options) {
+        if (owner.has(option.key) !== occupied || visited.has(option.key)) continue;
+        visited.add(option.key);
+        const prior = owner.get(option.key);
+        if (prior === undefined || reserve(prior, visited)) {
+          owner.set(option.key, slot);
+          selected[slot] = option.entry;
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  for (let slot = 0; slot < input.count; slot++) {
+    const technique = input.techniqueIds[slot % input.techniqueIds.length]!;
+    const compatible = fresh.filter((entry) =>
+      entry.techniqueAffinity.some((id) => id === technique)
+    );
+    if (Number.isFinite(input.targetDifficulty)) {
+      compatible.sort(
+        (a, b) =>
+          Math.abs(a.difficultyHint - input.targetDifficulty!) -
+          Math.abs(b.difficultyHint - input.targetDifficulty!)
+      );
+    }
+    const unique = new Map<string, PhraseBankEntry>();
+    for (const entry of compatible) {
+      const key = answerFirstSeedKey(entry)!;
+      if (!unique.has(key)) unique.set(key, entry);
+    }
+    choices.push(Array.from(unique, ([key, entry]) => ({ key, entry })));
+    if (!reserve(slot, new Set())) break;
   }
-
   return selected;
 }
 

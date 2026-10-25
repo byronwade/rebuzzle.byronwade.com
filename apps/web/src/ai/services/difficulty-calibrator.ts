@@ -62,7 +62,7 @@ Be honest about:
   const prompt = `Solve this rebus puzzle:
 
 Puzzle: "${puzzle.rebusPuzzle}"
-${puzzle.hints ? `Hints available: ${puzzle.hints.join(", ")}` : ""}
+Do not request or assume hints. Measure the unaided solving experience.
 
 Think through it step-by-step:
 1. What do you see first?
@@ -98,6 +98,8 @@ export async function calibrateDifficulty(puzzle: {
   answer: string;
   proposedDifficulty: number;
   hints?: string[];
+  explanation?: string;
+  category?: string;
 }): Promise<{
   calibratedDifficulty: number;
   difficultyProfile: DifficultyProfile;
@@ -108,8 +110,8 @@ export async function calibrateDifficulty(puzzle: {
   const profile = calculateDifficultyProfile({
     rebusPuzzle: puzzle.rebusPuzzle,
     answer: puzzle.answer,
-    explanation: "",
-    category: "",
+    explanation: puzzle.explanation ?? "",
+    category: puzzle.category ?? "",
   });
 
   // AI self-test
@@ -117,9 +119,9 @@ export async function calibrateDifficulty(puzzle: {
 
   // Combine proposed, calculated, and tested difficulty
   const weights = {
-    proposed: 0.3,
-    calculated: 0.3,
-    tested: 0.4,
+    proposed: 0.1,
+    calculated: 0.2,
+    tested: 0.7,
   };
 
   const calibratedDifficulty = Math.round(

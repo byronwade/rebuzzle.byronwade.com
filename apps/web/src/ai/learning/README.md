@@ -44,3 +44,7 @@ Persist puzzle with answerKey (never hard-delete; archive on regenerate)
 ## Flags
 
 Learning respects `AI_ENABLE_LEARNING` (default on).
+
+## Offline model training
+
+Completed Apex tournaments now preserve portable candidate blueprints and evaluation outcomes in `puzzleTrainingCandidates`, including rejected/replaced candidates. This does not automatically train a model or turn AI selections into human labels. See [dataset research and training](../../../docs/research/PUZZLE_MODEL_TRAINING.md) for source/license findings, reviewed SFT/DPO exports, grouped holdouts, the CPU preference ranker, and the optional GPU LoRA pilot.

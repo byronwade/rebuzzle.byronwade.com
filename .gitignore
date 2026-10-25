@@ -57,3 +57,11 @@ node_modules/.pnpm
 apps/web/playwright-report/
 apps/web/test-results/
 apps/web/blob-report/
+
+# Local research and training corpora (may contain unreleased puzzle answers)
+artifacts/puzzle-research/
+artifacts/puzzle-training/
+
+# Python training tools
+__pycache__/
+*.pyc

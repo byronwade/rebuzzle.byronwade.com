@@ -133,3 +133,121 @@ describe("answer-first seed selection", () => {
     ).toBe("moonlight");
   });
 });
+
+describe("complete tournament allocation", () => {
+  const flexible: PhraseBankEntry = {
+    answer: "flexible",
+    category: "test",
+    difficultyHint: 7,
+    techniqueAffinity: ["simple_compound", "spatial_preposition_play"],
+  };
+  const constrained: PhraseBankEntry = {
+    answer: "compound only",
+    category: "test",
+    difficultyHint: 5,
+    techniqueAffinity: ["simple_compound"],
+  };
+  it("reassigns a flexible seed instead of falsely reporting exhausted inventory", () => {
+    const selected = selectAnswerFirstSeeds({
+      entries: [flexible, constrained],
+      techniqueIds: ["simple_compound", "spatial_preposition_play"],
+      count: 2,
+    });
+    expect(selected.map((s) => s.answer)).toEqual(["compound only", "flexible"]);
+  });
+  it("handles a chain of reassignments", () => {
+    const bank: PhraseBankEntry[] = [
+      {
+        ...flexible,
+        answer: "first",
+        techniqueAffinity: ["simple_compound", "spatial_preposition_play"],
+      },
+      {
+        ...flexible,
+        answer: "second",
+        techniqueAffinity: ["spatial_preposition_play", "idiom_as_picture"],
+      },
+      { ...flexible, answer: "third", techniqueAffinity: ["simple_compound"] },
+    ];
+    expect(
+      selectAnswerFirstSeeds({
+        entries: bank,
+        techniqueIds: ["simple_compound", "spatial_preposition_play", "idiom_as_picture"],
+        count: 3,
+      }).map((s) => s.answer)
+    ).toEqual(["third", "first", "second"]);
+  });
+  it("does not count spelling variants as separate available answers", () => {
+    expect(
+      selectAnswerFirstSeeds({
+        entries: [flexible, { ...flexible, answer: "FLEX-IBLE" }],
+        techniqueIds: ["simple_compound"],
+        count: 2,
+      })
+    ).toHaveLength(1);
+  });
+  it("ranks fresh compatible seeds by target difficulty without changing the bank", () => {
+    const bank = [constrained, flexible];
+    expect(
+      selectAnswerFirstSeed({ entries: bank, techniqueId: "simple_compound", targetDifficulty: 8 })
+        ?.answer
+    ).toBe("flexible");
+    expect(
+      selectAnswerFirstSeeds({
+        entries: bank,
+        techniqueIds: ["simple_compound"],
+        count: 1,
+        targetDifficulty: 8,
+      })[0]?.answer
+    ).toBe("flexible");
+    expect(bank[0]).toBe(constrained);
+  });
+  it.each([NaN, Infinity, -1, 1.5])("rejects an invalid slot count %s", (count) => {
+    expect(
+      selectAnswerFirstSeeds({ entries: [flexible], techniqueIds: ["simple_compound"], count })
+    ).toEqual([]);
+  });
+  it("respects used answers and cue-plan requirements during reassignment", () => {
+    expect(
+      selectAnswerFirstSeeds({
+        entries: [flexible, constrained],
+        techniqueIds: ["simple_compound", "spatial_preposition_play"],
+        count: 2,
+        usedAnswerKeys: ["flexible"],
+      })
+    ).toEqual([constrained]);
+    expect(
+      selectAnswerFirstSeeds({
+        entries: [flexible, constrained],
+        techniqueIds: ["simple_compound"],
+        count: 1,
+        requireVisualCuePlan: true,
+      })
+    ).toEqual([]);
+  });
+});
+
+it("finds a full assignment for every feasible three-slot compatibility graph", () => {
+  const techniques = ["simple_compound", "spatial_preposition_play", "idiom_as_picture"] as const;
+  // Compare the planner with an independent exhaustive oracle across all 512 graphs.
+  for (let mask = 0; mask < 512; mask++) {
+    const bank: PhraseBankEntry[] = [0, 1, 2].map((entry) => ({
+      answer: `answer ${entry}`,
+      category: "test",
+      difficultyHint: 7,
+      techniqueAffinity: techniques.filter((_, slot) => Boolean(mask & (1 << (entry * 3 + slot)))),
+    }));
+    const feasible = (slot: number, used: Set<number>): boolean =>
+      slot === 3 ||
+      bank.some(
+        (entry, index) =>
+          !used.has(index) &&
+          entry.techniqueAffinity.includes(techniques[slot]!) &&
+          feasible(slot + 1, new Set([...used, index]))
+      );
+    const result = selectAnswerFirstSeeds({ entries: bank, techniqueIds: techniques, count: 3 });
+    expect(result.length === 3).toBe(feasible(0, new Set()));
+    expect(new Set(result.map((entry) => answerFirstSeedKey(entry))).size).toBe(result.length);
+    result.forEach((entry, slot) => expect(entry.techniqueAffinity).toContain(techniques[slot]));
+  }
+});

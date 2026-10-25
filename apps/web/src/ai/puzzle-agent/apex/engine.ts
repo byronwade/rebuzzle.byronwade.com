@@ -10,6 +10,7 @@
 
 import { AI_CONFIG } from "../../config";
 import { isHardAIBudgetError, parseAIError } from "../../errors";
+import { recordTournamentCandidates } from "../../training/candidate-store";
 import { isKnownTechniqueId } from "../quality";
 import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-generation";
 import type { PuzzleAgentResult } from "../schemas";
@@ -204,6 +205,7 @@ export async function runApexGeneration(
     count: brief.candidateCount,
     usedAnswerKeys: brief.diversity.bannedAnswerKeys,
     requireVisualCuePlan: true,
+    targetDifficulty: params.targetDifficulty,
   });
   if (screen.inventoryShort || !screen.seeds.length) {
     throw new AnswerFirstSeedUnavailableError({
@@ -394,6 +396,13 @@ export async function runApexGeneration(
   });
   const { winner, ranked } = selection;
   failures.push(...selection.failures);
+  await recordTournamentCandidates({
+    runId: crypto.randomUUID(),
+    candidates: Array.from(
+      new Map([...candidates, ...ranked].map((candidate) => [candidate.id, candidate])).values()
+    ),
+    winnerId: winner?.id,
+  });
   const selectMs = Math.max(0, Date.now() - selectStarted - critiqueMs);
 
   if (!winner) {

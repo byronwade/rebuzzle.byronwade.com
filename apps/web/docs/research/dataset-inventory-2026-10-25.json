@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-10-25",
+  "datasets": [
+    {
+      "id": "columbus",
+      "revision": "d34984c1019fbf9b5ebafb3c50051dd24f42c7c4",
+      "metadataSha256": "de6d8debae170469eb45c7d823ecf19ee1738ca0cf91a42a7df4acf9a63a4aa5",
+      "rows": 1005,
+      "originals": 1005,
+      "augmented": 0,
+      "uniqueAnswers": 636,
+      "eligibleForTraining": 0,
+      "eligibleForEvaluation": 0,
+      "reviewStatus": "pending",
+      "imported": true
+    },
+    {
+      "id": "movva",
+      "revision": "b4911d5585deb11c11aa042b7d30e9344b546983",
+      "metadataSha256": "7d8f2f661c86ce8e3fefc647d93266a88132397656c5dc2c30de7256f01f8e4f",
+      "rows": 221,
+      "originals": 221,
+      "augmented": 0,
+      "uniqueAnswers": 220,
+      "eligibleForTraining": 0,
+      "eligibleForEvaluation": 0,
+      "reviewStatus": "pending",
+      "imported": true
+    },
+    {
+      "id": "re-bus",
+      "revision": "12233c6790bb2edc929ad7822ae428483b5c842a",
+      "metadataSha256": "b3bf8ff2c43ec87f2a799d266393c174f2b19141870c966863484ba4e231b8d2",
+      "rows": 1354,
+      "originals": 743,
+      "augmented": 611,
+      "uniqueAnswers": 704,
+      "eligibleForTraining": 0,
+      "eligibleForEvaluation": 0,
+      "reviewStatus": "pending",
+      "imported": true
+    },
+    {
+      "id": "rebus-333",
+      "use": "quarantined",
+      "imported": false
+    },
+    {
+      "id": "puzzled-by-puzzles",
+      "use": "quarantined",
+      "imported": false
+    },
+    {
+      "id": "puzzleworld",
+      "use": "research-literature-only",
+      "imported": false
+    },
+    {
+      "id": "rebusbench",
+      "use": "quarantined",
+      "imported": false
+    }
+  ],
+  "benchmarkAnswerStrings": 1583,
+  "imagesDownloaded": 0,
+  "trainingExamplesApproved": 0
+}
