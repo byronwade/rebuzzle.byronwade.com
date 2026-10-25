@@ -56,12 +56,13 @@ async function BlogContent() {
     return (
       <Layout>
         <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
-          <header className="border-border border-b pb-8">
-            <p className="eyebrow">Blog</p>
-            <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Puzzle solutions.</h1>
-          </header>
+          <PageHeader
+            description="Daily write-ups, strategies and the reasoning behind each puzzle."
+            eyebrow="Blog"
+            title="Puzzle solutions."
+          />
 
-          <Card className="mt-10" variant="inset">
+          <Card variant="inset">
             <CardContent className="px-6 py-14 text-center">
               <h2 className="font-semibold text-lg tracking-[-0.03em]">Something went wrong</h2>
               <p className="mt-2 text-muted-foreground text-sm">We couldn't load the blog posts.</p>
@@ -87,15 +88,13 @@ async function BlogContent() {
     return (
       <Layout>
         <div className="mx-auto max-w-3xl px-4 py-14 md:px-6 md:py-20">
-          <header className="border-border border-b pb-8">
-            <p className="eyebrow">Blog</p>
-            <h1 className="mt-4 font-semibold text-4xl tracking-[-0.045em]">Puzzle solutions.</h1>
-            <p className="mt-3 text-muted-foreground leading-7">
-              Daily write-ups, strategies and the reasoning behind each puzzle.
-            </p>
-          </header>
+          <PageHeader
+            description="Daily write-ups, strategies and the reasoning behind each puzzle."
+            eyebrow="Blog"
+            title="Puzzle solutions."
+          />
 
-          <Card className="mt-10" variant="inset">
+          <Card variant="inset">
             <CardContent className="px-6 py-14 text-center">
               <FileText className="mx-auto mb-4 size-8 text-subtle" />
               <h2 className="font-semibold text-lg tracking-[-0.03em]">No posts yet</h2>

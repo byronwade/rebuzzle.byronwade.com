@@ -294,7 +294,7 @@ export default function HowItWorksPage() {
               </ol>
             </div>
 
-            <aside className="lg:pt-32">
+            <figure className="lg:pt-32">
               <div className="rounded-xl border border-border bg-card p-5 shadow-lg">
                 <div className="rounded-lg border border-white/10 bg-[#171717] px-5 py-10 text-center text-[#f7f4ee]">
                   <div className="font-semibold text-3xl tracking-[-0.04em]">
@@ -317,10 +317,10 @@ export default function HowItWorksPage() {
                   </span>
                 </div>
               </div>
-              <p className="mt-4 px-3 text-center text-subtle text-xs leading-5">
+              <figcaption className="mt-4 px-3 text-center text-subtle text-xs leading-5">
                 Guesses become a thread, so every attempt helps you refine the idea.
-              </p>
-            </aside>
+              </figcaption>
+            </figure>
           </div>
         </section>
 
