@@ -196,7 +196,13 @@ export default function RebuzzleVsWordlePage() {
           <h2 className="font-semibold text-2xl tracking-[-0.04em] md:text-[32px]">
             Feature comparison
           </h2>
-          <div className="mt-6 overflow-x-auto rounded-xl border border-border">
+          <div
+            aria-label="Feature comparison table"
+            className="mt-6 overflow-x-auto rounded-xl border border-border focus-ring"
+            role="region"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: lets keyboard users scroll the table sideways on phones
+            tabIndex={0}
+          >
             <table className="w-full min-w-[36rem] table-fixed border-collapse">
               <colgroup>
                 <col className="w-[24%]" />

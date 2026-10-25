@@ -1173,7 +1173,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
           return (
             <div className="flex h-full min-h-0 flex-col">
-              <main className="puzzle-area flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="puzzle-area flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div
                   className={cn(
                     "play-stage flex min-h-0 flex-1 flex-col items-center px-4 md:px-6",
@@ -1272,7 +1272,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     </div>
                   ) : null}
                 </div>
-              </main>
+              </div>
 
               {/* Error display - positioned above input area */}
               {error && (
