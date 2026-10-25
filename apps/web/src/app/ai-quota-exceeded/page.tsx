@@ -27,7 +27,7 @@ export default function AIQuotaExceededPage() {
         actions={
           <>
             <Button asChild size="lg">
-              <Link href="/">Play today's puzzle</Link>
+              <Link href="/">Play today’s puzzle</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href="/blog">Read puzzle tips</Link>

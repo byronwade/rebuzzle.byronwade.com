@@ -428,7 +428,7 @@ export default function ProfilePage() {
 
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Button asChild className="w-full sm:w-auto" size="lg">
-            <Link href="/">Play today's puzzle</Link>
+            <Link href="/">Play today’s puzzle</Link>
           </Button>
           <Button asChild className="w-full sm:w-auto" size="lg" variant="ghost">
             <Link href="/leaderboard">See the leaderboard</Link>

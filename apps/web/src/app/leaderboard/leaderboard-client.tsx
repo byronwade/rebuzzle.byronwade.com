@@ -355,7 +355,7 @@ export default function LeaderboardClient({
                 Solve today’s puzzle and the top spot is yours.
               </p>
               <Button asChild className="mt-6" size="lg">
-                <Link href="/">Play today's puzzle</Link>
+                <Link href="/">Play today’s puzzle</Link>
               </Button>
             </CardContent>
           </Card>
@@ -603,7 +603,7 @@ export default function LeaderboardClient({
         {leaderboard.length > 0 && !loading ? (
           <div className="mt-8 text-center">
             <Button asChild size="lg">
-              <Link href="/">Play today's puzzle</Link>
+              <Link href="/">Play today’s puzzle</Link>
             </Button>
           </div>
         ) : null}
