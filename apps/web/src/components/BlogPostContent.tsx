@@ -148,10 +148,8 @@ export default function BlogPostContent({ post }: BlogPostContentProps) {
 
       <section className="mt-10">
         <p className="eyebrow">The puzzle</p>
-        <div className="mt-3 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="rounded-lg border border-border bg-inset px-4 py-8">
-            <PuzzleDisplay puzzle={post.puzzle} puzzleType={post.puzzleType} size="large" />
-          </div>
+        <div className="mt-3 rounded-xl border border-border bg-inset px-4 py-10">
+          <PuzzleDisplay puzzle={post.puzzle} puzzleType={post.puzzleType} size="large" />
         </div>
       </section>
 
