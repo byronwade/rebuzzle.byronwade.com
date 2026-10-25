@@ -171,4 +171,21 @@ describe("achievement criteria", () => {
     );
     expect(ok).toBe(true);
   });
+
+  it("counts lifetime totals beyond the recent-attempt window", async () => {
+    const lifetime = {
+      noHintWins: async () => 100,
+      winsWithin: async (seconds: number) => (seconds >= 30 ? 100 : 10),
+      totalAttempts: async () => 250,
+      totalHintsUsed: async () => 3,
+    };
+    const run = (criteria: Parameters<typeof checkAchievementCriteria>[0]) =>
+      checkAchievementCriteria(criteria, baseUser(), baseStats(), [], baseContext(), 0, lifetime);
+
+    expect(await run({ type: "puzzles_solved_no_hints", count: 100 })).toBe(true);
+    expect(await run({ type: "speed_solve_count", seconds: 30, count: 100 })).toBe(true);
+    expect(await run({ type: "speed_solve_count", seconds: 15, count: 50 })).toBe(false);
+    expect(await run({ type: "total_attempts", count: 200 })).toBe(true);
+    expect(await run({ type: "hints_used_total", count: 3 })).toBe(true);
+  });
 });

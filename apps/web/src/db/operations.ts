@@ -4,6 +4,7 @@
  * Clean, efficient MongoDB operations for Rebuzzle
  */
 
+import type { Filter } from "mongodb";
 import type {
   Achievement,
   BlogPost,
@@ -415,6 +416,24 @@ export const puzzleAttemptOps = {
   async getUserAttempts(userId: string, limit = 50): Promise<PuzzleAttempt[]> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
     return await collection.find({ userId }).sort({ attemptedAt: -1 }).limit(limit).toArray();
+  },
+
+  /** Lifetime count of a user's attempt rows matching `filter`. */
+  async countUserAttempts(userId: string, filter: Filter<PuzzleAttempt> = {}): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    return await collection.countDocuments({ ...filter, userId } as Filter<PuzzleAttempt>);
+  },
+
+  /** Hints used across finished games (each final row carries that game's hint count). */
+  async sumFinalHintsUsed(userId: string): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const [row] = await collection
+      .aggregate<{ total: number }>([
+        { $match: { userId, isFinal: true } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ["$hintsUsed", 0] } } } },
+      ])
+      .toArray();
+    return row?.total ?? 0;
   },
 
   /**
