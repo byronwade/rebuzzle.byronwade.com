@@ -579,7 +579,11 @@ export const puzzleAttemptOps = {
     userId: string,
     todayStart: Date,
     attemptData: NewPuzzleAttempt
-  ): Promise<{ success: boolean; attempt: PuzzleAttempt }> {
+  ): Promise<
+    | { success: true; attempt: PuzzleAttempt }
+    | { success: false; attempt: PuzzleAttempt; reason: "locked" }
+    | { success: false; attempt: null; reason: "duplicate-attempt" }
+  > {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
     const puzzleDate = attemptData.puzzleDate || todayStart.toISOString().slice(0, 10);
     const isFinal = Boolean(
@@ -588,6 +592,11 @@ export const puzzleAttemptOps = {
 
     const payload: NewPuzzleAttempt = {
       ...attemptData,
+      // One row per attempt slot. _id is always unique, so two guesses sent
+      // at once can't both land as the same attempt number (or both as #1).
+      ...(attemptData.attemptNumber
+        ? { _id: `${userId}:${puzzleDate}:${attemptData.attemptNumber}` }
+        : {}),
       puzzleDate,
       isFinal,
     };
@@ -598,7 +607,7 @@ export const puzzleAttemptOps = {
       isFinal: true,
     });
     if (existingFinal) {
-      return { success: false, attempt: existingFinal };
+      return { success: false, attempt: existingFinal, reason: "locked" };
     }
 
     try {
@@ -612,8 +621,9 @@ export const puzzleAttemptOps = {
           isFinal: true,
         });
         if (existing) {
-          return { success: false, attempt: existing };
+          return { success: false, attempt: existing, reason: "locked" };
         }
+        return { success: false, attempt: null, reason: "duplicate-attempt" };
       }
       throw error;
     }

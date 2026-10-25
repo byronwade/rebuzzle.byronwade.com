@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import type { User } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { noteCredentialsChanged } from "@/lib/auth/session-revocation";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { setAuthCookie } from "@/lib/cookies";
+import { signToken } from "@/lib/jwt";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { sendPasswordChangeEmail } from "@/lib/notifications/email-service";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -82,10 +85,13 @@ export async function POST(request: Request) {
     // Hash new password
     const newPasswordHash = await hashPassword(newPassword);
 
-    // Update user password
+    // Update user password. passwordChangedAt signs out every other device.
+    const changedAt = new Date();
     await db.userOps.update(user.id, {
       passwordHash: newPasswordHash,
+      passwordChangedAt: changedAt,
     });
+    noteCredentialsChanged(user.id, changedAt);
 
     // Get IP address from request headers (if available)
     const forwarded = request.headers.get("x-forwarded-for");
@@ -101,10 +107,17 @@ export async function POST(request: Request) {
       console.error("Error sending password change email:", emailError);
     }
 
-    return NextResponse.json({
+    // Keep this device signed in with a token issued after the change.
+    const token = await signToken({
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+    });
+    const response = NextResponse.json({
       success: true,
       message: "Password has been changed successfully. A confirmation email has been sent.",
     });
+    return setAuthCookie(response, token);
   } catch (error) {
     console.error("Change password error:", error);
     return NextResponse.json(

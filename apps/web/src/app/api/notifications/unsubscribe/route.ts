@@ -1,52 +1,28 @@
 import { NextResponse } from "next/server";
 import { getCollection } from "@/db/mongodb";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 
 export async function POST(req: Request) {
   try {
-    const { subscriptionId, userId, email } = await req.json();
-
-    console.log("[Notifications] Unsubscribing:", {
-      subscriptionId,
-      userId,
-      email,
-    });
-
-    if (!(subscriptionId || userId || email)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Subscription ID, user ID, or email required",
-        },
-        { status: 400 }
-      );
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    let result;
+    const { subscriptionId, endpoint } = (await req.json().catch(() => ({}))) as {
+      subscriptionId?: unknown;
+      endpoint?: unknown;
+    };
 
+    // Only the signed-in user's own subscriptions can be removed.
     const pushSubscriptionsCollection = getCollection("pushSubscriptions");
-
-    if (subscriptionId) {
-      // Delete by subscription ID (most specific)
-      result = await pushSubscriptionsCollection.deleteOne({
-        _id: subscriptionId,
-      });
-    } else {
-      // Delete by user identifier
-      const userIdentifier = userId || email;
-      if (userIdentifier) {
-        result = await pushSubscriptionsCollection.deleteOne({
-          $or: [{ userId: userIdentifier }, { email: userIdentifier }],
-        });
-      } else {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "No valid identifier provided",
-          },
-          { status: 400 }
-        );
-      }
-    }
+    const owned = { userId: authUser.userId };
+    const result =
+      typeof subscriptionId === "string" && subscriptionId
+        ? await pushSubscriptionsCollection.deleteOne({ ...owned, _id: subscriptionId as never })
+        : typeof endpoint === "string" && endpoint
+          ? await pushSubscriptionsCollection.deleteOne({ ...owned, endpoint })
+          : await pushSubscriptionsCollection.deleteMany(owned);
 
     if (!result.acknowledged) {
       console.error("[Notifications] Database error: Failed to delete subscription");

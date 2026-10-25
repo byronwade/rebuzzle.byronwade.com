@@ -14,6 +14,7 @@ export interface User {
   lastLogin?: Date;
   resetToken?: string;
   resetTokenExpiry?: Date;
+  passwordChangedAt?: Date; // Sessions issued before this are signed out
   isAdmin?: boolean; // Admin permission flag
   isGuest?: boolean; // True for anonymous guest accounts
   guestToken?: string; // Unique token for guest identification

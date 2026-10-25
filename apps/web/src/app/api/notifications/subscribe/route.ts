@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { getCollection } from "@/db/mongodb";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 
 export async function POST(req: Request) {
   try {
-    const { subscription, email, userId, sendWelcomeEmail = false } = await req.json();
+    // The owner comes from the session, never the body: anyone could
+    // otherwise attach a push subscription to someone else's account.
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+    }
+    const userId = authUser.userId;
+    const email = authUser.email;
+    const { subscription, sendWelcomeEmail = false } = await req.json();
 
     console.log("[Notifications] Processing subscription request:", {
       hasSubscription: !!subscription,

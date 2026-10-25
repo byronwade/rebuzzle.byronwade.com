@@ -4,6 +4,7 @@
  * Utilities for verifying authentication in API routes
  */
 
+import { isSessionRevoked } from "./auth/session-revocation";
 import { getAuthTokenFromRequest } from "./cookies";
 import { verifyToken } from "./jwt";
 
@@ -45,6 +46,10 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
   const payload = await verifyToken(token);
 
   if (!payload) {
+    return null;
+  }
+
+  if (await isSessionRevoked(payload.userId, payload.iat)) {
     return null;
   }
 
