@@ -38,8 +38,9 @@
     --secondary: 39 14% 94.2%;
     --secondary-foreground: 33 22% 10.2%;
     --muted: 39 14% 94.2%; /* hover — ink 5% into paper */
-    --muted-foreground: 34 4% 40.3%; /* marker */
-    --subtle-foreground: 34 3% 52.7%;
+    --muted-foreground: 34 4% 36%; /* marker */
+    /* 4.6:1 on canvas, 5:1 on panel: the floor for 12px text (WCAG AA). */
+    --subtle-foreground: 34 3% 43%;
     --accent: 38 10% 91.6%; /* selected — ink 8% into paper */
     --accent-foreground: 33 22% 10.2%;
 
@@ -187,8 +188,8 @@
     --secondary: 0 0% 97%;
     --secondary-foreground: 0 0% 21%;
     --muted: 0 0% 97%;
-    --muted-foreground: 0 0% 45%;
-    --subtle-foreground: 0 0% 55%;
+    --muted-foreground: 0 0% 38%;
+    --subtle-foreground: 0 0% 44%;
     --accent: 0 0% 97%;
     --accent-foreground: 0 0% 21%;
 
@@ -242,7 +243,7 @@
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 27%;
     --muted-foreground: 0 0% 70%;
-    --subtle-foreground: 0 0% 60%;
+    --subtle-foreground: 0 0% 64%;
     --accent: 0 0% 27%;
     --accent-foreground: 0 0% 98%;
 
