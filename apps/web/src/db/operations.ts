@@ -459,10 +459,13 @@ export const puzzleAttemptOps = {
         },
         { projection: { isCorrect: 1, puzzleId: 1 } }
       )) ||
-      // Legacy fallback: finals without puzzleDate/isFinal
+      // Legacy fallback: finals from before puzzleDate/isFinal existed. Rows
+      // that have a puzzleDate (archive and community plays) never count, or
+      // an archive win would lock today and reveal its answer on /game-over.
       (await collection.findOne(
         {
           userId,
+          puzzleDate: { $exists: false },
           attemptedAt: {
             $gte: new Date(`${dateKey}T00:00:00.000Z`),
             $lt: new Date(`${dateKey}T23:59:59.999Z`),

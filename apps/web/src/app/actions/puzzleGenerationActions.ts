@@ -1,4 +1,6 @@
-"use server";
+// Server-only helpers, not server actions: as actions, any visitor could call
+// them to read answers or regenerate today's puzzle. Gated routes wrap them.
+import "server-only";
 
 import { generateMasterPuzzle } from "@/ai/advanced";
 import {

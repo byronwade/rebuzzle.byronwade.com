@@ -46,7 +46,8 @@ export async function GET(_request: Request, { params }: Params) {
       id: row.id,
       slug: row.slug,
       path: communityPuzzlePath(row.slug),
-      title: row.title || row.answer,
+      // Never fall back to the answer: these puzzles are playable for points.
+      title: row.title || null,
       rebusPuzzle: row.rebusPuzzle,
       visual: row.visual,
       techniqueId: row.techniqueId,

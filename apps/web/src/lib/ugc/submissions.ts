@@ -16,8 +16,14 @@ export async function findSubmissionById(id: string): Promise<UserPuzzleSubmissi
   return (await submissionsCollection().findOne({ id })) as UserPuzzleSubmission | null;
 }
 
+/** Public reads hide a title that just restates the answer (older drafts). */
+function withPublicTitle(row: UserPuzzleSubmission): UserPuzzleSubmission {
+  return { ...row, title: publicTitle(row.title, row.answer) };
+}
+
 export async function findSubmissionBySlug(slug: string): Promise<UserPuzzleSubmission | null> {
-  return (await submissionsCollection().findOne({ slug })) as UserPuzzleSubmission | null;
+  const row = (await submissionsCollection().findOne({ slug })) as UserPuzzleSubmission | null;
+  return row ? withPublicTitle(row) : null;
 }
 
 export async function listSubmissionsForUser(
@@ -35,23 +41,27 @@ export async function listPublicCreatorPuzzles(
   username: string,
   limit = 40
 ): Promise<UserPuzzleSubmission[]> {
-  return (await submissionsCollection()
-    .find({
-      username: { $regex: `^${username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
-      status: { $in: ["approved", "featured"] },
-    })
-    .sort({ updatedAt: -1 })
-    .limit(limit)
-    .toArray()) as UserPuzzleSubmission[];
+  return (
+    (await submissionsCollection()
+      .find({
+        username: { $regex: `^${username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+        status: { $in: ["approved", "featured"] },
+      })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .toArray()) as UserPuzzleSubmission[]
+  ).map(withPublicTitle);
 }
 
 /** Newest approved / featured boards for the community index. */
 export async function listRecentCommunityPuzzles(limit = 36): Promise<UserPuzzleSubmission[]> {
-  return (await submissionsCollection()
-    .find({ status: { $in: ["approved", "featured"] } })
-    .sort({ updatedAt: -1 })
-    .limit(Math.min(limit, 100))
-    .toArray()) as UserPuzzleSubmission[];
+  return (
+    (await submissionsCollection()
+      .find({ status: { $in: ["approved", "featured"] } })
+      .sort({ updatedAt: -1 })
+      .limit(Math.min(limit, 100))
+      .toArray()) as UserPuzzleSubmission[]
+  ).map(withPublicTitle);
 }
 
 export async function listSitemapCommunityPuzzles(
@@ -92,6 +102,17 @@ function uniqueSlug(base: string, id: string): string {
   return `${stem}-${id.slice(0, 8)}`;
 }
 
+function normalizeForCompare(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** The creator's title, unless it just restates the answer. */
+export function publicTitle(title: string | undefined, answer: string): string | undefined {
+  const trimmed = title?.trim();
+  if (!trimmed) return undefined;
+  return normalizeForCompare(trimmed) === normalizeForCompare(answer) ? undefined : trimmed;
+}
+
 export async function upsertDraftSubmission(input: {
   id?: string;
   userId: string;
@@ -116,14 +137,17 @@ export async function upsertDraftSubmission(input: {
     throw new Error("Approved puzzles are locked — duplicate to revise");
   }
 
-  const slug = existing?.slug ?? uniqueSlug(input.title || input.answer, id);
+  // Titles and slugs are public on playable puzzles, so neither may spell
+  // out the answer (older Studio builds sent the answer as the title).
+  const title = publicTitle(input.title, input.answer);
+  const slug = existing?.slug ?? uniqueSlug(title || "puzzle", id);
   const doc: UserPuzzleSubmission = {
     id,
     slug,
     userId: input.userId,
     username: input.username,
     status: "draft",
-    title: input.title?.trim() || undefined,
+    title,
     answer: input.answer,
     answerKey: input.answerKey,
     explanation: input.explanation,

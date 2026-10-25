@@ -475,7 +475,7 @@ export function PuzzleStudio() {
   function reviewPayload() {
     return {
       id: draftId,
-      title: title || answer,
+      title: title.trim() || undefined,
       answer,
       explanation,
       hints,
@@ -839,7 +839,7 @@ export function PuzzleStudio() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: draftId,
-            title: title || answer,
+            title: title.trim() || undefined,
             answer,
             explanation,
             hints,
