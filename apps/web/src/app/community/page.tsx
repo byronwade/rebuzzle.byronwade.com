@@ -39,7 +39,7 @@ async function CommunityPageContent() {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         type="application/ld+json"
       />
-      <div className="mx-auto max-w-page px-4 py-10 md:px-6 md:py-14">
+      <div className="mx-auto max-w-page px-4 py-12 md:px-6 md:py-16">
         <PageHeader
           actions={
             puzzles.length > 0 ? (
