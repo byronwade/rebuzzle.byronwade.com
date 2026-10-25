@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { analyticsEventOps, userSessionOps } from "@/db/analytics-ops";
+import { normalizeEmail } from "@/lib/account-validation";
 import { verifyUserCredentials } from "@/lib/auth";
 import { setAuthCookie } from "@/lib/cookies";
 import { signToken } from "@/lib/jwt";
@@ -27,7 +28,9 @@ export async function POST(request: Request) {
     );
   }
   try {
-    const { email, password } = await request.json();
+    const body = (await request.json()) as { email?: unknown; password?: unknown };
+    const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!(email && password)) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });

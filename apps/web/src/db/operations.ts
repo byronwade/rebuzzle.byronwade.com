@@ -46,7 +46,26 @@ export const userOps = {
 
   async findByEmail(email: string): Promise<User | null> {
     const collection = getCollection<User>("users");
-    return await collection.findOne({ email });
+    const exact = await collection.findOne({ email });
+    if (exact) return exact;
+    // Older accounts kept the casing they signed up with; match those too.
+    const escaped = email.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return await collection.findOne({ email: { $regex: `^${escaped}$`, $options: "i" } });
+  },
+
+  /** Case-insensitive check against real (non-guest) accounts. */
+  async isUsernameTaken(username: string, excludeUserId?: string): Promise<boolean> {
+    const collection = getCollection<User>("users");
+    const escaped = username.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = await collection.findOne(
+      {
+        username: { $regex: `^${escaped}$`, $options: "i" },
+        isGuest: { $ne: true },
+        ...(excludeUserId ? { id: { $ne: excludeUserId } } : {}),
+      },
+      { projection: { id: 1 } }
+    );
+    return Boolean(match);
   },
 
   async findByUsername(username: string): Promise<User | null> {
