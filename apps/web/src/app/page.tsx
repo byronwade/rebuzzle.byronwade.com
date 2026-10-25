@@ -297,7 +297,7 @@ async function PuzzleContent({ params }: { params: { preview: boolean; test: boo
   });
 
   return (
-    <Layout isGamePage>
+    <Layout isGamePage puzzleType={gameData.puzzleType}>
       <script
         dangerouslySetInnerHTML={{
           __html: serializeJsonLd(gameSchema),
