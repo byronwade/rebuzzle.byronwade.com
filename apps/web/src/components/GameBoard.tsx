@@ -1314,6 +1314,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                   ) : (
                     <div className="play-dock-panel">
                       <SmartAnswerInput
+                        attemptsLeft={gameState.attemptsLeft}
                         disabled={
                           gameState.gameOver ||
                           gameState.isSubmitting ||
