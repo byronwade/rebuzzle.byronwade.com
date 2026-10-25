@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+import { validateUsername } from "@/lib/account-validation";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { buildCacheControl } from "@/lib/http/cache-headers";
 
@@ -96,34 +97,19 @@ export async function PATCH(request: Request) {
 
     // Validate username if provided
     if (username !== undefined) {
-      if (typeof username !== "string" || username.trim().length === 0) {
-        return NextResponse.json(
-          { error: "Username cannot be empty" },
-          { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
-        );
-      }
-
-      if (username.length > 50) {
-        return NextResponse.json(
-          { error: "Username must be 50 characters or less" },
-          { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
-        );
-      }
-
-      // Check if username is already taken by another user
       const currentUser = await db.userOps.findById(authUser.userId);
-      if (currentUser && currentUser.username === username.trim()) {
-        // Username is the same, no change needed
-      } else {
-        // Check if another user has this username
-        const { getCollection } = await import("@/db/mongodb");
-        const usersCollection = getCollection("users");
-        const usernameTaken = await usersCollection.findOne({
-          username: username.trim(),
-          id: { $ne: authUser.userId },
-        });
+      const unchanged = typeof username === "string" && currentUser?.username === username.trim();
+      if (!unchanged) {
+        const usernameError = validateUsername(username);
+        if (usernameError) {
+          return NextResponse.json(
+            { error: usernameError },
+            { status: 400, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
+          );
+        }
 
-        if (usernameTaken) {
+        // Case-insensitive: /u/Bob and /u/bob are the same profile URL.
+        if (await db.userOps.isUsernameTaken(username, authUser.userId)) {
           return NextResponse.json(
             { error: "Username is already taken" },
             { status: 409, headers: { "Cache-Control": buildCacheControl({ private: true }) } }

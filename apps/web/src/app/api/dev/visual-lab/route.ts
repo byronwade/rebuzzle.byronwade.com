@@ -1,6 +1,6 @@
 /**
  * Dev Mode Visual Lab API — generate visual variants, persist for feedback.
- * Auth: any signed-in user (guest OK), same gate as /api/dev/session.
+ * Auth: same gate as /api/dev/session (admin-only outside local development).
  */
 
 import { NextResponse } from "next/server";
@@ -16,13 +16,16 @@ import {
   VISUAL_LAB_MODES,
 } from "@/ai/puzzle-agent/visual/lab-recipes";
 import { runVisualLab } from "@/ai/puzzle-agent/visual/run-visual-lab";
-import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { authorizeDevMode } from "@/lib/dev-access";
 import { persistLabPuzzle } from "@/lib/game/persist-lab-puzzle";
 
 export async function GET(request: Request) {
-  const authUser = await getAuthenticatedUser(request);
-  if (!authUser) {
-    return NextResponse.json({ success: false, allowed: false }, { status: 401 });
+  const access = await authorizeDevMode(request);
+  if (!access.ok) {
+    return NextResponse.json(
+      { success: false, allowed: false, error: access.error },
+      { status: access.status }
+    );
   }
 
   return NextResponse.json({
@@ -35,13 +38,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const authUser = await getAuthenticatedUser(request);
-    if (!authUser) {
-      return NextResponse.json(
-        { success: false, error: "Sign in (guest or account) to use the Visual Lab" },
-        { status: 401 }
-      );
+    const access = await authorizeDevMode(request);
+    if (!access.ok) {
+      return NextResponse.json({ success: false, error: access.error }, { status: access.status });
     }
+    const authUser = access.user;
 
     const body = (await request.json().catch(() => ({}))) as {
       mode?: unknown;

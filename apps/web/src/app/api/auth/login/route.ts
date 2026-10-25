@@ -27,7 +27,12 @@ export async function POST(request: Request) {
     );
   }
   try {
-    const { email, password } = await request.json();
+    const body = (await request.json()) as { email?: unknown; password?: unknown };
+    // Trim only: findByEmail tries the exact address first, then any casing.
+    // Lowercasing here would lock out older accounts whose emails differ
+    // from another account only by case.
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!(email && password)) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });

@@ -30,6 +30,50 @@ export interface GameContext {
   score: number;
 }
 
+/**
+ * Lifetime totals for count-based achievements. The recent-attempts window
+ * (last 100 guess rows) can never reach counts like "100 no-hint wins".
+ */
+export interface LifetimeAttemptCounts {
+  noHintWins: () => Promise<number>;
+  winsWithin: (seconds: number) => Promise<number>;
+  totalAttempts: () => Promise<number>;
+  totalHintsUsed: () => Promise<number>;
+}
+
+function memo<T>(load: () => Promise<T>): () => Promise<T> {
+  let value: Promise<T> | undefined;
+  return () => {
+    value ??= load();
+    return value;
+  };
+}
+
+function createLifetimeCounts(userId: string): LifetimeAttemptCounts {
+  const speed = new Map<number, Promise<number>>();
+  return {
+    noHintWins: memo(() =>
+      puzzleAttemptOps.countUserAttempts(userId, {
+        isCorrect: true,
+        $or: [{ hintsUsed: 0 }, { hintsUsed: { $exists: false } }],
+      })
+    ),
+    winsWithin: (seconds) => {
+      let count = speed.get(seconds);
+      if (!count) {
+        count = puzzleAttemptOps.countUserAttempts(userId, {
+          isCorrect: true,
+          timeSpentSeconds: { $lte: seconds },
+        });
+        speed.set(seconds, count);
+      }
+      return count;
+    },
+    totalAttempts: memo(() => puzzleAttemptOps.countUserAttempts(userId)),
+    totalHintsUsed: memo(() => puzzleAttemptOps.sumFinalHintsUsed(userId)),
+  };
+}
+
 export interface AchievementCheckResult {
   newlyUnlocked: AchievementDefinition[];
   alreadyHad: string[];
@@ -80,6 +124,7 @@ export async function checkAndAwardAchievements(
 
   // Get set of already unlocked achievement IDs (fallback to empty array if null)
   const unlockedIds = new Set((userAchievements ?? []).map((ua) => ua.achievementId));
+  const lifetime = createLifetimeCounts(userId);
 
   // Check each achievement
   const newlyUnlocked: AchievementDefinition[] = [];
@@ -100,7 +145,8 @@ export async function checkAndAwardAchievements(
       stats,
       recentAttempts,
       gameContext,
-      totalAchievementCount
+      totalAchievementCount,
+      lifetime
     );
 
     if (isUnlocked) {
@@ -142,7 +188,8 @@ export async function checkAchievementCriteria(
   stats: UserStats,
   recentAttempts: PuzzleAttempt[],
   gameContext: GameContext,
-  currentAchievementCount: number
+  currentAchievementCount: number,
+  lifetime?: LifetimeAttemptCounts
 ): Promise<boolean> {
   switch (criteria.type) {
     case "first_puzzle":
@@ -152,6 +199,7 @@ export async function checkAchievementCriteria(
       return stats.wins >= criteria.count;
 
     case "puzzles_solved_no_hints": {
+      if (lifetime) return (await lifetime.noHintWins()) >= criteria.count;
       const noHintWins = recentAttempts.filter(
         (a) => a.isCorrect && (!a.hintsUsed || a.hintsUsed === 0)
       ).length;
@@ -176,6 +224,7 @@ export async function checkAchievementCriteria(
       );
 
     case "speed_solve_count": {
+      if (lifetime) return (await lifetime.winsWithin(criteria.seconds)) >= criteria.count;
       const fastSolves = recentAttempts.filter(
         (a) =>
           a.isCorrect && a.timeSpentSeconds !== undefined && a.timeSpentSeconds <= criteria.seconds
@@ -207,6 +256,7 @@ export async function checkAchievementCriteria(
     }
 
     case "total_attempts":
+      if (lifetime) return (await lifetime.totalAttempts()) >= criteria.count;
       return recentAttempts.length >= criteria.count;
 
     case "win_rate": {
@@ -290,6 +340,7 @@ export async function checkAchievementCriteria(
     }
 
     case "hints_used_total": {
+      if (lifetime) return (await lifetime.totalHintsUsed()) >= criteria.count;
       const totalHints = recentAttempts.reduce((sum, a) => sum + (a.hintsUsed || 0), 0);
       return totalHints >= criteria.count;
     }

@@ -60,7 +60,11 @@ export function DevToolsPanel() {
       const res = await fetch("/api/dev/session", { credentials: "include" });
       if (!res.ok) {
         setAllowed(false);
-        setLockInfo("Sign in as guest or account to use Dev Mode actions");
+        setLockInfo(
+          res.status === 403
+            ? "Dev Mode actions are for admins only"
+            : "Sign in to use Dev Mode actions"
+        );
         setGatewayInfo("");
         return;
       }
@@ -78,7 +82,7 @@ export function DevToolsPanel() {
       };
       if (!data.allowed) {
         setAllowed(false);
-        setLockInfo("Sign in as guest or account to use Dev Mode actions");
+        setLockInfo("Dev Mode actions are for admins only");
         setGatewayInfo("");
         return;
       }

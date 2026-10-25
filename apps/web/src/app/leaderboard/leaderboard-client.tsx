@@ -33,7 +33,6 @@ interface LeaderboardEntry {
   user: {
     id: string;
     username: string;
-    email: string;
   };
   stats: {
     points: number;
@@ -129,7 +128,6 @@ export default function LeaderboardClient({
                     user: {
                       id: userData.user.id,
                       username: userData.user.username,
-                      email: userData.user.email,
                     },
                     stats: {
                       points: userData.stats.points || 0,

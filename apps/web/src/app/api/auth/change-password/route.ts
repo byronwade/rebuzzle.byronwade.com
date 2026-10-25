@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import type { User } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { sendPasswordChangeEmail } from "@/lib/notifications/email-service";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
@@ -11,11 +13,37 @@ import { hashPassword, verifyPassword } from "@/lib/password";
  */
 export async function POST(request: Request) {
   try {
-    const { userId, currentPassword, newPassword } = await request.json();
+    // The signed-in user is the only account this route may change. Never
+    // trust a userId from the body: that let anyone guess another user's password.
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
-    if (!(userId && currentPassword && newPassword)) {
+    const limit = await rateLimit({
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+      keyGenerator: () => getUserKey(`change-password:${authUser.userId}`),
+    })(request);
+    if (limit && !limit.success) {
       return NextResponse.json(
-        { error: "User ID, current password, and new password are required" },
+        { error: "Too many attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter ?? 60) } }
+      );
+    }
+
+    const { currentPassword, newPassword } = (await request.json()) as {
+      currentPassword?: unknown;
+      newPassword?: unknown;
+    };
+
+    if (
+      typeof currentPassword !== "string" ||
+      typeof newPassword !== "string" ||
+      !(currentPassword && newPassword)
+    ) {
+      return NextResponse.json(
+        { error: "Current password and new password are required" },
         { status: 400 }
       );
     }
@@ -38,7 +66,7 @@ export async function POST(request: Request) {
 
     // Find user
     const usersCollection = getCollection<User>("users");
-    const user = await usersCollection.findOne({ id: userId });
+    const user = await usersCollection.findOne({ id: authUser.userId });
 
     if (!user?.passwordHash) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

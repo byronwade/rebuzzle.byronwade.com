@@ -1,14 +1,15 @@
 import { getStreakTease } from "../streak-tease";
 
 describe("getStreakTease", () => {
-  it("encourages a fresh start after a loss", () => {
+  it("keeps the streak after a loss", () => {
     expect(getStreakTease(0, false)).toMatch(/Start a streak tomorrow/i);
-    expect(getStreakTease(4, false)).toMatch(/Streak reset/i);
+    expect(getStreakTease(4, false)).toMatch(/Streak held at 4/i);
+    expect(getStreakTease(4, false)).not.toMatch(/reset/i);
   });
 
-  it("quietly notes a streak freeze save", () => {
-    expect(getStreakTease(7, false, { streakFrozen: true, freezesLeft: 0 })).toMatch(
-      /Streak held at 7/i
+  it("notes when a freeze covered a missed day", () => {
+    expect(getStreakTease(8, true, { streakFrozen: true, freezesLeft: 0 })).toMatch(
+      /freeze covered the day you missed/i
     );
   });
 
