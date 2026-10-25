@@ -276,7 +276,7 @@ export function PlaytestClient() {
                   }
                   value={failureReason}
                 >
-                  <option value="">If giving up, choose why...</option>
+                  <option value="">If giving up, choose why…</option>
                   {FAILURE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}

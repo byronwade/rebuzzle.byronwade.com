@@ -34,7 +34,7 @@ export function AuthShell({
             {title}
           </h1>
           {description ? (
-            <p className="mt-2 text-pretty text-muted-foreground text-sm leading-6">
+            <p className="mt-2 text-balance text-muted-foreground text-sm leading-6">
               {description}
             </p>
           ) : null}
