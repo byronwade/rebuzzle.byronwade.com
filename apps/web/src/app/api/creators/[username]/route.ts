@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { resolveCurrentStreak, utcDateKey } from "@/lib/game/retention-stats";
+import { resolveCurrentStreak } from "@/lib/game/retention-stats";
 import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
 import { listPublicCreatorPuzzles } from "@/lib/ugc/submissions";
 
@@ -33,7 +33,7 @@ export async function GET(_request: Request, { params }: Params) {
       avatarCustomInitials: user.avatarCustomInitials,
       stats: {
         points: stats?.points ?? 0,
-        streak: stats ? resolveCurrentStreak(stats, utcDateKey(), utcDateKey) : 0,
+        streak: stats ? resolveCurrentStreak(stats) : 0,
         maxStreak: stats?.maxStreak ?? 0,
         wins: stats?.wins ?? 0,
         totalGames: stats?.totalGames ?? 0,

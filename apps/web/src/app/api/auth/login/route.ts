@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { analyticsEventOps, userSessionOps } from "@/db/analytics-ops";
-import { normalizeEmail } from "@/lib/account-validation";
 import { verifyUserCredentials } from "@/lib/auth";
 import { setAuthCookie } from "@/lib/cookies";
 import { signToken } from "@/lib/jwt";
@@ -29,7 +28,10 @@ export async function POST(request: Request) {
   }
   try {
     const body = (await request.json()) as { email?: unknown; password?: unknown };
-    const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
+    // Trim only: findByEmail tries the exact address first, then any casing.
+    // Lowercasing here would lock out older accounts whose emails differ
+    // from another account only by case.
+    const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!(email && password)) {

@@ -64,6 +64,7 @@ export interface UserStats {
   streakShields: number; // Earned streak shields from achievements
   lastFreezeUsed?: Date; // When last freeze was used
   streakFreezeWeekStart?: Date; // Start of current week for freeze reset
+  streakTimeZone?: string; // Player's IANA zone at their last daily play (streak calendar)
   // Lucky solve tracking
   lastLuckySolve?: Date; // When last lucky solve occurred
   luckySolveCount: number; // Total lucky solves earned
@@ -593,6 +594,7 @@ export interface NewUserStats {
   streakShields: number;
   lastFreezeUsed?: Date;
   streakFreezeWeekStart?: Date;
+  streakTimeZone?: string;
   // Lucky solve tracking
   lastLuckySolve?: Date;
   luckySolveCount: number;

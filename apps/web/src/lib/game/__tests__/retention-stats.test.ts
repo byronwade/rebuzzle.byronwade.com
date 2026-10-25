@@ -220,7 +220,7 @@ describe("retention-stats", () => {
         streakFreezes: 0,
         streakFreezeWeekStart: thisWeek,
       };
-      expect(resolveCurrentStreak(stats, "2026-08-05", utcDateKey, now)).toBe(5);
+      expect(resolveCurrentStreak(stats, now)).toBe(5);
     });
 
     it("keeps a streak a freeze can still cover", () => {
@@ -230,7 +230,22 @@ describe("retention-stats", () => {
         streakFreezes: 1,
         streakFreezeWeekStart: thisWeek,
       };
-      expect(resolveCurrentStreak(stats, "2026-08-05", utcDateKey, now)).toBe(5);
+      expect(resolveCurrentStreak(stats, now)).toBe(5);
+    });
+
+    it("uses the player's recorded time zone", () => {
+      // Last play Aug 3, 4pm in Los Angeles (Aug 3 23:00 UTC); now is Aug 4,
+      // 6pm in Los Angeles (Aug 5 01:00 UTC). Consecutive local days.
+      const stats = {
+        streak: 5,
+        lastPlayDate: new Date("2026-08-03T23:00:00.000Z"),
+        streakFreezes: 0,
+        streakFreezeWeekStart: thisWeek,
+        streakTimeZone: "America/Los_Angeles",
+      };
+      const laNow = new Date("2026-08-05T01:00:00.000Z");
+      expect(resolveCurrentStreak(stats, laNow)).toBe(5);
+      expect(resolveCurrentStreak({ ...stats, streakTimeZone: undefined }, laNow)).toBe(0);
     });
 
     it("shows a lapsed streak as zero", () => {
@@ -240,7 +255,7 @@ describe("retention-stats", () => {
         streakFreezes: 1,
         streakFreezeWeekStart: thisWeek,
       };
-      expect(resolveCurrentStreak(stats, "2026-08-05", utcDateKey, now)).toBe(0);
+      expect(resolveCurrentStreak(stats, now)).toBe(0);
     });
   });
 

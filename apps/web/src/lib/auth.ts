@@ -15,7 +15,6 @@ import {
   getStreakGap,
   recordRecentPlayDate,
   resolveCurrentStreak,
-  utcDateKey,
 } from "@/lib/game/retention-stats";
 import { calculateGamePoints, calculateLevel } from "@/lib/gameSettings";
 
@@ -73,7 +72,7 @@ export async function getUserWithStats(userId: string): Promise<{
       stats: stats
         ? {
             points: stats.points,
-            streak: resolveCurrentStreak(stats, utcDateKey(), utcDateKey),
+            streak: resolveCurrentStreak(stats),
             maxStreak: stats.maxStreak,
             totalGames: stats.totalGames,
             wins: stats.wins,
@@ -261,6 +260,7 @@ function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultI
     // Archive plays must not count as a daily play, or today's daily would
     // look like a same-day replay and never add a streak day.
     lastPlayDate: affectsStreak ? now : currentStats?.lastPlayDate,
+    streakTimeZone: affectsStreak ? timeZone : currentStats?.streakTimeZone,
     perfectSolves,
     clutchSolves,
     speedSolves,
@@ -399,7 +399,7 @@ function toLeaderboardEntry(entry: LeaderboardRow, now: Date) {
     } satisfies PublicLeaderboardUser,
     stats: {
       points: entry.points,
-      streak: resolveCurrentStreak(entry, utcDateKey(now), utcDateKey, now),
+      streak: resolveCurrentStreak(entry, now),
       maxStreak: entry.maxStreak,
       totalGames: entry.totalGames,
       wins: entry.wins,
@@ -466,13 +466,22 @@ export async function getStreakLeaderboard(limit = 25): Promise<
   }>
 > {
   try {
-    // Over-fetch: some stored streaks have lapsed and drop out below.
-    const leaderboardData = await db.userStatsOps.getStreakLeaderboard(limit * 3);
+    // Stored streaks can have lapsed, and that check needs each player's
+    // calendar, so page through candidates until the board is full.
+    const pageSize = Math.max(limit * 2, 50);
     const now = new Date();
+    const active: ReturnType<typeof toLeaderboardEntry>[] = [];
+    for (let skip = 0; active.length < limit && skip < 5000; skip += pageSize) {
+      const page = await db.userStatsOps.getStreakLeaderboard(pageSize, skip);
+      for (const row of page) {
+        if (!row.user) continue;
+        const entry = toLeaderboardEntry(row, now);
+        if (entry.stats.streak > 0) active.push(entry);
+      }
+      if (page.length < pageSize) break;
+    }
 
-    return leaderboardData
-      .map((entry) => toLeaderboardEntry(entry, now))
-      .filter((entry) => entry.stats.streak > 0)
+    return active
       .sort(
         (a, b) =>
           b.stats.streak - a.stats.streak ||

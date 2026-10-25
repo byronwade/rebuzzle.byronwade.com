@@ -31,7 +31,8 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as { email?: unknown };
-    const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
+    // Exact address first (older accounts may differ only by case), then any casing.
+    const email = typeof body.email === "string" ? body.email.trim() : "";
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     const emailLimit = await rateLimit({
       windowMs: 60 * 60 * 1000,
       maxRequests: 3,
-      keyGenerator: () => `forgot-password:email:${email}`,
+      keyGenerator: () => `forgot-password:email:${normalizeEmail(email)}`,
     })(request);
     if (emailLimit && !emailLimit.success) {
       // Same answer as success: don't reveal whether the address exists.

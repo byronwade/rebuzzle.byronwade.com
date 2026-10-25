@@ -257,7 +257,7 @@ export const userStatsOps = {
    * Get leaderboard sorted by current active streak
    * Only includes users with active streaks (streak > 0)
    */
-  async getStreakLeaderboard(limit = 25): Promise<Array<UserStats & { user: User }>> {
+  async getStreakLeaderboard(limit = 25, skip = 0): Promise<Array<UserStats & { user: User }>> {
     const userStatsCollection = getCollection<UserStats>("userStats");
 
     // A streak that hasn't been played in a month has lapsed; callers apply
@@ -272,8 +272,9 @@ export const userStatsOps = {
         },
         // Sort by streak first, then by maxStreak as tiebreaker
         {
-          $sort: { streak: -1, maxStreak: -1, points: -1 },
+          $sort: { streak: -1, maxStreak: -1, points: -1, userId: 1 },
         },
+        { $skip: skip },
         {
           $limit: limit,
         },
@@ -286,7 +287,8 @@ export const userStatsOps = {
           },
         },
         {
-          $unwind: "$user",
+          // Keep rows without a user so callers can page by raw row count.
+          $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
         },
       ])
       .toArray();

@@ -4,6 +4,7 @@
  */
 
 import { engagementConfig } from "@rebuzzle/config";
+import { getLocalPuzzleDate, isValidIanaTimeZone } from "@/lib/game/daily-lock";
 import { getDailyBonusMultiplier, shouldResetStreakFreeze } from "@/lib/gameSettings";
 
 export const GUESS_DISTRIBUTION_SLOTS = 3 as const;
@@ -206,7 +207,8 @@ export function applyStreakProtection(input: StreakProtectionInput): StreakProte
 /**
  * The streak a player has right now, for read paths (profile, leaderboards).
  * Stored streaks only change when the player plays, so a lapsed player would
- * otherwise keep showing their old streak.
+ * otherwise keep showing their old streak. Days follow the zone recorded at
+ * the player's last daily play, the same calendar the write path uses.
  */
 export function resolveCurrentStreak(
   stats: {
@@ -215,16 +217,22 @@ export function resolveCurrentStreak(
     streakFreezes?: number;
     streakShields?: number;
     streakFreezeWeekStart?: Date | string | null;
+    streakTimeZone?: string | null;
   },
-  todayKey: string,
-  toDayKey: (date: Date) => string,
   now: Date = new Date()
 ): number {
   const streak = Math.max(0, stats.streak ?? 0);
   if (streak === 0 || !stats.lastPlayDate) return streak;
   const last = new Date(stats.lastPlayDate);
   if (Number.isNaN(last.getTime())) return streak;
-  const { missedDays } = getStreakGap(toDayKey(last), todayKey);
+  const timeZone =
+    stats.streakTimeZone && isValidIanaTimeZone(stats.streakTimeZone)
+      ? stats.streakTimeZone
+      : "UTC";
+  const { missedDays } = getStreakGap(
+    getLocalPuzzleDate(last, timeZone),
+    getLocalPuzzleDate(now, timeZone)
+  );
   if (missedDays === 0) return streak;
   // Mirror applyStreakProtection: the weekly grant lands before misses are covered.
   const weekStart = stats.streakFreezeWeekStart ? new Date(stats.streakFreezeWeekStart) : undefined;

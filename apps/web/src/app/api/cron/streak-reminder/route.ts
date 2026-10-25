@@ -3,7 +3,7 @@ import type { User, UserStats } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { authorizeCron } from "@/lib/cron/auth";
 import { getAppUrl } from "@/lib/env";
-import { resolveCurrentStreak, utcDateKey } from "@/lib/game/retention-stats";
+import { resolveCurrentStreak } from "@/lib/game/retention-stats";
 import { sendStreakAtRiskEmail } from "@/lib/notifications/email-service";
 
 const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -27,7 +27,6 @@ async function handleStreakReminder() {
   const emailSubscriptionsCollection = getCollection("emailSubscriptions");
 
   const lapsedBefore = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const todayKey = utcDateKey(now);
   const candidates = await userStatsCollection
     .find({
       streak: { $gte: MIN_STREAK_FOR_NOTIFICATION },
@@ -36,7 +35,7 @@ async function handleStreakReminder() {
     .toArray();
   // Skip streaks that already broke on missed days: "at risk" means still alive.
   const usersAtRisk = candidates.filter(
-    (stats) => resolveCurrentStreak(stats, todayKey, utcDateKey, now) >= MIN_STREAK_FOR_NOTIFICATION
+    (stats) => resolveCurrentStreak(stats, now) >= MIN_STREAK_FOR_NOTIFICATION
   );
 
   console.log(`[Streak Reminder] Found ${usersAtRisk.length} users with streaks at risk`);
