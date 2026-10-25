@@ -299,6 +299,9 @@ function applyReviewEvent(
   return prev;
 }
 
+const MIN_ANSWER_LENGTH = 2;
+const MIN_EXPLANATION_LENGTH = 24;
+
 export function PuzzleStudio() {
   const { isAuthenticated, isGuest, isLoading, user } = useAuth();
   const [pending, startTransition] = useTransition();
@@ -346,7 +349,18 @@ export function PuzzleStudio() {
   const canDetails = layers.some(
     (l) => l.kind === "pictogram" || l.kind === "text" || l.kind === "image"
   );
-  const canPublish = canDetails && answer.trim().length >= 2 && explanation.trim().length >= 24;
+  const canPublish =
+    canDetails &&
+    answer.trim().length >= MIN_ANSWER_LENGTH &&
+    explanation.trim().length >= MIN_EXPLANATION_LENGTH;
+  const explanationShortBy = Math.max(0, MIN_EXPLANATION_LENGTH - explanation.trim().length);
+  /** Why "Continue to publish" is disabled, so the button never just sits there greyed out. */
+  const detailsBlocker =
+    answer.trim().length < MIN_ANSWER_LENGTH
+      ? "Add the answer players should type."
+      : explanationShortBy > 0
+        ? `Explain the board in ${explanationShortBy} more ${explanationShortBy === 1 ? "character" : "characters"}.`
+        : null;
   const currentFingerprint = useMemo(
     () =>
       studioContentFingerprint({
@@ -1152,8 +1166,18 @@ export function PuzzleStudio() {
                 </div>
               ) : null}
 
-              <div className="mt-6 flex justify-end">
-                <Button disabled={!canDetails} onClick={() => setStep("details")} type="button">
+              <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+                {canDetails ? null : (
+                  <p className="text-muted-foreground text-xs" id="board-blocker">
+                    Add an icon, image or word to continue.
+                  </p>
+                )}
+                <Button
+                  aria-describedby={canDetails ? undefined : "board-blocker"}
+                  disabled={!canDetails}
+                  onClick={() => setStep("details")}
+                  type="button"
+                >
                   Continue to answer
                 </Button>
               </div>
@@ -1312,8 +1336,12 @@ export function PuzzleStudio() {
                 <label className="block text-sm">
                   <span className="text-muted-foreground">Answer players should type</span>
                   <input
+                    autoCapitalize="off"
+                    autoComplete="off"
+                    autoCorrect="off"
                     className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2.5 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring"
                     onChange={(e) => setAnswer(e.target.value)}
+                    spellCheck={false}
                     placeholder="e.g. sunflower"
                     value={answer}
                   />
@@ -1328,6 +1356,12 @@ export function PuzzleStudio() {
                     placeholder="Sun + flower reads as the compound sunflower…"
                     value={explanation}
                   />
+                  <span className="mt-1 block text-subtle text-xs">
+                    Shown to players after they solve it.
+                    {explanationShortBy > 0
+                      ? ` At least ${MIN_EXPLANATION_LENGTH} characters, ${explanationShortBy} to go.`
+                      : null}
+                  </span>
                 </label>
                 <div className="grid gap-2 md:grid-cols-3">
                   {hints.map((hint, index) => (
@@ -1388,13 +1422,25 @@ export function PuzzleStudio() {
                 </details>
               </div>
             </div>
-            <div className="mt-6 flex flex-wrap justify-between gap-2">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
               <Button onClick={() => setStep("board")} type="button" variant="ghost">
                 Back
               </Button>
-              <Button disabled={!canPublish} onClick={() => setStep("publish")} type="button">
-                Continue to publish
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                {detailsBlocker ? (
+                  <p className="text-muted-foreground text-xs" id="details-blocker">
+                    {detailsBlocker}
+                  </p>
+                ) : null}
+                <Button
+                  aria-describedby={detailsBlocker ? "details-blocker" : undefined}
+                  disabled={!canPublish}
+                  onClick={() => setStep("publish")}
+                  type="button"
+                >
+                  Continue to publish
+                </Button>
+              </div>
             </div>
           </section>
         ) : null}
