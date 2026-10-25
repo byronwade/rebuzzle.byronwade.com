@@ -1,5 +1,6 @@
 "use client";
 
+import { scoringConfig } from "@rebuzzle/config";
 import { LightbulbIcon, LockIcon, UnlockIcon } from "lucide-react";
 import { useState } from "react";
 import { Badge, badgeVariants } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { analyticsEvents, trackEvent } from "@/lib/analytics";
 import { smartQuotes } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+
+const HINT_COST = scoringConfig.hints.penaltyPerHint;
 
 interface HintBadgeProps {
   hints: string[];
@@ -61,14 +64,6 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
       // Notify parent component
       onHintReveal?.(newRevealedCount - 1);
 
-      // Show native notification for hint reveal (with permission check)
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`Hint ${newRevealedCount} Revealed`, {
-          body: "Using hints will reduce your points for this puzzle.",
-          icon: "/icon-192x192.png",
-        });
-      }
-
       // Reset revealing state after animation
       setTimeout(() => setIsRevealing(false), 500);
     }
@@ -100,7 +95,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
               </button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>Stuck? Click to reveal hints (-10 pts each)</TooltipContent>
+          <TooltipContent>Stuck? Reveal a hint (−{HINT_COST} points each)</TooltipContent>
         </Tooltip>
         <DialogContent className="mx-auto max-h-[90vh] max-w-[95vw] overflow-y-auto sm:max-w-[425px]">
           <DialogHeader>
@@ -109,8 +104,7 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
               Need a hint?
             </DialogTitle>
             <DialogDescription className="text-sm">
-              Reveal progressive hints to help solve the puzzle. Using hints will reduce your
-              points.
+              Each hint gets you a little closer to the answer and costs {HINT_COST} points.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4">
@@ -149,7 +143,11 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                       isRevealed ? "text-foreground" : "text-muted-foreground"
                     )}
                   >
-                    {isRevealed ? smartQuotes(hint) : "This hint is still locked"}
+                    {isRevealed
+                      ? smartQuotes(hint)
+                      : isNext
+                        ? "Ready when you are"
+                        : `Unlocks after hint ${index}`}
                   </div>
                 </div>
               );
@@ -165,10 +163,8 @@ export function HintBadge({ hints = [], className, onHintReveal, gameId }: HintB
                 >
                   <LightbulbIcon className="h-4 w-4" data-icon="inline-start" />
                   Reveal hint {revealedHints + 1}
+                  <span className="text-subtle">· −{HINT_COST} points</span>
                 </Button>
-                <p className="mt-3 px-2 text-center text-subtle text-xs leading-relaxed">
-                  Using hints will reduce your points for this puzzle
-                </p>
               </div>
             )}
           </div>
