@@ -24,6 +24,8 @@ interface BlogPostProps {
     };
   };
   variant?: "default" | "compact" | "featured";
+  /** Title level for the default row: h3 when the list sits under its own h2. */
+  headingLevel?: "h2" | "h3";
 }
 
 const puzzleTypeLabels: Record<string, string> = {
@@ -36,7 +38,11 @@ const puzzleTypeLabels: Record<string, string> = {
   trivia: "Trivia",
 };
 
-export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
+export default function BlogPost({
+  post,
+  variant = "default",
+  headingLevel = "h2",
+}: BlogPostProps) {
   const isToday = useIsLocalCalendarDay(post.date, 0);
   const isYesterday = useIsLocalCalendarDay(post.date, -1);
 
@@ -112,6 +118,8 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
     );
   }
 
+  const Heading = headingLevel;
+
   // Default — a hairline-separated index row. No card chrome; the rule between
   // rows carries the structure, which keeps a long archive calm.
   return (
@@ -128,9 +136,9 @@ export default function BlogPost({ post, variant = "default" }: BlogPostProps) {
           </span>
         </div>
 
-        <h2 className="mt-3 line-clamp-2 text-balance font-semibold text-foreground text-lg tracking-[-0.03em]">
+        <Heading className="mt-3 line-clamp-2 text-balance font-semibold text-foreground text-lg tracking-[-0.03em]">
           {post.title}
-        </h2>
+        </Heading>
 
         <p className="mt-1.5 line-clamp-2 text-muted-foreground text-sm leading-6">
           {post.excerpt}
