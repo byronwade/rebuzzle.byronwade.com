@@ -336,6 +336,12 @@
     scroll-margin-top: calc(var(--header-height) + 1rem);
   }
 
+  /* Any other anchor target (a section band, a skip-link destination) lands
+     flush under the sticky header instead of sliding beneath it. */
+  [id]:not(h1, h2, h3, h4) {
+    scroll-margin-top: var(--header-height);
+  }
+
   h1 {
     letter-spacing: -0.022em;
   }
