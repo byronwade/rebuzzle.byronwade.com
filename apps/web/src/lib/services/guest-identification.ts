@@ -1,11 +1,14 @@
 /**
  * Guest Identification Service
  *
- * Multi-layer identification for guest users:
+ * Identifies a returning guest from secrets only that guest holds:
  * 1. Device ID (desktop/mobile apps)
  * 2. Cookie (rebuzzle_guest_token)
- * 3. IP hash lookup
- * 4. localStorage backup (client-side only)
+ *
+ * IP and a client-supplied user id are deliberately not used: a shared IP
+ * (home, office, carrier NAT) would hand strangers the same account, and guest
+ * ids are public on leaderboards, so accepting one would let anyone sign in
+ * as that guest.
  */
 
 import { createHash } from "node:crypto";
@@ -16,13 +19,11 @@ export interface GuestIdentificationResult {
   found: boolean;
   userId?: string;
   user?: User;
-  identifiedBy: "deviceId" | "cookie" | "ip" | "localStorage" | "none";
+  identifiedBy: "deviceId" | "cookie" | "none";
 }
 
 export interface GuestIdentificationInput {
   cookieGuestToken?: string;
-  ipAddress: string;
-  localStorageGuestId?: string;
   deviceId?: string;
 }
 
@@ -86,8 +87,7 @@ export function extractDeviceId(request: Request): string | null {
 }
 
 /**
- * Identify guest user from multiple layers
- * Priority: deviceId > cookie > IP hash > localStorage
+ * Identify a returning guest. Priority: deviceId > cookie
  */
 export async function identifyGuest(
   input: GuestIdentificationInput
@@ -114,33 +114,6 @@ export async function identifyGuest(
         userId: user.id,
         user,
         identifiedBy: "cookie",
-      };
-    }
-  }
-
-  // Layer 2: IP hash lookup
-  if (input.ipAddress && input.ipAddress !== "unknown") {
-    const ipHash = hashIpAddress(input.ipAddress);
-    const userByIp = await userOps.findGuestByIpHash(ipHash);
-    if (userByIp) {
-      return {
-        found: true,
-        userId: userByIp.id,
-        user: userByIp,
-        identifiedBy: "ip",
-      };
-    }
-  }
-
-  // Layer 3: localStorage fallback (passed from client)
-  if (input.localStorageGuestId) {
-    const userByLocalStorage = await userOps.findById(input.localStorageGuestId);
-    if (userByLocalStorage?.isGuest) {
-      return {
-        found: true,
-        userId: userByLocalStorage.id,
-        user: userByLocalStorage,
-        identifiedBy: "localStorage",
       };
     }
   }

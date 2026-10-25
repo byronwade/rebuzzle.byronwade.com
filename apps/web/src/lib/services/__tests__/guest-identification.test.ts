@@ -1,4 +1,35 @@
-import { hashIpAddress } from "../guest-identification";
+import { userOps } from "@/db/operations";
+import { hashIpAddress, identifyGuest } from "../guest-identification";
+
+jest.mock("@/db/operations", () => ({
+  userOps: {
+    findGuestByDeviceId: jest.fn(),
+    findByGuestToken: jest.fn(),
+    findById: jest.fn(),
+  },
+}));
+
+const ops = userOps as jest.Mocked<typeof userOps>;
+
+describe("identifyGuest", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("finds a guest by device id, then cookie token", async () => {
+    ops.findGuestByDeviceId.mockResolvedValueOnce(null);
+    ops.findByGuestToken.mockResolvedValueOnce({ id: "guest_1" } as never);
+    const result = await identifyGuest({ deviceId: "dev", cookieGuestToken: "tok" });
+    expect(result).toMatchObject({ found: true, userId: "guest_1", identifiedBy: "cookie" });
+  });
+
+  it("never matches on a public user id or IP", async () => {
+    const result = await identifyGuest({
+      localStorageGuestId: "guest_from_leaderboard",
+      ipAddress: "1.2.3.4",
+    } as never);
+    expect(result).toEqual({ found: false, identifiedBy: "none" });
+    expect(ops.findById).not.toHaveBeenCalled();
+  });
+});
 
 describe("hashIpAddress", () => {
   const originalEnv = { ...process.env };

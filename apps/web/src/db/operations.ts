@@ -131,11 +131,6 @@ export const userOps = {
     return result;
   },
 
-  async findGuestByIpHash(ipHash: string): Promise<User | null> {
-    const collection = getCollection<User>("users");
-    return await collection.findOne({ ipHash, isGuest: true });
-  },
-
   async findGuestByDeviceId(deviceId: string): Promise<User | null> {
     const collection = getCollection<User>("users");
     return await collection.findOne({ deviceId, isGuest: true });
