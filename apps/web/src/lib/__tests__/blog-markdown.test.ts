@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { remarkSmartQuotes, separateInlineSteps } from "../blog-markdown";
-import { smartQuotes } from "../typography";
+import { labelFromSlug, smartQuotes } from "../typography";
 
 describe("separateInlineSteps", () => {
   it("breaks bold-led steps run into a paragraph onto list lines", () => {
@@ -91,5 +91,12 @@ describe("remarkSmartQuotes across inline nodes", () => {
     const [paragraph] = tree.children;
     expect(paragraph.children[0].value).toBe("say \u201c");
     expect(paragraph.children[2].value).toBe("\u201d out loud");
+  });
+});
+
+describe("labelFromSlug", () => {
+  it("turns catalog slugs into sentence-case labels", () => {
+    expect(labelFromSlug("alarm-clock")).toBe("Alarm clock");
+    expect(labelFromSlug("bed")).toBe("Bed");
   });
 });

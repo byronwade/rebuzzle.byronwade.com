@@ -16,3 +16,9 @@ export function smartQuotes(text: string, before = ""): string {
     })
     .replace(/\.\.\./g, "…");
 }
+
+/** Turn a catalog slug like "alarm-clock" into a sentence-case label: "Alarm clock". */
+export function labelFromSlug(slug: string): string {
+  const words = slug.replace(/[-_]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}

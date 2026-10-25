@@ -16,6 +16,7 @@ import {
 } from "@/components/studio/EveReviewPanel";
 import { StudioArtboard } from "@/components/studio/StudioArtboard";
 import { Button } from "@/components/ui/button";
+import { labelFromSlug } from "@/lib/typography";
 import { EVE_REVIEW_CHECKS, EVE_REVIEW_PHASES } from "@/lib/ugc/eve-review-manifest";
 import { communityPuzzlePath, profilePathForUsername } from "@/lib/ugc/slug";
 import { STUDIO_AI_GENERATION_LIMIT, type StudioMark } from "@/lib/ugc/studio-marks";
@@ -396,7 +397,13 @@ export function PuzzleStudio() {
   const filteredCatalog = useMemo(() => {
     const q = catalogQuery.trim().toLowerCase();
     if (!q) return pictograms;
-    return pictograms.filter((p) => p.concept.includes(q) || p.id.includes(q));
+    // Labels show "Alarm clock", so match the spaced form as well as the slug.
+    return pictograms.filter(
+      (p) =>
+        p.concept.includes(q) ||
+        p.id.includes(q) ||
+        labelFromSlug(p.concept).toLowerCase().includes(q)
+    );
   }, [catalogQuery, pictograms]);
 
   const filteredMarks = useMemo(() => {
@@ -1187,14 +1194,16 @@ export function PuzzleStudio() {
                       className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
                       key={item.id}
                       onClick={() => addPictogram(item)}
-                      title={`Add ${item.concept}`}
+                      title={`Add ${labelFromSlug(item.concept)}`}
                       type="button"
                     >
                       <span
                         className="inline-flex h-9 w-9 items-center justify-center [&_svg]:h-6 [&_svg]:w-6"
                         dangerouslySetInnerHTML={{ __html: item.svg }}
                       />
-                      <span className="w-full truncate text-center">{item.concept}</span>
+                      <span className="w-full truncate text-center">
+                        {labelFromSlug(item.concept)}
+                      </span>
                     </button>
                   ))}
                 </div>
