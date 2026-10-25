@@ -116,12 +116,9 @@ export default function LoginPage() {
             description: "You’ve successfully logged in.",
           });
 
-          const nextPath = safeInternalRedirect(
-            new URLSearchParams(window.location.search).get("next")
+          router.push(
+            safeInternalRedirect(new URLSearchParams(window.location.search).get("next"))
           );
-          setTimeout(() => {
-            router.push(nextPath);
-          }, 1000);
         } else {
           const errorMessage = data?.error || "Invalid credentials. Please try again.";
           setErrors({ form: errorMessage });
