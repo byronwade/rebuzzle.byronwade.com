@@ -481,14 +481,14 @@ export default function AchievementsPage() {
 
                     return (
                       <div key={tier.name} className="flex items-center gap-3 p-3">
-                        <TierIcon className={cn("size-5", tier.color)} />
-                        <div className="flex-1">
-                          <span className={cn("font-medium text-sm", tier.color)}>{tier.name}</span>
+                        <TierIcon className={cn("size-5 shrink-0", tier.color)} />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium text-sm">{tier.name}</span>
                           <span className="text-xs text-muted-foreground ml-2">
                             Lvl&nbsp;{tier.levels[0]}–{tier.levels[1]}
                           </span>
                         </div>
-                        <span className="font-mono text-subtle text-xs tabular-nums">
+                        <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
                           {startPoints.toLocaleString()}–{endPoints.toLocaleString()} pts
                         </span>
                       </div>
