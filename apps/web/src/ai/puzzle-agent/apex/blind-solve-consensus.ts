@@ -4,6 +4,7 @@ import {
   distinctJudgeResults,
 } from "../quality-contract";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
+import type { ReasoningEvidence } from "../visual/reasoning-evidence";
 import type { PlayerSimResult } from "./types";
 
 export type BlindSolveHypothesis = {
@@ -181,6 +182,7 @@ export function blindSolvePublishBlockers(
 }
 
 export function toPlayabilityEvidence(sim: PlayerSimResult): {
+  reasoningEvidence?: ReasoningEvidence;
   blind: {
     profileCount: number;
     profilesWithTarget: number;
@@ -201,6 +203,7 @@ export function toPlayabilityEvidence(sim: PlayerSimResult): {
   };
 } {
   return {
+    ...(sim.reasoningEvidence ? { reasoningEvidence: sim.reasoningEvidence } : {}),
     blind: {
       profileCount: sim.blindProfileCount ?? 0,
       profilesWithTarget: sim.blindProfilesWithTarget ?? 0,

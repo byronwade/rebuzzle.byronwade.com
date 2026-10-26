@@ -167,6 +167,9 @@ export interface Puzzle {
     funScore?: number;
     /** Numeric difficulty 1–10 from generation */
     difficultyScore?: number;
+    reasoningEvidence?: import("@/ai/puzzle-agent/visual/reasoning-evidence").ReasoningEvidence;
+    reasoningEvidenceSource?: "curated" | "independent-editorial";
+    dailyChallengePolicy?: string;
     /** Canonical tier: Hard | Difficult | Evil | Impossible */
     difficultyLevel?: string;
     /** Normalized answer for archive-wide uniqueness */

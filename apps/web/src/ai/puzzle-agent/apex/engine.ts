@@ -63,6 +63,7 @@ function toCandidate(
         editorialConfidence: evidence.editorial.confidence,
         editorialFailureKinds: evidence.editorial.failureKinds,
         editorialReasons: [],
+        reasoningEvidence: result.metadata.reasoningEvidence,
       }
     : undefined;
 
@@ -388,7 +389,7 @@ export async function runApexGeneration(
     evaluate: async (candidate) => {
       const evaluationStarted = Date.now();
       try {
-        return await qualifyRenderedCandidate(candidate, simCalibration);
+        return await qualifyRenderedCandidate(candidate, simCalibration, brief.targetDifficulty);
       } finally {
         lastEvaluationMs = Date.now() - evaluationStarted;
       }
@@ -513,6 +514,7 @@ async function finalizeWinner(
       answerResearch: chosen.answerResearch,
       estimatedSolveRate: chosen.playerSim?.estimatedSolveRate,
       playabilityEvidence: chosen.playerSim ? toPlayabilityEvidence(chosen.playerSim) : undefined,
+      reasoningEvidence: chosen.playerSim?.reasoningEvidence,
       boardRecognitionConfidence: chosen.boardRecognitionConfidence,
       boardRecognitionModels: chosen.boardRecognitionModels,
       boardConceptVotes: chosen.boardConceptVotes,

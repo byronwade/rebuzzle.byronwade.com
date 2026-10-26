@@ -3,6 +3,7 @@
  * ahead of curated reserve inventory.
  */
 
+import { DAILY_CHALLENGE_POLICY, dailyChallengeBlockers } from "@/ai/puzzle-agent/daily-challenge";
 import type { NewInAppNotification, Puzzle, UserPuzzleSubmission } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { logger } from "@/lib/logger";
@@ -94,6 +95,26 @@ export async function trySelectUgcLotteryFiller(input: {
       const puzzleId = await ensureCommunityPuzzle(submission);
       const puzzle = (await puzzles.findOne({ id: puzzleId })) as Puzzle | null;
       if (!puzzle?.answer || !puzzle.visual) continue;
+      // Community approval is not qualification for the more demanding daily slot.
+      if (
+        dailyChallengeBlockers({
+          answer: puzzle.answer,
+          visual: puzzle.visual,
+          reasoningEvidence: puzzle.metadata?.reasoningEvidence,
+          // Author-provided claims cannot promote a community board into the daily.
+          reasoningEvidenceSource:
+            puzzle.metadata?.reasoningEvidenceSource === "independent-editorial"
+              ? "independent-editorial"
+              : undefined,
+          difficulty:
+            typeof puzzle.metadata?.difficultyScore === "number"
+              ? puzzle.metadata.difficultyScore
+              : typeof puzzle.difficulty === "number"
+                ? puzzle.difficulty
+                : 0,
+        }).length
+      )
+        continue;
 
       // Skip if answer already used as a daily elsewhere (unique index may throw).
       const answerTaken = await puzzles.findOne({
@@ -117,6 +138,7 @@ export async function trySelectUgcLotteryFiller(input: {
             active: true,
             publishedAt,
             "metadata.dailyPublicationKey": input.dateString,
+            "metadata.dailyChallengePolicy": DAILY_CHALLENGE_POLICY,
             "metadata.uniquenessContract": "archive-v1",
             "metadata.answerKey": submission.answerKey,
             "metadata.source": "user",

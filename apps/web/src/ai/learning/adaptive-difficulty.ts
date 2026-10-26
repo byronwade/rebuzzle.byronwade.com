@@ -2,15 +2,16 @@
  * Adaptive difficulty — blend day-of-week schedule with live player pressure.
  */
 
+import { MIN_DAILY_DIFFICULTY } from "../puzzle-agent/daily-challenge";
 import { getDifficultyLevelForScore } from "../puzzle-agent/difficulty-levels";
 import type { WindowPerformance } from "./performance-monitor";
 
-/** Canonical weekly spine (UTC day index). Monday is the on-ramp; the weekend is the expert summit. */
-export const WEEKLY_DIFFICULTY_SPINE = [8, 6, 7, 8, 7, 8, 9] as const;
+/** Daily lateral-thinking targets (UTC day index), with a harder weekend. */
+export const WEEKLY_DIFFICULTY_SPINE = [8, 7, 8, 8, 7, 8, 9] as const;
 
 export function baselineDifficultyForDate(date: Date = new Date()): number {
   const dayOfWeek = date.getUTCDay();
-  return WEEKLY_DIFFICULTY_SPINE[dayOfWeek] ?? 5;
+  return WEEKLY_DIFFICULTY_SPINE[dayOfWeek] ?? MIN_DAILY_DIFFICULTY;
 }
 
 export type AdaptiveDifficultyResult = {
@@ -32,10 +33,10 @@ export type AdaptiveDifficultyResult = {
 };
 
 /**
- * Clamp into playable generation band (Hard 4 … Impossible 9).
+ * Ease within the daily lateral-thinking band; never fall back to simple assembly.
  */
 export function clampGenerationDifficulty(score: number): number {
-  return Math.max(4, Math.min(9, Math.round(score)));
+  return Math.max(MIN_DAILY_DIFFICULTY, Math.min(9, Math.round(score)));
 }
 
 /**

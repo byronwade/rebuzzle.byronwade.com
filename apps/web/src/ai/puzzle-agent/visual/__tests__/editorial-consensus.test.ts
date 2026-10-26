@@ -131,3 +131,52 @@ describe("answer-aware screenshot editorial consensus", () => {
     expect(summary.reasons.every((reason) => reason.includes("not enough independent"))).toBe(true);
   });
 });
+
+describe("independent layered reasoning evidence", () => {
+  const evidence = {
+    version: "editorial-reasoning-v1" as const,
+    operations: [
+      {
+        kind: "reversal",
+        observation: "TEEF reads leftward",
+        inference: "left feet",
+        necessary: true,
+      },
+      { kind: "count", observation: "Two copies", inference: "two feet", necessary: true },
+    ],
+    interacting: true,
+    finalInterpretation: "two left feet",
+    calibration: "editorial-unplaytested" as const,
+  };
+  function summarize(overrides: Record<string, unknown> = {}, dropProfile = false) {
+    const attempts = acceptedAttempts().map((attempt) => ({
+      ...attempt,
+      reasoningEvidence:
+        dropProfile && attempt.profileId === PROFILES[0]
+          ? undefined
+          : { ...evidence, ...overrides },
+    }));
+    const input = {
+      attempts,
+      answer: "two left feet",
+      expectedProfileIds: PROFILES,
+      requiredVotes: 2,
+      minConfidence: 0.68,
+    };
+    return summarizeEditorialReviewAttempts(input);
+  }
+  it("retains affirmative reasoning only with independent votes at every profile", () => {
+    expect(summarize()).toEqual(expect.objectContaining({ reasoningEvidence: evidence }));
+  });
+  it.each([
+    { interacting: false },
+    { finalInterpretation: "a different answer" },
+    { operations: [evidence.operations[0], { ...evidence.operations[1], necessary: false }] },
+    { operations: [evidence.operations[0], evidence.operations[0]] },
+  ])("does not promote unsupported complexity %j", (overrides) => {
+    expect(summarize(overrides)).not.toHaveProperty("reasoningEvidence", expect.anything());
+  });
+  it("fails closed when even one presentation lacks reasoning quorum", () => {
+    expect(summarize({}, true)).not.toHaveProperty("reasoningEvidence", expect.anything());
+  });
+});

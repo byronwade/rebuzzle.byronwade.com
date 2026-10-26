@@ -2,6 +2,7 @@ import { z } from "zod";
 import { StoredAnswerResearchSchema } from "../research/types";
 import { TECHNIQUE_IDS } from "./quality";
 import { PuzzleVisualSchema } from "./visual/composition";
+import { ReasoningEvidenceSchema } from "./visual/reasoning-evidence";
 import { INK_PICTOGRAM_STYLE_ID } from "./visual/style";
 
 export const DifficultyTierLabelSchema = z.enum(["Hard", "Difficult", "Evil", "Impossible"]);
@@ -149,6 +150,7 @@ export const PuzzleAgentResultSchema = z.object({
     visual: PuzzleVisualSchema.describe("Required generative board from compose_puzzle_visual"),
   }),
   metadata: z.object({
+    reasoningEvidence: ReasoningEvidenceSchema.optional(),
     fingerprint: z.string(),
     uniquenessScore: z.number(),
     calibratedDifficulty: z.number(),
@@ -193,6 +195,7 @@ export const PuzzleAgentResultSchema = z.object({
       .optional(),
     playabilityEvidence: z
       .object({
+        reasoningEvidence: ReasoningEvidenceSchema.optional(),
         blind: z.object({
           profileCount: z.number().int().nonnegative(),
           profilesWithTarget: z.number().int().nonnegative(),

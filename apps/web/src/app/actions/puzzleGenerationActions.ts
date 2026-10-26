@@ -138,6 +138,8 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
         reserveId: reserve.id,
         validation: "catalog-grounded-structural-novelty",
       },
+      ...("reasoningEvidence" in reserve ? { reasoningEvidence: reserve.reasoningEvidence } : {}),
+      reasoningEvidenceSource: "curated",
     },
   });
   if (persisted.alreadyExisted) {
@@ -414,6 +416,8 @@ async function getOrGenerateDailyPuzzle(
         estimatedSolveRate: result.metadata.estimatedSolveRate,
         simCalibrationBias: result.metadata.simCalibrationBias,
         playabilityEvidence: result.metadata.playabilityEvidence,
+        reasoningEvidence: result.metadata.reasoningEvidence,
+        reasoningEvidenceSource: "independent-editorial",
         boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
         boardRecognitionModels: result.metadata.boardRecognitionModels,
         boardConceptVotes: result.metadata.boardConceptVotes,

@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { RESERVE_PUZZLES } from "../src/ai/puzzle-agent/reserve-puzzles";
+import { DEMANDING_RESERVE_PUZZLES as RESERVE_PUZZLES } from "../src/ai/puzzle-agent/demanding-reserve-puzzles";
 import { renderPuzzleVisualProfile } from "../src/ai/puzzle-agent/visual/render-board";
 
 const COLUMNS = 3;

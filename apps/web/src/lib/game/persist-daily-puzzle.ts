@@ -3,6 +3,7 @@
  */
 
 import { isAnswerRegistered, normalizeAnswerKey } from "@/ai/learning/answer-registry";
+import { assertDailyChallenge, DAILY_CHALLENGE_POLICY } from "@/ai/puzzle-agent/daily-challenge";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { db } from "@/db";
 import type { PuzzleVisual } from "@/db/models";
@@ -37,6 +38,13 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
   if (existing) {
     return { id: existing.id, alreadyExisted: true };
   }
+
+  if (input.puzzleType === "rebus")
+    assertDailyChallenge({
+      ...input,
+      reasoningEvidence: input.metadataExtra?.reasoningEvidence,
+      reasoningEvidenceSource: input.metadataExtra?.reasoningEvidenceSource,
+    });
 
   // Never persist a duplicate answer — archive (retired) puzzles still count
   const answerCheck = await isAnswerRegistered(input.answer);
@@ -79,6 +87,7 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
         answerKey,
         uniquenessContract: "archive-v1",
         dailyPublicationKey: input.dateString,
+        dailyChallengePolicy: DAILY_CHALLENGE_POLICY,
         archived: false,
         // Intentionally omit keyword (= answer) from metadata
       },

@@ -34,6 +34,14 @@ describe("adaptive difficulty", () => {
     expect(baselineDifficultyForDate(wed)).toBe(WEEKLY_DIFFICULTY_SPINE[3]);
   });
 
+  it("does not schedule a simple Monday puzzle", () => {
+    const result = computeAdaptiveDifficulty({
+      date: new Date("2026-10-26T12:00:00Z"),
+      performance: perf({ difficultyDelta: -2 }),
+    });
+    expect(result.target).toBeGreaterThanOrEqual(7);
+  });
+
   it("raises difficulty when players finish too quickly", () => {
     const wed = new Date("2026-07-29T12:00:00.000Z"); // baseline 8
     const result = computeAdaptiveDifficulty({
@@ -66,9 +74,9 @@ describe("adaptive difficulty", () => {
     expect(result.target).toBe(7);
   });
 
-  it("clamps into the Hard–Impossible generation band", () => {
-    expect(clampGenerationDifficulty(2)).toBe(4);
+  it("keeps new dailies in the lateral-thinking band even when easing difficulty", () => {
+    expect(clampGenerationDifficulty(2)).toBe(7);
     expect(clampGenerationDifficulty(12)).toBe(9);
-    expect(clampGenerationDifficulty(6.4)).toBe(6);
+    expect(clampGenerationDifficulty(6.4)).toBe(7);
   });
 });

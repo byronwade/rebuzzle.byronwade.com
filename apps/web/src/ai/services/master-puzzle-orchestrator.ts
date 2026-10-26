@@ -65,6 +65,7 @@ export interface GeneratedPuzzleResult {
     answerResearch?: PuzzleAgentResult["metadata"]["answerResearch"];
     estimatedSolveRate?: number;
     playabilityEvidence?: PuzzleAgentResult["metadata"]["playabilityEvidence"];
+    reasoningEvidence?: PuzzleAgentResult["metadata"]["reasoningEvidence"];
     simCalibrationBias?: number;
     boardRecognitionConfidence?: number;
     boardRecognitionModels?: string[];
@@ -136,6 +137,7 @@ function toGeneratedResult(
       answerResearch: result.metadata.answerResearch,
       estimatedSolveRate: result.metadata.estimatedSolveRate,
       playabilityEvidence: result.metadata.playabilityEvidence,
+      reasoningEvidence: result.metadata.reasoningEvidence,
       simCalibrationBias: result.metadata.simCalibrationBias,
       boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
       boardRecognitionModels: result.metadata.boardRecognitionModels,
@@ -182,6 +184,7 @@ async function enforceClassicPlayability(result: PuzzleAgentResult): Promise<Puz
       ...result.metadata,
       estimatedSolveRate: sim.estimatedSolveRate,
       playabilityEvidence: toPlayabilityEvidence(sim),
+      reasoningEvidence: sim.reasoningEvidence,
     },
   };
 }

@@ -1,8 +1,9 @@
 import { buildPuzzleSolveBenchmarkCorpus } from "../benchmark/puzzle-corpus";
+import { DEMANDING_RESERVE_PUZZLES as RESERVE_PUZZLES } from "../demanding-reserve-puzzles";
 import { buildPuzzleNoveltySignature, type PuzzleNoveltyArchiveEntry } from "../novelty";
 import { normalizeAnswerKey } from "../quality";
 import {
-  RESERVE_PUZZLES,
+  RESERVE_PUZZLES as LEGACY_RESERVE_PUZZLES,
   ReservePuzzleExhaustedError,
   selectReservePuzzle,
   validateReservePuzzleCorpus,
@@ -14,9 +15,9 @@ function dateAt(day: number): Date {
 }
 
 describe("validated reserve puzzle inventory", () => {
-  it("ships 60+ unique, catalog-grounded, schema-valid puzzles", () => {
-    expect(RESERVE_PUZZLES.length).toBeGreaterThanOrEqual(60);
-    expect(validateReservePuzzleCorpus()).toEqual([]);
+  it("ships 30+ unique, catalog-grounded, schema-valid puzzles", () => {
+    expect(RESERVE_PUZZLES.length).toBeGreaterThanOrEqual(30);
+    expect(validateReservePuzzleCorpus(RESERVE_PUZZLES)).toEqual([]);
     for (const puzzle of RESERVE_PUZZLES) {
       expect(PuzzleVisualSchema.safeParse(puzzle.visual).success).toBe(true);
       expect(puzzle.visual.layers.some((layer) => layer.kind === "image")).toBe(false);
@@ -32,6 +33,21 @@ describe("validated reserve puzzle inventory", () => {
     ).map((puzzle) => puzzle.answer);
 
     expect(overlap).toEqual([]);
+  });
+
+  it("does not select simple legacy boards even with inflated scores", async () => {
+    await expect(
+      selectReservePuzzle({
+        dateString: "2026-08-01",
+        usedAnswerKeys: new Set(),
+        recentPuzzles: [],
+        corpus: LEGACY_RESERVE_PUZZLES.filter(
+          (puzzle) =>
+            puzzle.visual.layout === "row" &&
+            puzzle.visual.layers.some((layer) => layer.kind === "operator" && layer.symbol === "+")
+        ).map((puzzle) => ({ ...puzzle, difficulty: 9 })),
+      })
+    ).rejects.toBeInstanceOf(ReservePuzzleExhaustedError);
   });
 
   it("selects deterministically for the same archive snapshot and date", async () => {

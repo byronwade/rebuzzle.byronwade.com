@@ -1,3 +1,6 @@
+import { dailyChallengeBlockers } from "./daily-challenge";
+import { DEMANDING_RESERVE_PUZZLES } from "./demanding-reserve-puzzles";
+import type { DifficultyTierLabel } from "./difficulty-levels";
 import {
   buildPuzzleNoveltySignature,
   createPuzzleNoveltyModule,
@@ -15,14 +18,14 @@ import {
 import { resolveCuratedPictogram } from "./visual/curated-pictograms";
 import { INK_PICTOGRAM_STYLE_ID } from "./visual/style";
 
-export const RESERVE_PUZZLE_CORPUS_VERSION = "catalog-reserve-v2";
+export const RESERVE_PUZZLE_CORPUS_VERSION = "layered-reserve-v1";
 
 export type ReservePuzzle = {
   id: string;
   rebusPuzzle: string;
   answer: string;
   difficulty: number;
-  difficultyLevel: "Hard" | "Difficult";
+  difficultyLevel: DifficultyTierLabel;
   explanation: string;
   category: "compound_words" | "phrases_and_idioms" | "wordplay";
   hints: [string, string, string];
@@ -862,7 +865,7 @@ export function validateReservePuzzleCorpus(
   const ids = new Set<string>();
   const answers = new Set<string>();
   const compositions = new Set<string>();
-  if (corpus.length < 60) issues.push(`Reserve corpus has only ${corpus.length} puzzles; need 60+`);
+  if (corpus.length < 30) issues.push(`Reserve corpus has only ${corpus.length} puzzles; need 30+`);
 
   for (const puzzle of corpus) {
     if (ids.has(puzzle.id)) issues.push(`Duplicate reserve id: ${puzzle.id}`);
@@ -933,16 +936,22 @@ export async function selectReservePuzzle(input: {
   now?: () => Date;
   corpus?: readonly ReservePuzzle[];
 }): Promise<SelectedReservePuzzle> {
-  const corpus = input.corpus ?? RESERVE_PUZZLES;
+  const corpus = input.corpus ?? DEMANDING_RESERVE_PUZZLES;
   const corpusErrors = validateReservePuzzleCorpus(corpus);
   if (corpusErrors.length) {
     throw new ReservePuzzleExhaustedError("Reserve corpus failed validation", corpusErrors);
   }
   const available = corpus.filter(
-    (puzzle) => !input.usedAnswerKeys.has(normalizeAnswerKey(puzzle.answer))
+    (puzzle) =>
+      !input.usedAnswerKeys.has(normalizeAnswerKey(puzzle.answer)) &&
+      dailyChallengeBlockers({
+        ...puzzle,
+        reasoningEvidence: "reasoningEvidence" in puzzle ? puzzle.reasoningEvidence : undefined,
+        reasoningEvidenceSource: "curated",
+      }).length === 0
   );
   if (!available.length) {
-    throw new ReservePuzzleExhaustedError("No unused reserve puzzle answers remain", []);
+    throw new ReservePuzzleExhaustedError("No unused eligible daily reserve answers remain", []);
   }
   const offset = stableDateSeed(input.dateString) % available.length;
   const ordered = [...available.slice(offset), ...available.slice(0, offset)];

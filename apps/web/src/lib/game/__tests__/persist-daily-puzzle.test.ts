@@ -25,15 +25,47 @@ import { type PersistDailyPuzzleInput, persistDailyPuzzle } from "../persist-dai
 
 const input: PersistDailyPuzzleInput = {
   dateString: "2026-08-01",
-  puzzleDisplay: "🔥 + 🚚",
+  puzzleDisplay: "TEEF TEEF",
   puzzleType: "rebus",
-  answer: "firetruck",
-  difficulty: 4,
-  category: "compound_words",
-  explanation: "Fire plus truck gives firetruck.",
-  hints: ["Read left to right", "Name both pictures", "Join the words"],
+  answer: "two left feet",
+  difficulty: 7,
+  category: "phrases_and_idioms",
+  explanation: "Two copies of FEET read toward the left: two left feet.",
+  hints: ["Read in a different direction", "Count what you find", "Which way do both feet read?"],
+  metadataExtra: {
+    reasoningEvidenceSource: "curated",
+    reasoningEvidence: {
+      version: "editorial-reasoning-v1",
+      operations: [
+        {
+          kind: "reversal",
+          observation: "Each TEEF spells FEET toward the left.",
+          inference: "Recover FEET and the direction left.",
+          necessary: true,
+        },
+        {
+          kind: "count",
+          observation: "Two reversed word groups are visible.",
+          inference: "The pair supplies two in the final idiom.",
+          necessary: true,
+        },
+      ],
+      interacting: true,
+      finalInterpretation: "two left feet",
+      calibration: "editorial-unplaytested",
+    },
+  },
   aiGenerated: false,
-  rebusPuzzle: "🔥 + 🚚",
+  rebusPuzzle: "TEEF TEEF",
+  visual: {
+    mode: "composed",
+    layout: "row",
+    unicodeFallback: "TEEF TEEF",
+    layers: [
+      { kind: "text", content: "TEEF", emphasis: "normal" },
+      { kind: "text", content: "TEEF", emphasis: "normal" },
+    ],
+  },
 };
 
 const findByDate = jest.mocked(db.puzzleOps.findByDate);
@@ -47,6 +79,43 @@ describe("daily puzzle publication locks", () => {
     findByDate.mockResolvedValue(null);
     answerRegistered.mockResolvedValue({ taken: false });
     create.mockImplementation(async (puzzle) => puzzle as never);
+  });
+
+  it("rejects literal picture-name addition even when declared difficulty is nine", async () => {
+    await expect(
+      persistDailyPuzzle({
+        ...input,
+        difficulty: 9,
+        answer: "firetruck",
+        metadataExtra: {
+          ...input.metadataExtra,
+          reasoningEvidence: {
+            ...(input.metadataExtra!.reasoningEvidence as object),
+            finalInterpretation: "firetruck",
+          },
+        },
+        visual: {
+          mode: "composed",
+          layout: "row",
+          unicodeFallback: "FIRE + TRUCK",
+          layers: [
+            { kind: "text", content: "FIRE", emphasis: "normal" },
+            { kind: "operator", symbol: "+" },
+            { kind: "text", content: "TRUCK", emphasis: "normal" },
+          ],
+        },
+      })
+    ).rejects.toThrow("Daily challenge");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("keeps an already published easy puzzle stable under the new policy", async () => {
+    findByDate.mockResolvedValue({ id: "already-playing" } as never);
+    await expect(persistDailyPuzzle({ ...input, difficulty: 4 })).resolves.toEqual({
+      id: "already-playing",
+      alreadyExisted: true,
+    });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("refuses every duplicate answer without an emergency bypass", async () => {
@@ -67,6 +136,7 @@ describe("daily puzzle publication locks", () => {
     await persistDailyPuzzle({
       ...input,
       metadataExtra: {
+        ...input.metadataExtra,
         answerKey: "attempted-override",
         uniquenessContract: "attempted-override",
         dailyPublicationKey: "1900-01-01",
@@ -74,7 +144,7 @@ describe("daily puzzle publication locks", () => {
     });
 
     const saved = create.mock.calls[0]?.[0];
-    expect(saved?.metadata?.answerKey).toBe("firetruck");
+    expect(saved?.metadata?.answerKey).toBe("twoleftfeet");
     expect(saved?.metadata?.uniquenessContract).toBe("archive-v1");
     expect(saved?.metadata?.dailyPublicationKey).toBe("2026-08-01");
   });
@@ -101,24 +171,15 @@ describe("daily puzzle publication locks", () => {
   });
 
   it("queues real AI-generated rebus boards for shadow human playtesting", async () => {
-    const visual = {
-      styleId: "ink-pictogram-v1" as const,
-      mode: "composed" as const,
-      layout: "row" as const,
-      unicodeFallback: "SUN + FLOWER",
-      layers: [
-        { kind: "text" as const, content: "SUN", emphasis: "normal" as const },
-        { kind: "operator" as const, symbol: "+" },
-        { kind: "text" as const, content: "FLOWER", emphasis: "normal" as const },
-      ],
-    };
+    const visual = input.visual!;
     await persistDailyPuzzle({
       ...input,
       aiGenerated: true,
       visual,
       metadataExtra: {
-        techniqueId: "simple_compound",
-        difficultyLevel: "Hard",
+        ...input.metadataExtra,
+        techniqueId: "triple_layer_composition",
+        difficultyLevel: "Evil",
         generationMethod: "apex-tournament",
         estimatedSolveRate: 0.78,
       },
@@ -126,10 +187,10 @@ describe("daily puzzle publication locks", () => {
 
     expect(submitPlaytestCandidate).toHaveBeenCalledWith(
       expect.objectContaining({
-        answer: "firetruck",
+        answer: "two left feet",
         visual,
-        difficultyScore: 4,
-        techniqueId: "simple_compound",
+        difficultyScore: 7,
+        techniqueId: "triple_layer_composition",
         automatedEstimatedSolveRate: 0.78,
       })
     );
@@ -142,13 +203,7 @@ describe("daily puzzle publication locks", () => {
       persistDailyPuzzle({
         ...input,
         aiGenerated: true,
-        visual: {
-          styleId: "ink-pictogram-v1",
-          mode: "composed",
-          layout: "row",
-          unicodeFallback: "FIRE + TRUCK",
-          layers: [{ kind: "text", content: "FIRE", emphasis: "normal" }],
-        },
+        visual: input.visual,
       })
     ).resolves.toEqual(expect.objectContaining({ alreadyExisted: false }));
   });

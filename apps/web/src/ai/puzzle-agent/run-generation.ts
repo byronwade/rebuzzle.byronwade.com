@@ -796,6 +796,7 @@ export async function runPuzzleAgentGeneration(
               `${difficultyLevel} puzzle via Eve ToolLoopAgent + AI Gateway (${modelId}) in ${Date.now() - start}ms`,
             estimatedSolveRate: sim.estimatedSolveRate,
             playabilityEvidence: toPlayabilityEvidence(sim),
+            reasoningEvidence: sim.reasoningEvidence,
           },
           status: "success",
           recommendations: output.recommendations,

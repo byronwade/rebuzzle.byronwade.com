@@ -186,6 +186,7 @@ export async function simulatePlayerSolve(input: {
     const blind = summarizeBlindSolveAttempts({ answer: input.answer, attempts });
     const editorial = summarizeEditorialReviewAttempts({
       attempts: editorialAttempts,
+      answer: input.answer,
       expectedProfileIds: PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => profile.id),
       requiredVotes: AI_CONFIG.visualRecognition.requiredVotes,
       minConfidence: AI_CONFIG.visualRecognition.minConfidence,
@@ -253,6 +254,7 @@ export async function simulatePlayerSolve(input: {
       editorialConfidence: editorial.confidence,
       editorialFailureKinds: editorial.failureKinds,
       editorialReasons: editorial.reasons,
+      reasoningEvidence: editorial.reasoningEvidence,
       hintedAttempted,
       hintedTopTargetFoundBy,
       hintedEstimatedSolveRate,

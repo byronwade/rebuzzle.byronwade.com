@@ -58,6 +58,43 @@ describe("GET /api/puzzles/recommendations", () => {
     expect(mockGetPersonalizedPuzzles).toHaveBeenCalledWith("user-1", 5);
   });
 
+  it("never exposes internal reasoning or encoded answer keys in public recommendations", async () => {
+    const solution = "two left feet";
+    const evidence = {
+      finalInterpretation: solution,
+      operations: [{ inference: "secret solution steps" }],
+    };
+    mockGetPersonalizedPuzzles.mockResolvedValue([
+      {
+        id: "layered",
+        puzzle: "TEEF TEEF",
+        answer: solution,
+        reasoningEvidence: evidence,
+        metadata: {
+          difficultyScore: 7,
+          source: "curated",
+          answerKey: "twoleftfeet",
+          reasoningEvidence: evidence,
+          playabilityEvidence: { reasoningEvidence: evidence },
+          answerSeed: solution,
+        },
+      },
+    ] as never);
+    const response = await GET(
+      new NextRequest("http://localhost:3000/api/puzzles/recommendations")
+    );
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.recommendations[0]).toMatchObject({
+      puzzle: "TEEF TEEF",
+      metadata: { difficultyScore: 7 },
+    });
+    const payload = JSON.stringify(data.recommendations);
+    expect(payload).not.toContain(solution);
+    expect(payload).not.toContain("twoleftfeet");
+    expect(payload).not.toContain("secret solution steps");
+  });
+
   it("should return 401 if the request is unauthenticated", async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
     const request = new NextRequest("http://localhost:3000/api/puzzles/recommendations");

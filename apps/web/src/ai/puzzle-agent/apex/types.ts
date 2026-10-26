@@ -8,6 +8,7 @@ import type { DifficultyTierLabel } from "../difficulty-levels";
 import type { PuzzleNoveltyEvidence } from "../novelty";
 import type { TechniqueId } from "../technique-library";
 import type { PuzzleVisual } from "../visual/composition";
+import { ReasoningEvidenceSchema } from "../visual/reasoning-evidence";
 import type { TechniqueSolveRate } from "./technique-calibration";
 
 const RubricScoresSchema = z.object({
@@ -53,6 +54,7 @@ export const CritiqueProviderSchema = CritiqueSchema.extend({
 export type CritiqueResult = z.infer<typeof CritiqueSchema>;
 
 const PlayerSimSchema = z.object({
+  reasoningEvidence: ReasoningEvidenceSchema.optional(),
   firstWrongParses: z.array(z.string()).max(5),
   likelySolvePath: z.string(),
   hintUnlockOrderLooksFair: z.boolean(),
