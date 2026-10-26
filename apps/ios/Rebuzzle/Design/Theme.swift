@@ -9,6 +9,7 @@ enum Theme {
     static let secondary = adaptive(light: 0x62615E, dark: 0xB8B9BE)
     static let accent = Color(red: 0.22, green: 0.39, blue: 0.86)
     static let success = adaptive(light: 0x26733C, dark: 0x8FC29A)
+    static let reward = adaptive(light: 0x8B5915, dark: 0xEDBF74)
     static let error = adaptive(light: 0xB32D37, dark: 0xF59A9E)
     static func font(_ size: CGFloat, weight: Font.Weight = .regular, relativeTo: Font.TextStyle = .body) -> Font {
         Font.custom("Inter-Regular", size: size, relativeTo: relativeTo).weight(weight)

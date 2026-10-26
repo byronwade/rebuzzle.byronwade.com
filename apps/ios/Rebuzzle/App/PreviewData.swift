@@ -39,7 +39,14 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
 private final class FixtureServer: @unchecked Sendable {
     private let lock = NSLock()
     private let nextPuzzleTime = ISO8601DateFormatter().string(from: Date().addingTimeInterval(86_400))
-    private var game = GameSession(puzzleId: "fixture-lighthouse", puzzleDate: "2026-10-25")
+    private var game = GameSession(puzzleId: "fixture-lighthouse", puzzleDate: FixtureServer.todayKey)
+    private static var todayKey: String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
     private static var visual: [String: Any] {
         ["mode": "composed", "layout": "row", "unicodeFallback": "💡 + 🏠", "layers": [
             ["kind": "pictogram", "emojiFallback": "💡", "svg": ##"<svg viewBox="0 0 24 24" fill="none" stroke="#1a1f1c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg>"##],

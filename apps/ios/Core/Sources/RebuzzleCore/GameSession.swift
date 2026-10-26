@@ -29,7 +29,7 @@ public struct GameSession: Codable, Sendable {
     public var shareText: String {
         let result = gameOver ? (wasSuccessful == true ? "Solved in \(attempts.count)/\(maxAttempts)" : "A good challenge") : "Today's puzzle is waiting"
         let marks = attempts.map { $0.correct ? "🟦" : "⬜" }.joined()
-        return "Rebuzzle · \(puzzleDate)\n\(result)\n\(marks)\n\(hintsUsed) hint\(hintsUsed == 1 ? "" : "s") used\nhttps://rebuzzle.byronwade.com"
+        return "Rebuzzle · \(puzzleDate)\n\(result)\n\(marks)\n\(hintsUsed) hint\(hintsUsed == 1 ? "" : "s") used\nCan you find the connection?\nhttps://rebuzzle.byronwade.com"
     }
     public init(puzzleId: String, puzzleDate: String) {
         success = true; self.puzzleId = puzzleId; self.puzzleDate = puzzleDate

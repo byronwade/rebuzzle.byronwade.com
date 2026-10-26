@@ -3,6 +3,7 @@ import Observation
 import RebuzzleCore
 
 @MainActor @Observable final class AppModel {
+    var selectedTab: AppTab = .play
     var daily: DailyResponse?
     var game: GameSession?
     var player: Player?

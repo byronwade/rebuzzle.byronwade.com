@@ -1,4 +1,5 @@
 import SwiftUI
+import RebuzzleCore
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
@@ -6,6 +7,17 @@ struct SettingsView: View {
     @AppStorage("haptics") private var haptics = true
     var body: some View {
         Form {
+            Section {
+                HStack(spacing: 14) {
+                    Image(systemName: "person.crop.circle.fill").font(.system(size: 42)).foregroundStyle(Theme.accent)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(model.player?.guest == false ? (model.player?.username ?? "Curious mind") : "Hello, curious mind.")
+                            .font(Theme.font(20, weight: .medium))
+                        Text("Level \(JourneyProgress(entries: model.journal.entries).level) · Your daily aha club")
+                            .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    }
+                }.padding(.vertical, 8)
+            }
             Section {
                 if let player = model.player {
                     LabeledContent("Playing as", value: player.guest ? "Guest" : player.username)
@@ -30,7 +42,10 @@ struct SettingsView: View {
                 Link("Privacy policy", destination: URL(string: "https://rebuzzle.byronwade.com/privacy")!)
                 Link("Terms of use", destination: URL(string: "https://rebuzzle.byronwade.com/terms")!)
                 Link("Help and feedback", destination: URL(string: "https://rebuzzle.byronwade.com/how-it-works#feedback")!)
-                LabeledContent("Version", value: "1.0 (1)")
+                ShareLink(item: "Small puzzle. Big aha. Try today’s Rebuzzle with me: https://rebuzzle.byronwade.com") {
+                    Label("Invite a curious friend", systemImage: "square.and.arrow.up")
+                }
+                LabeledContent("Version", value: "\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"))")
             }
             if model.player != nil {
                 Section {
@@ -39,7 +54,7 @@ struct SettingsView: View {
             }
         }
         .scrollContentBackground(.hidden).background(Theme.canvas).foregroundStyle(Theme.ink)
-        .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("You").navigationBarTitleDisplayMode(.inline)
     }
 }
 struct SignInView: View {

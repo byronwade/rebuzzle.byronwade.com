@@ -31,6 +31,7 @@
 		CA65ED7D4C1BB7A64798FCCF /* Rebuzzle.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EF86991A32908751C121291 /* Rebuzzle.storekit */; };
 		CC209AC39DA24712E5B0AC28 /* RebuzzleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9406EAD9DA7C76C0F7A95E02 /* RebuzzleApp.swift */; };
 		DA428A581C6A0117D592D470 /* ReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E74F7577CC547034168ACF15 /* ReminderStore.swift */; };
+		DB16E04E84B4DA3CBD373891 /* JourneyRewards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265BEFC14F6F5011653FD71E /* JourneyRewards.swift */; };
 		EA6277CE9901B0C34C9979F4 /* ProgressScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61864440C1A74407936568F /* ProgressScreen.swift */; };
 		ECE6239380306C5ADE9C4471 /* EveReplyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B5EFE92277FF96810B07859 /* EveReplyStore.swift */; };
 		ED8FF5B3477B1363C51B0574 /* RuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */; };
@@ -62,6 +63,7 @@
 		116205D9538019F049FCA9CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		11D915DE26C2DDCDAB6087A8 /* PlusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlusView.swift; sourceTree = "<group>"; };
 		124C2F26141BC60AD508780F /* VisualBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualBoard.swift; sourceTree = "<group>"; };
+		265BEFC14F6F5011653FD71E /* JourneyRewards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyRewards.swift; sourceTree = "<group>"; };
 		2DA288848438C453BD345991 /* SubmissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionTests.swift; sourceTree = "<group>"; };
 		344E3325BAE7E6F5430236CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeTests.swift; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */,
+				265BEFC14F6F5011653FD71E /* JourneyRewards.swift */,
 				11D915DE26C2DDCDAB6087A8 /* PlusView.swift */,
 				C61864440C1A74407936568F /* ProgressScreen.swift */,
 				7A644188B1C600803AADBDAD /* SettingsView.swift */,
@@ -380,6 +383,7 @@
 				008EE794056149197CEC05D6 /* CredentialStore.swift in Sources */,
 				ECE6239380306C5ADE9C4471 /* EveReplyStore.swift in Sources */,
 				0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */,
+				DB16E04E84B4DA3CBD373891 /* JourneyRewards.swift in Sources */,
 				2B387063BD4572478BD436B4 /* LocalStore.swift in Sources */,
 				337DCC35B945F5A5824E3CAD /* PlusView.swift in Sources */,
 				9DE11D302674AF759A8E2FAA /* PreviewData.swift in Sources */,

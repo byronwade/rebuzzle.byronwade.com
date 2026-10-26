@@ -25,15 +25,23 @@ private struct ApplicationView: View {
             .tint(Theme.accent)
     }
 }
+enum AppTab: Hashable { case play, journey, you }
+
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
     var body: some View {
-        TabView {
-            NavigationStack { TodayView() }.id("today-" + (model.player?.id ?? "signed-out")).tabItem { Label("Today", systemImage: "square.grid.2x2") }
-            NavigationStack { ProgressViewScreen() }.tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
-            NavigationStack { JournalView() }.id(model.player?.id).tabItem { Label("Journal", systemImage: "book.closed") }
-            NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
+        @Bindable var model = model
+        TabView(selection: $model.selectedTab) {
+            NavigationStack { TodayView() }
+                .id("play-" + (model.player?.id ?? "signed-out"))
+                .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
+            NavigationStack { ProgressViewScreen() }
+                .id("journey-" + (model.player?.id ?? "signed-out"))
+                .tabItem { Label("Journey", systemImage: "map") }.tag(AppTab.journey)
+            NavigationStack { SettingsView() }
+                .id("you-" + (model.player?.id ?? "signed-out"))
+                .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)
         }
         .task { await model.load(); await model.purchases.load() }
         .task(id: model.daily?.nextPuzzleTime) {

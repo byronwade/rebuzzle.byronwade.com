@@ -59,6 +59,14 @@ import XCTest
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
         capture("Today — accessibility XXXL solved")
+        let journey = app.buttons["viewJourney"]
+        for _ in 0..<10 where !journey.isHittable { app.swipeUp() }
+        journey.tap()
+        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("125 XP"))
+        XCTAssertTrue(app.staticTexts["journeyLevel"].exists)
+        XCTAssertLessThanOrEqual(app.staticTexts["journeyLevel"].frame.maxY, app.staticTexts["journeyXP"].frame.minY)
+        capture("Journey — accessibility XXXL")
     }
 
     func testConversationSurvivesCompletion() {
@@ -87,14 +95,38 @@ import XCTest
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
     }
 
+    func testRewardJourneyNavigationPreservesCompletedGame() {
+        launchFixture()
+        selectTab("Journey")
+        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("0 XP"))
+        selectTab("Play")
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        let journey = app.buttons["viewJourney"]
+        for _ in 0..<8 where !journey.isHittable { app.swipeUp() }
+        journey.tap()
+        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("150 XP"))
+        capture("Journey — first reward")
+        let journal = app.buttons["openJournal"]
+        for _ in 0..<8 where !journal.isHittable { app.swipeUp() }
+        journal.tap()
+        XCTAssertTrue(app.staticTexts["Keep the moments when it clicked."].waitForExistence(timeout: 5))
+        selectTab("You")
+        XCTAssertTrue(app.staticTexts["Appearance"].waitForExistence(timeout: 5))
+        selectTab("Play")
+        XCTAssertTrue(app.staticTexts["You found it."].exists)
+    }
+
     func testTabNavigation() {
         launchFixture()
-        for (tab, heading) in [("Progress", "Keep showing up."), ("Journal", "Keep the moments when it clicked."), ("Settings", "Appearance")] {
+        for (tab, heading) in [("Journey", "Curious mind"), ("You", "Appearance")] {
             selectTab(tab)
             XCTAssertTrue(app.staticTexts[heading].waitForExistence(timeout: 5))
             capture(tab)
         }
-        selectTab("Today")
+        selectTab("Play")
         XCTAssertTrue(app.buttons["checkAnswer"].exists)
     }
 

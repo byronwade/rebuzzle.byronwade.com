@@ -14,7 +14,7 @@ struct TodayView: View {
             if let daily = model.daily {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Eyebrow(text: dateLabel)
+                        Eyebrow(text: "Daily challenge · " + dateLabel)
                         Text(daily.puzzle.typeName).font(Theme.font(20, weight: .semibold, relativeTo: .title3))
                     }
                     Spacer(minLength: 8)
@@ -31,7 +31,7 @@ struct TodayView: View {
                 } else {
                     VStack(spacing: 12) {
                         PuzzleBoard(puzzle: daily.puzzle)
-                        Text("Find the word or phrase.")
+                        Text("Small puzzle. Big aha.")
                             .font(Theme.font(13)).foregroundStyle(Theme.secondary)
                     }
                     .padding(16)
@@ -42,7 +42,7 @@ struct TodayView: View {
                         if model.game?.attempts.isEmpty != false {
                             HStack(spacing: 8) {
                                 EveAvatar()
-                                Text("Find the connection. Eve will guide you.")
+                                Text("Three guesses. Eve’s in your corner.")
                                     .font(Theme.font(13)).foregroundStyle(Theme.secondary)
                             }
                         }
@@ -189,14 +189,15 @@ struct ResultView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                JourneyRewards(game: game)
                 let metrics = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(spacing: 32))
                 metrics {
                     resultMetric("\(game.attempts.count)/\(game.maxAttempts)", "Guesses")
                     resultMetric("\(model.hintsShown)", "Hints")
                     resultMetric("\(model.journal.entries.count)", "Days played here")
                 }
-                ShareLink(item: game.shareText) { Label("Share your result", systemImage: "square.and.arrow.up") }.buttonStyle(CommitStyle())
-                Text("Your answer stays a secret.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                ShareLink(item: game.shareText) { Label("Challenge a friend", systemImage: "square.and.arrow.up") }.buttonStyle(CommitStyle())
+                Text("Same puzzle. Your answer stays a secret.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
                 if let puzzle = model.daily?.puzzle {
                     DisclosureGroup("See the puzzle") {
                         PuzzleBoard(puzzle: puzzle).padding(.top, 12)
@@ -208,7 +209,7 @@ struct ResultView: View {
                     }.font(Theme.font(14)).frame(minHeight: 44).accessibilityIdentifier("keepConnection")
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("See you tomorrow.").font(Theme.font(20, weight: .medium))
+                    Text("Your next aha is on its way.").font(Theme.font(20, weight: .medium))
                     if let raw = model.daily?.nextPuzzleTime, let date = Self.date(raw) {
                         HStack { Text("Next puzzle in"); Text(date, style: .timer).monospacedDigit() }.font(Theme.font(14)).foregroundStyle(Theme.secondary)
                     }
@@ -230,13 +231,18 @@ struct HelpView: View {
     var body: some View {
         NavigationStack {
             Page {
-                Text("Look a little closer.").font(Theme.font(30, weight: .medium))
-                Text("Each day, pictures, words, or patterns hide an answer. Read the clue, find the connection, and enter a word or phrase.").font(Theme.font(17))
+                Text("Small puzzle. Big aha.").font(Theme.font(30, weight: .medium))
+                Text("A few clues. One hidden connection. Read the pictures, words or patterns, then try the word or phrase that clicks.").font(Theme.font(17))
+                VStack(spacing: 12) {
+                    Text("💡 + 🏠").font(.system(size: 42)).accessibilityLabel("Light bulb plus house")
+                    Text("Light + house = lighthouse").font(Theme.font(16, weight: .medium))
+                    Text("That’s the aha. Today’s connection is yours to find.").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                }.frame(maxWidth: .infinity).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 24) {
                     Label("Three guesses. Take your time.", systemImage: "circle.grid.3x1")
-                    Label("Hints help you see another angle.", systemImage: "lightbulb")
+                    Label("Eve reacts to each guess. Hints offer a nudge.", systemImage: "sparkles")
                     Label("A new puzzle at your local midnight.", systemImage: "sunrise")
-                    Label("Share your progress without spoiling the answer.", systemImage: "square.and.arrow.up")
+                    Label("Earn XP, collect badges, challenge a friend.", systemImage: "star")
                 }.font(Theme.font(16))
                 Text("Daily play is free. Plus adds a personal journal and deeper insights, never an advantage.").font(Theme.font(14)).foregroundStyle(Theme.secondary)
                 Button("Let’s play") { dismiss() }.buttonStyle(CommitStyle())
