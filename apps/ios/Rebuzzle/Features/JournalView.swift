@@ -6,32 +6,51 @@ struct JournalView: View {
     var body: some View {
         Page {
             VStack(alignment: .leading, spacing: 8) {
-                Eyebrow(text: "A collection of connections")
-                Text("Your curious mind,\none day at a time.").font(Theme.font(30, weight: .medium, relativeTo: .largeTitle)).tracking(-0.7)
-                Text("Keep the moments when it clicked.").font(Theme.font(15)).foregroundStyle(Theme.secondary)
+                Text("Keep the moments when it clicked.")
+                    .font(Theme.font(24, weight: .medium, relativeTo: .title2)).tracking(-0.5)
+                if model.purchases.hasPlus && !model.journal.entries.isEmpty {
+                    Text("\(model.journal.entries.count) connections kept on this device")
+                        .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                }
             }
             if !model.purchases.hasPlus {
-                VStack(alignment: .leading, spacing: 20) {
-                    Image(systemName: "book.closed").font(.system(size: 42, weight: .light)).foregroundStyle(Theme.secondary)
-                    Text("A home for your discoveries.").font(Theme.font(22, weight: .medium))
-                    Text("Plus keeps your completed puzzles together, with personal notes and insights into how you solve.").font(Theme.font(16)).foregroundStyle(Theme.secondary)
-                    NavigationLink { PlusView() } label: { Text("Explore Rebuzzle Plus") }.buttonStyle(CommitStyle())
-                    Text("Your completed results are saved locally now, ready when you unlock Plus.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
-                }.padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                VStack(alignment: .leading, spacing: 16) {
+                    Image(systemName: "book.closed").font(.system(size: 32, weight: .light)).foregroundStyle(Theme.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your discoveries belong here.").font(Theme.font(20, weight: .medium))
+                        Text("Revisit completed puzzles and keep a note about the connection. Unlock your journal with Plus.")
+                            .font(Theme.font(15)).foregroundStyle(Theme.secondary)
+                    }
+                    NavigationLink { PlusView() } label: {
+                        Text("Explore Rebuzzle Plus").padding(.horizontal, 16).padding(.vertical, 8)
+                    }.buttonStyle(CommitStyle())
+                    Text("Completed results are already saved locally, ready when you unlock Plus.")
+                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                }
             } else if model.journal.entries.isEmpty {
-                ContentUnavailableView("Your first page is waiting", systemImage: "book", description: Text("Complete today’s puzzle to start your journal."))
+                VStack(alignment: .leading, spacing: 12) {
+                    Image(systemName: "book").font(.system(size: 32, weight: .light)).foregroundStyle(Theme.secondary)
+                    Text("Your first page is waiting").font(Theme.font(20, weight: .medium))
+                    Text("Complete today’s puzzle to start your journal. Every connection has a place here, solved or revealed.")
+                        .font(Theme.font(15)).foregroundStyle(Theme.secondary)
+                }.padding(.vertical, 16)
             } else {
-                ForEach(model.journal.entries) { entry in
-                    NavigationLink(value: entry) {
-                        HStack(alignment: .top, spacing: 16) {
-                            Text(String(entry.puzzleDate.suffix(2))).font(Theme.font(26, weight: .medium)).foregroundStyle(Theme.secondary).frame(width: 40)
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(entry.answer).font(Theme.font(18, weight: .medium))
-                                Text("\(entry.puzzleDate) · \(entry.won ? "Solved" : "Revealed") · \(entry.attempts) guesses").font(Theme.font(12)).foregroundStyle(Theme.secondary)
-                                if !entry.note.isEmpty { Text(entry.note).font(Theme.font(14)).foregroundStyle(Theme.secondary).lineLimit(2) }
-                            }
-                            Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.secondary)
-                        }.foregroundStyle(Theme.ink).padding(.vertical, 12)
+                LazyVStack(spacing: 0) {
+                    ForEach(model.journal.entries) { entry in
+                        NavigationLink(value: entry) {
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(entry.puzzleDate).font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                                    Text(entry.answer).font(Theme.font(18, weight: .medium))
+                                    Text("\(entry.won ? "Solved" : "Revealed") · \(entry.attempts) \(entry.attempts == 1 ? "guess" : "guesses")")
+                                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                                    if !entry.note.isEmpty {
+                                        Text(entry.note).font(Theme.font(14)).foregroundStyle(Theme.secondary).lineLimit(2)
+                                    }
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.secondary).padding(.top, 4)
+                            }.foregroundStyle(Theme.ink).padding(.vertical, 16).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
                     }
                 }
             }

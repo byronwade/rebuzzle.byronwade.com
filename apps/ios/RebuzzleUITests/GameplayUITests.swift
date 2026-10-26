@@ -13,12 +13,16 @@ import XCTest
 
     func testWrongGuessThenWin() {
         launchFixture()
+        XCTAssertTrue(app.buttons["checkAnswer"].isHittable, "The daily game should be ready to play without scrolling")
         capture("Today — ready")
         submit("sunshine")
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["lighthouse"].exists)
         XCTAssertTrue(app.staticTexts["guessFeedback"].exists)
         XCTAssertTrue(app.staticTexts["A fresh angle might help."].exists)
+        let feedbackVisible = NSPredicate(format: "hittable == true")
+        expectation(for: feedbackVisible, evaluatedWith: app.staticTexts["A fresh angle might help."])
+        waitForExpectations(timeout: 3)
         capture("Today — wrong guess")
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))

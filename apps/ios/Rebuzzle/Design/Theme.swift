@@ -45,9 +45,10 @@ struct Page<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) { content }
-                .padding(24).frame(maxWidth: 680).frame(maxWidth: .infinity)
-        }.background(Theme.canvas).foregroundStyle(Theme.ink)
+            VStack(alignment: .leading, spacing: 24) { content }
+                .padding(.horizontal, 24).padding(.vertical, 20).frame(maxWidth: 600).frame(maxWidth: .infinity)
+        }.scrollDismissesKeyboard(.interactively)
+            .background(Theme.canvas).foregroundStyle(Theme.ink)
     }
 }
 struct Notice: View {
