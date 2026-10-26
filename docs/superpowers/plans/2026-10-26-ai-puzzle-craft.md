@@ -37,7 +37,7 @@ Files: benchmark-live-generator.ts and generator-canary.ts/tests as needed; rele
 - [x] Capture full accepted candidate data and independent daily admission results; record every rejection. Add explicit daily-target pilot option without changing existing four-tier evaluation semantics.
 - [x] Run bounded live diagnostic calls if existing credentials work; report auth/network blockers honestly. A paired baseline comparison is a separate benchmark, not implied by this pilot. No claim of statistically established uplift from a small pilot.
 - [x] Run full tests, typecheck, lint, render representative new candidates and obtain independent review.
-- [ ] Publish checked backend changes, verify live daily unchanged, and update release evidence.
+- [x] Publish checked backend changes, verify live daily unchanged, and update release evidence.
 
 ## Execution ledger
 
@@ -50,3 +50,5 @@ Files: benchmark-live-generator.ts and generator-canary.ts/tests as needed; rele
 - Added 48-hour, versioned preference after explicitly classified early score/difficulty failures. Missing evidence/provider errors do not update it; deferred rendered failures remain outside this narrow feedback scope.
 
 - Final pre-release verification: 169 suites / 972 tests, typecheck, and lint pass (existing warnings). Independent review cleared final deltas. Live heart/clock recognition succeeds; final two-candidate target8 pilot accepted0 and recorded both failures. No measured quality-uplift claim.
+
+- Production source `2b4ca66071ab0a3522d6c1eff11571fdd8cd33b5` deployed as `dpl_2frUdPiw71PiVjD8mJkYkT8LhK8j` (READY). Custom domain responds successfully; published puzzle id/date/deadline preserved and private planning/solution fields absent. PR206 remains open for remaining hosted checks; no native binary changed.

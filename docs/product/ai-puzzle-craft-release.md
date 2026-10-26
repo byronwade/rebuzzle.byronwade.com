@@ -28,4 +28,4 @@ Final checks: 169 Jest suites / 972 tests passed, TypeScript passed, lint exited
 
 The final two-candidate target-8 diagnostic rejected both candidates: one violated the component budget; the other calibrated at difficulty 5. Zero accepted puzzles in this small run is reported explicitly. This release improves mechanism freedom, asset reliability, hint preservation, and rejection diagnostics; it does not claim demonstrated end-to-end yield or difficulty uplift. Production still falls back to the reviewed reserve when generation fails.
 
-Production deployment receipt and current-puzzle preservation smoke check are recorded in the release output after deployment.
+Production source `2b4ca66071ab0a3522d6c1eff11571fdd8cd33b5` is live in deployment `dpl_2frUdPiw71PiVjD8mJkYkT8LhK8j` (READY) at `rebuzzle.byronwade.com`. The post-deploy API check preserved today’s id/date/reset deadline and confirmed private planning/solution fields are absent. Existing TestFlight builds use this backend update without a new binary.
