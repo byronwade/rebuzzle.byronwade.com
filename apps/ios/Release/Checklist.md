@@ -4,7 +4,7 @@ Status: release preparation only. No box below asserts a completed external acti
 
 ## Local candidate
 
-- [x] Generate project with XcodeGen; Swift package tests pass (8 tests; see Verification.md).
+- [x] Generate project with XcodeGen; Swift package tests pass (9 tests; see Verification.md).
 - [x] Generic simulator build passes with `CODE_SIGN_IDENTITY=-` and DerivedData under `/tmp` (CI uses runner temporary storage); application-hosted unit tests pass on a concrete simulator.
 - [ ] Inspect Today, result, Progress, Journal, Plus, sign-in, account deletion and Settings on iPhone and iPad; keyboard, VoiceOver, Dynamic Type, light/dark, Reduce Motion and contrast checked.
 - [x] Release binary excludes fixture URL/token/arguments; app bundle contains no .storekit file. Archive inspected.

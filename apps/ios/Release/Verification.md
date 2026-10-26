@@ -4,7 +4,7 @@ This is an implemented native app candidate, not an uploaded App Store release. 
 
 | Check | Evidence |
 |---|---|
-| Swift core | `swift test --package-path apps/ios/Core`: 8 passed |
+| Swift core | `swift test --package-path apps/ios/Core`: 9 passed |
 | Native runtime | Signed iPhone 17 Pro / iOS 26 simulator: 19 passed. Covers account isolation, expired guest renewal, deletion cleanup, lost-response reconciliation, SVG fallback/theme ink, direct verified purchase, failure/recovery, cancellation, unavailable products, store-load recovery, pending approval, relaunch ownership and refund revocation. |
 | Backend | `pnpm --filter @rebuzzle/web test -- --runInBand`: 160 suites, 867 tests passed |
 | Backend types | `pnpm --filter @rebuzzle/web typecheck`: passed |
@@ -30,3 +30,5 @@ The packaged logs contain exact command output. StoreKit testing used a local co
 The initial PR commit passed hosted iOS build/tests, web lint/types/unit tests and Playwright, and Vercel preview deployment. A read-only request to the authenticated preview daily endpoint returned HTTP200 with sanitized composed SVGs and no answer. This does not establish live guest/guess/deletion validation. Follow-up changes add persisted server reactions/word matches, fixture coverage for composed visuals, and theme-aware canonical pictogram ink. Hosted checks must run on each new commit.
 
 Store retry follow-up: a failed product lookup previously left an error visible after a successful retry. A StoreKit service test reproduced the stale message; successful loading now clears it. Cancellation leaves access locked without reporting an error, and an absent product cannot start a purchase.
+
+Journal follow-up: completed entries retain optional composed visual data and use the same sanitized board renderer as daily play. Legacy text-only entries still decode. Core coverage verifies artwork round-trip and legacy notes. Completion offers a secondary journal link; Today navigation is account-scoped so journal destinations cannot survive an account change.

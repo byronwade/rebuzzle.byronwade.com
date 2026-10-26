@@ -109,17 +109,20 @@ struct TodayView: View {
     }
 }
 struct PuzzleBoard: View {
-    let puzzle: Puzzle
+    let clue: String
+    let visual: PuzzleVisual?
+    init(puzzle: Puzzle) { self.clue = puzzle.clue; self.visual = puzzle.visual }
+    init(clue: String, visual: PuzzleVisual?) { self.clue = clue; self.visual = visual }
     var body: some View {
         Group {
-            if let visual = puzzle.visual, visual.mode != "unicode", let layers = visual.layers, !layers.isEmpty {
+            if let visual, visual.mode != "unicode", let layers = visual.layers, !layers.isEmpty {
                 VisualBoard(visual: visual, layers: layers)
             } else {
-                Text(puzzle.clue).font(Theme.font(puzzle.clue.count > 40 ? 26 : 44, weight: .medium, relativeTo: .largeTitle))
+                Text(clue).font(Theme.font(clue.count > 40 ? 26 : 44, weight: .medium, relativeTo: .largeTitle))
                     .multilineTextAlignment(.center).lineSpacing(12).textSelection(.enabled)
                     .frame(maxWidth: .infinity, minHeight: 190).padding(.vertical, 12)
             }
-        }.accessibilityLabel("Puzzle: \(puzzle.clue)")
+        }.accessibilityLabel("Puzzle: \(clue)")
     }
 }
 struct ResultView: View {
@@ -140,6 +143,11 @@ struct ResultView: View {
                 }
                 ShareLink(item: game.shareText) { Label("Share your result", systemImage: "square.and.arrow.up") }.buttonStyle(CommitStyle())
                 Text("Your answer stays a secret.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                if model.journal.entries.contains(where: { $0.id == game.puzzleId }) {
+                    NavigationLink { JournalView() } label: {
+                        Label(model.purchases.hasPlus ? "Add a thought to your journal" : "Keep this connection", systemImage: "book.closed")
+                    }.font(Theme.font(14)).frame(minHeight: 44).accessibilityIdentifier("keepConnection")
+                }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("See you tomorrow.").font(Theme.font(20, weight: .medium))
                     if let raw = model.daily?.nextPuzzleTime, let date = Self.date(raw) {

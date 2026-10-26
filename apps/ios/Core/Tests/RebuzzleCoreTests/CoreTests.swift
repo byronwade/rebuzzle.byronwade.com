@@ -59,3 +59,18 @@ import Testing
     #expect(guess.reaction == nil)
     #expect(guess.wordResults == nil)
 }
+
+@Test func journalPreservesComposedArtworkAndLegacyEntries() throws {
+    let legacy = #"{"version":1,"entries":[{"puzzleID":"a","puzzleDate":"2026-10-25","puzzleType":"rebus","clue":"light house","answer":"lighthouse","explanation":"Combine the pictures","won":true,"attempts":1,"hintsUsed":0,"note":"A moment to keep"}]}"#
+    let old = try JSONDecoder().decode(Journal.self, from: Data(legacy.utf8))
+    #expect(old.entries.first?.visual == nil)
+    #expect(old.entries.first?.note == "A moment to keep")
+    let artwork = #"{"mode":"composed","layout":"row","unicodeFallback":"💡 + 🏠","layers":[{"kind":"pictogram","svg":"<svg><path d='M0 0L10 10'/></svg>","emojiFallback":"💡"},{"kind":"operator","symbol":"+"}]}"#
+    let visual = try JSONDecoder().decode(PuzzleVisual.self, from: Data(artwork.utf8))
+    var journal = Journal()
+    journal.record(JournalEntry(puzzleID: "new", puzzleDate: "2026-10-26", puzzleType: "rebus", clue: "💡 + 🏠", answer: "lighthouse", explanation: "Combine", won: true, attempts: 1, hintsUsed: 0, visual: visual))
+    let restored = try JSONDecoder().decode(Journal.self, from: JSONEncoder().encode(journal))
+    #expect(restored.entries.first?.visual?.layers?.first?.svg == "<svg><path d='M0 0L10 10'/></svg>")
+    #expect(restored.entries.first?.visual?.layout == "row")
+    #expect(restored.entries.first?.visual?.layers?.last?.symbol == "+")
+}

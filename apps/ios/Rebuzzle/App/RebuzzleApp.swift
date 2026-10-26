@@ -30,7 +30,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var phase
     var body: some View {
         TabView {
-            NavigationStack { TodayView() }.tabItem { Label("Today", systemImage: "square.grid.2x2") }
+            NavigationStack { TodayView() }.id("today-" + (model.player?.id ?? "signed-out")).tabItem { Label("Today", systemImage: "square.grid.2x2") }
             NavigationStack { ProgressViewScreen() }.tabItem { Label("Progress", systemImage: "chart.bar.xaxis") }
             NavigationStack { JournalView() }.id(model.player?.id).tabItem { Label("Journal", systemImage: "book.closed") }
             NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "slider.horizontal.3") }

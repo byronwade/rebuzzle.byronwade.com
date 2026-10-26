@@ -52,7 +52,7 @@ struct JournalDetail: View {
     var body: some View {
         Page {
             Eyebrow(text: entry.puzzleDate)
-            Text(entry.clue).font(Theme.font(32, weight: .medium)).frame(maxWidth: .infinity, minHeight: 150).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+            PuzzleBoard(clue: entry.clue, visual: entry.visual).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
             VStack(alignment: .leading, spacing: 12) { Text(entry.answer).font(Theme.font(28, weight: .medium)); Text(entry.explanation).font(Theme.font(16)).foregroundStyle(Theme.secondary) }
             VStack(alignment: .leading, spacing: 12) {
                 Text("What made it click?").font(Theme.font(17, weight: .medium))

@@ -25,6 +25,13 @@ import XCTest
         XCTAssertTrue(app.staticTexts["lighthouse"].exists)
         XCTAssertFalse(app.buttons["checkAnswer"].exists)
         capture("Today — solved")
+        let journal = app.buttons["keepConnection"]
+        for _ in 0..<6 where !journal.isHittable { app.swipeUp() }
+        XCTAssertTrue(journal.exists)
+        journal.tap()
+        XCTAssertTrue(app.staticTexts["Keep the moments when it clicked."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Explore Rebuzzle Plus"].exists)
+        capture("Journal — from result")
     }
 
     func testThreeWrongGuessesRevealAnswer() {

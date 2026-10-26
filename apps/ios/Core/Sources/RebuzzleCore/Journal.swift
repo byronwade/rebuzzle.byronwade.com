@@ -11,11 +11,12 @@ public struct JournalEntry: Codable, Sendable, Identifiable, Hashable {
     public let won: Bool
     public let attempts: Int
     public let hintsUsed: Int
+    public let visual: PuzzleVisual?
     public var note: String
-    public init(puzzleID: String, puzzleDate: String, puzzleType: String, clue: String, answer: String, explanation: String, won: Bool, attempts: Int, hintsUsed: Int, note: String = "") {
+    public init(puzzleID: String, puzzleDate: String, puzzleType: String, clue: String, answer: String, explanation: String, won: Bool, attempts: Int, hintsUsed: Int, note: String = "", visual: PuzzleVisual? = nil) {
         self.puzzleID = puzzleID; self.puzzleDate = puzzleDate; self.puzzleType = puzzleType
         self.clue = clue; self.answer = answer; self.explanation = explanation
-        self.won = won; self.attempts = attempts; self.hintsUsed = hintsUsed; self.note = note
+        self.won = won; self.attempts = attempts; self.hintsUsed = hintsUsed; self.note = note; self.visual = visual
     }
 }
 public struct Journal: Codable, Sendable {

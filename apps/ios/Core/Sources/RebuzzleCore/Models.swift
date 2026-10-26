@@ -35,13 +35,13 @@ public struct Puzzle: Codable, Sendable, Identifiable {
     public var clue: String { puzzle ?? rebusPuzzle ?? visual?.unicodeFallback ?? "" }
     public var typeName: String { puzzleType.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "_", with: " ").capitalized }
 }
-public struct PuzzleVisual: Codable, Sendable {
+public struct PuzzleVisual: Codable, Sendable, Hashable {
     public let mode: String?
     public let layout: String?
     public let unicodeFallback: String?
     public let layers: [VisualLayer]?
 }
-public struct VisualLayer: Codable, Sendable {
+public struct VisualLayer: Codable, Sendable, Hashable {
     public let kind: String
     public let content: String?
     public let symbol: String?

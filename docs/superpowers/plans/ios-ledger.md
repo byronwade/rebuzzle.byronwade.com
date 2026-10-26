@@ -14,3 +14,5 @@
 - Follow-up: added real server reaction/word-match feedback to native play and safe atomic persistence/session restore. Added core8 tests, StoreKit direct success/failure recovery/pending approval tests, canonical SVG ink adaptation and DEBUG-only unit host isolation. Initial PR CI and preview deployment passed; new commit evidence is in Release/Verification.md.
 
 - Store retry follow-up: reproduced and fixed stale connection-error copy after successful product lookup. Added cancellation, missing-product and load-recovery service tests; native runtime coverage now 19 tests.
+
+- Journal value follow-up: preserve composed artwork in saved entries with backward-compatible optional data and shared sanitized rendering. Add secondary completion-to-journal navigation and scope Today stack to account identity.
