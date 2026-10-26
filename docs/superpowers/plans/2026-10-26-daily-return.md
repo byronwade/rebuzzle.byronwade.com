@@ -35,7 +35,7 @@ Interfaces: ReminderStore.schedule(completedToday:) remains async throws; permis
 ### Task 3: Widget and delivery
 Files: RebuzzleWidgets/DailyPuzzleWidget.swift, project.yml, generated project, resources Info.plist.
 - [x] Add small/medium/rectangular widget with countdown, reset label, and rebuzzle://play route; generate/build project.
-- [ ] Verify URL route on simulator, widget registration and signed embedded extension; archive/upload build 7. Widget gallery placement remains a physical-device beta check.
-- [ ] Verify existing TestFlight group Testing; save notes, push branch, update PR and release evidence.
+- [x] Verify URL route on simulator, widget registration and signed embedded extension; archive/upload build 7. Widget gallery placement remains a physical-device beta check.
+- [x] Verify existing TestFlight group Testing; save notes, push branch, update PR and release evidence.
 
 Continue existing dedicated feature branch. Explore-agent dispatch was rejected by session agent limit, so targeted known-file reads and local review are used; no claim of independent review or automatic merge.
