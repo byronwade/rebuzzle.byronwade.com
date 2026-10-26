@@ -48,7 +48,7 @@ struct TodayView: View {
                         }
                         if let latest = model.game?.attempts.last { GuessFeedbackView(guess: latest) }
                         VStack(alignment: .leading, spacing: 12) {
-                            TextField("Your answer…", text: $model.draft, axis: .vertical)
+                            TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .vertical)
                                 .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
                                 .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
                                 .accessibilityLabel("Your answer")
