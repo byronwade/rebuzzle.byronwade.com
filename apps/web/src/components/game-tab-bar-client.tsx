@@ -54,7 +54,7 @@ export function GameTabBar() {
             <PopoverContent align="end" className="w-72 p-2" side="top" sideOffset={10}>
               <Link
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-2.5 py-2.5 font-medium text-sm transition-colors hover:bg-muted",
+                  "flex min-h-11 items-center gap-3 rounded-md px-2.5 font-medium text-sm transition-colors hover:bg-muted",
                   moreActive && "bg-muted"
                 )}
                 href="/how-it-works"
@@ -67,7 +67,7 @@ export function GameTabBar() {
                 {MORE_LINKS.map((link) => (
                   <li key={link.href}>
                     <Link
-                      className="block rounded-md px-2.5 py-2 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+                      className="flex min-h-11 items-center rounded-md px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
                       href={link.href}
                       onClick={() => setMoreOpen(false)}
                     >
