@@ -1,0 +1,61 @@
+name: iOS
+
+on:
+  pull_request:
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/ios/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26.3
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.3'
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Test core package
+        run: swift test --package-path Core
+      - name: Build simulator app with ad-hoc signing
+        run: >-
+          xcodebuild -project Rebuzzle.xcodeproj -scheme Rebuzzle
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "${{ runner.temp }}/RebuzzleDerivedData"
+          CODE_SIGN_IDENTITY=- build
+      - name: Test native runtime and interface
+        run: |
+          simulator_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for key,values in sorted(d["devices"].items(), reverse=True) if "iOS" in key for v in values if v["name"].startswith("iPhone")))')
+          xcodebuild -project Rebuzzle.xcodeproj -scheme Rebuzzle \
+            -destination "platform=iOS Simulator,id=$simulator_id" \
+            -derivedDataPath "${{ runner.temp }}/RebuzzleDerivedData" \
+            -resultBundlePath "${{ runner.temp }}/RebuzzleTests.xcresult" \
+            CODE_SIGN_IDENTITY=- test
+      - name: Save test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: ${{ runner.temp }}/RebuzzleTests.xcresult
+          if-no-files-found: ignore

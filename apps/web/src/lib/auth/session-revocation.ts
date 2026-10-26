@@ -39,7 +39,11 @@ export async function isSessionRevoked(userId: string, issuedAtSec?: number): Pr
       const user = await db.userOps.findById(userId);
       entry = remember(
         userId,
-        user?.passwordChangedAt ? toSeconds(new Date(user.passwordChangedAt)) : 0
+        !user
+          ? Number.POSITIVE_INFINITY
+          : user.passwordChangedAt
+            ? toSeconds(new Date(user.passwordChangedAt))
+            : 0
       );
     } catch {
       // Fail open: a database hiccup must not sign everyone out.

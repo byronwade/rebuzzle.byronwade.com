@@ -34,8 +34,11 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
+    const bearer = request.headers.get("Authorization");
     const existingAuthToken =
-      cookieStore.get(AUTH_COOKIE_NAME)?.value || cookieStore.get(LEGACY_AUTH_COOKIE_NAME)?.value;
+      (bearer?.startsWith("Bearer ") ? bearer.slice(7) : undefined) ||
+      cookieStore.get(AUTH_COOKIE_NAME)?.value ||
+      cookieStore.get(LEGACY_AUTH_COOKIE_NAME)?.value;
 
     // Valid existing session → return the user (don't fail the client)
     if (existingAuthToken) {
@@ -49,6 +52,7 @@ export async function POST(request: Request) {
           return NextResponse.json({
             success: true,
             alreadyAuthenticated: true,
+            token: existingAuthToken,
             user: {
               id: existingUser.id,
               username: existingUser.username,
@@ -107,6 +111,7 @@ export async function POST(request: Request) {
     // Build response
     const response = NextResponse.json({
       success: true,
+      token: jwt,
       user: {
         id: guestUser.id,
         username: guestUser.username,

@@ -112,6 +112,16 @@ export async function POST(request: Request) {
 
     const publishedKey = puzzle.publishedAt ? getUtcPuzzleDate(new Date(puzzle.publishedAt)) : null;
     const isDaily = Boolean(todays && todays.id === puzzle.id && publishedKey === localDateKey);
+    if (request.headers.get("X-Rebuzzle-Daily-Only") === "true" && !isDaily) {
+      return NextResponse.json(
+        {
+          success: false,
+          reloadDaily: true,
+          error: "The daily puzzle has changed. Reload today's puzzle to continue.",
+        },
+        { status: 409, headers: { "Cache-Control": "private, no-store" } }
+      );
+    }
     const isCommunity =
       puzzle.metadata?.source === "user" && puzzle.metadata?.communityPlayable === true;
 
