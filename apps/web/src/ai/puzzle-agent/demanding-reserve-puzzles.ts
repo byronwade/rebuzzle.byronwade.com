@@ -511,7 +511,7 @@ export const DEMANDING_RESERVE_PUZZLES: DemandingReservePuzzle[] = [
     "butterflies",
     "butterflies in your stomach",
     "row",
-    [text("STO(YLFRETTUB×2)MACH", "small")],
+    [text("GU(YLFRETTUB×2)T", "small")],
     [
       step(
         "reversal",
@@ -520,8 +520,8 @@ export const DEMANDING_RESERVE_PUZZLES: DemandingReservePuzzle[] = [
       ),
       step(
         "containment",
-        "The ×2 repeats the decoded insect, inside the surrounding STOMACH fragments.",
-        "Locate the recovered creatures inside that body part."
+        "The ×2 repeats the decoded insect inside GUT, another word for stomach.",
+        "Locate the recovered creatures inside the gut; the familiar expression calls it the stomach."
       ),
     ],
     [
