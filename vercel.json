@@ -3,5 +3,11 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm turbo build --filter=@rebuzzle/web",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next"
+  "outputDirectory": "apps/web/.next",
+  "crons": [
+    {
+      "path": "/api/cron/generate-puzzles",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }

@@ -83,6 +83,38 @@ describe("daily content workflow", () => {
     });
   });
 
+  it("skips blog creation for a puzzle-only maintenance request", async () => {
+    findOne.mockResolvedValue({ id: "yesterday" });
+    const response = await POST(
+      new Request("https://rebuzzle.test/api/workflows/daily-content", {
+        method: "POST",
+        headers: { authorization: "Bearer test-cron-secret", "content-type": "application/json" },
+        body: JSON.stringify({ triggeredBy: "maintenance", puzzlesOnly: true }),
+      })
+    );
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.puzzle.success).toBe(true);
+    expect(data.nextPuzzle.success).toBe(true);
+    expect(data.blog).toEqual({ success: false, skipped: "puzzles_only" });
+    expect(findOne).not.toHaveBeenCalled();
+    expect(proposeBlogForPuzzle).not.toHaveBeenCalled();
+  });
+
+  it("returns a failing status when puzzle-only maintenance cannot fill the next day", async () => {
+    getTodaysPuzzle.mockRejectedValue(new Error("generation unavailable"));
+    const response = await POST(
+      new Request("https://rebuzzle.test/api/workflows/daily-content", {
+        method: "POST",
+        headers: { authorization: "Bearer test-cron-secret", "content-type": "application/json" },
+        body: JSON.stringify({ puzzlesOnly: true }),
+      })
+    );
+    expect(response.status).toBe(503);
+    expect((await response.json()).success).toBe(false);
+    expect(proposeBlogForPuzzle).not.toHaveBeenCalled();
+  });
+
   it("reports next-day failure without taking today's workflow down", async () => {
     getTodaysPuzzle.mockRejectedValue(new Error("gateway unavailable"));
 

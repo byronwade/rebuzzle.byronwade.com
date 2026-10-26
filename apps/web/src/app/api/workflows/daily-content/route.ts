@@ -7,6 +7,8 @@ import { getCollection } from "@/db/mongodb";
 import { proposeBlogForPuzzle } from "@/lib/blog/propose-puzzle-blog";
 import { logger } from "@/lib/logger";
 
+export const maxDuration = 300;
+
 /**
  * Daily Content Generation Workflow
  *
@@ -146,7 +148,9 @@ export async function POST(request: Request) {
     revalidateTag("daily-puzzle", "max");
 
     let blogResult;
-    if (aiBudgetExhausted) {
+    if (body.puzzlesOnly === true) {
+      blogResult = { success: false, skipped: "puzzles_only" };
+    } else if (aiBudgetExhausted) {
       blogResult = {
         success: false,
         skipped: "ai_budget_exceeded",
@@ -157,22 +161,27 @@ export async function POST(request: Request) {
       blogResult = await generateBlogForYesterday();
     }
 
-    return NextResponse.json({
-      success: true,
-      learning,
-      puzzle: {
-        success: puzzleResult.success,
-        cached: "cached" in puzzleResult ? puzzleResult.cached : undefined,
-        fallback: "fallback" in puzzleResult ? puzzleResult.fallback : undefined,
-        puzzleId:
-          puzzleResult.success && puzzleResult.puzzle
-            ? (puzzleResult.puzzle as { id?: string }).id
-            : undefined,
+    const maintenanceFailed =
+      body.puzzlesOnly === true && (!puzzleResult.success || !nextPuzzle.success);
+    return NextResponse.json(
+      {
+        success: !maintenanceFailed,
+        learning,
+        puzzle: {
+          success: puzzleResult.success,
+          cached: "cached" in puzzleResult ? puzzleResult.cached : undefined,
+          fallback: "fallback" in puzzleResult ? puzzleResult.fallback : undefined,
+          puzzleId:
+            puzzleResult.success && puzzleResult.puzzle
+              ? (puzzleResult.puzzle as { id?: string }).id
+              : undefined,
+        },
+        nextPuzzle,
+        blog: blogResult,
+        completedAt: new Date().toISOString(),
       },
-      nextPuzzle,
-      blog: blogResult,
-      completedAt: new Date().toISOString(),
-    });
+      { status: maintenanceFailed ? 503 : 200 }
+    );
   } catch (error) {
     logger.error(
       "Daily content workflow failed",

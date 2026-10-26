@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { checkDatabaseHealth } from "@/db/mongodb";
-import { getAppUrl } from "@/lib/env";
 
-// Edge runtime removed - incompatible with PPR (cacheComponents)
+// Generation may take several model calls; keep the cron caller alive for the workflow.
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   // Verify this is a legitimate cron request
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     console.log("🚀 Triggering daily content generation workflow...");
 
     // Trigger the workflow by making a request to it
-    const workflowUrl = `${getAppUrl()}/api/workflows/daily-content`;
+    const workflowUrl = new URL("/api/workflows/daily-content", request.url);
 
     // Forward cron auth so the workflow can authorize in production
     const forwardHeaders: Record<string, string> = {
@@ -73,6 +73,7 @@ export async function GET(request: Request) {
       headers: forwardHeaders,
       body: JSON.stringify({
         triggeredBy: "cron",
+        puzzlesOnly: true,
         triggeredAt: new Date().toISOString(),
       }),
     });
