@@ -252,7 +252,7 @@ struct GuessFeedbackView: View {
                 Text(title).font(Theme.font(18, weight: .medium)).accessibilityIdentifier("guessFeedback")
                 Text(reaction.line).font(Theme.font(15)).foregroundStyle(Theme.secondary)
                 if let words = guess.wordResults, !words.isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], alignment: .leading, spacing: 8) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), alignment: .leading)], alignment: .leading, spacing: 8) {
                         ForEach(Array(words.enumerated()), id: \.offset) { _, word in
                             Label(word.word, systemImage: word.correct ? "checkmark.circle.fill" : "circle")
                                 .font(Theme.font(13, weight: .medium))
