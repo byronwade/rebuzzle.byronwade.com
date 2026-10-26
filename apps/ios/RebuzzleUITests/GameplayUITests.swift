@@ -11,6 +11,38 @@ import XCTest
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 15))
     }
 
+    func testDismissKeyboardPreservesUnsubmittedAnswer() {
+        verifyKeyboardDismissal()
+    }
+
+    func testAccessibleKeyboardDismissalPreservesUnsubmittedAnswer() {
+        verifyKeyboardDismissal(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+    }
+
+    private func verifyKeyboardDismissal(extraArguments: [String] = []) {
+        launchFixture(extraArguments: extraArguments)
+        let field = app.descendants(matching: .any)["answerField"].firstMatch
+        for _ in 0..<5 where !field.isHittable { app.swipeUp() }
+        field.tap()
+        field.typeText("sun")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let dismiss = app.buttons["dismissAnswerKeyboard"]
+        XCTAssertTrue(dismiss.waitForExistence(timeout: 5))
+        XCTAssertTrue(dismiss.isHittable)
+        capture("Keyboard — dismiss control")
+        dismiss.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(field.value as? String, "sun")
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+        field.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        field.typeText("shine")
+        let submit = app.buttons["checkAnswer"]
+        for _ in 0..<5 where !submit.isHittable { app.swipeUp() }
+        submit.tap()
+        XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
+    }
+
     func testWrongGuessThenWin() {
         launchFixture()
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable, "The daily game should be ready to play without scrolling")

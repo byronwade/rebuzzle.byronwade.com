@@ -99,7 +99,18 @@ struct TodayView: View {
         }
         }
         .navigationTitle("Rebuzzle").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("How to play", systemImage: "questionmark.circle") { help = true } } }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("How to play", systemImage: "questionmark.circle") { help = true }
+            }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") {
+                    answerFocused = false
+                }
+                .accessibilityIdentifier("dismissAnswerKeyboard")
+            }
+        }
         .sheet(isPresented: $help) { HelpView() }
         .refreshable { await model.load() }
         .sensoryFeedback(.success, trigger: model.game?.wasSuccessful == true) { _, new in new && haptics }
