@@ -16,7 +16,7 @@ Provider unavailability is pending; profile completeness is mandatory; source/as
 ## Tasks
 - [x] Canonical presentation: bounded schema/compiler and review profile scaling; web canonical rendering/Studio reviewed preview; regression fixtures.
 - [x] Publication evidence: mandatory critique/vision, pending status, identity and persistence invalidation, lottery gate, regression tests.
-- [ ] Native canonical reader and integrity tests, existing gameplay suite, screenshots and TestFlight update.
-- [ ] Integration review, web tests/typecheck/lint, release verification and honest roadmap receipt.
+- [x] Native canonical reader and integrity tests, existing gameplay suite, screenshots and TestFlight update.
+- [x] Integration review, web tests/typecheck/lint, release verification and honest roadmap receipt.
 
 Ruling: Follow the user's standing instruction to implement without routine approval. Separate original art and richer editing workstreams rather than claim this release completes the whole workshop roadmap.

@@ -13,12 +13,18 @@ This implements the first two priorities from the workshop review: dependable pu
 
 ## Verification
 - Web: 173 Jest suites / 996 tests passed; TypeScript passed; lint passed with ten existing warnings and one configuration notice.
-- Native core: 22 tests passed. Hosted application: 29 tests passed. All 15 gameplay UI tests passed, including canonical valid/invalid presentation and legacy keyboard regression. Release archive results are recorded below after completion.
+- Native core: 22 tests passed. Hosted application: 29 tests passed. All 15 gameplay UI tests passed, including canonical valid/invalid presentation and legacy keyboard regression. Release archive and strict signature validation passed.
 - Real web component displayed the shared 768×248 fixture at 375 and 768 CSS pixels. Native gameplay and Study screenshots show the same frozen image. These are local fixture checks, not observations of human puzzle enjoyment.
 - Independent presentation review found no blocking findings. Publication review found a partial editorial-quorum status issue; the fix and scoped re-review passed.
 
 ## Release status
-Pending final archive, TestFlight processing and production deployment verification.
+Source commit: `546d3cc180cf4471054722c31a43fdafb4cee7ff` (PR 206).
+
+TestFlight 1.0.0 (11), build `872d1fd7-9f15-479b-8ce9-76f41ee8713b`, is Testing in the existing Rebuzzle Automatic Updates internal group (one tester). What to Test notes saved. No new invitation required. Physical installation on Byron’s iPhone has not been observed.
+
+Vercel deployment `dpl_AjbxX3mn69AAxVABJx5vEv4euoSc` is READY and aliased to `rebuzzle.byronwade.com`. Production smoke comparison confirmed the complete public daily puzzle payload unchanged: `604c4218-eecf-4733-9cd0-76312676bb60`, date 2026-10-26, reset 2026-10-27T04:00:00.000Z.
+
+No new production puzzle was published merely to exercise paid AI review. Provider success is covered by deterministic fixtures here, not a claim that a live candidate passed. Public App Store submission remains separate from this TestFlight release.
 
 ## Decisions and limits
 Inline PNG avoids a mutable external-artwork dependency but increases payload size; decoded images are capped at 1 MiB and dimensions at 2048 pixels. The first slice provides frozen reviewed preview parity while retaining the existing editor. No model was trained, no editorial corpus fabricated and no increased human difficulty or enjoyment claimed.
