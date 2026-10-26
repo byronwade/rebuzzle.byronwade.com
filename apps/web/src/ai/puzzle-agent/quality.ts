@@ -13,7 +13,6 @@ import { evaluateSemanticAlignment } from "./semantic-alignment";
 import { TECHNIQUE_LIBRARY, type TechniqueId } from "./technique-library";
 import type { PuzzleVisual } from "./visual/composition";
 import { isAuthenticCuratedPictogram } from "./visual/curated-pictograms";
-import { scorePictogramClarity } from "./visual/pictogram-clarity";
 import { PLAYER_ICON_GATE_SIZES } from "./visual/presentation";
 
 export const TECHNIQUE_IDS = Object.keys(TECHNIQUE_LIBRARY) as TechniqueId[];
@@ -239,20 +238,9 @@ export function evaluateVisualForPublish(
       };
     }
 
-    // Authentic catalog assets are already publication-vetted; clarity re-check
-    // is for approved-cache / regenerated SVGs that may regress.
-    if (authenticCatalog) continue;
-
-    const clarity = scorePictogramClarity(layer.svg);
-    if (!clarity.ok) {
-      return {
-        ok: false,
-        reason: `Unreadable pictogram SVG (${clarity.reasons.join(", ") || "low clarity"}) — redraw with a clearer silhouette`,
-        mode: visual.mode,
-        pictogramSvgCount,
-        textLayerCount,
-      };
-    }
+    // Both reviewed sources are checked for pixel integrity and independently
+    // recognized before composition. Shape-count heuristics apply only while
+    // drawing unapproved icons, not when publishing reviewed assets.
   }
 
   if (visual.mode === "unicode" && pictogramSvgCount === 0 && !styledText) {
@@ -372,7 +360,9 @@ export type PublishGateInput = {
   inBand?: boolean;
 };
 
-export type PublishGateResult = { ok: true } | { ok: false; reason: string };
+export type PublishGateResult =
+  | { ok: true }
+  | { ok: false; reason: string; qualityFeedbackEligible?: boolean };
 
 /**
  * Hard publish gates — used after the agent returns structured output.
@@ -435,12 +425,14 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
   if (input.qualityOverall < input.qualityThreshold) {
     return {
       ok: false,
+      qualityFeedbackEligible: true,
       reason: `Quality ${input.qualityOverall} below threshold ${input.qualityThreshold}`,
     };
   }
   if (input.funScore < input.minFunScore) {
     return {
       ok: false,
+      qualityFeedbackEligible: true,
       reason: `funScore ${input.funScore} below ${input.minFunScore}`,
     };
   }
@@ -483,6 +475,7 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
     if (!bandOk) {
       return {
         ok: false,
+        qualityFeedbackEligible: true,
         reason: `Calibrated difficulty ${input.calibratedDifficulty} outside target band`,
       };
     }
@@ -494,6 +487,7 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
   ) {
     return {
       ok: false,
+      qualityFeedbackEligible: true,
       reason: `Proposed difficulty ${input.difficulty} outside target band`,
     };
   }

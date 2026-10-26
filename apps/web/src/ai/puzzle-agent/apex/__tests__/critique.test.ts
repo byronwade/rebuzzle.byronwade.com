@@ -2,6 +2,7 @@ const generateAIObject = jest.fn();
 
 jest.mock("../../../client", () => ({ generateAIObject }));
 
+import { INK_PICTOGRAM_STYLE_ID } from "../../visual/style";
 import { critiqueCandidate } from "../critique";
 
 const input = {
@@ -48,5 +49,48 @@ describe("critique source tracking", () => {
       source: "fallback",
       verdict: "revise",
     });
+  });
+
+  it("shows the actual board arrangement and text emphasis while omitting image payloads", async () => {
+    generateAIObject.mockResolvedValue(modelResponse);
+    await critiqueCandidate({
+      ...input,
+      visual: {
+        styleId: INK_PICTOGRAM_STYLE_ID,
+        mode: "composed",
+        layout: "free",
+        unicodeFallback: "BELL + TONE",
+        layers: [
+          {
+            kind: "pictogram",
+            concept: "bell",
+            emojiFallback: "🔔",
+            x: 20,
+            y: 70,
+            svg: "<svg>private</svg>",
+          },
+          { kind: "text", content: "TONE", emphasis: "tiny", x: 80, y: 20 },
+          {
+            kind: "image",
+            concept: "music sheet",
+            prompt: "draw a music sheet",
+            alt: "music sheet",
+            src: "data:image/png;base64,secret",
+            x: 50,
+            y: 50,
+          },
+        ],
+      },
+    });
+
+    const prompt = generateAIObject.mock.calls[0][0].prompt as string;
+    expect(prompt).toContain('"layout":"free"');
+    expect(prompt).toContain('"emphasis":"tiny"');
+    expect(prompt).toContain('"x":20,"y":70');
+    expect(prompt).toContain('"concept":"music sheet"');
+    expect(prompt).not.toContain("private");
+    expect(prompt).not.toContain("base64");
+    expect(prompt).toContain("competing interpretation");
+    expect(prompt).toContain("visible cue");
   });
 });

@@ -12,6 +12,7 @@ jest.mock("../../review/generated-pictogram-registry-server", () => ({
 
 import { resolveCuratedPictogram } from "../curated-pictograms";
 import { generatePictogram } from "../generate-pictogram";
+import * as pixelIntegrity from "../pictogram-pixel-integrity";
 
 const svg = resolveCuratedPictogram("house")!.svg;
 
@@ -55,10 +56,70 @@ function recognition(ok = true, seenLabel = "lighthouse") {
 describe("generated pictogram registry integration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
     findApproved.mockResolvedValue(null);
     generateAIText.mockResolvedValue({ text: svg });
     recognizePictogramIcon.mockResolvedValue(recognition());
     submitCandidate.mockResolvedValue({ id: "generated-pictogram:approved-later" });
+  });
+  afterAll(() => {
+    delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each(["heart", "clock"])(
+    "sends the real catalog %s to player-size recognition",
+    async (concept) => {
+      const catalog = resolveCuratedPictogram(concept)!;
+      recognizePictogramIcon.mockResolvedValue(recognition(true, concept));
+
+      const result = await generatePictogram({ concept, maxRetries: 0 });
+
+      expect(recognizePictogramIcon).toHaveBeenCalledWith({ svg: catalog.svg, concept });
+      expect(result).toMatchObject({ ok: true, source: "catalog", assetId: catalog.assetId });
+      expect(result.pixelIntegrity?.ok).toBe(true);
+      expect(generateAIText).not.toHaveBeenCalled();
+    }
+  );
+
+  it("still rejects a catalog heart when independent recognition fails", async () => {
+    recognizePictogramIcon.mockResolvedValue(recognition(false, "blob"));
+    const result = await generatePictogram({ concept: "heart", maxRetries: 0 });
+
+    expect(recognizePictogramIcon).toHaveBeenCalledWith({
+      svg: resolveCuratedPictogram("heart")!.svg,
+      concept: "heart",
+    });
+    expect(result).toMatchObject({ ok: false, error: "approved_asset_required" });
+    expect(generateAIText).not.toHaveBeenCalled();
+  });
+
+  it("still rejects a catalog clock when player-size pixel integrity fails", async () => {
+    jest.spyOn(pixelIntegrity, "evaluatePictogramPixelIntegrity").mockResolvedValue({
+      version: "pictogram-pixels-v2",
+      ok: false,
+      reasons: ["off_canvas"],
+      profiles: [],
+    });
+    const result = await generatePictogram({ concept: "clock", maxRetries: 0 });
+
+    expect(result).toMatchObject({ ok: false, error: "approved_asset_required" });
+    expect(result.pixelIntegrity?.reasons).toContain("off_canvas");
+    expect(recognizePictogramIcon).not.toHaveBeenCalled();
+  });
+
+  it("keeps the shape-count heuristic for an unapproved generated icon", async () => {
+    generateAIText.mockResolvedValue({ text: resolveCuratedPictogram("heart")!.svg });
+    const result = await generatePictogram({
+      concept: "lighthouse",
+      usage: "review",
+      maxRetries: 0,
+    });
+
+    expect(result).toMatchObject({ ok: false });
+    expect(result.clarityReasons).toContain("too_few_shapes");
+    expect(recognizePictogramIcon).not.toHaveBeenCalled();
+    expect(submitCandidate).not.toHaveBeenCalled();
   });
 
   it("fails fast when publication requests an unapproved concept", async () => {
@@ -118,6 +179,24 @@ describe("generated pictogram registry integration", () => {
     expect(generateAIText).not.toHaveBeenCalled();
   });
 
+  it("lets a previously approved simple icon reach independent recognition", async () => {
+    const simpleSvg = resolveCuratedPictogram("heart")!.svg;
+    findApproved.mockResolvedValue({ id: "generated-pictogram:approved-simple", svg: simpleSvg });
+
+    const result = await generatePictogram({ concept: "lighthouse", maxRetries: 0 });
+
+    expect(recognizePictogramIcon).toHaveBeenCalledWith({
+      svg: simpleSvg,
+      concept: "lighthouse",
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      source: "approved-cache",
+      clarityScore: 90,
+      clarityReasons: [],
+    });
+  });
+
   it("quarantines a cached recognition regression and blocks publication", async () => {
     findApproved.mockResolvedValue({ id: "generated-pictogram:stale", svg });
     recognizePictogramIcon.mockResolvedValueOnce(recognition(false, "tower"));
@@ -134,6 +213,18 @@ describe("generated pictogram registry integration", () => {
     });
     expect(generateAIText).not.toHaveBeenCalled();
     expect(submitCandidate).not.toHaveBeenCalled();
+  });
+
+  it("blocks a failed cached asset without quarantining it in diagnostic read-only mode", async () => {
+    process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY = "1";
+    findApproved.mockResolvedValue({ id: "generated-pictogram:stale", svg });
+    recognizePictogramIcon.mockResolvedValueOnce(recognition(false, "tower"));
+
+    const result = await generatePictogram({ concept: "lighthouse", maxRetries: 0 });
+
+    expect(result).toMatchObject({ ok: false, error: "approved_asset_required" });
+    expect(quarantine).not.toHaveBeenCalled();
+    expect(generateAIText).not.toHaveBeenCalled();
   });
 
   it("keeps offline skip-recognition runs independent of the registry", async () => {

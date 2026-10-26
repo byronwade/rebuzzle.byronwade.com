@@ -454,52 +454,31 @@ export function craftHintLadder(input: {
   existingHints?: string[];
 }) {
   const level = getDifficultyLevelForScore(input.targetDifficulty);
-  const answer = input.answer.trim();
-  const words = answer.split(/\s+/).filter(Boolean);
-  const firstLetter = answer[0]?.toUpperCase() ?? "?";
-  const mechanism = /sound|phonetic|homophone/i.test(input.explanation)
-    ? "Say the pieces out loud — a sound-alike may be hiding."
-    : /over|under|between|position|above|below/i.test(input.explanation)
-      ? "Placement matters as much as the pictures."
-      : "Look for how the pieces combine into a familiar phrase.";
-
-  const spoilerSafeExplain = input.explanation
-    .replace(new RegExp(escapeRegExpSafe(answer), "ig"), "the answer")
-    .slice(0, 72);
-
-  const ladder = [
-    `Think about the ${words.length > 1 ? "phrase" : "word"} category — not the literal picture alone.`,
-    mechanism,
-    `Notice the relationship between parts (${spoilerSafeExplain}${spoilerSafeExplain.length >= 72 ? "…" : ""}).`,
-    words.length > 1 ? `The answer has ${words.length} words.` : `The answer is a single word.`,
-    // Final hint only: one first-letter nudge — never a full letter scaffold
-    `Final nudge: it starts with "${firstLetter}".`,
-  ].slice(0, Math.max(3, Math.min(5, level.componentBudget.max + 1)));
-
-  const merged = input.existingHints?.length
-    ? [...input.existingHints.slice(0, 2), ...ladder].slice(0, 5)
-    : ladder;
-
-  const safe = merged.map((h) =>
-    h.toLowerCase().includes(answer.toLowerCase())
-      ? h.replace(new RegExp(escapeRegExpSafe(answer), "ig"), "_____")
-      : h
-  );
-
-  const leakIssues = hintLeaksAnswerEarly(safe, answer);
+  const hints = input.existingHints ?? [];
+  const issues: string[] = [];
+  if (hints.length !== 3) {
+    issues.push("Need exactly 3 authored hints from the approved mechanism plan");
+  }
+  const seen = new Set<string>();
+  hints.forEach((hint, index) => {
+    const normalized = hint
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+    if (!normalized) issues.push(`Hint ${index + 1} is empty`);
+    else if (seen.has(normalized)) issues.push(`Hint ${index + 1} duplicates an earlier hint`);
+    seen.add(normalized);
+  });
+  issues.push(...hintLeaksAnswerEarly(hints, input.answer));
 
   return {
     tier: level.label,
     hintStyle: level.hintStyle,
-    hints: safe,
-    issues: leakIssues,
+    hints,
+    issues,
     guidance:
-      "Hints must progress vague → specific. Never dump the full answer or a letter scaffold before the final hint.",
+      "Write three authored stages: orient attention to a visible cue, explain its relationship, then scaffold the key deduction. Revise any duplicate or answer-leaking hint; do not pad with generic clues.",
   };
-}
-
-function escapeRegExpSafe(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function stressTestSolvability(

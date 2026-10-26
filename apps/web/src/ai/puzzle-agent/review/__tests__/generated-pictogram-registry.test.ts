@@ -281,6 +281,25 @@ describe("human-governed generated pictogram registry", () => {
     expect(store.candidates[0]?.auditHistory.at(-1)?.actor).toBe("runtime-gate");
   });
 
+  it("rejects a tampered approved asset without mutating the registry in diagnostic mode", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+    await registry.submitCandidate(automatedInput());
+    await completeReviewer(registry, "reviewer-1", "lighthouse");
+    await completeReviewer(registry, "reviewer-2", "lighthouse");
+    await completeReviewer(registry, "reviewer-3", "lighthouse");
+    store.candidates[0]!.svg = `${store.candidates[0]!.svg}<!--tampered-->`;
+    const historyLength = store.candidates[0]!.auditHistory.length;
+    process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY = "1";
+    try {
+      await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+      expect(store.candidates[0]?.status).toBe("approved");
+      expect(store.candidates[0]?.auditHistory).toHaveLength(historyLength);
+    } finally {
+      delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
+    }
+  });
+
   it("quarantines a hash-valid approved asset whose player raster regresses", async () => {
     const store = memoryRepository();
     const registry = createGeneratedPictogramRegistry(store.repository);
@@ -294,6 +313,24 @@ describe("human-governed generated pictogram registry", () => {
     await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
     expect(store.candidates[0]?.status).toBe("quarantined");
     expect(store.candidates[0]?.auditHistory.at(-1)?.reason).toContain("integrity validation");
+  });
+
+  it("keeps a reviewed simple asset eligible when its current pixels remain intact", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+    await registry.submitCandidate(automatedInput());
+    await completeReviewer(registry, "reviewer-1", "lighthouse");
+    await completeReviewer(registry, "reviewer-2", "lighthouse");
+    await completeReviewer(registry, "reviewer-3", "lighthouse");
+    const simpleSvg = resolveCuratedPictogram("heart")!.svg;
+    store.candidates[0]!.svg = simpleSvg;
+    store.candidates[0]!.assetSha256 = createHash("sha256").update(simpleSvg).digest("hex");
+
+    await expect(registry.findApproved("lighthouse")).resolves.toMatchObject({
+      status: "approved",
+      svg: simpleSvg,
+    });
+    expect(store.candidates[0]?.status).toBe("approved");
   });
 
   it("ignores stale registry versions", async () => {

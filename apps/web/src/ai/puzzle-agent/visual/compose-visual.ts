@@ -109,7 +109,7 @@ export async function composePuzzleVisual(
         });
         issues.push(
           pic.error === "approved_asset_required"
-            ? `Pictogram "${layer.concept}" is not in the approved catalog — choose an exact concept from list_pictogram_catalog`
+            ? `Pictogram "${layer.concept}" has no approved recognizable asset at player size — choose another reviewed concept or repair the asset`
             : `Pictogram "${layer.concept}" failed clarity/generation — use a more concrete noun or redraw`
         );
         tips.push(`Pictogram fallback used for "${layer.concept}" — unicode emoji only`);
@@ -161,11 +161,15 @@ export async function composePuzzleVisual(
     input.unicodeFallback?.trim() || buildUnicodeFallback(filledLayers) || "◆";
   const layout = input.layout ?? defaultLayoutForTechnique(input.techniqueId);
 
+  // Native typography is rendered artwork too; it does not need a decorative icon.
+  const hasNativeText =
+    filledLayers.some((layer) => layer.kind === "text") &&
+    filledLayers.every((layer) => layer.kind === "text" || layer.kind === "operator");
   const parsed = PuzzleVisualSchema.safeParse({
     styleId: INK_PICTOGRAM_STYLE_ID,
     mode: filledLayers.some((l) => l.kind === "image" && l.src)
       ? "hybrid"
-      : filledLayers.some((l) => l.kind === "pictogram" && l.svg)
+      : hasNativeText || filledLayers.some((l) => l.kind === "pictogram" && l.svg)
         ? "composed"
         : "unicode",
     layout,

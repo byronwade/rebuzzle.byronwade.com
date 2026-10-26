@@ -102,6 +102,7 @@ export async function recordPairwiseEloMatch(input: {
   kind: EloSubjectKind;
   kFactor?: number;
 }): Promise<EloMatchResult | null> {
+  if (process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY === "1") return null;
   const winnerKey = normalizeKey(input.kind, input.winnerKey);
   const loserKey = normalizeKey(input.kind, input.loserKey);
   if (!winnerKey || !loserKey || winnerKey === loserKey) return null;

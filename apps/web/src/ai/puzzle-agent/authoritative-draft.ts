@@ -52,7 +52,12 @@ export function answerSeedStructureIssues(
     return issues;
   }
   for (let i = 0; i < preflight.layers.length; i++) {
-    const expected = structuralLayerKey(preflight.layers[i]!);
+    const expectedLayer = preflight.layers[i]!;
+    const actualLayer = published.layers[i]!;
+    if (expectedLayer.x !== actualLayer.x || expectedLayer.y !== actualLayer.y) {
+      issues.push(`Layer ${i} position drifted from approved composition`);
+    }
+    const expected = structuralLayerKey(expectedLayer);
     const actual = structuralLayerKey(published.layers[i]!);
     if (expected !== actual) {
       issues.push(`Layer ${i} drifted from rule-graph preflight (${expected} → ${actual})`);

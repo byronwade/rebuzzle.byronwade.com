@@ -12,7 +12,11 @@ import { AI_CONFIG } from "../../config";
 import { isHardAIBudgetError, parseAIError } from "../../errors";
 import { recordTournamentCandidates } from "../../training/candidate-store";
 import { isKnownTechniqueId } from "../quality";
-import { type PuzzleGenerationParams, runPuzzleAgentGeneration } from "../run-generation";
+import {
+  PuzzleCandidateRejectedError,
+  type PuzzleGenerationParams,
+  runPuzzleAgentGeneration,
+} from "../run-generation";
 import type { PuzzleAgentResult } from "../schemas";
 import type { TechniqueId } from "../technique-library";
 import { stableId } from "../tool-impl";
@@ -25,6 +29,11 @@ import { buildGenerationBrief } from "./curriculum";
 import { selectQualifiedFinalist } from "./finalist-selection";
 import { qualifyRenderedCandidate } from "./rendered-qualification";
 import { scoreRubric } from "./rubric";
+import {
+  loadRecentFailedSeedPairs,
+  MECHANISM_PLANNER_VERSION,
+  recordSeedQualityFailure,
+} from "./seed-failure-memory";
 import type { ApexCandidate, ApexEngineResult, GenerationBrief } from "./types";
 
 function toCandidate(
@@ -121,6 +130,7 @@ async function enrichCandidate(
       difficulty: candidate.difficulty,
       tierLabel: brief.tierLabel,
       unicodeFallback: candidate.visual.unicodeFallback,
+      visual: candidate.visual,
       pictogramConcepts,
       answerResearch: candidate.answerResearchBrief,
     });
@@ -199,8 +209,16 @@ export async function runApexGeneration(
   const generateStarted = Date.now();
   const candidates: ApexCandidate[] = [];
   const failures: string[] = [];
+  let lastRejectedPuzzle: PuzzleAgentResult["puzzle"] | undefined;
   // Research every reserved answer before spending generation budget on it.
+  const rememberPlannerFailures =
+    params.targetDifficulty >= 7 && params.mechanismPlanning !== false;
+  const plannerVersion = MECHANISM_PLANNER_VERSION;
+  const recentFailedPairs = rememberPlannerFailures
+    ? await loadRecentFailedSeedPairs(plannerVersion)
+    : new Set<string>();
   const screen = await screenAnswerSeedsWithResearch({
+    recentFailedPairs,
     entries: brief.phraseSuggestions,
     techniqueIds: brief.preferredTechniques,
     count: brief.candidateCount,
@@ -244,6 +262,7 @@ export async function runApexGeneration(
       // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: billable LLM candidate slots must stay sequential for gateway quota
       const result = await runPuzzleAgentGeneration({
         ...params,
+        mechanismPlanning: params.mechanismPlanning ?? params.targetDifficulty >= 7,
         // Host-side quality gates remain strict; do not pay for a second full
         // agent + vision tournament unless an operator explicitly requests it.
         maxAttempts: Math.min(params.maxAttempts ?? 1, 2),
@@ -275,15 +294,34 @@ export async function runApexGeneration(
       if (isHardAIBudgetError(error)) {
         throw parseAIError(error);
       }
+      if (error instanceof PuzzleCandidateRejectedError) {
+        lastRejectedPuzzle = error.puzzle;
+        const seed = researchedSeeds[slot - 1];
+        const techniqueId =
+          seed?.techniqueId ??
+          brief.preferredTechniques[(slot - 1) % Math.max(1, brief.preferredTechniques.length)];
+        if (
+          rememberPlannerFailures &&
+          error.qualityFeedbackEligible === true &&
+          seed &&
+          techniqueId
+        ) {
+          await recordSeedQualityFailure({
+            answer: seed.entry.answer,
+            techniqueId,
+            plannerVersion,
+          });
+        }
+      }
       failures.push(error instanceof Error ? error.message : String(error));
     }
   }
   const generateMs = Date.now() - generateStarted;
 
   if (!candidates.length) {
-    throw new Error(
-      `Apex engine produced no candidates. Failures: ${failures.slice(0, 3).join(" | ") || "unknown"}`
-    );
+    const message = `Apex engine produced no candidates. Failures: ${failures.slice(0, 3).join(" | ") || "unknown"}`;
+    if (lastRejectedPuzzle) throw new PuzzleCandidateRejectedError(message, lastRejectedPuzzle);
+    throw new Error(message);
   }
 
   let simCalibration: { adjustment: number; sampleSize: number } | undefined;
@@ -373,7 +411,11 @@ export async function runApexGeneration(
               category: params.category,
               theme: params.theme,
             },
-            params
+            {
+              ...params,
+              mechanismPlanning: params.mechanismPlanning ?? params.targetDifficulty >= 7,
+              mechanismPreviousVisual: candidate.visual,
+            }
           )
         );
         return {

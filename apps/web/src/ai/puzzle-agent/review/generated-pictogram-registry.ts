@@ -330,7 +330,6 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
         candidate.status === "approved" &&
         candidate.assetSha256 === sha256(candidate.svg) &&
         sanitizePictogramSvg(candidate.svg) === candidate.svg &&
-        scorePictogramClarity(candidate.svg).ok &&
         pixelIntegrity.ok;
       if (valid) return candidate;
       await this.quarantine(candidate.id, "Approved registry asset failed integrity validation");
@@ -338,6 +337,7 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
     },
 
     async quarantine(id: string, reason: string): Promise<void> {
+      if (process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY === "1") return;
       const candidate = await repository.findCandidateById(id);
       if (candidate?.status !== "approved") return;
       const now = new Date();

@@ -1,3 +1,5 @@
+import { resolveCuratedPictogram } from "../../visual/curated-pictograms";
+import { PLAYER_ICON_GATE_SIZES } from "../../visual/presentation";
 import { INK_PICTOGRAM_EXAMPLE_EYE, INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
 import { PHRASE_BANK, phraseBankSize, samplePhraseBank } from "../phrase-bank";
 import { scoreRubric, tournamentScore } from "../rubric";
@@ -143,6 +145,30 @@ describe("phrase bank", () => {
 });
 
 describe("rubric + tournament", () => {
+  it("does not penalize an independently recognized approved simple icon", () => {
+    const heart = resolveCuratedPictogram("heart")!;
+    const recognized = PLAYER_ICON_GATE_SIZES.map((tileSize) => ({
+      tileSize,
+      seenAs: "heart",
+      confidence: 0.94,
+    }));
+    const visual = {
+      ...fakeCandidate().visual,
+      layers: [
+        {
+          kind: "pictogram" as const,
+          concept: "heart",
+          emojiFallback: "❤️",
+          svg: heart.svg,
+          source: "approved-cache" as const,
+          assetId: "generated-pictogram:heart",
+          recognitionProfiles: recognized,
+        },
+      ],
+    };
+    const rubric = scoreRubric(fakeCandidate({ visual }));
+    expect(rubric.visualCraft).toBeGreaterThanOrEqual(85);
+  });
   it("scores a strong composed candidate highly", () => {
     const rubric = scoreRubric(fakeCandidate());
     expect(rubric.overall).toBeGreaterThanOrEqual(70);

@@ -165,6 +165,8 @@ export async function generateAIObject<T>(params: {
   schema: z.ZodType<T>;
   temperature?: number;
   modelType?: ModelTier;
+  /** Explicit model makes exactly one provider attempt, with no tier fallbacks. */
+  modelId?: string;
   operation?: string;
 }): Promise<T> {
   await enforceQuota();
@@ -172,7 +174,7 @@ export async function generateAIObject<T>(params: {
   assertGatewayAuthConfigured();
 
   const tier = params.modelType ?? "smart";
-  const modelsToTry = getGatewayModelChain(tier);
+  const modelsToTry = params.modelId ? [params.modelId] : getGatewayModelChain(tier);
   let lastError: Error | null = null;
 
   for (let i = 0; i < modelsToTry.length; i++) {

@@ -124,6 +124,14 @@ describe("Apex critique-locked repair integration", () => {
     });
   });
 
+  it("enables mechanism planning for production daily targets", async () => {
+    runPuzzleAgentGeneration.mockRejectedValueOnce(new Error("candidate deliberately rejected"));
+    await expect(runApexGeneration({ targetDifficulty: 7 })).rejects.toThrow();
+    expect(runPuzzleAgentGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ targetDifficulty: 7, mechanismPlanning: true })
+    );
+  });
+
   it("does not call invent when critique asks to revise but cue plan is missing", async () => {
     runPuzzleAgentGeneration.mockResolvedValueOnce(puzzleResult("keyboard", false));
     critiqueCandidate.mockResolvedValue({

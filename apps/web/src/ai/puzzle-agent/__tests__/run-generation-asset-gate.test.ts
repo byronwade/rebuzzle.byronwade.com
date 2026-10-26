@@ -53,6 +53,7 @@ jest.mock("../difficulty-levels", () => ({
   })),
 }));
 jest.mock("../quality", () => ({
+  TECHNIQUE_IDS: jest.requireActual("../quality").TECHNIQUE_IDS,
   evaluatePublishGates,
   normalizeAnswerKey: (answer: string) => answer.toLowerCase().replace(/[^a-z0-9]/g, ""),
 }));
@@ -156,7 +157,10 @@ describe("runPuzzleAgentGeneration asset gate", () => {
   it("rejects unapproved artwork before expensive novelty and scoring work", async () => {
     await expect(
       runPuzzleAgentGeneration({ targetDifficulty: 5, maxAttempts: 1, modelChainLimit: 1 })
-    ).rejects.toBeInstanceOf(PuzzleCandidateRejectedError);
+    ).rejects.toMatchObject({
+      name: "PuzzleCandidateRejectedError",
+      qualityFeedbackEligible: false,
+    });
 
     expect(verifyPublicationAssets).toHaveBeenCalledTimes(1);
     expect(checkUniqueness).not.toHaveBeenCalled();

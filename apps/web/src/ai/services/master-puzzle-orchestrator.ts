@@ -152,8 +152,10 @@ function toGeneratedResult(
 }
 
 function apexEnabled(params: MasterGenerationParams): boolean {
-  if (params.candidateCount === 1) return false;
-  return AI_CONFIG.puzzleAgent.apex.enabled !== false;
+  if (AI_CONFIG.puzzleAgent.apex.enabled === false) return false;
+  // One candidate is a spend limit, not an opt-out of daily mechanism design.
+  // Keep low-tier single-candidate requests on their existing classic path.
+  return params.targetDifficulty >= 7 || params.candidateCount !== 1;
 }
 
 async function enforceClassicPlayability(result: PuzzleAgentResult): Promise<PuzzleAgentResult> {
@@ -203,7 +205,7 @@ export async function generateMasterPuzzle(
     engine: useApex ? "apex" : "eve",
     difficulty: params.targetDifficulty,
     puzzleType: params.puzzleType ?? "rebus",
-    candidates: useApex ? AI_CONFIG.puzzleAgent.apex.candidateCount : 1,
+    candidates: useApex ? (params.candidateCount ?? AI_CONFIG.puzzleAgent.apex.candidateCount) : 1,
   });
 
   if (useApex) {

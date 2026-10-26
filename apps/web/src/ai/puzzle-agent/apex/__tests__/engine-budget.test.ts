@@ -1,3 +1,11 @@
+jest.mock("../seed-failure-memory", () => ({
+  ...jest.requireActual("../seed-failure-memory"),
+  loadRecentFailedSeedPairs: jest.fn(async () => new Set()),
+  recordSeedQualityFailure: jest.fn(async () => {}),
+}));
+
+import { loadRecentFailedSeedPairs, recordSeedQualityFailure } from "../seed-failure-memory";
+
 jest.mock("../../../training/candidate-store", () => ({
   recordTournamentCandidates: jest.fn(async () => {}),
 }));
@@ -6,7 +14,19 @@ const buildGenerationBrief = jest.fn();
 const critiqueCandidate = jest.fn();
 const qualifyRenderedCandidate = jest.fn();
 
-jest.mock("../../run-generation", () => ({ runPuzzleAgentGeneration }));
+jest.mock("../../run-generation", () => ({
+  runPuzzleAgentGeneration,
+  PuzzleCandidateRejectedError: class PuzzleCandidateRejectedError extends Error {
+    constructor(
+      message: string,
+      public readonly puzzle: unknown,
+      public readonly qualityFeedbackEligible = false
+    ) {
+      super(message);
+      this.name = "PuzzleCandidateRejectedError";
+    }
+  },
+}));
 jest.mock("../../tool-impl", () => ({
   stableId: jest.fn((...parts: string[]) => parts.join("-")),
 }));
@@ -27,6 +47,7 @@ jest.mock("../../../learning/sim-calibration", () => ({
 
 import { AIBudgetExceededError } from "../../../errors";
 import { recordTournamentCandidates } from "../../../training/candidate-store";
+import { PuzzleCandidateRejectedError } from "../../run-generation";
 import { INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
 import { runApexGeneration } from "../engine";
 
@@ -81,9 +102,108 @@ function puzzleResult(answer: string) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  runPuzzleAgentGeneration.mockReset();
 });
 
 describe("Apex spending-cap behavior", () => {
+  it("retains the last rejected board when no tournament slot produces a candidate", async () => {
+    buildGenerationBrief.mockResolvedValue({
+      targetDifficulty: 5,
+      tierLabel: "Hard",
+      qualityThreshold: 74,
+      minRubricOverall: 78,
+      candidateCount: 2,
+      preferredTechniques: ["simple_compound"],
+      avoidTechniques: [],
+      phraseSuggestions: [
+        {
+          answer: "moonlight",
+          category: "compound",
+          difficultyHint: 5,
+          techniqueAffinity: ["simple_compound"],
+          visualCues: [{ kind: "catalog", concept: "moon", role: "word-part" }],
+        },
+        {
+          answer: "doorbell",
+          category: "compound",
+          difficultyHint: 5,
+          techniqueAffinity: ["simple_compound"],
+          visualCues: [{ kind: "catalog", concept: "bell", role: "word-part" }],
+        },
+      ],
+      diversity: { bannedAnswerKeys: [] },
+      briefSummary: "test",
+      techniqueRates: [],
+      answerEloByKey: new Map(),
+    });
+    const first = puzzleResult("moonlight").puzzle;
+    const last = puzzleResult("doorbell").puzzle;
+    runPuzzleAgentGeneration
+      .mockRejectedValueOnce(new PuzzleCandidateRejectedError("first failed", first))
+      .mockRejectedValueOnce(
+        new PuzzleCandidateRejectedError("calibrated difficulty 5", last, true)
+      );
+
+    await expect(runApexGeneration({ targetDifficulty: 7 })).rejects.toMatchObject({
+      name: "PuzzleCandidateRejectedError",
+      message:
+        "Apex engine produced no candidates. Failures: first failed | calibrated difficulty 5",
+      puzzle: last,
+    });
+    expect(recordSeedQualityFailure).toHaveBeenCalledTimes(1);
+    expect(recordSeedQualityFailure).toHaveBeenCalledWith({
+      answer: "doorbell",
+      techniqueId: "simple_compound",
+      plannerVersion: "mechanism-plan-v1",
+    });
+    jest.mocked(recordSeedQualityFailure).mockClear();
+    jest.mocked(loadRecentFailedSeedPairs).mockClear();
+    runPuzzleAgentGeneration.mockRejectedValue(
+      new PuzzleCandidateRejectedError("quality failed", first)
+    );
+    await expect(
+      runApexGeneration({ targetDifficulty: 7, mechanismPlanning: false })
+    ).rejects.toBeInstanceOf(PuzzleCandidateRejectedError);
+    await expect(runApexGeneration({ targetDifficulty: 5 })).rejects.toBeInstanceOf(
+      PuzzleCandidateRejectedError
+    );
+    expect(recordSeedQualityFailure).not.toHaveBeenCalled();
+    expect(loadRecentFailedSeedPairs).not.toHaveBeenCalled();
+  });
+
+  it("keeps an ordinary summary error when a failed slot has no rejected puzzle", async () => {
+    buildGenerationBrief.mockResolvedValue({
+      targetDifficulty: 5,
+      tierLabel: "Hard",
+      qualityThreshold: 74,
+      minRubricOverall: 78,
+      candidateCount: 1,
+      preferredTechniques: ["simple_compound"],
+      avoidTechniques: [],
+      phraseSuggestions: [
+        {
+          answer: "moonlight",
+          category: "compound",
+          difficultyHint: 5,
+          techniqueAffinity: ["simple_compound"],
+          visualCues: [{ kind: "catalog", concept: "moon", role: "word-part" }],
+        },
+      ],
+      diversity: { bannedAnswerKeys: [] },
+      briefSummary: "test",
+      techniqueRates: [],
+      answerEloByKey: new Map(),
+    });
+    runPuzzleAgentGeneration.mockRejectedValue(new Error("provider unavailable"));
+
+    await expect(runApexGeneration({ targetDifficulty: 5 })).rejects.toMatchObject({
+      name: "Error",
+      message: "Apex engine produced no candidates. Failures: provider unavailable",
+    });
+    expect(recordSeedQualityFailure).not.toHaveBeenCalled();
+    expect(loadRecentFailedSeedPairs).not.toHaveBeenCalled();
+  });
+
   it("stops remaining tournament slots after the first hard budget error", async () => {
     buildGenerationBrief.mockResolvedValue({
       targetDifficulty: 5,
@@ -120,6 +240,7 @@ describe("Apex spending-cap behavior", () => {
       code: "AI_BUDGET_EXCEEDED",
     });
     expect(runPuzzleAgentGeneration).toHaveBeenCalledTimes(1);
+    expect(recordSeedQualityFailure).not.toHaveBeenCalled();
   });
 
   it("fails closed before any model call when answer seeds cannot cover the tournament", async () => {

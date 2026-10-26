@@ -6,7 +6,22 @@ import { getCollection } from "@/db/mongodb";
 import { snapshotCandidate } from "../candidate-record";
 import { recordTournamentCandidates } from "../candidate-store";
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
+});
+afterAll(() => {
+  delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
+});
+it("does not persist tournament candidates in diagnostic read-only mode", async () => {
+  process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY = "1";
+  await recordTournamentCandidates({
+    runId: "diagnostic",
+    candidates: [{ id: "candidate" } as never],
+  });
+  expect(snapshotCandidate).not.toHaveBeenCalled();
+  expect(getCollection).not.toHaveBeenCalled();
+});
 it("does not touch the database for empty tournaments", async () => {
   await recordTournamentCandidates({ runId: "empty", candidates: [] });
   expect(getCollection).not.toHaveBeenCalled();

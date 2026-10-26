@@ -13,6 +13,7 @@ import { composePuzzleVisual } from "../compose-visual";
 import type { PictogramLayer } from "../composition";
 import { resolveCuratedPictogram } from "../curated-pictograms";
 import { PLAYER_ICON_GATE_SIZES } from "../presentation";
+import { verifyPublicationAssets } from "../publication-assets";
 
 const asset = resolveCuratedPictogram("brain")!;
 function layer(overrides: Partial<PictogramLayer> = {}): PictogramLayer {
@@ -73,6 +74,27 @@ it("obtains current player-size evidence even for an exact precomposed catalog S
   expect(generateAIText).not.toHaveBeenCalled();
 });
 
+it("publishes a reviewed simple icon after current player-size recognition", async () => {
+  const simpleSvg = resolveCuratedPictogram("heart")!.svg;
+  findApproved.mockResolvedValue({ id: "generated-pictogram:heart", svg: simpleSvg });
+  const result = await compose(
+    layer({
+      concept: "lighthouse",
+      svg: simpleSvg,
+      source: "approved-cache",
+      assetId: "generated-pictogram:heart",
+    })
+  );
+
+  expect(result.visual.layers[0]).toMatchObject({
+    source: "approved-cache",
+    svg: simpleSvg,
+    recognitionProfiles: expect.any(Array),
+  });
+  expect(evaluateVisualForPublish(result.visual)).toMatchObject({ ok: true });
+  await expect(verifyPublicationAssets(result.visual)).resolves.toEqual({ ok: true });
+});
+
 it("rejects a current recognition failure despite model-supplied passing profiles", async () => {
   recognizePictogramIcon.mockResolvedValue(recognition(false));
   const result = await compose(
@@ -86,6 +108,9 @@ it("rejects a current recognition failure despite model-supplied passing profile
   );
   expect(result.generated.pictograms).toBe(0);
   expect(result.generated.failedPictograms).toBe(1);
+  expect(result.issues).toContain(
+    'Pictogram "brain" has no approved recognizable asset at player size — choose another reviewed concept or repair the asset'
+  );
   expect((result.visual.layers[0] as PictogramLayer).recognitionProfiles).toBeUndefined();
   expect(result.visual.layers[0]).not.toHaveProperty("svg", asset.svg);
   expect(evaluateVisualForPublish(result.visual).ok).toBe(false);
@@ -112,4 +137,39 @@ it("replaces modified SVG and stale evidence only with the exact resolved asset 
     })),
   });
   expect(result.visual.layers[0]).not.toHaveProperty("svg", modified);
+});
+
+it("composes native typography mechanisms without requiring decorative pictograms", async () => {
+  const result = await composePuzzleVisual({
+    answer: "big fish small pond",
+    targetDifficulty: 7,
+    techniqueId: "size_or_case_semantics",
+    layout: "grid",
+    layers: [
+      { kind: "text", content: "FISH", emphasis: "large" },
+      { kind: "text", content: "POND", emphasis: "small" },
+      { kind: "text", content: "FISH", emphasis: "small" },
+      { kind: "text", content: "POND", emphasis: "large" },
+    ],
+  });
+  expect(result.visual.mode).toBe("composed");
+  expect(result.issues).toEqual([]);
+  expect(result.generated.pictograms).toBe(0);
+});
+
+it("composes ordinary text when spatial placement carries the mechanism", async () => {
+  const result = await composePuzzleVisual({
+    answer: "just between us",
+    targetDifficulty: 7,
+    techniqueId: "spatial_preposition_play",
+    layout: "stack",
+    layers: [
+      { kind: "text", content: "US", emphasis: "normal" },
+      { kind: "text", content: "JUST", emphasis: "normal" },
+      { kind: "text", content: "US", emphasis: "normal" },
+      { kind: "text", content: "SECRET", emphasis: "normal" },
+    ],
+  });
+  expect(result.visual.mode).toBe("composed");
+  expect(result.issues).toEqual([]);
 });

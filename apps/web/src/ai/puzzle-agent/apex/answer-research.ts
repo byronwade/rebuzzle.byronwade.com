@@ -71,6 +71,7 @@ export async function screenAnswerSeedsWithResearch(input: {
   usedAnswerKeys?: Iterable<string>;
   requireVisualCuePlan?: boolean;
   targetDifficulty?: number;
+  recentFailedPairs?: ReadonlySet<string>;
   researcher?: Researcher;
   enabled?: boolean;
   gate?: boolean;
@@ -97,6 +98,7 @@ export async function screenAnswerSeedsWithResearch(input: {
     usedAnswerKeys: used,
     requireVisualCuePlan: input.requireVisualCuePlan,
     targetDifficulty: input.targetDifficulty,
+    recentFailedPairs: input.recentFailedPairs,
   });
   const inventoryShort = selection.length < input.count;
   const slots = selection.map((entry, index) => ({ entry, techniqueId: slotTechnique(index) }));
@@ -147,6 +149,7 @@ export async function screenAnswerSeedsWithResearch(input: {
             usedAnswerKeys: taken,
             requireVisualCuePlan: input.requireVisualCuePlan,
             targetDifficulty: input.targetDifficulty,
+            recentFailedPairs: input.recentFailedPairs,
           })
         : undefined;
       if (replacement) {

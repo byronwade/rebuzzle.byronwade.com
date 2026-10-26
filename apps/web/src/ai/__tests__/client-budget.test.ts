@@ -13,7 +13,8 @@ jest.mock("@ai-sdk/gateway", () => ({
 }));
 jest.mock("../quota-manager", () => ({ enforceQuota }));
 
-import { generateAIText, withRetry } from "../client";
+import { z } from "zod";
+import { generateAIObject, generateAIText, withRetry } from "../client";
 
 describe("AI client hard budget behavior", () => {
   const originalKey = process.env.AI_GATEWAY_API_KEY;
@@ -42,6 +43,19 @@ describe("AI client hard budget behavior", () => {
     await expect(generateAIText({ prompt: "test", modelType: "smart" })).rejects.toMatchObject({
       code: "AI_BUDGET_EXCEEDED",
     });
+    expect(generateText).toHaveBeenCalledTimes(1);
+  });
+
+  it("honors an explicit structured-output model without fallback", async () => {
+    generateText.mockRejectedValue(new Error("model not found"));
+    await expect(
+      generateAIObject({
+        prompt: "test",
+        modelId: "openai/gpt-5.4",
+        schema: z.object({ ok: z.boolean() }),
+      })
+    ).rejects.toThrow();
+    expect(gatewayModel).toHaveBeenCalledWith("openai/gpt-5.4");
     expect(generateText).toHaveBeenCalledTimes(1);
   });
 

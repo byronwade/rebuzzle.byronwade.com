@@ -4,6 +4,7 @@
 
 import { generateAIObject } from "../../client";
 import { AI_CONFIG } from "../../config";
+import type { PuzzleVisual } from "../visual/composition";
 import { OVERUSED_REBUS_TROPES } from "../visual/icon-features";
 import { CritiqueProviderSchema, type CritiqueResult } from "./types";
 
@@ -17,6 +18,7 @@ export async function critiqueCandidate(input: {
   tierLabel: string;
   unicodeFallback?: string;
   pictogramConcepts?: string[];
+  visual?: PuzzleVisual;
   /** Corroborated web-research brief about the answer. */
   answerResearch?: string;
 }): Promise<CritiqueResult> {
@@ -29,6 +31,7 @@ export async function critiqueCandidate(input: {
       system: `You are an adversarial rebus editor for a national daily (Rebuzzle).
 Reject lazy emoji salad, unreadable/vague icons, answer leaks, unfair obscurity, weak aha moments, and overused tropes (${OVERUSED_REBUS_TROPES.slice(0, 6).join(", ")}) unless the twist is genuinely new.
 Demand: one clean clever mechanism, concrete pictogram nouns a human can sketch, fair progressive hints, family-friendly.
+Read the structured board as the authoritative visual: layout, layer order, relative positions, and text emphasis are clues. Name any plausible competing interpretation, the visible cue that distinguishes it, and a targeted repair if that cue is weak. Put cue-specific objections in flaws and actionable changes in reviseInstructions; do not invent a repair unrelated to the board.
 Score creativityScore (mechanism inventiveness, not just uniqueness) and iconRecognizability (0–100).
 Ship only if you'd be proud to publish nationally AND creativityScore ≥ 62 AND icons would be recognizable.
 Be specific and ruthless but fair.`,
@@ -39,6 +42,9 @@ Be specific and ruthless but fair.`,
         `Technique: ${input.techniqueId}`,
         input.pictogramConcepts?.length
           ? `Pictogram concepts: ${input.pictogramConcepts.join(", ")}`
+          : null,
+        input.visual
+          ? `Structured board: ${JSON.stringify(sanitizeCritiqueBoard(input.visual))}`
           : null,
         `Explanation: ${input.explanation}`,
         `Hints: ${input.hints.map((h, i) => `${i + 1}. ${h}`).join(" | ")}`,
@@ -53,7 +59,7 @@ Be specific and ruthless but fair.`,
         "Judge whether each pictured object would be instantly recognizable as a simple icon.",
         "Set overusedTrope=true if the answer/mechanism is a classic rebus cliché without a fresh twist.",
         "Score falseLeadQuality, ahaPredicted, creativityScore, iconRecognizability (0-100).",
-        "Verdict ship only if proud to publish. If revise/reject, give concrete reviseInstructions.",
+        "Assess whether a competing interpretation survives the actual visible cue. Verdict ship only if proud to publish. If revise/reject, give concrete cue-specific reviseInstructions.",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -84,4 +90,33 @@ Be specific and ruthless but fair.`,
       overusedTrope: false,
     };
   }
+}
+
+/** Strip SVG, images, prompts, and recognition metadata before sending board structure to critique. */
+export function sanitizeCritiqueBoard(visual: PuzzleVisual) {
+  return {
+    layout: visual.layout,
+    layers: visual.layers.map((layer) => {
+      const position = {
+        ...(layer.x !== undefined ? { x: layer.x } : {}),
+        ...(layer.y !== undefined ? { y: layer.y } : {}),
+      };
+      switch (layer.kind) {
+        case "text":
+          return {
+            kind: layer.kind,
+            content: layer.content,
+            emphasis: layer.emphasis,
+            ...position,
+          };
+        case "pictogram":
+          return { kind: layer.kind, concept: layer.concept, ...position };
+        case "operator":
+          return { kind: layer.kind, symbol: layer.symbol, ...position };
+        case "image":
+          return { kind: layer.kind, concept: layer.concept ?? layer.alt, ...position };
+      }
+    }),
+    ...(visual.caption ? { caption: visual.caption } : {}),
+  };
 }

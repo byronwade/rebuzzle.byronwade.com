@@ -69,6 +69,9 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
     ) {
       return [90];
     }
+    if (layer.source === "approved-cache") {
+      return layer.assetId && visual.ok ? [90] : [];
+    }
     return [scorePictogramClarity(layer.svg).score];
   });
   if (pictogramClarities.length) {

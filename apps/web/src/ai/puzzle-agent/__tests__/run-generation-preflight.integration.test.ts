@@ -1,9 +1,17 @@
+import { evaluatePublishGates } from "../quality";
+
 /**
  * Host-path integration: cue-plan preflight must fail closed before ToolLoop spend,
  * and successful preflight must seed the prompt + authoritative board fallback.
  */
 
 const generate = jest.fn();
+const generateMechanismPlan = jest.fn();
+const composeMechanismPlan = jest.fn();
+jest.mock("../apex/mechanism-plan", () => ({
+  generateMechanismPlan: (...args: unknown[]) => generateMechanismPlan(...args),
+  composeMechanismPlan: (...args: unknown[]) => composeMechanismPlan(...args),
+}));
 const ToolLoopAgent = jest.fn();
 const preflightComposeAnswerSeedCuePlan = jest.fn();
 const ensureGatewayKey = jest.fn();
@@ -239,6 +247,25 @@ describe("runPuzzleAgentGeneration cue-plan preflight integration", () => {
     expect(enforceQuota).not.toHaveBeenCalled();
   });
 
+  it("preserves explicit score feedback eligibility on a rejected draft", async () => {
+    jest.mocked(evaluatePublishGates).mockReturnValueOnce({
+      ok: false,
+      reason: "Calibrated difficulty outside band",
+      qualityFeedbackEligible: true,
+    });
+    await expect(
+      runPuzzleAgentGeneration({
+        targetDifficulty: 5,
+        answerSeed: "keyboard",
+        answerSeedCuePlan: cuePlan,
+        preferredTechniques: ["simple_compound"],
+        maxAttempts: 1,
+        modelChainLimit: 1,
+        deferRenderedEvaluation: true,
+      })
+    ).rejects.toMatchObject({ qualityFeedbackEligible: true });
+  });
+
   it("injects host preflight layers into the invent prompt and uses them as board fallback", async () => {
     const result = await runPuzzleAgentGeneration({
       targetDifficulty: 5,
@@ -347,3 +374,146 @@ function generateArgsPromptMentionsStructureLock(): boolean {
   const generateArgs = generate.mock.calls[0]?.[1] as { prompt: string };
   return /Do not restructure layers/i.test(generateArgs?.prompt ?? "");
 }
+
+describe("approved mechanism planning in the production generator", () => {
+  const plannedVisual = {
+    ...preflightVisual,
+    layout: "stack",
+    layers: preflightVisual.layers.map((l) =>
+      l.kind === "text" ? { ...l, emphasis: "large" } : l
+    ),
+  };
+  const plannedHints = [
+    "Look at the larger word.",
+    "The object's name connects with that word.",
+    "Combine the object and the named surface.",
+  ];
+  beforeEach(() => {
+    jest.clearAllMocks();
+    generateMechanismPlan.mockResolvedValue({
+      techniqueId: "spatial_preposition_play",
+      explanation: "Approved structural explanation",
+      hints: plannedHints,
+    });
+    composeMechanismPlan.mockResolvedValue({ visual: plannedVisual, issues: [] });
+    generate.mockResolvedValue({
+      output: {
+        puzzle: {
+          answer: "keyboard",
+          rebusPuzzle: "ignored",
+          difficulty: 7,
+          difficultyLevel: "Evil",
+          techniqueId: "simple_compound",
+          explanation: "discarded",
+          hints: ["discarded"],
+          category: "compound",
+          visual: preflightVisual,
+        },
+      },
+    });
+  });
+  it("uses the approved arrangement and hint ladder, instead of deterministic preflight or draft drift", async () => {
+    const result = await runPuzzleAgentGeneration({
+      targetDifficulty: 7,
+      answerSeed: "keyboard",
+      answerSeedCuePlan: cuePlan,
+      mechanismPlanning: true,
+      deferRenderedEvaluation: true,
+      maxAttempts: 1,
+    });
+    expect(result.puzzle.visual.layout).toBe("stack");
+    expect(result.puzzle.visual.layers[1]).toMatchObject({ emphasis: "large" });
+    expect(result.puzzle.hints).toEqual(plannedHints);
+    expect(result.puzzle.explanation).toBe("Approved structural explanation");
+    expect(result.puzzle.techniqueId).toBe("spatial_preposition_play");
+    expect(preflightComposeAnswerSeedCuePlan).not.toHaveBeenCalled();
+    expect(generateMechanismPlan).toHaveBeenCalledTimes(1);
+    expect(generate.mock.calls[0]?.[1]?.prompt).toContain("APPROVED MECHANISM");
+  });
+  it("does not force seed labels back onto the approved mechanism", async () => {
+    const suggestedCues = [
+      ...cuePlan,
+      { kind: "text" as const, content: "REPEAT", role: "structural-anchor" as const },
+      { kind: "text" as const, content: "OVER", role: "structural-anchor" as const },
+    ];
+    const result = await runPuzzleAgentGeneration({
+      targetDifficulty: 7,
+      answerSeed: "keyboard",
+      answerSeedCuePlan: suggestedCues,
+      mechanismPlanning: true,
+      deferRenderedEvaluation: true,
+      maxAttempts: 1,
+    });
+    expect(result.puzzle.visual).toEqual(plannedVisual);
+    expect(generate.mock.calls[0]?.[1]?.prompt).not.toContain("MANDATORY ANSWER-SEED CUE CONTRACT");
+  });
+  it("still rejects missing original cues on the legacy path", async () => {
+    preflightComposeAnswerSeedCuePlan.mockResolvedValue({
+      ok: true,
+      composition: { visual: preflightVisual },
+    });
+    await expect(
+      runPuzzleAgentGeneration({
+        targetDifficulty: 7,
+        answerSeed: "keyboard",
+        answerSeedCuePlan: [
+          ...cuePlan,
+          { kind: "text", content: "REPEAT", role: "structural-anchor" },
+        ],
+        mechanismPlanning: false,
+        deferRenderedEvaluation: true,
+        maxAttempts: 1,
+      })
+    ).rejects.toThrow(/Missing text cue REPEAT/);
+  });
+  it("stops before composition and invention when planning rejects unsupported structure", async () => {
+    generateMechanismPlan.mockRejectedValue(new Error("Invalid mechanism plan: unsupported layer"));
+    await expect(
+      runPuzzleAgentGeneration({
+        targetDifficulty: 7,
+        answerSeed: "keyboard",
+        answerSeedCuePlan: cuePlan,
+        mechanismPlanning: true,
+        maxAttempts: 2,
+      })
+    ).rejects.toThrow(/Invalid mechanism plan/);
+    expect(generateMechanismPlan).toHaveBeenCalledTimes(1);
+    expect(composeMechanismPlan).not.toHaveBeenCalled();
+    expect(ToolLoopAgent).not.toHaveBeenCalled();
+  });
+  it("does not repeat planning when the downstream agent retries", async () => {
+    generate.mockResolvedValueOnce({ output: undefined });
+    const result = await runPuzzleAgentGeneration({
+      targetDifficulty: 7,
+      answerSeed: "keyboard",
+      answerSeedCuePlan: cuePlan,
+      mechanismPlanning: true,
+      deferRenderedEvaluation: true,
+      maxAttempts: 2,
+    });
+    expect(result.puzzle.visual.layout).toBe("stack");
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generateMechanismPlan).toHaveBeenCalledTimes(1);
+    expect(composeMechanismPlan).toHaveBeenCalledTimes(1);
+  });
+  it("passes the previous board and critique into the one authorized replan", async () => {
+    await runPuzzleAgentGeneration({
+      targetDifficulty: 7,
+      answerSeed: "keyboard",
+      answerSeedCuePlan: cuePlan,
+      mechanismPlanning: true,
+      mechanismPreviousVisual: preflightVisual as never,
+      repairMode: "critique-locked",
+      revisionInstructions: ["Use size to defeat the literal reading"],
+      deferRenderedEvaluation: true,
+      maxAttempts: 1,
+    });
+    expect(generateMechanismPlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousVisual: preflightVisual,
+        revisionInstructions: ["Use size to defeat the literal reading"],
+      })
+    );
+    expect(generateMechanismPlan).toHaveBeenCalledTimes(1);
+  });
+});

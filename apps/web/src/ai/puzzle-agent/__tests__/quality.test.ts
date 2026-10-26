@@ -334,6 +334,29 @@ describe("evaluatePublishGates", () => {
     },
   };
 
+  it.each([
+    { qualityOverall: 10 },
+    { funScore: 10 },
+    { calibratedDifficulty: 8, inBand: false },
+    { difficulty: 8 },
+  ])("marks deterministic score/difficulty feedback eligible: %j", (failure) => {
+    expect(evaluatePublishGates({ ...base, ...failure })).toMatchObject({
+      ok: false,
+      qualityFeedbackEligible: true,
+    });
+  });
+
+  it.each([
+    { isUnique: false, uniquenessBlockers: ["Archive unavailable"] },
+    { solvable: false, solvabilityBlockers: ["Recognition unavailable"] },
+    { publishable: false, qualityIssues: ["Missing evidence"] },
+  ])("does not learn from unavailable evidence: %j", (failure) => {
+    expect(evaluatePublishGates({ ...base, ...failure })).not.toHaveProperty(
+      "qualityFeedbackEligible",
+      true
+    );
+  });
+
   it("requires uniqueness and solvability when provided", () => {
     expect(evaluatePublishGates({ ...base, isUnique: false }).ok).toBe(false);
     expect(evaluatePublishGates({ ...base, solvable: false }).ok).toBe(false);

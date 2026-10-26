@@ -179,7 +179,7 @@ export async function loadTechniqueSolveRates(input?: {
 }): Promise<TechniqueCalibrationSnapshot> {
   const lookbackDays = input?.lookbackDays ?? 45;
   const limit = Math.min(input?.limit ?? 400, 800);
-  const syncElo = input?.syncElo !== false;
+  const syncElo = input?.syncElo !== false && process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY !== "1";
 
   try {
     const [live, playtest] = await Promise.all([
