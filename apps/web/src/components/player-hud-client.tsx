@@ -80,7 +80,7 @@ export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
               <span className="hud-level">LV</span>
               <span className="text-foreground tabular-nums">{level}</span>
               <span aria-hidden className="hud-xp hidden sm:block">
-                <span className="hud-xp-fill" style={{ width: `${atMax ? 100 : progress}%` }} />
+                <span className="hud-xp-fill" style={{ transform: `scaleX(${atMax ? 1 : progress / 100})` }} />
               </span>
             </span>
           </Link>
