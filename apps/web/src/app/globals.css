@@ -521,6 +521,100 @@
     @apply text-brand;
   }
 
+  /* ── Studio (the puzzle maker) ─────────────────────────────────────────
+     Built like a game's level editor: a toolbar plate, a dotted stage that
+     shows the snap grid, a parts tray, and a context bar for the selection. */
+  .studio-toolbar {
+    @apply flex items-center gap-1 rounded-xl border border-border bg-card p-1;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .studio-tool {
+    @apply inline-flex h-9 [&_svg]:shrink-0 min-w-9 items-center justify-center gap-1.5 rounded-lg px-2 font-medium text-muted-foreground text-sm transition-colors focus-ring hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35;
+  }
+
+  .studio-tool[aria-pressed="true"],
+  .studio-tool[aria-selected="true"],
+  .studio-tool[aria-current="step"] {
+    @apply bg-foreground text-background hover:bg-foreground hover:text-background;
+  }
+
+  @media (pointer: coarse) {
+    .studio-tool {
+      @apply h-11 min-w-11;
+    }
+  }
+
+  .studio-stage {
+    @apply relative w-full overflow-hidden rounded-xl border border-border bg-card;
+    aspect-ratio: 16 / 10;
+    touch-action: none;
+    background-image: radial-gradient(
+      circle at center,
+      hsl(var(--border-strong) / 0.55) 1px,
+      transparent 1.5px
+    );
+    box-shadow: var(--shadow-border), inset 0 0 0 6px hsl(var(--inset) / 0.6);
+  }
+
+  .studio-piece {
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    transition: box-shadow 120ms var(--ease);
+  }
+
+  .studio-piece:hover {
+    box-shadow: 0 0 0 1px hsl(var(--border-strong));
+  }
+
+  .studio-piece:focus-visible,
+  .studio-piece.is-selected {
+    box-shadow:
+      0 0 0 2px hsl(var(--card)),
+      0 0 0 4px hsl(var(--brand));
+  }
+
+  .studio-piece.is-dragging {
+    cursor: grabbing;
+  }
+
+  .studio-piece.is-dragging .studio-piece-inner {
+    transform: scale(1.06);
+    filter: drop-shadow(0 8px 12px hsl(var(--foreground) / 0.18));
+  }
+
+  .studio-piece-inner {
+    @apply block;
+    transition:
+      transform 120ms var(--ease),
+      filter 120ms var(--ease);
+    animation: studio-piece-in 260ms var(--ease) both;
+  }
+
+  .studio-empty-mark {
+    @apply flex size-11 items-center justify-center rounded-full border border-border border-dashed font-light text-2xl text-subtle;
+  }
+
+  .studio-tile {
+    @apply flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg border border-transparent bg-inset p-2 text-muted-foreground text-xs transition-[color,background-color,border-color,transform] focus-ring hover:border-border hover:bg-card hover:text-foreground active:scale-95;
+  }
+
+  .studio-level-card {
+    @apply flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-[border-color,box-shadow,transform] focus-ring hover:border-border-strong/70 active:scale-[0.98];
+    box-shadow: var(--shadow-sm);
+  }
+
+  .studio-level-thumb {
+    @apply relative flex aspect-[16/10] items-center justify-center overflow-hidden border-border border-b bg-inset;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .studio-piece-inner {
+      animation: none;
+      transition: none;
+    }
+  }
+
   /* Caption label — 12px, medium, sentence case. Thorbis has no all-caps kickers. */
   .eyebrow {
     @apply font-medium text-muted-foreground text-xs;
@@ -1664,5 +1758,19 @@
 
   .puzzle-min-height {
     min-height: clamp(70px, 12vh, 110px);
+  }
+}
+
+@keyframes studio-piece-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

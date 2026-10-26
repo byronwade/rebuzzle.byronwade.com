@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PuzzleVisual, VisualLayer } from "@/ai/puzzle-agent/visual/composition";
 import {
   defaultPositionForIndex,
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 type StudioArtboardProps = {
   visual: PuzzleVisual;
+  /** -1 when nothing is selected. */
   selectedIndex: number;
   onSelect: (index: number) => void;
   onMove: (index: number, position: { x: number; y: number }) => void;
@@ -31,9 +32,24 @@ function layerPosition(layer: VisualLayer, index: number) {
   return hasLayerPosition(layer) ? { x: layer.x, y: layer.y } : defaultPositionForIndex(index);
 }
 
+export function layerName(layer: VisualLayer): string {
+  if (layer.kind === "pictogram") return layer.concept;
+  if (layer.kind === "text") return layer.content;
+  if (layer.kind === "operator") return layer.symbol;
+  return layer.concept || layer.alt || "image";
+}
+
+const NUDGE_KEYS: Record<string, { x: number; y: number }> = {
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+};
+
 /**
- * Interactive Studio canvas — drag pieces freely with grid snap.
- * Player preview still uses PuzzleVisualBoard (non-interactive).
+ * The Studio stage: drag pieces freely with grid snap, or focus a piece and
+ * nudge it with the arrow keys. Tapping empty space deselects.
+ * The player preview still uses PuzzleVisualBoard (non-interactive).
  */
 export function StudioArtboard({
   visual,
@@ -46,13 +62,27 @@ export function StudioArtboard({
   const [drag, setDrag] = useState<DragState | null>(null);
   const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
 
+  const [compact, setCompact] = useState(false);
+
   const layers = visual.layers ?? [];
+
+  // Phone-width stages draw pieces at the small board size so they don't collide.
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setCompact(entry.contentRect.width < 560);
+    });
+    observer.observe(board);
+    return () => observer.disconnect();
+  }, []);
 
   const handlePointerDown = (index: number, event: React.PointerEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    const target = event.currentTarget;
+    const target = event.currentTarget as HTMLElement;
     target.setPointerCapture(event.pointerId);
+    target.focus({ preventScroll: true });
     const startPos = layerPosition(layers[index]!, index);
     onSelect(index);
     setDrag({
@@ -65,105 +95,90 @@ export function StudioArtboard({
     setLivePos(startPos);
   };
 
+  const positionFromEvent = (event: React.PointerEvent, state: DragState) => {
+    const board = boardRef.current;
+    if (!board) return state.startPos;
+    const rect = board.getBoundingClientRect();
+    const dx = ((event.clientX - state.originX) / rect.width) * 100;
+    const dy = ((event.clientY - state.originY) / rect.height) * 100;
+    return snapPosition({ x: state.startPos.x + dx, y: state.startPos.y + dy });
+  };
+
   const handlePointerMove = (event: React.PointerEvent) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
-    const board = boardRef.current;
-    if (!board) return;
-    const rect = board.getBoundingClientRect();
-    const dx = ((event.clientX - drag.originX) / rect.width) * 100;
-    const dy = ((event.clientY - drag.originY) / rect.height) * 100;
-    setLivePos(
-      snapPosition({
-        x: drag.startPos.x + dx,
-        y: drag.startPos.y + dy,
-      })
-    );
+    setLivePos(positionFromEvent(event, drag));
   };
 
   const endDrag = (event: React.PointerEvent) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
-    const board = boardRef.current;
-    if (board) {
-      const rect = board.getBoundingClientRect();
-      const dx = ((event.clientX - drag.originX) / rect.width) * 100;
-      const dy = ((event.clientY - drag.originY) / rect.height) * 100;
-      const next = snapPosition({
-        x: drag.startPos.x + dx,
-        y: drag.startPos.y + dy,
-      });
-      onMove(drag.index, next);
-    }
+    const next = positionFromEvent(event, drag);
+    if (next.x !== drag.startPos.x || next.y !== drag.startPos.y) onMove(drag.index, next);
     setDrag(null);
     setLivePos(null);
   };
 
-  if (!layers.length) {
-    return (
-      <div
-        className={cn(
-          "flex min-h-[220px] items-center justify-center rounded-lg border border-border border-dashed bg-inset p-5",
-          className
-        )}
-      >
-        <p className="max-w-xs text-center text-muted-foreground text-sm leading-6">
-          Your artboard appears here. Tap icons, marks, or generate an image — then drag pieces
-          anywhere. They snap to a {STUDIO_GRID_STEP}% grid.
-        </p>
-      </div>
-    );
-  }
+  const handleKeyDown = (index: number, event: React.KeyboardEvent) => {
+    const delta = NUDGE_KEYS[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    const step = event.shiftKey ? STUDIO_GRID_STEP * 2 : STUDIO_GRID_STEP;
+    const pos = layerPosition(layers[index]!, index);
+    onMove(index, snapPosition({ x: pos.x + delta.x * step, y: pos.y + delta.y * step }));
+  };
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <div
-        ref={boardRef}
-        className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm"
-        style={{
-          aspectRatio: "16 / 10",
-          backgroundImage:
-            "linear-gradient(to right, hsl(var(--border) / 0.6) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.6) 1px, transparent 1px)",
-          backgroundSize: `${STUDIO_GRID_STEP}% ${STUDIO_GRID_STEP}%`,
-          touchAction: "none",
-        }}
-        onPointerDown={() => onSelect(selectedIndex)}
-      >
-        {/* Hidden preview keeps layer metrics consistent with player board */}
-        <div className="pointer-events-none invisible absolute inset-0" aria-hidden>
-          <PuzzleVisualBoard fallback={visual.unicodeFallback} size="large" visual={visual} />
+    <div
+      ref={boardRef}
+      className={cn("studio-stage", className)}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onSelect(-1);
+      }}
+      style={{ backgroundSize: `${STUDIO_GRID_STEP}% ${STUDIO_GRID_STEP}%` }}
+    >
+      {layers.length === 0 ? (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
+          <span className="studio-empty-mark" aria-hidden>
+            +
+          </span>
+          <p className="max-w-[16rem] font-medium text-sm">Empty stage</p>
+          <p className="max-w-[18rem] text-muted-foreground text-xs leading-5">
+            Pick parts from the tray to drop them here, then drag them into place.
+          </p>
         </div>
+      ) : null}
 
-        {layers.map((layer, index) => {
-          const base = layerPosition(layer, index);
-          const pos = drag?.index === index && livePos ? livePos : base;
-          const selected = selectedIndex === index;
-          return (
-            <button
-              key={`piece-${index}`}
-              type="button"
-              aria-label={`Move ${layer.kind === "pictogram" ? layer.concept : layer.kind === "text" ? layer.content : layer.kind === "operator" ? layer.symbol : layer.alt}`}
-              className={cn(
-                "absolute touch-none select-none rounded-md outline-none transition-shadow",
-                selected
-                  ? "ring-2 ring-foreground ring-offset-2 ring-offset-card"
-                  : "hover:ring-1 hover:ring-border-strong",
-                drag?.index === index && "z-50 cursor-grabbing"
-              )}
-              style={{
-                left: `${pos.x}%`,
-                top: `${pos.y}%`,
-                transform: "translate(-50%, -50%)",
-                zIndex: drag?.index === index ? 50 : index + 1,
-                cursor: drag?.index === index ? "grabbing" : "grab",
-              }}
-              onPointerDown={(event) => handlePointerDown(index, event)}
-              onPointerMove={handlePointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-            >
+      {layers.map((layer, index) => {
+        const base = layerPosition(layer, index);
+        const pos = drag?.index === index && livePos ? livePos : base;
+        const selected = selectedIndex === index;
+        const dragging = drag?.index === index;
+        return (
+          <button
+            key={`piece-${index}`}
+            type="button"
+            aria-label={`${layerName(layer)}, piece ${index + 1}. Arrow keys move it.`}
+            aria-pressed={selected}
+            className={cn(
+              "studio-piece absolute touch-none select-none rounded-lg outline-none",
+              selected && "is-selected",
+              dragging && "is-dragging"
+            )}
+            style={{
+              left: `${pos.x}%`,
+              top: `${pos.y}%`,
+              zIndex: dragging ? 50 : index + 1,
+            }}
+            onKeyDown={(event) => handleKeyDown(index, event)}
+            onPointerDown={(event) => handlePointerDown(index, event)}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+          >
+            <span className="studio-piece-inner">
               <PuzzleVisualBoard
                 className="pointer-events-none [&_.puzzle-visual-board]:min-h-0"
                 fallback=""
-                size="medium"
+                size={compact ? "small" : "medium"}
                 visual={{
                   ...visual,
                   layout: "row",
@@ -171,13 +186,10 @@ export function StudioArtboard({
                   unicodeFallback: "◆",
                 }}
               />
-            </button>
-          );
-        })}
-      </div>
-      <p className="text-center text-subtle text-xs">
-        Drag to place · snaps to grid · tap a piece to select
-      </p>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
