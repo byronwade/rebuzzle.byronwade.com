@@ -103,3 +103,85 @@ final class DirectPurchaseTests: XCTestCase {
     }
 
 }
+
+extension DirectPurchaseTests {
+    @MainActor private func restoreSession() throws -> SKTestSession {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Rebuzzle", withExtension: "storekit"))
+        let session = try SKTestSession(contentsOf: url)
+        session.resetToDefaultState()
+        session.disableDialogs = true
+        session.clearTransactions()
+        return session
+    }
+
+    @MainActor func testExplicitRestoreRecoversVerifiedOwnership() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        let store = PurchaseStore()
+        await store.restore()
+        XCTAssertTrue(store.hasPlus)
+        XCTAssertFalse(store.busy)
+        XCTAssertEqual(store.message, "Plus restored.")
+    }
+
+    @MainActor func testExplicitRestoreWithoutOwnershipDoesNotGrantPlus() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        let store = PurchaseStore()
+        await store.restore()
+        XCTAssertFalse(store.hasPlus)
+        XCTAssertFalse(store.busy)
+        XCTAssertEqual(store.message, "No Plus purchase was found for this Apple Account.")
+    }
+
+    @MainActor func testRestoreFailureReleasesBusyAndCanRecover() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        let store = PurchaseStore()
+        try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .appStoreSync)
+        await store.restore()
+        XCTAssertFalse(store.hasPlus)
+        XCTAssertFalse(store.busy)
+        XCTAssertEqual(store.message, "Could not restore purchases. Please try again.")
+        session.resetToDefaultState()
+        session.disableDialogs = true
+        _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        await store.restore()
+        XCTAssertTrue(store.hasPlus)
+        XCTAssertFalse(store.busy)
+        XCTAssertEqual(store.message, "Plus restored.")
+    }
+
+    @MainActor func testRestoreNetworkFailurePreservesVerifiedAccess() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        let store = PurchaseStore()
+        await store.refreshEntitlements()
+        XCTAssertTrue(store.hasPlus)
+        try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .appStoreSync)
+        await store.restore()
+        XCTAssertTrue(store.hasPlus, "A failed sync must not revoke already verified ownership")
+        XCTAssertFalse(store.busy)
+        XCTAssertEqual(store.message, "Could not restore purchases. Please try again.")
+    }
+
+    @MainActor func testUnverifiedPurchaseAndRestoreNeverGrantPlus() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        let store = PurchaseStore()
+        await store.load()
+        try await session.setSimulatedError(.verification(.invalidSignature), forAPI: .verification)
+        await store.purchase()
+        XCTAssertFalse(store.hasPlus)
+        XCTAssertFalse(store.busy)
+        XCTAssertEqual(store.message, "Apple could not verify this purchase. Try Restore purchases.")
+        XCTAssertFalse(session.allTransactions().isEmpty, "A real StoreKit test transaction must exist; an absent product would not exercise verification")
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.hasPlus)
+        await store.restore()
+        XCTAssertFalse(store.hasPlus)
+        XCTAssertFalse(store.busy)
+    }
+}

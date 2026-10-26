@@ -6,13 +6,13 @@ import { generateStaticPageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = generateStaticPageMetadata({
   title: "Privacy Policy | Rebuzzle",
   description:
-    "Privacy Policy for Rebuzzle - Learn how we collect, use, and protect your data. GDPR compliant privacy practices.",
+    "How Rebuzzle handles account details, gameplay, AI processing, and data stored in the iOS app.",
   url: "/privacy",
   keywords: ["privacy policy", "data protection", "GDPR", "user privacy", "data security"],
 });
 
 /** Static legal copy — no request-time Date/connection (keeps the page prerenderable). */
-const LAST_UPDATED = "July 1, 2026";
+const LAST_UPDATED = "October 26, 2026";
 
 const SECTIONS = [
   { id: "introduction", title: "Introduction" },
@@ -22,7 +22,7 @@ const SECTIONS = [
   { id: "third-party-services", title: "Third-party services" },
   { id: "cookies-and-tracking-technologies", title: "Cookies and tracking technologies" },
   { id: "data-retention", title: "Data retention" },
-  { id: "your-rights", title: "Your rights (GDPR compliance)" },
+  { id: "your-rights", title: "Your rights" },
   { id: "data-security", title: "Data security" },
   { id: "children-s-privacy", title: "Children’s privacy" },
   { id: "changes-to-this-privacy-policy", title: "Changes to this privacy policy" },
@@ -40,9 +40,9 @@ export default function PrivacyPolicyPage() {
       <section className="legal-section" id="introduction">
         <h2>1. Introduction</h2>
         <p>
-          Welcome to Rebuzzle. We are committed to protecting your privacy and ensuring transparency
-          about how we collect, use, and protect your personal information. This Privacy Policy
-          explains our practices regarding data collection, usage, and your rights.
+          This policy explains how Rebuzzle handles information from its website and iOS app,
+          including account access, gameplay, AI features, and purchases. Some information is sent
+          to our servers and service providers; other information stays in local app storage.
         </p>
       </section>
 
@@ -66,17 +66,36 @@ export default function PrivacyPolicyPage() {
               <li>Win/loss records</li>
               <li>Streak information</li>
               <li>Leaderboard rankings</li>
-              <li>Game session data</li>
+              <li>Submitted guesses, puzzle identifiers, and answer-checking results</li>
+              <li>Hint counts, attempt counts, play duration, and gameplay timestamps</li>
+              <li>Achievement progress and game session data</li>
             </ul>
           </div>
           <div>
-            <h3>Analytics and tracking</h3>
+            <h3>Usage and device information</h3>
             <p>We use analytics services to understand how you interact with our service:</p>
             <ul>
               <li>Vercel Analytics for web performance and user behavior</li>
               <li>MongoDB event tracking for game analytics</li>
-              <li>Session information and returning user identification</li>
+              <li>Account-linked login and return events, and returning guest identification</li>
             </ul>
+            <p>
+              The iOS app stores a random device identifier in the Keychain and sends it to our
+              servers to recognize returning guests. It also sends your timezone for daily puzzle
+              boundaries and streaks. We associate gameplay and statistics with your account or
+              guest account. Our service processes request IP addresses for security and rate
+              limiting and stores IP-derived hashes on guest records.
+            </p>
+          </div>
+          <div>
+            <h3>Information stored locally by the iOS app</h3>
+            <p>
+              Journal notes, unsent drafts, cached puzzle results, and reminder preferences are
+              stored locally. The app does not upload journal notes to Rebuzzle. If you export
+              journal text or share a result using the system share sheet, the destination you
+              choose handles that information. Device backups may also include local app data,
+              depending on your device and backup settings.
+            </p>
           </div>
         </div>
       </section>
@@ -87,8 +106,11 @@ export default function PrivacyPolicyPage() {
         <ul>
           <li>Provide and improve our puzzle game service</li>
           <li>Track your progress and maintain leaderboards</li>
-          <li>Send you email notifications about new puzzles and blog posts (with your consent)</li>
-          <li>Analyze usage patterns to improve user experience</li>
+          <li>Deliver email notifications according to your subscription settings</li>
+          <li>
+            Analyze usage and gameplay results to improve the service and calibrate puzzle
+            difficulty
+          </li>
           <li>Ensure security and prevent fraud</li>
           <li>Respond to your inquiries and provide customer support</li>
         </ul>
@@ -101,20 +123,15 @@ export default function PrivacyPolicyPage() {
           <ul>
             <li>Daily puzzle notifications</li>
             <li>Blog post updates</li>
-            <li>Account-related communications (password resets, security alerts)</li>
+            <li>Account-related communications, such as password resets</li>
+            <li>Achievement notifications for registered players</li>
           </ul>
           <p>
-            <strong>Opt-in/Opt-out:</strong> New users are automatically subscribed to email
-            notifications, but you can unsubscribe at any time by:
+            <strong>Subscription controls:</strong> Creating an account on the website enables email
+            notifications by default. You can turn off subscription emails by:
           </p>
           <ul>
-            <li>Clicking the unsubscribe link in any email</li>
-            <li>
-              Visiting the{" "}
-              <Link className="text-link underline underline-offset-4" href="/unsubscribe">
-                unsubscribe page
-              </Link>
-            </li>
+            <li>Clicking the unsubscribe link in a subscription email</li>
             <li>
               Managing preferences in your{" "}
               <Link className="text-link underline underline-offset-4" href="/settings">
@@ -122,6 +139,11 @@ export default function PrivacyPolicyPage() {
               </Link>
             </li>
           </ul>
+          <p>
+            These subscription controls are separate from account-related and achievement emails.
+            The iOS app’s daily reminder is a local device notification; you can manage it in the
+            app’s reminder settings or your device’s notification settings.
+          </p>
         </div>
       </section>
 
@@ -132,22 +154,48 @@ export default function PrivacyPolicyPage() {
           <div>
             <h3>Resend</h3>
             <p>
-              We use Resend to send transactional and notification emails. Resend processes your
-              email address to deliver emails on our behalf.
+              We use Resend to send transactional and notification emails. It processes recipient
+              email addresses and email content. Achievement emails can include your username,
+              achievement details, and progress.
             </p>
           </div>
           <div>
             <h3>Vercel</h3>
             <p>
-              Our application is hosted on Vercel, which provides hosting and analytics services.
-              Vercel Analytics collects anonymized usage data.
+              Vercel provides hosting and website analytics. Hosting services process request
+              metadata, which can include IP addresses, requested paths, response status, and
+              timing. Website analytics are separate from the account-linked gameplay and login
+              events stored by Rebuzzle.
+            </p>
+          </div>
+          <div>
+            <h3>AI Gateway and model providers</h3>
+            <p>
+              Some submitted guesses are sent through Vercel AI Gateway to an AI model provider for
+              answer checking. Eve’s short reactions also use a guess, puzzle type, and score
+              category. These prompts do not intentionally include your account ID or email address,
+              but anything you type in a guess may be included.
+            </p>
+            <p>
+              The providers configured for these features include Google, with OpenAI and xAI
+              available as answer-checking fallbacks. A request does not necessarily use every
+              provider. Provider processing is separate from data stored in your Rebuzzle account.
+            </p>
+          </div>
+          <div>
+            <h3>Apple and Rebuzzle Plus</h3>
+            <p>
+              Apple processes purchases of Rebuzzle Plus. The iOS app checks purchase entitlements
+              through StoreKit and does not ask for or receive your payment-card details. Restoring
+              purchases restores access to Plus; it does not restore journal entries. Apple handles
+              purchase records under its own policies.
             </p>
           </div>
           <div>
             <h3>MongoDB</h3>
             <p>
               We use MongoDB to store your account information, game statistics, and analytics
-              events. Data is stored securely and encrypted in transit.
+              events.
             </p>
           </div>
         </div>
@@ -162,22 +210,36 @@ export default function PrivacyPolicyPage() {
           <li>Track analytics and improve our service</li>
         </ul>
         <p>
-          You can control cookies through your browser settings, though this may affect
-          functionality.
+          You can control website cookies through your browser settings, though this may affect
+          functionality. The iOS app uses a sign-in token and persistent guest device identifier,
+          and sends a timezone cookie with API requests. Browser cookie controls do not clear these
+          app credentials or identifiers.
         </p>
       </section>
 
       <section className="legal-section" id="data-retention">
         <h2>7. Data retention</h2>
         <p>
-          We retain your information for as long as your account is active or as needed to provide
-          services. Analytics events are automatically deleted after one year. You can request
-          deletion of your account and associated data at any time.
+          Account details, gameplay records, and statistics are stored to provide account access,
+          progress, and service analytics. You can delete your account in the iOS app’s Settings or
+          contact us about deleting your account and associated data.
+        </p>
+        <p>
+          Account deletion removes your account and associated records from the application
+          collections covered by that process. Public puzzle content may remain after creator
+          attribution is removed. Export any journal you wish to keep before deleting your account.
+          The app removes that account’s local files, but its installation identifier remains in the
+          Keychain.
+        </p>
+        <p>
+          This process does not delete Apple’s purchase records or independently erase records in
+          external service logs or backups. We do not promise a fixed deletion period for those
+          separate records. Contact us for questions about retention or a specific deletion request.
         </p>
       </section>
 
       <section className="legal-section" id="your-rights">
-        <h2>8. Your rights (GDPR compliance)</h2>
+        <h2>8. Your rights</h2>
         <p>
           If you are located in the European Economic Area (EEA), you have the following rights:
         </p>
@@ -207,9 +269,9 @@ export default function PrivacyPolicyPage() {
       <section className="legal-section" id="data-security">
         <h2>9. Data security</h2>
         <p>
-          We implement appropriate technical and organizational measures to protect your personal
-          information, including encryption, secure password hashing, and regular security
-          assessments. However, no method of transmission over the internet is 100% secure.
+          We use HTTPS for app connections, password hashing for account credentials, and the iOS
+          Keychain for the app’s sign-in token and device identifier. No security measure can
+          guarantee that data will never be accessed without authorization.
         </p>
       </section>
 
