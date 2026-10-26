@@ -27,6 +27,7 @@ struct TodayView: View {
                 .id("dailyHeader")
                 if model.game?.gameOver == true {
                     ResultView()
+                    conversation
                 } else {
                     VStack(spacing: 12) {
                         PuzzleBoard(puzzle: daily.puzzle)
@@ -38,15 +39,14 @@ struct TodayView: View {
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.secondary.opacity(0.14), lineWidth: 1))
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
-                        ForEach(model.game?.attempts ?? []) { guess in
-                            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                                Text("\(guess.attemptNumber)").monospacedDigit().foregroundStyle(Theme.secondary)
-                                Text(guess.guess).textSelection(.enabled)
-                                Spacer()
-                                Image(systemName: guess.correct ? "checkmark.circle.fill" : "arrow.turn.down.right").foregroundStyle(guess.correct ? Theme.success : Theme.secondary)
-                            }.font(Theme.font(15)).padding(.vertical, 6).accessibilityElement(children: .combine)
+                        if model.game?.attempts.isEmpty != false {
+                            HStack(spacing: 8) {
+                                EveAvatar()
+                                Text("Find the connection. Eve will guide you.")
+                                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                            }
                         }
-                        if let latest = model.game?.attempts.last { GuessFeedbackView(guess: latest) }
+                        conversation
                         VStack(alignment: .leading, spacing: 12) {
                             TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .vertical)
                                 .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -92,7 +92,7 @@ struct TodayView: View {
         }
         .onChange(of: model.game?.attempts.count) { old, new in
             guard let old, let new, new > old else { return }
-            let destination = model.game?.gameOver == true ? "dailyHeader" : "answerSection"
+            let destination = model.game?.gameOver == true ? "dailyHeader" : "turn-\(new)"
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
                 scroll.scrollTo(destination, anchor: .top)
             }
@@ -104,6 +104,16 @@ struct TodayView: View {
         .refreshable { await model.load() }
         .sensoryFeedback(.success, trigger: model.game?.wasSuccessful == true) { _, new in new && haptics }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
+    }
+    private var conversation: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            ForEach(model.game?.attempts ?? []) { guess in
+                GuessTurnView(guess: guess, reply: model.eve.replies[guess.attemptNumber],
+                              pending: model.eve.pendingAttempt == guess.attemptNumber,
+                              latest: guess.id == model.game?.attempts.last?.id)
+                    .id("turn-\(guess.attemptNumber)")
+            }
+        }
     }
     private var dateLabel: String {
         guard let date = model.daily?.puzzleDate else { return Date().formatted(.dateTime.weekday(.wide).month(.wide).day()) }
@@ -128,7 +138,8 @@ struct TodayView: View {
                 }
             }.accessibilityHidden(true)
             Spacer()
-            Text("\(model.game?.attemptsLeft ?? 3) guesses remaining")
+            let remaining = model.game?.attemptsLeft ?? 3
+            Text("\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
                 .font(Theme.font(13, weight: .medium)).foregroundStyle(Theme.secondary)
         }
     }
@@ -235,11 +246,16 @@ struct HelpView: View {
     }
 }
 
-/// Displays only server feedback about submitted words; never reconstructs the hidden answer.
-struct GuessFeedbackView: View {
+/// Conversation uses confirmed guesses and server feedback, never the hidden answer.
+struct GuessTurnView: View {
     let guess: Guess
+    let reply: String?
+    let pending: Bool
+    let latest: Bool
     private var title: String {
         switch guess.reaction?.tier {
+        case "correct": "Connection made"
+        case "out": "The final reveal"
         case "close": "You’re close."
         case "warm": "A promising direction."
         case "cold": "Try another angle."
@@ -247,27 +263,64 @@ struct GuessFeedbackView: View {
         }
     }
     var body: some View {
-        if let reaction = guess.reaction {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(title).font(Theme.font(18, weight: .medium)).accessibilityIdentifier("guessFeedback")
-                Text(reaction.line).font(Theme.font(15)).foregroundStyle(Theme.secondary)
-                if let words = guess.wordResults, !words.isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), alignment: .leading)], alignment: .leading, spacing: 8) {
-                        ForEach(Array(words.enumerated()), id: \.offset) { _, word in
-                            Label(word.word, systemImage: word.correct ? "checkmark.circle.fill" : "circle")
-                                .font(Theme.font(13, weight: .medium))
-                                .foregroundStyle(word.correct ? Theme.success : Theme.secondary)
-                                .padding(.vertical, 8).padding(.horizontal, 10)
-                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
-                                .accessibilityLabel("\(word.word), \(word.correct ? "matched in this position" : "not matched in this position")")
-                        }
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .trailing, spacing: 6) {
+                Text("YOU · GUESS \(guess.attemptNumber)")
+                    .font(Theme.font(10, weight: .semibold)).tracking(1).foregroundStyle(Theme.secondary)
+                Text(guess.guess).font(Theme.font(17, weight: .medium)).textSelection(.enabled)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(Theme.field, in: RoundedRectangle(cornerRadius: 16))
+            }.frame(maxWidth: .infinity, alignment: .trailing).padding(.leading, 28)
+            HStack(alignment: .top, spacing: 10) {
+                EveAvatar().accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 6) {
+                        Text("Eve").font(Theme.font(13, weight: .semibold))
+                        Text("· AI puzzle author").font(Theme.font(12)).foregroundStyle(Theme.secondary)
                     }
-                    Text("Checks mark words in the right position.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(title).font(Theme.font(17, weight: .medium))
+                            .accessibilityIdentifier(latest ? "guessFeedback" : "guessFeedback-\(guess.id)")
+                        if let reaction = guess.reaction {
+                            Text(reaction.line).font(Theme.font(15)).foregroundStyle(Theme.secondary)
+                        }
+                        if let reply, !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(reply).font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("eveReply-\(guess.id)")
+                        } else if pending {
+                            HStack(spacing: 8) {
+                                ProgressView().controlSize(.mini)
+                                Text("Eve is thinking…").font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                            }.accessibilityLabel("Eve is thinking")
+                        }
+                        if let words = guess.wordResults, words.count > 1,
+                           words.contains(where: { $0.correct || ($0.similarity ?? 0) >= 70 }) {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)], alignment: .leading, spacing: 8) {
+                                ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                                    let near = !word.correct && (word.similarity ?? 0) >= 70
+                                    Label(word.word, systemImage: word.correct ? "checkmark" : near ? "approximate" : "minus")
+                                        .font(Theme.font(13, weight: .medium))
+                                        .foregroundStyle(word.correct ? Theme.success : Theme.secondary)
+                                        .padding(8).background(Theme.field, in: RoundedRectangle(cornerRadius: 6))
+                                        .accessibilityLabel("\(word.word), \(word.correct ? "exact match" : near ? "near match" : "not matched")")
+                                }
+                            }
+                            Text("✓ Exact match   ≈ Near match").font(Theme.font(11)).foregroundStyle(Theme.secondary)
+                        }
+                    }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
                 }
-            }.padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.field, in: RoundedRectangle(cornerRadius: 10))
-                .accessibilityElement(children: .contain)
-        }
+            }
+        }.accessibilityElement(children: .contain)
+    }
+}
+
+struct EveAvatar: View {
+    var body: some View {
+        Image(systemName: "sparkle").font(.system(size: 14, weight: .medium))
+            .foregroundStyle(Theme.accent).frame(width: 28, height: 28)
+            .background(Theme.accent.opacity(0.10), in: Circle())
+            .accessibilityLabel("Eve")
     }
 }

@@ -42,6 +42,40 @@ struct APIError: LocalizedError {
         do { return try JSONDecoder().decode(T.self, from: data) }
         catch { throw APIError(status: http.statusCode, message: "Rebuzzle sent an unexpected response. Your progress is safe; please try again.") }
     }
+    /// Eve is optional commentary; scoring remains exclusively in the guess endpoint.
+    func streamQuip(puzzleID: String, guess: Guess, onUpdate: @escaping @MainActor (String) -> Void) async throws {
+        guard let tier = guess.reaction?.tier else { return }
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/puzzles/quip"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 4.5
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("text/plain", forHTTPHeaderField: "Accept")
+        request.setValue(deviceID, forHTTPHeaderField: "X-Device-Id")
+        request.setValue("rebuzzle-tz=\(TimeZone.current.identifier)", forHTTPHeaderField: "Cookie")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["puzzleId": puzzleID, "guess": guess.guess, "tier": tier])
+        let (bytes, response) = try await session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        var pending = Data()
+        var text = ""
+        var count = 0
+        for try await byte in bytes {
+            try Task.checkCancellation()
+            count += 1
+            guard count <= 2048 else { break }
+            pending.append(byte)
+            // Decode only complete UTF-8 scalars so split emoji and punctuation survive.
+            if let scalar = String(data: pending, encoding: .utf8) {
+                text += scalar
+                pending.removeAll(keepingCapacity: true)
+                onUpdate(text)
+            } else if pending.count > 4 {
+                throw URLError(.cannotDecodeContentData)
+            }
+        }
+    }
     private struct ErrorBody: Decodable { let error: String? }
 }
 struct SuccessResponse: Decodable { let success: Bool }

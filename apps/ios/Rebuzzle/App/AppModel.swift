@@ -18,6 +18,7 @@ import RebuzzleCore
     var sessionReady = false
     private var journalWritable = false
     var hintsShown = 0
+    let eve: EveReplyStore
     let purchases = PurchaseStore()
     let reminders = ReminderStore()
     @ObservationIgnored let storage: LocalStore
@@ -36,7 +37,11 @@ import RebuzzleCore
             if let saved = try secure.read("device") { device = saved }
             else { try secure.write(device, key: "device") }
         } catch { initialSetupError = error.localizedDescription }
-        self.api = api ?? APIClient(deviceID: device)
+        let client = api ?? APIClient(deviceID: device)
+        self.api = client
+        self.eve = EveReplyStore(storage: self.storage) { puzzleID, guess, update in
+            try await client.streamQuip(puzzleID: puzzleID, guess: guess, onUpdate: update)
+        }
         do { self.api.token = try secure.read("token") } catch { initialSetupError = error.localizedDescription }
     }
     func load() async {
@@ -47,6 +52,7 @@ import RebuzzleCore
         do {
             let response: DailyResponse = try await api.request("/api/puzzle/today")
             if daily?.puzzle.id != response.puzzle.id {
+                eve.reset()
                 game = nil; sessionReady = false; draft = ""; hintsShown = 0; started = Date()
             }
             daily = response
@@ -67,6 +73,7 @@ import RebuzzleCore
             do {
                 let response: AuthResponse = try await api.request("/api/auth/session")
                 if response.authenticated == true, let user = response.user {
+                    if player?.id != user.id { eve.reset(); game = nil; sessionReady = false; draft = "" }
                     player = user
                     try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
                     try loadJournal()
@@ -87,6 +94,7 @@ import RebuzzleCore
         }
         try credentials.write(token, key: "token")
         try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
+        if player?.id != user.id { eve.reset(); game = nil; sessionReady = false; draft = "" }
         api.token = token; player = user
         try loadJournal()
     }
@@ -95,6 +103,7 @@ import RebuzzleCore
         let encoded = daily.puzzle.id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? daily.puzzle.id
         let restored: GameSession = try await api.request("/api/puzzle/session?puzzleId=\(encoded)")
         guard restored.puzzleId == daily.puzzle.id else { throw APIError(status: 0, message: "The puzzle changed. Reload today’s puzzle to continue.") }
+        eve.activate(accountID: player.id, puzzleID: daily.puzzle.id)
         game = restored
         hintsShown = max(restored.hintsUsed, (try? storage.load(Int.self, key: "hints:\(player.id):\(daily.puzzle.id)")) ?? 0)
         draft = storage.draft(account: player.id, puzzle: daily.puzzle.id)
@@ -124,6 +133,8 @@ import RebuzzleCore
             guard run == generation else { return }
             game?.apply(result, guess: guess)
             game?.hintsUsed = hintsShown
+            eve.activate(accountID: player.id, puzzleID: daily.puzzle.id)
+            if let confirmed = game?.attempts.last { eve.request(guess: confirmed) }
             draft = ""
             try storage.saveDraft("", account: player.id, puzzle: daily.puzzle.id)
             recordCompletion()
@@ -179,6 +190,7 @@ import RebuzzleCore
             guard let token = auth.token, let user = auth.user else { throw APIError(status: 401, message: "Sign-in could not be completed.") }
             try credentials.write(token, key: "token")
             try credentials.write("member", key: "identity-kind")
+            eve.reset()
             generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; sessionReady = false
             journal = Journal(); journalWritable = false
             try loadJournal()
@@ -207,6 +219,7 @@ import RebuzzleCore
     }
     private func clearIdentity() throws {
         try credentials.write(nil, key: "token")
+        eve.reset()
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
         draft = ""; journal = Journal(); journalWritable = false; hintsShown = 0; sessionReady = false; error = nil
     }

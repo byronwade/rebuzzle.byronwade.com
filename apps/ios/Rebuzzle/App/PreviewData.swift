@@ -62,6 +62,10 @@ private final class FixtureServer: @unchecked Sendable {
             return (200, try JSONEncoder().encode(game))
         case "/api/user/stats":
             payload = ["success": true, "stats": ["totalGames": game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0]]
+        case "/api/puzzles/quip":
+            if ProcessInfo.processInfo.arguments.contains("--ui-quip-unavailable") { return (503, Data()) }
+            let reply = game.wasSuccessful == true ? "That connection deserves a little victory lap." : "That guess took the scenic route."
+            return (200, Data(reply.utf8))
         case "/api/puzzles/guess":
             if game.gameOver {
                 status = 409; payload = ["error": "This puzzle is already complete."]

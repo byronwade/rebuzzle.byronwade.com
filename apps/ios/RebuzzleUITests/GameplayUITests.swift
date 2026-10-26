@@ -17,16 +17,17 @@ import XCTest
         capture("Today — ready")
         submit("sunshine")
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["lighthouse"].exists)
+        XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["guessFeedback"].exists)
         XCTAssertTrue(app.staticTexts["A fresh angle might help."].exists)
         let feedbackVisible = NSPredicate(format: "hittable == true")
         expectation(for: feedbackVisible, evaluatedWith: app.staticTexts["A fresh angle might help."])
         waitForExpectations(timeout: 3)
+        XCTAssertTrue(app.staticTexts["eveReply-1"].waitForExistence(timeout: 5))
         capture("Today — wrong guess")
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["lighthouse"].exists)
+        XCTAssertTrue(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertFalse(app.buttons["checkAnswer"].exists)
         capture("Today — solved")
         let journal = app.buttons["keepConnection"]
@@ -42,19 +43,48 @@ import XCTest
         launchFixture()
         for (index, guess) in ["sunshine", "moonlight", "daybreak"].enumerated() {
             submit(guess)
-            if index < 2 { XCTAssertTrue(app.staticTexts["\(2 - index) guesses remaining"].waitForExistence(timeout: 5)) }
+            if index < 2 { XCTAssertTrue(app.staticTexts["\(2 - index) \(index == 1 ? "guess" : "guesses") remaining"].waitForExistence(timeout: 5)) }
         }
         XCTAssertTrue(app.staticTexts["Here’s the connection."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["lighthouse"].exists)
+        XCTAssertTrue(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertFalse(app.buttons["checkAnswer"].exists)
         capture("Today — revealed")
     }
 
     func testAccessibleTextGameplay() {
         launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        submit("sunshine")
+        XCTAssertTrue(app.staticTexts["eveReply-1"].waitForExistence(timeout: 5))
+        capture("Conversation — accessibility XXXL")
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
         capture("Today — accessibility XXXL solved")
+    }
+
+    func testConversationSurvivesCompletion() {
+        launchFixture()
+        submit("sunshine")
+        XCTAssertTrue(app.staticTexts["eveReply-1"].waitForExistence(timeout: 5))
+        submit("moonlight")
+        XCTAssertTrue(app.staticTexts["eveReply-2"].waitForExistence(timeout: 5))
+        capture("Conversation — two guesses")
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        for _ in 0..<8 where !app.staticTexts["eveReply-3"].isHittable { app.swipeUp() }
+        XCTAssertTrue(app.staticTexts["eveReply-1"].exists)
+        XCTAssertTrue(app.staticTexts["eveReply-2"].exists)
+        XCTAssertTrue(app.staticTexts["eveReply-3"].exists)
+        capture("Conversation — completed")
+    }
+
+    func testEveUnavailableDoesNotInterruptGame() {
+        launchFixture(extraArguments: ["--ui-quip-unavailable"])
+        submit("sunshine")
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["eveReply-1"].exists)
+        XCTAssertFalse(app.buttons["Refresh progress"].exists)
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
     }
 
     func testTabNavigation() {
