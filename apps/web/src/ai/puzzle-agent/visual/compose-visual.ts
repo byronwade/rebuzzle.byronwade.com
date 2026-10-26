@@ -14,10 +14,8 @@ import {
   PuzzleVisualSchema,
   type VisualLayer,
 } from "./composition";
-import { isAuthenticCuratedPictogram } from "./curated-pictograms";
 import { generateImageTile } from "./generate-image-tile";
 import { type GeneratePictogramInput, generatePictogram } from "./generate-pictogram";
-import { scorePictogramClarity } from "./pictogram-clarity";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
 
 export type ComposePuzzleVisualInput = {
@@ -70,24 +68,9 @@ export async function composePuzzleVisual(
 
   for (const layer of input.layers) {
     if (layer.kind === "pictogram") {
-      if (layer.svg?.includes("<svg")) {
-        const authenticCatalogAsset = isAuthenticCuratedPictogram({
-          concept: layer.concept,
-          assetId: layer.assetId,
-          svg: layer.svg,
-        });
-        if (authenticCatalogAsset) {
-          const clarity = scorePictogramClarity(layer.svg);
-          filledLayers.push(layer);
-          generated.pictograms += 1;
-          claritySum += Math.max(90, clarity.score);
-          clarityCount += 1;
-          continue;
-        }
-        tips.push(
-          `Ignored unverified inline SVG for "${layer.concept}" and resolved it through the approved asset pipeline`
-        );
-      }
+      // Catalog identity proves provenance, not current player-size recognition.
+      // Always resolve through the publication pipeline; incoming layers (including
+      // profile claims) can be supplied by the model or an older composition.
       // react-doctor-disable-next-line react-doctor/async-await-in-loop -- sequential by design: image composition layers are sequential for deterministic layout
       const pic = await generatePictogram({
         concept: layer.concept,
@@ -117,6 +100,11 @@ export async function composePuzzleVisual(
         filledLayers.push({
           ...layer,
           svg: undefined,
+          source: undefined,
+          assetId: undefined,
+          seenAs: undefined,
+          recognitionConfidence: undefined,
+          recognitionProfiles: undefined,
           emojiFallback: pic.emojiFallback || layer.emojiFallback,
         });
         issues.push(
