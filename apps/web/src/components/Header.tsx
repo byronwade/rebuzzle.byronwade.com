@@ -20,7 +20,7 @@ import { useAuth } from "./AuthProvider";
 import { RebuzzleLogo } from "./brand/RebuzzleLogo";
 import { InfoButton } from "./InfoButton";
 import { NotificationBadge } from "./NotificationBadge";
-import { PlayerHud } from "./PlayerHud";
+import { PlayerHud } from "./player-hud-client";
 import { Timer } from "./Timer";
 import { UserMenu } from "./UserMenu";
 

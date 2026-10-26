@@ -61,7 +61,7 @@ export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
         <TooltipTrigger asChild>
           <Link
             aria-label={`${stats.streak} day streak, level ${level}, ${numberFormat.format(stats.points)} points. Open profile.`}
-            className="flex items-stretch focus-ring transition-colors hover:bg-muted"
+            className="flex items-stretch rounded-[7px] focus-ring transition-colors hover:bg-muted"
             href="/profile"
           >
             <span className="hud-segment" data-active={hasStreak || undefined}>

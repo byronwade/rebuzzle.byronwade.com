@@ -432,9 +432,10 @@
 
   /* ── Game HUD (header + footer) ─────────────────────────────────────────
      One raised plate split into mono readouts by hairlines, like the stat
-     strip at the top of a game screen. */
+     strip at the top of a game screen. No overflow clipping: the profile
+     link inside needs its focus ring and 44px touch area to escape. */
   .hud-plate {
-    @apply inline-flex h-8 items-stretch overflow-hidden rounded-lg border border-border bg-card font-mono text-xs;
+    @apply inline-flex h-8 items-stretch rounded-lg border border-border bg-card font-mono text-xs;
     box-shadow: var(--shadow-sm);
   }
 
@@ -453,7 +454,7 @@
 
   /* Level badge — a tiny inked tab, the one place the HUD shouts. */
   .hud-level {
-    @apply rounded-[4px] bg-foreground px-1 py-px font-semibold text-[10px] text-background leading-none;
+    @apply rounded-[4px] bg-foreground px-1 py-0.5 font-semibold text-background text-xs leading-none;
   }
 
   .hud-xp {

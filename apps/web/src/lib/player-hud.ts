@@ -20,6 +20,8 @@ let snapshot: PlayerHudStats | null = null;
 let fetchedAt = 0;
 let inflight: Promise<void> | null = null;
 let ownerId: string | null = null;
+// Bumped on every owner change so a response for the previous player is dropped.
+let generation = 0;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -47,12 +49,14 @@ export function publishPlayerStats(stats: PlayerHudStats) {
 
 function load() {
   if (inflight) return inflight;
-  inflight = fetch("/api/user/stats", { credentials: "include" })
+  const requestGeneration = generation;
+  const request: Promise<void> = fetch("/api/user/stats", { credentials: "include" })
     .then(async (response) => {
-      if (!response.ok) return;
+      if (!response.ok || requestGeneration !== generation) return;
       const data = (await response.json()) as {
         stats?: { points?: number; streak?: number } | null;
       };
+      if (requestGeneration !== generation) return;
       snapshot = {
         points: data.stats?.points ?? 0,
         streak: data.stats?.streak ?? 0,
@@ -62,9 +66,10 @@ function load() {
     })
     .catch(() => {})
     .finally(() => {
-      inflight = null;
+      if (inflight === request) inflight = null;
     });
-  return inflight;
+  inflight = request;
+  return request;
 }
 
 /** HUD stats for the signed-in (or guest) player; null until loaded or when signed out. */
@@ -73,6 +78,8 @@ export function usePlayerHud(userId: string | null, refreshKey?: string) {
     if (ownerId !== userId) {
       // Account switch or sign-out: never show the previous player's numbers.
       ownerId = userId;
+      generation += 1;
+      inflight = null;
       snapshot = null;
       fetchedAt = 0;
       emit();
