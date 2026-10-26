@@ -8,7 +8,7 @@ Evidence must distinguish implementation from outcomes. Native tests and TestFli
 
 Next release gates:
 1. App Review contact: Apple currently rejects draft save for missing name/email/phone. User input requested; do not invent contact details.
-2. Public listing and IAP screenshots: prepare accurate current captures; browser file-access upload restriction remains a separate unresolved submission constraint. Do not bypass the restriction.
+2. Public listing and IAP screenshots: twelve native listing captures are prepared locally (four each for medium iPhone, large iPhone, and 13-inch iPad), with original dimensions and opaque PNGs verified. See `docs/marketing/native-store-screenshots.md` for reproduction and example-data disclosures. IAP review screenshot and public upload remain outstanding; the browser file-access upload restriction is a separate unresolved submission constraint. Do not bypass the restriction.
 3. Physical beta: actual notification delivery, widget placement, Siri voice invocation, StoreKit purchase/restore. Simulator and local StoreKit evidence do not replace these checks.
 4. Latest native/backend changes reviewed and CI verified; public store submission/approval completed.
 

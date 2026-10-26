@@ -149,7 +149,7 @@ import XCTest
         selectTab("You")
         XCTAssertTrue(app.staticTexts["Appearance"].waitForExistence(timeout: 5))
         selectTab("Play")
-        XCTAssertTrue(app.staticTexts["You found it."].exists)
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
     }
 
     func testTabNavigation() {
