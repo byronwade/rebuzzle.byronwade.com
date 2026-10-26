@@ -26,8 +26,10 @@
 		8CCB749D5D325BFCC69EC63E /* VisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DD9980C84C32503F71017B /* VisualTests.swift */; };
 		8E4F18C24A3AAB1BDBB240AB /* RebuzzleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 61A388442626D26868384B67 /* RebuzzleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9DE11D302674AF759A8E2FAA /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE425F112F0C6729727D564 /* PreviewData.swift */; };
+		A151C788EC90FD72B593D8C1 /* CanonicalBoardFixture.json in Resources */ = {isa = PBXBuildFile; fileRef = 51B971313B5E0CD6824192C1 /* CanonicalBoardFixture.json */; };
 		A619DFE7183A1F093D7857C0 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62B307E9DA571BC57ADE91D /* AppModel.swift */; };
 		AB38228E20708790BE02B519 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8A17876FA80DF4A73F0134 /* APIClient.swift */; };
+		B4935EE7599FD9BDDB47FD32 /* CanonicalBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */; };
 		BC0F558FDC9CF64D04711ACD /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A644188B1C600803AADBDAD /* SettingsView.swift */; };
 		C2AB0C36CBA54484136565A0 /* ReturnTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008E8374FB9274C42DF329A0 /* ReturnTests.swift */; };
 		CA65ED7D4C1BB7A64798FCCF /* Rebuzzle.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EF86991A32908751C121291 /* Rebuzzle.storekit */; };
@@ -98,6 +100,7 @@
 		3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeTests.swift; sourceTree = "<group>"; };
 		48F1C269FB5408DBE57C73AE /* DailyPuzzleWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPuzzleWidget.swift; sourceTree = "<group>"; };
 		4A8A17876FA80DF4A73F0134 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		51B971313B5E0CD6824192C1 /* CanonicalBoardFixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = CanonicalBoardFixture.json; sourceTree = "<group>"; };
 		5BCFB0E67A92A9F6D61433A4 /* EveReplyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveReplyTests.swift; sourceTree = "<group>"; };
 		5CE425F112F0C6729727D564 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
 		5EF86991A32908751C121291 /* Rebuzzle.storekit */ = {isa = PBXFileReference; path = Rebuzzle.storekit; sourceTree = "<group>"; };
@@ -123,6 +126,7 @@
 		E0DD9980C84C32503F71017B /* VisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTests.swift; sourceTree = "<group>"; };
 		E74F7577CC547034168ACF15 /* ReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderStore.swift; sourceTree = "<group>"; };
 		F2B711BF40A0A3DB6098E304 /* RebuzzleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RebuzzleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonicalBoardView.swift; sourceTree = "<group>"; };
 		FC41A3A59FA99CEB4C55C91E /* ReturnRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnRouter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -191,6 +195,7 @@
 			isa = PBXGroup;
 			children = (
 				116205D9538019F049FCA9CD /* Assets.xcassets */,
+				51B971313B5E0CD6824192C1 /* CanonicalBoardFixture.json */,
 				344E3325BAE7E6F5430236CC /* Info.plist */,
 				81EC6F3B7EEA1B6424FCE082 /* Inter-LICENSE.txt */,
 				B0296681F6B145702B518962 /* Inter.ttf */,
@@ -251,6 +256,7 @@
 		A7F88AD1C67B7925DAB2384C /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */,
 				003E39205E6D983A152AF798 /* DailyReturnCard.swift */,
 				8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */,
 				265BEFC14F6F5011653FD71E /* JourneyRewards.swift */,
@@ -424,6 +430,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C6B69B973C70656980CC090 /* Assets.xcassets in Resources */,
+				A151C788EC90FD72B593D8C1 /* CanonicalBoardFixture.json in Resources */,
 				68F7EB05659BA3B7725673C0 /* Inter-LICENSE.txt in Resources */,
 				FFC955A3CB1A30FB514AB254 /* Inter.ttf in Resources */,
 				23D5626DE99DB5C8E5F330C8 /* PrivacyInfo.xcprivacy in Resources */,
@@ -469,6 +476,7 @@
 			files = (
 				AB38228E20708790BE02B519 /* APIClient.swift in Sources */,
 				A619DFE7183A1F093D7857C0 /* AppModel.swift in Sources */,
+				B4935EE7599FD9BDDB47FD32 /* CanonicalBoardView.swift in Sources */,
 				008EE794056149197CEC05D6 /* CredentialStore.swift in Sources */,
 				D6CC2EB0E2F84527E662812A /* DailyReturnCard.swift in Sources */,
 				ECE6239380306C5ADE9C4471 /* EveReplyStore.swift in Sources */,
@@ -583,7 +591,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -693,7 +701,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

@@ -7,6 +7,7 @@ import { DAILY_CHALLENGE_POLICY, dailyChallengeBlockers } from "@/ai/puzzle-agen
 import type { NewInAppNotification, Puzzle, UserPuzzleSubmission } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { logger } from "@/lib/logger";
+import { hasCompletePublicationEvidence } from "./review-evidence";
 import { communityPuzzlePath, profilePathForUsername } from "./slug";
 import { ensureCommunityPuzzle, submissionsCollection } from "./submissions";
 
@@ -92,6 +93,7 @@ export async function trySelectUgcLotteryFiller(input: {
 
   for (const submission of ordered) {
     try {
+      if (!hasCompletePublicationEvidence(submission)) continue;
       const puzzleId = await ensureCommunityPuzzle(submission);
       const puzzle = (await puzzles.findOne({ id: puzzleId })) as Puzzle | null;
       if (!puzzle?.answer || !puzzle.visual) continue;

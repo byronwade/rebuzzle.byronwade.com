@@ -41,7 +41,7 @@ type GradeSnapshot = {
 type StudioEveReviewSnapshot = {
   reviewId: string;
   ok: boolean;
-  verdict: "ship" | "revise" | "reject";
+  verdict: "ship" | "revise" | "reject" | "pending";
   summary: string;
   blockers: string[];
   warnings: string[];
@@ -67,6 +67,7 @@ type StudioSubmission = {
 };
 
 function studioContentFingerprint(input: {
+  title: string;
   answer: string;
   explanation: string;
   hints: string[];
@@ -76,6 +77,7 @@ function studioContentFingerprint(input: {
   layers: VisualLayer[];
 }) {
   return JSON.stringify({
+    title: input.title.trim(),
     answer: input.answer.trim(),
     explanation: input.explanation.trim(),
     hints: input.hints.map((h) => h.trim()),
@@ -249,7 +251,7 @@ function applyReviewEvent(
     const review = event.review as
       | {
           ok?: boolean;
-          verdict?: "ship" | "revise" | "reject";
+          verdict?: "ship" | "revise" | "reject" | "pending";
           summary?: string;
           blockers?: string[];
           warnings?: string[];
@@ -351,7 +353,7 @@ export function PuzzleStudio() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [deepReview, setDeepReview] = useState(false);
+  const [reviewedVisual, setReviewedVisual] = useState<PuzzleVisual | null>(null);
   const [shipFingerprint, setShipFingerprint] = useState<string | null>(null);
   const [eveReview, setEveReview] = useState<EveReviewLiveState>(() =>
     hydrateEveReviewFromSnapshot(null)
@@ -384,6 +386,7 @@ export function PuzzleStudio() {
   const currentFingerprint = useMemo(
     () =>
       studioContentFingerprint({
+        title,
         answer,
         explanation,
         hints,
@@ -392,8 +395,14 @@ export function PuzzleStudio() {
         layout,
         layers,
       }),
-    [answer, explanation, hints, techniqueId, difficulty, layout, layers]
+    [title, answer, explanation, hints, techniqueId, difficulty, layout, layers]
   );
+  useEffect(() => {
+    setGrade(null);
+    setReviewedVisual(null);
+    setShipFingerprint(null);
+    setEveReview(hydrateEveReviewFromSnapshot(null));
+  }, [currentFingerprint, title]);
   const eveShipReady = eveReview.verdict === "ship" && shipFingerprint === currentFingerprint;
   const canSubmitPublish = canPublish && eveShipReady;
 
@@ -468,7 +477,7 @@ export function PuzzleStudio() {
     setError(null);
     setEveReview(hydrateEveReviewFromSnapshot(null));
     setShipFingerprint(null);
-    setDeepReview(false);
+    setReviewedVisual(null);
     setStep("board");
   }
 
@@ -483,7 +492,7 @@ export function PuzzleStudio() {
       difficulty,
       layout,
       layers,
-      deepReview,
+
       persist: true,
     };
   }
@@ -492,6 +501,8 @@ export function PuzzleStudio() {
     setError(null);
     setStatusMessage(null);
     setReviewing(true);
+    setReviewedVisual(null);
+    setShipFingerprint(null);
     setEveReview((prev) => ({
       ...emptyEveReviewState(
         prev.phases.length
@@ -551,11 +562,20 @@ export function PuzzleStudio() {
           if (event.type === "persisted" && typeof event.submissionId === "string") {
             setDraftId(event.submissionId);
           }
+          if (event.type === "error") {
+            setReviewedVisual(null);
+            setShipFingerprint(null);
+            throw new Error(String(event.error || "Review could not be saved"));
+          }
           if (event.type === "done") {
-            const review = event.review as { verdict?: string } | undefined;
-            if (review?.verdict === "ship") {
+            const review = event.review as
+              | { verdict?: string; ok?: boolean; reviewedVisual?: PuzzleVisual }
+              | undefined;
+            if (review?.ok && review.verdict === "ship" && review.reviewedVisual?.canonicalBoard) {
+              setReviewedVisual(review.reviewedVisual);
               setShipFingerprint(
                 studioContentFingerprint({
+                  title,
                   answer,
                   explanation,
                   hints,
@@ -799,21 +819,10 @@ export function PuzzleStudio() {
     setLayers(
       row.visual.layers.map((layer, index) => withDefaultPosition(layer as VisualLayer, index))
     );
-    setGrade(row.grade ?? null);
-    setEveReview(hydrateEveReviewFromSnapshot(row.eveReview));
-    const fingerprint = studioContentFingerprint({
-      answer: row.answer,
-      explanation: row.explanation ?? "",
-      hints:
-        row.hints && row.hints.length >= 3
-          ? [row.hints[0] ?? "", row.hints[1] ?? "", row.hints[2] ?? ""]
-          : ["", "", ""],
-      techniqueId: row.techniqueId,
-      difficulty: row.difficulty,
-      layout: row.visual.layout,
-      layers: row.visual.layers,
-    });
-    setShipFingerprint(row.eveReview?.verdict === "ship" ? fingerprint : null);
+    setGrade(null);
+    setEveReview(hydrateEveReviewFromSnapshot(null));
+    setReviewedVisual(null);
+    setShipFingerprint(null);
     setPublishedSlug(row.status === "approved" || row.status === "featured" ? row.slug : null);
     setStatusMessage(
       locked
@@ -848,7 +857,6 @@ export function PuzzleStudio() {
             layout,
             layers,
             submit,
-            deepReview,
           }),
         });
         const data = (await response.json()) as {
@@ -856,8 +864,9 @@ export function PuzzleStudio() {
           submission?: StudioSubmission;
           grade?: GradeSnapshot;
           review?: {
+            reviewedVisual?: PuzzleVisual;
             ok?: boolean;
-            verdict?: "ship" | "revise" | "reject";
+            verdict?: "ship" | "revise" | "reject" | "pending";
             summary?: string;
             blockers?: string[];
             warnings?: string[];
@@ -897,8 +906,10 @@ export function PuzzleStudio() {
               ? undefined
               : data.submission.id
           );
-          setLayers(data.submission.visual.layers);
-          setLayout(data.submission.visual.layout);
+          if (!submit) {
+            setLayers(data.submission.visual.layers);
+            setLayout(data.submission.visual.layout);
+          }
           if (data.submission.status === "approved" || data.submission.status === "featured") {
             setPublishedSlug(data.submission.slug);
           }
@@ -909,6 +920,10 @@ export function PuzzleStudio() {
           return;
         }
         if (submit) {
+          if (data.review?.ok && data.review.reviewedVisual?.canonicalBoard) {
+            setReviewedVisual(data.review.reviewedVisual);
+            setShipFingerprint(currentFingerprint);
+          }
           setStatusMessage(
             "You’re in! Eve shipped it — live on your profile and in the daily lottery."
           );
@@ -1475,8 +1490,13 @@ export function PuzzleStudio() {
                 <PuzzleVisualBoard
                   fallback={preview.unicodeFallback}
                   size="medium"
-                  visual={preview}
+                  visual={eveShipReady && reviewedVisual ? reviewedVisual : preview}
                 />
+                {eveShipReady && reviewedVisual ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Frozen board evaluated by Eve
+                  </p>
+                ) : null}
                 <p className="mt-3 text-center font-medium text-sm">{answer || "Your answer"}</p>
               </div>
               <div>
@@ -1486,21 +1506,10 @@ export function PuzzleStudio() {
                   check, fix anything it flags, then publish.
                 </p>
 
-                <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
-                  <input
-                    checked={deepReview}
-                    className="mt-1"
-                    onChange={(e) => setDeepReview(e.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>
-                    Deep review
-                    <span className="mt-0.5 block text-muted-foreground text-xs">
-                      Eve also tries to solve it like a player would. Slower, and not always
-                      available.
-                    </span>
-                  </span>
-                </label>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Publishing requires board critique and blind solves of the frozen board at every
+                  supported size. Unavailable checks leave review pending.
+                </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button

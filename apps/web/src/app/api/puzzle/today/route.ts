@@ -15,7 +15,7 @@ import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
  * Generation still stores one puzzle per YYYY-MM-DD; this route only chooses
  * which date key is "today" for the request timezone.
  */
-export async function GET() {
+export async function GET(request?: Request) {
   try {
     const now = new Date();
     const timeZone = await resolveRequestTimeZone();
@@ -26,6 +26,22 @@ export async function GET() {
 
     if (result.success && result.puzzle) {
       const raw = result.puzzle as Record<string, unknown>;
+      const visual = raw.visual;
+      if (
+        visual &&
+        typeof visual === "object" &&
+        "canonicalBoard" in visual &&
+        request?.headers.get("X-Rebuzzle-Canonical-Board") !== "1"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            updateRequired: true,
+            error: "Update Rebuzzle to the latest version in TestFlight to play this puzzle.",
+          },
+          { status: 426, headers: { "Cache-Control": "private, no-store" } }
+        );
+      }
       return NextResponse.json(
         {
           success: true,

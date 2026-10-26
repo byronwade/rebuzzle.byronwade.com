@@ -1,7 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type CanonicalBoard,
+  validateCanonicalBoard,
+} from "@/ai/puzzle-agent/visual/canonical-contract";
 import { defaultPositionForIndex, hasLayerPosition } from "@/ai/puzzle-agent/visual/layer-position";
 import { planPlayerLockedRows } from "@/ai/puzzle-agent/visual/layout-plan";
 import {
@@ -18,6 +22,52 @@ import { INK_PICTOGRAM_PALETTE } from "@/ai/puzzle-agent/visual/style";
 import type { PuzzleVisual, PuzzleVisualLayer } from "@/lib/gameSettings";
 import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
 import { cn } from "@/lib/utils";
+
+/** Never reveal unchecked pixels or silently substitute a different clue layout. */
+function CanonicalBoardImage({
+  board,
+  label,
+  className,
+}: {
+  board: CanonicalBoard;
+  label: string;
+  className?: string;
+}) {
+  const [verified, setVerified] = useState<CanonicalBoard | null>(null);
+  const [failed, setFailed] = useState<CanonicalBoard | null>(null);
+  useEffect(() => {
+    let active = true;
+    validateCanonicalBoard(board).then(
+      () => {
+        if (active) setVerified(board);
+      },
+      () => {
+        if (active) setFailed(board);
+      }
+    );
+    return () => {
+      active = false;
+    };
+  }, [board]);
+  if (failed === board)
+    return (
+      <div role="alert">This puzzle image could not be verified. Please reload to try again.</div>
+    );
+  if (verified !== board) return <div role="status">Loading puzzle image…</div>;
+  return (
+    // biome-ignore lint/performance/noImgElement: Exact reviewed PNG bytes must bypass image optimization.
+    <img
+      src={board.pngDataUrl}
+      width={board.width}
+      height={board.height}
+      alt={label}
+      className={cn("puzzle-visual-board block max-w-full", className)}
+      style={{ width: "100%", height: "auto", objectFit: "contain" }}
+      data-layout-lock="canonical-v1"
+      onError={() => setFailed(board)}
+    />
+  );
+}
 
 /**
  * Free-layout boards are placed in Studio at roughly this width. Pieces keep
@@ -283,6 +333,16 @@ export function PuzzleVisualBoard({
 
   const surface = resolvePuzzleSurface(visual);
   const freeLayout = useFreeLayoutScale();
+
+  if (visual.canonicalBoard !== undefined) {
+    return (
+      <CanonicalBoardImage
+        board={visual.canonicalBoard}
+        label={fallback || visual.unicodeFallback}
+        className={className}
+      />
+    );
+  }
 
   if (!hasRenderable || visual.mode === "unicode") {
     return (

@@ -1,6 +1,6 @@
 /**
  * Extensive Eve Studio review — phased checklist with status, thinking, answers.
- * Deterministic gates first; LLM critique and optional vision player-sim behind flags.
+ * Deterministic gates first; publication requires model critique and complete board vision.
  */
 
 import { AI_CONFIG } from "@/ai/config";
@@ -9,7 +9,9 @@ import { playerSimPublishBlockers, simulatePlayerSolve } from "@/ai/puzzle-agent
 import type { CritiqueResult } from "@/ai/puzzle-agent/apex/types";
 import { tierLabelForScore } from "@/ai/puzzle-agent/quality";
 import { evaluateSemanticAlignment } from "@/ai/puzzle-agent/semantic-alignment";
+import { compileCanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-board";
 import type { PuzzleVisual } from "@/ai/puzzle-agent/visual/composition";
+import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "@/ai/puzzle-agent/visual/presentation";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import {
   partitionSafetyFindings,
@@ -24,10 +26,16 @@ import {
   type ReviewPhaseId,
 } from "./eve-review-manifest";
 import { type GradeSubmissionResult, gradeUserPuzzleSubmission } from "./grade-submission";
+import {
+  completePlayerEvidence,
+  reviewFingerprint,
+  STUDIO_EVIDENCE_POLICY,
+  type StudioReviewEvidence,
+} from "./review-evidence";
 
 export type CheckRunStatus = "pending" | "running" | "pass" | "fail" | "warn" | "skip";
 export type PhaseRunStatus = "pending" | "running" | "done";
-export type ReviewVerdict = "ship" | "revise" | "reject";
+export type ReviewVerdict = "ship" | "revise" | "reject" | "pending";
 
 export type EveReviewInput = {
   title?: string;
@@ -41,7 +49,7 @@ export type EveReviewInput = {
     layers: PuzzleVisual["layers"];
     caption?: string;
   };
-  /** When true, attempt vision player-sim if env allows */
+  /** Legacy compatibility only; required checks never depend on this client switch. */
   deepReview?: boolean;
   /** Current draft id — excluded from live UGC answer uniqueness */
   excludeSubmissionId?: string;
@@ -82,6 +90,7 @@ export type EveReviewResult = {
     playerSim: "ran" | "skipped" | "failed";
   };
   checkedAt: string;
+  evidence?: StudioReviewEvidence;
 };
 
 export type EveReviewEvent =
@@ -122,12 +131,12 @@ export type EveReviewEvent =
 
 type Emit = (event: EveReviewEvent) => void | Promise<void>;
 
-function studioPlayerSimEnabled(deepReview: boolean): boolean {
-  if (!deepReview && process.env.STUDIO_EVE_PLAYER_SIM !== "1") return false;
-  if (!AI_CONFIG.puzzleAgent.apex.playerSimEnabled) return false;
-  if (!AI_CONFIG.visualRecognition.boardEnabled) return false;
-  if (process.env.STUDIO_EVE_PLAYER_SIM === "0") return false;
-  return deepReview || process.env.STUDIO_EVE_PLAYER_SIM === "1";
+function studioPlayerSimEnabled(): boolean {
+  return (
+    AI_CONFIG.puzzleAgent.apex.playerSimEnabled &&
+    AI_CONFIG.visualRecognition.boardEnabled &&
+    process.env.STUDIO_EVE_PLAYER_SIM !== "0"
+  );
 }
 
 function studioCritiqueEnabled(): boolean {
@@ -319,6 +328,8 @@ export async function runEveStudioReview(
   await endPhase("safety");
 
   let grade: GradeSubmissionResult | null = null;
+  let completeEvidence = false;
+  let boardReady = false;
   let critiquePayload: EveReviewResult["critique"];
   const spend: EveReviewResult["spend"] = { critique: "skipped", playerSim: "skipped" };
 
@@ -474,7 +485,23 @@ export async function runEveStudioReview(
 
     // Studio skips invent's catalog-recognition evidence requirement; grade already
     // applied evaluateVisualForPublish({ requireCatalogRecognitionEvidence: false }).
-    const deterministicOk = grade.ok && semantic.ok;
+    let deterministicOk = grade.ok && semantic.ok;
+    if (deterministicOk) {
+      try {
+        grade.visual = {
+          ...grade.visual,
+          canonicalBoard: await compileCanonicalBoard(grade.visual),
+        };
+        boardReady = true;
+      } catch {
+        deterministicOk = false;
+        await setCheck(
+          "catalog_only_visuals",
+          "fail",
+          "The complete board could not be rendered. Fix unavailable or unsupported artwork and review again."
+        );
+      }
+    }
 
     // ── Critique ──────────────────────────────────────────────────────────
     await startPhase("critique");
@@ -528,7 +555,19 @@ export async function runEveStudioReview(
         tierLabel: tierLabelForScore(input.difficulty),
         unicodeFallback: grade.rebusPuzzle,
         pictogramConcepts: concepts,
-      });
+        visual: grade.visual,
+      }).catch(
+        (): CritiqueResult => ({
+          verdict: "revise",
+          source: "fallback",
+          summary: "Critique unavailable — review pending.",
+          strengths: [],
+          flaws: [],
+          reviseInstructions: [],
+          falseLeadQuality: 0,
+          ahaPredicted: 0,
+        })
+      );
 
       critiquePayload = {
         verdict: critique.verdict,
@@ -541,14 +580,14 @@ export async function runEveStudioReview(
         iconRecognizability: critique.iconRecognizability ?? 55,
         overusedTrope: critique.overusedTrope ?? false,
       };
-      spend.critique = critique.source === "fallback" ? "failed" : "ran";
+      spend.critique = critique.source === "model" ? "ran" : "failed";
 
-      if (critique.source === "fallback") {
+      if (critique.source !== "model") {
         await setCheck(
           "adversarial_critique",
           "warn",
-          "Critique model unavailable — relying on deterministic gates (soft warn).",
-          "Fail-open on infra blips so creators aren’t blocked by outages; still warn."
+          "Critique model unavailable — review pending.",
+          "Publication requires a completed model critique."
         );
         await setCheck(
           "icon_recognizability",
@@ -599,18 +638,17 @@ export async function runEveStudioReview(
     }
     await endPhase("critique");
 
-    // ── Player sim (optional vision) ──────────────────────────────────────
+    // ── Player sim (required vision) ──────────────────────────────────────
     await startPhase("player_sim");
-    const deep = Boolean(input.deepReview) || process.env.STUDIO_EVE_PLAYER_SIM === "1";
-    if (!studioPlayerSimEnabled(deep)) {
+    if (!studioPlayerSimEnabled()) {
       await think(
         "player_sim",
-        "Vision player-sim is opt-in (STUDIO_EVE_PLAYER_SIM=1 + board vision). Skipping to keep Studio spend safe."
+        "Board vision is unavailable in this environment. Publication remains pending."
       );
       await setCheck(
         "player_fairness",
         "skip",
-        "Deep player simulation skipped — enable STUDIO_EVE_PLAYER_SIM for vision fairness."
+        "Required player simulation is unavailable — review pending."
       );
       spend.playerSim = "skipped";
       await answer("player_sim", "Player simulation not run (spend gate).");
@@ -621,7 +659,7 @@ export async function runEveStudioReview(
     } else {
       await think(
         "player_sim",
-        "Running blind / editorial screenshot tournament — expensive; only when deep review is on."
+        "Running required blind / editorial screenshot tournament on the frozen board."
       );
       try {
         const sim = await simulatePlayerSolve({
@@ -633,14 +671,18 @@ export async function runEveStudioReview(
           tierLabel: tierLabelForScore(input.difficulty),
           visual: grade.visual,
         });
-        const blockers = playerSimPublishBlockers(sim);
-        spend.playerSim = "ran";
+        const complete = completePlayerEvidence(sim, AI_CONFIG.visualRecognition.requiredVotes);
+        const blockers = complete ? playerSimPublishBlockers(sim) : [];
+        completeEvidence = complete && blockers.length === 0;
+        spend.playerSim = complete ? "ran" : "failed";
         await setCheck(
           "player_fairness",
-          blockers.length ? "fail" : "pass",
-          blockers.length
-            ? blockers.slice(0, 4).join("; ")
-            : `Fair enough — estimated solve rate ${(sim.estimatedSolveRate * 100).toFixed(0)}%.`,
+          !complete ? "pending" : blockers.length ? "fail" : "pass",
+          !complete
+            ? "Required profile evidence is missing — review pending."
+            : blockers.length
+              ? blockers.slice(0, 4).join("; ")
+              : `Fair enough — estimated solve rate ${(sim.estimatedSolveRate * 100).toFixed(0)}%.`,
           sim.likelySolvePath
         );
         await answer(
@@ -657,8 +699,8 @@ export async function runEveStudioReview(
         await setCheck(
           "player_fairness",
           "warn",
-          "Player simulation failed — not blocking solely on infra error.",
-          "Vision stack blip; deterministic + critique still apply."
+          "Player simulation failed — review pending.",
+          "Publication requires complete screenshot evidence."
         );
         await answer("player_sim", "Player simulation unavailable.");
       }
@@ -698,12 +740,19 @@ export async function runEveStudioReview(
   const blockers = collectBlockers(checkList);
   const warnings = collectWarnings(checkList);
   const critiqueVerdict = critiquePayload?.verdict;
-  const verdict = decideVerdict(blockers, critiqueVerdict);
+  if (!grade.ok && blockers.length === 0)
+    blockers.push(...grade.issues, "Deterministic quality review failed.");
+  const evidenceComplete =
+    boardReady && completeEvidence && spend.critique === "ran" && spend.playerSim === "ran";
+  const verdict =
+    blockers.length === 0 && !evidenceComplete
+      ? "pending"
+      : decideVerdict(blockers, critiqueVerdict);
   const ok = verdict === "ship" && blockers.length === 0;
 
   await setCheck(
     "final_verdict",
-    ok ? "pass" : "fail",
+    ok ? "pass" : verdict === "pending" ? "pending" : "fail",
     ok
       ? "Eve would ship this — publish when you’re ready."
       : `${verdict}: ${blockers.slice(0, 3).join(" · ") || "See checklist"}`,
@@ -712,9 +761,11 @@ export async function runEveStudioReview(
 
   const summary = ok
     ? "Eve review passed — quality and safety checks cleared."
-    : verdict === "reject"
-      ? "Eve rejected this draft — safety or hard quality failures."
-      : "Eve asks for a revise — address the blockers and run review again.";
+    : verdict === "pending"
+      ? "Review pending — required board critique or complete screenshot evidence is unavailable. Save your draft and retry."
+      : verdict === "reject"
+        ? "Eve rejected this draft — safety or hard quality failures."
+        : "Eve asks for a revise — address the blockers and run review again.";
 
   await answer("verdict", summary, {
     verdict,
@@ -731,7 +782,9 @@ export async function runEveStudioReview(
     summary,
     blockers,
     warnings,
-    checks: checkList,
+    checks: EVE_REVIEW_CHECKS.map(
+      (def) => checks.get(def.id) ?? { id: def.id, status: "pending" as const }
+    ),
     grade: {
       ok: grade.ok,
       score: grade.score,
@@ -741,6 +794,14 @@ export async function runEveStudioReview(
       rebusPuzzle: grade.rebusPuzzle,
       answerKey: grade.answerKey,
     },
+    evidence: evidenceComplete
+      ? {
+          policyVersion: STUDIO_EVIDENCE_POLICY,
+          fingerprint: reviewFingerprint({ ...input, visual: grade.visual }),
+          complete: true,
+          profileIds: PUZZLE_BOARD_RECOGNITION_PROFILES.map((p) => p.id),
+        }
+      : undefined,
     critique: critiquePayload,
     spend,
     checkedAt,
@@ -779,6 +840,8 @@ export function publicEveReview(result: EveReviewResult) {
           overusedTrope: result.critique.overusedTrope,
         }
       : undefined,
+    evidence: result.evidence,
+    reviewedVisual: result.ok ? result.grade.visual : undefined,
     spend: result.spend,
     checkedAt: result.checkedAt,
     lookingFor: EVE_REVIEW_CHECKS.map((c) => ({

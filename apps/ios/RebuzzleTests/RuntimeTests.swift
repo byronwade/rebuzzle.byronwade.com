@@ -96,3 +96,18 @@ extension RuntimeTests {
         XCTAssertTrue(sanitized.contains("M0 0 L10 10"))
     }
 }
+
+extension RuntimeTests {
+    @MainActor func testRequestsAdvertiseVerifiedCanonicalBoardSupport() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        let api = APIClient(deviceID: "test", session: URLSession(configuration: config))
+        defer { StubProtocol.responder = nil }
+        StubProtocol.responder = { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Rebuzzle-Canonical-Board"), "1")
+            return (200, #"{"success":true}"#)
+        }
+        let response: SuccessResponse = try await api.request("/api/puzzle/today")
+        XCTAssertTrue(response.success)
+    }
+}

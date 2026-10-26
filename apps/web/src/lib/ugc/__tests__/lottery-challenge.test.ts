@@ -1,3 +1,6 @@
+import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
+import { withStudioEvidence } from "@/test/studio-evidence";
+
 jest.mock("@/db/mongodb", () => ({ getCollection: jest.fn() }));
 jest.mock("../submissions", () => ({
   submissionsCollection: jest.fn(),
@@ -11,7 +14,21 @@ import { ensureCommunityPuzzle, submissionsCollection } from "../submissions";
 
 it("keeps an approved simple community puzzle out of the daily slot even with an inflated score", async () => {
   const updateOne = jest.fn();
-  const submission = { id: "easy", puzzleId: "easy-board", answerKey: "earache" };
+  const submission = withStudioEvidence({
+    id: "easy",
+    puzzleId: "easy-board",
+    answerKey: "earache",
+    answer: "earache",
+    techniqueId: "simple_compound",
+    difficulty: 9,
+    visual: {
+      styleId: INK_PICTOGRAM_STYLE_ID,
+      mode: "composed" as const,
+      layout: "row" as const,
+      layers: [],
+      unicodeFallback: "EAR + ACHE",
+    },
+  });
   const pool = {
     find: () => ({ sort: () => ({ limit: () => ({ toArray: async () => [submission] }) }) }),
   };
@@ -44,4 +61,16 @@ it("keeps an approved simple community puzzle out of the daily slot even with an
   ).resolves.toBeNull();
   expect(ensureCommunityPuzzle).toHaveBeenCalledWith(submission);
   expect(updateOne).not.toHaveBeenCalled();
+});
+
+it("rejects legacy or mismatched evidence before touching community puzzles", async () => {
+  jest.mocked(ensureCommunityPuzzle).mockClear();
+  const row = { id: "legacy", puzzleId: "legacy", answer: "legacy" };
+  jest.mocked(submissionsCollection).mockReturnValue({
+    find: () => ({ sort: () => ({ limit: () => ({ toArray: async () => [row] }) }) }),
+  } as never);
+  await expect(
+    trySelectUgcLotteryFiller({ dateString: "2026-10-10", fallbackReason: "test" })
+  ).resolves.toBeNull();
+  expect(ensureCommunityPuzzle).not.toHaveBeenCalled();
 });

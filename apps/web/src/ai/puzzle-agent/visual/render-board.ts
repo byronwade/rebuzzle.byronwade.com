@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { validateCanonicalBoard } from "./canonical-contract";
 import type { PuzzleVisual, VisualLayer } from "./composition";
 import { layoutLayersLocked, planLockedRowIndexes } from "./layout-plan";
 import {
@@ -89,6 +90,25 @@ export async function renderPuzzleVisualProfile(
 ): Promise<RenderedPuzzleBoard> {
   const profile = getPuzzleBoardRecognitionProfile(profileId);
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
+  if (visual.canonicalBoard !== undefined) {
+    const bytes = await validateCanonicalBoard(visual.canonicalBoard);
+    const width = profile.viewportWidth;
+    const { data, info } = await sharp(bytes)
+      .resize({ width })
+      .png()
+      .toBuffer({ resolveWithObject: true });
+    return {
+      profileId,
+      viewportWidth: width,
+      tileSize: size.tile,
+      width: info.width,
+      height: info.height,
+      wrappedRows: rowIndexes.length,
+      rowIndexes,
+      locked: true,
+      pixels: data,
+    };
+  }
   const layout = layoutLayersLocked(visual, profile, rowIndexes);
   const captionHeight = visual.caption ? Math.max(32, size.fontSize) : 0;
   const width = layout.width;

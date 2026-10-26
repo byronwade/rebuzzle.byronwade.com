@@ -31,6 +31,7 @@ struct APIError: LocalizedError {
             request.setValue("true", forHTTPHeaderField: "X-Rebuzzle-Daily-Only")
         }
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        request.setValue("1", forHTTPHeaderField: "X-Rebuzzle-Canonical-Board")
         if let body { request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError(status: 0, message: "The server did not respond. Try again when you’re connected.") }

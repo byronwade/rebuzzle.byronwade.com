@@ -1,5 +1,6 @@
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import type { UserPuzzleSubmission } from "@/db/models";
+import { withStudioEvidence } from "@/test/studio-evidence";
 
 const updateOne = jest.fn(async () => ({ acknowledged: true }));
 const findOne = jest.fn(async () => null);
@@ -27,7 +28,7 @@ jest.mock("@/lib/logger", () => ({
 import { markSubmissionGraded } from "../submissions";
 
 function baseSubmission(overrides: Partial<UserPuzzleSubmission> = {}): UserPuzzleSubmission {
-  return {
+  return withStudioEvidence({
     id: "sub-1",
     slug: "sunflower-sub-1",
     userId: "user-1",
@@ -50,7 +51,7 @@ function baseSubmission(overrides: Partial<UserPuzzleSubmission> = {}): UserPuzz
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     ...overrides,
-  };
+  });
 }
 
 describe("markSubmissionGraded", () => {
@@ -142,4 +143,23 @@ describe("markSubmissionGraded", () => {
     expect(payload.status).toBe("draft");
     expect(payload.grade?.ok).toBe(false);
   });
+});
+
+it("does not insert a puzzle without complete matching evidence", async () => {
+  insertOne.mockClear();
+  const submission = baseSubmission();
+  submission.answer = "edited answer";
+  await expect(
+    markSubmissionGraded({
+      submission,
+      ok: true,
+      score: 90,
+      funScore: 90,
+      issues: [],
+      visual: submission.visual,
+      rebusPuzzle: submission.rebusPuzzle,
+      answerKey: "editedanswer",
+    })
+  ).rejects.toThrow(/matching publication evidence/);
+  expect(insertOne).not.toHaveBeenCalled();
 });

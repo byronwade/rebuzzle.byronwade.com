@@ -29,6 +29,7 @@ export type EditorialReviewSummary = {
   reasoningEvidence?: ReasoningEvidence;
   ok: boolean;
   profileCount: number;
+  profileResults: { profileId: string; judgeCount: number }[];
   acceptedProfiles: number;
   rejectedProfiles: string[];
   missingProfiles: string[];
@@ -186,6 +187,10 @@ export function summarizeEditorialReviewAttempts(input: {
       acceptedProfiles === input.expectedProfileIds.length &&
       rejectedProfiles.length === 0,
     profileCount: testedProfiles.size,
+    profileResults: input.expectedProfileIds.map((profileId) => ({
+      profileId,
+      judgeCount: attempts.filter((attempt) => attempt.profileId === profileId).length,
+    })),
     acceptedProfiles,
     rejectedProfiles,
     missingProfiles,

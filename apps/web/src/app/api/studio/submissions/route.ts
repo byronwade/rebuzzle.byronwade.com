@@ -111,9 +111,12 @@ export async function POST(request: Request) {
       caption: typeof body.caption === "string" ? body.caption : undefined,
     };
 
-    // Publish path: full Eve review (safety → grade → critique → optional sim).
+    // Publish path: full Eve review (safety → grade → critique → required screenshot simulation).
     // Draft saves keep the lighter deterministic grade for fast iteration.
     if (body.submit) {
+      const beforeReview = draftId ? await findSubmissionById(draftId) : null;
+      if (draftId && (!beforeReview || beforeReview.userId !== gate.user.userId))
+        throw new Error("Draft not found");
       const review = await runEveStudioReview({
         title,
         answer,
@@ -128,6 +131,7 @@ export async function POST(request: Request) {
 
       const draft = await upsertDraftSubmission({
         id: draftId,
+        expectedUpdatedAt: beforeReview?.updatedAt,
         userId: gate.user.userId,
         username: gate.user.username,
         title,
@@ -150,6 +154,7 @@ export async function POST(request: Request) {
         warnings: review.warnings,
         checkedAt: review.checkedAt,
         spend: review.spend,
+        evidence: review.evidence,
       };
 
       if (!review.ok) {
@@ -168,7 +173,10 @@ export async function POST(request: Request) {
         });
         return NextResponse.json(
           {
-            error: "Eve review did not ship — fix the blockers and try again.",
+            error:
+              review.verdict === "pending"
+                ? review.summary
+                : "Eve review did not ship — fix the blockers and try again.",
             submission: publicSubmission(held),
             grade: {
               ok: false,
@@ -182,9 +190,8 @@ export async function POST(request: Request) {
         );
       }
 
-      const existing = await findSubmissionById(draft.id);
       const approved = await markSubmissionGraded({
-        submission: existing ?? draft,
+        submission: draft,
         ok: true,
         score: review.grade.score,
         funScore: review.grade.funScore,

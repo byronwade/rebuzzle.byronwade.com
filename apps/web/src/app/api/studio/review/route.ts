@@ -8,7 +8,11 @@ import {
   runEveStudioReview,
 } from "@/lib/ugc/eve-review";
 import { requireStudioUser } from "@/lib/ugc/require-studio-user";
-import { attachEveReviewSnapshot, upsertDraftSubmission } from "@/lib/ugc/submissions";
+import {
+  attachEveReviewSnapshot,
+  findSubmissionById,
+  upsertDraftSubmission,
+} from "@/lib/ugc/submissions";
 
 const reviewLimit = rateLimit({
   windowMs: 60 * 1000,
@@ -68,6 +72,7 @@ async function persistReview(input: {
   userId: string;
   username: string;
   draftId?: string;
+  expectedUpdatedAt?: Date;
   title?: string;
   answer: string;
   explanation: string;
@@ -78,6 +83,7 @@ async function persistReview(input: {
 }) {
   const draft = await upsertDraftSubmission({
     id: input.draftId,
+    expectedUpdatedAt: input.expectedUpdatedAt,
     userId: input.userId,
     username: input.username,
     title: input.title,
@@ -100,10 +106,12 @@ async function persistReview(input: {
     warnings: input.review.warnings,
     checkedAt: input.review.checkedAt,
     spend: input.review.spend,
+    evidence: input.review.evidence,
   };
 
   const saved = await attachEveReviewSnapshot({
     submissionId: draft.id,
+    expectedUpdatedAt: draft.updatedAt,
     userId: input.userId,
     eveReview,
     grade: {
@@ -171,6 +179,10 @@ export async function POST(request: Request) {
     excludeSubmissionId: parsed.id,
   };
 
+  const existingDraft = parsed.id ? await findSubmissionById(parsed.id) : null;
+  if (parsed.id && (!existingDraft || existingDraft.userId !== gate.user.userId))
+    return Response.json({ error: "Draft not found" }, { status: 404 });
+
   if (body.sync) {
     const result = await runEveStudioReview(input);
     let submissionId = parsed.id;
@@ -179,6 +191,7 @@ export async function POST(request: Request) {
         userId: gate.user.userId,
         username: gate.user.username,
         draftId: parsed.id,
+        expectedUpdatedAt: existingDraft?.updatedAt,
         title: parsed.title,
         answer: parsed.answer,
         explanation: parsed.explanation,
@@ -210,6 +223,7 @@ export async function POST(request: Request) {
             userId: gate.user.userId,
             username: gate.user.username,
             draftId: parsed.id,
+            expectedUpdatedAt: existingDraft?.updatedAt,
             title: parsed.title,
             answer: parsed.answer,
             explanation: parsed.explanation,

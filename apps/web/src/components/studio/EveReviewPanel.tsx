@@ -37,7 +37,7 @@ export type EveReviewLiveState = {
   checks: LiveCheck[];
   thinking: LiveThinking[];
   answers: LiveAnswer[];
-  verdict?: "ship" | "revise" | "reject";
+  verdict?: "ship" | "revise" | "reject" | "pending";
   summary?: string;
   blockers: string[];
   warnings: string[];

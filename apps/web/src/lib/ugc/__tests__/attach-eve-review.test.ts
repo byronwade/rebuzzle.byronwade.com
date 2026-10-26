@@ -1,5 +1,6 @@
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import type { UserPuzzleSubmission } from "@/db/models";
+import { withStudioEvidence } from "@/test/studio-evidence";
 
 const updateOne = jest.fn(async () => ({ acknowledged: true }));
 const findOne = jest.fn();
@@ -23,9 +24,9 @@ jest.mock("@/lib/logger", () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-import { attachEveReviewSnapshot } from "../submissions";
+import { attachEveReviewSnapshot, upsertDraftSubmission } from "../submissions";
 
-const draft: UserPuzzleSubmission = {
+const draft: UserPuzzleSubmission = withStudioEvidence({
   id: "draft-1",
   slug: "sunflower-draft-1",
   userId: "user-1",
@@ -47,7 +48,7 @@ const draft: UserPuzzleSubmission = {
   rebusPuzzle: "SU + FL",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
-};
+});
 
 describe("attachEveReviewSnapshot", () => {
   beforeEach(() => {
@@ -61,6 +62,7 @@ describe("attachEveReviewSnapshot", () => {
       submissionId: "draft-1",
       userId: "user-1",
       eveReview: {
+        ...draft.eveReview!,
         reviewId: "rev-1",
         ok: true,
         verdict: "ship",
@@ -81,6 +83,7 @@ describe("attachEveReviewSnapshot", () => {
         submissionId: "draft-1",
         userId: "user-1",
         eveReview: {
+          ...draft.eveReview!,
           reviewId: "rev-1",
           ok: false,
           verdict: "revise",
@@ -98,6 +101,7 @@ describe("attachEveReviewSnapshot", () => {
         submissionId: "draft-1",
         userId: "user-1",
         eveReview: {
+          ...draft.eveReview!,
           reviewId: "rev-1",
           ok: true,
           verdict: "ship",
@@ -109,4 +113,26 @@ describe("attachEveReviewSnapshot", () => {
       })
     ).rejects.toThrow(/locked/i);
   });
+});
+
+it("clears old review and grade on draft edits", async () => {
+  findOne.mockResolvedValueOnce({
+    ...draft,
+    grade: { ok: true, score: 99, funScore: 99, issues: [], gradedAt: "then" },
+  });
+  const saved = await upsertDraftSubmission({ ...draft, explanation: "changed" });
+  expect(saved.eveReview).toBeUndefined();
+  expect(saved.grade).toBeUndefined();
+  expect(updateOne.mock.calls.at(-1)?.[1].$unset).toEqual({ grade: "", eveReview: "" });
+});
+it("refuses review persistence after a concurrent edit", async () => {
+  findOne.mockResolvedValueOnce(draft);
+  await expect(
+    attachEveReviewSnapshot({
+      submissionId: draft.id,
+      userId: draft.userId,
+      expectedUpdatedAt: new Date(0),
+      eveReview: draft.eveReview!,
+    })
+  ).rejects.toThrow(/changed during review/);
 });

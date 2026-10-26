@@ -85,6 +85,10 @@ const PlayerSimSchema = z.object({
     .max(6)
     .optional(),
   editorialProfileCount: z.number().int().nonnegative().optional(),
+  editorialProfileResults: z
+    .array(z.object({ profileId: z.string().min(1), judgeCount: z.number().int().nonnegative() }))
+    .max(6)
+    .optional(),
   editorialAcceptedProfiles: z.number().int().nonnegative().optional(),
   editorialConfidence: z.number().min(0).max(1).optional(),
   editorialFailureKinds: z.array(z.string().max(40)).max(8).optional(),

@@ -88,6 +88,7 @@ export type PuzzleVisualLayer =
     } & LayerPositionFields);
 
 export interface PuzzleVisual {
+  canonicalBoard?: { version: 1; pngDataUrl: string; sha256: string; width: number; height: number; sourceFingerprint: string };
   styleId: "ink-pictogram-v1";
   mode: "composed" | "unicode" | "hybrid";
   layout: "row" | "stack" | "grid" | "overlay" | "free";

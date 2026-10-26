@@ -11,6 +11,26 @@ import XCTest
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 15))
     }
 
+    func testCanonicalBoardUsesReviewedImageEvenInUnicodeMode() {
+        launchFixture(extraArguments: ["--ui-canonical-board"])
+        let board = app.images["canonicalPuzzleBoard"]
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(board.frame.width, 100)
+        XCTAssertGreaterThan(board.frame.height, 20)
+        XCTAssertEqual(board.frame.width / board.frame.height, 768.0 / 248.0, accuracy: 0.03, "Reviewed image must retain its aspect ratio")
+        capture("Canonical board — exact reviewed pixels")
+        app.buttons["studyPuzzle"].tap()
+        XCTAssertTrue(app.images["canonicalPuzzleBoard"].waitForExistence(timeout: 5))
+        capture("Canonical board — study")
+    }
+
+    func testInvalidCanonicalBoardNeverFallsBackToLegacyClue() {
+        launchFixture(extraArguments: ["--ui-canonical-invalid"])
+        XCTAssertTrue(app.staticTexts["Puzzle image unavailable"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.images["canonicalPuzzleBoard"].exists)
+        capture("Canonical board — unavailable")
+    }
+
     func testStudyPuzzlePreservesDraftAndGuesses() {
         launchFixture()
         let field = app.descendants(matching: .any)["answerField"].firstMatch

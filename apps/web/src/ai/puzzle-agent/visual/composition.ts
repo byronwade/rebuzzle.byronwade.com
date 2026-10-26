@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CanonicalBoardSchema } from "./canonical-contract";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
 
 /** Free-canvas center as % of artboard (0–100). Optional on row/stack layouts. */
@@ -73,6 +74,7 @@ export const VisualLayerSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const PuzzleVisualSchema = z.object({
+  canonicalBoard: CanonicalBoardSchema.optional(),
   styleId: z.literal(INK_PICTOGRAM_STYLE_ID).default(INK_PICTOGRAM_STYLE_ID),
   mode: z.enum(["composed", "unicode", "hybrid"]).default("composed"),
   layout: z.enum(["row", "stack", "grid", "overlay", "free"]).default("row"),

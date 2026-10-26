@@ -122,6 +122,7 @@ export type PuzzleVisualLayer =
     } & LayerPositionFields);
 
 export interface PuzzleVisual {
+  canonicalBoard?: import("@/ai/puzzle-agent/visual/canonical-contract").CanonicalBoard;
   styleId: "ink-pictogram-v1";
   mode: "composed" | "unicode" | "hybrid";
   layout: "row" | "stack" | "grid" | "overlay" | "free";
@@ -528,12 +529,18 @@ export interface UserPuzzleSubmission {
   eveReview?: {
     reviewId: string;
     ok: boolean;
-    verdict: "ship" | "revise" | "reject";
+    verdict: "ship" | "revise" | "reject" | "pending";
     summary: string;
     blockers: string[];
     warnings: string[];
     checkedAt: string;
     spend?: { critique: string; playerSim: string };
+    evidence?: {
+      policyVersion: string;
+      fingerprint: string;
+      complete: boolean;
+      profileIds: string[];
+    };
   };
   featuredOn?: string;
   featuredNotifiedAt?: string;

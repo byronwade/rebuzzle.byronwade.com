@@ -1,3 +1,7 @@
+import { AI_CONFIG } from "@/ai/config";
+import { critiqueCandidate } from "@/ai/puzzle-agent/apex/critique";
+import { simulatePlayerSolve } from "@/ai/puzzle-agent/apex/player-sim";
+import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "@/ai/puzzle-agent/visual/presentation";
 import { runEveStudioReview } from "../eve-review";
 
 jest.mock("@/ai/learning/answer-registry", () => ({
@@ -59,6 +63,7 @@ jest.mock("@/ai/config", () => ({
     },
     visualRecognition: {
       boardEnabled: false,
+      requiredVotes: 2,
     },
   },
 }));
@@ -80,7 +85,7 @@ const fairBoard = {
 };
 
 describe("runEveStudioReview", () => {
-  it("emits manifest, thinking, checks, and ships a fair board", async () => {
+  it("keeps a structurally fair board pending when vision is disabled", async () => {
     const events: string[] = [];
     const result = await runEveStudioReview(fairBoard, {
       emit: (event) => {
@@ -93,8 +98,8 @@ describe("runEveStudioReview", () => {
     expect(events).toContain("check");
     expect(events).toContain("answer");
     expect(events[events.length - 1]).toBe("done");
-    expect(result.ok).toBe(true);
-    expect(result.verdict).toBe("ship");
+    expect(result.ok).toBe(false);
+    expect(result.verdict).toBe("pending");
     expect(result.spend.critique).toBe("ran");
     expect(result.spend.playerSim).toBe("skipped");
   });
@@ -122,5 +127,90 @@ describe("runEveStudioReview", () => {
     expect(result.ok).toBe(false);
     expect(["revise", "reject"]).toContain(result.verdict);
     expect(result.checks.find((c) => c.id === "answer_not_on_board")?.status).toBe("fail");
+  });
+});
+
+const fullSim = {
+  firstWrongParses: [],
+  likelySolvePath: "sun + flower",
+  hintUnlockOrderLooksFair: true,
+  unfairReasons: [],
+  estimatedSolveRate: 0.7,
+  confidence: 0.8,
+  blindProfileCount: PUZZLE_BOARD_RECOGNITION_PROFILES.length,
+  editorialProfileCount: PUZZLE_BOARD_RECOGNITION_PROFILES.length,
+  editorialProfileResults: PUZZLE_BOARD_RECOGNITION_PROFILES.map((p) => ({
+    profileId: p.id,
+    judgeCount: 2,
+  })),
+  blindProfileResults: PUZZLE_BOARD_RECOGNITION_PROFILES.map((p) => ({
+    profileId: p.id,
+    judgeCount: 2,
+    targetFoundBy: 2,
+    topTargetFoundBy: 2,
+    dominantTargetFoundBy: 2,
+    meanReciprocalRank: 1,
+    strongestWrongConfidence: 0,
+  })),
+};
+describe("required board evidence", () => {
+  beforeEach(() => {
+    AI_CONFIG.puzzleAgent.apex.playerSimEnabled = true;
+    AI_CONFIG.visualRecognition.boardEnabled = true;
+    jest.mocked(simulatePlayerSolve).mockResolvedValue(fullSim);
+  });
+  it("requires full review even with deepReview false and exposes the exact frozen board", async () => {
+    const result = await runEveStudioReview({ ...fairBoard, deepReview: false });
+    expect(result.ok).toBe(true);
+    expect(result.evidence?.complete).toBe(true);
+    expect(result.grade.visual.canonicalBoard?.pngDataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(jest.mocked(critiqueCandidate).mock.calls.at(-1)?.[0].visual).toEqual(
+      result.grade.visual
+    );
+    expect(jest.mocked(simulatePlayerSolve).mock.calls.at(-1)?.[0].visual).toEqual(
+      result.grade.visual
+    );
+  });
+  it.each([{ profiles: [] }, { profiles: fullSim.blindProfileResults.slice(1) }])(
+    "keeps incomplete profile results pending",
+    async ({ profiles }) => {
+      jest
+        .mocked(simulatePlayerSolve)
+        .mockResolvedValueOnce({ ...fullSim, blindProfileResults: profiles });
+      const result = await runEveStudioReview(fairBoard);
+      expect(result.verdict).toBe("pending");
+      expect(result.ok).toBe(false);
+    }
+  );
+  it("keeps incomplete editorial provider quorum pending", async () => {
+    jest.mocked(simulatePlayerSolve).mockResolvedValueOnce({
+      ...fullSim,
+      editorialProfileResults: fullSim.editorialProfileResults.map((p) => ({
+        ...p,
+        judgeCount: 1,
+      })),
+    });
+    const result = await runEveStudioReview(fairBoard);
+    expect(result.verdict).toBe("pending");
+    expect(result.ok).toBe(false);
+  });
+  it("keeps provider failure pending", async () => {
+    jest.mocked(simulatePlayerSolve).mockRejectedValueOnce(new Error("provider unavailable"));
+    expect((await runEveStudioReview(fairBoard)).verdict).toBe("pending");
+  });
+  it("keeps fallback critique pending", async () => {
+    jest.mocked(critiqueCandidate).mockResolvedValueOnce({
+      verdict: "revise",
+      source: "fallback",
+      summary: "unavailable",
+      strengths: [],
+      flaws: [],
+      reviseInstructions: [],
+      falseLeadQuality: 0,
+      ahaPredicted: 0,
+    });
+    const result = await runEveStudioReview(fairBoard);
+    expect(result.verdict).toBe("pending");
+    expect(result.evidence).toBeUndefined();
   });
 });
