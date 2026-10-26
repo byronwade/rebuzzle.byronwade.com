@@ -60,3 +60,5 @@ Apple defines tracking as cross-company advertising linkage or data-broker shari
 References: [Apple definitions](https://developer.apple.com/app-store/app-privacy-details/), [Vercel DPA](https://vercel.com/legal/dpa), [Resend DPA](https://resend.com/legal/dpa). Processor terms support service-purpose use; actual extra integrations still require inspection.
 
 Vercel `list_drains` for the production team/project returned an empty list on October 26. This rules out configured drains in that response; it does not establish Vercel built-in log retention or unrelated provider settings.
+
+October 26 Connect App Information inspection: both Production and Sandbox App Store Server Notifications show “Set Up URL”; no configured notification endpoint was displayed. This does not establish what Apple sales reports are retained elsewhere.

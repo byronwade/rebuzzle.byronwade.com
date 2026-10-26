@@ -1,6 +1,6 @@
 # Release gates
 
-Status: release preparation only. No box below asserts a completed external action. Record evidence (commit/build, device/OS, date, outcome, log or screenshot) beside each checked item. Source and simulator validation do not establish distribution readiness.
+Status: public release preparation; later dated evidence records completed beta uploads and backend deployments. Historical unchecked preparation items must be reconciled with those receipts. Record evidence (commit/build, device/OS, date, outcome, log or screenshot) beside each checked item. Source and simulator validation do not establish distribution readiness.
 
 ## Local candidate
 
@@ -40,3 +40,7 @@ October 26 read-only Connect check: Paid Apps Agreement and Free Apps Agreement 
 - [ ] Enter store listing, device screenshots, review contact and review notes; provide private review-account credentials if needed for registered-account testing.
 - [ ] Submit first non-consumable with app version; resolve Connect validation and review requirements. Configure release timing deliberately.
 - [ ] After approval/release, verify store installation, production purchase visibility, first-session success and support availability. Monitor real failures and retention; do not infer commercial success from fixture tests.
+
+## App-level EU status follow-up — October 26
+
+App Information identifies this app as non-trader, despite the account-level DSA status showing Active. No classification was changed. The developer must assess the app’s trader status before public EU release; TestFlight does not itself require trader publication. If trader status is selected, Apple requires verified contact information and a compliance certification. See [Apple’s DSA guidance](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements).
