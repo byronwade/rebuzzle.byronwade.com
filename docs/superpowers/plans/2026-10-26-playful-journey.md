@@ -38,6 +38,6 @@
 **Files:** docs/marketing/2026-10-26-native-launch.md and output release evidence.
 - [x] Write truthful App Store copy, screenshot captions and optional social drafts; don't send campaigns.
 - [x] Review final diff; run meaningful affected tests and verify signed production bundle excludes fixtures.
-- [ ] Archive/upload 1.0.0 (6), save TestFlight notes, verify automatic group access and tell user iPhone update steps.
+- [x] Archive/upload 1.0.0 (6), save TestFlight notes, verify automatic group access and tell user iPhone update steps.
 
 Execution: continue in the task's dedicated feature checkout; no shared/main branch edits. Agent dispatch was attempted but rejected by the session's agent limit, so use local implementation and review with explicit evidence. Existing user authorization covers implementation, branch push and TestFlight upload. No new approval is required for this continuation.
