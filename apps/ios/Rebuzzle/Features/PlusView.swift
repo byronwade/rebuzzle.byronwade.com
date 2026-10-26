@@ -1,4 +1,5 @@
 import SwiftUI
+import RebuzzleCore
 
 struct PlusView: View {
     @Environment(AppModel.self) private var model
@@ -6,11 +7,14 @@ struct PlusView: View {
     var body: some View {
         Page {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Make each connection yours.")
+                Text("Keep your aha moments.")
                     .font(Theme.font(24, weight: .medium, relativeTo: .title2))
                     .tracking(-0.5)
-                Text("Your puzzle journal, personal notes, and a closer look at how you solve.")
+                Text("Turn your daily discoveries into a collection worth coming back to.")
                     .font(Theme.font(15)).foregroundStyle(Theme.secondary)
+            }
+            if let entry = model.journal.entries.first, !model.purchases.hasPlus {
+                journalPreview(entry)
             }
             purchase
             VStack(alignment: .leading, spacing: 24) {
@@ -33,6 +37,27 @@ struct PlusView: View {
         .task { await model.purchases.load() }
     }
 
+    private func journalPreview(_ entry: JournalEntry) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("A page from your story", systemImage: "book.closed")
+                    .font(Theme.font(13, weight: .medium)).foregroundStyle(Theme.reward)
+                Spacer(minLength: 0)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text(entry.puzzleDate).font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                Text(entry.answer).font(Theme.font(26, weight: .semibold, relativeTo: .title))
+                    .accessibilityIdentifier("plusPreviewAnswer")
+                Text(entry.explanation).font(Theme.font(14)).foregroundStyle(Theme.secondary)
+            }
+            Label("Keep the thought that made it click.", systemImage: "pencil.line")
+                .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+            Text("This is your completed puzzle. Plus lets you revisit your collection and add your own notes.")
+                .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+    }
+
     private var purchase: some View {
         VStack(alignment: .leading, spacing: 12) {
             if model.purchases.hasPlus {
@@ -40,6 +65,9 @@ struct PlusView: View {
                     .font(Theme.font(18, weight: .medium)).foregroundStyle(Theme.success)
                 Text("Your journal and deeper insights are unlocked.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                NavigationLink { JournalView() } label: {
+                    Label("Open your journal", systemImage: "book.closed")
+                }.buttonStyle(CommitStyle()).accessibilityIdentifier("openPlusJournal")
             } else if let product = model.purchases.product {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.displayPrice).font(Theme.font(32, weight: .medium, relativeTo: .largeTitle)).monospacedDigit()

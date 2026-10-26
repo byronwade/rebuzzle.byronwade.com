@@ -58,6 +58,20 @@ import XCTest
         capture("Daily reminder settings")
     }
 
+    func testPlusShowsMyCompletedPuzzleBeforePurchase() {
+        launchFixture()
+        submit("lighthouse")
+        let journal = app.buttons["keepConnection"]
+        for _ in 0..<10 where !journal.isHittable { app.swipeUp() }
+        journal.tap()
+        app.buttons["Explore Rebuzzle Plus"].tap()
+        let preview = app.staticTexts["plusPreviewAnswer"]
+        for _ in 0..<10 where !preview.isHittable { app.swipeUp() }
+        XCTAssertTrue(preview.exists)
+        XCTAssertEqual(preview.label, "lighthouse")
+        capture("Plus — personal journal preview")
+    }
+
     func testThreeWrongGuessesRevealAnswer() {
         launchFixture()
         for (index, guess) in ["sunshine", "moonlight", "daybreak"].enumerated() {
