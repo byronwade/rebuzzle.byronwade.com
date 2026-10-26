@@ -22,6 +22,7 @@ targets:
     sources: [Rebuzzle]
     dependencies:
       - package: RebuzzleCore
+      - target: RebuzzleWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.byronwade.rebuzzle
@@ -36,6 +37,26 @@ targets:
       path: Rebuzzle/Resources/Info.plist
       properties:
         UIAppFonts: [Inter.ttf]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.byronwade.rebuzzle.play
+            CFBundleURLSchemes: [rebuzzle]
+  RebuzzleWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [RebuzzleWidgets]
+    dependencies:
+      - package: RebuzzleCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.byronwade.rebuzzle.widgets
+        INFOPLIST_KEY_CFBundleDisplayName: Rebuzzle
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: RebuzzleWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   RebuzzleTests:
     type: bundle.unit-test
     platform: iOS

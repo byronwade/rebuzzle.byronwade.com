@@ -1,6 +1,7 @@
 import SwiftUI
 
 @main struct RebuzzleApp: App {
+    init() { NotificationDelegate.shared.install() }
     var body: some Scene {
         WindowGroup {
             #if DEBUG
@@ -30,11 +31,13 @@ enum AppTab: Hashable { case play, journey, you }
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
+    @State private var playNavigation = UUID()
+    private let returnRouter = ReturnRouter.shared
     var body: some View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
             NavigationStack { TodayView() }
-                .id("play-" + (model.player?.id ?? "signed-out"))
+                .id("play-" + (model.player?.id ?? "signed-out") + playNavigation.uuidString)
                 .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
             NavigationStack { ProgressViewScreen() }
                 .id("journey-" + (model.player?.id ?? "signed-out"))
@@ -43,7 +46,16 @@ struct RootView: View {
                 .id("you-" + (model.player?.id ?? "signed-out"))
                 .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)
         }
-        .task { await model.load(); await model.purchases.load() }
+        .onOpenURL { returnRouter.open($0) }
+        .task(id: returnRouter.request) {
+            guard let request = returnRouter.request else { return }
+            model.saveDraft()
+            model.selectedTab = .play
+            playNavigation = UUID()
+            await model.load()
+            if returnRouter.request == request { returnRouter.request = nil }
+        }
+        .task { await model.reminders.refreshAuthorization(); await model.load(); await model.purchases.load() }
         .task(id: model.daily?.nextPuzzleTime) {
             guard let raw = model.daily?.nextPuzzleTime, let next = ResultView.date(raw) else { return }
             while !Task.isCancelled {
@@ -63,7 +75,7 @@ struct RootView: View {
             }
         }
         .onChange(of: phase) { _, next in
-            if next == .active { Task { await model.load(); await model.purchases.refreshEntitlements() } }
+            if next == .active { Task { await model.reminders.refreshAuthorization(); await model.load(); await model.purchases.refreshEntitlements() } }
             if next == .background { model.saveDraft() }
         }
     }

@@ -4,6 +4,11 @@ import RebuzzleCore
 
 @MainActor @Observable final class AppModel {
     var selectedTab: AppTab = .play
+    var completedCurrentPuzzle: Bool {
+        guard game?.gameOver == true, let raw = daily?.nextPuzzleTime,
+              let expiry = DailyReturnTiming.deadline(raw) else { return false }
+        return expiry > Date()
+    }
     var daily: DailyResponse?
     var game: GameSession?
     var player: Player?
@@ -62,7 +67,7 @@ import RebuzzleCore
             if !journalWritable { try loadJournal() }
             try await restore()
             if let result: StatsResponse = try? await api.request("/api/user/stats") { stats = result.stats }
-            try? await reminders.schedule(completedToday: game?.gameOver == true)
+            try? await reminders.schedule(completedToday: completedCurrentPuzzle)
         } catch {
             self.error = error.localizedDescription
             if daily == nil { daily = try? storage.load(DailyResponse.self, key: "daily-cache") }

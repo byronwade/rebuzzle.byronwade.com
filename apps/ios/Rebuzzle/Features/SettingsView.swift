@@ -1,4 +1,5 @@
 import SwiftUI
+import AppIntents
 import RebuzzleCore
 
 struct SettingsView: View {
@@ -104,29 +105,52 @@ struct DeleteAccountView: View {
 }
 struct ReminderView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var phase
     @State private var time = Date()
     @State private var enabled = false
     @State private var saving = false
     var body: some View {
         Form {
             Section {
+                Label("Your daily invitation", systemImage: "bell.badge")
+                    .font(Theme.font(22, weight: .semibold))
+                Text("A small break. A fresh connection. Pick a moment that feels like yours.")
+                    .foregroundStyle(Theme.secondary)
                 Toggle("Daily reminder", isOn: $enabled)
                 DatePicker("Your moment", selection: $time, displayedComponents: .hourAndMinute).disabled(!enabled)
-            } footer: { Text("One gentle invitation, at your local time. You can turn it off anytime. iOS will ask permission when you save an enabled reminder.") }
+            } footer: { Text("One invitation at your local time. We skip today if you’ve already finished. Never an extra nudge or a streak warning.") }
             Section {
                 Button(saving ? "Saving reminder…" : "Save reminder") { Task {
                     saving = true
-                    await model.reminders.configure(enabled: enabled, time: time, completedToday: model.game?.gameOver == true)
+                    await model.reminders.configure(enabled: enabled, time: time, completedToday: model.completedCurrentPuzzle)
                     enabled = model.reminders.enabled; saving = false
                 } }.disabled(saving)
+                if let next = model.reminders.nextReminder {
+                    LabeledContent("Next invitation", value: next.formatted(date: .abbreviated, time: .shortened))
+                }
                 if let message = model.reminders.message { Text(message).font(.footnote) }
-                Link("Open iOS Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
+                if model.reminders.permissionDenied {
+                    Text("Notifications are disabled in iOS. Allow them in Settings, then save your reminder.").font(.footnote)
+                }
+                Link("Open notification settings", destination: URL(string: UIApplication.openNotificationSettingsURLString)!)
+            } footer: { Text("iOS asks permission when you save an enabled reminder. Focus and notification settings control delivery. Upcoming reminders refresh for the next 60 days whenever you play.") }
+            Section("One tap back to your daily aha") {
+                Label("Keep Rebuzzle on your Home Screen", systemImage: "square.grid.2x2")
+                Text("Touch and hold your Home Screen, tap Edit → Add Widget, then search for Rebuzzle. The widget shows the next local daily reset and opens Play.").font(.footnote).foregroundStyle(Theme.secondary)
+                Label("A little wonder on your Lock Screen", systemImage: "lock")
+                Text("Touch and hold your Lock Screen, choose Customize, then add the Rebuzzle widget below the clock.").font(.footnote).foregroundStyle(Theme.secondary)
+                SiriTipView(intent: PlayTodayIntent())
+                ShortcutsLink()
             }
         }.scrollContentBackground(.hidden).background(Theme.canvas)
             .navigationTitle("A daily moment").navigationBarTitleDisplayMode(.inline)
-            .onAppear {
+            .task {
+                await model.reminders.refreshAuthorization()
                 enabled = model.reminders.enabled
                 time = Calendar.current.date(bySettingHour: model.reminders.hour, minute: model.reminders.minute, second: 0, of: Date()) ?? Date()
+            }
+            .onChange(of: phase) { _, next in
+                if next == .active { Task { await model.reminders.refreshAuthorization() } }
             }
     }
 }

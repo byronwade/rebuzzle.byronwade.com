@@ -39,6 +39,25 @@ import XCTest
         capture("Journal — from result")
     }
 
+    func testCountdownAndReminderDiscovery() { verifyCountdownAndReminders() }
+    func testAccessibleCountdownAndReminders() {
+        verifyCountdownAndReminders(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+    }
+    private func verifyCountdownAndReminders(extraArguments: [String] = []) {
+        launchFixture(extraArguments: extraArguments)
+        submit("lighthouse")
+        let countdown = app.otherElements["puzzleCountdown"]
+        for _ in 0..<14 where !countdown.isHittable { app.swipeUp() }
+        XCTAssertTrue(countdown.isHittable)
+        capture("Next puzzle countdown")
+        let reminder = app.buttons["configureReminder"]
+        for _ in 0..<10 where !reminder.isHittable { app.swipeUp() }
+        reminder.tap()
+        XCTAssertTrue(app.switches["Daily reminder"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your daily invitation"].exists)
+        capture("Daily reminder settings")
+    }
+
     func testThreeWrongGuessesRevealAnswer() {
         launchFixture()
         for (index, guess) in ["sunshine", "moonlight", "daybreak"].enumerated() {

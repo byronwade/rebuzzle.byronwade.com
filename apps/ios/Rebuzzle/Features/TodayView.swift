@@ -208,13 +208,7 @@ struct ResultView: View {
                         Label(model.purchases.hasPlus ? "Add a thought to your journal" : "Keep this connection", systemImage: "book.closed")
                     }.font(Theme.font(14)).frame(minHeight: 44).accessibilityIdentifier("keepConnection")
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your next aha is on its way.").font(Theme.font(20, weight: .medium))
-                    if let raw = model.daily?.nextPuzzleTime, let date = Self.date(raw) {
-                        HStack { Text("Next puzzle in"); Text(date, style: .timer).monospacedDigit() }.font(Theme.font(14)).foregroundStyle(Theme.secondary)
-                    }
-                    NavigationLink { ReminderView() } label: { Label("Make it a daily moment", systemImage: "bell") }.font(Theme.font(14)).frame(minHeight: 44)
-                }.padding(.top, 12)
+                DailyReturnCard()
             }
         }
     }
@@ -222,8 +216,7 @@ struct ResultView: View {
         VStack(alignment: .leading, spacing: 4) { Text(value).font(Theme.font(22, weight: .medium)).monospacedDigit(); Text(label).font(Theme.font(11)).foregroundStyle(Theme.secondary) }
     }
     static func date(_ raw: String) -> Date? {
-        let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+        DailyReturnTiming.deadline(raw)
     }
 }
 struct HelpView: View {
