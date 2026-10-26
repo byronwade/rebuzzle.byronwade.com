@@ -4,7 +4,7 @@ Status: release preparation only. No box below asserts a completed external acti
 
 ## Local candidate
 
-- [x] Generate project with XcodeGen; Swift package tests pass (6 tests; see Verification.md).
+- [x] Generate project with XcodeGen; Swift package tests pass (8 tests; see Verification.md).
 - [x] Generic simulator build passes with `CODE_SIGN_IDENTITY=-` and DerivedData under `/tmp` (CI uses runner temporary storage); application-hosted unit tests pass on a concrete simulator.
 - [ ] Inspect Today, result, Progress, Journal, Plus, sign-in, account deletion and Settings on iPhone and iPad; keyboard, VoiceOver, Dynamic Type, light/dark, Reduce Motion and contrast checked.
 - [x] Release binary excludes fixture URL/token/arguments; app bundle contains no .storekit file. Archive inspected.
@@ -23,7 +23,8 @@ Status: release preparation only. No box below asserts a completed external acti
 
 - [ ] Confirm developer membership, app identifier, signing team, distribution certificates/profiles, App Store Connect record, paid-app agreement, tax and banking setup.
 - [ ] Create `com.byronwade.rebuzzle.plus` as a non-consumable; configure localized name/description and price (initial US proposal $9.99), availability and review screenshot. Do not assume the local `.storekit` file creates a store product.
-- [ ] Locally exercise purchase success, cancel, pending, failed/unverified transaction, missing product, relaunch, restore and revocation. Pending/cancelled/unverified purchases must not grant access.
+- [x] Local StoreKit tests cover direct purchase success, cancellation, pending approval, failure/recovery, missing product, relaunch entitlement and refund revocation. Store-load recovery clears stale error copy. See Verification.md.
+- [ ] Exercise unverified transaction and explicit Restore purchases flows; unverified purchases must not grant access. Local evidence does not replace sandbox-device validation.
 - [ ] On a signed physical device with StoreKit fixture disabled, test real sandbox product discovery, localized price, purchase and restore. Test entitlement recovery on a second device: journal data must not be implied to sync.
 - [ ] Test revocation removes paid access while preserving notes and export. Verify Apple-account/Rebuzzle-account switching does not expose another Rebuzzle account's journal.
 - [ ] Verify local reminders enabled/disabled/denied, chosen time, completed-day suppression, timezone changes and app relaunch on device.

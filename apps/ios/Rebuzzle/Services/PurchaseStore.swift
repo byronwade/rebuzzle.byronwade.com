@@ -24,7 +24,7 @@ import StoreKit
         await refreshEntitlements()
         do {
             product = try await Product.products(for: [Self.plusID]).first
-            if product == nil { message = "Plus isn’t available in the store right now. Daily play is always free." }
+            message = product == nil ? "Plus isn’t available in the store right now. Daily play is always free." : nil
         } catch { message = "Could not load the store. Check your connection and try again." }
     }
     func refreshEntitlements() async {

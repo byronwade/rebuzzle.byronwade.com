@@ -12,3 +12,5 @@
 - Release documents distinguish implemented source, local evidence, and outstanding Apple/production requirements. Keep this branch reviewable; no automatic merge or release.
 
 - Follow-up: added real server reaction/word-match feedback to native play and safe atomic persistence/session restore. Added core8 tests, StoreKit direct success/failure recovery/pending approval tests, canonical SVG ink adaptation and DEBUG-only unit host isolation. Initial PR CI and preview deployment passed; new commit evidence is in Release/Verification.md.
+
+- Store retry follow-up: reproduced and fixed stale connection-error copy after successful product lookup. Added cancellation, missing-product and load-recovery service tests; native runtime coverage now 19 tests.
