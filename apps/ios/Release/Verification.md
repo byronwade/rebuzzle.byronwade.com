@@ -1,4 +1,6 @@
-# Candidate verification — 2026-10-25
+# Historical candidate verification — 2026-10-25
+
+This section preserves the initial candidate evidence, not current release status. Later signed build 11, TestFlight delivery, backend deployment and canonical-board verification are recorded in `docs/product/workshop-evidence-release.md`. October 26 Plus service verification (source e017f35) passed 34 hosted tests including explicit restore and invalid-signature rejection; `Checklist.md` records the current Connect product/account observations. Physical-device sandbox validation remains outstanding.
 
 This is an implemented native app candidate, not an uploaded App Store release. Xcode 26.3 (17C529), Swift 6.2.4, iOS SDK 26.2. Source targets iOS 18 and later.
 

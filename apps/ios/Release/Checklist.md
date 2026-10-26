@@ -19,12 +19,14 @@ Status: release preparation only. No box below asserts a completed external acti
 - [ ] Verify `/api/user/account` DELETE for guest and registered test users, wrong-password rejection, removal of associated data, stale-token rejection and local account-data cleanup. MongoDB transactions must work in production.
 - [ ] Check privacy, terms, feedback, signup and password recovery links on device; publish reconciled privacy policy.
 
-## Apple account and purchases — outstanding external gates
+## Apple account and purchases — external gates
+
+October 26 read-only Connect check: Paid Apps Agreement and Free Apps Agreement Active; banking and US tax form Active; Digital Services Act Active. No financial details are retained here and no agreements/settings were changed. Signing/upload evidence is recorded in `docs/product/workshop-evidence-release.md`; the broad account/signing checklist item below remains open until its remaining checks are reconciled.
 
 - [ ] Confirm developer membership, app identifier, signing team, distribution certificates/profiles, App Store Connect record, paid-app agreement, tax and banking setup.
-- [ ] Create `com.byronwade.rebuzzle.plus` as a non-consumable; configure localized name/description and price (initial US proposal $9.99), availability and review screenshot. Do not assume the local `.storekit` file creates a store product.
+- [x] App Store Connect inspected October 26: non-consumable `com.byronwade.rebuzzle.plus` (Apple ID 6827099582), US $9.99, all countries/regions selected, English name/description and review screenshot present. Status Prepare for Submission; first product must accompany the app version. This is configuration evidence, not production purchase availability.
 - [x] Local StoreKit tests cover direct purchase success, cancellation, pending approval, failure/recovery, missing product, relaunch entitlement and refund revocation. Store-load recovery clears stale error copy. See Verification.md.
-- [ ] Exercise unverified transaction and explicit Restore purchases flows; unverified purchases must not grant access. Local evidence does not replace sandbox-device validation.
+- [x] Local unverified-transaction and explicit Restore purchases service flows: 34 hosted tests passed on October 26, source e017f35. Real StoreKitTest invalid-signature, owned/empty restore, network recovery and preservation of verified access are covered. Physical-device sandbox validation remains open below.
 - [ ] On a signed physical device with StoreKit fixture disabled, test real sandbox product discovery, localized price, purchase and restore. Test entitlement recovery on a second device: journal data must not be implied to sync.
 - [ ] Test revocation removes paid access while preserving notes and export. Verify Apple-account/Rebuzzle-account switching does not expose another Rebuzzle account's journal.
 - [ ] Verify local reminders enabled/disabled/denied, chosen time, completed-day suppression, timezone changes and app relaunch on device.

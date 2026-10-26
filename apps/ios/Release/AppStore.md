@@ -38,7 +38,7 @@ An internet connection is required to load and check daily puzzles.
 - Type: non-consumable; no subscription.
 - Display name: Rebuzzle Plus
 - Description: Keep a personal puzzle journal, add notes, and explore your guess distribution.
-- Suggested initial US price: $9.99; configure in App Store Connect. The app displays Apple's localized price.
+- US price: $9.99, verified in App Store Connect on October 26, 2026. The app displays Apple's localized price. Product remains Prepare for Submission; pricing configuration is not evidence of live sale availability.
 - Family Sharing: not enabled in the local fixture; do not advertise unless production configuration and behavior are verified.
 - Attach a real paywall screenshot and submit the product with the first app version.
 

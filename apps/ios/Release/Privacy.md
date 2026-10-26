@@ -50,3 +50,13 @@ Before public release, confirm actual hosting/AI/email data-use and retention se
 - **Security claims:** source supports HTTPS app requests, bcrypt password hashing and Keychain storage. A recurring security-assessment practice was not established; do not claim one without operational evidence.
 
 Still unresolved: production hosting log retention; database backups/retention; enabled email delivery and its retention; AI Gateway and downstream provider routing/logging/retention; Apple reporting; final archive privacy report. No final store privacy answers or revised public policy were published from this inventory. Do not treat this document or the corrected policy source as approval to publish unverified privacy declarations.
+
+## Connect draft follow-up — October 26, 2026
+
+Saved and verified in Connect (not published): Device ID uses App Functionality; User ID uses App Functionality, Analytics, and Developer’s Advertising or Marketing (personalized re-engagement emails). Both are linked to identity and marked not used for tracking in the audited service flows. Existing Email remains Functionality-only and needs marketing-purpose reconciliation; Gameplay Content setup remains unfinished. Product Interaction is saved as App Functionality and Analytics, linked, and not used for tracking in the audited flows. No claim that the complete label is ready.
+
+Apple defines tracking as cross-company advertising linkage or data-broker sharing; AI training and first-party email analytics are not automatically tracking. Remaining focused checks: Gateway actual routing/BYOK and training purposes; Resend domain tracking settings/event fields; hosting log drains and retained fields; purchase server-notification/reporting integrations. Add retained timezone/IP security metadata under an appropriate additional category before final publication; do not infer GPS collection. The five known categories are linked; retention uncertainty does not erase that fact.
+
+References: [Apple definitions](https://developer.apple.com/app-store/app-privacy-details/), [Vercel DPA](https://vercel.com/legal/dpa), [Resend DPA](https://resend.com/legal/dpa). Processor terms support service-purpose use; actual extra integrations still require inspection.
+
+Vercel `list_drains` for the production team/project returned an empty list on October 26. This rules out configured drains in that response; it does not establish Vercel built-in log retention or unrelated provider settings.
