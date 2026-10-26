@@ -5,12 +5,12 @@ describe("static puzzle preflight", () => {
     const report = await auditStaticPuzzleCorpus();
 
     expect(report.promotion).toEqual({ passed: true, failures: [] });
-    expect(report.puzzleCount).toBe(93);
-    expect(report.puzzlePassCount).toBe(93);
-    expect(report.renderedProfileCount).toBe(279);
-    expect(report.expectedRenderedProfileCount).toBe(279);
-    expect(report.assetCount).toBe(47);
-    expect(report.assetPassCount).toBe(47);
+    expect(report.puzzleCount).toBe(115);
+    expect(report.puzzlePassCount).toBe(115);
+    expect(report.renderedProfileCount).toBe(345);
+    expect(report.expectedRenderedProfileCount).toBe(345);
+    expect(report.assetCount).toBe(50);
+    expect(report.assetPassCount).toBe(50);
   });
 
   it("fails closed on answer leakage, fallback drift, and unknown techniques", async () => {

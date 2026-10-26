@@ -151,6 +151,96 @@ describe("validated reserve puzzle inventory", () => {
     ).toBe(true);
   });
 
+  it("provides at least three weeks of fresh reserve after the original corpus is exhausted", async () => {
+    // Snapshot of the depleted production inventory; never derive this from the expanded corpus.
+    const exhaustedAnswers = [
+      "firetruck",
+      "birdhouse",
+      "doghouse",
+      "catfish",
+      "mailbox",
+      "doorbell",
+      "handbag",
+      "bedtime",
+      "moonwalk",
+      "hotdog",
+      "watchdog",
+      "lighthouse",
+      "starlight",
+      "cookbook",
+      "rainforest",
+      "campfire",
+      "airmail",
+      "phonebook",
+      "songbird",
+      "toolbox",
+      "birdbrain",
+      "brainchild",
+      "sweetheart",
+      "heartburn",
+      "pizza box",
+      "eggplant",
+      "treehouse",
+      "snowball",
+      "eyeball",
+      "fireball",
+      "clockwork",
+      "blackmail",
+      "bluebird",
+      "newsflash",
+      "dead end",
+      "deadline",
+      "cold feet",
+      "baby shower",
+      "brain drain",
+      "love letter",
+      "junk mail",
+      "rain check",
+      "hot shot",
+      "piece of cake",
+      "handbook",
+      "bookend",
+      "housework",
+      "daydream",
+      "keychain",
+      "keyring",
+      "gemstone",
+      "doorway",
+      "rainfall",
+      "moonbeam",
+      "notebook",
+      "textbook",
+      "storybook",
+      "dreamboat",
+      "backdoor",
+      "blue moon",
+      "black cat",
+      "red eye",
+      "big fish",
+      "small world",
+      "little things",
+      "tricycle",
+      "I understand",
+      "life after death",
+      "world under water",
+    ];
+    const usedAnswerKeys = new Set(exhaustedAnswers.map(normalizeAnswerKey));
+    const recentPuzzles: PuzzleNoveltyArchiveEntry[] = [];
+    for (let day = 0; day < 21; day += 1) {
+      const now = dateAt(day);
+      const selection = await selectReservePuzzle({
+        dateString: now.toISOString().slice(0, 10),
+        usedAnswerKeys,
+        recentPuzzles,
+        now: () => now,
+      });
+      const key = normalizeAnswerKey(selection.puzzle.answer);
+      expect(usedAnswerKeys.has(key)).toBe(false);
+      usedAnswerKeys.add(key);
+      recentPuzzles.push({ ...selection.puzzle, createdAt: now });
+    }
+  });
+
   it("fails closed instead of recycling after the reserve is exhausted", async () => {
     const usedAnswerKeys = new Set(
       RESERVE_PUZZLES.map((puzzle) => normalizeAnswerKey(puzzle.answer))
