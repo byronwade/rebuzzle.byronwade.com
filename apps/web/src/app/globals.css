@@ -430,6 +430,82 @@
     @apply bg-foreground text-background;
   }
 
+  /* ── Game HUD (header + footer) ─────────────────────────────────────────
+     One raised plate split into mono readouts by hairlines, like the stat
+     strip at the top of a game screen. */
+  .hud-plate {
+    @apply inline-flex h-8 items-stretch overflow-hidden rounded-lg border border-border bg-card font-mono text-xs;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .hud-segment {
+    @apply flex items-center gap-1.5 px-2.5;
+  }
+
+  .hud-segment + .hud-segment,
+  .hud-plate > * + * {
+    @apply border-border border-l;
+  }
+
+  .hud-label {
+    @apply text-subtle;
+  }
+
+  /* Level badge — a tiny inked tab, the one place the HUD shouts. */
+  .hud-level {
+    @apply rounded-[4px] bg-foreground px-1 py-px font-semibold text-[10px] text-background leading-none;
+  }
+
+  .hud-xp {
+    @apply relative h-1.5 w-14 overflow-hidden rounded-full bg-inset;
+    box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.06);
+  }
+
+  .hud-xp-fill {
+    @apply absolute inset-y-0 left-0 rounded-full bg-brand;
+    transition: width 600ms var(--ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hud-xp-fill {
+      transition: none;
+    }
+  }
+
+  /* Game-menu tab: icon over label weight, an underline "selected" bar. */
+  .menu-tab {
+    @apply relative inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground;
+  }
+
+  .menu-tab[aria-current="page"] {
+    @apply bg-card text-foreground;
+    box-shadow: var(--shadow-border);
+  }
+
+  .menu-tab[aria-current="page"]::before {
+    content: "";
+    @apply absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-brand;
+  }
+
+  /* Big square menu button — mobile game menu and the footer's level select. */
+  .menu-tile {
+    @apply flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-foreground text-sm transition-colors hover:border-border-strong hover:bg-muted;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .menu-tile[aria-current="page"] {
+    @apply border-brand/50;
+    box-shadow: 0 0 0 1px hsl(var(--brand) / 0.5);
+  }
+
+  .menu-tile-icon {
+    @apply flex size-9 shrink-0 items-center justify-center rounded-md bg-inset text-foreground;
+  }
+
+  .menu-tile[aria-current="page"] .menu-tile-icon {
+    @apply bg-brand text-brand-foreground;
+  }
+
   /* Caption label — 12px, medium, sentence case. Thorbis has no all-caps kickers. */
   .eyebrow {
     @apply font-medium text-muted-foreground text-xs;

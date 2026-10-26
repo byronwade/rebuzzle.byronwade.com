@@ -32,6 +32,7 @@ import { useLazyGuest } from "@/lib/hooks/useLazyGuest";
 import { useIsNarrowViewport } from "@/lib/hooks/useMediaQuery";
 import { playInterfaceSound } from "@/lib/interface-sounds";
 import { isPlayStageScrollable } from "@/lib/play-stage-layout";
+import { publishPlayerStats } from "@/lib/player-hud";
 import { getPuzzleQuestion } from "@/lib/puzzle-questions";
 import { isReturningUser } from "@/lib/session-tracker";
 import { cn } from "@/lib/utils";
@@ -790,6 +791,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           newStats.fastestSolveSeconds = timeTaken;
         }
         setUserStats(newStats);
+        publishPlayerStats(newStats);
 
         trackPuzzleCompletion({
           puzzleId: gameData.id || "unknown",
@@ -894,6 +896,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           newStats.recentPlayDates = result.recentPlayDates;
         }
         setUserStats(newStats);
+        publishPlayerStats(newStats);
 
         trackPuzzleAbandon({
           puzzleId: gameData.id || "unknown",
