@@ -1,0 +1,8 @@
+{
+  "identifier" : "A5218F99-8E56-489E-9249-E323806FA972",
+  "nonRenewingSubscriptions" : [],
+  "products" : [{"displayPrice":"9.99","familyShareable":false,"internalID":"5286010001","localizations":[{"description":"Your personal puzzle journal, notes, and deeper progress insights. One-time purchase.","displayName":"Rebuzzle Plus","locale":"en_US"}],"productID":"com.byronwade.rebuzzle.plus","referenceName":"Rebuzzle Plus","type":"NonConsumable"}],
+  "settings" : {"_failTransactionsEnabled":false,"_locale":"en_US","_storefront":"USA","_storeKitErrors":[]},
+  "subscriptionGroups" : [],
+  "version" : {"major":3,"minor":0}
+}

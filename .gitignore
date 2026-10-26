@@ -65,3 +65,10 @@ artifacts/puzzle-training/
 # Python training tools
 __pycache__/
 *.pyc
+
+# Native build products and local code index
+.codegraph/
+apps/ios/Core/.build/
+apps/ios/**/xcuserdata/
+!apps/ios/Release/
+!apps/ios/Release/**

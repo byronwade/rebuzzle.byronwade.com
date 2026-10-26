@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLocalPuzzleDate, getNextLocalMidnight } from "@/lib/game/daily-lock";
 import { toPublicPuzzle } from "@/lib/game/public-puzzle";
+import { toPublicVisual } from "@/lib/game/public-visual";
 import { buildCacheControl } from "@/lib/http/cache-headers";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
@@ -30,6 +31,7 @@ export async function GET() {
           success: true,
           puzzle: toPublicPuzzle({
             id: raw.id,
+            visual: toPublicVisual(raw.visual),
             puzzle: raw.puzzle ?? raw.rebusPuzzle,
             rebusPuzzle: raw.rebusPuzzle,
             puzzleType: raw.puzzleType ?? "rebus",

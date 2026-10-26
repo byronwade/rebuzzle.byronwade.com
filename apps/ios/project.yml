@@ -1,0 +1,64 @@
+name: Rebuzzle
+options:
+  bundleIdPrefix: com.byronwade
+  deploymentTarget:
+    iOS: '18.0'
+packages:
+  RebuzzleCore:
+    path: Core
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    TARGETED_DEVICE_FAMILY: '1,2'
+    MARKETING_VERSION: '1.0.0'
+    CURRENT_PROJECT_VERSION: '1'
+    GENERATE_INFOPLIST_FILE: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEVELOPMENT_TEAM: ''
+targets:
+  Rebuzzle:
+    type: application
+    platform: iOS
+    sources: [Rebuzzle]
+    dependencies:
+      - package: RebuzzleCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.byronwade.rebuzzle
+        INFOPLIST_KEY_CFBundleDisplayName: Rebuzzle
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.word-games
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+    info:
+      path: Rebuzzle/Resources/Info.plist
+      properties:
+        UIAppFonts: [Inter.ttf]
+  RebuzzleTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: RebuzzleTests
+      - path: Rebuzzle.storekit
+        buildPhase: resources
+    dependencies:
+      - target: Rebuzzle
+  RebuzzleUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [RebuzzleUITests]
+    dependencies:
+      - target: Rebuzzle
+schemes:
+  Rebuzzle:
+    build:
+      targets:
+        Rebuzzle: all
+        RebuzzleTests: [test]
+        RebuzzleUITests: [test]
+    run:
+      storeKitConfiguration: Rebuzzle.storekit
+    test:
+      targets: [RebuzzleTests, RebuzzleUITests]

@@ -4,7 +4,8 @@
  * Utilities for verifying authentication in API routes
  */
 
-import { isSessionRevoked } from "./auth/session-revocation";
+import { db } from "@/db";
+import { issuedBeforePasswordChange } from "./auth/session-revocation";
 import { getAuthTokenFromRequest } from "./cookies";
 import { verifyToken } from "./jwt";
 
@@ -51,7 +52,9 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
     return null;
   }
 
-  if (await isSessionRevoked(payload.userId, payload.iat)) {
+  // Account deletion must take effect across instances without a cache grace period.
+  const user = await db.userOps.findById(payload.userId);
+  if (!user || issuedBeforePasswordChange(user, payload.iat)) {
     return null;
   }
 

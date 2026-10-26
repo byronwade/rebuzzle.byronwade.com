@@ -51,3 +51,9 @@ describe("issuedBeforePasswordChange", () => {
     expect(issuedBeforePasswordChange({}, changedSec - 1)).toBe(false);
   });
 });
+
+it("revokes deleted users after the short revocation cache expires", async () => {
+  clearSessionRevocationCache();
+  findById.mockResolvedValue(null);
+  expect(await isSessionRevoked("deleted", 1000)).toBe(true);
+});

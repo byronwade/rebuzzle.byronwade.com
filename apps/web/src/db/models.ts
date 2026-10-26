@@ -301,6 +301,11 @@ export interface PuzzleAttempt {
   userId: string;
   puzzleId: string;
   attemptedAnswer: string;
+  /** Optional server-authored feedback; legacy attempts omit these fields. */
+  similarity?: number;
+  reaction?: { tier: "correct" | "close" | "warm" | "cold" | "out"; line: string };
+  wordResults?: Array<{ word: string; correct: boolean; similarity: number }>;
+
   isCorrect: boolean;
   attemptedAt: Date;
   /** Lock key: UTC YYYY-MM-DD for daily, or `archive:{puzzleId}` for replays */
@@ -629,7 +634,8 @@ export interface NewPuzzle {
   rebusPuzzle?: string;
 }
 
-export interface NewPuzzleAttempt {
+export interface NewPuzzleAttempt
+  extends Pick<PuzzleAttempt, "similarity" | "reaction" | "wordResults"> {
   id: string;
   userId: string;
   puzzleId: string;
