@@ -21,10 +21,10 @@ Preserve puzzle geometry, actual progress, keyboard dismissal, stable accessibil
 - [x] Play: revise TodayView presentation, attempt controls, Eve and confirmed result. Keep all business behavior intact. Verify existing gameplay UI tests.
 - [x] Journey/theme: add shared display typography and tactile control treatment; create weekly trail and collection layout using existing progress. Verify build and progress tests.
 - [x] Inspect simulator ready/wrong/solved/Journey/dark/large-text; fix clipping. Run native tests and independent code review.
-- [ ] Increment build, archive, upload to existing TestFlight group, verify processing/distribution; record evidence and update PR.
+- [x] Increment build, archive, upload to existing TestFlight group, verify processing/distribution; record evidence and update PR.
 
 Ruling: Proceed directly with this direction under the user's explicit instruction to build without asking; no prototype selection gate. Continue existing feature checkout to preserve release history.
 
 Review: Independent native code review found no actionable defects. Verify level/title at accessibility XXXL in the screenshot pass. Study puzzle was added as a presentation-only sheet with a regression test for draft and guess preservation. Initial stage shadow was removed after visual inspection showed shadowing on clue glyphs.
 
-Verification: 16 core tests, 28 hosted unit tests and 13 UI tests pass. After screenshot review compacted the masthead and moved Eve into it; focused AX gameplay, Study preservation and full-button tab-bar clearance rechecks all pass. Final signed build 10 archive succeeds. Upload/distribution pending.
+Verification: 16 core tests, 28 hosted unit tests and 13 UI tests pass. After screenshot review compacted the masthead and moved Eve into it; focused AX gameplay, Study preservation and full-button tab-bar clearance rechecks all pass. Final signed build 10 archive succeeds. Upload succeeded; processed build10 is linked to the existing automatic internal TestFlight group. See docs/product/native-puzzle-club-release.md.
