@@ -116,3 +116,50 @@ it.each(["2026-10-24", "2026-10-26"])(
     expect(await response.json()).toMatchObject({ reloadDaily: true });
   }
 );
+
+it("restores persisted feedback without exposing unguessed words", async () => {
+  jest.mocked(db.puzzleAttemptOps.findByUserAndPuzzle).mockResolvedValue([
+    {
+      ...row,
+      similarity: 75,
+      reaction: { tier: "close", line: "You're circling it. One word off, maybe less." },
+      wordResults: [{ word: "TRY", correct: false, similarity: 25 }],
+    },
+  ] as never);
+  const body = await (await get()).json();
+  expect(body.attempts[0]).toMatchObject({
+    similarity: 75,
+    reaction: { tier: "close", line: "You're circling it. One word off, maybe less." },
+    wordResults: [{ word: "TRY", correct: false, similarity: 25 }],
+  });
+  expect(body.answer).toBeUndefined();
+});
+it("omits malformed legacy feedback and unsubmitted answer tokens", async () => {
+  jest.mocked(db.puzzleAttemptOps.findByUserAndPuzzle).mockResolvedValue([
+    {
+      ...row,
+      similarity: 150,
+      reaction: { tier: "close", line: "secret" },
+      wordResults: [{ word: "SECRET", correct: true, similarity: 100 }],
+    },
+  ] as never);
+  const body = await (await get()).json();
+  expect(body.attempts).toEqual([{ guess: "try", correct: false, attemptNumber: 1 }]);
+  expect(JSON.stringify(body)).not.toContain("secret");
+});
+
+it("does not restore arbitrary reaction text even with a valid score", async () => {
+  jest.mocked(db.puzzleAttemptOps.findByUserAndPuzzle).mockResolvedValue([
+    {
+      ...row,
+      similarity: 75,
+      reaction: { tier: "close", line: "secret" },
+      wordResults: [{ word: "TRY", correct: false, similarity: 25, answer: "secret" }],
+    },
+  ] as never);
+  const body = await (await get()).json();
+  expect(body.attempts[0].similarity).toBe(75);
+  expect(body.attempts[0].reaction).toBeUndefined();
+  expect(body.attempts[0].wordResults).toEqual([{ word: "TRY", correct: false, similarity: 25 }]);
+  expect(JSON.stringify(body)).not.toContain("secret");
+});

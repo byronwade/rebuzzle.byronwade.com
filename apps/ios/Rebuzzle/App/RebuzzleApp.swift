@@ -1,14 +1,28 @@
 import SwiftUI
 
 @main struct RebuzzleApp: App {
-    @State private var model = AppModelFactory.make()
-    @AppStorage("appearance") private var appearance = "system"
     var body: some Scene {
         WindowGroup {
-            RootView().environment(model)
-                .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
-                .tint(Theme.accent)
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+                // Hosted unit tests create their own models and StoreKit listeners.
+                Color.clear
+            } else {
+                ApplicationView()
+            }
+            #else
+            ApplicationView()
+            #endif
         }
+    }
+}
+private struct ApplicationView: View {
+    @State private var model = AppModelFactory.make()
+    @AppStorage("appearance") private var appearance = "system"
+    var body: some View {
+        RootView().environment(model)
+            .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
+            .tint(Theme.accent)
     }
 }
 struct RootView: View {

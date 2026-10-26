@@ -41,7 +41,9 @@ Native clients must send `X-Rebuzzle-Daily-Only: true` on both restore and guess
 
 ```ts
 {success:true,puzzleId:string,puzzleDate:string,
- attempts:Array<{guess:string,correct:boolean,attemptNumber:number}>,
+ attempts:Array<{guess:string,correct:boolean,attemptNumber:number,
+   similarity?:number,reaction?:{tier:string,line:string},
+   wordResults?:Array<{word:string,correct:boolean,similarity:number}>}>,
  hintsUsed:number,attemptsLeft:number,maxAttempts:number,
  gameOver:boolean,wasSuccessful:boolean,answer?:string,explanation?:string}
 ```
@@ -65,3 +67,9 @@ Deletion uses a MongoDB transaction (replica set/Atlas required) to remove the a
 ## Verification
 
 New coverage exercises solution privacy, user/puzzle/lock isolation, future puzzle denial, archive replay separation, guest Bearer persistence, deletion authentication/password/confirmation, deleted-account revocation, and public visual metadata removal. Run `pnpm --filter @rebuzzle/web test -- --runInBand` and `pnpm --filter @rebuzzle/web typecheck` from the repository root. Backend changes must be deployed before the new native restore/deletion routes are available on production.
+
+### Restorable guess feedback
+
+Each new guess stores optional `similarity`, `reaction`, and `wordResults` on the same atomic attempt record as correctness. Both the guess response and `session.attempts[]` expose these fields. `similarity` is a 0–100 validator score, not a probability. `reaction` is `{tier:"correct"|"close"|"warm"|"cold"|"out",line:string}` and the line comes from static server copy, never from the answer. `wordResults` is `Array<{word:string,correct:boolean,similarity:number}>`; words are uppercase tokens from the submitted guess only, with positional exact-match and spelling feedback. No unused solution words are included.
+
+`consecutiveCold` in a guess request is the number of immediately preceding `cold` reactions; the server clamps it to 0–10 and uses it only to vary reaction copy. Clients should display the returned reaction, not re-grade guesses. Legacy attempts can omit feedback; keep them neutral. Restoration omits malformed scores, non-submitted tokens, and unknown reaction copy rather than leaking arbitrary legacy metadata. Answers and explanations remain terminal-only.

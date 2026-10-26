@@ -80,7 +80,7 @@ struct SVGVectorView: UIViewRepresentable {
         let key = safe + color
         guard context.coordinator.last != key else { return }
         context.coordinator.last = key
-        view.loadHTMLString("<html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\"><style>html,body{margin:0;width:100%;height:100%;background:transparent;color:\(color)}svg{display:block;width:100%;height:100%;color:inherit}</style></head><body>\(safe)</body></html>", baseURL: nil)
+        view.loadHTMLString("<html lang='en'><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\"><style>html,body{margin:0;width:100%;height:100%;background:transparent;color:\(color)}svg{display:block;width:100%;height:100%;color:inherit}</style></head><body>\(safe)</body></html>", baseURL: nil)
     }
     func makeCoordinator() -> Coordinator { Coordinator() }
     final class Coordinator { var last = "" }
@@ -114,7 +114,12 @@ final class SVGGeometry: NSObject, XMLParserDelegate {
         accepted.append(allowed)
         guard allowed else { return }
         if Self.geometryTags.contains(elementName) { hasGeometry = true }
-        let attrs = attributeDict.filter { Self.attributes.contains($0.key) && !$0.value.contains("://") && !$0.value.localizedCaseInsensitiveContains("javascript") && (!$0.value.contains("url(") || $0.value.hasPrefix("url(#")) }
+        var attrs = attributeDict.filter { Self.attributes.contains($0.key) && !$0.value.contains("://") && !$0.value.localizedCaseInsensitiveContains("javascript") && (!$0.value.contains("url(") || $0.value.hasPrefix("url(#")) }
+        // The published ink-pictogram palette uses this fixed ink. Follow the native
+        // appearance for that ink only; preserve semantic colors, fills and transparency.
+        for paint in ["stroke", "fill"] where attrs[paint]?.lowercased() == "#1a1f1c" {
+            attrs[paint] = "currentColor"
+        }
         output += "<\(elementName)" + attrs.sorted { $0.key < $1.key }.map { " \($0.key)=\"\(Self.escape($0.value))\"" }.joined() + ">"
     }
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {

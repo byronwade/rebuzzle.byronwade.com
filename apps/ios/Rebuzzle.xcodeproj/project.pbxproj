@@ -20,6 +20,7 @@
 		337DCC35B945F5A5824E3CAD /* PlusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D915DE26C2DDCDAB6087A8 /* PlusView.swift */; };
 		64582E5D3376061BEB464AF3 /* PurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */; };
 		68F7EB05659BA3B7725673C0 /* Inter-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 81EC6F3B7EEA1B6424FCE082 /* Inter-LICENSE.txt */; };
+		6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */; };
 		795EA28E446ACA22A9CAA2D2 /* PurchaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B1C0F63409D81A96104531 /* PurchaseStore.swift */; };
 		8CCB749D5D325BFCC69EC63E /* VisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DD9980C84C32503F71017B /* VisualTests.swift */; };
 		9DE11D302674AF759A8E2FAA /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE425F112F0C6729727D564 /* PreviewData.swift */; };
@@ -53,6 +54,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectPurchaseTests.swift; sourceTree = "<group>"; };
 		08B7A7C9332B5A28EBCDB5C6 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		0D468C618B6DAD853A613DD3 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = Core; sourceTree = SOURCE_ROOT; };
 		116205D9538019F049FCA9CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -160,6 +162,7 @@
 		888B120FEFEA8C1006742284 /* RebuzzleTests */ = {
 			isa = PBXGroup;
 			children = (
+				04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */,
 				CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */,
 				3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */,
 				2DA288848438C453BD345991 /* SubmissionTests.swift */,
@@ -353,6 +356,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */,
 				64582E5D3376061BEB464AF3 /* PurchaseTests.swift in Sources */,
 				ED8FF5B3477B1363C51B0574 /* RuntimeTests.swift in Sources */,
 				332D4A22003F027D74734846 /* SubmissionTests.swift in Sources */,

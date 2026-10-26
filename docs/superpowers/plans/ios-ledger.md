@@ -10,3 +10,5 @@
 - UI fixtures replace the transport only in DEBUG; runtime model and actual views remain exercised. Release builds exclude fixture server and credentials. Four UI tests pass on iPhone16Pro/iOS18.2 and iPad Pro M5/iOS26.0, including largest accessibility text. Evidence listed in Release/Verification.md.
 - Unsigned generic iOS archive builds. No valid distribution signing identity is installed on this Mac. No real App Store product, upload, TestFlight validation, hosted CI result, live deletion or production deployment is claimed.
 - Release documents distinguish implemented source, local evidence, and outstanding Apple/production requirements. Keep this branch reviewable; no automatic merge or release.
+
+- Follow-up: added real server reaction/word-match feedback to native play and safe atomic persistence/session restore. Added core8 tests, StoreKit direct success/failure recovery/pending approval tests, canonical SVG ink adaptation and DEBUG-only unit host isolation. Initial PR CI and preview deployment passed; new commit evidence is in Release/Verification.md.

@@ -42,3 +42,20 @@ import Testing
     #expect(puzzle.clue == "DAY")
     #expect(puzzle.difficulty == 7)
 }
+@Test func serverFeedbackSurvivesSessionRoundTripWithoutEnteringShareText() throws {
+    let raw = #"{"success":true,"correct":false,"attemptsLeft":2,"maxAttempts":3,"gameOver":false,"attemptNumber":1,"similarity":74,"reaction":{"tier":"close","line":"Right neighbourhood, wrong door."},"wordResults":[{"word":"LIGHT","correct":true,"similarity":100},{"word":"HOME","correct":false,"similarity":60}]}"#
+    let response = try JSONDecoder().decode(GuessResponse.self, from: Data(raw.utf8))
+    var session = GameSession(puzzleId: "a", puzzleDate: "2026-10-25")
+    session.apply(response, guess: "light home")
+    let restored = try JSONDecoder().decode(GameSession.self, from: JSONEncoder().encode(session))
+    #expect(restored.attempts.first?.reaction?.tier == "close")
+    #expect(restored.attempts.first?.wordResults?.first?.word == "LIGHT")
+    #expect(restored.attempts.first?.wordResults?.first?.correct == true)
+    #expect(!restored.shareText.contains("LIGHT"))
+    #expect(restored.revealedAnswer == nil)
+}
+@Test func oldAttemptHasNoInventedFeedback() throws {
+    let guess = try JSONDecoder().decode(Guess.self, from: Data(#"{"guess":"old","correct":false,"attemptNumber":1}"#.utf8))
+    #expect(guess.reaction == nil)
+    #expect(guess.wordResults == nil)
+}

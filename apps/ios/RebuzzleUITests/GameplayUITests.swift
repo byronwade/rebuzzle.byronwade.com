@@ -17,6 +17,8 @@ import XCTest
         submit("sunshine")
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["lighthouse"].exists)
+        XCTAssertTrue(app.staticTexts["guessFeedback"].exists)
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].exists)
         capture("Today — wrong guess")
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))

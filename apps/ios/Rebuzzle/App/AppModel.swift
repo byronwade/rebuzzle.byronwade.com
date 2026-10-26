@@ -120,7 +120,7 @@ import RebuzzleCore
                 error = "Progress refreshed. Review your guesses before checking another answer."
                 return
             }
-            let result: GuessResponse = try await api.request("/api/puzzles/guess", method: "POST", body: ["puzzleId": daily.puzzle.id, "guess": guess, "hintsUsed": hintsShown, "timeSpentSeconds": max(0, Int(Date().timeIntervalSince(started)))])
+            let result: GuessResponse = try await api.request("/api/puzzles/guess", method: "POST", body: ["puzzleId": daily.puzzle.id, "guess": guess, "hintsUsed": hintsShown, "consecutiveCold": game?.attempts.reversed().prefix(while: { $0.reaction?.tier == "cold" }).count ?? 0, "timeSpentSeconds": max(0, Int(Date().timeIntervalSince(started)))])
             guard run == generation else { return }
             game?.apply(result, guess: guess)
             game?.hintsUsed = hintsShown

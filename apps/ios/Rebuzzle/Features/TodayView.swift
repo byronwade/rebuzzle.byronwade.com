@@ -41,6 +41,7 @@ struct TodayView: View {
                                 Image(systemName: guess.correct ? "checkmark.circle.fill" : "arrow.turn.down.right").foregroundStyle(guess.correct ? Theme.success : Theme.secondary)
                             }.font(Theme.font(15)).accessibilityElement(children: .combine)
                         }
+                        if let latest = model.game?.attempts.last { GuessFeedbackView(guess: latest) }
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Your answer").font(Theme.font(14, weight: .medium))
                             TextField("A word or phrase…", text: $model.draft, axis: .vertical)
@@ -174,6 +175,40 @@ struct HelpView: View {
                 Button("Let’s play") { dismiss() }.buttonStyle(CommitStyle())
             }.navigationTitle("How to play").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close", systemImage: "xmark") { dismiss() } } }
+        }
+    }
+}
+
+/// Displays only server feedback about submitted words; never reconstructs the hidden answer.
+struct GuessFeedbackView: View {
+    let guess: Guess
+    private var title: String {
+        switch guess.reaction?.tier {
+        case "close": "You’re close."
+        case "warm": "A promising direction."
+        case "cold": "Try another angle."
+        default: "Keep looking."
+        }
+    }
+    var body: some View {
+        if let reaction = guess.reaction {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title).font(Theme.font(18, weight: .medium)).accessibilityIdentifier("guessFeedback")
+                Text(reaction.line).font(Theme.font(15)).foregroundStyle(Theme.secondary)
+                if let words = guess.wordResults, !words.isEmpty {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], alignment: .leading, spacing: 8) {
+                        ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                            Label(word.word, systemImage: word.correct ? "checkmark.circle.fill" : "circle")
+                                .font(Theme.font(13, weight: .medium))
+                                .foregroundStyle(word.correct ? Theme.success : Theme.secondary)
+                                .padding(.vertical, 8).padding(.horizontal, 10)
+                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+                                .accessibilityLabel("\(word.word), \(word.correct ? "matched in this position" : "not matched in this position")")
+                        }
+                    }
+                    Text("Checks mark words in the right position.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                }
+            }.accessibilityElement(children: .contain)
         }
     }
 }

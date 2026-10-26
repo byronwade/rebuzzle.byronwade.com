@@ -8,6 +8,7 @@ import {
   getLocalPuzzleDate,
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
+import { restoreFeedback } from "@/lib/game/restore-feedback";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
 const headers = { "Cache-Control": "private, no-store" };
@@ -65,6 +66,7 @@ export async function GET(request: Request) {
           guess: row.attemptedAnswer,
           correct: row.isCorrect,
           attemptNumber: row.attemptNumber ?? index + 1,
+          ...restoreFeedback(row, maxAttempts),
         })),
         hintsUsed: Math.max(
           0,

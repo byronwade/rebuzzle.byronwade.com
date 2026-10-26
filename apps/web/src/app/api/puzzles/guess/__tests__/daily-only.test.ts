@@ -1,7 +1,7 @@
 jest.mock("@/db", () => ({
   db: {
     puzzleOps: { findById: jest.fn(), findByDate: jest.fn() },
-    puzzleAttemptOps: { getTodayGuessContext: jest.fn() },
+    puzzleAttemptOps: { getTodayGuessContext: jest.fn(), createAtomicDailyAttempt: jest.fn() },
   },
 }));
 jest.mock("@/lib/auth-middleware", () => ({
@@ -15,6 +15,7 @@ jest.mock("@/lib/middleware/rate-limit", () => ({
 }));
 jest.mock("@/lib/timezone", () => ({ resolveRequestTimeZone: async () => "UTC" }));
 
+import { validateAnswer } from "@/ai/services/answer-validation";
 import { db } from "@/db";
 import { POST } from "../route";
 
@@ -67,4 +68,37 @@ it("allows the current daily through to its normal lock", async () => {
   } as never);
   expect(await (await guess()).json()).toMatchObject({ isArchive: false, locked: true });
   expect(db.puzzleAttemptOps.getTodayGuessContext).toHaveBeenCalledWith("self", "2026-10-25");
+});
+
+it("atomically persists the same safe feedback returned for a nonfinal guess", async () => {
+  jest.mocked(db.puzzleOps.findById).mockResolvedValue({
+    id: "today",
+    answer: "secret",
+    publishedAt: new Date("2026-10-25"),
+    hints: [],
+    difficulty: 5,
+  } as never);
+  jest.mocked(db.puzzleAttemptOps.getTodayGuessContext).mockResolvedValue({
+    hasFinal: false,
+    guessCount: 0,
+    maxHintsUsed: 0,
+  } as never);
+  jest
+    .mocked(validateAnswer)
+    .mockResolvedValue({ isCorrect: false, confidence: 0.5, method: "test" } as never);
+  jest
+    .mocked(db.puzzleAttemptOps.createAtomicDailyAttempt)
+    .mockResolvedValue({ success: true } as never);
+  const response = await guess();
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  const persisted = jest.mocked(db.puzzleAttemptOps.createAtomicDailyAttempt).mock.calls[0]![2];
+  expect(persisted).toMatchObject({
+    similarity: 50,
+    reaction: body.reaction,
+    wordResults: body.wordResults,
+  });
+  expect(body.reaction.tier).toBe("warm");
+  expect(body.wordResults.map((word: { word: string }) => word.word)).toEqual(["HELLO"]);
+  expect(body.answer).toBeUndefined();
 });

@@ -40,6 +40,13 @@ private final class FixtureServer: @unchecked Sendable {
     private let lock = NSLock()
     private let nextPuzzleTime = ISO8601DateFormatter().string(from: Date().addingTimeInterval(86_400))
     private var game = GameSession(puzzleId: "fixture-lighthouse", puzzleDate: "2026-10-25")
+    private static var visual: [String: Any] {
+        ["mode": "composed", "layout": "row", "unicodeFallback": "💡 + 🏠", "layers": [
+            ["kind": "pictogram", "emojiFallback": "💡", "svg": ##"<svg viewBox="0 0 24 24" fill="none" stroke="#1a1f1c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg>"##],
+            ["kind": "operator", "symbol": "+"],
+            ["kind": "pictogram", "emojiFallback": "🏠", "svg": ##"<svg viewBox="0 0 24 24" fill="none" stroke="#1a1f1c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>"##]
+        ]]
+    }
     private let user: [String: Any] = ["id": "fixture-guest", "username": "Curious guest", "isGuest": true]
 
     func respond(to request: URLRequest) throws -> (Int, Data) {
@@ -48,7 +55,7 @@ private final class FixtureServer: @unchecked Sendable {
         let payload: [String: Any]
         switch request.url?.path {
         case "/api/puzzle/today":
-            payload = ["success": true, "puzzle": ["id": game.puzzleId, "puzzle": "💡 + 🏠", "puzzleType": "rebus", "difficulty": 5, "hints": ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."], "date": game.puzzleDate], "puzzleDate": game.puzzleDate, "nextPuzzleTime": nextPuzzleTime]
+            payload = ["success": true, "puzzle": ["id": game.puzzleId, "puzzle": "💡 + 🏠", "puzzleType": "rebus", "difficulty": 5, "visual": Self.visual, "hints": ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."], "date": game.puzzleDate], "puzzleDate": game.puzzleDate, "nextPuzzleTime": nextPuzzleTime]
         case "/api/auth/guest/lazy", "/api/auth/session":
             payload = ["success": true, "authenticated": true, "user": user, "token": "fixture-token"]
         case "/api/puzzle/session":
@@ -65,6 +72,9 @@ private final class FixtureServer: @unchecked Sendable {
                 let count = game.attempts.count + 1
                 let finished = correct || count == 3
                 var result: [String: Any] = ["success": true, "correct": correct, "attemptsLeft": 3 - count, "maxAttempts": 3, "gameOver": finished, "attemptNumber": count]
+                result["similarity"] = correct ? 100 : 20
+                result["reaction"] = ["tier": correct ? "correct" : finished ? "out" : "cold", "line": correct ? "You made the connection." : "A fresh angle might help."]
+                result["wordResults"] = [["word": guess.uppercased(), "correct": correct, "similarity": correct ? 100 : 20]]
                 if finished {
                     result["answer"] = "lighthouse"
                     result["explanation"] = "Light + house makes lighthouse: a beacon that helps ships find their way."

@@ -211,6 +211,20 @@ export async function POST(request: Request) {
               ? 5
               : Number(puzzle.difficulty) || 5;
 
+    const similarity = Math.round((validation.confidence ?? 0) * 100);
+    const consecutiveCold =
+      typeof body.consecutiveCold === "number" && body.consecutiveCold > 0
+        ? Math.min(Math.floor(body.consecutiveCold), 10)
+        : 0;
+
+    const reaction = buildGuessReaction({
+      correct: isCorrect,
+      similarity,
+      attemptsLeft,
+      guess,
+      consecutiveCold,
+    });
+
     const write = await db.puzzleAttemptOps.createAtomicDailyAttempt(
       user.userId,
       new Date(`${localDateKey}T00:00:00.000Z`),
@@ -219,6 +233,9 @@ export async function POST(request: Request) {
         userId: user.userId,
         puzzleId: puzzle.id,
         attemptedAnswer: guess,
+        similarity,
+        reaction,
+        wordResults,
         isCorrect,
         abandoned,
         isFinal,
@@ -408,25 +425,13 @@ export async function POST(request: Request) {
       });
     }
 
-    const similarity = Math.round((validation.confidence ?? 0) * 100);
-    const consecutiveCold =
-      typeof body.consecutiveCold === "number" && body.consecutiveCold > 0
-        ? Math.min(Math.floor(body.consecutiveCold), 10)
-        : 0;
-
     return NextResponse.json({
       success: true,
       correct: isCorrect,
       similarity,
       // Eve's instant read on the guess. Derived from the similarity score, so
       // the client learns "how close" without ever receiving the answer.
-      reaction: buildGuessReaction({
-        correct: isCorrect,
-        similarity,
-        attemptsLeft,
-        guess,
-        consecutiveCold,
-      }),
+      reaction,
       method: validation.method,
       attemptNumber,
       attemptsLeft,

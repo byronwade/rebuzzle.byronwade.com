@@ -67,6 +67,15 @@ public struct AuthResponse: Decodable, Sendable {
     public let user: Player?
     public let token: String?
 }
+public struct GuessReaction: Codable, Sendable {
+    public let tier: String
+    public let line: String
+}
+public struct GuessWordResult: Codable, Sendable {
+    public let word: String
+    public let correct: Bool
+    public let similarity: Double?
+}
 public struct GuessResponse: Decodable, Sendable {
     public let success: Bool
     public let correct: Bool
@@ -76,6 +85,9 @@ public struct GuessResponse: Decodable, Sendable {
     public let attemptNumber: Int
     public let answer: String?
     public let explanation: String?
+    public let reaction: GuessReaction?
+    public let similarity: Double?
+    public let wordResults: [GuessWordResult]?
     public let pointsEarned: Int?
     public let streak: Int?
 }

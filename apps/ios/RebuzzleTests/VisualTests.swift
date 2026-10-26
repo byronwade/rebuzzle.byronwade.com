@@ -20,3 +20,13 @@ final class VisualTests: XCTestCase {
         XCTAssertFalse(sanitized.contains("script"))
     }
 }
+
+extension VisualTests {
+    func testCanonicalPictogramInkFollowsThemeWithoutChangingSemanticColors() {
+        let svg = ##"<svg viewBox="0 0 24 24" stroke="#1a1f1c" fill="none"><path d="M0 0L24 24"/><circle cx="3" cy="3" r="2" fill="red"/></svg>"##
+        let safe = SVGGeometry.sanitize(svg)
+        XCTAssertTrue(safe.contains("stroke=\"currentColor\""))
+        XCTAssertTrue(safe.contains("fill=\"none\""))
+        XCTAssertTrue(safe.contains("fill=\"red\""))
+    }
+}
