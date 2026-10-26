@@ -4,8 +4,9 @@ import dynamic from "next/dynamic";
 import { type ReactNode, useEffect } from "react";
 import { clearDocumentScrollLock } from "@/lib/document-scroll-lock";
 import { cn } from "@/lib/utils";
-import { Footer } from "./Footer";
 import { GameProvider, useGameContext } from "./GameContext";
+import { GameRail } from "./game-rail-client";
+import { GameTabBar } from "./game-tab-bar-client";
 import Header from "./Header";
 import { SyncTimezoneCookie } from "./SyncTimezoneCookie";
 import { VisualViewportShell } from "./VisualViewportShell";
@@ -31,10 +32,10 @@ interface LayoutProps {
 /**
  * Main layout component wrapping all pages
  *
- * Provides consistent structure with:
- * - Header with navigation
- * - Main content area
- * - Four-column footer on scrolling pages
+ * Game chrome instead of site chrome, no header nav and no footer:
+ * - Desktop: the left game rail (modes, player HUD, small print)
+ * - Phones: a slim HUD strip on top and a tab bar at the bottom
+ * - In play: the status rail (difficulty, countdown, hearts) over the board
  *
  * Game pages pin to the Visual Viewport so iOS/Android keyboards don't
  * shove the puzzle off-screen.
@@ -74,34 +75,36 @@ function LayoutContent({
     clearDocumentScrollLock();
   }, [isGamePage]);
 
+  const isPlaying = Boolean(gameState?.isPlaying);
+
   const chrome = (
-    <>
-      {/* The skip link lives once, in the root layout, targeting #main-content. */}
-      <Header gameState={gameState} nextPlayTime={nextPlayTime ?? null} puzzleType={puzzleType} />
+    <div className="flex min-h-0 flex-1">
+      <GameRail isPlaying={isPlaying} nextPlayTime={nextPlayTime ?? null} />
 
-      <main
-        className={cn(
-          "relative z-10 flex min-h-0 flex-1 flex-col",
-          // `mx-auto` page wrappers opt out of flex stretch, so without this they
-          // size to their content: narrow pages shrink and wide content overflows.
-          "[&>*]:w-full",
-          isGamePage && "overflow-hidden",
-          className
-        )}
-        id="main-content"
-      >
-        {children}
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* The skip link lives once, in the root layout, targeting #main-content. */}
+        <Header gameState={gameState} nextPlayTime={nextPlayTime ?? null} puzzleType={puzzleType} />
 
-      {!isGamePage ? (
-        <div className="relative z-10">
-          <Footer />
-        </div>
-      ) : null}
+        <main
+          className={cn(
+            "relative z-10 flex min-h-0 flex-1 flex-col",
+            // `mx-auto` page wrappers opt out of flex stretch, so without this they
+            // size to their content: narrow pages shrink and wide content overflows.
+            "[&>*]:w-full",
+            isGamePage && "overflow-hidden",
+            className
+          )}
+          id="main-content"
+        >
+          {children}
+        </main>
+
+        <GameTabBar />
+      </div>
 
       <SyncTimezoneCookie />
       <DevToolsPanel />
-    </>
+    </div>
   );
 
   if (isGamePage) {

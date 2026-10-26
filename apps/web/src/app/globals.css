@@ -342,6 +342,13 @@
     scroll-margin-top: var(--header-height);
   }
 
+  /* Desktop has no header row (the game rail replaces it). */
+  @media (min-width: 1024px) {
+    :root {
+      --header-height: 0px;
+    }
+  }
+
   h1 {
     letter-spacing: -0.022em;
   }
@@ -428,6 +435,90 @@
   /* Polarity-flipped band — the brand's chief depth cue between sections. */
   .band-dark {
     @apply bg-foreground text-background;
+  }
+
+  /* ── Game HUD (header + footer) ─────────────────────────────────────────
+     One raised plate split into mono readouts by hairlines, like the stat
+     strip at the top of a game screen. No overflow clipping: the profile
+     link inside needs its focus ring and 44px touch area to escape. */
+  .hud-plate {
+    @apply inline-flex h-8 items-stretch rounded-lg border border-border bg-card font-mono text-xs;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .hud-segment {
+    @apply flex items-center gap-1.5 px-2.5;
+  }
+
+  .hud-segment + .hud-segment,
+  .hud-plate > * + * {
+    @apply border-border border-l;
+  }
+
+  .hud-label {
+    @apply text-subtle;
+  }
+
+  /* Level badge — a tiny inked tab, the one place the HUD shouts. */
+  .hud-level {
+    @apply rounded-[4px] bg-foreground px-1 py-0.5 font-semibold text-background text-xs leading-none;
+  }
+
+  .hud-xp {
+    @apply relative h-1.5 w-14 overflow-hidden rounded-full bg-inset;
+    box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.06);
+  }
+
+  /* Full-width bar scaled from the left, so a level-up animates on the compositor. */
+  .hud-xp-fill {
+    @apply absolute inset-0 origin-left rounded-full bg-brand;
+    transition: transform 600ms var(--ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hud-xp-fill {
+      transition: none;
+    }
+  }
+
+  /* Game rail (desktop): a column of big mode buttons, Duolingo-style. */
+  .game-rail {
+    @apply border-border border-r bg-background;
+  }
+
+  .rail-item {
+    @apply relative flex h-11 items-center gap-3 rounded-lg px-2 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground;
+  }
+
+  .rail-item-icon {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-md bg-inset text-foreground transition-colors;
+  }
+
+  .rail-item[aria-current="page"] {
+    @apply bg-card text-foreground;
+    box-shadow: var(--shadow-border), var(--shadow-sm);
+  }
+
+  .rail-item[aria-current="page"] .rail-item-icon {
+    @apply bg-brand text-brand-foreground;
+  }
+
+  /* Tab bar (phones): the bottom menu every mobile game has. */
+  .tab-bar {
+    @apply sticky bottom-0 z-40 border-border border-t bg-background;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .tab-bar-item {
+    @apply flex h-14 flex-col items-center justify-center gap-1 font-medium text-subtle text-xs transition-colors hover:text-foreground;
+  }
+
+  .tab-bar-item[aria-current="page"] {
+    @apply text-foreground;
+  }
+
+  .tab-bar-item[aria-current="page"] svg {
+    @apply text-brand;
   }
 
   /* Caption label — 12px, medium, sentence case. Thorbis has no all-caps kickers. */
@@ -1443,6 +1534,11 @@
     max-height 160ms var(--ease),
     opacity 120ms var(--ease),
     border-color 120ms var(--ease);
+}
+
+/* The tab bar gives its room to the keyboard while typing an answer. */
+.visual-viewport-shell.keyboard-open .tab-bar {
+  display: none;
 }
 
 .visual-viewport-shell.keyboard-open .play-chrome {
