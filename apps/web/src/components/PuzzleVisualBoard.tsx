@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 import { defaultPositionForIndex, hasLayerPosition } from "@/ai/puzzle-agent/visual/layer-position";
 import { planPlayerLockedRows } from "@/ai/puzzle-agent/visual/layout-plan";
 import {
@@ -18,6 +18,34 @@ import { INK_PICTOGRAM_PALETTE } from "@/ai/puzzle-agent/visual/style";
 import type { PuzzleVisual, PuzzleVisualLayer } from "@/lib/gameSettings";
 import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
 import { cn } from "@/lib/utils";
+
+/**
+ * Free-layout boards are placed in Studio at roughly this width. Pieces keep
+ * their pixel size above it and shrink with the board below it, so pieces
+ * placed close together don't overlap on phones.
+ */
+const FREE_LAYOUT_REFERENCE_WIDTH = 600;
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutEffect;
+
+function useFreeLayoutScale() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useIsomorphicLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const update = () => {
+      const width = node.clientWidth;
+      if (width > 0) setScale(Math.min(1, width / FREE_LAYOUT_REFERENCE_WIDTH));
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, scale };
+}
 
 interface PuzzleVisualBoardProps {
   visual: PuzzleVisual;
@@ -254,6 +282,7 @@ export function PuzzleVisualBoard({
   });
 
   const surface = resolvePuzzleSurface(visual);
+  const freeLayout = useFreeLayoutScale();
 
   if (!hasRenderable || visual.mode === "unicode") {
     return (
@@ -292,13 +321,14 @@ export function PuzzleVisualBoard({
   if (visual.layout === "free") {
     return (
       <div
+        ref={freeLayout.ref}
         className={cn("puzzle-visual-board relative w-full max-w-full", className)}
         data-layout-lock="free"
         data-surface={surface.mode}
         style={{
           ...boardStyle,
           aspectRatio: "16 / 10",
-          minHeight: Math.max(dims.tile * 2.2, 120),
+          minHeight: Math.max(dims.tile * 2.2 * freeLayout.scale, 120),
         }}
         role="img"
         aria-label={fallback || visual.unicodeFallback}
@@ -314,7 +344,10 @@ export function PuzzleVisualBoard({
               style={{
                 left: `${position.x}%`,
                 top: `${position.y}%`,
-                transform: "translate(-50%, -50%)",
+                transform:
+                  freeLayout.scale < 1
+                    ? `translate(-50%, -50%) scale(${freeLayout.scale})`
+                    : "translate(-50%, -50%)",
                 zIndex: index + 1,
               }}
             >
