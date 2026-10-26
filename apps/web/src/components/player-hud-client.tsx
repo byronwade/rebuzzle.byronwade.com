@@ -14,6 +14,8 @@ type PlayerHudProps = {
   nextPlayTime: Date | null;
   /** The status rail already shows the countdown while a puzzle is in play. */
   showCountdown: boolean;
+  /** Rail variant: full width, countdown always shown. */
+  expanded?: boolean;
 };
 
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -23,7 +25,7 @@ const numberFormat = new Intl.NumberFormat("en-US");
  * player with stats, then the next-puzzle countdown as its own segment. Segments
  * share one plate, split by hairlines, like a game HUD.
  */
-export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
+export function PlayerHud({ nextPlayTime, showCountdown, expanded = false }: PlayerHudProps) {
   const { userId } = useAuth();
   const pathname = usePathname();
   const stats = usePlayerHud(userId, pathname);
@@ -33,8 +35,12 @@ export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
     <div
       className={cn(
         "hud-segment",
-        // With stats in view the countdown is a wide-screen extra.
-        stats ? "hidden 2xl:flex" : "hidden sm:flex"
+        expanded
+          ? "flex-1"
+          : // With stats in view the countdown is a wide-screen extra.
+            stats
+            ? "hidden 2xl:flex"
+            : "hidden sm:flex"
       )}
     >
       <Clock aria-hidden className="size-3.5 text-subtle" />
@@ -46,7 +52,9 @@ export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
 
   if (!stats) {
     // The countdown is the plate's only segment here, and it hides on phones.
-    return countdown ? <div className="hud-plate max-sm:hidden">{countdown}</div> : null;
+    return countdown ? (
+      <div className={cn("hud-plate", expanded ? "w-full" : "max-sm:hidden")}>{countdown}</div>
+    ) : null;
   }
 
   const level = calculateLevel(stats.points);
@@ -55,13 +63,16 @@ export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
   const intoLevel = stats.points - (level - 1) * gameSettings.pointsPerLevel;
   const hasStreak = stats.streak > 0;
 
-  return (
-    <div className="hud-plate">
+  const plate = (
+    <div className={cn("hud-plate", expanded && "w-full")}>
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
             aria-label={`${stats.streak} day streak, level ${level}, ${numberFormat.format(stats.points)} points. Open profile.`}
-            className="flex items-stretch rounded-[7px] focus-ring transition-colors hover:bg-muted"
+            className={cn(
+              "flex items-stretch rounded-[7px] focus-ring transition-colors hover:bg-muted",
+              expanded && "flex-1"
+            )}
             href="/profile"
           >
             <span className="hud-segment" data-active={hasStreak || undefined}>
@@ -76,10 +87,10 @@ export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
                 {stats.streak}
               </span>
             </span>
-            <span className="hud-segment">
+            <span className={cn("hud-segment", expanded && "flex-1")}>
               <span className="hud-level">LV</span>
               <span className="text-foreground tabular-nums">{level}</span>
-              <span aria-hidden className="hud-xp hidden sm:block">
+              <span aria-hidden className={cn("hud-xp hidden sm:block", expanded && "flex-1")}>
                 <span
                   className="hud-xp-fill"
                   style={{ transform: `scaleX(${atMax ? 1 : progress / 100})` }}
@@ -95,7 +106,19 @@ export function PlayerHud({ nextPlayTime, showCountdown }: PlayerHudProps) {
             : `${numberFormat.format(intoLevel)} / ${numberFormat.format(gameSettings.pointsPerLevel)} XP to level ${level + 1}`}
         </TooltipContent>
       </Tooltip>
-      {countdown}
+      {expanded ? null : countdown}
     </div>
   );
+
+  // The rail is too narrow for one strip: the countdown gets its own plate below.
+  if (expanded && countdown) {
+    return (
+      <div className="flex flex-col gap-2">
+        {plate}
+        <div className="hud-plate w-full">{countdown}</div>
+      </div>
+    );
+  }
+
+  return plate;
 }

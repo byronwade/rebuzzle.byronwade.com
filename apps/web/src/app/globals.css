@@ -342,6 +342,13 @@
     scroll-margin-top: var(--header-height);
   }
 
+  /* Desktop has no header row (the game rail replaces it). */
+  @media (min-width: 1024px) {
+    :root {
+      --header-height: 0px;
+    }
+  }
+
   h1 {
     letter-spacing: -0.022em;
   }
@@ -474,38 +481,44 @@
     }
   }
 
-  /* Game-menu tab: icon over label weight, an underline "selected" bar. */
-  .menu-tab {
-    @apply relative inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground;
+  /* Game rail (desktop): a column of big mode buttons, Duolingo-style. */
+  .game-rail {
+    @apply border-border border-r bg-background;
   }
 
-  .menu-tab[aria-current="page"] {
+  .rail-item {
+    @apply relative flex h-11 items-center gap-3 rounded-lg px-2 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground;
+  }
+
+  .rail-item-icon {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-md bg-inset text-foreground transition-colors;
+  }
+
+  .rail-item[aria-current="page"] {
     @apply bg-card text-foreground;
-    box-shadow: var(--shadow-border);
+    box-shadow: var(--shadow-border), var(--shadow-sm);
   }
 
-  .menu-tab[aria-current="page"]::before {
-    content: "";
-    @apply absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-brand;
-  }
-
-  /* Big square menu button — mobile game menu and the footer's level select. */
-  .menu-tile {
-    @apply flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-foreground text-sm transition-colors hover:border-border-strong hover:bg-muted;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .menu-tile[aria-current="page"] {
-    @apply border-brand/50;
-    box-shadow: 0 0 0 1px hsl(var(--brand) / 0.5);
-  }
-
-  .menu-tile-icon {
-    @apply flex size-9 shrink-0 items-center justify-center rounded-md bg-inset text-foreground;
-  }
-
-  .menu-tile[aria-current="page"] .menu-tile-icon {
+  .rail-item[aria-current="page"] .rail-item-icon {
     @apply bg-brand text-brand-foreground;
+  }
+
+  /* Tab bar (phones): the bottom menu every mobile game has. */
+  .tab-bar {
+    @apply sticky bottom-0 z-40 border-border border-t bg-background;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .tab-bar-item {
+    @apply flex h-14 flex-col items-center justify-center gap-1 font-medium text-subtle text-xs transition-colors hover:text-foreground;
+  }
+
+  .tab-bar-item[aria-current="page"] {
+    @apply text-foreground;
+  }
+
+  .tab-bar-item[aria-current="page"] svg {
+    @apply text-brand;
   }
 
   /* Caption label — 12px, medium, sentence case. Thorbis has no all-caps kickers. */
@@ -1521,6 +1534,11 @@
     max-height 160ms var(--ease),
     opacity 120ms var(--ease),
     border-color 120ms var(--ease);
+}
+
+/* The tab bar gives its room to the keyboard while typing an answer. */
+.visual-viewport-shell.keyboard-open .tab-bar {
+  display: none;
 }
 
 .visual-viewport-shell.keyboard-open .play-chrome {

@@ -13,3 +13,15 @@ export function isMenuItemActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/** Secondary pages: reading, guides and legal. Live in the rail and the More menu, not a footer. */
+export const MORE_LINKS: { href: string; label: string; signedOutOnly?: boolean }[] = [
+  { href: "/blog", label: "Blog" },
+  { href: "/rebuzzle-vs-wordle", label: "Rebuzzle vs Wordle" },
+  { href: "/puzzles/rebus", label: "Rebus puzzles" },
+  { href: "/puzzles/logic-grid", label: "Logic grids" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+  { href: "/feed.xml", label: "RSS" },
+  { href: "https://github.com/sponsors/byronwade", label: "Sponsor" },
+];

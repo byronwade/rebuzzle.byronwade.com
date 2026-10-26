@@ -20,7 +20,8 @@ let snapshot: PlayerHudStats | null = null;
 let fetchedAt = 0;
 let inflight: Promise<void> | null = null;
 let ownerId: string | null = null;
-// Bumped on every owner change so a response for the previous player is dropped.
+// Bumped on every owner change and every publish, so a response that started
+// before either (another player's, or pre-solve numbers) is dropped.
 let generation = 0;
 const listeners = new Set<() => void>();
 
@@ -42,6 +43,9 @@ function getServerSnapshot() {
 }
 
 export function publishPlayerStats(stats: PlayerHudStats) {
+  // A read already in flight saw the pre-solve numbers; don't let it land.
+  generation += 1;
+  inflight = null;
   snapshot = { points: stats.points, streak: stats.streak };
   fetchedAt = Date.now();
   emit();
