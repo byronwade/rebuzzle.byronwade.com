@@ -11,6 +11,25 @@ import XCTest
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 15))
     }
 
+    func testStudyPuzzlePreservesDraftAndGuesses() {
+        launchFixture()
+        let field = app.descendants(matching: .any)["answerField"].firstMatch
+        for _ in 0..<5 where !field.isHittable { app.swipeUp() }
+        field.tap()
+        field.typeText("sun")
+        app.buttons["dismissAnswerKeyboard"].tap()
+        let study = app.buttons["studyPuzzle"]
+        for _ in 0..<5 where !study.isHittable { app.swipeDown() }
+        study.tap()
+        XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["lighthouse"].exists)
+        capture("Study puzzle")
+        app.buttons["closeStudyPuzzle"].tap()
+        XCTAssertEqual(field.value as? String, "sun")
+        XCTAssertTrue(app.staticTexts["3 guesses remaining"].exists)
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+    }
+
     func testDismissKeyboardPreservesUnsubmittedAnswer() {
         verifyKeyboardDismissal()
     }
@@ -46,6 +65,10 @@ import XCTest
     func testWrongGuessThenWin() {
         launchFixture()
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable, "The daily game should be ready to play without scrolling")
+        if app.tabBars.firstMatch.exists {
+            XCTAssertLessThanOrEqual(app.buttons["checkAnswer"].frame.maxY, app.tabBars.firstMatch.frame.minY,
+                                     "The complete answer button must clear the floating tab bar")
+        }
         capture("Today — ready")
         submit("sunshine")
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))

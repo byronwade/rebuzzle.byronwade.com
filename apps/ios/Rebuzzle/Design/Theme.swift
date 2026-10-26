@@ -14,6 +14,10 @@ enum Theme {
     static func font(_ size: CGFloat, weight: Font.Weight = .regular, relativeTo: Font.TextStyle = .body) -> Font {
         Font.custom("Inter-Regular", size: size, relativeTo: relativeTo).weight(weight)
     }
+    /// A distinct display voice for the game; utility copy stays Inter.
+    static func display(_ size: CGFloat) -> Font {
+        Font.custom("ArialRoundedMTBold", size: size, relativeTo: .largeTitle)
+    }
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
         Color(uiColor: UIColor { traits in
             let hex = traits.userInterfaceStyle == .dark ? dark : light
@@ -22,13 +26,17 @@ enum Theme {
     }
 }
 struct CommitStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(Theme.font(16, weight: .medium))
             .frame(maxWidth: .infinity, minHeight: 52)
             .foregroundStyle(Theme.canvas)
             .background(Theme.ink.opacity(configuration.isPressed ? 0.8 : 1), in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.secondary.opacity(0.25), lineWidth: 1))
-            .scaleEffect(configuration.isPressed ? 0.99 : 1)
+            .compositingGroup()
+            .shadow(color: Theme.ink.opacity(0.22), radius: 0, y: configuration.isPressed ? 0 : 3)
+            .offset(y: configuration.isPressed ? 2 : 0)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 struct FieldStyle: ViewModifier {

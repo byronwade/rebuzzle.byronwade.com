@@ -21,30 +21,7 @@ struct ProgressViewScreen: View {
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
                 }.foregroundStyle(Theme.ink).frame(minHeight: 56)
             }.accessibilityIdentifier("openJournal")
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Text("Little wins. Yours to keep.").font(Theme.font(20, weight: .medium))
-                    Spacer()
-                    Text("\(progress.badges.filter(\.earned).count)/4").font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                }
-                ForEach(progress.badges) { badge in
-                    HStack(alignment: .top, spacing: 16) {
-                        Image(systemName: badge.symbol).font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(badge.earned ? Theme.reward : Theme.secondary)
-                            .frame(width: 48, height: 48)
-                            .background(badge.earned ? Theme.reward.opacity(0.10) : Theme.field, in: RoundedRectangle(cornerRadius: 14))
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(badge.title).font(Theme.font(16, weight: .medium))
-                            Text(badge.detail).font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                            Text(badge.earned ? "Collected" : "\(badge.progress) of \(badge.goal)")
-                                .font(Theme.font(12, weight: .medium)).foregroundStyle(badge.earned ? Theme.reward : Theme.secondary)
-                        }
-                        Spacer(minLength: 0)
-                        if badge.earned { Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.reward).accessibilityHidden(true) }
-                    }.accessibilityElement(children: .combine)
-                }
-            }
+            badgeCollection
             VStack(alignment: .leading, spacing: 16) {
                 Text("Your story so far").font(Theme.font(20, weight: .medium))
                 let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(spacing: 16))
@@ -98,21 +75,34 @@ struct ProgressViewScreen: View {
         }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable { await model.load() }
     }
     private var weeklyChallenge: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(progress.weeklyDays >= 3 ? "Weekly challenge complete!" : "Your weekly aha challenge")
-                    .font(Theme.font(20, weight: .medium))
-                Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                Eyebrow(text: "THE WEEKLY TRAIL")
+                Spacer()
+                Text("\(min(progress.weeklyDays, 3))/3")
+                    .font(Theme.font(13, weight: .semibold)).monospacedDigit()
             }
+            Text(progress.weeklyDays >= 3 ? "Three days.\nLook at you." : "A little further\nevery day.")
+                .font(Theme.display(30)).tracking(-0.8).fixedSize(horizontal: false, vertical: true)
             Text("Finish a puzzle on three days this week.")
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
-            HStack(spacing: 12) {
+            HStack(spacing: 0) {
                 ForEach(0..<3) { day in
-                    Image(systemName: day < progress.weeklyDays ? "checkmark" : "sparkle")
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(day < progress.weeklyDays ? Theme.success : Theme.secondary.opacity(0.55))
-                        .frame(maxWidth: .infinity).frame(height: 56)
-                        .background(Theme.field, in: RoundedRectangle(cornerRadius: 10))
+                    let completed = day < progress.weeklyDays
+                    let current = day == progress.weeklyDays
+                    VStack(spacing: 8) {
+                        Image(systemName: completed ? "checkmark" : current ? "flag.fill" : "flag")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(completed ? Theme.panel : current ? Theme.accent : Theme.secondary)
+                            .frame(width: 56, height: 56)
+                            .background(completed ? Theme.success : Theme.field, in: Circle())
+                            .overlay(Circle().strokeBorder(current ? Theme.accent : .clear, lineWidth: 2))
+                        Text("Day \(day + 1)").font(Theme.font(12, weight: .medium))
+                    }.frame(maxWidth: .infinity)
+                    if day < 2 {
+                        Rectangle().fill(day < progress.weeklyDays - 1 ? Theme.success : Theme.secondary.opacity(0.25))
+                            .frame(maxWidth: 28).frame(height: 2).padding(.bottom, 24)
+                    }
                 }
             }.accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(min(progress.weeklyDays, 3)) of 3 days completed this week")
@@ -120,10 +110,49 @@ struct ProgressViewScreen: View {
                 Button { model.selectedTab = .play } label: { Label("Play today’s puzzle", systemImage: "arrow.right") }
                     .buttonStyle(CommitStyle())
             } else {
-                Text(progress.weeklyDays >= 3 ? "Nicely done. Every extra day is a bonus." : "Today counts. Another connection awaits tomorrow.")
+                Label(progress.weeklyDays >= 3 ? "Trail complete. Every extra day is a bonus." : "Today counts. See you at the next stop.", systemImage: "checkmark.circle")
+                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }.padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+    }
+    private var badgeCollection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("The trophy shelf").font(Theme.display(24))
+                Spacer()
+                Text("\(progress.badges.filter(\.earned).count)/4")
                     .font(Theme.font(13)).foregroundStyle(Theme.secondary)
             }
-        }.padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 12) {
+                ForEach(progress.badges) { badge in
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: badge.symbol)
+                                .font(.system(size: 28, weight: .medium))
+                                .foregroundStyle(badge.earned ? Theme.reward : Theme.secondary)
+                                .frame(height: 40).accessibilityHidden(true)
+                            Spacer()
+                            Image(systemName: badge.earned ? "checkmark.seal.fill" : "lock")
+                                .font(.system(size: 12)).foregroundStyle(badge.earned ? Theme.reward : Theme.secondary)
+                                .accessibilityHidden(true)
+                        }
+                        Text(badge.title).font(Theme.font(16, weight: .semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(badge.detail).font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Text(badge.earned ? "Collected" : "\(badge.progress) of \(badge.goal)")
+                            .font(Theme.font(12, weight: .semibold))
+                            .foregroundStyle(badge.earned ? Theme.reward : Theme.secondary)
+                        ProgressView(value: Double(min(badge.progress, badge.goal)), total: Double(max(1, badge.goal)))
+                            .tint(badge.earned ? Theme.reward : Theme.secondary).accessibilityHidden(true)
+                    }.frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 0 : 185, alignment: .leading)
+                        .padding(16).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                        .accessibilityElement(children: .combine)
+                }
+            }
+        }
     }
     private func metric(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {

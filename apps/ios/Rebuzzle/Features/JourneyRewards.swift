@@ -5,31 +5,40 @@ struct JourneyLevelView: View {
     let progress: JourneyProgress
     @Environment(\.dynamicTypeSize) private var typeSize
     var body: some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(spacing: 24))
-        layout {
-            if typeSize.isAccessibilitySize {
-                Text("Level \(progress.level)")
-                    .font(Theme.font(20, weight: .medium, relativeTo: .title3))
-                    .foregroundStyle(Theme.accent)
-                    .accessibilityIdentifier("journeyLevel")
-            } else {
-            ZStack {
-                Circle().stroke(Theme.field, lineWidth: 8)
-                Circle().trim(from: 0, to: CGFloat(progress.levelXP) / 300)
-                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 8, lineCap: .round)).rotationEffect(.degrees(-90))
-                VStack(spacing: 2) {
-                    Text("LEVEL").font(Theme.font(10, weight: .semibold)).tracking(1)
-                    Text("\(progress.level)").font(Theme.font(36, weight: .semibold)).monospacedDigit()
+        VStack(alignment: .leading, spacing: 18) {
+            Eyebrow(text: "YOUR SOLVER’S CLUB")
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("\(progress.level)")
+                    .font(Theme.display(typeSize.isAccessibilitySize ? 48 : 72)).monospacedDigit()
+                    .foregroundStyle(Theme.accent).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Level \(progress.level)").font(Theme.font(13, weight: .semibold))
+                        .accessibilityIdentifier("journeyLevel")
+                    Text(progress.title).font(Theme.display(26)).fixedSize(horizontal: false, vertical: true)
                 }
-            }.frame(width: 112, height: 112).accessibilityElement(children: .ignore).accessibilityLabel("Level \(progress.level)")
             }
-            VStack(alignment: .leading, spacing: 8) {
-                Text(progress.title).font(Theme.font(26, weight: .semibold, relativeTo: .title)).tracking(-0.5)
-                Text("\(progress.totalXP) XP earned").font(Theme.font(15, weight: .medium)).accessibilityIdentifier("journeyXP")
-                Text("\(300 - progress.levelXP) XP to your next level")
-                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+            ProgressView(value: Double(progress.levelXP), total: 300)
+                .tint(Theme.accent)
+                .accessibilityLabel("Level progress")
+                .accessibilityValue("\(progress.levelXP) of 300 XP")
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    xpLabel
+                    Spacer(minLength: 12)
+                    nextLevelLabel
+                }
+                VStack(alignment: .leading, spacing: 6) { xpLabel; nextLevelLabel }
             }
         }.padding(.vertical, 8)
+    }
+    private var xpLabel: some View {
+        Text("\(progress.totalXP) XP earned").font(Theme.font(14, weight: .semibold))
+            .accessibilityIdentifier("journeyXP")
+    }
+    private var nextLevelLabel: some View {
+        Text("\(300 - progress.levelXP) to level \(progress.level + 1)")
+            .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+
     }
 }
 

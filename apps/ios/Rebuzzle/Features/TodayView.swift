@@ -5,48 +5,70 @@ struct TodayView: View {
     @Environment(AppModel.self) private var model
     @AppStorage("haptics") private var haptics = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var help = false
+    @State private var study: PuzzleStudy?
+    @State private var hintFeedback = 0
     @FocusState private var answerFocused: Bool
     var body: some View {
         @Bindable var model = model
         ScrollViewReader { scroll in
         Page {
             if let daily = model.daily {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Eyebrow(text: "Daily challenge · " + dateLabel)
-                        Text(daily.puzzle.typeName).font(Theme.font(20, weight: .semibold, relativeTo: .title3))
+                VStack(alignment: .leading, spacing: 6) {
+                    let masthead = typeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                        : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+                    masthead {
+                        Text("Make it click.")
+                            .font(Theme.display(42)).tracking(-1.5)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                        EveAvatar(celebrating: model.game?.wasSuccessful == true)
+                            .accessibilityLabel("Eve, your AI puzzle author")
                     }
-                    Spacer(minLength: 8)
-                    Text("\(daily.puzzle.difficulty)/10")
-                        .font(Theme.font(12, weight: .medium)).monospacedDigit()
-                        .padding(.horizontal, 10).padding(.vertical, 8)
-                        .background(Theme.field, in: RoundedRectangle(cornerRadius: 8))
-                        .accessibilityLabel("Difficulty \(daily.puzzle.difficulty) out of 10")
+                    Text("Daily puzzle · " + dateLabel)
+                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
                 }
                 .id("dailyHeader")
                 if model.game?.gameOver == true {
                     ResultView()
                     conversation
                 } else {
-                    VStack(spacing: 12) {
-                        PuzzleBoard(puzzle: daily.puzzle)
-                        Text("Small puzzle. Big aha.")
-                            .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    VStack(spacing: 0) {
+                        let stageHeader = typeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+                        stageHeader {
+                            Text(daily.puzzle.typeName)
+                                .font(Theme.font(13, weight: .semibold))
+                            if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
+                            Text("LEVEL \(daily.puzzle.difficulty) / 10")
+                                .font(Theme.font(11, weight: .medium)).monospacedDigit()
+                                .foregroundStyle(Theme.secondary)
+                                .accessibilityLabel("Difficulty \(daily.puzzle.difficulty) out of 10")
+                            Button {
+                                answerFocused = false
+                                study = PuzzleStudy(puzzle: daily.puzzle)
+                            } label: {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain).foregroundStyle(Theme.accent)
+                            .accessibilityLabel("Study puzzle")
+                            .accessibilityIdentifier("studyPuzzle")
+                        }.padding(.horizontal, 16).padding(.vertical, 2)
+                        Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
+                        // Keep every clue and its internal geometry untouched.
+                        PuzzleBoard(puzzle: daily.puzzle).padding(16)
                     }
-                    .padding(16)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.secondary.opacity(0.14), lineWidth: 1))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
-                        if model.game?.attempts.isEmpty != false {
-                            HStack(spacing: 8) {
-                                EveAvatar()
-                                Text("Three guesses. Eve’s in your corner.")
-                                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                            }
-                        }
-                        conversation
+                        if model.game?.attempts.isEmpty == false { conversation }
                         VStack(alignment: .leading, spacing: 12) {
                             TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .vertical)
                                 .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -76,7 +98,11 @@ struct TodayView: View {
                                 }
                             }.padding(.vertical, 8)
                         }
-                        Button { model.revealHint() } label: {
+                        Button {
+                            let previous = model.hintsShown
+                            model.revealHint()
+                            if model.hintsShown > previous { hintFeedback += 1 }
+                        } label: {
                             HStack { Image(systemName: "lightbulb"); Text(model.hintsShown < daily.puzzle.hints.count ? "A little nudge" : "All hints revealed"); Spacer(); Text("\(max(0, daily.puzzle.hints.count - model.hintsShown)) left").foregroundStyle(Theme.secondary) }
                                 .font(Theme.font(14)).frame(minHeight: 44).contentShape(Rectangle())
                         }.foregroundStyle(Theme.ink).disabled(!model.sessionReady || model.hintsShown >= daily.puzzle.hints.count)
@@ -112,8 +138,16 @@ struct TodayView: View {
             }
         }
         .sheet(isPresented: $help) { HelpView() }
+        .sheet(item: $study) { selection in
+            PuzzleStudyView(puzzle: selection.puzzle)
+        }
         .refreshable { await model.load() }
         .sensoryFeedback(.success, trigger: model.game?.wasSuccessful == true) { _, new in new && haptics }
+        .sensoryFeedback(.selection, trigger: hintFeedback) { _, _ in haptics }
+        .sensoryFeedback(.impact(weight: .light), trigger: model.game?.attempts.count) { old, new in
+            guard let old, let new else { return false }
+            return haptics && new > old && model.game?.attempts.last?.correct == false
+        }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
     }
     private var conversation: some View {
@@ -135,26 +169,73 @@ struct TodayView: View {
         return parsed.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
     private var attemptHeader: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 6) {
-                ForEach(0..<3) { index in
-                    let submitted = index < (model.game?.attempts.count ?? 0)
-                    let active = index == (model.game?.attempts.count ?? 0)
-                    Text(submitted ? "−" : "\(index + 1)")
-                        .font(Theme.font(13, weight: .semibold)).monospacedDigit()
-                        .frame(width: 32, height: 32)
-                        .foregroundStyle(active ? Theme.accent : Theme.secondary)
-                        .background(active ? Theme.panel : Theme.field, in: RoundedRectangle(cornerRadius: 6))
-                        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(active ? Theme.accent : Theme.secondary.opacity(0.12), lineWidth: active ? 1.5 : 1))
+        let attempts = model.game?.attempts ?? []
+        let maximum = model.game?.maxAttempts ?? 3
+        let remaining = model.game?.attemptsLeft ?? maximum
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+        return layout {
+            HStack(spacing: 8) {
+                ForEach(0..<maximum, id: \.self) { index in
+                    let submitted = index < attempts.count
+                    let active = index == attempts.count
+                    ZStack {
+                        Circle().fill(active ? Theme.accent : Theme.field)
+                        Circle().strokeBorder(active ? Theme.accent : Theme.secondary.opacity(0.25), lineWidth: 1)
+                        if submitted {
+                            Image(systemName: attempts[index].correct ? "checkmark" : "minus")
+                                .font(.system(size: 15, weight: .bold))
+                        } else {
+                            Text("\(index + 1)").font(Theme.display(18)).monospacedDigit()
+                        }
+                    }
+                    .foregroundStyle(active ? Color.white : Theme.secondary)
+                    .frame(width: 40, height: 40)
+                    .shadow(color: active ? Theme.accent.opacity(0.20) : .clear, radius: 0, x: 0, y: 3)
                 }
             }.accessibilityHidden(true)
-            Spacer()
-            let remaining = model.game?.attemptsLeft ?? 3
-            Text("\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
-                .font(Theme.font(13, weight: .medium)).foregroundStyle(Theme.secondary)
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+            VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 3) {
+                Text("Your move").font(Theme.font(14, weight: .semibold))
+                Text("\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
+                    .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+            }
         }
     }
 }
+private struct PuzzleStudy: Identifiable {
+    let id = UUID()
+    let puzzle: Puzzle
+}
+
+private struct PuzzleStudyView: View {
+    @Environment(\.dismiss) private var dismiss
+    let puzzle: Puzzle
+
+    var body: some View {
+        NavigationStack {
+            Page {
+                Text("Take your time. Your guesses stay here.")
+                    .font(Theme.font(16)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                PuzzleBoard(puzzle: puzzle)
+                    .padding(16)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
+            }
+            .navigationTitle("Study puzzle")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close", systemImage: "xmark") { dismiss() }
+                        .accessibilityIdentifier("closeStudyPuzzle")
+                }
+            }
+        }
+    }
+}
+
 struct PuzzleBoard: View {
     let clue: String
     let visual: PuzzleVisual?
@@ -179,10 +260,15 @@ struct ResultView: View {
         if let game = model.game {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 16) {
-                    Label(game.wasSuccessful == true ? "You found it." : "Here’s the connection.", systemImage: game.wasSuccessful == true ? "checkmark.circle.fill" : "sparkle")
-                        .font(Theme.font(17, weight: .medium)).foregroundStyle(game.wasSuccessful == true ? Theme.success : Theme.secondary)
+                    Text(game.wasSuccessful == true ? "Aha!" : "The reveal.")
+                        .font(Theme.display(game.wasSuccessful == true ? 80 : 48)).tracking(-2)
+                        .foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Label(game.wasSuccessful == true ? "You found it." : "Here’s the connection.", systemImage: game.wasSuccessful == true ? "checkmark.seal.fill" : "eye")
+                        .font(Theme.font(14, weight: .medium)).foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.secondary)
                     Text(game.revealedAnswer ?? "Puzzle complete")
-                        .font(Theme.font(34, weight: .semibold, relativeTo: .largeTitle)).tracking(-0.8).textSelection(.enabled)
+                        .font(Theme.display(32)).tracking(-0.8).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
                         ForEach(0..<game.maxAttempts, id: \.self) { index in
                             let guess = game.attempts.first { $0.attemptNumber == index + 1 }
@@ -199,7 +285,8 @@ struct ResultView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
+                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
                 JourneyRewards(game: game)
                 let metrics = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(spacing: 32))
                 metrics {
@@ -282,14 +369,13 @@ struct GuessTurnView: View {
                     .background(Theme.field, in: RoundedRectangle(cornerRadius: 16))
             }.frame(maxWidth: .infinity, alignment: .trailing).padding(.leading, 28)
             HStack(alignment: .top, spacing: 10) {
-                EveAvatar().accessibilityHidden(true)
+                EveAvatar(celebrating: guess.correct).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 6) {
-                        Text("Eve").font(Theme.font(13, weight: .semibold))
-                        Text("· AI puzzle author").font(Theme.font(12)).foregroundStyle(Theme.secondary)
-                    }
+                    Text("Eve · AI puzzle author")
+                        .font(Theme.font(12, weight: .medium)).foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(title).font(Theme.font(17, weight: .medium))
+                        Text(title).font(Theme.display(20))
                             .accessibilityIdentifier(latest ? "guessFeedback" : "guessFeedback-\(guess.id)")
                         if let reaction = guess.reaction {
                             Text(reaction.line).font(Theme.font(15)).foregroundStyle(Theme.secondary)
@@ -327,10 +413,14 @@ struct GuessTurnView: View {
 }
 
 struct EveAvatar: View {
+    var celebrating = false
     var body: some View {
-        Image(systemName: "sparkle").font(.system(size: 14, weight: .medium))
-            .foregroundStyle(Theme.accent).frame(width: 28, height: 28)
-            .background(Theme.accent.opacity(0.10), in: Circle())
+        Image(systemName: "face.smiling.inverse")
+            .font(.system(size: 30, weight: .regular))
+            .foregroundStyle(celebrating ? Theme.reward : Theme.accent)
+            .frame(width: 38, height: 38)
+            .background(celebrating ? Theme.reward.opacity(0.12) : Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+            .rotationEffect(.degrees(celebrating ? -8 : 0))
             .accessibilityLabel("Eve")
     }
 }
