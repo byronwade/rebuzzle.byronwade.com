@@ -15,7 +15,7 @@ import {
 import { resolveCuratedPictogram } from "./visual/curated-pictograms";
 import { INK_PICTOGRAM_STYLE_ID } from "./visual/style";
 
-export const RESERVE_PUZZLE_CORPUS_VERSION = "catalog-reserve-v1";
+export const RESERVE_PUZZLE_CORPUS_VERSION = "catalog-reserve-v2";
 
 export type ReservePuzzle = {
   id: string;
@@ -50,6 +50,7 @@ type ReserveDefinition = {
   techniqueId?: TechniqueId;
   layout?: PuzzleVisual["layout"];
   difficulty?: number;
+  hints?: ReservePuzzle["hints"];
 };
 
 function pictogram(concept: string, emojiFallback: string): VisualLayer {
@@ -99,17 +100,19 @@ function define(input: ReserveDefinition): ReservePuzzle {
     difficultyLevel: isPositional ? "Difficult" : "Hard",
     explanation: `${input.parts} gives “${input.answer}.”`,
     category: input.category ?? "compound_words",
-    hints: isPositional
-      ? [
-          "The placement of the clues matters.",
-          "Read the board by position, not as a sentence.",
-          "Turn the spatial relationship into a familiar phrase.",
-        ]
-      : [
-          "Read each clue from left to right.",
-          "Name each picture or printed word plainly.",
-          "Join the parts into one familiar word or phrase.",
-        ],
+    hints:
+      input.hints ??
+      (isPositional
+        ? [
+            "The placement of the clues matters.",
+            "Read the board by position, not as a sentence.",
+            "Turn the spatial relationship into a familiar phrase.",
+          ]
+        : [
+            "Read each clue from left to right.",
+            "Name each picture or printed word plainly.",
+            "Join the parts into one familiar word or phrase.",
+          ]),
     techniqueId,
     visual,
   };
@@ -606,6 +609,249 @@ export const RESERVE_PUZZLES: readonly ReservePuzzle[] = [
     techniqueId: "spatial_preposition_play",
     layout: "stack",
     difficulty: 5,
+  }),
+  // Replenishment v2: explicit picture-word compounds, using only reviewed catalog assets.
+  define({
+    id: "reserve:raincoat",
+    answer: "raincoat",
+    parts: "Rain plus coat",
+    layers: [pictogram("rain", "🌧️"), plus(), text("COAT")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Something you wear.",
+      "It keeps wet weather off your clothes.",
+    ],
+  }),
+  define({
+    id: "reserve:rainbow",
+    answer: "rainbow",
+    parts: "Rain plus bow",
+    layers: [pictogram("rain", "🌧️"), plus(), text("BOW")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Look to the sky after a shower.",
+      "Join the weather to the curved shape named on the right.",
+    ],
+  }),
+  define({
+    id: "reserve:rainwater",
+    answer: "rainwater",
+    parts: "Rain plus water",
+    layers: [pictogram("rain", "🌧️"), plus(), text("WATER")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Think about where the liquid came from.",
+      "The picture names the source; the word names what falls.",
+    ],
+  }),
+  define({
+    id: "reserve:snowman",
+    answer: "snowman",
+    parts: "Snow plus man",
+    layers: [pictogram("snowflake", "❄️"), plus(), text("MAN")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A figure you build outdoors.",
+      "The picture tells you what this person-shaped figure is made of.",
+    ],
+  }),
+  define({
+    id: "reserve:snowshoe",
+    answer: "snowshoe",
+    parts: "Snow plus shoe",
+    layers: [pictogram("snowflake", "❄️"), plus(), text("SHOE")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Something worn on your feet.",
+      "This winter footwear spreads your weight over a soft surface.",
+    ],
+  }),
+  define({
+    id: "reserve:snowstorm",
+    answer: "snowstorm",
+    parts: "Snow plus storm",
+    layers: [pictogram("snowflake", "❄️"), plus(), text("STORM")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Think of a winter weather event.",
+      "The picture identifies what is falling during the event on the right.",
+    ],
+  }),
+  define({
+    id: "reserve:firewood",
+    answer: "firewood",
+    parts: "Fire plus wood",
+    layers: [pictogram("fire", "🔥"), plus(), text("WOOD")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Something gathered for a cold evening.",
+      "The material on the right fuels the flames on the left.",
+    ],
+  }),
+  define({
+    id: "reserve:fireplace",
+    answer: "fireplace",
+    parts: "Fire plus place",
+    layers: [pictogram("fire", "🔥"), plus(), text("PLACE")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A feature inside a house.",
+      "Join the flames to a word meaning a location.",
+    ],
+  }),
+  define({
+    id: "reserve:firefighter",
+    answer: "firefighter",
+    parts: "Fire plus fighter",
+    layers: [pictogram("fire", "🔥"), plus(), text("FIGHTER")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Think of an emergency worker.",
+      "The picture identifies what this person fights.",
+    ],
+  }),
+  define({
+    id: "reserve:firefly",
+    answer: "firefly",
+    parts: "Fire plus fly",
+    layers: [pictogram("fire", "🔥"), plus(), text("FLY")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A tiny creature seen after sunset.",
+      "Combine the flame with the insect named on the right.",
+    ],
+  }),
+  define({
+    id: "reserve:bookcase",
+    answer: "bookcase",
+    parts: "Book plus case",
+    layers: [pictogram("book", "📖"), plus(), text("CASE")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A piece of furniture.",
+      "The picture shows what is kept in this storage unit.",
+    ],
+  }),
+  define({
+    id: "reserve:bookshelf",
+    answer: "bookshelf",
+    parts: "Book plus shelf",
+    layers: [pictogram("book", "📖"), plus(), text("SHELF")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A place to put your reading material.",
+      "Join the item on the left to its supporting surface on the right.",
+    ],
+  }),
+  define({
+    id: "reserve:bookshop",
+    answer: "bookshop",
+    parts: "Book plus shop",
+    layers: [pictogram("book", "📖"), plus(), text("SHOP")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A place you can visit on a high street.",
+      "The picture shows what this shop sells.",
+    ],
+  }),
+  define({
+    id: "reserve:bookworm",
+    answer: "bookworm",
+    parts: "Book plus worm",
+    layers: [pictogram("book", "📖"), plus(), text("WORM")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A nickname for an eager reader.",
+      "Join the reading material to the small creature named on the right.",
+    ],
+  }),
+  define({
+    id: "reserve:earache",
+    answer: "earache",
+    parts: "Ear plus ache",
+    layers: [pictogram("ear", "👂"), plus(), text("ACHE")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Think of a discomfort.",
+      "The picture tells you where the pain is.",
+    ],
+  }),
+  define({
+    id: "reserve:earring",
+    answer: "earring",
+    parts: "Ear plus ring",
+    layers: [pictogram("ear", "👂"), plus(), text("RING")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A piece of jewelry.",
+      "The picture tells you where this ornament is worn.",
+    ],
+  }),
+  define({
+    id: "reserve:earplug",
+    answer: "earplug",
+    parts: "Ear plus plug",
+    layers: [pictogram("ear", "👂"), plus(), text("PLUG")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Something used for quiet.",
+      "Combine the body part with something that blocks an opening.",
+    ],
+  }),
+  define({
+    id: "reserve:eyelid",
+    answer: "eyelid",
+    parts: "Eye plus lid",
+    layers: [pictogram("eye", "👁️"), plus(), text("LID")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A small part of your face.",
+      "The word on the right means a cover for the thing on the left.",
+    ],
+  }),
+  define({
+    id: "reserve:eyelash",
+    answer: "eyelash",
+    parts: "Eye plus lash",
+    layers: [pictogram("eye", "👁️"), plus(), text("LASH")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A tiny feature around a body part.",
+      "Join the picture to the printed word to name one of the fine hairs there.",
+    ],
+  }),
+  define({
+    id: "reserve:eyebrow",
+    answer: "eyebrow",
+    parts: "Eye plus brow",
+    layers: [pictogram("eye", "👁️"), plus(), text("BROW")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "A feature just above a body part.",
+      "The picture identifies what sits immediately beneath this arch of hair.",
+    ],
+  }),
+  define({
+    id: "reserve:apple-pie",
+    answer: "apple pie",
+    parts: "Apple plus pie",
+    layers: [pictogram("apple", "🍎"), plus(), text("PIE")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Something you might order for dessert.",
+      "The picture identifies the fruit filling.",
+    ],
+  }),
+  define({
+    id: "reserve:cherry-pie",
+    answer: "cherry pie",
+    parts: "Cherry plus pie",
+    layers: [pictogram("cherry", "🍒"), plus(), text("PIE")],
+    hints: [
+      "Name the picture, then read the word beside it.",
+      "Think of a fruit dessert.",
+      "Name the red fruit, then add the baked dish on the right.",
+    ],
   }),
 ];
 
