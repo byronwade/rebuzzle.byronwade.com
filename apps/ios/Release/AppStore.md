@@ -9,7 +9,7 @@ Draft for the verified release build. Do not submit until Checklist.md gates are
 | Keywords | rebus,brain,teaser,logic,riddle,wordplay,daily,challenge,journal |
 | Primary category | Games |
 | Games subcategory | Word / Puzzle, subject to available Connect choices |
-| Support URL | https://rebuzzle.byronwade.com/feedback |
+| Support URL | https://rebuzzle.byronwade.com/how-it-works#feedback |
 | Privacy URL | https://rebuzzle.byronwade.com/privacy |
 | Marketing URL | https://rebuzzle.byronwade.com |
 

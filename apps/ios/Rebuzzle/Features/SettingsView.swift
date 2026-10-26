@@ -29,7 +29,7 @@ struct SettingsView: View {
                 NavigationLink("How to play") { HelpView() }
                 Link("Privacy policy", destination: URL(string: "https://rebuzzle.byronwade.com/privacy")!)
                 Link("Terms of use", destination: URL(string: "https://rebuzzle.byronwade.com/terms")!)
-                Link("Help and feedback", destination: URL(string: "https://rebuzzle.byronwade.com/feedback")!)
+                Link("Help and feedback", destination: URL(string: "https://rebuzzle.byronwade.com/how-it-works#feedback")!)
                 LabeledContent("Version", value: "1.0 (1)")
             }
             if model.player != nil {
