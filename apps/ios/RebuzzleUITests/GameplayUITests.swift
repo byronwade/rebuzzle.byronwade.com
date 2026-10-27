@@ -410,9 +410,11 @@ import StoreKitTest
         XCTAssertEqual(app.staticTexts["practiceAttemptsRemaining"].label, "2 left")
         XCTAssertFalse(app.staticTexts["lighthouse"].exists, "Wrong practice feedback must remain answer blind")
 
+        let checkPracticeAnswer = app.buttons["checkPracticeAnswer"]
+        XCTAssertTrue(waitForEnabled(checkPracticeAnswer), "Wait for the first practice response before entering another guess")
         answer.tap()
         answer.typeText("lighthouse")
-        app.buttons["checkPracticeAnswer"].tap()
+        checkPracticeAnswer.tap()
         XCTAssertTrue(app.staticTexts["practiceSolutionAnswer"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["practiceSolutionAnswer"].label, "lighthouse")
         XCTAssertFalse(app.descendants(matching: .any)["dailyStreakCard"].exists)
@@ -424,10 +426,15 @@ import StoreKitTest
         XCTAssertFalse(app.staticTexts["practiceSolutionAnswer"].exists)
         XCTAssertFalse(app.buttons["revealPracticeSolution"].exists, "The solution reveal becomes available only after the round ends")
         for (index, guess) in ["first try", "second try", "third try"].enumerated() {
+            if index > 0 {
+                XCTAssertTrue(waitForEnabled(checkPracticeAnswer), "Wait for the previous practice response before entering another guess")
+            }
             submitPractice(guess)
             if index < 2 {
                 XCTAssertEqual(app.staticTexts["practiceAttemptsRemaining"].label, "\(2 - index) left")
                 XCTAssertFalse(app.buttons["revealPracticeSolution"].exists)
+            } else {
+                XCTAssertTrue(app.buttons["revealPracticeSolution"].waitForExistence(timeout: 10))
             }
         }
         app.buttons["revealPracticeSolution"].tap()
@@ -629,6 +636,14 @@ import StoreKitTest
         let button = app.buttons["checkPracticeAnswer"]
         reveal(button)
         button.tap()
+    }
+
+    private func waitForEnabled(_ element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
+        let enabled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == true"),
+            object: element
+        )
+        return XCTWaiter.wait(for: [enabled], timeout: timeout) == .completed
     }
 
     private func selectTab(_ name: String) {
