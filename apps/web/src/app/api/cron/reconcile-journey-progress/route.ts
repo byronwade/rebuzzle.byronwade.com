@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { runJourneyProgressBackfill } from "@/db/daily-progress-backfill";
 import { authorizeCron } from "@/lib/cron/auth";
 
+export const maxDuration = 300;
+
 const PRIVATE_NO_STORE = { "Cache-Control": "private, no-store" };
 
 /** Daily safety net for durable progress-reconciliation markers. */

@@ -13,10 +13,5 @@
       "path": "/api/cron/reconcile-journey-progress",
       "schedule": "0 2 * * *"
     }
-  ],
-  "functions": {
-    "apps/web/src/app/api/cron/reconcile-journey-progress/route.ts": {
-      "maxDuration": 300
-    }
-  }
+  ]
 }

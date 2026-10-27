@@ -61,3 +61,19 @@ it("registers the daily reconciliation job in both Vercel manifests", () => {
   expect(rootConfig.crons).toContainEqual(expected);
   expect(webConfig.crons).toContainEqual(expected);
 });
+
+it("keeps the long timeout in the route handler", () => {
+  const route = require("../route") as { maxDuration?: number };
+
+  expect(route.maxDuration).toBe(300);
+});
+
+it("does not configure the nested app route with a repository-root function glob", () => {
+  const rootConfig = JSON.parse(
+    readFileSync(path.resolve(process.cwd(), "../../vercel.json"), "utf8")
+  );
+
+  expect(Object.keys(rootConfig.functions ?? {})).not.toContain(
+    "apps/web/src/app/api/cron/reconcile-journey-progress/route.ts"
+  );
+});
