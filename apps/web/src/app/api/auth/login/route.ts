@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         id: user.id,
         username: user.username,
         email: user.email,
+        isGuest: false,
       },
       token, // For desktop/mobile apps
       success: true,

@@ -50,8 +50,7 @@ export async function POST(request: Request) {
           const legacyGuestToken =
             payload.isGuest === undefined &&
             typeof payload.email === "string" &&
-            payload.email.endsWith(GUEST_EMAIL_SUFFIX) &&
-            (existingUser.isGuest || payload.email !== existingUser.email);
+            payload.email.endsWith(GUEST_EMAIL_SUFFIX);
           const isGuestToken = payload.isGuest === true || legacyGuestToken;
           if (isGuestToken && !existingUser.isGuest) {
             return NextResponse.json(
@@ -64,7 +63,9 @@ export async function POST(request: Request) {
           }
 
           const isGuest = Boolean(
-            existingUser.isGuest || existingUser.email?.endsWith("@guest.rebuzzle.local")
+            existingUser.isGuest ||
+              payload.isGuest === true ||
+              (payload.isGuest === undefined && existingUser.email?.endsWith(GUEST_EMAIL_SUFFIX))
           );
           return NextResponse.json({
             success: true,

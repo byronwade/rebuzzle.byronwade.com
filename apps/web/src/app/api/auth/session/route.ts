@@ -37,6 +37,7 @@ export async function GET(request: Request) {
           id: user.id,
           username: user.username,
           email: user.email,
+          isGuest: user.isGuest ?? authUser.isGuestToken,
           createdAt: user.createdAt,
           lastLogin: user.lastLogin,
         },

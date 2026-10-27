@@ -65,10 +65,7 @@ export async function getAuthenticatedUser(
 
   const legacyGuestEmail = payload.email.endsWith("@guest.rebuzzle.local");
   const isGuestToken =
-    payload.isGuest === true ||
-    (payload.isGuest === undefined &&
-      legacyGuestEmail &&
-      (user.isGuest || payload.email !== user.email));
+    payload.isGuest === true || (payload.isGuest === undefined && legacyGuestEmail);
   if (isGuestToken && !user.isGuest && !options.allowConvertedGuestToken) {
     return null;
   }

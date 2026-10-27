@@ -70,7 +70,7 @@ public struct Player: Codable, Sendable, Identifiable {
     public let username: String
     public let email: String?
     public let isGuest: Bool?
-    public var guest: Bool { isGuest == true || email?.hasSuffix("@guest.rebuzzle.local") == true }
+    public var guest: Bool { isGuest ?? (email?.hasSuffix("@guest.rebuzzle.local") ?? false) }
 }
 public struct AuthResponse: Decodable, Sendable {
     public let success: Bool?

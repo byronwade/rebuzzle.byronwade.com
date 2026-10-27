@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { trackUserSession } from "@/lib/analytics";
 import type { ServerSession } from "@/lib/auth/get-server-session";
+import { resolveGuestStatus } from "@/lib/auth/guest-status";
 import { setupSessionTracking } from "@/lib/session-tracker";
 
 interface AuthUser {
@@ -106,7 +107,7 @@ export function AuthProvider({
 
         if (data.authenticated && data.user) {
           setupSessionTracking(data.user.id);
-          const isGuestUser = data.user.email?.endsWith("@guest.rebuzzle.local") || false;
+          const isGuestUser = resolveGuestStatus(data.user.isGuest, data.user.email);
 
           setAuthState((prev) => ({
             ...prev,

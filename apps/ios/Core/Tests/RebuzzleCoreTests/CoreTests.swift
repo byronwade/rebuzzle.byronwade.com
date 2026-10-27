@@ -60,6 +60,16 @@ import Testing
     #expect(guess.wordResults == nil)
 }
 
+@Test func explicitMemberRoleOverridesLegacyGuestEmailSuffix() throws {
+    let player = try JSONDecoder().decode(Player.self, from: Data(#"{"id":"member","username":"Member","email":"member@guest.rebuzzle.local","isGuest":false}"#.utf8))
+    #expect(!player.guest)
+}
+
+@Test func legacyPlayerWithoutRoleStillRecognizesSyntheticGuestEmail() throws {
+    let player = try JSONDecoder().decode(Player.self, from: Data(#"{"id":"guest","username":"Guest","email":"guest@guest.rebuzzle.local"}"#.utf8))
+    #expect(player.guest)
+}
+
 @Test func journalPreservesComposedArtworkAndLegacyEntries() throws {
     let legacy = #"{"version":1,"entries":[{"puzzleID":"a","puzzleDate":"2026-10-25","puzzleType":"rebus","clue":"light house","answer":"lighthouse","explanation":"Combine the pictures","won":true,"attempts":1,"hintsUsed":0,"note":"A moment to keep"}]}"#
     let old = try JSONDecoder().decode(Journal.self, from: Data(legacy.utf8))

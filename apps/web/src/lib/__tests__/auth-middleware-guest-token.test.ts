@@ -53,6 +53,22 @@ it("rejects legacy guest tokens without an explicit guest claim after conversion
   await expect(getAuthenticatedUser(request())).resolves.toBeNull();
 });
 
+it("rejects a legacy guest token when conversion kept the same synthetic email", async () => {
+  const syntheticEmail = "guest-user@guest.rebuzzle.local";
+  jest.mocked(verifyToken).mockResolvedValue({
+    userId: "user-1",
+    username: "byron",
+    email: syntheticEmail,
+    iat: 100,
+  });
+  jest.mocked(db.userOps.findById).mockResolvedValue({
+    ...convertedUser,
+    email: syntheticEmail,
+  } as never);
+
+  await expect(getAuthenticatedUser(request())).resolves.toBeNull();
+});
+
 it("keeps a member token valid when the member uses the reserved guest-like email suffix", async () => {
   jest.mocked(verifyToken).mockResolvedValue({
     userId: "user-1",
