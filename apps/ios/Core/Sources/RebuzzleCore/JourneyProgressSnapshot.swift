@@ -23,7 +23,7 @@ public struct JourneyProgressEntry: Codable, Equatable, Sendable {
     public let attempts: Int
     public let hintCount: Int?
     public let completedAt: String
-    public let timeZone: String
+    public let timeZone: String?
 
     private enum CodingKeys: String, CodingKey {
         case puzzleDate
@@ -50,7 +50,13 @@ public struct JourneyProgressEntry: Codable, Equatable, Sendable {
         }
         hintCount = try container.decodeIfPresent(Int.self, forKey: .hintCount)
         completedAt = try container.decode(String.self, forKey: .completedAt)
-        timeZone = try container.decode(String.self, forKey: .timeZone)
+        guard container.contains(.timeZone) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.timeZone,
+                .init(codingPath: container.codingPath, debugDescription: "Missing required nullable timeZone")
+            )
+        }
+        timeZone = try container.decodeIfPresent(String.self, forKey: .timeZone)
 
         let validAttemptCount: Bool
         switch outcome {
@@ -61,7 +67,8 @@ public struct JourneyProgressEntry: Codable, Equatable, Sendable {
         }
         guard validPuzzleDate(puzzleDate), !puzzleId.isEmpty, validAttemptCount,
               hintCount.map({ $0 >= 0 }) ?? true,
-              isISO8601Timestamp(completedAt), TimeZone(identifier: timeZone) != nil else {
+              isISO8601Timestamp(completedAt),
+              timeZone.map({ TimeZone(identifier: $0) != nil }) ?? true else {
             throw invalidPayload(decoder, "Invalid Journey progress entry")
         }
     }

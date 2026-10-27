@@ -99,6 +99,13 @@ private func progressEntries(outcome: String, attempts: Int) -> String {
     #expect(snapshot.recentEntries.first?.attempts == 3)
 }
 
+@Test func historicalUnknownTimeZoneDecodesAsNil() throws {
+    let payload = snapshotPayload(entries: #"[{"puzzleDate":"2026-10-26","puzzleId":"daily-1","outcome":"failed","attempts":3,"hintCount":null,"completedAt":"2026-10-26T12:34:56Z","timeZone":null}]"#)
+    let snapshot = try JSONDecoder().decode(JourneyProgressSnapshot.self, from: payload)
+
+    #expect(snapshot.recentEntries.first?.timeZone == nil)
+}
+
 @Test func malformedProgressPayloadsAreRejected() {
     let unknownBadge = #"{"totalXP":300,"level":2,"xpIntoLevel":0,"finishes":0,"solves":0,"firstGuessSolves":0,"unassistedSolves":0,"completedThisWeek":0,"badges":["unknown-badge"]}"#
     let invalidLevelProgress = #"{"totalXP":300,"level":2,"xpIntoLevel":300,"finishes":0,"solves":0,"firstGuessSolves":0,"unassistedSolves":0,"completedThisWeek":0,"badges":[]}"#
