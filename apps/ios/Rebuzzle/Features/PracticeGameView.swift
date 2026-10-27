@@ -134,9 +134,12 @@ import RebuzzleCore
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
                 Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") { answerFocused = false }
                     .accessibilityIdentifier("dismissPracticeKeyboard")
+                Spacer()
+                Button("Check answer", systemImage: "arrow.right") { Task { await submit() } }
+                    .disabled(busy)
+                    .accessibilityIdentifier("checkPracticeAnswerFromKeyboard")
             }
         }
         .task {

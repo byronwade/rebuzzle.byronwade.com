@@ -414,7 +414,9 @@ import StoreKitTest
         XCTAssertTrue(waitForEnabled(checkPracticeAnswer), "Wait for the first practice response before entering another guess")
         answer.tap()
         answer.typeText("lighthouse")
-        checkPracticeAnswer.tap()
+        let keyboardCheckPracticeAnswer = app.buttons["checkPracticeAnswerFromKeyboard"]
+        XCTAssertTrue(keyboardCheckPracticeAnswer.waitForExistence(timeout: 5))
+        keyboardCheckPracticeAnswer.tap()
         XCTAssertTrue(app.staticTexts["practiceSolutionAnswer"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["practiceSolutionAnswer"].label, "lighthouse")
         XCTAssertFalse(app.descendants(matching: .any)["dailyStreakCard"].exists)
