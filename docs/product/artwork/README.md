@@ -23,3 +23,11 @@ pnpm exec tsx scripts/render-original-artwork-sheet.ts
 Both write here. This script runs offline and performs no registry, database, provider, or publication actions. Its CommonJS-compatible async entrypoint is required by the current tsx setup.
 
 Verification at this checkpoint: 176 suites / 1,025 tests and two byte snapshots passed; TypeScript passed; changed-file lint passed with the existing Biome configuration deprecation. Tests for missing batch membership failed before the new drawings were implemented. Existing committed hashes were compared explicitly before extending the snapshot. These checks establish source integrity and candidate isolation, not human recognition, difficulty, enjoyment, retention, or revenue. None of the 40 original candidates is live. Actual blind recognition, audited eligibility records and approved original selection remain outstanding.
+
+## Original-artwork recognition panel
+
+The admin icon-recognition screen includes an Original artwork candidates cohort: all40 drawings at44px and72px, mixed with bicycle, car and crown controls (86 specimens). Reviewers receive only an opaque fixture identifier, size and sanitized SVG. Complete panels and the existing control qualification are required; five qualified reviewers per fixture are the minimum. Actual human collection is still pending.
+
+The cohort identity hashes the sanitized drawings, asset identities, style and reading policies. Changed drawings or allowed readings invalidate prior fixtures. Answers are scored against the exact original policy, not the Lucide vocabulary; raw competing interpretations are retained. Eligible asset evidence lists exact SVG hashes, reading policy, style and underlying decision references. This is recognition evidence only, not publication approval. Original selection remains disabled until a separate audited promotion is implemented and real evidence qualifies.
+
+The existing generated-artwork registry also now rejects replacement SVGs under old identities and verifies underlying human decisions before reuse. Missing history, stale fixtures, duplicate reviewers or contradictory raw answers invalidate cached approval.

@@ -89,39 +89,42 @@ describe("icon recognition admin route", () => {
     expect(getNext).not.toHaveBeenCalled();
   });
 
-  it("routes candidate panels through an isolated evidence cohort", async () => {
-    verifyAdminAccess.mockResolvedValue({ id: "admin-1" });
-    submit.mockResolvedValue({ completed: 1, total: 48, remaining: 47, complete: false });
-    getNext.mockResolvedValue({
-      specimen: { fixtureId: "candidate-opaque", sizePx: 36, svg: "<svg/>" },
-      progress: { completed: 0, total: 48, remaining: 48, complete: false },
-    });
-    const response = await GET(
-      new Request("https://rebuzzle.test/api/admin/ai/icon-recognition?panel=candidates")
-    );
-    const write = await POST(
-      new Request("https://rebuzzle.test/api/admin/ai/icon-recognition", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          panelId: "candidates",
-          fixtureId: "candidate-opaque",
-          guess: "battery",
-        }),
-      })
-    );
+  it.each(["candidates", "originals"])(
+    "routes %s through an isolated evidence cohort",
+    async (panelId) => {
+      verifyAdminAccess.mockResolvedValue({ id: "admin-1" });
+      submit.mockResolvedValue({ completed: 1, total: 48, remaining: 47, complete: false });
+      getNext.mockResolvedValue({
+        specimen: { fixtureId: "candidate-opaque", sizePx: 36, svg: "<svg/>" },
+        progress: { completed: 0, total: 48, remaining: 48, complete: false },
+      });
+      const response = await GET(
+        new Request(`https://rebuzzle.test/api/admin/ai/icon-recognition?panel=${panelId}`)
+      );
+      const write = await POST(
+        new Request("https://rebuzzle.test/api/admin/ai/icon-recognition", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            panelId,
+            fixtureId: "candidate-opaque",
+            guess: "battery",
+          }),
+        })
+      );
 
-    expect(response.status).toBe(200);
-    expect(write.status).toBe(200);
-    expect(getNext).toHaveBeenCalledWith("admin-1", "candidates");
-    expect(submit).toHaveBeenCalledWith({
-      reviewerId: "admin-1",
-      panelId: "candidates",
-      fixtureId: "candidate-opaque",
-      guess: "battery",
-      uncertain: false,
-    });
-  });
+      expect(response.status).toBe(200);
+      expect(write.status).toBe(200);
+      expect(getNext).toHaveBeenCalledWith("admin-1", panelId);
+      expect(submit).toHaveBeenCalledWith({
+        reviewerId: "admin-1",
+        panelId,
+        fixtureId: "candidate-opaque",
+        guess: "battery",
+        uncertain: false,
+      });
+    }
+  );
 
   it("returns conflict instead of overwriting an existing decision", async () => {
     verifyAdminAccess.mockResolvedValue({ id: "admin-1" });

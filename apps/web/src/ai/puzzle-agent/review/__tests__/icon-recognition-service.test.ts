@@ -1,10 +1,11 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import type { IconRecognitionReview } from "@/db/models";
 import {
   CURATED_PICTOGRAM_CATALOG_VERSION,
   listCuratedPictogramIds,
 } from "../../visual/curated-pictograms";
 import { MATERIAL_SYMBOL_CANDIDATE_SOURCE } from "../../visual/material-symbol-candidates";
+import * as originalArtwork from "../../visual/original-pictograms";
 import {
   buildIconRecognitionFixtures,
   createIconRecognitionService,
@@ -383,5 +384,114 @@ it("retains unsupported citrus readings as human confusion evidence", () => {
     intendedConcept: "citrus",
     guessedConcept: "lemon",
     count: 1,
+  });
+});
+
+describe("original artwork recognition panel", () => {
+  it("uses forty exact original drawings and disjoint blind controls", async () => {
+    const fixtures = buildIconRecognitionFixtures("originals");
+    const candidates = fixtures.filter((row) => row.role === "candidate");
+    const controls = fixtures.filter((row) => row.role === "control");
+    expect(candidates).toHaveLength(80);
+    expect(controls).toHaveLength(6);
+    expect(candidates.every((row) => row.assetId.startsWith("rebuzzle-ink:"))).toBe(true);
+    expect(
+      controls.some((control) => candidates.some((row) => row.conceptId === control.conceptId))
+    ).toBe(false);
+    const { repository } = memoryRepository();
+    const next = await createIconRecognitionService(repository).getNext("reviewer", "originals");
+    expect(Object.keys(next.specimen ?? {}).sort()).toEqual(["fixtureId", "sizePx", "svg"]);
+  });
+
+  it("invalidates fixtures when artwork bytes or reading policy change", () => {
+    const original = originalArtwork.listOriginalPictogramCandidates();
+    const before = buildIconRecognitionFixtures("originals");
+    const spy = jest.spyOn(originalArtwork, "listOriginalPictogramCandidates");
+    try {
+      spy.mockReturnValue(
+        original.map((asset, i) =>
+          i === 0
+            ? { ...asset, svg: asset.svg.replace('stroke-width="2.25"', 'stroke-width="3"') }
+            : asset
+        )
+      );
+      const changedArt = buildIconRecognitionFixtures("originals");
+      expect(changedArt[0]!.fixtureId).not.toBe(before[0]!.fixtureId);
+      spy.mockReturnValue(
+        original.map((asset, i) =>
+          i === 0 ? { ...asset, approvedReadings: [...asset.approvedReadings, "watch"] } : asset
+        )
+      );
+      const changedReadings = buildIconRecognitionFixtures("originals");
+      expect(changedReadings[0]!.fixtureId).not.toBe(before[0]!.fixtureId);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("scores the exact original reading policy instead of Lucide search aliases", async () => {
+    const store = memoryRepository();
+    const service = createIconRecognitionService(store.repository);
+    const wheat = buildIconRecognitionFixtures("originals").find(
+      (row) => row.conceptId === "wheat"
+    )!;
+    await service.submit({
+      reviewerId: "one",
+      panelId: "originals",
+      fixtureId: wheat.fixtureId,
+      guess: "grain",
+    });
+    await service.submit({
+      reviewerId: "two",
+      panelId: "originals",
+      fixtureId: wheat.fixtureId,
+      guess: "wheat",
+    });
+    expect(store.rows.map((row) => row.correct)).toEqual([false, true]);
+    expect(store.rows[0]?.rawGuess).toBe("grain");
+  });
+
+  it("requires five completed qualified panels and reports exact artwork evidence", async () => {
+    const store = memoryRepository();
+    const service = createIconRecognitionService(store.repository);
+    const fixtures = buildIconRecognitionFixtures("originals");
+    for (const reviewerId of ["one", "two", "three", "four", "five"]) {
+      for (const fixture of fixtures) {
+        await service.submit({
+          reviewerId,
+          panelId: "originals",
+          fixtureId: fixture.fixtureId,
+          guess: fixture.conceptId,
+        });
+      }
+      if (reviewerId === "four") {
+        expect(
+          (await service.getReport(reviewerId, "originals")).report.promotionEligibleAssets
+        ).toEqual([]);
+      }
+    }
+    const report = (await service.getReport("five", "originals")).report;
+    expect(report.qualifiedReviewerCount).toBe(5);
+    expect(report.promotionEligibleAssets).toHaveLength(40);
+    expect(
+      report.promotionEligibleAssets.find((row) => row.assetId === "rebuzzle-ink:wheat:v1")
+    ).toMatchObject({
+      assetSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      readingPolicyVersion: "original-readings-v1",
+      evidenceIds: expect.arrayContaining([expect.any(String)]),
+    });
+    const first = store.rows[0]!;
+    const savedIdentity = first.assetId;
+    first.assetId = "rebuzzle-ink:wrong-version:v99";
+    expect((await service.getReport("five", "originals")).report.promotionEligibleAssets).toEqual(
+      []
+    );
+    first.assetId = savedIdentity;
+    // Stored correctness flags cannot overrule the actual original reading.
+    for (const row of store.rows.filter((row) => row.conceptId === "wheat")) row.rawGuess = "grain";
+    const changed = (await service.getReport("five", "originals")).report;
+    expect(
+      changed.promotionEligibleAssets.some((row) => row.assetId === "rebuzzle-ink:wheat:v1")
+    ).toBe(false);
   });
 });
