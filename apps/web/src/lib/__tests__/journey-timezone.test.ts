@@ -58,3 +58,35 @@ it("falls back to UTC when the account and request zones are unusable", async ()
 
   await expect(resolveStableJourneyTimeZone("user-1", "Mars/Phobos")).resolves.toBe("UTC");
 });
+
+it("repairs an invalid saved zone atomically without replacing a concurrent valid zone", async () => {
+  jest
+    .mocked(db.userOps.findById)
+    .mockResolvedValue({ id: "user-1", journeyTimeZone: "Mars/Phobos" } as never);
+  jest.mocked(db.puzzleAttemptOps.findNewestDailyTimeZone).mockResolvedValue("Asia/Tokyo");
+  jest.mocked(db.userOps.initializeJourneyTimeZone).mockResolvedValue("Europe/Paris");
+
+  await expect(resolveStableJourneyTimeZone("user-1", "America/Los_Angeles")).resolves.toBe(
+    "Europe/Paris"
+  );
+  expect(db.userOps.initializeJourneyTimeZone).toHaveBeenCalledWith(
+    "user-1",
+    "Asia/Tokyo",
+    "Mars/Phobos"
+  );
+});
+
+it("repairs a malformed non-string saved zone with the observed value", async () => {
+  jest.mocked(db.userOps.findById).mockResolvedValue({ id: "user-1", journeyTimeZone: 0 } as never);
+  jest.mocked(db.puzzleAttemptOps.findNewestDailyTimeZone).mockResolvedValue(null);
+  jest.mocked(db.userOps.initializeJourneyTimeZone).mockResolvedValue("America/Los_Angeles");
+
+  await expect(resolveStableJourneyTimeZone("user-1", "America/Los_Angeles")).resolves.toBe(
+    "America/Los_Angeles"
+  );
+  expect(db.userOps.initializeJourneyTimeZone).toHaveBeenCalledWith(
+    "user-1",
+    "America/Los_Angeles",
+    0
+  );
+});

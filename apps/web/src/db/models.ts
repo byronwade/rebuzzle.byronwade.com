@@ -375,6 +375,15 @@ export interface DailyProgressBackfillState {
   deltaCutoffAt?: Date;
   deltaCursorAttemptedAt?: Date;
   deltaCursorAttemptId?: string;
+  /** Requests a full replay when a final attempt could not be projected. */
+  reconciliationRequestedAt?: Date;
+  reconciliationGeneration?: number;
+  /** Generation whose resumable cursor is currently being scanned. */
+  reconciliationStartedGeneration?: number;
+  /** Latest reconciliation generation covered by a completed scan. */
+  reconciliationProcessedGeneration?: number;
+  /** Latest reconciliation request covered by a completed scan. */
+  reconciliationProcessedAt?: Date;
   updatedAt: Date;
 }
 

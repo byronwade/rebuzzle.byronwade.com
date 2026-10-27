@@ -62,6 +62,11 @@ export async function GET(request: Request) {
           await db.dailyProgressOps.materializeFromAttempt(terminalAttempt);
         } catch (error) {
           console.error("[puzzle/session] Journey projection repair failed", error);
+          try {
+            await db.dailyProgressBackfillOps.requestReconciliation(user.userId);
+          } catch (markerError) {
+            console.error("[puzzle/session] Journey reconciliation marker failed", markerError);
+          }
         }
       }
     }

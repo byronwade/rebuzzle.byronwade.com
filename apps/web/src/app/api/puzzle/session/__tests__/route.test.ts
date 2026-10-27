@@ -3,6 +3,7 @@ jest.mock("@/db", () => ({
     puzzleOps: { findById: jest.fn(), findByDate: jest.fn() },
     puzzleAttemptOps: { findByUserAndPuzzle: jest.fn() },
     dailyProgressOps: { materializeFromAttempt: jest.fn() },
+    dailyProgressBackfillOps: { requestReconciliation: jest.fn() },
     userOps: { findById: jest.fn() },
   },
 }));
@@ -68,6 +69,16 @@ it("reveals the solution after a persisted final", async () => {
     attemptsLeft: 0,
   });
   expect(db.dailyProgressOps.materializeFromAttempt).toHaveBeenCalledWith(terminal);
+});
+it("requests reconciliation when restoring a final attempt cannot repair progress", async () => {
+  const terminal = { ...row, isFinal: true, isCorrect: true };
+  jest.mocked(db.puzzleAttemptOps.findByUserAndPuzzle).mockResolvedValue([terminal] as never);
+  jest.mocked(db.dailyProgressOps.materializeFromAttempt).mockRejectedValue(new Error("offline"));
+
+  const response = await get();
+
+  expect(response.status).toBe(200);
+  expect(db.dailyProgressBackfillOps.requestReconciliation).toHaveBeenCalledWith("self");
 });
 it("does not use another owner, puzzle, or lock to disclose the answer", async () => {
   jest.mocked(db.puzzleAttemptOps.findByUserAndPuzzle).mockResolvedValue([

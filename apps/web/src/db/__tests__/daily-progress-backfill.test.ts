@@ -25,6 +25,22 @@ function memoryStore(rows: PuzzleAttempt[]) {
         .slice(0, limit)
         .map((id) => ({ id }));
     },
+    async listPendingReconciliationUsersAfter(afterId, limit) {
+      return [...states.values()]
+        .filter(
+          (state) =>
+            state.userId > (afterId ?? "") &&
+            ((state.reconciliationGeneration ?? 0) >
+              (state.reconciliationProcessedGeneration ?? 0) ||
+              (!state.reconciliationGeneration &&
+                state.reconciliationRequestedAt &&
+                (!state.reconciliationProcessedAt ||
+                  state.reconciliationRequestedAt > state.reconciliationProcessedAt)))
+        )
+        .sort((a, b) => a.userId.localeCompare(b.userId))
+        .slice(0, limit)
+        .map((state) => ({ id: state.userId }));
+    },
     async findState(userId) {
       return states.get(userId) ?? null;
     },
@@ -148,4 +164,160 @@ it("resumes an interrupted batch from its last fully committed cursor", async ()
   expect(result.usersCompleted).toBe(2);
   expect(materialized).toEqual(new Set(["user-1:2026-10-24", "user-1:2026-10-25"]));
   expect(states.get("user-1")?.status).toBe("complete");
+});
+
+it("restarts a completed checkpoint from the beginning when reconciliation is pending", async () => {
+  const rows = [
+    attempt("old-1", "2026-10-24", "2026-10-24T20:00:00Z"),
+    attempt("old-2", "2026-10-25", "2026-10-25T20:00:00Z"),
+  ];
+  const { store, states, materialized } = memoryStore(rows);
+  const reconciliationRequestedAt = new Date("2026-10-28T00:00:00Z");
+  states.set("user-1", {
+    _id: "user-1",
+    userId: "user-1",
+    status: "complete",
+    cutoffAt: new Date("2026-10-27T00:00:00Z"),
+    updatedAt: new Date("2026-10-27T00:00:00Z"),
+    reconciliationRequestedAt,
+    reconciliationGeneration: 1,
+  });
+
+  const result = await runJourneyProgressBackfill({
+    store,
+    batchSize: 1,
+    now: () => new Date("2026-10-29T00:00:00Z"),
+  });
+
+  expect(result.processed).toBe(2);
+  expect(materialized).toEqual(new Set(["user-1:2026-10-24", "user-1:2026-10-25"]));
+  expect(states.get("user-1")).toMatchObject({
+    status: "complete",
+    reconciliationRequestedAt,
+    reconciliationGeneration: 1,
+    reconciliationProcessedGeneration: 1,
+    reconciliationProcessedAt: reconciliationRequestedAt,
+  });
+});
+
+it("resumes an interrupted reconciliation from its last saved page", async () => {
+  const rows = [
+    attempt("old-1", "2026-10-24", "2026-10-24T20:00:00Z"),
+    attempt("old-2", "2026-10-25", "2026-10-25T20:00:00Z"),
+  ];
+  const { store, states, materialized, failFor } = memoryStore(rows);
+  const reconciliationRequestedAt = new Date("2026-10-28T00:00:00Z");
+  states.set("user-1", {
+    _id: "user-1",
+    userId: "user-1",
+    status: "complete",
+    cutoffAt: new Date("2026-10-27T00:00:00Z"),
+    updatedAt: new Date("2026-10-27T00:00:00Z"),
+    reconciliationRequestedAt,
+    reconciliationGeneration: 1,
+  });
+  failFor.add("old-2");
+  const options = { store, batchSize: 1, now: () => new Date("2026-10-29T00:00:00Z") };
+
+  await expect(runJourneyProgressBackfill(options)).rejects.toThrow("temporary Mongo failure");
+  expect(states.get("user-1")).toMatchObject({
+    status: "scanning",
+    cursorPuzzleDate: "2026-10-24",
+    reconciliationStartedGeneration: 1,
+  });
+
+  const result = await runJourneyProgressBackfill(options);
+
+  expect(result.processed).toBe(1);
+  expect(materialized).toEqual(new Set(["user-1:2026-10-24", "user-1:2026-10-25"]));
+  expect(states.get("user-1")).toMatchObject({
+    status: "complete",
+    reconciliationRequestedAt,
+    reconciliationGeneration: 1,
+    reconciliationProcessedGeneration: 1,
+    reconciliationProcessedAt: reconciliationRequestedAt,
+  });
+});
+
+it("runs only users with pending reconciliation markers when requested", async () => {
+  const rows = [
+    attempt("old-1", "2026-10-24", "2026-10-24T20:00:00Z"),
+    attempt("old-2", "2026-10-25", "2026-10-25T20:00:00Z"),
+  ];
+  const { store, states, materialized } = memoryStore(rows);
+  states.set("user-1", {
+    _id: "user-1",
+    userId: "user-1",
+    status: "complete",
+    cutoffAt: new Date("2026-10-23T00:00:00Z"),
+    updatedAt: new Date("2026-10-27T00:00:00Z"),
+    reconciliationRequestedAt: new Date("2026-10-28T00:00:00Z"),
+    reconciliationGeneration: 1,
+  });
+  states.set("user-2", {
+    _id: "user-2",
+    userId: "user-2",
+    status: "complete",
+    cutoffAt: new Date("2026-10-23T00:00:00Z"),
+    updatedAt: new Date("2026-10-27T00:00:00Z"),
+  });
+  const listPending = jest.spyOn(store, "listPendingReconciliationUsersAfter");
+
+  const result = await runJourneyProgressBackfill({
+    store,
+    onlyReconciliationPending: true,
+    now: () => new Date("2026-10-29T00:00:00Z"),
+  });
+
+  expect(listPending).toHaveBeenCalled();
+  expect(result.usersCompleted).toBe(1);
+  expect(materialized).toEqual(new Set(["user-1:2026-10-24", "user-1:2026-10-25"]));
+  expect(states.get("user-2")?.status).toBe("complete");
+});
+
+it("keeps a new request pending after replaying a legacy timestamp-only marker", async () => {
+  const rows = [attempt("legacy", "2026-10-24", "2026-10-24T20:00:00Z")];
+  const { store, states, materialized } = memoryStore(rows);
+  const originalRequestAt = new Date("2026-10-28T00:00:00Z");
+  states.set("user-1", {
+    _id: "user-1",
+    userId: "user-1",
+    status: "complete",
+    cutoffAt: new Date("2026-10-27T00:00:00Z"),
+    updatedAt: new Date("2026-10-27T00:00:00Z"),
+    reconciliationRequestedAt: originalRequestAt,
+  });
+
+  await runJourneyProgressBackfill({
+    store,
+    onlyReconciliationPending: true,
+    now: () => new Date("2026-10-29T00:00:00Z"),
+  });
+  const processed = states.get("user-1")!;
+  expect(processed).toMatchObject({
+    status: "complete",
+    reconciliationProcessedGeneration: 0,
+    reconciliationProcessedAt: originalRequestAt,
+  });
+
+  const nextRequestAt = new Date("2026-10-30T00:00:00Z");
+  states.set("user-1", {
+    ...processed,
+    reconciliationGeneration: 1,
+    reconciliationRequestedAt: nextRequestAt,
+  });
+  const nextRun = await runJourneyProgressBackfill({
+    store,
+    onlyReconciliationPending: true,
+    now: () => new Date("2026-10-31T00:00:00Z"),
+  });
+
+  expect(nextRun.usersCompleted).toBe(1);
+  expect(nextRun.processed).toBe(1);
+  expect(materialized).toEqual(new Set(["user-1:2026-10-24"]));
+  expect(states.get("user-1")).toMatchObject({
+    reconciliationGeneration: 1,
+    reconciliationProcessedGeneration: 1,
+    reconciliationProcessedAt: nextRequestAt,
+  });
 });

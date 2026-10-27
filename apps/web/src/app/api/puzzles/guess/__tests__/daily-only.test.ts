@@ -3,6 +3,7 @@ jest.mock("@/db", () => ({
     puzzleOps: { findById: jest.fn(), findByDate: jest.fn() },
     puzzleAttemptOps: { getTodayGuessContext: jest.fn(), createAtomicDailyAttempt: jest.fn() },
     dailyProgressOps: { materializeFromAttempt: jest.fn() },
+    dailyProgressBackfillOps: { requestReconciliation: jest.fn() },
   },
 }));
 jest.mock("@/lib/auth-middleware", () => ({
@@ -212,4 +213,5 @@ it("keeps an accepted final answer successful when Journey projection fails", as
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({ success: true, gameOver: true, correct: false });
   expect(db.dailyProgressOps.materializeFromAttempt).toHaveBeenCalledWith(persistedAttempt);
+  expect(db.dailyProgressBackfillOps.requestReconciliation).toHaveBeenCalledWith("self");
 });

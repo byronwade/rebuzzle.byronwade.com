@@ -93,16 +93,28 @@ export const userOps = {
   },
 
   /** Initialize the account's daily reset zone once; concurrent devices use the winner. */
-  async initializeJourneyTimeZone(id: string, timeZone: string): Promise<string | null> {
+  async initializeJourneyTimeZone(
+    id: string,
+    timeZone: string,
+    observedInvalidTimeZone?: unknown
+  ): Promise<string | null> {
     const collection = getCollection<User>("users");
+    const replaceableValues: Array<Record<string, unknown>> = [
+      { journeyTimeZone: { $exists: false } },
+      { journeyTimeZone: null },
+      { journeyTimeZone: "" },
+    ];
+    if (
+      observedInvalidTimeZone !== undefined &&
+      observedInvalidTimeZone !== null &&
+      observedInvalidTimeZone !== ""
+    ) {
+      replaceableValues.push({ journeyTimeZone: observedInvalidTimeZone });
+    }
     const initialized = await collection.findOneAndUpdate(
       {
         id,
-        $or: [
-          { journeyTimeZone: { $exists: false } },
-          { journeyTimeZone: null },
-          { journeyTimeZone: "" },
-        ],
+        $or: replaceableValues,
       } as unknown as Filter<User>,
       { $set: { journeyTimeZone: timeZone } },
       { returnDocument: "after", projection: { journeyTimeZone: 1 } }
@@ -494,6 +506,24 @@ const dailyProgressFromAttempt = (attempt: PuzzleAttempt): NewDailyProgress | nu
   };
 };
 
+const isValidStoredDailyProgress = (value: unknown): value is DailyProgress => {
+  if (!value || typeof value !== "object") return false;
+  const progress = value as Partial<DailyProgress>;
+  const validAttempts =
+    progress.outcome === "solved"
+      ? Number.isInteger(progress.attempts) && progress.attempts! >= 1 && progress.attempts! <= 3
+      : progress.outcome === "failed" && progress.attempts === 3;
+  return (
+    typeof progress.userId === "string" &&
+    typeof progress.puzzleId === "string" &&
+    progress.puzzleId.length > 0 &&
+    isValidPuzzleDate(progress.puzzleDate) &&
+    validAttempts &&
+    progress.completedAt instanceof Date &&
+    Number.isFinite(progress.completedAt.getTime())
+  );
+};
+
 /**
  * Idempotently project a persisted terminal daily attempt into Journey storage.
  * The unique {userId, puzzleDate} index is the concurrency boundary; this is a
@@ -516,7 +546,12 @@ const materializeDailyProgressWithStatus = async (
     if ((error as { code?: number })?.code !== 11000) throw error;
 
     const winner = await collection.findOne(key);
-    if (winner) return { progress: winner, inserted: false };
+    if (winner) {
+      if (isValidStoredDailyProgress(winner)) return { progress: winner, inserted: false };
+      await collection.updateOne(key, { $set: progress });
+      const repaired = await collection.findOne(key);
+      if (repaired) return { progress: repaired, inserted: false };
+    }
     throw error;
   }
 
@@ -524,10 +559,26 @@ const materializeDailyProgressWithStatus = async (
   if (!stored) {
     throw new Error("Daily progress upsert completed without a readable row");
   }
+  if (!isValidStoredDailyProgress(stored)) {
+    await collection.updateOne(key, { $set: progress });
+    const repaired = await collection.findOne(key);
+    if (!repaired) throw new Error("Daily progress repair completed without a readable row");
+    return { progress: repaired, inserted };
+  }
   return { progress: stored, inserted };
 };
 
 export const dailyProgressOps = {
+  async countForUser(userId: string): Promise<number> {
+    const collection = getCollection<DailyProgress>("dailyProgress");
+    return await collection.countDocuments({ userId });
+  },
+
+  async listForUser(userId: string): Promise<DailyProgress[]> {
+    const collection = getCollection<DailyProgress>("dailyProgress");
+    return await collection.find({ userId }).sort({ puzzleDate: -1 }).toArray();
+  },
+
   async materializeFromAttempt(attempt: PuzzleAttempt): Promise<DailyProgress | null> {
     return (await materializeDailyProgressWithStatus(attempt)).progress;
   },
@@ -552,6 +603,69 @@ export const dailyProgressBackfillOps = {
   async findState(userId: string): Promise<DailyProgressBackfillState | null> {
     const collection = getCollection<DailyProgressBackfillState>("dailyProgressBackfills");
     return await collection.findOne({ _id: userId });
+  },
+
+  async requestReconciliation(userId: string, requestedAt = new Date()): Promise<void> {
+    const collection = getCollection<DailyProgressBackfillState>("dailyProgressBackfills");
+    await collection.updateOne(
+      { _id: userId },
+      {
+        $setOnInsert: {
+          _id: userId,
+          userId,
+          status: "scanning",
+          cutoffAt: requestedAt,
+        },
+        $max: {
+          reconciliationRequestedAt: requestedAt,
+          updatedAt: requestedAt,
+        },
+        $inc: { reconciliationGeneration: 1 },
+      },
+      { upsert: true }
+    );
+  },
+
+  async listPendingReconciliationUsersAfter(
+    afterId: string | null,
+    limit: number
+  ): Promise<Array<{ id: string }>> {
+    const collection = getCollection<DailyProgressBackfillState>("dailyProgressBackfills");
+    const pending: Array<{ id: string }> = [];
+    let cursor = afterId;
+    while (pending.length < limit) {
+      const filter: Record<string, unknown> = {
+        reconciliationRequestedAt: { $type: "date" },
+        ...(cursor ? { _id: { $gt: cursor } } : {}),
+      };
+      const candidates = await collection
+        .find(filter, {
+          projection: {
+            _id: 1,
+            userId: 1,
+            reconciliationGeneration: 1,
+            reconciliationProcessedGeneration: 1,
+            reconciliationProcessedAt: 1,
+          },
+        })
+        .sort({ _id: 1 })
+        .limit(limit)
+        .toArray();
+      if (candidates.length === 0) break;
+
+      for (const state of candidates) {
+        cursor = state._id;
+        const isPending =
+          state.reconciliationGeneration !== undefined
+            ? state.reconciliationGeneration > (state.reconciliationProcessedGeneration ?? 0)
+            : !state.reconciliationProcessedAt ||
+              state.reconciliationRequestedAt! > state.reconciliationProcessedAt;
+        if (isPending) pending.push({ id: state.userId });
+        if (pending.length === limit) break;
+      }
+      if (candidates.length < limit) break;
+    }
+    return pending;
   },
 
   async ensureState(
@@ -620,7 +734,47 @@ export const dailyProgressBackfillOps = {
 
   async saveState(state: DailyProgressBackfillState): Promise<void> {
     const collection = getCollection<DailyProgressBackfillState>("dailyProgressBackfills");
-    await collection.replaceOne({ _id: state.userId }, state, { upsert: true });
+    const {
+      _id,
+      userId,
+      status,
+      cutoffAt,
+      cursorPuzzleDate,
+      deltaCutoffAt,
+      deltaCursorAttemptedAt,
+      deltaCursorAttemptId,
+      reconciliationStartedGeneration,
+      reconciliationProcessedGeneration,
+      reconciliationProcessedAt,
+    } = state;
+    const $set: Record<string, unknown> = {
+      userId,
+      status,
+      cutoffAt,
+      ...(cursorPuzzleDate ? { cursorPuzzleDate } : {}),
+      ...(deltaCutoffAt ? { deltaCutoffAt } : {}),
+      ...(deltaCursorAttemptedAt ? { deltaCursorAttemptedAt } : {}),
+      ...(deltaCursorAttemptId ? { deltaCursorAttemptId } : {}),
+      ...(reconciliationStartedGeneration !== undefined ? { reconciliationStartedGeneration } : {}),
+      ...(reconciliationProcessedGeneration !== undefined
+        ? { reconciliationProcessedGeneration }
+        : {}),
+      ...(reconciliationProcessedAt ? { reconciliationProcessedAt } : {}),
+    };
+    const $unset: Record<string, ""> = {};
+    if (!cursorPuzzleDate) $unset.cursorPuzzleDate = "";
+    if (!deltaCutoffAt) $unset.deltaCutoffAt = "";
+    if (!deltaCursorAttemptedAt) $unset.deltaCursorAttemptedAt = "";
+    if (!deltaCursorAttemptId) $unset.deltaCursorAttemptId = "";
+    await collection.updateOne(
+      { _id },
+      {
+        $set,
+        $max: { updatedAt: state.updatedAt },
+        $unset,
+      },
+      { upsert: true }
+    );
   },
 };
 
@@ -639,6 +793,24 @@ export const puzzleAttemptOps = {
   async getUserAttempts(userId: string, limit = 50): Promise<PuzzleAttempt[]> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
     return await collection.find({ userId }).sort({ attemptedAt: -1 }).limit(limit).toArray();
+  },
+
+  /** Final official attempts are the sole repair source for Journey projections. */
+  async findRecentFinalDailyAttempts(userId: string, limit = 42): Promise<PuzzleAttempt[]> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    return await collection
+      .find({ userId, isFinal: true, puzzleDate: /^\d{4}-\d{2}-\d{2}$/ })
+      .sort({ attemptedAt: -1 })
+      .limit(limit)
+      .toArray();
+  },
+
+  async countMaterializableFinalOfficialDailyAttempts(userId: string): Promise<number> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const attempts = await collection
+      .find({ userId, isFinal: true, puzzleDate: /^\d{4}-\d{2}-\d{2}$/ })
+      .toArray();
+    return attempts.filter((attempt) => dailyProgressFromAttempt(attempt) !== null).length;
   },
 
   /** Most recent persisted time zone from an official final attempt, if available. */

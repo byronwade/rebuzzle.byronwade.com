@@ -3,6 +3,10 @@ import { dailyProgressBackfillOps, dailyProgressOps } from "./operations";
 
 export interface JourneyBackfillStore {
   listUsersAfter(afterId: string | null, limit: number): Promise<Array<{ id: string }>>;
+  listPendingReconciliationUsersAfter?(
+    afterId: string | null,
+    limit: number
+  ): Promise<Array<{ id: string }>>;
   findState(userId: string): Promise<DailyProgressBackfillState | null>;
   ensureState(userId: string, cutoffAt: Date, updatedAt: Date): Promise<DailyProgressBackfillState>;
   findInitialBatch(
@@ -47,6 +51,7 @@ const defaultStore: JourneyBackfillStore = {
 export async function runJourneyProgressBackfill(
   options: {
     store?: JourneyBackfillStore;
+    onlyReconciliationPending?: boolean;
     batchSize?: number;
     cutoffAt?: Date;
     now?: () => Date;
@@ -88,11 +93,55 @@ export async function runJourneyProgressBackfill(
 
   let userCursor: string | null = null;
   while (true) {
-    const users = await store.listUsersAfter(userCursor, batchSize);
+    let users: Array<{ id: string }> | undefined;
+    if (options.onlyReconciliationPending) {
+      users = await store.listPendingReconciliationUsersAfter?.(userCursor, batchSize);
+    } else {
+      users = await store.listUsersAfter(userCursor, batchSize);
+    }
+    if (!users) {
+      throw new Error("The backfill store cannot list pending reconciliation accounts");
+    }
     if (users.length === 0) break;
 
     for (const user of users) {
       let state = await store.findState(user.id);
+      const reconciliationGeneration = state?.reconciliationGeneration ?? 0;
+      const reconciliationProcessedGeneration = state?.reconciliationProcessedGeneration ?? 0;
+      const legacyTimestampPending = Boolean(
+        state?.reconciliationRequestedAt &&
+          (!state.reconciliationProcessedAt ||
+            state.reconciliationRequestedAt > state.reconciliationProcessedAt)
+      );
+      const reconciliationPending =
+        reconciliationGeneration > reconciliationProcessedGeneration ||
+        (reconciliationGeneration === 0 && legacyTimestampPending);
+      const reconciliationToProcess = reconciliationPending
+        ? {
+            // Legacy timestamp-only markers are generation zero. Keeping that
+            // baseline distinct from the first $inc prevents a request that
+            // arrives during the replay from being mistaken as already done.
+            generation: reconciliationGeneration,
+            requestedAt: state?.reconciliationRequestedAt ?? now(),
+          }
+        : undefined;
+      const needsReconciliationRestart =
+        reconciliationPending &&
+        (state?.status === "complete" ||
+          state?.reconciliationStartedGeneration !== reconciliationToProcess?.generation);
+      if (state && needsReconciliationRestart) {
+        state = {
+          ...state,
+          status: "scanning",
+          cutoffAt: reconciliationToProcess!.requestedAt,
+          cursorPuzzleDate: undefined,
+          deltaCutoffAt: undefined,
+          deltaCursorAttemptedAt: undefined,
+          deltaCursorAttemptId: undefined,
+          reconciliationStartedGeneration: reconciliationToProcess!.generation,
+        };
+        await store.saveState(state);
+      }
       if (state?.status === "complete") {
         result.usersCompleted += 1;
         continue;
@@ -142,7 +191,18 @@ export async function runJourneyProgressBackfill(
 
         state =
           batch.length < batchSize
-            ? { ...state, status: "complete", deltaCutoffAt, updatedAt: now() }
+            ? {
+                ...state,
+                status: "complete",
+                deltaCutoffAt,
+                ...(reconciliationToProcess
+                  ? {
+                      reconciliationProcessedGeneration: reconciliationToProcess.generation,
+                      reconciliationProcessedAt: reconciliationToProcess.requestedAt,
+                    }
+                  : {}),
+                updatedAt: now(),
+              }
             : {
                 ...state,
                 status: "delta",

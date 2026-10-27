@@ -281,9 +281,12 @@ export async function POST(request: Request) {
       try {
         await db.dailyProgressOps.materializeFromAttempt(write.attempt);
       } catch (error) {
-        // The accepted attempt is authoritative; restore/progress reads repair
-        // this projection if Mongo is temporarily unavailable here.
         console.error("[guess] Journey projection write failed:", error);
+        try {
+          await db.dailyProgressBackfillOps.requestReconciliation(user.userId);
+        } catch (markerError) {
+          console.error("[guess] Journey reconciliation marker failed:", markerError);
+        }
       }
     }
 

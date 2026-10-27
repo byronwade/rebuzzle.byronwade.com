@@ -24,9 +24,15 @@ export async function resolveStableJourneyTimeZone(
   const user = await db.userOps.findById(userId);
   const savedZone = isIanaTimeZone(user?.journeyTimeZone) ? user.journeyTimeZone : null;
   if (savedZone) return savedZone;
+  const savedValue = user?.journeyTimeZone as unknown;
+  const observedInvalidTimeZone =
+    savedValue !== undefined && savedValue !== null && savedValue !== "" ? savedValue : undefined;
 
   const attemptZone = await db.puzzleAttemptOps.findNewestDailyTimeZone(userId);
   const initialZone = isIanaTimeZone(attemptZone) ? attemptZone : requestZone;
-  const winner = await db.userOps.initializeJourneyTimeZone(userId, initialZone);
+  const winner =
+    observedInvalidTimeZone !== undefined
+      ? await db.userOps.initializeJourneyTimeZone(userId, initialZone, observedInvalidTimeZone)
+      : await db.userOps.initializeJourneyTimeZone(userId, initialZone);
   return isIanaTimeZone(winner) ? winner : initialZone;
 }
