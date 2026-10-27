@@ -45,7 +45,7 @@ struct DailyWidgetView: View {
                 }
             }
         }
-        .widgetURL(URL(string: "rebuzzle://play"))
+        .widgetURL(URL(string: "rebuzzle://play?source=widget"))
         .containerBackground(for: .widget) {
             colorScheme == .dark ? Color(red: 0.08, green: 0.09, blue: 0.08) : Color(red: 0.97, green: 0.96, blue: 0.94)
         }

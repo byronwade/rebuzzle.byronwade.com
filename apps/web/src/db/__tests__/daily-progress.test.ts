@@ -122,6 +122,38 @@ describe("dailyProgressOps.materializeFromAttempt", () => {
     expect(existing).toEqual({ progress: winner, inserted: false });
   });
 
+  it("repairs a malformed stored row from the authoritative final attempt", async () => {
+    const malformed = {
+      userId: "user-1",
+      puzzleDate: "2026-10-26",
+      puzzleId: "puzzle-2026-10-26",
+      outcome: "unknown",
+      attempts: 2,
+      completedAt: "not-a-date",
+    };
+    const repaired = {
+      userId: "user-1",
+      puzzleDate: "2026-10-26",
+      puzzleId: "puzzle-2026-10-26",
+      outcome: "solved",
+      attempts: 2,
+      hintCount: 1,
+      completedAt: new Date("2026-10-27T06:59:10.000Z"),
+      timeZone: "America/Los_Angeles",
+    };
+    const updateOne = jest.fn().mockResolvedValue({ acknowledged: true, upsertedCount: 0 });
+    const findOne = jest.fn().mockResolvedValueOnce(malformed).mockResolvedValueOnce(repaired);
+    mockGetCollection.mockReturnValue({ updateOne, findOne } as never);
+
+    await expect(
+      dailyProgressOps.materializeFromAttemptWithStatus(terminalAttempt())
+    ).resolves.toEqual({ progress: repaired, inserted: false });
+    expect(updateOne).toHaveBeenCalledWith(
+      { userId: "user-1", puzzleDate: "2026-10-26" },
+      { $set: repaired }
+    );
+  });
+
   it("returns the same winner when competing final attempts race on the unique key", async () => {
     const documents = new Map<string, Record<string, unknown>>();
     let entered = 0;

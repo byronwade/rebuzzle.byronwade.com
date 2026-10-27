@@ -6,6 +6,35 @@ struct APIError: LocalizedError {
     let message: String
     var errorDescription: String? { message }
 }
+enum DailyEntrySource: String, Hashable, Sendable {
+    case app, notification, widget, shortcut
+}
+
+enum DailyQualityRating: String, CaseIterable, Identifiable, Sendable {
+    case tooEasy = "too_easy"
+    case justRight = "just_right"
+    case toughButFair = "tough_but_fair"
+    case unclear
+
+    var id: String { rawValue }
+}
+
+enum GrowthEvent: Sendable {
+    case dailyOpened(DailyEntrySource)
+    case plusOfferViewed
+    case reminderEnabled
+    case dailyQualityFeedback(DailyQualityRating)
+
+    var payload: [String: String] {
+        switch self {
+        case .dailyOpened(let source): ["eventType": "daily_opened", "source": source.rawValue]
+        case .plusOfferViewed: ["eventType": "plus_offer_viewed"]
+        case .reminderEnabled: ["eventType": "reminder_enabled"]
+        case .dailyQualityFeedback(let rating): ["eventType": "daily_quality_feedback", "rating": rating.rawValue]
+        }
+    }
+}
+
 @MainActor final class APIClient {
     var token: String?
     let baseURL: URL
@@ -45,6 +74,14 @@ struct APIError: LocalizedError {
     }
     func fetchJourneyProgress() async throws -> JourneyProgressSnapshot {
         try await request("/api/user/progress")
+    }
+    /// Growth reporting is best-effort: telemetry must never interrupt a puzzle or purchase flow.
+    func report(_ event: GrowthEvent) async {
+        do {
+            let _: SuccessResponse = try await request("/api/native/analytics", method: "POST", body: event.payload)
+        } catch {
+            // The server intentionally receives no retry queue or puzzle data.
+        }
     }
     /// Eve is optional commentary; scoring remains exclusively in the guess endpoint.
     func streamQuip(puzzleID: String, guess: Guess, onUpdate: @escaping @MainActor (String) -> Void) async throws {

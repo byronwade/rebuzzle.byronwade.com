@@ -873,6 +873,36 @@ export interface NewAnalyticsEvent {
   };
 }
 
+export type NativeGrowthEventSource = "app" | "notification" | "widget" | "shortcut";
+export type NativeGrowthQualityRating = "too_easy" | "just_right" | "tough_but_fair" | "unclear";
+
+type NativeGrowthEventBase = {
+  _id?: string;
+  userId: string;
+  dayKey: string;
+  occurredAt: Date;
+};
+
+/** Closed-schema, account-linked native funnel events. No freeform metadata is stored. */
+export type NativeGrowthEvent =
+  | (NativeGrowthEventBase & {
+      eventType: "daily_opened";
+      source: NativeGrowthEventSource;
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_finished";
+      outcome: "solved" | "ran_out";
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "plus_offer_viewed" | "reminder_enabled";
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_quality_feedback";
+      rating: NativeGrowthQualityRating;
+    });
+
+export type NativeGrowthEventType = NativeGrowthEvent["eventType"];
+
 export interface NewUserSession {
   id: string;
   userId?: string;

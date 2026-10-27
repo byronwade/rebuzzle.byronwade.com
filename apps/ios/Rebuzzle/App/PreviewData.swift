@@ -78,7 +78,7 @@ private final class FixtureServer: @unchecked Sendable {
         case "/api/puzzle/session":
             return (200, try JSONEncoder().encode(game))
         case "/api/user/stats":
-            payload = ["success": true, "stats": ["totalGames": game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0]]
+            payload = ["success": true, "stats": ["totalGames": game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0, "maxStreak": game.wasSuccessful == true ? 1 : 0]]
         case "/api/user/progress":
             payload = journeyProgressPayload()
         case "/api/puzzles/quip":

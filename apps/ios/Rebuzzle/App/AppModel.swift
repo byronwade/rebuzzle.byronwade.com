@@ -2,6 +2,13 @@ import Foundation
 import Observation
 import RebuzzleCore
 
+enum CompletedStreakRefreshState: Equatable {
+    case idle
+    case refreshing(puzzleID: String, celebrates: Bool)
+    case fresh(puzzleID: String, celebrates: Bool)
+    case failed(puzzleID: String)
+}
+
 @MainActor @Observable final class AppModel {
     var selectedTab: AppTab = .play
     var completedCurrentPuzzle: Bool {
@@ -14,6 +21,7 @@ import RebuzzleCore
     var player: Player?
     var journal = Journal()
     var stats: PlayerStats?
+    var completedStreakRefreshState: CompletedStreakRefreshState = .idle
     var journeySnapshot: JourneyProgressSnapshot?
     var journeySyncError: String?
     var journeySyncing = false
@@ -37,6 +45,7 @@ import RebuzzleCore
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var journeyIdentityID: String?
     @ObservationIgnored private var journeyRefreshGeneration = 0
+    @ObservationIgnored private var pendingEntrySource: DailyEntrySource?
     @ObservationIgnored let api: APIClient
 
     init(api: APIClient? = nil, storage: LocalStore? = nil, credentials: CredentialStore = CredentialStore()) {
@@ -55,7 +64,10 @@ import RebuzzleCore
         }
         do { self.api.token = try secure.read("token") } catch { initialSetupError = error.localizedDescription }
     }
-    func load() async {
+    func load(entrySource: DailyEntrySource = .app) async {
+        if entrySource != .app || pendingEntrySource == nil {
+            pendingEntrySource = entrySource
+        }
         guard !busy, !submitting else { return }
         busy = true; error = nil
         defer { busy = false }
@@ -65,14 +77,21 @@ import RebuzzleCore
             if daily?.puzzle.id != response.puzzle.id {
                 eve.reset()
                 game = nil; sessionReady = false; draft = ""; hintsShown = 0; started = Date()
+                completedStreakRefreshState = .idle
             }
             daily = response
             try? storage.save(response, key: "daily-cache")
             try await authenticate()
             if !journalWritable { try loadJournal() }
             try await restore()
-            if let result: StatsResponse = try? await api.request("/api/user/stats") { stats = result.stats }
+            let completedPuzzleID = game?.gameOver == true ? game?.puzzleId : nil
+            await refreshPlayerStats(forCompletedPuzzleID: completedPuzzleID, celebrates: false)
             try? await reminders.schedule(completedToday: completedCurrentPuzzle)
+            if sessionReady {
+                let source = pendingEntrySource ?? entrySource
+                pendingEntrySource = nil
+                recordGrowthEvent(.dailyOpened(source))
+            }
         } catch {
             self.error = error.localizedDescription
             if daily == nil { daily = try? storage.load(DailyResponse.self, key: "daily-cache") }
@@ -84,7 +103,11 @@ import RebuzzleCore
             do {
                 let response: AuthResponse = try await api.request("/api/auth/session")
                 if response.authenticated == true, let user = response.user {
-                    if player?.id != user.id { eve.reset(); game = nil; sessionReady = false; draft = "" }
+                    if player?.id != user.id {
+                        generation += 1
+                        eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil
+                        completedStreakRefreshState = .idle
+                    }
                     player = user
                     loadJourneyCache(for: user.id)
                     try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
@@ -107,7 +130,11 @@ import RebuzzleCore
         }
         try credentials.write(token, key: "token")
         try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
-        if player?.id != user.id { eve.reset(); game = nil; sessionReady = false; draft = "" }
+        if player?.id != user.id {
+            generation += 1
+            eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil
+            completedStreakRefreshState = .idle
+        }
         api.token = token; player = user
         loadJourneyCache(for: user.id)
         try loadJournal()
@@ -136,6 +163,13 @@ import RebuzzleCore
     private func scheduleJourneyRefresh() {
         guard player != nil else { return }
         Task { await refreshJourneyProgress() }
+    }
+    func recordGrowthEvent(_ event: GrowthEvent) {
+        guard let userID = player?.id, let token = api.token else { return }
+        Task { @MainActor [weak self] in
+            guard let self, self.player?.id == userID, self.api.token == token else { return }
+            await self.api.report(event)
+        }
     }
     func refreshJourneyProgress() async {
         guard let userID = player?.id else { return }
@@ -176,6 +210,9 @@ import RebuzzleCore
             }
             let result: GuessResponse = try await api.request("/api/puzzles/guess", method: "POST", body: ["puzzleId": daily.puzzle.id, "guess": guess, "hintsUsed": hintsShown, "consecutiveCold": game?.attempts.reversed().prefix(while: { $0.reaction?.tier == "cold" }).count ?? 0, "timeSpentSeconds": max(0, Int(Date().timeIntervalSince(started)))])
             guard run == generation else { return }
+            if result.gameOver {
+                completedStreakRefreshState = .refreshing(puzzleID: daily.puzzle.id, celebrates: true)
+            }
             game?.apply(result, guess: guess)
             game?.hintsUsed = hintsShown
             eve.activate(accountID: player.id, puzzleID: daily.puzzle.id)
@@ -185,7 +222,7 @@ import RebuzzleCore
             recordCompletion()
             if game?.gameOver == true {
                 try? await reminders.schedule(completedToday: true)
-                if let result: StatsResponse = try? await api.request("/api/user/stats") { stats = result.stats }
+                await refreshPlayerStats(forCompletedPuzzleID: daily.puzzle.id, celebrates: true)
                 scheduleJourneyRefresh()
             }
         } catch {
@@ -199,6 +236,59 @@ import RebuzzleCore
         busy = true; defer { busy = false }
         do { try await restore(); error = nil }
         catch { self.error = error.localizedDescription }
+    }
+    func streakPresentation(for game: GameSession) -> DailyStreakPresentation {
+        let freshness: DailyStreakFreshness
+        let celebratesMilestone: Bool
+        switch completedStreakRefreshState {
+        case let .refreshing(puzzleID, _ ) where puzzleID == game.puzzleId:
+            freshness = .syncing
+            celebratesMilestone = false
+        case let .fresh(puzzleID, celebrates) where puzzleID == game.puzzleId:
+            freshness = .fresh
+            celebratesMilestone = celebrates
+        case let .failed(puzzleID) where puzzleID == game.puzzleId:
+            freshness = .unavailable
+            celebratesMilestone = false
+        default:
+            freshness = .syncing
+            celebratesMilestone = false
+        }
+        return DailyStreakPresentation.result(
+            wasSolved: game.wasSuccessful == true,
+            stats: freshness == .fresh ? stats : nil,
+            freshness: freshness,
+            celebratesMilestone: celebratesMilestone
+        )
+    }
+    private func refreshPlayerStats(forCompletedPuzzleID puzzleID: String?, celebrates: Bool) async {
+        let requestGeneration = generation
+        let requestUserID = player?.id
+        if let puzzleID {
+            completedStreakRefreshState = .refreshing(puzzleID: puzzleID, celebrates: celebrates)
+        }
+        do {
+            let result: StatsResponse = try await api.request("/api/user/stats")
+            guard requestGeneration == generation, player?.id == requestUserID else { return }
+            if let puzzleID, game?.puzzleId != puzzleID { return }
+            guard result.success else { throw APIError(status: 0, message: "Streak progress could not be refreshed.") }
+            stats = result.stats
+            if let puzzleID {
+                completedStreakRefreshState = .fresh(puzzleID: puzzleID, celebrates: celebrates)
+            }
+        } catch {
+            guard requestGeneration == generation, player?.id == requestUserID else { return }
+            if let puzzleID {
+                guard game?.puzzleId == puzzleID else { return }
+                completedStreakRefreshState = .failed(puzzleID: puzzleID)
+            }
+        }
+    }
+    func refreshStreakProgress() async {
+        await refreshPlayerStats(
+            forCompletedPuzzleID: game?.gameOver == true ? game?.puzzleId : nil,
+            celebrates: false
+        )
     }
     func revealHint() {
         guard let daily, let player, sessionReady, game?.gameOver == false, hintsShown < daily.puzzle.hints.count else { return }
@@ -238,10 +328,12 @@ import RebuzzleCore
             try credentials.write("member", key: "identity-kind")
             eve.reset()
             generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; sessionReady = false
+            completedStreakRefreshState = .idle
             loadJourneyCache(for: user.id)
             journal = Journal(); journalWritable = false
             try loadJournal()
             try await restore()
+            await refreshStreakProgress()
             return true
         } catch { accountError = error.localizedDescription; return false }
     }
@@ -299,6 +391,7 @@ import RebuzzleCore
         try credentials.write(nil, key: "token")
         eve.reset()
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
+        completedStreakRefreshState = .idle
         journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; journeySyncError = nil; journeySyncing = false
         draft = ""; journal = Journal(); journalWritable = false; hintsShown = 0; sessionReady = false; error = nil
     }

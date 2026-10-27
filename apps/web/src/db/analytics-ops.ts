@@ -4,8 +4,185 @@
  * MongoDB operations for analytics and tracking
  */
 
-import type { AnalyticsEvent, NewAnalyticsEvent, NewUserSession, UserSession } from "./models";
+import type {
+  AnalyticsEvent,
+  NativeGrowthEvent,
+  NativeGrowthEventSource,
+  NativeGrowthQualityRating,
+  NewAnalyticsEvent,
+  NewUserSession,
+  UserSession,
+} from "./models";
 import { getCollection } from "./mongodb";
+
+const nativeGrowthIndexPromises = new Map<string, Promise<void>>();
+
+export interface NativeGrowthSummary {
+  openedAccountDays: number;
+  finishedAccountDays: number;
+  finishOpenRatio: number;
+  entrySources: Record<NativeGrowthEventSource, number>;
+  multiDayReturners: number;
+  plusOfferViewers: number;
+  reminderEnabledAccounts: number;
+  qualityFeedback: Record<NativeGrowthQualityRating, number>;
+}
+
+function ensureNativeGrowthIndexes(
+  collection: ReturnType<typeof getCollection<NativeGrowthEvent>>
+): Promise<void> {
+  const key = collection.namespace;
+  const existing = nativeGrowthIndexPromises.get(key);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    await collection.createIndex(
+      { userId: 1, eventType: 1, dayKey: 1, source: 1 },
+      { unique: true, name: "userId_eventType_dayKey_source_unique" }
+    );
+    await collection.createIndex(
+      { occurredAt: 1 },
+      { expireAfterSeconds: 90 * 24 * 60 * 60, name: "nativeGrowthEvents_ttl_90d" }
+    );
+  })();
+  nativeGrowthIndexPromises.set(key, promise);
+  void promise.catch(() => {
+    if (nativeGrowthIndexPromises.get(key) === promise) nativeGrowthIndexPromises.delete(key);
+  });
+  return promise;
+}
+
+export const nativeGrowthEventOps = {
+  /** Store one closed-schema event per account, type, and local puzzle day. */
+  async recordOnce(event: NativeGrowthEvent): Promise<void> {
+    const collection = getCollection<NativeGrowthEvent>("nativeGrowthEvents");
+    await ensureNativeGrowthIndexes(collection);
+    await collection.updateOne(
+      {
+        userId: event.userId,
+        eventType: event.eventType,
+        dayKey: event.dayKey,
+        ...(event.eventType === "daily_opened" ? { source: event.source } : {}),
+      },
+      { $setOnInsert: event },
+      { upsert: true }
+    );
+  },
+
+  /** Keep only the latest player-selected rating for an account and local puzzle day. */
+  async recordDailyQualityFeedback(
+    event: Extract<NativeGrowthEvent, { eventType: "daily_quality_feedback" }>
+  ): Promise<void> {
+    const collection = getCollection<NativeGrowthEvent>("nativeGrowthEvents");
+    await ensureNativeGrowthIndexes(collection);
+    await collection.updateOne(
+      { userId: event.userId, eventType: event.eventType, dayKey: event.dayKey },
+      { $set: event },
+      { upsert: true }
+    );
+  },
+
+  /** Aggregate funnel counts only; account identifiers never leave MongoDB. */
+  async getSummary(start: Date, end: Date): Promise<NativeGrowthSummary> {
+    const collection = getCollection<NativeGrowthEvent>("nativeGrowthEvents");
+    const [facets] = await collection
+      .aggregate<Record<string, Array<{ _id?: string; count?: number }>>>([
+        { $match: { occurredAt: { $gte: start, $lt: end } } },
+        {
+          $facet: {
+            openDays: [
+              { $match: { eventType: "daily_opened" } },
+              { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
+              { $count: "count" },
+            ],
+            finishDays: [
+              { $match: { eventType: "daily_finished" } },
+              { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
+              { $count: "count" },
+            ],
+            sourceDays: [
+              { $match: { eventType: "daily_opened" } },
+              {
+                $group: {
+                  _id: { userId: "$userId", dayKey: "$dayKey", source: "$source" },
+                },
+              },
+              { $group: { _id: "$_id.source", count: { $sum: 1 } } },
+            ],
+            returners: [
+              { $match: { eventType: "daily_opened" } },
+              { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
+              { $group: { _id: "$_id.userId", days: { $sum: 1 } } },
+              { $match: { days: { $gte: 2 } } },
+              { $count: "count" },
+            ],
+            plusViewers: [
+              { $match: { eventType: "plus_offer_viewed" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            reminderAccounts: [
+              { $match: { eventType: "reminder_enabled" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            qualityFeedback: [
+              { $match: { eventType: "daily_quality_feedback" } },
+              { $group: { _id: "$rating", count: { $sum: 1 } } },
+            ],
+          },
+        },
+      ])
+      .toArray();
+
+    const count = (name: string) => facets?.[name]?.[0]?.count ?? 0;
+    const entrySources: Record<NativeGrowthEventSource, number> = {
+      app: 0,
+      notification: 0,
+      widget: 0,
+      shortcut: 0,
+    };
+    const qualityFeedback: Record<NativeGrowthQualityRating, number> = {
+      too_easy: 0,
+      just_right: 0,
+      tough_but_fair: 0,
+      unclear: 0,
+    };
+    for (const source of facets?.sourceDays ?? []) {
+      if (
+        source._id === "app" ||
+        source._id === "notification" ||
+        source._id === "widget" ||
+        source._id === "shortcut"
+      ) {
+        entrySources[source._id] = source.count ?? 0;
+      }
+    }
+    for (const rating of facets?.qualityFeedback ?? []) {
+      if (
+        rating._id === "too_easy" ||
+        rating._id === "just_right" ||
+        rating._id === "tough_but_fair" ||
+        rating._id === "unclear"
+      ) {
+        qualityFeedback[rating._id] = rating.count ?? 0;
+      }
+    }
+
+    const openedAccountDays = count("openDays");
+    const finishedAccountDays = count("finishDays");
+    return {
+      openedAccountDays,
+      finishedAccountDays,
+      finishOpenRatio: openedAccountDays > 0 ? finishedAccountDays / openedAccountDays : 0,
+      entrySources,
+      multiDayReturners: count("returners"),
+      plusOfferViewers: count("plusViewers"),
+      reminderEnabledAccounts: count("reminderAccounts"),
+      qualityFeedback,
+    };
+  },
+};
 
 // ============================================================================
 // ANALYTICS EVENT OPERATIONS

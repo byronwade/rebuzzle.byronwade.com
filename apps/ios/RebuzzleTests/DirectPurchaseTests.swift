@@ -125,6 +125,21 @@ extension DirectPurchaseTests {
         XCTAssertEqual(store.message, "Plus restored.")
     }
 
+    @MainActor func testFreshStoreDiscoversExistingOwnershipWithoutWaitingForDailyLoad() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        let transaction = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        await transaction.finish()
+
+        // Simulate a cold app launch after the purchase has already been completed.
+        let relaunched = PurchaseStore()
+        for _ in 0..<50 {
+            if relaunched.hasPlus { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(relaunched.hasPlus, "Existing verified Plus ownership should load immediately, without an API or Plus-screen visit")
+    }
+
     @MainActor func testProductReloadPreservesExplicitRestoreOutcome() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }

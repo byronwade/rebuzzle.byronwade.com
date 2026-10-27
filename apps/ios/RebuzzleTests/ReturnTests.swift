@@ -20,6 +20,17 @@ import UserNotifications
         XCTAssertFalse(content.body.isEmpty)
         XCTAssertNotEqual(content.body, ReminderStore.content(for: 1).body)
     }
+    func testEntrySourceFollowsWidgetAndIntentRoutes() {
+        let router = ReturnRouter()
+        XCTAssertTrue(router.open(URL(string: "rebuzzle://play?source=widget")!))
+        XCTAssertEqual(router.entrySource, .widget)
+        router.openPlay(source: .notification)
+        XCTAssertEqual(router.entrySource, .notification)
+        router.openPlay(source: .shortcut)
+        XCTAssertEqual(router.entrySource, .shortcut)
+        XCTAssertTrue(router.open(URL(string: "rebuzzle://play?source=unknown")!))
+        XCTAssertEqual(router.entrySource, .app)
+    }
 }
 
 @MainActor private final class FakeReminderCenter: ReminderCenter {

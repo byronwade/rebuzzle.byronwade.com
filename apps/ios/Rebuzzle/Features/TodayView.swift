@@ -70,7 +70,7 @@ struct TodayView: View {
                         attemptHeader
                         if model.game?.attempts.isEmpty == false { conversation }
                         VStack(alignment: .leading, spacing: 12) {
-                            TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .vertical)
+                            TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
                                 .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
                                 .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
                                 .accessibilityLabel("Your answer")
@@ -293,12 +293,16 @@ struct ResultView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
                 .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
+                DailyStreakCard(presentation: model.streakPresentation(for: game), context: .result)
                 JourneyRewards(game: game)
                 let metrics = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(spacing: 32))
                 metrics {
                     resultMetric("\(game.attempts.count)/\(game.maxAttempts)", "Guesses")
                     resultMetric("\(model.hintsShown)", "Hints")
                     resultMetric("\(model.journal.entries.count)", "Days played here")
+                }
+                DailyQualityPulse { rating in
+                    model.recordGrowthEvent(.dailyQualityFeedback(rating))
                 }
                 ShareLink(item: game.shareText) { Label("Challenge a friend", systemImage: "square.and.arrow.up") }.buttonStyle(CommitStyle())
                 Text("Same puzzle. Your answer stays a secret.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
@@ -323,6 +327,90 @@ struct ResultView: View {
         DailyReturnTiming.deadline(raw)
     }
 }
+
+private struct DailyQualityPulse: View {
+    @State private var selectedRating: DailyQualityRating?
+    let onSelect: (DailyQualityRating) -> Void
+
+    private let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("How did today’s puzzle feel?")
+                    .font(Theme.font(16, weight: .medium, relativeTo: .headline))
+                    .accessibilityAddTraits(.isHeader)
+                Text("A quick read helps us shape future dailies.")
+                    .font(Theme.font(13, relativeTo: .subheadline))
+                    .foregroundStyle(Theme.secondary)
+            }
+
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(DailyQualityRating.allCases) { rating in
+                    let isSelected = selectedRating == rating
+                    Button {
+                        selectedRating = rating
+                        onSelect(rating)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : rating.symbol)
+                                .font(.system(size: 15, weight: .medium))
+                            Text(rating.title)
+                                .font(Theme.font(13, weight: .medium, relativeTo: .subheadline))
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(isSelected ? Theme.canvas : Theme.ink)
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .background(isSelected ? Theme.ink : Theme.field, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.secondary.opacity(isSelected ? 0.35 : 0.16), lineWidth: 1))
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(rating.title)
+                    .accessibilityValue(isSelected ? "Selected" : "")
+                    .accessibilityHint("Share how the daily puzzle felt.")
+                    .accessibilityIdentifier("qualityRating.\(rating.rawValue)")
+                }
+            }
+
+            if selectedRating != nil {
+                Label("Thanks for the read. It helps us shape future dailies.", systemImage: "checkmark.seal.fill")
+                    .font(Theme.font(13, weight: .medium, relativeTo: .subheadline))
+                    .foregroundStyle(Theme.success)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("qualityFeedbackThanks")
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1))
+    }
+}
+
+private extension DailyQualityRating {
+    var title: String {
+        switch self {
+        case .tooEasy: "Too easy"
+        case .justRight: "Just right"
+        case .toughButFair: "Tough but fair"
+        case .unclear: "The clues didn’t click"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .tooEasy: "sun.max"
+        case .justRight: "sparkle"
+        case .toughButFair: "brain.head.profile"
+        case .unclear: "questionmark.circle"
+        }
+    }
+}
+
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {

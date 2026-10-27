@@ -230,6 +230,7 @@ extension RuntimeTests {
         }
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubProtocol.self]
+        var statsCalls = 0
         StubProtocol.responder = { request in
             switch request.url!.path {
             case "/api/puzzle/today":
@@ -239,7 +240,14 @@ extension RuntimeTests {
             case "/api/auth/login":
                 return (200, #"{"success":true,"token":"bob-token","user":{"id":"bob","username":"Bob","email":"bob@example.com","isGuest":false}}"#)
             case "/api/puzzle/session":
+                if request.value(forHTTPHeaderField: "Authorization") == "Bearer bob-token" {
+                    return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-26","attempts":[{"guess":"time","correct":true,"attemptNumber":1}],"hintsUsed":0,"attemptsLeft":2,"maxAttempts":3,"gameOver":true,"wasSuccessful":true,"answer":"time","explanation":"The clues point to time."}"#)
+                }
                 return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-26","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/user/stats":
+                statsCalls += 1
+                let streak = statsCalls == 1 ? 3 : 7
+                return (200, #"{"success":true,"stats":{"totalGames":7,"wins":7,"streak":\#(streak),"maxStreak":7,"points":700}}"#)
             case "/api/user/progress":
                 return (503, #"{"error":"Journey sync is temporarily unavailable."}"#)
             default:
@@ -259,6 +267,12 @@ extension RuntimeTests {
         XCTAssertTrue(didSignIn)
         XCTAssertEqual(model.player?.id, "bob")
         XCTAssertEqual(model.journeySnapshot?.summary?.totalXP, 75)
+        XCTAssertEqual(statsCalls, 2, "Signing into another account should load that account's streak stats")
+        XCTAssertEqual(model.stats?.streak, 7)
+        XCTAssertEqual(model.completedStreakRefreshState, .fresh(puzzleID: "a", celebrates: false))
+        let game = try XCTUnwrap(model.game)
+        XCTAssertEqual(model.streakPresentation(for: game).message, .solved)
+        XCTAssertEqual(model.streakPresentation(for: game).current, 7)
     }
 
     @MainActor func testGuestUpgradeKeepsIdentityAndRotatesBearerAfterSuccess() async throws {
@@ -436,5 +450,247 @@ extension RuntimeTests {
         }
         let response: SuccessResponse = try await api.request("/api/puzzle/today")
         XCTAssertTrue(response.success)
+    }
+}
+
+private final class DelayedStreakResponseState: @unchecked Sendable {
+    let requested = DispatchSemaphore(value: 0)
+    let release = DispatchSemaphore(value: 0)
+}
+
+extension RuntimeTests {
+    @MainActor func testCompletedWinUsesFreshServerStreakForTheResult() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        var statsCalls = 0
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-26","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-26","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/puzzles/guess":
+                return (200, #"{"success":true,"correct":true,"attemptsLeft":2,"maxAttempts":3,"gameOver":true,"attemptNumber":1,"answer":"time","explanation":"The clues point to time."}"#)
+            case "/api/user/stats":
+                statsCalls += 1
+                let streak = statsCalls == 1 ? 2 : 3
+                return (200, #"{"success":true,"stats":{"totalGames":3,"wins":3,"streak":\#(streak),"maxStreak":\#(streak),"points":300}}"#)
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 325))
+            default:
+                return (200, #"{"success":true}"#)
+            }
+        }
+
+        let model = AppModel(
+            api: APIClient(deviceID: "stable-device", session: URLSession(configuration: config)),
+            storage: LocalStore(root: root),
+            credentials: secure
+        )
+        await model.load()
+        XCTAssertEqual(model.stats?.streak, 2)
+        model.draft = "time"
+        await model.submit()
+
+        let game = try XCTUnwrap(model.game)
+        XCTAssertTrue(game.gameOver)
+        XCTAssertEqual(model.completedStreakRefreshState, .fresh(puzzleID: "a", celebrates: true))
+        let presentation = model.streakPresentation(for: game)
+        XCTAssertEqual(presentation.message, .milestone(3))
+        XCTAssertEqual(presentation.current, 3)
+        XCTAssertEqual(presentation.best, 3)
+    }
+
+    @MainActor func testFailedCompletionStatsRefreshDoesNotPresentStaleStreak() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        var statsCalls = 0
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-26","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-26","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/puzzles/guess":
+                return (200, #"{"success":true,"correct":false,"attemptsLeft":0,"maxAttempts":3,"gameOver":true,"attemptNumber":3,"answer":"time","explanation":"The clues point to time."}"#)
+            case "/api/user/stats":
+                statsCalls += 1
+                if statsCalls == 2 { return (503, #"{"error":"Streak sync is temporarily unavailable."}"#) }
+                if statsCalls > 2 {
+                    return (200, #"{"success":true,"stats":{"totalGames":6,"wins":5,"streak":5,"maxStreak":5,"points":500}}"#)
+                }
+                return (200, #"{"success":true,"stats":{"totalGames":5,"wins":4,"streak":4,"maxStreak":4,"points":400}}"#)
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 325))
+            default:
+                return (200, #"{"success":true}"#)
+            }
+        }
+
+        let model = AppModel(
+            api: APIClient(deviceID: "stable-device", session: URLSession(configuration: config)),
+            storage: LocalStore(root: root),
+            credentials: secure
+        )
+        await model.load()
+        model.draft = "not time"
+        await model.submit()
+
+        let game = try XCTUnwrap(model.game)
+        XCTAssertTrue(game.gameOver, "The result remains usable when streak sync fails")
+        XCTAssertEqual(model.stats?.streak, 4, "The last server stats remain available to Journey")
+        XCTAssertEqual(model.completedStreakRefreshState, .failed(puzzleID: "a"))
+        let presentation = model.streakPresentation(for: game)
+        XCTAssertEqual(presentation.message, .unavailable)
+        XCTAssertNil(presentation.current)
+        XCTAssertNil(presentation.best)
+
+        await model.refreshStreakProgress()
+        XCTAssertEqual(model.stats?.streak, 5)
+        XCTAssertEqual(model.completedStreakRefreshState, .fresh(puzzleID: "a", celebrates: false))
+        XCTAssertEqual(model.streakPresentation(for: game).current, 5)
+        XCTAssertEqual(model.streakPresentation(for: game).message, .held)
+    }
+
+    @MainActor func testRestoredCompletedPuzzleRefreshesWithoutCelebratingAgain() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-26","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-26","attempts":[{"guess":"time","correct":true,"attemptNumber":1}],"hintsUsed":0,"attemptsLeft":2,"maxAttempts":3,"gameOver":true,"wasSuccessful":true,"answer":"time","explanation":"The clues point to time."}"#)
+            case "/api/user/stats":
+                return (200, #"{"success":true,"stats":{"totalGames":7,"wins":7,"streak":7,"maxStreak":7,"points":700}}"#)
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 725))
+            default:
+                return (200, #"{"success":true}"#)
+            }
+        }
+
+        let model = AppModel(
+            api: APIClient(deviceID: "stable-device", session: URLSession(configuration: config)),
+            storage: LocalStore(root: root),
+            credentials: secure
+        )
+        await model.load()
+
+        let game = try XCTUnwrap(model.game)
+        XCTAssertTrue(game.gameOver)
+        XCTAssertEqual(model.completedStreakRefreshState, .fresh(puzzleID: "a", celebrates: false))
+        let presentation = model.streakPresentation(for: game)
+        XCTAssertEqual(presentation.message, .solved)
+        XCTAssertEqual(presentation.current, 7)
+    }
+
+    @MainActor func testDelayedPriorPuzzleStreakResponseIsDiscarded() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        let delayed = DelayedStreakResponseState()
+        var statsCalls = 0
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-26","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-26","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/puzzles/guess":
+                return (200, #"{"success":true,"correct":true,"attemptsLeft":2,"maxAttempts":3,"gameOver":true,"attemptNumber":1,"answer":"time","explanation":"The clues point to time."}"#)
+            case "/api/user/stats":
+                statsCalls += 1
+                if statsCalls == 1 {
+                    return (200, #"{"success":true,"stats":{"totalGames":1,"wins":1,"streak":1,"maxStreak":1,"points":100}}"#)
+                }
+                delayed.requested.signal()
+                _ = delayed.release.wait(timeout: .now() + 8)
+                return (200, #"{"success":true,"stats":{"totalGames":2,"wins":2,"streak":2,"maxStreak":2,"points":200}}"#)
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 125))
+            default:
+                return (200, #"{"success":true}"#)
+            }
+        }
+
+        let model = AppModel(
+            api: APIClient(deviceID: "stable-device", session: URLSession(configuration: config)),
+            storage: LocalStore(root: root),
+            credentials: secure
+        )
+        await model.load()
+        model.draft = "time"
+        let submission = Task { await model.submit() }
+        let requestStarted: Bool = await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(returning: delayed.requested.wait(timeout: .now() + 5) == .success)
+            }
+        }
+        XCTAssertTrue(requestStarted, "The terminal result should trigger a fresh stats request")
+        guard requestStarted else {
+            delayed.release.signal()
+            await submission.value
+            return
+        }
+
+        let completedGame = try XCTUnwrap(model.game)
+        XCTAssertEqual(model.streakPresentation(for: completedGame).message, .syncing)
+        XCTAssertNil(model.streakPresentation(for: completedGame).current)
+        model.game = GameSession(puzzleId: "b", puzzleDate: "2026-10-27")
+        delayed.release.signal()
+        await submission.value
+
+        XCTAssertEqual(model.stats?.streak, 1)
+        let nextPuzzle = try XCTUnwrap(model.game)
+        XCTAssertEqual(model.streakPresentation(for: nextPuzzle).message, .syncing)
+        XCTAssertNil(model.streakPresentation(for: nextPuzzle).current)
     }
 }

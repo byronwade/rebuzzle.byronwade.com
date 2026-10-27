@@ -307,6 +307,25 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     ],
   },
 
+  // Privacy-bounded native funnel events (unique once per account/event/local day).
+  {
+    collection: "nativeGrowthEvents",
+    indexes: [
+      {
+        spec: { userId: 1, eventType: 1, dayKey: 1, source: 1 },
+        options: { unique: true, name: "userId_eventType_dayKey_source_unique" },
+      },
+      {
+        spec: { occurredAt: 1 },
+        options: {
+          expireAfterSeconds: 90 * 24 * 60 * 60,
+          name: "nativeGrowthEvents_ttl_90d",
+        },
+      },
+      { spec: { eventType: 1, occurredAt: -1 } },
+    ],
+  },
+
   // User sessions collection
   {
     collection: "userSessions",

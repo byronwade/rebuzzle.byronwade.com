@@ -31,6 +31,7 @@ import StoreKit
                 }
             }
         }
+        Task { [weak self] in await self?.refreshEntitlements() }
     }
     func load() async {
         await refreshEntitlements()

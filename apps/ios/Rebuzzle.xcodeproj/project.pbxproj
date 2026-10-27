@@ -25,6 +25,7 @@
 		6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */; };
 		795EA28E446ACA22A9CAA2D2 /* PurchaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B1C0F63409D81A96104531 /* PurchaseStore.swift */; };
 		8CCB749D5D325BFCC69EC63E /* VisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DD9980C84C32503F71017B /* VisualTests.swift */; };
+		8D4DB5B38B2B91B6C3B106C2 /* NativeGrowthReportingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CF2D5BCA9C6D4A20BE1611 /* NativeGrowthReportingTests.swift */; };
 		8E4F18C24A3AAB1BDBB240AB /* RebuzzleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 61A388442626D26868384B67 /* RebuzzleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9DE11D302674AF759A8E2FAA /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE425F112F0C6729727D564 /* PreviewData.swift */; };
 		A151C788EC90FD72B593D8C1 /* CanonicalBoardFixture.json in Resources */ = {isa = PBXBuildFile; fileRef = 51B971313B5E0CD6824192C1 /* CanonicalBoardFixture.json */; };
@@ -125,6 +126,7 @@
 		CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseTests.swift; sourceTree = "<group>"; };
 		D63BEA008263AB548D99CB36 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E0DD9980C84C32503F71017B /* VisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTests.swift; sourceTree = "<group>"; };
+		E3CF2D5BCA9C6D4A20BE1611 /* NativeGrowthReportingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGrowthReportingTests.swift; sourceTree = "<group>"; };
 		E74F7577CC547034168ACF15 /* ReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderStore.swift; sourceTree = "<group>"; };
 		F2B711BF40A0A3DB6098E304 /* RebuzzleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RebuzzleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonicalBoardView.swift; sourceTree = "<group>"; };
@@ -223,6 +225,7 @@
 				CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */,
 				008E8374FB9274C42DF329A0 /* ReturnTests.swift */,
 				3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */,
+				E3CF2D5BCA9C6D4A20BE1611 /* NativeGrowthReportingTests.swift */,
 				2DA288848438C453BD345991 /* SubmissionTests.swift */,
 				E0DD9980C84C32503F71017B /* VisualTests.swift */,
 			);
@@ -467,6 +470,7 @@
 				64582E5D3376061BEB464AF3 /* PurchaseTests.swift in Sources */,
 				C2AB0C36CBA54484136565A0 /* ReturnTests.swift in Sources */,
 				ED8FF5B3477B1363C51B0574 /* RuntimeTests.swift in Sources */,
+				8D4DB5B38B2B91B6C3B106C2 /* NativeGrowthReportingTests.swift in Sources */,
 				332D4A22003F027D74734846 /* SubmissionTests.swift in Sources */,
 				8CCB749D5D325BFCC69EC63E /* VisualTests.swift in Sources */,
 			);

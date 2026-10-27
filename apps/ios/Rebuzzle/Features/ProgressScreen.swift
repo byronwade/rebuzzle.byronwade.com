@@ -11,6 +11,7 @@ struct ProgressViewScreen: View {
 
     var body: some View {
         Page {
+            DailyStreakCard(presentation: .journey(stats: model.stats), context: .journey)
             if let progress {
                 JourneyLevelView(progress: progress)
             } else {
@@ -83,7 +84,10 @@ struct ProgressViewScreen: View {
                 Text("Finish a puzzle: 25 XP. Solve it: +75. Solve on your first guess: +25. Solve without hints: +25. Each level takes 300 XP. Revealing the answer still counts toward your weekly challenge.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary).padding(.top, 8)
             }.font(Theme.font(14)).tint(Theme.ink)
-        }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable { await model.refreshJourneyProgress() }
+        }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable {
+            await model.refreshJourneyProgress()
+            await model.refreshStreakProgress()
+        }
     }
     private var journeyUnavailable: some View {
         VStack(alignment: .leading, spacing: 12) {

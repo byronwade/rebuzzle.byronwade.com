@@ -188,6 +188,9 @@ struct ReminderView: View {
                     saving = true
                     await model.reminders.configure(enabled: enabled, time: time, completedToday: model.completedCurrentPuzzle)
                     enabled = model.reminders.enabled; saving = false
+                    if model.reminders.enabled, model.reminders.nextReminder != nil {
+                        model.recordGrowthEvent(.reminderEnabled)
+                    }
                 } }.disabled(saving)
                 if let next = model.reminders.nextReminder {
                     LabeledContent("Next invitation", value: next.formatted(date: .abbreviated, time: .shortened))

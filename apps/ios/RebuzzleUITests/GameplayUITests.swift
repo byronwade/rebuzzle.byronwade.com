@@ -120,6 +120,22 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertFalse(app.buttons["checkAnswer"].exists)
+        let streakCard = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
+        XCTAssertTrue(streakCard.waitForExistence(timeout: 5), "The result should include a daily streak card")
+        let currentStreak = NSPredicate(format: "label CONTAINS %@", "Current streak: 1 day")
+        expectation(for: currentStreak, evaluatedWith: streakCard)
+        waitForExpectations(timeout: 5)
+        XCTAssertTrue(streakCard.label.contains("Best streak: 1 day"))
+        XCTAssertTrue(streakCard.label.contains("2 days left to the 3-day mark"))
+        let earnedXP = app.staticTexts["earnedXP"]
+        XCTAssertTrue(earnedXP.exists)
+        XCTAssertLessThan(streakCard.frame.minY, earnedXP.frame.minY,
+                          "The new streak reward should follow the solve before the XP summary")
+        let resultNavigationBar = app.navigationBars["Rebuzzle"]
+        let resultTabBar = app.tabBars.firstMatch
+        XCTAssertGreaterThanOrEqual(streakCard.frame.minY, resultNavigationBar.frame.maxY)
+        XCTAssertLessThan(streakCard.frame.minY, resultTabBar.frame.minY,
+                          "The streak reward should appear in the initial solve viewport")
         capture("Today — solved")
         let journal = app.buttons["keepConnection"]
         for _ in 0..<6 where !journal.isHittable { app.swipeUp() }
@@ -210,6 +226,25 @@ import StoreKitTest
         XCTAssertTrue(element.isHittable)
     }
 
+    private func revealTopWithinViewport(_ element: XCUIElement, below navigationBar: XCUIElement) {
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(navigationBar.waitForExistence(timeout: 5))
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
+        for _ in 0..<8 {
+            if element.frame.minY < navigationBar.frame.maxY {
+                app.swipeDown()
+            } else if element.frame.minY >= tabBar.frame.minY {
+                app.swipeUp()
+            } else {
+                break
+            }
+        }
+        XCTAssertGreaterThanOrEqual(element.frame.minY, navigationBar.frame.maxY,
+                                    "The card should begin below the navigation bar")
+        XCTAssertLessThan(element.frame.minY, tabBar.frame.minY,
+                          "The card should begin within the visible scroll area")
+    }
+
     func testPlusShowsMyCompletedPuzzleBeforePurchase() {
         launchFixture()
         submit("lighthouse")
@@ -236,6 +271,43 @@ import StoreKitTest
         capture("Today — revealed")
     }
 
+    func testQualityFeedbackIsOptionalAfterSolve() {
+        launchFixture()
+        submit("lighthouse")
+
+        XCTAssertTrue(app.staticTexts["How did today’s puzzle feel?"].waitForExistence(timeout: 5))
+        let rating = app.buttons["qualityRating.tough_but_fair"]
+        for _ in 0..<8 where !rating.isHittable { app.swipeUp() }
+        XCTAssertTrue(rating.isHittable)
+        rating.tap()
+
+        let thanks = app.descendants(matching: .any)["qualityFeedbackThanks"]
+        XCTAssertTrue(thanks.waitForExistence(timeout: 5))
+        XCTAssertTrue(thanks.label.localizedCaseInsensitiveContains("thanks"))
+        XCTAssertTrue(app.staticTexts["You found it."].exists)
+        XCTAssertTrue(app.staticTexts["lighthouse"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["checkAnswer"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Challenge a friend")).firstMatch.exists)
+    }
+
+    func testQualityFeedbackWorksAfterRevealAtAccessibilitySize() {
+        launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        for guess in ["sunshine", "moonlight", "daybreak"] { submit(guess) }
+
+        XCTAssertTrue(app.staticTexts["How did today’s puzzle feel?"].waitForExistence(timeout: 5))
+        let rating = app.buttons["qualityRating.unclear"]
+        for _ in 0..<16 where !rating.isHittable { app.swipeUp() }
+        XCTAssertTrue(rating.isHittable)
+        rating.tap()
+
+        let thanks = app.descendants(matching: .any)["qualityFeedbackThanks"]
+        XCTAssertTrue(thanks.waitForExistence(timeout: 5))
+        XCTAssertTrue(thanks.label.localizedCaseInsensitiveContains("thanks"))
+        XCTAssertTrue(app.staticTexts["Here’s the connection."].exists)
+        XCTAssertTrue(app.staticTexts["lighthouse"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["checkAnswer"].exists)
+    }
+
     func testAccessibleTextGameplay() {
         launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
         submit("sunshine")
@@ -243,6 +315,9 @@ import StoreKitTest
         capture("Conversation — accessibility XXXL")
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        let resultStreak = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
+        XCTAssertTrue(resultStreak.waitForExistence(timeout: 5))
+        revealTopWithinViewport(resultStreak, below: app.navigationBars["Rebuzzle"])
         capture("Today — accessibility XXXL solved")
         let journey = app.buttons["viewJourney"]
         for _ in 0..<10 where !journey.isHittable { app.swipeUp() }
@@ -250,6 +325,15 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("125 XP"))
         XCTAssertTrue(app.staticTexts["journeyLevel"].exists)
+        let journeyStreak = app.descendants(matching: .any)["journeyDailyStreak"].firstMatch
+        XCTAssertTrue(journeyStreak.waitForExistence(timeout: 5))
+        XCTAssertLessThan(journeyStreak.frame.minY, app.staticTexts["journeyXP"].frame.minY,
+                          "The streak should lead the Journey progress summary")
+        let journeyNavigationBar = app.navigationBars["Journey"]
+        revealTopWithinViewport(journeyStreak, below: journeyNavigationBar)
+        XCTAssertTrue(journeyStreak.isHittable)
+        XCTAssertTrue(journeyStreak.label.contains("Current streak: 1 day"))
+        XCTAssertTrue(journeyStreak.label.contains("Best streak: 1 day"))
         XCTAssertLessThanOrEqual(app.staticTexts["journeyLevel"].frame.maxY, app.staticTexts["journeyXP"].frame.minY)
         capture("Journey — accessibility XXXL")
     }

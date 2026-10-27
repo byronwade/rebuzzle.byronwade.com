@@ -64,6 +64,7 @@ it("deletes only the authenticated account and its owned records", async () => {
   expect(deletes).toContainEqual({ collection: "users", filter: { id: "self" } });
   expect(JSON.stringify(deletes)).not.toContain("victim");
   expect(deletes).toContainEqual({ collection: "puzzleAttempts", filter: { userId: "self" } });
+  expect(deletes).toContainEqual({ collection: "nativeGrowthEvents", filter: { userId: "self" } });
 });
 it("requires authentication", async () => {
   jest.mocked(getAuthenticatedUser).mockResolvedValue(null);

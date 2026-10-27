@@ -34,7 +34,10 @@ struct PlusView: View {
         }
         .navigationTitle("Rebuzzle Plus")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await model.purchases.load() }
+        .task {
+            await model.purchases.load()
+            if !model.purchases.hasPlus { model.recordGrowthEvent(.plusOfferViewed) }
+        }
     }
 
     private func journalPreview(_ entry: JournalEntry) -> some View {

@@ -49,10 +49,11 @@ struct RootView: View {
         .onOpenURL { returnRouter.open($0) }
         .task(id: returnRouter.request) {
             guard let request = returnRouter.request else { return }
+            let source = returnRouter.entrySource
             model.saveDraft()
             model.selectedTab = .play
             playNavigation = UUID()
-            await model.load()
+            await model.load(entrySource: source)
             if returnRouter.request == request { returnRouter.request = nil }
         }
         .task { await model.reminders.refreshAuthorization(); await model.load(); await model.purchases.load() }

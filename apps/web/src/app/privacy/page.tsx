@@ -68,7 +68,7 @@ export default function PrivacyPolicyPage() {
               <li>Leaderboard rankings</li>
               <li>Submitted guesses, puzzle identifiers, and answer-checking results</li>
               <li>Hint counts, attempt counts, play duration, and gameplay timestamps</li>
-              <li>Achievement progress and game session data</li>
+              <li>Achievement progress, game session data, and Journey XP, levels, and badges</li>
             </ul>
           </div>
           <div>
@@ -78,6 +78,11 @@ export default function PrivacyPolicyPage() {
               <li>Vercel Analytics for web performance and user behavior</li>
               <li>MongoDB event tracking for game analytics</li>
               <li>Account-linked login and return events, and returning guest identification</li>
+              <li>
+                Native daily-play events: when a daily puzzle is opened and its entry path, whether
+                a daily puzzle is finished, whether the Plus offer is viewed, and whether a reminder
+                is successfully scheduled, and an optional rating after the daily result is revealed
+              </li>
             </ul>
             <p>
               The iOS app stores a random device identifier in the Keychain and sends it to our
@@ -86,15 +91,28 @@ export default function PrivacyPolicyPage() {
               guest account. Our service processes request IP addresses for security and rate
               limiting and stores IP-derived hashes on guest records.
             </p>
+            <p>
+              Native funnel events are linked to your account. Their stored fields are limited to
+              the event type, local puzzle day, server-recorded time, and, where relevant, the entry
+              path, finish outcome, or one of four optional puzzle ratings. If you change your
+              rating, the latest choice replaces your earlier choice for that account and puzzle
+              day. These event records do not contain puzzle IDs, answers, guesses, explanations,
+              journal notes, email addresses, or reminder text. We use them to understand daily play
+              and improve the game; ratings are self-selected and are not treated as objective
+              difficulty measurements.
+            </p>
           </div>
           <div>
             <h3>Information stored locally by the iOS app</h3>
             <p>
-              Journal notes, unsent drafts, cached puzzle results, and reminder preferences are
-              stored locally. The app does not upload journal notes to Rebuzzle. If you export
-              journal text or share a result using the system share sheet, the destination you
-              choose handles that information. Device backups may also include local app data,
-              depending on your device and backup settings.
+              Journey syncs a limited completion summary to your account: puzzle dates and IDs,
+              solved or failed outcomes, attempt counts, optional hint counts, completion times, and
+              the timezone used for the daily reset. It does not include your answers, submitted
+              guesses, explanations, or journal notes. Journal notes, unsent drafts, cached puzzle
+              results, and reminder preferences are stored locally. The app does not upload journal
+              notes to Rebuzzle. If you export journal text or share a result using the system share
+              sheet, the destination you choose handles that information. Device backups may also
+              include local app data, depending on your device and backup settings.
             </p>
           </div>
         </div>
@@ -225,11 +243,17 @@ export default function PrivacyPolicyPage() {
           contact us about deleting your account and associated data.
         </p>
         <p>
+          Native funnel events are configured in our application code to expire from the application
+          database after 90 days. We have not yet verified the live production expiration index, so
+          this code-level schedule is not a guarantee that every deployed record expires on that
+          timeline. Database backups and service logs may have separate retention schedules.
+        </p>
+        <p>
           Account deletion removes your account and associated records from the application
-          collections covered by that process. Public puzzle content may remain after creator
-          attribution is removed. Export any journal you wish to keep before deleting your account.
-          The app removes that account’s local files, but its installation identifier remains in the
-          Keychain.
+          collections covered by that process, including its native daily-funnel events. Public
+          puzzle content may remain after creator attribution is removed. Export any journal you
+          wish to keep before deleting your account. The app removes that account’s local files, but
+          its installation identifier remains in the Keychain.
         </p>
         <p>
           This process does not delete Apple’s purchase records or independently erase records in

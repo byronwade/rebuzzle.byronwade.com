@@ -2,6 +2,7 @@ import { gameSettings } from "@rebuzzle/config";
 import { after, NextResponse } from "next/server";
 import { validateAnswer } from "@/ai/services/answer-validation";
 import { db } from "@/db";
+import { nativeGrowthEventOps } from "@/db/analytics-ops";
 import { updateUserStats } from "@/lib/auth";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getAchievementDifficultyCategory } from "@/lib/difficulty";
@@ -399,6 +400,20 @@ export async function POST(request: Request) {
       const emailUnlocks = unlockedForEmail;
       after(async () => {
         try {
+          if (isDaily) {
+            try {
+              await nativeGrowthEventOps.recordOnce({
+                userId: uid,
+                eventType: "daily_finished",
+                dayKey: localDateKey,
+                occurredAt: new Date(),
+                outcome: isCorrect ? "solved" : "ran_out",
+              });
+            } catch (error) {
+              console.error("[guess] Native growth event write failed:", error);
+            }
+          }
+
           const { recordFinalAttemptSignal } = await import("@/ai/learning");
           await recordFinalAttemptSignal({
             puzzleId: pid,
