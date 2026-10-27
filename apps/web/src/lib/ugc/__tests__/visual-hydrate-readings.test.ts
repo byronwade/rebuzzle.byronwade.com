@@ -1,3 +1,4 @@
+import * as catalog from "@/ai/puzzle-agent/visual/curated-pictograms";
 import { hydrateStudioVisual } from "../visual-hydrate";
 
 it("refuses to silently replace an explicitly selected asset", () => {
@@ -25,3 +26,34 @@ it("rejects a citrus search alias as a requested puzzle reading", () => {
   });
   expect(result.issues.length).toBeGreaterThan(0);
 });
+
+it("preserves an explicit legacy identity independently of the current concept default", () => {
+  const original = catalog.resolveCuratedPictogram("clock")!;
+  const changedDefault = jest.spyOn(catalog, "resolveCuratedPictogram").mockReturnValue({
+    ...original,
+    assetId: "rebuzzle-ink:clock:v99",
+    svg: "future default bytes",
+  });
+  try {
+    const result = hydrateStudioVisual({
+      layers: [
+        { kind: "pictogram", concept: "clock", assetId: original.assetId, emojiFallback: "◆" },
+      ],
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.visual.layers[0]).toMatchObject({ assetId: original.assetId, svg: original.svg });
+  } finally {
+    changedDefault.mockRestore();
+  }
+});
+
+it.each(["lucide:clock:v999", "rebuzzle-ink:clock:v1", "lucide:cloud:v2"])(
+  "does not hydrate an unknown or unapproved version %s",
+  (assetId) => {
+    expect(
+      hydrateStudioVisual({
+        layers: [{ kind: "pictogram", concept: "clock", assetId, emojiFallback: "◆" }],
+      }).issues.length
+    ).toBeGreaterThan(0);
+  }
+);

@@ -491,6 +491,17 @@ export function resolveCuratedPictogram(
     if (replacement) return replacement;
   }
 
+  return serializeCuratedEntry(entry);
+}
+
+/** Resolve an exact released identity; never follow a newer concept default. */
+export function resolveCuratedPictogramByAssetId(assetId: string): CuratedPictogram | null {
+  const entry = CATALOG.find((candidate) => assetId === `lucide:${candidate.id}:v2`);
+  if (!entry || QUARANTINED_IDS.has(entry.id)) return null;
+  return serializeCuratedEntry(entry);
+}
+
+function serializeCuratedEntry(entry: CuratedPictogramEntry): CuratedPictogram | null {
   const raw = serializeIconNode(entry.icon, {
     width: 64,
     height: 64,
@@ -564,6 +575,21 @@ export function isAuthenticCuratedPictogram(input: {
   svg?: string;
 }): boolean {
   if (!input.assetId || !input.svg) return false;
-  const curated = resolveCuratedPictogram(input.concept);
-  return Boolean(curated && curated.assetId === input.assetId && curated.svg === input.svg);
+  const curated = resolveCuratedPictogramByAssetId(input.assetId);
+  return Boolean(
+    curated &&
+      isApprovedCuratedPictogramReading(input.assetId, input.concept) &&
+      curated.svg === input.svg
+  );
+}
+
+/** A reading belongs to an eligible exact identity, not its discovery aliases. */
+export function isApprovedCuratedPictogramReading(assetId: string, concept: string): boolean {
+  if (!resolveCuratedPictogramByAssetId(assetId)) return false;
+  const policy = getCuratedPictogramReadingPolicy(assetId);
+  return Boolean(
+    policy?.approvedReadings.some(
+      (reading) => normalizeConcept(reading) === normalizeConcept(concept)
+    )
+  );
 }

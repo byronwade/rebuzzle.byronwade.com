@@ -13,7 +13,7 @@ import { lookupIconFeatures } from "./visual/icon-features";
  * the declared answer. Keeping this gate deterministic means a bad board is
  * rejected before novelty, calibration, or model judges spend budget on it.
  */
-export const SEMANTIC_ALIGNMENT_VERSION = "semantic-alignment-v2";
+export const SEMANTIC_ALIGNMENT_VERSION = "semantic-alignment-v3";
 
 export type SemanticAlignmentInput = {
   answer: string;
@@ -144,12 +144,14 @@ function cueBaseVariants(layer: VisualLayer): string[] {
 
   if (layer.kind !== "pictogram") return [];
 
-  const catalogIdentity = layer.assetId?.startsWith("lucide:")
-    ? getCuratedPictogramReadingPolicy(layer.assetId)
+  const hasCatalogIdentity =
+    layer.assetId?.startsWith("lucide:") || layer.assetId?.startsWith("rebuzzle-ink:");
+  const catalogIdentity = hasCatalogIdentity
+    ? getCuratedPictogramReadingPolicy(layer.assetId!)
     : !layer.assetId
       ? getCuratedPictogramReadingPolicy(layer.concept)
       : null;
-  if (layer.assetId?.startsWith("lucide:") && !catalogIdentity) return [];
+  if (hasCatalogIdentity && !catalogIdentity) return [];
   if (catalogIdentity) {
     return [
       ...catalogIdentity.approvedReadings,

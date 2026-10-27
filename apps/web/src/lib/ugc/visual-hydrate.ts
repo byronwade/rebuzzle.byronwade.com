@@ -7,7 +7,11 @@ import {
   type PuzzleVisual,
   type VisualLayer,
 } from "@/ai/puzzle-agent/visual/composition";
-import { resolveCuratedPictogram } from "@/ai/puzzle-agent/visual/curated-pictograms";
+import {
+  isApprovedCuratedPictogramReading,
+  resolveCuratedPictogram,
+  resolveCuratedPictogramByAssetId,
+} from "@/ai/puzzle-agent/visual/curated-pictograms";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 
 function emojiFallbackFor(concept: string): string {
@@ -33,8 +37,10 @@ export function hydrateStudioVisual(input: {
       };
     }
     if (layer.kind !== "pictogram") return layer;
-    const curated = resolveCuratedPictogram(layer.concept);
-    if (!curated || (layer.assetId && layer.assetId !== curated.assetId)) {
+    const curated = layer.assetId
+      ? resolveCuratedPictogramByAssetId(layer.assetId)
+      : resolveCuratedPictogram(layer.concept);
+    if (!curated || !isApprovedCuratedPictogramReading(curated.assetId, layer.concept)) {
       issues.push(
         `Unsupported pictogram reading or asset "${layer.concept}" — pick an approved reading from the catalog`
       );

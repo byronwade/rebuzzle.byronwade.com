@@ -126,3 +126,16 @@ it("does not let a relabeled citrus asset form a lemon compound", () => {
   expect(result.ok).toBe(false);
   expect(result.cues.flatMap((cue) => cue.variants)).not.toContain("lemon");
 });
+
+it("does not borrow generic concept aliases for an unapproved original identity", () => {
+  const result = evaluateSemanticAlignment({
+    answer: "clockwork",
+    techniqueId: "simple_compound",
+    visual: visual([
+      { ...pictogram("clock"), assetId: "rebuzzle-ink:clock:v1" } as VisualLayer,
+      text("WORK"),
+    ]),
+  });
+  expect(result.ok).toBe(false);
+  expect(result.cues.flatMap((cue) => cue.variants)).not.toContain("clock");
+});

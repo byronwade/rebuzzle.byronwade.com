@@ -1,9 +1,12 @@
+import { createHash } from "node:crypto";
 import {
   getCuratedPictogramReadingPolicy,
+  isApprovedCuratedPictogramReading,
   isAuthenticCuratedPictogram,
   listCuratedPictogramIds,
   QUARANTINED_CURATED_PICTOGRAM_IDS,
   resolveCuratedPictogram,
+  resolveCuratedPictogramByAssetId,
 } from "../curated-pictograms";
 import { scorePictogramClarity } from "../pictogram-clarity";
 
@@ -101,4 +104,45 @@ describe("catalog reading policy", () => {
     expect(getCuratedPictogramReadingPolicy(citrus.assetId)?.approvedReadings).toEqual(["citrus"]);
     expect(getCuratedPictogramReadingPolicy("lucide:citrus:v999")).toBeNull();
   });
+});
+
+it("pins published legacy artwork bytes independently of future defaults", () => {
+  expect(
+    Object.fromEntries(
+      listCuratedPictogramIds().map((id) => {
+        const asset = resolveCuratedPictogram(id)!;
+        return [asset.assetId, createHash("sha256").update(asset.svg).digest("hex")];
+      })
+    )
+  ).toMatchSnapshot();
+});
+
+it("resolves every eligible legacy identity to the unchanged artwork", () => {
+  for (const id of listCuratedPictogramIds()) {
+    const asset = resolveCuratedPictogram(id)!;
+    expect(resolveCuratedPictogramByAssetId(asset.assetId)).toEqual(asset);
+  }
+});
+
+it("rejects unknown versions, candidates, quarantined IDs and alternate readings", () => {
+  for (const id of [
+    "lucide:clock:v1",
+    "lucide:clock:v3",
+    "lucide:cloud:v2",
+    "rebuzzle-ink:clock:v1",
+    "clock",
+  ]) {
+    expect(resolveCuratedPictogramByAssetId(id)).toBeNull();
+    expect(isApprovedCuratedPictogramReading(id, "clock")).toBe(false);
+  }
+  expect(isApprovedCuratedPictogramReading("lucide:bicycle:v2", "BIKE")).toBe(true);
+  expect(isApprovedCuratedPictogramReading("lucide:citrus:v2", "lemon")).toBe(false);
+  const clock = resolveCuratedPictogramByAssetId("lucide:clock:v2")!;
+  expect(
+    isAuthenticCuratedPictogram({
+      ...clock,
+      concept: "clock",
+      svg: clock.svg.replace("<svg", '<svg data-spoof="1"'),
+    })
+  ).toBe(false);
 });
