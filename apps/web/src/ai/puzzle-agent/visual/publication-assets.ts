@@ -1,5 +1,7 @@
 import type { PuzzleVisual } from "./composition";
 import { isAuthenticCuratedPictogram } from "./curated-pictograms";
+import { listOriginalPictogramCandidates } from "./original-pictograms";
+import { sanitizePictogramSvg } from "./sanitize-svg";
 
 export type PublicationAssetCheck = { ok: true } | { ok: false; reason: string; concept?: string };
 
@@ -39,6 +41,35 @@ export async function verifyPublicationAssets(
     }
 
     try {
+      if (layer.assetId.startsWith("rebuzzle-ink:")) {
+        const original = listOriginalPictogramCandidates().find(
+          (asset) => asset.assetId === layer.assetId
+        );
+        if (
+          !original ||
+          original.styleId !== visual.styleId ||
+          sanitizePictogramSvg(original.svg) !== layer.svg ||
+          !original.approvedReadings.includes(layer.concept.trim().toLowerCase())
+        ) {
+          return {
+            ok: false,
+            concept: layer.concept,
+            reason: `Pictogram "${layer.concept}" does not match its original artwork identity or reading`,
+          };
+        }
+        const { originalArtworkPromotionService } = await import(
+          "../review/original-artwork-promotion-server"
+        );
+        const approved = await originalArtworkPromotionService.findEligible(original.assetId);
+        if (!approved || approved.assetId !== original.assetId) {
+          return {
+            ok: false,
+            concept: layer.concept,
+            reason: `Pictogram "${layer.concept}" lacks current original artwork approval`,
+          };
+        }
+        continue;
+      }
       const { generatedPictogramRegistry } = await import(
         "../review/generated-pictogram-registry-server"
       );

@@ -1,3 +1,11 @@
+const findEligible = jest.fn();
+jest.mock("../../review/original-artwork-promotion-server", () => ({
+  originalArtworkPromotionService: { findEligible },
+}));
+
+import { listOriginalPictogramCandidates } from "../original-pictograms";
+import { sanitizePictogramSvg } from "../sanitize-svg";
+
 const findApproved = jest.fn();
 
 jest.mock("../../review/generated-pictogram-registry-server", () => ({
@@ -86,5 +94,53 @@ describe("verifyPublicationAssets", () => {
         layers: [{ ...visual.layers[0], assetId: "generated-pictogram:spoofed" }],
       })
     ).resolves.toMatchObject({ ok: false });
+  });
+});
+
+describe("original artwork publication", () => {
+  const asset = listOriginalPictogramCandidates()[0];
+  const visual = {
+    styleId: asset.styleId,
+    mode: "composed" as const,
+    layout: "row" as const,
+    unicodeFallback: "clock",
+    layers: [
+      {
+        kind: "pictogram" as const,
+        concept: asset.concept,
+        emojiFallback: "clock",
+        assetId: asset.assetId,
+        svg: sanitizePictogramSvg(asset.svg)!,
+        source: "approved-cache" as const,
+      },
+    ],
+  };
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+  it("accepts exact original artwork with current approval and an approved reading", async () => {
+    findEligible.mockResolvedValue({ assetId: asset.assetId });
+    await expect(verifyPublicationAssets(visual)).resolves.toEqual({ ok: true });
+    expect(findApproved).not.toHaveBeenCalled();
+  });
+  it("rechecks approval and rejects a subsequently quarantined drawing", async () => {
+    findEligible.mockResolvedValueOnce({ assetId: asset.assetId }).mockResolvedValueOnce(null);
+    await expect(verifyPublicationAssets(visual)).resolves.toEqual({ ok: true });
+    await expect(verifyPublicationAssets(visual)).resolves.toMatchObject({ ok: false });
+  });
+  it.each([
+    { concept: "watch" },
+    { svg: eye.svg },
+    { assetId: "rebuzzle-ink:clock:v999" },
+    { source: "catalog" as const },
+  ])("rejects original identity or reading changes: %j", async (change) => {
+    findEligible.mockResolvedValue({ assetId: asset.assetId });
+    await expect(
+      verifyPublicationAssets({ ...visual, layers: [{ ...visual.layers[0], ...change }] })
+    ).resolves.toMatchObject({ ok: false });
+  });
+  it("fails closed when original approval cannot be checked", async () => {
+    findEligible.mockRejectedValue(new Error("Database unavailable"));
+    await expect(verifyPublicationAssets(visual)).resolves.toMatchObject({ ok: false });
   });
 });

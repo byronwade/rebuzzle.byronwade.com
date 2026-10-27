@@ -56,3 +56,11 @@
 The generated registry's content-addressed IDs and three-person unanimous panel are not interchangeable with the calibrated candidate panel. The latter already supports controls, five reviewers and per-size thresholds. Extend that panel for authored candidates, score raw answers against each exact original reading policy, and retain distinct evidence-backed promotion. This preserves stricter recognition standards without dual-registering the same artwork under competing identities.
 
 Before this integration, a regression in generated approval lookup was reproduced: replacing both SVG and stored hash retained approval under the original identity. Lookup now verifies the content-derived ID and underlying unique current-policy human decisions, including raw answer, fixture and both sizes. Six regression cases failed before the fix. This does not approve any original candidates or change published frozen boards.
+
+## Publication verification integration (2026-10-26)
+
+The shared publication asset verifier now handles authored `rebuzzle-ink:` identities separately from generated-registry assets. It requires exact manifest bytes, style, versioned identity and a permitted reading, then checks current audited promotion eligibility. A later quarantine or unavailable approval service prevents verification. Search aliases and common confusions do not grant readings. Legacy catalog verification is unchanged.
+
+Verification: two positive/revocation cases failed before implementation; all 10 publication-asset cases now pass. Full web suite: 178 suites, 1,055 tests, two snapshots. TypeScript passed; scoped Biome passed with the existing configuration deprecation notice. Independent review found no actionable defects.
+
+This is a publication-boundary step only. Studio hydration/catalog selection, generator preference, semantic integration, and rechecking at community/daily publication remain pending. No original artwork has been approved or deployed by this change.
