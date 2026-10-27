@@ -7,8 +7,6 @@ import {
   PLUS_PRODUCT_ID,
 } from "@/lib/storekit/plus-entitlement";
 
-export const runtime = "nodejs";
-
 const NO_STORE = { "Cache-Control": "private, no-store" };
 const MAX_BODY_BYTES = 64 * 1024;
 
