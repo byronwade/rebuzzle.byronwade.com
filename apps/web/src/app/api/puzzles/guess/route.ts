@@ -17,6 +17,7 @@ import {
 import { buildGuessReaction } from "@/lib/game/reactions";
 import { composePointsMultiplier, rollEngagementMultipliers } from "@/lib/game/retention-stats";
 import { calculateGamePoints } from "@/lib/gameSettings";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
@@ -98,7 +99,8 @@ export async function POST(request: Request) {
 
     // Player's local calendar day — unlocks at their midnight; generation still
     // uses one YYYY-MM-DD publication key per puzzle.
-    const timeZone = await resolveRequestTimeZone();
+    const requestTimeZone = await resolveRequestTimeZone();
+    const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
 
     const [puzzle, todays] = await Promise.all([
@@ -240,6 +242,7 @@ export async function POST(request: Request) {
         abandoned,
         isFinal,
         puzzleDate: lockKey,
+        ...(isDaily ? { puzzleTimeZone: timeZone } : {}),
         attemptedAt: new Date(),
         completedAt: isCorrect ? new Date() : undefined,
         attemptNumber,
@@ -272,6 +275,16 @@ export async function POST(request: Request) {
         },
         { status: 409 }
       );
+    }
+
+    if (isDaily && isFinal) {
+      try {
+        await db.dailyProgressOps.materializeFromAttempt(write.attempt);
+      } catch (error) {
+        // The accepted attempt is authoritative; restore/progress reads repair
+        // this projection if Mongo is temporarily unavailable here.
+        console.error("[guess] Journey projection write failed:", error);
+      }
     }
 
     let pointsEarned = 0;

@@ -1,8 +1,19 @@
 jest.mock("@/lib/timezone", () => ({ resolveRequestTimeZone: jest.fn().mockResolvedValue("UTC") }));
+jest.mock("@/lib/auth-middleware", () => ({ getAuthenticatedUser: jest.fn() }));
+jest.mock("@/lib/journey-timezone", () => ({ resolveStableJourneyTimeZone: jest.fn() }));
 jest.mock("@/app/actions/puzzleGenerationActions", () => ({ getTodaysPuzzle: jest.fn() }));
 
 import { getTodaysPuzzle } from "@/app/actions/puzzleGenerationActions";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { GET } from "../route";
+
+beforeEach(() => {
+  jest.useFakeTimers().setSystemTime(new Date("2026-10-26T03:30:00.000Z"));
+  jest.mocked(getAuthenticatedUser).mockResolvedValue(null);
+  jest.mocked(resolveStableJourneyTimeZone).mockResolvedValue("UTC");
+});
+afterEach(() => jest.useRealTimers());
 
 it("publishes rendering fields without solution or authoring metadata", async () => {
   jest.mocked(getTodaysPuzzle).mockResolvedValue({
@@ -71,4 +82,20 @@ it("allows a capable client to retrieve the daily puzzle", async () => {
   );
   expect(response.status).toBe(200);
   expect((await response.json()).puzzle.id).toBe("canonical");
+});
+
+it("selects the official puzzle by the authenticated account's stable reset zone", async () => {
+  jest.mocked(getAuthenticatedUser).mockResolvedValue({ userId: "user-1" } as never);
+  jest.mocked(resolveStableJourneyTimeZone).mockResolvedValue("America/Los_Angeles");
+  jest.mocked(getTodaysPuzzle).mockResolvedValue({
+    success: true,
+    puzzle: { id: "daily", visual: { layers: [] } },
+  } as never);
+
+  const response = await GET(new Request("https://rebuzzle.test/api/puzzle/today"));
+
+  expect(response.status).toBe(200);
+  expect(resolveStableJourneyTimeZone).toHaveBeenCalledWith("user-1", "UTC");
+  expect(getTodaysPuzzle).toHaveBeenCalledWith(undefined, "2026-10-25", { allowAiGenerate: false });
+  expect((await response.json()).timeZone).toBe("America/Los_Angeles");
 });

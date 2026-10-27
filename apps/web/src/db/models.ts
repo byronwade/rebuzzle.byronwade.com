@@ -364,6 +364,20 @@ export interface DailyProgress {
 
 export type NewDailyProgress = Omit<DailyProgress, "_id">;
 
+/** Per-account checkpoint for the resumable Journey legacy backfill. */
+export interface DailyProgressBackfillState {
+  /** Account ID is also the Mongo `_id`, making the checkpoint unique without another index. */
+  _id: string;
+  userId: string;
+  status: "scanning" | "delta" | "complete";
+  cutoffAt: Date;
+  cursorPuzzleDate?: string;
+  deltaCutoffAt?: Date;
+  deltaCursorAttemptedAt?: Date;
+  deltaCursorAttemptId?: string;
+  updatedAt: Date;
+}
+
 // Blog post FAQ item for structured data
 export interface BlogFAQItem {
   question: string;

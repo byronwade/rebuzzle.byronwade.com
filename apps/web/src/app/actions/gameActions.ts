@@ -6,6 +6,7 @@ import { isAdmin } from "@/lib/admin-auth";
 import { isSessionRevoked } from "@/lib/auth/session-revocation";
 import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { verifyToken } from "@/lib/jwt";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 import type { GameData, PuzzleMetadata, PuzzleType, PuzzleVisual } from "../../lib/gameSettings";
@@ -77,7 +78,8 @@ export async function isPuzzleCompletedForToday(): Promise<AttemptStatus> {
       return { hasAttempt: false, wasSuccessful: false };
     }
 
-    const timeZone = await resolveRequestTimeZone();
+    const requestTimeZone = await resolveRequestTimeZone();
+    const timeZone = await resolveStableJourneyTimeZone(userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
     const result = await db.puzzleAttemptOps.hasTodayAttempt(userId, localDateKey);
     return {
@@ -142,12 +144,13 @@ export async function fetchGameOverSolution(): Promise<{
   puzzleId?: string;
 }> {
   try {
-    const timeZone = await resolveRequestTimeZone();
+    const requestTimeZone = await resolveRequestTimeZone();
+    const userId = await getCurrentUserId();
+    const timeZone = await resolveStableJourneyTimeZone(userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
-    const [userId, puzzleResult] = await Promise.all([
-      getCurrentUserId(),
-      getTodaysPuzzle(undefined, localDateKey, { allowAiGenerate: false }),
-    ]);
+    const puzzleResult = await getTodaysPuzzle(undefined, localDateKey, {
+      allowAiGenerate: false,
+    });
     const puzzle = (puzzleResult.success ? puzzleResult.puzzle : null) as TodaysPuzzle | null;
 
     if (!puzzle) {
@@ -183,7 +186,9 @@ export async function fetchGameData(_isPreview = false): Promise<PublicGameData>
     // Never run Eve/AI on the interactive board path — cron owns generation.
     // Serve the puzzle for the player's *local* calendar day (generated once
     // under that YYYY-MM-DD publication key, unlocked after local midnight).
-    const timeZone = await resolveRequestTimeZone();
+    const userId = await getCurrentUserId();
+    const requestTimeZone = await resolveRequestTimeZone();
+    const timeZone = await resolveStableJourneyTimeZone(userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
     const result = await getTodaysPuzzle(undefined, localDateKey, { allowAiGenerate: false });
     const puzzle = (result.success ? result.puzzle : null) as TodaysPuzzle | null;

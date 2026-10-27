@@ -32,6 +32,7 @@
     "db:generate-puzzles": "tsx scripts/generate-daily-puzzles.ts",
     "db:update-blog-titles": "tsx scripts/update-blog-post-titles.ts",
     "db:create-indexes": "tsx scripts/create-indexes.ts",
+    "db:backfill-daily-progress": "tsx scripts/backfill-daily-progress.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

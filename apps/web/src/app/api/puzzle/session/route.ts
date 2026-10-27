@@ -9,6 +9,7 @@ import {
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
 import { restoreFeedback } from "@/lib/game/restore-feedback";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
 const headers = { "Cache-Control": "private, no-store" };
@@ -23,7 +24,9 @@ export async function GET(request: Request) {
       return failure("Not authenticated", 401);
     const puzzleId = new URL(request.url).searchParams.get("puzzleId")?.trim();
     if (!puzzleId) return failure("puzzleId is required", 400);
-    const localDate = getLocalPuzzleDate(new Date(), await resolveRequestTimeZone());
+    const requestTimeZone = await resolveRequestTimeZone();
+    const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
+    const localDate = getLocalPuzzleDate(new Date(), timeZone);
     const [puzzle, today] = await Promise.all([
       db.puzzleOps.findById(puzzleId),
       db.puzzleOps.findByDate(localDate),
@@ -52,6 +55,16 @@ export async function GET(request: Request) {
           row.userId === user.userId && row.puzzleId === puzzle.id && row.puzzleDate === lockKey
       )
       .sort((a, b) => new Date(a.attemptedAt).getTime() - new Date(b.attemptedAt).getTime());
+    if (isDaily) {
+      const terminalAttempt = rows.find((row) => row.isFinal === true);
+      if (terminalAttempt) {
+        try {
+          await db.dailyProgressOps.materializeFromAttempt(terminalAttempt);
+        } catch (error) {
+          console.error("[puzzle/session] Journey projection repair failed", error);
+        }
+      }
+    }
     const maxAttempts = gameSettings.maxAttempts;
     const wasSuccessful = rows.some((row) => row.isCorrect);
     const gameOver =

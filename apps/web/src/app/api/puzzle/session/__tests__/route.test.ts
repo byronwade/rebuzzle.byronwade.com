@@ -2,11 +2,15 @@ jest.mock("@/db", () => ({
   db: {
     puzzleOps: { findById: jest.fn(), findByDate: jest.fn() },
     puzzleAttemptOps: { findByUserAndPuzzle: jest.fn() },
+    dailyProgressOps: { materializeFromAttempt: jest.fn() },
     userOps: { findById: jest.fn() },
   },
 }));
 jest.mock("@/lib/auth-middleware", () => ({ getAuthenticatedUser: jest.fn() }));
 jest.mock("@/lib/timezone", () => ({ resolveRequestTimeZone: jest.fn().mockResolvedValue("UTC") }));
+jest.mock("@/lib/journey-timezone", () => ({
+  resolveStableJourneyTimeZone: jest.fn().mockResolvedValue("UTC"),
+}));
 
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
@@ -34,6 +38,7 @@ async function get(id = "today") {
   return route.GET(new Request(`https://example.com/api/puzzle/session?puzzleId=${id}`));
 }
 beforeEach(() => {
+  jest.clearAllMocks();
   jest.useFakeTimers().setSystemTime(new Date("2026-10-25T12:00:00Z"));
   jest.mocked(getAuthenticatedUser).mockResolvedValue({ userId: "self" } as never);
   jest.mocked(db.userOps.findById).mockResolvedValue({ id: "self" } as never);
@@ -54,15 +59,15 @@ it("restores guesses without revealing an active solution", async () => {
   expect(db.puzzleAttemptOps.findByUserAndPuzzle).toHaveBeenCalledWith("self", "today");
 });
 it("reveals the solution after a persisted final", async () => {
-  jest
-    .mocked(db.puzzleAttemptOps.findByUserAndPuzzle)
-    .mockResolvedValue([{ ...row, isFinal: true, isCorrect: true }] as never);
+  const terminal = { ...row, isFinal: true, isCorrect: true };
+  jest.mocked(db.puzzleAttemptOps.findByUserAndPuzzle).mockResolvedValue([terminal] as never);
   expect(await (await get()).json()).toMatchObject({
     answer: "secret",
     gameOver: true,
     wasSuccessful: true,
     attemptsLeft: 0,
   });
+  expect(db.dailyProgressOps.materializeFromAttempt).toHaveBeenCalledWith(terminal);
 });
 it("does not use another owner, puzzle, or lock to disclose the answer", async () => {
   jest.mocked(db.puzzleAttemptOps.findByUserAndPuzzle).mockResolvedValue([
@@ -98,6 +103,7 @@ it("keeps archive replays separate from their original daily result", async () =
     attempts: [],
     puzzleDate: "2026-10-24",
   });
+  expect(db.dailyProgressOps.materializeFromAttempt).not.toHaveBeenCalled();
 });
 
 it.each(["2026-10-24", "2026-10-26"])(

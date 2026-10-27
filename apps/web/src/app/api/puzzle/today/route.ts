@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getLocalPuzzleDate, getNextLocalMidnight } from "@/lib/game/daily-lock";
 import { toPublicPuzzle } from "@/lib/game/public-puzzle";
 import { toPublicVisual } from "@/lib/game/public-visual";
 import { buildCacheControl } from "@/lib/http/cache-headers";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
 
@@ -18,7 +20,11 @@ import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
 export async function GET(request?: Request) {
   try {
     const now = new Date();
-    const timeZone = await resolveRequestTimeZone();
+    const [requestTimeZone, user] = await Promise.all([
+      resolveRequestTimeZone(),
+      request ? getAuthenticatedUser(request) : Promise.resolve(null),
+    ]);
+    const timeZone = await resolveStableJourneyTimeZone(user?.userId ?? null, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(now, timeZone);
     const nextPuzzleTime = getNextLocalMidnight(now, timeZone).toISOString();
 

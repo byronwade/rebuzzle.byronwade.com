@@ -97,6 +97,31 @@ describe("dailyProgressOps.materializeFromAttempt", () => {
     expect(findOne).toHaveBeenCalledWith({ userId: "user-1", puzzleDate: "2026-10-26" });
   });
 
+  it("reports insert status separately so the backfill can log accurate counts", async () => {
+    const winner = {
+      userId: "user-1",
+      puzzleDate: "2026-10-26",
+      puzzleId: "puzzle-2026-10-26",
+      outcome: "solved",
+      attempts: 2,
+      hintCount: 1,
+      completedAt: new Date("2026-10-27T06:59:10.000Z"),
+      timeZone: "America/Los_Angeles",
+    };
+    const updateOne = jest
+      .fn()
+      .mockResolvedValueOnce({ acknowledged: true, upsertedCount: 1 })
+      .mockResolvedValueOnce({ acknowledged: true, upsertedCount: 0 });
+    const findOne = jest.fn().mockResolvedValue(winner);
+    mockGetCollection.mockReturnValue({ updateOne, findOne } as never);
+
+    const inserted = await dailyProgressOps.materializeFromAttemptWithStatus(terminalAttempt());
+    const existing = await dailyProgressOps.materializeFromAttemptWithStatus(terminalAttempt());
+
+    expect(inserted).toEqual({ progress: winner, inserted: true });
+    expect(existing).toEqual({ progress: winner, inserted: false });
+  });
+
   it("returns the same winner when competing final attempts race on the unique key", async () => {
     const documents = new Map<string, Record<string, unknown>>();
     let entered = 0;

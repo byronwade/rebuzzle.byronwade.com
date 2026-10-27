@@ -19,6 +19,7 @@ import { streamAIText } from "@/ai/client";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
@@ -107,7 +108,8 @@ export async function POST(request: Request) {
     }
 
     // Day already locked — only the closing win/loss riff may still spend credits.
-    const timeZone = await resolveRequestTimeZone();
+    const requestTimeZone = await resolveRequestTimeZone();
+    const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
     const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, localDateKey);
     if (lock.hasAttempt && !isFinalTier(tier)) {
