@@ -342,7 +342,7 @@ function IconRecognitionPageInner() {
                 disabled={isSubmitting}
                 maxLength={100}
                 onChange={(event) => dispatch({ type: "set-guess", guess: event.target.value })}
-                placeholder="e.g. bicycle"
+                placeholder="Your answer"
                 spellCheck={false}
                 value={guess}
               />
