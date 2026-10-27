@@ -57,7 +57,12 @@ struct JourneyRewards: View {
                         Image(systemName: index < stars ? "star.fill" : "star")
                             .font(.system(size: 22, weight: .medium))
                             .foregroundStyle(index < stars ? Theme.reward : Theme.secondary.opacity(0.5))
-                            .scaleEffect(appeared || reduceMotion ? 1 : 0.7)
+                            .scaleEffect(index < stars && !appeared && !reduceMotion ? 0.6 : 1)
+                            .rotationEffect(.degrees(index < stars && !appeared && !reduceMotion ? -14 : 0))
+                            .animation(
+                                reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.56).delay(Double(index) * 0.12),
+                                value: appeared
+                            )
                     }
                 }.accessibilityLabel("\(stars) of 3 stars")
                 Spacer()
