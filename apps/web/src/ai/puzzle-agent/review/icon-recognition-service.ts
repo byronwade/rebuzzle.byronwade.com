@@ -132,6 +132,7 @@ export type IconRecognitionCalibrationReport = {
   specimenAccuracyFloor: number;
   weakFixtures: IconRecognitionFixtureScore[];
   weakControls: IconRecognitionFixtureScore[];
+  qualificationEvidenceIds: string[];
   promotionEligibleConceptIds: string[];
   /** Recognition evidence only; a separate audited promotion is still required. */
   promotionEligibleAssets: Array<{
@@ -599,6 +600,8 @@ export function scoreIconRecognitionCalibration(input: {
     specimenAccuracyFloor: config.specimenFloor,
     weakFixtures,
     weakControls,
+    qualificationEvidenceIds:
+      panelId === "originals" ? reviews.map((review) => review.id).sort() : [],
     promotionEligibleConceptIds,
     promotionEligibleAssets:
       panelId === "originals"

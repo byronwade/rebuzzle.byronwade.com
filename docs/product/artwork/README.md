@@ -41,3 +41,11 @@ Source `861986e3c0447af6911b7a3b76aaa6688ef3e15c` deployed successfully to `rebu
 Production smoke: full public daily puzzle payload, puzzle date, timezone and next reset matched the pre-deploy response exactly. Visual SHA256 remained `9b3b01e79d0f0a45cc2a8be76f8f546444cb0c991c057a4983fa05bcc4b14385`. Anonymous access to `/api/admin/ai/icon-recognition?panel=originals` returned401 with `Admin access required`. Initial deployment-scoped error/fatal log query returned no entries; this is a short observation, not proof of sustained health.
 
 Previous production deployment `dpl_Hv9VZfXtuMJVUZ3eSBctDJEDVEuH` (source4018323) remains the rollback reference if daily delivery or review authorization regresses. No database migration or artwork promotion was performed. Signed-in production panel interaction and actual independent human review remain unverified.
+
+## Audited promotion foundation
+
+A separate authored-artwork promotion service now derives approval solely from the current calibrated report and immutable original manifest. It records the exact SVG hash, style/readings, recognition versions, editor, status version and complete qualified-panel evidence, including controls. Each approval audit entry retains its evidence snapshot. Quarantine blocks new eligibility without changing frozen published boards. Reads recompute recognition eligibility and reject changed artwork/policies or missing qualifying decisions.
+
+The Mongo adapter uses the exact asset identity as its built-in unique `_id`; first inserts handle duplicate conflicts, and later updates compare the status version atomically. This avoids a new unique-index rollout. Service tests exercise missing evidence, stale previews, concurrent approvals, tampered hashes/policies and quarantine. Final validation:177 suites/1,041 tests/two snapshots and TypeScript passed; independent scoped review found no actionable issue.
+
+This foundation is not yet connected to an admin action or production artwork selection. Before exposing approval, the route must authenticate the editor and require that editor to finish the blind originals panel. Actual human evidence remains pending. No production approval records have been created.
