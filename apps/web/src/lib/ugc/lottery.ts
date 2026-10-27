@@ -4,6 +4,7 @@
  */
 
 import { DAILY_CHALLENGE_POLICY, dailyChallengeBlockers } from "@/ai/puzzle-agent/daily-challenge";
+import { verifyPublicationAssets } from "@/ai/puzzle-agent/visual/publication-assets";
 import type { NewInAppNotification, Puzzle, UserPuzzleSubmission } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { logger } from "@/lib/logger";
@@ -97,6 +98,8 @@ export async function trySelectUgcLotteryFiller(input: {
       const puzzleId = await ensureCommunityPuzzle(submission);
       const puzzle = (await puzzles.findOne({ id: puzzleId })) as Puzzle | null;
       if (!puzzle?.answer || !puzzle.visual) continue;
+      // Verify the stored board again at promotion, including current asset approval.
+      if (!(await verifyPublicationAssets(puzzle.visual)).ok) continue;
       // Community approval is not qualification for the more demanding daily slot.
       if (
         dailyChallengeBlockers({

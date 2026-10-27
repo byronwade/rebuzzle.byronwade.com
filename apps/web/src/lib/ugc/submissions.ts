@@ -2,6 +2,7 @@
  * Mongo helpers for Studio submissions + community puzzle promotion.
  */
 
+import { verifyPublicationAssets } from "@/ai/puzzle-agent/visual/publication-assets";
 import type { NewPuzzle, Puzzle, PuzzleVisual, UserPuzzleSubmission } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { toLegacyDifficultyLabel } from "@/lib/game/published-puzzle";
@@ -255,6 +256,13 @@ export async function attachEveReviewSnapshot(input: {
 
 /** Create / refresh the community Puzzle row for an approved submission. */
 export async function ensureCommunityPuzzle(submission: UserPuzzleSubmission): Promise<string> {
+  if (!hasCompletePublicationEvidence(submission)) {
+    throw new Error("Complete matching publication evidence is required");
+  }
+  // Review fingerprints bind the board, but cannot record a later asset quarantine.
+  const assets = await verifyPublicationAssets(submission.visual);
+  if (!assets.ok) throw new Error(assets.reason);
+
   const puzzles = getCollection<Puzzle>("puzzles");
   const now = new Date();
   const attribution = {

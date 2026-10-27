@@ -25,7 +25,7 @@ jest.mock("@/lib/logger", () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-import { markSubmissionGraded } from "../submissions";
+import { ensureCommunityPuzzle, markSubmissionGraded } from "../submissions";
 
 function baseSubmission(overrides: Partial<UserPuzzleSubmission> = {}): UserPuzzleSubmission {
   return withStudioEvidence({
@@ -162,4 +162,44 @@ it("does not insert a puzzle without complete matching evidence", async () => {
     })
   ).rejects.toThrow(/matching publication evidence/);
   expect(insertOne).not.toHaveBeenCalled();
+});
+
+describe("community publication asset approval", () => {
+  beforeEach(() => {
+    updateOne.mockClear();
+    insertOne.mockClear();
+  });
+  it.each([undefined, "existing-board"])(
+    "rejects unapproved artwork before writing a puzzle (%s)",
+    async (puzzleId) => {
+      const submission = baseSubmission({
+        puzzleId,
+        visual: {
+          styleId: INK_PICTOGRAM_STYLE_ID,
+          mode: "composed",
+          layout: "row",
+          unicodeFallback: "clock",
+          layers: [
+            {
+              kind: "pictogram",
+              concept: "clock",
+              emojiFallback: "clock",
+              source: "generated",
+              svg: '<svg viewBox="0 0 64 64"></svg>',
+            },
+          ],
+        },
+      });
+      await expect(ensureCommunityPuzzle(submission)).rejects.toThrow(/approved/);
+      expect(insertOne).not.toHaveBeenCalled();
+      expect(updateOne).not.toHaveBeenCalled();
+    }
+  );
+  it("requires matching review evidence even when called directly", async () => {
+    const submission = baseSubmission();
+    submission.eveReview = undefined;
+    await expect(ensureCommunityPuzzle(submission)).rejects.toThrow(/evidence/);
+    expect(insertOne).not.toHaveBeenCalled();
+    expect(updateOne).not.toHaveBeenCalled();
+  });
 });

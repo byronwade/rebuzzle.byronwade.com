@@ -74,3 +74,58 @@ it("rejects legacy or mismatched evidence before touching community puzzles", as
   ).resolves.toBeNull();
   expect(ensureCommunityPuzzle).not.toHaveBeenCalled();
 });
+
+it("checks the stored board's current asset approval before daily qualification", async () => {
+  const submission = withStudioEvidence({
+    id: "changed",
+    puzzleId: "changed-board",
+    answer: "clockwork",
+    answerKey: "clockwork",
+    techniqueId: "simple_compound",
+    difficulty: 9,
+    visual: {
+      styleId: INK_PICTOGRAM_STYLE_ID,
+      mode: "composed" as const,
+      layout: "row" as const,
+      layers: [],
+      unicodeFallback: "clock work",
+    },
+  });
+  jest.mocked(submissionsCollection).mockReturnValue({
+    find: () => ({ sort: () => ({ limit: () => ({ toArray: async () => [submission] }) }) }),
+  } as never);
+  jest.mocked(ensureCommunityPuzzle).mockResolvedValue("changed-board");
+  const visual = {
+    ...submission.visual,
+    layers: [
+      {
+        kind: "pictogram" as const,
+        concept: "clock",
+        emojiFallback: "clock",
+        source: "generated" as const,
+        svg: '<svg viewBox="0 0 64 64"></svg>',
+      },
+    ],
+  };
+  const updateOne = jest.fn();
+  const difficulty = jest.fn(() => {
+    throw new Error("Must reject assets before difficulty");
+  });
+  jest.mocked(getCollection).mockReturnValue({
+    findOne: async () => ({
+      id: "changed-board",
+      answer: "clockwork",
+      visual,
+      get metadata() {
+        difficulty();
+        return {};
+      },
+    }),
+    updateOne,
+  } as never);
+  await expect(
+    trySelectUgcLotteryFiller({ dateString: "2026-10-10", fallbackReason: "test" })
+  ).resolves.toBeNull();
+  expect(difficulty).not.toHaveBeenCalled();
+  expect(updateOne).not.toHaveBeenCalled();
+});

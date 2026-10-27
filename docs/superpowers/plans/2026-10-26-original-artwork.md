@@ -64,3 +64,9 @@ The shared publication asset verifier now handles authored `rebuzzle-ink:` ident
 Verification: two positive/revocation cases failed before implementation; all 10 publication-asset cases now pass. Full web suite: 178 suites, 1,055 tests, two snapshots. TypeScript passed; scoped Biome passed with the existing configuration deprecation notice. Independent review found no actionable defects.
 
 This is a publication-boundary step only. Studio hydration/catalog selection, generator preference, semantic integration, and rechecking at community/daily publication remain pending. No original artwork has been approved or deployed by this change.
+
+## Publication call sites (2026-10-26)
+
+Community puzzle creation and refresh now require matching review evidence and current asset verification before writing. Daily lottery promotion also verifies the stored board, preventing later asset quarantine from being hidden by cached review evidence. The verifier accepts the stored visual type without forcing unrelated text-emphasis defaults or changing board bytes.
+
+Four regression cases failed before implementation (new community row, refresh, missing review evidence, stored daily board). Validation: 178 suites, 1,059 tests and two snapshots pass; TypeScript passes; scoped Biome passes with the existing deprecation notice. Independent review found no actionable defects. No production mutation or deployment was performed. Remaining integration: original selection/hydration, semantics, generator preference and actual editorial qualification.

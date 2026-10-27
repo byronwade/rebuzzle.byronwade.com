@@ -1,4 +1,4 @@
-import type { PuzzleVisual } from "./composition";
+import type { PuzzleVisual } from "@/db/models";
 import { isAuthenticCuratedPictogram } from "./curated-pictograms";
 import { listOriginalPictogramCandidates } from "./original-pictograms";
 import { sanitizePictogramSvg } from "./sanitize-svg";
@@ -11,7 +11,7 @@ export type PublicationAssetCheck = { ok: true } | { ok: false; reason: string; 
  * human-approved registry assets. Fresh generated SVGs remain review-only.
  */
 export async function verifyPublicationAssets(
-  visual: PuzzleVisual
+  visual: Pick<PuzzleVisual, "styleId" | "layers">
 ): Promise<PublicationAssetCheck> {
   for (const layer of visual.layers) {
     if (layer.kind !== "pictogram") continue;
