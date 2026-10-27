@@ -17,9 +17,10 @@ Status: public release preparation; later dated evidence records completed beta 
 - [ ] Keep production API sandbox-entitlement rejection enabled. For TestFlight Plus testing, configure a separate publicly reachable beta API with `VERCEL_ENV` set outside `production` and `STOREKIT_ALLOW_SANDBOX_TRANSACTIONS=true`; Vercel Preview currently requires SSO and cannot serve the iOS app. From `apps/ios`, archive the TestFlight build with the beta origin (replace the reserved example host with the deployed public origin):
 
   ```sh
-  REBUZZLE_API_BASE_URL=https://beta-api.example \
-    xcodebuild -project Rebuzzle.xcodeproj -scheme Rebuzzle \
-      -configuration Release -archivePath /tmp/Rebuzzle-Beta.xcarchive archive
+  xcodebuild -project Rebuzzle.xcodeproj -scheme Rebuzzle \
+    -configuration Release -destination 'generic/platform=iOS' \
+    REBUZZLE_API_BASE_URL=https://beta-api.example \
+    -archivePath /tmp/Rebuzzle-Beta.xcarchive archive
   ```
 
   The default build setting remains `https://rebuzzle.byronwade.com` for App Store builds. Before upload, inspect `/tmp/Rebuzzle-Beta.xcarchive/Products/Applications/Rebuzzle.app/Info.plist` and confirm `RebuzzleAPIBaseURL` matches the deployed beta origin. Never enable sandbox transactions in Vercel Production.

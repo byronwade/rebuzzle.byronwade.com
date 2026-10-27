@@ -21,6 +21,13 @@ import RebuzzleCore
         XCTAssertEqual(client.baseURL.absoluteString, configuredHost)
     }
 
+    func testAPIClientPreservesExplicitBaseURLInjection() {
+        let injectedURL = URL(string: "http://localhost:3000")!
+        let client = APIClient(baseURL: injectedURL, deviceID: "injected-host-test")
+
+        XCTAssertEqual(client.baseURL, injectedURL)
+    }
+
     func testAPIClientResolutionDefaultsToProductionWhenUnset() {
         XCTAssertEqual(
             APIClient.resolvedBaseURL(from: [:]),
@@ -35,6 +42,21 @@ import RebuzzleCore
             APIClient.resolvedBaseURL(from: ["RebuzzleAPIBaseURL": "https://rebuzzle-beta.example"]),
             betaURL
         )
+
+        XCTAssertEqual(
+            APIClient.resolvedBaseURL(from: ["RebuzzleAPIBaseURL": "https://rebuzzle-beta.example:8443"]),
+            URL(string: "https://rebuzzle-beta.example:8443")
+        )
+
+        XCTAssertEqual(
+            APIClient.resolvedBaseURL(from: ["RebuzzleAPIBaseURL": "https://bücher.de"]),
+            URL(string: "https://bücher.de")
+        )
+
+        XCTAssertEqual(
+            APIClient.resolvedBaseURL(from: ["RebuzzleAPIBaseURL": "https://[2001:db8::1]:8443"]),
+            URL(string: "https://[2001:db8::1]:8443")
+        )
     }
 
     func testAPIClientResolutionRejectsUnsafeOverrides() {
@@ -47,6 +69,10 @@ import RebuzzleCore
             "https://rebuzzle.example#fragment",
             "https://rebuzzle.example:99999",
             "https://rebuzzle.example:abc",
+            "https://rebuzzle.example:9999999999999999999999999999",
+            "https://%20",
+            "https://[notipv6]",
+            "https:///missing-host",
             "not a URL"
         ]
 
@@ -57,6 +83,11 @@ import RebuzzleCore
                 "Unexpectedly accepted unsafe API origin: \(unsafeURL)"
             )
         }
+
+        XCTAssertEqual(
+            APIClient.resolvedBaseURL(from: ["RebuzzleAPIBaseURL": 42]),
+            productionURL
+        )
     }
 
     func testFetchArchiveUsesCursorAndDecodesAnswerFreePuzzleMetadata() async throws {

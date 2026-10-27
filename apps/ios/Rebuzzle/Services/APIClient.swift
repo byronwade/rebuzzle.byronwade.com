@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import RebuzzleCore
 
 struct APIError: LocalizedError {
@@ -54,11 +55,62 @@ enum GrowthEvent: Sendable {
               components.path.isEmpty || components.path == "/",
               components.query == nil,
               components.fragment == nil,
-              components.port.map({ (1...65_535).contains($0) }) ?? true,
-              let url = components.url else {
+              let url = components.url,
+              let normalizedHost = url.host,
+              Self.hasValidAuthority(configuredURL, normalizedHost: normalizedHost) else {
             return productionBaseURL
         }
         return url
+    }
+
+    private static func hasValidAuthority(_ origin: String, normalizedHost: String) -> Bool {
+        guard let schemeSeparator = origin.range(of: "://") else { return false }
+        let authority = origin[schemeSeparator.upperBound...].prefix { !"/?#".contains($0) }
+        guard !authority.isEmpty else { return false }
+
+        if authority.first == "[" {
+            guard let closingBracket = authority.firstIndex(of: "]"),
+                  closingBracket > authority.startIndex else { return false }
+            let addressStart = authority.index(after: authority.startIndex)
+            let address = authority[addressStart..<closingBracket]
+            var parsedAddress = in6_addr()
+            guard address.withCString({ inet_pton(AF_INET6, $0, &parsedAddress) }) == 1 else { return false }
+
+            let suffix = authority[authority.index(after: closingBracket)...]
+            if suffix.isEmpty { return true }
+            guard suffix.first == ":" else { return false }
+            return isValidPort(suffix.dropFirst())
+        }
+
+        let authorityParts = authority.split(separator: ":", omittingEmptySubsequences: false)
+        guard authorityParts.count <= 2, isValidDNSHostname(normalizedHost) else { return false }
+        guard authorityParts.count == 2 else { return true }
+        return isValidPort(authorityParts[1])
+    }
+
+    private static func isValidPort<S: StringProtocol>(_ port: S) -> Bool {
+        guard !port.isEmpty,
+              port.utf8.allSatisfy({ (48...57).contains($0) }),
+              let number = Int(String(port)) else { return false }
+        return (1...65_535).contains(number)
+    }
+
+    private static func isValidDNSHostname(_ host: String) -> Bool {
+        var hostname = host
+        if hostname.hasSuffix(".") { hostname.removeLast() }
+        let hostnameBytes = hostname.utf8
+        guard !hostnameBytes.isEmpty, hostnameBytes.count <= 253 else { return false }
+
+        return hostname.split(separator: ".", omittingEmptySubsequences: false).allSatisfy { label in
+            let bytes = Array(label.utf8)
+            guard !bytes.isEmpty,
+                  bytes.count <= 63,
+                  bytes.first != 45,
+                  bytes.last != 45 else { return false }
+            return bytes.allSatisfy {
+                (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45
+            }
+        }
     }
 
     init(baseURL: URL? = nil, deviceID: String, session: URLSession? = nil) {

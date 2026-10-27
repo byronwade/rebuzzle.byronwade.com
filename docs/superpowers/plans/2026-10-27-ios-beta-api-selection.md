@@ -61,7 +61,7 @@
 
 - [x] **Step 4: Add the bundle resolver**
 
-  Set the default `INFOPLIST_KEY_RebuzzleAPIBaseURL` to `https://rebuzzle.byronwade.com` in the app target. Make the default initializer resolve the main bundle value through `APIClient.resolvedBaseURL(from:)`. Keep the existing explicit `baseURL` injection path, and make the bundle-host test pass.
+  Set `REBUZZLE_API_BASE_URL` to `https://rebuzzle.byronwade.com` in the app target and map it through XcodeGen `info.properties`. Make the default initializer resolve the generated bundle value through `APIClient.resolvedBaseURL(from:)`. Keep the existing explicit `baseURL` injection path, and make the bundle-host test pass.
 
 - [x] **Step 5: Add failing URL validation tests, then validate overrides**
 
