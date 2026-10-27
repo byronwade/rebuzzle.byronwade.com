@@ -1,6 +1,6 @@
 # Native iOS API contract
 
-All routes use JSON over HTTPS on the configured Rebuzzle origin. Send `Authorization: Bearer <token>` for authenticated requests. Store the token in Keychain. Never ship puzzle solutions or score locally. Send `X-Device-Id` containing a persistent random device identifier for guest continuity. Send `Cookie: rebuzzle-tz=America%2FNew_York` (the device's IANA zone, percent encoded) on daily, restore, and guess requests. The timezone fallback is deployment IP timezone, then UTC.
+All routes use JSON over HTTPS on the configured Rebuzzle origin. Send `Authorization: Bearer <token>` for authenticated requests. Store the token in Keychain. Never ship puzzle solutions or score locally. Send `X-Device-Id` containing a persistent random device identifier for guest continuity. Send `Cookie: rebuzzle-tz=America%2FNew_York` (the device's IANA zone, percent encoded) on daily, restore, and guess requests. Timezone resolution prefers this cookie, then `x-rebuzzle-time-zone`, then deployment IP timezone, then UTC. For accounts, the first resolved IANA zone is saved and becomes the daily reset zone across devices.
 
 ## Authentication
 
@@ -57,6 +57,34 @@ Hint count is persisted when a guess is sent; hints opened without a subsequent 
 ## Statistics
 
 `GET /api/user/stats` infers the user from authentication. Optional `userId` must match. `timeframe=today|week|month|allTime`, `includeRank=true` optional. Response `{success:true,user,stats,rank}`; rank is null unless requested. Core stats keys are `points,totalGames,wins,level,streak,maxStreak,perfectSolves,clutchSolves,speedSolves,totalTimePlayed,streakFreezes,streakShields`; optional `guessDistribution:number[]`, `recentPlayDates:string[]`, and `lastPlayDate` ISO string. There are no gamesPlayed/gamesWon/totalPoints aliases.
+
+### Journey progress
+
+`GET /api/user/progress` requires authentication and always scopes data to the identity in the Bearer token. A `userId` query parameter is ignored. The endpoint uses the account's saved daily-reset timezone for `asOfPuzzleDate` and Monday–Sunday week bounds. It returns only completion metadata used for Journey: puzzle date and ID, solved/failed outcome, attempt count, optional client-reported hint count, completion timestamp, and recorded timezone. Answers, guesses, explanations, and journal notes are not included.
+
+```ts
+{
+  asOfPuzzleDate: string, // YYYY-MM-DD in the saved account timezone
+  currentWeekStart: string, // Monday, YYYY-MM-DD
+  currentWeekEnd: string, // Sunday, YYYY-MM-DD
+  summary: null | {
+    totalXP: number, level: number, xpIntoLevel: number,
+    finishes: number, solves: number, firstGuessSolves: number,
+    unassistedSolves: number, completedThisWeek: number,
+    badges: Array<"first-finish" | "first-guess-solve" | "three-unassisted-solves" | "seven-finishes">
+  },
+  recentEntries: Array<{
+    puzzleDate: string, puzzleId: string, outcome: "solved" | "failed",
+    attempts: number, hintCount: number | null,
+    completedAt: string, timeZone: string | null
+  }>,
+  backfill: { status: "not_started" | "in_progress" | "complete" | "failed" }
+}
+```
+
+Until the account's historical backfill is complete, `summary` is `null` and `recentEntries` is empty; clients may show that identity's last-synced snapshot. A complete response includes every entry for the current week and up to 35 older completions. XP is derived server-side: 25 for a finish, 75 more for a solve, 25 for a first-guess solve, and 25 for a solve without hints; each level is 300 XP. Hint counts are best-effort client-reported values and may be null for older attempts. The endpoint uses `private, no-store` caching.
+
+If a final attempt cannot be projected, the server stores a reconciliation marker and keeps Journey totals unavailable until the account is repaired. The progress read retries recent attempts; a daily cron job replays older marked history and resumes from saved cursors after interruption.
 
 ## Account deletion
 
