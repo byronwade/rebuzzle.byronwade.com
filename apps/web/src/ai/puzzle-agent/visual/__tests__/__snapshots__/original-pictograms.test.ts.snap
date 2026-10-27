@@ -1,0 +1,18 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`original Rebuzzle artwork candidates freezes exact bytes so revised drawings require new identities 1`] = `
+{
+  "rebuzzle-ink:bee:v1": "594f53701835ddf66d10937dc358e2eefd4ca37db5462b4d6d16e59f33287991",
+  "rebuzzle-ink:bell:v1": "486e85d66d4fa3b07be41cdd89f66410f3404cf9b4d39e7449ffcd168d632924",
+  "rebuzzle-ink:book:v1": "6dc6621e47f9dd1bc873c8371478e386325f27fcb1a1ac44122a6f06587d111c",
+  "rebuzzle-ink:clock:v1": "c99310dcee50819c09c45b92675b383b0a3940cfe6e656931c0f96f54390cd67",
+  "rebuzzle-ink:eye:v1": "002c824b240cd7f2f7acf504389fdd2c9e534f93ab070792e205d3d51b0b41b5",
+  "rebuzzle-ink:house:v1": "dc930784c65d9b3c755f59678815338c1d234fd811f8dcf097959a44ce772e1e",
+  "rebuzzle-ink:key:v1": "36ab327d656a4d7f981f24448388f648b101fdf7e6d9dbf925f14c85b3937361",
+  "rebuzzle-ink:leaf:v1": "276792b259c2d8d87c5c99298ab1fe7d257b7b7243941eb2ade37aa3c407ee6d",
+  "rebuzzle-ink:lightbulb:v1": "b4d3746959eaab0d62ca1066317a5181df12b3f5b5b14df1e07356114e4dbe4d",
+  "rebuzzle-ink:moon:v1": "7f546dc4baf2f45418d4027fd94e34c2cf69256791fb67cc40934764771d107d",
+  "rebuzzle-ink:sun:v1": "63faaed8fd8be43b3a6a532fcc06b455205e87692bcddc4db616cd194b3ac689",
+  "rebuzzle-ink:umbrella:v1": "9e64b71fddf6488f691e13c2db62342802757038c5697b5f17571f802b33ee56",
+}
+`;
