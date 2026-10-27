@@ -6,6 +6,7 @@ import StoreKit
     static let plusID = "com.byronwade.rebuzzle.plus"
     private(set) var product: Product?
     private(set) var hasPlus = false
+    private(set) var plusTransactionJWS: String?
     private(set) var busy = false
     private var storeMessage: String?
     private enum ActionStatus {
@@ -42,11 +43,16 @@ import StoreKit
     }
     func refreshEntitlements() async {
         var active = false
+        var activeTransactionJWS: String?
         for await result in Transaction.currentEntitlements {
             if case .verified(let transaction) = result,
-               transaction.productID == Self.plusID, transaction.revocationDate == nil { active = true }
+               transaction.productID == Self.plusID, transaction.revocationDate == nil {
+                active = true
+                if activeTransactionJWS == nil { activeTransactionJWS = result.jwsRepresentation }
+            }
         }
         hasPlus = active
+        plusTransactionJWS = activeTransactionJWS
         if !active, case .ownershipConfirmed = actionStatus { actionStatus = nil }
     }
     func purchase() async {

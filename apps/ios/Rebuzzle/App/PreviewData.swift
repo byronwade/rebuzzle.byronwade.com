@@ -81,6 +81,11 @@ private final class FixtureServer: @unchecked Sendable {
                 hints = ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."]
             }
             payload = ["success": true, "puzzle": ["id": game.puzzleId, "puzzle": Self.visual["unicodeFallback"] ?? "💡 + 🏠", "puzzleType": "rebus", "difficulty": 5, "visual": Self.visual, "hints": hints, "date": game.puzzleDate], "puzzleDate": game.puzzleDate, "nextPuzzleTime": nextPuzzleTime]
+        case "/api/puzzles/archive":
+            payload = ["items": [
+                ["id": "archive-lighthouse", "puzzle": "💡 + 🏠", "puzzleType": "rebus", "difficulty": 6, "visual": Self.visual, "hints": ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."], "date": "2026-10-25"],
+                ["id": "archive-headheels", "puzzle": "HEAD over HEELS", "puzzleType": "wordplay", "difficulty": 7, "hints": ["Pay attention to position."], "date": "2026-10-24"]
+            ], "nextCursor": NSNull()]
         case "/api/auth/guest/lazy", "/api/auth/session":
             payload = ["success": true, "authenticated": true, "user": user, "token": "fixture-token"]
         case "/api/puzzle/session":
@@ -94,6 +99,7 @@ private final class FixtureServer: @unchecked Sendable {
             let reply = game.wasSuccessful == true ? "That connection deserves a little victory lap." : "That guess took the scenic route."
             return (200, Data(reply.utf8))
         case "/api/puzzles/guess":
+            if ProcessInfo.processInfo.arguments.contains("--ui-guess-unavailable") { return (503, Data()) }
             if game.gameOver {
                 status = 409; payload = ["error": "This puzzle is already complete."]
             } else {
@@ -114,6 +120,44 @@ private final class FixtureServer: @unchecked Sendable {
                 game.apply(response, guess: guess)
                 game.hintsUsed = body?["hintsUsed"] as? Int ?? 0
                 payload = result
+            }
+        case "/api/puzzles/practice/guess":
+            let body = try JSONSerialization.jsonObject(with: bodyData(request)) as? [String: Any]
+            let guess = body?["guess"] as? String ?? ""
+            let attempt = body?["attemptNumber"] as? Int ?? 1
+            let expectedPreviousToken = attempt > 1 ? "fixture-practice-round-\(attempt - 1)" : nil
+            if body?["roundToken"] as? String != expectedPreviousToken {
+                status = 409
+                payload = ["success": false, "error": "This practice round has expired or no longer matches."]
+                break
+            }
+            let correct = guess.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "lighthouse"
+            let finished = correct || attempt >= 3
+            var result: [String: Any] = [
+                "success": true,
+                "correct": correct,
+                "similarity": correct ? 100 : 20,
+                "attemptNumber": attempt,
+                "attemptsLeft": max(0, 3 - attempt),
+                "maxAttempts": 3,
+                "gameOver": finished,
+                "reaction": ["tier": correct ? "correct" : finished ? "out" : "cold", "line": correct ? "You made the connection." : "A fresh angle might help."],
+                "wordResults": [["word": guess.uppercased(), "correct": correct, "similarity": correct ? 100 : 20]]
+            ]
+            if correct {
+                result["answer"] = "lighthouse"
+                result["explanation"] = "Light + house makes lighthouse: a beacon that helps ships find their way."
+            } else {
+                result["roundToken"] = "fixture-practice-round-\(attempt)"
+            }
+            payload = result
+        case "/api/puzzles/practice/reveal":
+            let body = try JSONSerialization.jsonObject(with: bodyData(request)) as? [String: Any]
+            if body?["roundToken"] as? String == "fixture-practice-round-3" {
+                payload = ["success": true, "puzzleId": "archive-lighthouse", "answer": "lighthouse", "explanation": "Light + house makes lighthouse: a beacon that helps ships find their way."]
+            } else {
+                status = 409
+                payload = ["success": false, "error": "Finish the three-guess practice round before revealing its solution."]
             }
         case "/api/auth/logout": payload = ["success": true]
         default: status = 404; payload = ["error": "This route is not available in the UI fixture."]

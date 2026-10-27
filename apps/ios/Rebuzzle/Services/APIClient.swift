@@ -37,6 +37,7 @@ enum GrowthEvent: Sendable {
 
 @MainActor final class APIClient {
     var token: String?
+    var plusTransactionJWSProvider: (() -> String?)?
     let baseURL: URL
     private let session: URLSession
     private let deviceID: String
@@ -61,6 +62,10 @@ enum GrowthEvent: Sendable {
         }
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         request.setValue("1", forHTTPHeaderField: "X-Rebuzzle-Canonical-Board")
+        if url.path == "/api/puzzles/archive" || url.path.hasPrefix("/api/puzzles/practice/"),
+           let transactionJWS = plusTransactionJWSProvider?() {
+            request.setValue(transactionJWS, forHTTPHeaderField: "X-Rebuzzle-StoreKit-Transaction")
+        }
         if let body { request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError(status: 0, message: "The server did not respond. Try again when you’re connected.") }
@@ -75,6 +80,32 @@ enum GrowthEvent: Sendable {
     func fetchJourneyProgress() async throws -> JourneyProgressSnapshot {
         try await request("/api/user/progress")
     }
+    func fetchArchive(cursor: String? = nil, limit: Int = 20) async throws -> PuzzleArchivePage {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/puzzles/archive"), resolvingAgainstBaseURL: false)
+        var queryItems = [URLQueryItem(name: "limit", value: String(min(50, max(1, limit))))]
+        if let cursor, !cursor.isEmpty { queryItems.append(URLQueryItem(name: "cursor", value: cursor)) }
+        components?.queryItems = queryItems
+        guard let url = components?.url else { throw APIError(status: 0, message: "The archive could not be opened. Please try again.") }
+        return try await request(url.absoluteString)
+    }
+    func submitPracticeGuess(puzzleID: String, guess: String, attemptNumber: Int, roundToken: String?) async throws -> PracticeGuessResponse {
+        var body: [String: Any] = ["puzzleId": puzzleID, "guess": guess, "attemptNumber": attemptNumber]
+        if let roundToken { body["roundToken"] = roundToken }
+        return try await request(
+            "/api/puzzles/practice/guess",
+            method: "POST",
+            body: body,
+            headers: ["X-Rebuzzle-Daily-Only": "false"]
+        )
+    }
+    func revealPracticeSolution(puzzleID: String, roundToken: String) async throws -> PracticeRevealResponse {
+        try await request(
+            "/api/puzzles/practice/reveal",
+            method: "POST",
+            body: ["puzzleId": puzzleID, "roundToken": roundToken],
+            headers: ["X-Rebuzzle-Daily-Only": "false"]
+        )
+    }
     /// Growth reporting is best-effort: telemetry must never interrupt a puzzle or purchase flow.
     func report(_ event: GrowthEvent) async {
         do {
@@ -84,7 +115,7 @@ enum GrowthEvent: Sendable {
         }
     }
     /// Eve is optional commentary; scoring remains exclusively in the guess endpoint.
-    func streamQuip(puzzleID: String, guess: Guess, onUpdate: @escaping @MainActor (String) -> Void) async throws {
+    func streamQuip(puzzleID: String, guess: Guess, scope: EveReplyScope = .daily, onUpdate: @escaping @MainActor (String) -> Void) async throws {
         guard let tier = guess.reaction?.tier else { return }
         var request = URLRequest(url: baseURL.appendingPathComponent("api/puzzles/quip"))
         request.httpMethod = "POST"
@@ -94,7 +125,10 @@ enum GrowthEvent: Sendable {
         request.setValue(deviceID, forHTTPHeaderField: "X-Device-Id")
         request.setValue("rebuzzle-tz=\(TimeZone.current.identifier)", forHTTPHeaderField: "Cookie")
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["puzzleId": puzzleID, "guess": guess.guess, "tier": tier])
+        if scope == .practice, let transactionJWS = plusTransactionJWSProvider?() {
+            request.setValue(transactionJWS, forHTTPHeaderField: "X-Rebuzzle-StoreKit-Transaction")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["puzzleId": puzzleID, "guess": guess.guess, "tier": tier, "mode": scope.rawValue])
         let (bytes, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.badServerResponse)

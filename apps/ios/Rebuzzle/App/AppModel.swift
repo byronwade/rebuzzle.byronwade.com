@@ -59,8 +59,11 @@ enum CompletedStreakRefreshState: Equatable {
         } catch { initialSetupError = error.localizedDescription }
         let client = api ?? APIClient(deviceID: device)
         self.api = client
-        self.eve = EveReplyStore(storage: self.storage) { puzzleID, guess, update in
-            try await client.streamQuip(puzzleID: puzzleID, guess: guess, onUpdate: update)
+        self.eve = EveReplyStore(storage: self.storage) { puzzleID, guess, scope, update in
+            try await client.streamQuip(puzzleID: puzzleID, guess: guess, scope: scope, onUpdate: update)
+        }
+        client.plusTransactionJWSProvider = { [weak purchases = self.purchases] in
+            purchases?.plusTransactionJWS
         }
         do { self.api.token = try secure.read("token") } catch { initialSetupError = error.localizedDescription }
     }

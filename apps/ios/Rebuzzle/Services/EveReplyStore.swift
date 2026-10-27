@@ -2,9 +2,14 @@ import Foundation
 import Observation
 import RebuzzleCore
 
+enum EveReplyScope: String, Sendable {
+    case daily
+    case practice
+}
+
 /// Optional presentation state, isolated from the authoritative game session.
 @MainActor @Observable final class EveReplyStore {
-    typealias Transport = @MainActor (String, Guess, @escaping @MainActor (String) -> Void) async throws -> Void
+    typealias Transport = @MainActor @Sendable (String, Guess, EveReplyScope, @escaping @MainActor @Sendable (String) -> Void) async throws -> Void
     private(set) var replies: [Int: String] = [:]
     private(set) var pendingAttempt: Int?
     @ObservationIgnored private let storage: LocalStore
@@ -14,17 +19,20 @@ import RebuzzleCore
     @ObservationIgnored private var requestID = UUID()
     @ObservationIgnored private var work: Task<Void, Never>?
     @ObservationIgnored private var deadline: Task<Void, Never>?
+    @ObservationIgnored private var scope: EveReplyScope = .daily
 
     init(storage: LocalStore, transport: @escaping Transport) {
         self.storage = storage
         self.transport = transport
     }
-    func activate(accountID: String, puzzleID: String) {
-        let next = "eve:\(accountID):\(puzzleID)"
+    func activate(accountID: String, puzzleID: String, scope: EveReplyScope = .daily) {
+        // Keep the existing daily key so saved daily quips remain available after upgrading.
+        let next = scope == .daily ? "eve:\(accountID):\(puzzleID)" : "eve:\(accountID):\(puzzleID):practice"
         guard next != key else { return }
         reset()
         key = next
         self.puzzleID = puzzleID
+        self.scope = scope
         replies = (try? storage.load([Int: String].self, key: next)) ?? [:]
     }
     func reset() {
@@ -40,10 +48,11 @@ import RebuzzleCore
         requestID = id
         pendingAttempt = guess.attemptNumber
         let transport = transport
+        let scope = scope
         let task = Task { [weak self] in
             guard !Task.isCancelled else { return }
             do {
-                try await transport(puzzleID, guess) { [weak self] text in
+                try await transport(puzzleID, guess, scope) { [weak self] text in
                     guard let self, self.requestID == id, !Task.isCancelled else { return }
                     self.replies[guess.attemptNumber] = text
                 }

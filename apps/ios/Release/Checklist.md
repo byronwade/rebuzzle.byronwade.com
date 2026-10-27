@@ -13,6 +13,9 @@ Status: public release preparation; later dated evidence records completed beta 
 ## Backend — outstanding deployment gate
 
 - [ ] Deploy reviewed native API changes; production deployment has not been performed by preparing these files.
+- [ ] After deployment, configure production and sandbox App Store Server Notifications V2 to `https://rebuzzle.byronwade.com/api/storekit/notifications`; send a Test notification and verify its signed notification receipt before enabling Plus archive in production.
+- [ ] Keep production API sandbox-entitlement rejection enabled. For TestFlight Plus testing, configure a separate publicly reachable beta API with `STOREKIT_ALLOW_SANDBOX_TRANSACTIONS=true` and set the TestFlight build's API base URL to that beta service; Vercel Preview currently requires SSO and cannot serve the iOS app.
+- [ ] On a signed device, verify StoreKit transaction JWS reaches the archive/practice API, non-Plus and revoked transactions receive 403, a three-wrong-guess signed round is required to reveal, and a refund notification immediately removes server access.
 - [ ] Verify `/api/puzzle/today` includes supported sanitized visual data and correct local puzzle date/next release time.
 - [ ] Verify Bearer guest/session/login/logout/stats flows and `/api/puzzle/session` reconciliation against live production.
 - [ ] Test wrong guess, solve, exhaustion, duplicate-submit protection, timeout after server acceptance, foreground resume, expired credentials, midnight and timezone travel. Confirm server lock/points remain authoritative and no answer leaks before completion.

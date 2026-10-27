@@ -74,6 +74,29 @@ import StoreKitTest
         verifyKeyboardDismissal(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
     }
 
+    func testKeyboardCheckWaitsForProgressRefreshAfterUnconfirmedSubmission() {
+        launchFixture(extraArguments: ["--ui-guess-unavailable"])
+        let field = app.descendants(matching: .any)["answerField"].firstMatch
+        field.tap()
+        field.typeText("sunshine")
+
+        let submit = app.buttons["checkAnswerFromKeyboard"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        submit.tap()
+        XCTAssertTrue(app.staticTexts["We couldn’t confirm that response. Refresh progress before trying again."]
+            .waitForExistence(timeout: 5))
+
+        field.tap()
+        let unavailableSubmit = app.buttons["checkAnswerFromKeyboard"]
+        XCTAssertTrue(unavailableSubmit.waitForExistence(timeout: 5))
+        XCTAssertFalse(unavailableSubmit.isEnabled)
+        let hide = app.buttons["dismissAnswerKeyboard"]
+        XCTAssertTrue(hide.isHittable)
+        hide.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Refresh progress"].exists)
+    }
+
     private func verifyKeyboardDismissal(extraArguments: [String] = []) {
         launchFixture(extraArguments: extraArguments)
         let field = app.descendants(matching: .any)["answerField"].firstMatch
@@ -92,9 +115,10 @@ import StoreKitTest
         field.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         field.typeText("shine")
-        let submit = app.buttons["checkAnswer"]
-        for _ in 0..<5 where !submit.isHittable { app.swipeUp() }
-        submit.tap()
+        let submitFromKeyboard = app.buttons["checkAnswerFromKeyboard"]
+        XCTAssertTrue(submitFromKeyboard.waitForExistence(timeout: 5))
+        XCTAssertTrue(submitFromKeyboard.isHittable)
+        submitFromKeyboard.tap()
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
     }
 
@@ -326,6 +350,97 @@ import StoreKitTest
         capture("Plus — personal journal preview")
     }
 
+    func testArchiveEntryStaysLockedUntilPlusIsVerified() {
+        launchFixture()
+        selectTab("You")
+        let plus = app.buttons["Rebuzzle Plus"]
+        reveal(plus)
+        plus.tap()
+
+        XCTAssertTrue(app.staticTexts["Past daily puzzles"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["openPuzzleArchive"].exists)
+        XCTAssertFalse(app.otherElements["archiveLoading"].exists, "A non-Plus account must not request archive content")
+    }
+
+    func testPlusArchivePracticeIsUnscoredHintedAndAnswerBlindUntilSolvedOrRevealed() throws {
+        launchFixture()
+        selectTab("You")
+        let plus = app.buttons["Rebuzzle Plus"]
+        reveal(plus)
+        plus.tap()
+        let unlock = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch
+        XCTAssertTrue(unlock.waitForExistence(timeout: 15))
+        reveal(unlock)
+        unlock.tap()
+        XCTAssertTrue(app.staticTexts["You have Rebuzzle Plus"].waitForExistence(timeout: 15))
+
+        let archive = app.buttons["openPuzzleArchive"]
+        reveal(archive)
+        archive.tap()
+        XCTAssertTrue(app.navigationBars["Puzzle archive"].waitForExistence(timeout: 5))
+        let firstPuzzle = app.buttons["archivePuzzle.archive-lighthouse"]
+        XCTAssertTrue(firstPuzzle.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["lighthouse"].exists, "Archive metadata must not expose an answer")
+        firstPuzzle.tap()
+
+        XCTAssertTrue(app.navigationBars["Practice"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["practiceUnscored"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["practiceUnscoredNote"].exists)
+        XCTAssertFalse(app.staticTexts["lighthouse"].exists)
+        XCTAssertTrue(app.buttons["checkPracticeAnswer"].exists)
+
+        let hintButton = app.buttons["revealPracticeHint"]
+        reveal(hintButton)
+        hintButton.tap()
+        XCTAssertEqual(app.staticTexts["practiceHint.1"].label, "Read each clue from left to right.")
+        XCTAssertFalse(app.staticTexts["practiceHint.2"].exists)
+
+        let answer = app.textFields["practiceAnswerField"]
+        reveal(answer)
+        answer.tap()
+        answer.typeText("not it")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let dismiss = app.buttons["dismissPracticeKeyboard"]
+        XCTAssertTrue(dismiss.waitForExistence(timeout: 5))
+        dismiss.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(answer.value as? String, "not it")
+        app.buttons["checkPracticeAnswer"].tap()
+        XCTAssertTrue(app.staticTexts["practiceAttemptsRemaining"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["practiceAttemptsRemaining"].label, "2 left")
+        XCTAssertFalse(app.staticTexts["lighthouse"].exists, "Wrong practice feedback must remain answer blind")
+
+        answer.tap()
+        answer.typeText("lighthouse")
+        app.buttons["checkPracticeAnswer"].tap()
+        XCTAssertTrue(app.staticTexts["practiceSolutionAnswer"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["practiceSolutionAnswer"].label, "lighthouse")
+        XCTAssertFalse(app.descendants(matching: .any)["dailyStreakCard"].exists)
+        XCTAssertFalse(app.staticTexts["earnedXP"].exists)
+
+        app.buttons["restartPracticeRound"].tap()
+        XCTAssertTrue(app.buttons["checkPracticeAnswer"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["practiceAttemptsRemaining"].label, "3 left")
+        XCTAssertFalse(app.staticTexts["practiceSolutionAnswer"].exists)
+        XCTAssertFalse(app.buttons["revealPracticeSolution"].exists, "The solution reveal becomes available only after the round ends")
+        for (index, guess) in ["first try", "second try", "third try"].enumerated() {
+            submitPractice(guess)
+            if index < 2 {
+                XCTAssertEqual(app.staticTexts["practiceAttemptsRemaining"].label, "\(2 - index) left")
+                XCTAssertFalse(app.buttons["revealPracticeSolution"].exists)
+            }
+        }
+        app.buttons["revealPracticeSolution"].tap()
+        XCTAssertTrue(app.staticTexts["practiceSolutionAnswer"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["practiceSolutionAnswer"].label, "lighthouse")
+        app.buttons["restartPracticeRound"].tap()
+        XCTAssertEqual(app.staticTexts["practiceAttemptsRemaining"].label, "3 left")
+
+        selectTab("Play")
+        XCTAssertTrue(app.staticTexts["3 guesses remaining"].waitForExistence(timeout: 5), "Archive practice must leave today's guesses untouched")
+        capture("Plus archive — unscored practice")
+    }
+
     func testThreeWrongGuessesRevealAnswer() {
         launchFixture()
         for (index, guess) in ["sunshine", "moonlight", "daybreak"].enumerated() {
@@ -501,6 +616,18 @@ import StoreKitTest
         if dismissKeyboard.exists { dismissKeyboard.tap() }
         let button = app.buttons["checkAnswer"]
         for _ in 0..<5 where !button.isHittable { app.swipeUp() }
+        button.tap()
+    }
+
+    private func submitPractice(_ guess: String) {
+        let field = app.textFields["practiceAnswerField"]
+        reveal(field)
+        field.tap()
+        field.typeText(guess)
+        let dismiss = app.buttons["dismissPracticeKeyboard"]
+        if dismiss.exists && dismiss.isHittable { dismiss.tap() }
+        let button = app.buttons["checkPracticeAnswer"]
+        reveal(button)
         button.tap()
     }
 

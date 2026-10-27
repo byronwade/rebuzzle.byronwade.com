@@ -17,7 +17,18 @@ struct PlusView: View {
                 journalPreview(entry)
             }
             purchase
+            if model.purchases.hasPlus {
+                NavigationLink {
+                    ArchiveView()
+                } label: {
+                    Label("Browse past puzzles", systemImage: "calendar.badge.clock")
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                }
+                .buttonStyle(CommitStyle())
+                .accessibilityIdentifier("openPuzzleArchive")
+            }
             VStack(alignment: .leading, spacing: 24) {
+                feature("calendar.badge.clock", "Past daily puzzles", "Replay earlier clues with fresh guesses, progressive hints, and answer-blind feedback. Practice never changes your score, streak, or rewards.")
                 feature("book.closed", "A journal of discoveries", "Study completed puzzles again, reveal available hints one at a time, then see the answer.")
                 feature("pencil.line", "A place for the aha", "Save a note about what made the answer click.")
                 feature("chart.bar.xaxis", "Your solving patterns", "Explore guess distribution, solve rate, and hint-free wins.")

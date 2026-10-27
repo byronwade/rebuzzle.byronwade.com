@@ -409,6 +409,32 @@ export const puzzleOps = {
     );
   },
 
+  /** List active puzzles strictly before a published-day cutoff with a stable page cursor. */
+  async findPublishedBefore(input: {
+    beforeUtc: Date;
+    limit: number;
+    after?: { publishedAt: Date; id: string };
+  }): Promise<Puzzle[]> {
+    const collection = getCollection<Puzzle>("puzzles");
+    const filter: Filter<Puzzle> = {
+      active: true,
+      publishedAt: { $lt: input.beforeUtc },
+    };
+
+    if (input.after) {
+      filter.$or = [
+        { publishedAt: { $lt: input.after.publishedAt } },
+        { publishedAt: input.after.publishedAt, id: { $lt: input.after.id } },
+      ];
+    }
+
+    return await collection
+      .find(filter)
+      .sort({ publishedAt: -1, id: -1 })
+      .limit(input.limit)
+      .toArray();
+  },
+
   async findTodaysPuzzle(): Promise<Puzzle | null> {
     const dateString = new Date().toISOString().slice(0, 10);
     return await this.findByDate(dateString);
@@ -1390,5 +1416,60 @@ export const pushSubscriptionOps = {
     await collection.replaceOne({ endpoint: subscription.endpoint }, subscription, {
       upsert: true,
     });
+  },
+};
+
+type StoreKitRevocationRecord = {
+  _id: string;
+  transactionId: string;
+  productId: string;
+  environment: string;
+  notificationType: string;
+  signedDate: number;
+  revoked: boolean;
+  updatedAt: Date;
+};
+
+/** Latest signed App Store notification state for each Plus transaction. */
+export const storeKitOps = {
+  async isTransactionRevoked(transactionId: string): Promise<boolean> {
+    const collection = getCollection<StoreKitRevocationRecord>("storeKitRevocations");
+    // Records created before signed notification ordering existed remain revoked until a
+    // newer signed REFUND_REVERSED event explicitly clears them.
+    return Boolean(
+      await collection.findOne(
+        { _id: transactionId, $or: [{ revoked: true }, { revoked: { $exists: false } }] },
+        { projection: { _id: 1 } }
+      )
+    );
+  },
+
+  async applyNotification(
+    record: Omit<StoreKitRevocationRecord, "_id" | "updatedAt">
+  ): Promise<void> {
+    const collection = getCollection<StoreKitRevocationRecord>("storeKitRevocations");
+    const filter = {
+      _id: record.transactionId,
+      $or: [{ signedDate: { $lt: record.signedDate } }, { signedDate: { $exists: false } }],
+    };
+    const update = {
+      $set: { ...record, updatedAt: new Date() },
+    };
+
+    try {
+      await collection.updateOne(filter, update, { upsert: true });
+    } catch (error) {
+      // A stale event does not match the signedDate filter, so an upsert collides with
+      // the existing transaction's _id. Retry without upsert to make it a safe no-op.
+      if (
+        !error ||
+        typeof error !== "object" ||
+        !("code" in error) ||
+        (error as { code?: unknown }).code !== 11000
+      ) {
+        throw error;
+      }
+      await collection.updateOne(filter, update);
+    }
   },
 };

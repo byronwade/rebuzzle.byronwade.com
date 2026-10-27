@@ -75,15 +75,15 @@ struct TodayView: View {
                                 .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
                                 .accessibilityLabel("Your answer")
                                 .accessibilityIdentifier("answerField")
-                                .onSubmit { answerFocused = false; Task { await model.submit() } }
+                                .onSubmit { submitAnswer() }
                                 .onChange(of: model.draft) { _, _ in model.saveDraft() }
                             if let error = model.error { Notice(message: error) }
                             if model.needsReconciliation || !model.sessionReady {
                                 Button { Task { await model.load() } } label: {
                                     HStack { if model.busy { ProgressView().tint(Theme.canvas) }; Text("Refresh progress"); Image(systemName: "arrow.clockwise") }
                                 }.buttonStyle(CommitStyle()).disabled(model.busy)
-                            } else {
-                                Button { answerFocused = false; Task { await model.submit() } } label: {
+                            } else if !answerFocused {
+                                Button { submitAnswer() } label: {
                                     HStack { Text("Check answer"); if model.submitting { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") } }
                                 }.buttonStyle(CommitStyle()).disabled(model.submitting || model.busy).accessibilityIdentifier("checkAnswer")
                             }
@@ -130,11 +130,16 @@ struct TodayView: View {
                 Button("How to play", systemImage: "questionmark.circle") { help = true }
             }
             ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
                 Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") {
                     answerFocused = false
                 }
                 .accessibilityIdentifier("dismissAnswerKeyboard")
+                Spacer()
+                Button("Check answer", systemImage: "arrow.right") {
+                    submitAnswer()
+                }
+                .disabled(model.submitting || model.busy || !model.sessionReady || model.needsReconciliation)
+                .accessibilityIdentifier("checkAnswerFromKeyboard")
             }
         }
         .sheet(isPresented: $help) { HelpView() }
@@ -149,6 +154,10 @@ struct TodayView: View {
             return haptics && new > old && model.game?.attempts.last?.correct == false
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
+    }
+    private func submitAnswer() {
+        answerFocused = false
+        Task { await model.submit() }
     }
     private var conversation: some View {
         VStack(alignment: .leading, spacing: 24) {

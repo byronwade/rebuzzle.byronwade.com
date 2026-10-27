@@ -22,7 +22,7 @@ final class EveReplyTests: XCTestCase {
     @MainActor func testOptionalFailureClearsPendingWithoutCreatingReply() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let store = EveReplyStore(storage: LocalStore(root: root)) { _, _, _ in throw URLError(.notConnectedToInternet) }
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, _, _, _ in throw URLError(.notConnectedToInternet) }
         store.activate(accountID: "a", puzzleID: "p")
         await store.request(guess: Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction()))?.value
         XCTAssertNil(store.pendingAttempt)
@@ -33,7 +33,7 @@ final class EveReplyTests: XCTestCase {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let storage = LocalStore(root: root)
-        let saved = EveReplyStore(storage: storage) { _, _, update in update("An unexpected detour.") }
+        let saved = EveReplyStore(storage: storage) { _, _, _, update in update("An unexpected detour.") }
         saved.activate(accountID: "a", puzzleID: "p")
         let guess = Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction())
         await saved.request(guess: guess)?.value
@@ -42,7 +42,7 @@ final class EveReplyTests: XCTestCase {
         saved.activate(accountID: "a", puzzleID: "p")
         XCTAssertEqual(saved.replies[1], "An unexpected detour.")
         var started = false
-        let late = EveReplyStore(storage: storage) { _, _, update in
+        let late = EveReplyStore(storage: storage) { _, _, _, update in
             started = true
             try? await Task.sleep(for: .milliseconds(40))
             update("Stale private reply")
@@ -66,6 +66,65 @@ final class EveReplyTests: XCTestCase {
             try await api.streamQuip(puzzleID: "p", guess: Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction()), onUpdate: { value = $0 })
             XCTFail("An unsuccessful HTTP response must be rejected")
         } catch { XCTAssertTrue(value.isEmpty) }
+    }
+
+    @MainActor func testPracticeAndDailyRepliesUseSeparateScopes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var requestedScopes: [EveReplyScope] = []
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, _, scope, update in
+            requestedScopes.append(scope)
+            update(scope == .practice ? "Practice Eve." : "Daily Eve.")
+        }
+        let guess = Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction())
+
+        store.activate(accountID: "a", puzzleID: "p")
+        await store.request(guess: guess)?.value
+        XCTAssertEqual(store.replies[1], "Daily Eve.")
+
+        store.activate(accountID: "a", puzzleID: "p", scope: .practice)
+        XCTAssertTrue(store.replies.isEmpty)
+        await store.request(guess: guess)?.value
+        XCTAssertEqual(store.replies[1], "Practice Eve.")
+
+        store.activate(accountID: "a", puzzleID: "p")
+        XCTAssertEqual(store.replies[1], "Daily Eve.")
+        XCTAssertEqual(requestedScopes, [.daily, .practice])
+    }
+
+    @MainActor func testPracticeQuipSendsPracticeMode() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        StubProtocol.responder = { request in
+            let body: Data
+            if let httpBody = request.httpBody {
+                body = httpBody
+            } else {
+                let stream = try XCTUnwrap(request.httpBodyStream)
+                stream.open()
+                defer { stream.close() }
+                var data = Data()
+                var buffer = [UInt8](repeating: 0, count: 1024)
+                while stream.hasBytesAvailable {
+                    let count = stream.read(&buffer, maxLength: buffer.count)
+                    if count <= 0 { break }
+                    data.append(buffer, count: count)
+                }
+                body = data
+            }
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: String])
+            XCTAssertEqual(json["mode"], "practice")
+            return (200, "Practice only.")
+        }
+        let api = APIClient(deviceID: "test-device", session: URLSession(configuration: config))
+        var value = ""
+        try await api.streamQuip(
+            puzzleID: "p",
+            guess: Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction()),
+            scope: .practice,
+            onUpdate: { value = $0 }
+        )
+        XCTAssertEqual(value, "Practice only.")
     }
 
     private func reaction() throws -> GuessReaction {
