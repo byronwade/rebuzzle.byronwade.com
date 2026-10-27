@@ -41,8 +41,29 @@ enum GrowthEvent: Sendable {
     let baseURL: URL
     private let session: URLSession
     private let deviceID: String
-    init(baseURL: URL = URL(string: "https://rebuzzle.byronwade.com")!, deviceID: String, session: URLSession? = nil) {
-        self.baseURL = baseURL; self.deviceID = deviceID
+    private static let productionBaseURL = URL(string: "https://rebuzzle.byronwade.com")!
+
+    static func resolvedBaseURL(from infoDictionary: [String: Any]) -> URL {
+        guard let configuredURL = infoDictionary["RebuzzleAPIBaseURL"] as? String,
+              configuredURL == configuredURL.trimmingCharacters(in: .whitespacesAndNewlines),
+              let components = URLComponents(string: configuredURL),
+              components.scheme?.lowercased() == "https",
+              let host = components.host, !host.isEmpty,
+              components.user == nil,
+              components.password == nil,
+              components.path.isEmpty || components.path == "/",
+              components.query == nil,
+              components.fragment == nil,
+              components.port.map({ (1...65_535).contains($0) }) ?? true,
+              let url = components.url else {
+            return productionBaseURL
+        }
+        return url
+    }
+
+    init(baseURL: URL? = nil, deviceID: String, session: URLSession? = nil) {
+        self.baseURL = baseURL ?? Self.resolvedBaseURL(from: Bundle.main.infoDictionary ?? [:])
+        self.deviceID = deviceID
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 25
         config.httpCookieStorage = nil

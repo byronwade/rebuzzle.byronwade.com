@@ -29,6 +29,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>RebuzzleAPIBaseURL</key>
+	<string>$(REBUZZLE_API_BASE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Inter.ttf</string>

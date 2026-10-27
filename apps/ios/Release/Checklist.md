@@ -14,7 +14,15 @@ Status: public release preparation; later dated evidence records completed beta 
 
 - [ ] Deploy reviewed native API changes; production deployment has not been performed by preparing these files.
 - [ ] After deployment, configure production and sandbox App Store Server Notifications V2 to `https://rebuzzle.byronwade.com/api/storekit/notifications`; send a Test notification and verify its signed notification receipt before enabling Plus archive in production.
-- [ ] Keep production API sandbox-entitlement rejection enabled. For TestFlight Plus testing, configure a separate publicly reachable beta API with `STOREKIT_ALLOW_SANDBOX_TRANSACTIONS=true` and set the TestFlight build's API base URL to that beta service; Vercel Preview currently requires SSO and cannot serve the iOS app.
+- [ ] Keep production API sandbox-entitlement rejection enabled. For TestFlight Plus testing, configure a separate publicly reachable beta API with `VERCEL_ENV` set outside `production` and `STOREKIT_ALLOW_SANDBOX_TRANSACTIONS=true`; Vercel Preview currently requires SSO and cannot serve the iOS app. From `apps/ios`, archive the TestFlight build with the beta origin (replace the reserved example host with the deployed public origin):
+
+  ```sh
+  REBUZZLE_API_BASE_URL=https://beta-api.example \
+    xcodebuild -project Rebuzzle.xcodeproj -scheme Rebuzzle \
+      -configuration Release -archivePath /tmp/Rebuzzle-Beta.xcarchive archive
+  ```
+
+  The default build setting remains `https://rebuzzle.byronwade.com` for App Store builds. Before upload, inspect `/tmp/Rebuzzle-Beta.xcarchive/Products/Applications/Rebuzzle.app/Info.plist` and confirm `RebuzzleAPIBaseURL` matches the deployed beta origin. Never enable sandbox transactions in Vercel Production.
 - [ ] On a signed device, verify StoreKit transaction JWS reaches the archive/practice API, non-Plus and revoked transactions receive 403, a three-wrong-guess signed round is required to reveal, and a refund notification immediately removes server access.
 - [ ] Verify `/api/puzzle/today` includes supported sanitized visual data and correct local puzzle date/next release time.
 - [ ] Verify Bearer guest/session/login/logout/stats flows and `/api/puzzle/session` reconciliation against live production.

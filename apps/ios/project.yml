@@ -26,6 +26,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.byronwade.rebuzzle
+        REBUZZLE_API_BASE_URL: https://rebuzzle.byronwade.com
         INFOPLIST_KEY_CFBundleDisplayName: Rebuzzle
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.word-games
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -36,6 +37,7 @@ targets:
     info:
       path: Rebuzzle/Resources/Info.plist
       properties:
+        RebuzzleAPIBaseURL: $(REBUZZLE_API_BASE_URL)
         UIAppFonts: [Inter.ttf]
         CFBundleURLTypes:
           - CFBundleURLName: com.byronwade.rebuzzle.play

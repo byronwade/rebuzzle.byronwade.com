@@ -562,6 +562,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.byronwade.rebuzzle;
+				REBUZZLE_API_BASE_URL = "https://rebuzzle.byronwade.com";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -798,6 +799,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.byronwade.rebuzzle;
+				REBUZZLE_API_BASE_URL = "https://rebuzzle.byronwade.com";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

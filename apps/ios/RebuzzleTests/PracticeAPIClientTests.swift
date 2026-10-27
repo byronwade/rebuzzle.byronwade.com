@@ -12,6 +12,53 @@ import RebuzzleCore
         return client
     }
 
+    func testDefaultAPIClientUsesConfiguredBundleHost() throws {
+        let configuredHost = try XCTUnwrap(
+            Bundle.main.object(forInfoDictionaryKey: "RebuzzleAPIBaseURL") as? String
+        )
+        let client = APIClient(deviceID: "configured-host-test")
+
+        XCTAssertEqual(client.baseURL.absoluteString, configuredHost)
+    }
+
+    func testAPIClientResolutionDefaultsToProductionWhenUnset() {
+        XCTAssertEqual(
+            APIClient.resolvedBaseURL(from: [:]),
+            URL(string: "https://rebuzzle.byronwade.com")
+        )
+    }
+
+    func testAPIClientResolutionUsesHTTPSOrigin() {
+        let betaURL = URL(string: "https://rebuzzle-beta.example")
+
+        XCTAssertEqual(
+            APIClient.resolvedBaseURL(from: ["RebuzzleAPIBaseURL": "https://rebuzzle-beta.example"]),
+            betaURL
+        )
+    }
+
+    func testAPIClientResolutionRejectsUnsafeOverrides() {
+        let productionURL = URL(string: "https://rebuzzle.byronwade.com")
+        let unsafeURLs = [
+            "http://rebuzzle.example",
+            "https://user:pass@rebuzzle.example",
+            "https://rebuzzle.example/api",
+            "https://rebuzzle.example?mode=test",
+            "https://rebuzzle.example#fragment",
+            "https://rebuzzle.example:99999",
+            "https://rebuzzle.example:abc",
+            "not a URL"
+        ]
+
+        for unsafeURL in unsafeURLs {
+            XCTAssertEqual(
+                APIClient.resolvedBaseURL(from: ["RebuzzleAPIBaseURL": unsafeURL]),
+                productionURL,
+                "Unexpectedly accepted unsafe API origin: \(unsafeURL)"
+            )
+        }
+    }
+
     func testFetchArchiveUsesCursorAndDecodesAnswerFreePuzzleMetadata() async throws {
         defer { StubProtocol.responder = nil }
         let capture = RequestCapture()
