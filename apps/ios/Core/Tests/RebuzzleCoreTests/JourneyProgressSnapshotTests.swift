@@ -46,12 +46,24 @@ private func snapshotPayload(
     ])
 }
 
-@Test func legacyUnknownHintCountStaysNilForZeroGuessReveal() throws {
-    let payload = snapshotPayload(entries: #"[{"puzzleDate":"2026-10-26","puzzleId":"daily-1","outcome":"revealed","attempts":0,"hintCount":null,"completedAt":"2026-10-26T12:34:56Z","timeZone":"UTC"}]"#)
+@Test func failedOutcomeDecodesAndLegacyRevealOutcomeIsRejected() throws {
+    let failed = snapshotPayload(entries: #"[{"puzzleDate":"2026-10-26","puzzleId":"daily-1","outcome":"failed","attempts":3,"hintCount":0,"completedAt":"2026-10-26T12:34:56Z","timeZone":"UTC"}]"#)
+    let snapshot = try JSONDecoder().decode(JourneyProgressSnapshot.self, from: failed)
+
+    #expect(snapshot.recentEntries.first?.outcome == .failed)
+
+    let revealed = snapshotPayload(entries: #"[{"puzzleDate":"2026-10-26","puzzleId":"daily-1","outcome":"revealed","attempts":3,"hintCount":0,"completedAt":"2026-10-26T12:34:56Z","timeZone":"UTC"}]"#)
+    #expect(throws: DecodingError.self) {
+        try JSONDecoder().decode(JourneyProgressSnapshot.self, from: revealed)
+    }
+}
+
+@Test func legacyUnknownHintCountDecodesAsNilRatherThanZero() throws {
+    let payload = snapshotPayload(entries: #"[{"puzzleDate":"2026-10-26","puzzleId":"daily-1","outcome":"failed","attempts":3,"hintCount":null,"completedAt":"2026-10-26T12:34:56Z","timeZone":"UTC"}]"#)
     let snapshot = try JSONDecoder().decode(JourneyProgressSnapshot.self, from: payload)
 
     #expect(snapshot.recentEntries.first?.hintCount == nil)
-    #expect(snapshot.recentEntries.first?.attempts == 0)
+    #expect(snapshot.recentEntries.first?.attempts == 3)
 }
 
 @Test func malformedProgressPayloadsAreRejected() {

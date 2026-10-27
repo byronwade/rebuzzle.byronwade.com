@@ -2,7 +2,6 @@ import Foundation
 
 public enum JourneyProgressOutcome: String, Codable, Equatable, Sendable {
     case solved
-    case revealed
     case failed
 }
 
