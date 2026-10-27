@@ -1,3 +1,8 @@
+const findEligible = jest.fn();
+jest.mock("@/ai/puzzle-agent/review/original-artwork-promotion-server", () => ({
+  originalArtworkPromotionService: { findEligible },
+}));
+
 import { gradeUserPuzzleSubmission } from "../grade-submission";
 
 jest.mock("@/ai/learning/answer-registry", () => ({
@@ -56,4 +61,44 @@ describe("gradeUserPuzzleSubmission", () => {
     expect(result.ok).toBe(false);
     expect(result.issues.join(" ")).toMatch(/Explanation|hints|visible|pictogram/i);
   });
+});
+
+it("grades selected original artwork and rejects the same board after approval is withdrawn", async () => {
+  const input = {
+    answer: "sunflower",
+    explanation: "Sun pictogram plus flower pictogram reads as the compound sunflower.",
+    hints: ["compound word", "starts with S", "a yellow garden plant"],
+    techniqueId: "simple_compound",
+    difficulty: 4,
+    visual: {
+      layout: "row" as const,
+      layers: [
+        {
+          kind: "pictogram" as const,
+          concept: "sun",
+          assetId: "rebuzzle-ink:sun:v1",
+          emojiFallback: "SU",
+        },
+        { kind: "operator" as const, symbol: "+" as const },
+        {
+          kind: "pictogram" as const,
+          concept: "flower",
+          assetId: "rebuzzle-ink:flower:v1",
+          emojiFallback: "FL",
+        },
+      ],
+    },
+  };
+  findEligible.mockImplementation(async (assetId: string) => ({ assetId }));
+  const accepted = await gradeUserPuzzleSubmission(input);
+  expect(accepted.issues).toEqual([]);
+  expect(accepted.ok).toBe(true);
+  expect(accepted.visual.layers[0]).toMatchObject({
+    assetId: "rebuzzle-ink:sun:v1",
+    source: "approved-cache",
+  });
+  findEligible.mockResolvedValue(null);
+  const revoked = await gradeUserPuzzleSubmission(input);
+  expect(revoked.ok).toBe(false);
+  expect(revoked.issues.join(" ")).toMatch(/current approval/);
 });

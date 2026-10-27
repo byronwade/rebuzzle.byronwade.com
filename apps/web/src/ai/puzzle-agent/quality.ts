@@ -142,6 +142,8 @@ export function evaluateVisualForPublish(
      * spend vision judges; they still require authentic catalog provenance.
      */
     requireCatalogRecognitionEvidence?: boolean;
+    /** Server-derived IDs whose exact authored drawings passed current calibrated human review. */
+    verifiedOriginalAssetIds?: readonly string[];
   }
 ): VisualPublishCheck {
   const requireCatalogRecognitionEvidence = options?.requireCatalogRecognitionEvidence !== false;
@@ -220,9 +222,14 @@ export function evaluateVisualForPublish(
       };
     }
 
-    // Approved-cache always needs live evidence. Catalog needs it for AI publish.
+    // Authored originals use the stricter calibrated human panel. This list must
+    // come from server approval lookup, never from a submitted board's metadata.
+    const humanReviewedOriginal =
+      layer.assetId?.startsWith("rebuzzle-ink:") &&
+      options?.verifiedOriginalAssetIds?.includes(layer.assetId);
     const needsRecognitionEvidence =
-      approvedCache || (authenticCatalog && requireCatalogRecognitionEvidence);
+      (approvedCache && !humanReviewedOriginal) ||
+      (authenticCatalog && requireCatalogRecognitionEvidence);
     if (
       needsRecognitionEvidence &&
       !PLAYER_ICON_GATE_SIZES.every((size) =>

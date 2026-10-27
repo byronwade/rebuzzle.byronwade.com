@@ -7,6 +7,7 @@ import {
   resolveCuratedPictogram,
 } from "@/ai/puzzle-agent/visual/curated-pictograms";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { listApprovedOriginalArtwork } from "@/lib/ugc/original-artwork-catalog";
 import { requireStudioUser } from "@/lib/ugc/require-studio-user";
 import { getStudioAiQuota } from "@/lib/ugc/studio-ai-quota";
 import { STUDIO_MARKS } from "@/lib/ugc/studio-marks";
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
   const aiQuota = await getStudioAiQuota(auth.userId);
 
   return NextResponse.json({
-    pictograms,
+    pictograms: [...pictograms, ...(await listApprovedOriginalArtwork())],
     readingPolicyVersion: CURATED_PICTOGRAM_READING_POLICY_VERSION,
     marks: STUDIO_MARKS,
     aiQuota,

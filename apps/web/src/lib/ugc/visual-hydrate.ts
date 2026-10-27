@@ -12,6 +12,8 @@ import {
   resolveCuratedPictogram,
   resolveCuratedPictogramByAssetId,
 } from "@/ai/puzzle-agent/visual/curated-pictograms";
+import { listOriginalPictogramCandidates } from "@/ai/puzzle-agent/visual/original-pictograms";
+import { sanitizePictogramSvg } from "@/ai/puzzle-agent/visual/sanitize-svg";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 
 function emojiFallbackFor(concept: string): string {
@@ -74,4 +76,55 @@ export function hydrateStudioVisual(input: {
     },
     issues,
   };
+}
+
+/** Server grading path. Explicit originals require current audited approval. */
+export async function hydrateStudioVisualWithApprovals(
+  input: Parameters<typeof hydrateStudioVisual>[0]
+): Promise<ReturnType<typeof hydrateStudioVisual> & { verifiedOriginalAssetIds: string[] }> {
+  const result = {
+    ...hydrateStudioVisual({ ...input, layers: [] }),
+    verifiedOriginalAssetIds: [] as string[],
+  };
+  for (const layer of input.layers) {
+    if (layer.kind !== "pictogram" || !layer.assetId?.startsWith("rebuzzle-ink:")) {
+      const hydrated = hydrateStudioVisual({ layers: [layer] });
+      result.visual.layers.push(...hydrated.visual.layers);
+      result.issues.push(...hydrated.issues);
+      continue;
+    }
+    const original = listOriginalPictogramCandidates().find(
+      (asset) => asset.assetId === layer.assetId
+    );
+    const svg = original && sanitizePictogramSvg(original.svg);
+    let approved = false;
+    if (original && svg && original.approvedReadings.includes(layer.concept.trim().toLowerCase())) {
+      try {
+        const { originalArtworkPromotionService } = await import(
+          "@/ai/puzzle-agent/review/original-artwork-promotion-server"
+        );
+        const record = await originalArtworkPromotionService.findEligible(original.assetId);
+        approved = record?.assetId === original.assetId;
+      } catch {
+        // An unavailable review store never grants publication eligibility.
+      }
+    }
+    if (!approved || !original || !svg) {
+      result.issues.push(
+        `Original artwork "${layer.concept}" is unavailable or lacks current approval for this reading`
+      );
+      result.visual.layers.push(layer);
+      continue;
+    }
+    result.verifiedOriginalAssetIds.push(original.assetId);
+    result.visual.layers.push({
+      ...layer,
+      svg,
+      assetId: original.assetId,
+      source: "approved-cache",
+      emojiFallback: layer.emojiFallback || emojiFallbackFor(original.concept),
+    });
+  }
+  result.visual.unicodeFallback = buildUnicodeFallback(result.visual.layers) || "◆";
+  return result;
 }
