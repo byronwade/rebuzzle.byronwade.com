@@ -11,12 +11,32 @@ public struct JournalEntry: Codable, Sendable, Identifiable, Hashable {
     public let won: Bool
     public let attempts: Int
     public let hintsUsed: Int
+    public let hints: [String]
     public let visual: PuzzleVisual?
     public var note: String
-    public init(puzzleID: String, puzzleDate: String, puzzleType: String, clue: String, answer: String, explanation: String, won: Bool, attempts: Int, hintsUsed: Int, note: String = "", visual: PuzzleVisual? = nil) {
+    private enum CodingKeys: String, CodingKey {
+        case puzzleID, puzzleDate, puzzleType, clue, answer, explanation, won, attempts, hintsUsed, hints, visual, note
+    }
+    public init(puzzleID: String, puzzleDate: String, puzzleType: String, clue: String, answer: String, explanation: String, won: Bool, attempts: Int, hintsUsed: Int, note: String = "", visual: PuzzleVisual? = nil, hints: [String] = []) {
         self.puzzleID = puzzleID; self.puzzleDate = puzzleDate; self.puzzleType = puzzleType
         self.clue = clue; self.answer = answer; self.explanation = explanation
-        self.won = won; self.attempts = attempts; self.hintsUsed = hintsUsed; self.note = note; self.visual = visual
+        self.won = won; self.attempts = attempts; self.hintsUsed = hintsUsed
+        self.note = note; self.visual = visual; self.hints = hints
+    }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        puzzleID = try values.decode(String.self, forKey: .puzzleID)
+        puzzleDate = try values.decode(String.self, forKey: .puzzleDate)
+        puzzleType = try values.decode(String.self, forKey: .puzzleType)
+        clue = try values.decode(String.self, forKey: .clue)
+        answer = try values.decode(String.self, forKey: .answer)
+        explanation = try values.decode(String.self, forKey: .explanation)
+        won = try values.decode(Bool.self, forKey: .won)
+        attempts = try values.decode(Int.self, forKey: .attempts)
+        hintsUsed = try values.decode(Int.self, forKey: .hintsUsed)
+        hints = try values.decodeIfPresent([String].self, forKey: .hints) ?? []
+        visual = try values.decodeIfPresent(PuzzleVisual.self, forKey: .visual)
+        note = try values.decodeIfPresent(String.self, forKey: .note) ?? ""
     }
 }
 public struct Journal: Codable, Sendable {

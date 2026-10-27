@@ -178,7 +178,7 @@ extension RuntimeTests {
         StubProtocol.responder = { request in
             switch request.url!.path {
             case "/api/puzzle/today":
-                return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-26","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+                return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["Read the clue.","Name the pictures.","Join the parts."]},"puzzleDate":"2026-10-26","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
             case "/api/auth/session":
                 return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
             case "/api/puzzle/session":
@@ -212,6 +212,10 @@ extension RuntimeTests {
 
         XCTAssertTrue(model.game?.gameOver == true)
         XCTAssertEqual(model.journeySnapshot?.summary?.totalXP, 425)
+        let journalData = try JSONEncoder().encode(model.journal)
+        let journal = try XCTUnwrap(JSONSerialization.jsonObject(with: journalData) as? [String: Any])
+        let entries = try XCTUnwrap(journal["entries"] as? [[String: Any]])
+        XCTAssertEqual(entries.first?["hints"] as? [String], ["Read the clue.", "Name the pictures.", "Join the parts."])
     }
 
     @MainActor func testAccountSwitchLoadsOnlyTheNewIdentityJourneyCache() async throws {

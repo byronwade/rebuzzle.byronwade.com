@@ -72,7 +72,15 @@ private final class FixtureServer: @unchecked Sendable {
         let payload: [String: Any]
         switch request.url?.path {
         case "/api/puzzle/today":
-            payload = ["success": true, "puzzle": ["id": game.puzzleId, "puzzle": Self.visual["unicodeFallback"] ?? "💡 + 🏠", "puzzleType": "rebus", "difficulty": 5, "visual": Self.visual, "hints": ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."], "date": game.puzzleDate], "puzzleDate": game.puzzleDate, "nextPuzzleTime": nextPuzzleTime]
+            let hints: [String]
+            if ProcessInfo.processInfo.arguments.contains("--ui-no-hints") {
+                hints = []
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-empty-study-hints") {
+                hints = ["Read each clue from left to right.", "", "Name each picture plainly.", "  ", "Join the parts into one familiar word."]
+            } else {
+                hints = ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."]
+            }
+            payload = ["success": true, "puzzle": ["id": game.puzzleId, "puzzle": Self.visual["unicodeFallback"] ?? "💡 + 🏠", "puzzleType": "rebus", "difficulty": 5, "visual": Self.visual, "hints": hints, "date": game.puzzleDate], "puzzleDate": game.puzzleDate, "nextPuzzleTime": nextPuzzleTime]
         case "/api/auth/guest/lazy", "/api/auth/session":
             payload = ["success": true, "authenticated": true, "user": user, "token": "fixture-token"]
         case "/api/puzzle/session":

@@ -166,25 +166,42 @@ import StoreKitTest
     }
 
     func testRealPurchaseDeliversJournalNotesInsightsAndRestoresAfterRelaunch() throws {
-        launchFixture()
+        launchFixture(extraArguments: ["--ui-empty-study-hints"])
         submit("lighthouse")
-        let journal = app.buttons["keepConnection"]
-        reveal(journal)
-        journal.tap()
-        app.buttons["Explore Rebuzzle Plus"].tap()
-        let unlock = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch
-        XCTAssertTrue(unlock.waitForExistence(timeout: 15), "Real StoreKit product must load")
-        reveal(unlock)
-        unlock.tap()
-        XCTAssertTrue(app.staticTexts["You have Rebuzzle Plus"].waitForExistence(timeout: 15))
-        XCTAssertEqual(store.allTransactions().count, 1, "The UI must perform one actual StoreKit test purchase")
-        let open = app.buttons["openPlusJournal"]
-        reveal(open)
-        open.tap()
-        let entry = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "lighthouse")).firstMatch
+        try purchasePlusAndOpenJournal()
+        let entry = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Solved")).firstMatch
         XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertFalse(entry.label.localizedCaseInsensitiveContains("lighthouse"), "Journal rows must not spoil the answer")
+        XCTAssertTrue(entry.label.localizedCaseInsensitiveContains("rebus"), "Journal rows should identify the puzzle type")
         entry.tap()
-        XCTAssertTrue(app.navigationBars["A connection kept"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["journalStudyAnswer"].exists)
+        XCTAssertFalse(app.staticTexts["journalStudyExplanation"].exists)
+        XCTAssertFalse(app.staticTexts["journalStudyHint.1"].exists)
+        XCTAssertFalse(app.buttons["checkAnswer"].exists, "Studying a past puzzle must not submit a scored guess")
+        capture("Journal study — answer hidden")
+        for (index, hint) in [
+            "Read each clue from left to right.",
+            "Name each picture plainly.",
+            "Join the parts into one familiar word."
+        ].enumerated() {
+            let revealHint = app.buttons["revealJournalHint"]
+            reveal(revealHint)
+            XCTAssertTrue(revealHint.label.contains("\(index + 1)"))
+            revealHint.tap()
+            let revealed = app.staticTexts["journalStudyHint.\(index + 1)"]
+            XCTAssertTrue(revealed.waitForExistence(timeout: 5))
+            XCTAssertEqual(revealed.label, hint)
+            if index < 2 { XCTAssertFalse(app.staticTexts["journalStudyHint.\(index + 2)"].exists) }
+            if index == 0 { capture("Journal study — first hint") }
+        }
+        XCTAssertFalse(app.staticTexts["journalStudyHint.4"].exists, "Empty saved hints should not create blank numbered steps")
+        XCTAssertFalse(app.buttons["revealJournalHint"].exists, "All saved hints should reveal in their original order")
+        let revealAnswer = app.buttons["revealJournalAnswer"]
+        reveal(revealAnswer)
+        revealAnswer.tap()
+        XCTAssertEqual(app.staticTexts["journalStudyAnswer"].label, "lighthouse")
+        XCTAssertTrue(app.staticTexts["journalStudyExplanation"].label.localizedCaseInsensitiveContains("Light + house"))
         let note = app.textFields.firstMatch
         XCTAssertTrue(note.waitForExistence(timeout: 5))
         reveal(note)
@@ -194,6 +211,10 @@ import StoreKitTest
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(entry.waitForExistence(timeout: 5))
         entry.tap()
+        XCTAssertFalse(app.staticTexts["journalStudyAnswer"].exists, "Reopening a study entry should start spoiler-free")
+        let revealAgain = app.buttons["revealJournalAnswer"]
+        reveal(revealAgain)
+        revealAgain.tap()
         XCTAssertTrue(note.waitForExistence(timeout: 5))
         XCTAssertEqual(note.value as? String, "Light and house made the connection click.")
         capture("Plus — purchased journal and note")
@@ -219,6 +240,51 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["Plus restored."].waitForExistence(timeout: 15))
         XCTAssertEqual(store.allTransactions().count, 1, "Restore must not repurchase")
         capture("Plus — restored ownership")
+    }
+
+    func testAccessibleStudyWithoutSavedHintsStillOffersAnswerReveal() throws {
+        launchFixture(extraArguments: ["--ui-no-hints", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        submit("lighthouse")
+        try purchasePlusAndOpenJournal(openFromPlusScreen: false)
+        let entry = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Solved")).firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertFalse(entry.label.localizedCaseInsensitiveContains("lighthouse"))
+        for _ in 0..<12 where !entry.isHittable { app.swipeDown() }
+        XCTAssertTrue(entry.isHittable, "Return the accessibility-size Journal list to the saved entry before opening it")
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journalStudyNoHints"].waitForExistence(timeout: 5))
+        let revealAnswer = app.buttons["revealJournalAnswer"]
+        reveal(revealAnswer)
+        XCTAssertGreaterThanOrEqual(revealAnswer.frame.height, 44, "The answer reveal remains comfortably tappable at accessibility text sizes")
+        revealAnswer.tap()
+        XCTAssertTrue(app.staticTexts["journalStudyAnswer"].waitForExistence(timeout: 5))
+        capture("Journal study — accessibility size, no saved hints")
+    }
+
+    private func purchasePlusAndOpenJournal(openFromPlusScreen: Bool = true) throws {
+        let journal = app.buttons["keepConnection"]
+        reveal(journal)
+        journal.tap()
+        let explore = app.buttons["Explore Rebuzzle Plus"]
+        reveal(explore)
+        explore.tap()
+        let unlock = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch
+        XCTAssertTrue(unlock.waitForExistence(timeout: 15), "Real StoreKit product must load")
+        reveal(unlock)
+        unlock.tap()
+        XCTAssertTrue(app.staticTexts["You have Rebuzzle Plus"].waitForExistence(timeout: 15))
+        XCTAssertEqual(store.allTransactions().count, 1, "The UI must perform one actual StoreKit test purchase")
+        if openFromPlusScreen {
+            let open = app.buttons["openPlusJournal"]
+            reveal(open)
+            open.tap()
+        } else {
+            let back = app.navigationBars.buttons.firstMatch
+            XCTAssertTrue(back.waitForExistence(timeout: 5))
+            back.tap()
+            XCTAssertTrue(app.staticTexts["Keep the moments when it clicked."].waitForExistence(timeout: 5))
+        }
     }
 
     private func reveal(_ element: XCUIElement) {
@@ -252,6 +318,7 @@ import StoreKitTest
         for _ in 0..<10 where !journal.isHittable { app.swipeUp() }
         journal.tap()
         app.buttons["Explore Rebuzzle Plus"].tap()
+        XCTAssertTrue(app.staticTexts["Study completed puzzles again, reveal available hints one at a time, then see the answer."].exists)
         let preview = app.staticTexts["plusPreviewAnswer"]
         for _ in 0..<10 where !preview.isHittable { app.swipeUp() }
         XCTAssertTrue(preview.exists)

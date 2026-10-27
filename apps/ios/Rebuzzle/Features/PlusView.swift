@@ -10,7 +10,7 @@ struct PlusView: View {
                 Text("Keep your aha moments.")
                     .font(Theme.font(24, weight: .medium, relativeTo: .title2))
                     .tracking(-0.5)
-                Text("Turn your daily discoveries into a collection worth coming back to.")
+                Text("Turn daily discoveries into puzzles you can study, remember, and return to.")
                     .font(Theme.font(15)).foregroundStyle(Theme.secondary)
             }
             if let entry = model.journal.entries.first, !model.purchases.hasPlus {
@@ -18,7 +18,7 @@ struct PlusView: View {
             }
             purchase
             VStack(alignment: .leading, spacing: 24) {
-                feature("book.closed", "A journal of discoveries", "Revisit the puzzles you complete in this app.")
+                feature("book.closed", "A journal of discoveries", "Study completed puzzles again, reveal available hints one at a time, then see the answer.")
                 feature("pencil.line", "A place for the aha", "Save a note about what made the answer click.")
                 feature("chart.bar.xaxis", "Your solving patterns", "Explore guess distribution, solve rate, and hint-free wins.")
             }

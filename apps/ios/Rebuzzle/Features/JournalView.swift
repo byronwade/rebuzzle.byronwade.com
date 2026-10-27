@@ -18,7 +18,7 @@ struct JournalView: View {
                     Image(systemName: "book.closed").font(.system(size: 32, weight: .light)).foregroundStyle(Theme.secondary)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Your discoveries belong here.").font(Theme.font(20, weight: .medium))
-                        Text("Revisit completed puzzles and keep a note about the connection. Unlock your journal with Plus.")
+                        Text("Study completed puzzles again, reveal the answer when you’re ready, and keep a note. Unlock your journal with Plus.")
                             .font(Theme.font(15)).foregroundStyle(Theme.secondary)
                     }
                     NavigationLink { PlusView() } label: {
@@ -40,17 +40,19 @@ struct JournalView: View {
                         NavigationLink { JournalDetail(entry: entry, accountID: model.player?.id) } label: {
                             HStack(alignment: .top, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text(entry.puzzleDate).font(Theme.font(12)).foregroundStyle(Theme.secondary)
-                                    Text(entry.answer).font(Theme.font(18, weight: .medium))
-                                    Text("\(entry.won ? "Solved" : "Revealed") · \(entry.attempts) \(entry.attempts == 1 ? "guess" : "guesses")")
+                                    let puzzleType = entry.puzzleType
+                                        .replacingOccurrences(of: "-", with: " ")
+                                        .replacingOccurrences(of: "_", with: " ")
+                                        .capitalized
+                                    Text("\(entry.puzzleDate) · \(puzzleType)")
+                                        .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                                    Text(entry.won ? "Solved" : "Solution revealed").font(Theme.font(18, weight: .medium))
+                                    Text("\(entry.attempts) \(entry.attempts == 1 ? "guess" : "guesses") · Study again")
                                         .font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                                    if !entry.note.isEmpty {
-                                        Text(entry.note).font(Theme.font(14)).foregroundStyle(Theme.secondary).lineLimit(2)
-                                    }
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.secondary).padding(.top, 4)
                             }.foregroundStyle(Theme.ink).padding(.vertical, 16).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).accessibilityIdentifier("journalEntry")
                     }
                 }
             }
@@ -64,25 +66,103 @@ struct JournalView: View {
 }
 struct JournalDetail: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let entry: JournalEntry
     let accountID: String?
     @State private var note = ""
+    @State private var revealedHintCount = 0
+    @State private var answerRevealed = false
+    private var studyHints: [String] {
+        entry.hints.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
     var body: some View {
         Page {
             Eyebrow(text: entry.puzzleDate)
             PuzzleBoard(clue: entry.clue, visual: entry.visual).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
-            VStack(alignment: .leading, spacing: 12) { Text(entry.answer).font(Theme.font(28, weight: .medium)); Text(entry.explanation).font(Theme.font(16)).foregroundStyle(Theme.secondary) }
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Unscored study", systemImage: "book.closed")
+                    .font(Theme.font(14, weight: .medium)).foregroundStyle(Theme.reward)
+                Text("Take another look at the clue. This replay won’t change today’s result, streak, or rewards.")
+                    .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             VStack(alignment: .leading, spacing: 12) {
-                Text("What made it click?").font(Theme.font(17, weight: .medium))
-                TextField("A thought to keep…", text: $note, axis: .vertical).lineLimit(4...12).modifier(FieldStyle()).disabled(!model.purchases.hasPlus)
-                Text(model.purchases.hasPlus ? "Notes save as you write." : "Your notes remain available. Plus is required to edit.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                Text("Your hints").font(Theme.font(17, weight: .medium))
+                if studyHints.isEmpty {
+                    Text("Original hints weren’t saved for this puzzle. You can still reveal the answer and explanation.")
+                        .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("journalStudyNoHints")
+                } else {
+                    if revealedHintCount == 0 {
+                        Text("Give the clue a fresh read before revealing a hint.")
+                            .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                    ForEach(Array(studyHints.prefix(revealedHintCount).enumerated()), id: \.offset) { index, hint in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text("\(index + 1)").font(Theme.font(14, weight: .semibold)).foregroundStyle(Theme.reward)
+                                .frame(width: 28, height: 28).background(Theme.reward.opacity(0.12), in: Circle())
+                            Text(hint).font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("journalStudyHint.\(index + 1)")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    if revealedHintCount < studyHints.count {
+                        Button {
+                            revealNextHint()
+                        } label: {
+                            Label("Reveal hint \(revealedHintCount + 1)", systemImage: "lightbulb")
+                                .frame(maxWidth: .infinity, minHeight: 52)
+                                .foregroundStyle(Theme.ink)
+                                .background(Theme.field, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.secondary.opacity(0.24), lineWidth: 1))
+                        }.buttonStyle(.plain).accessibilityIdentifier("revealJournalHint")
+                    }
+                }
+            }
+            if answerRevealed {
+                VStack(alignment: .leading, spacing: 10) {
+                    Eyebrow(text: "THE ANSWER")
+                    Text(entry.answer).font(Theme.font(28, weight: .medium, relativeTo: .title2))
+                        .accessibilityIdentifier("journalStudyAnswer")
+                    Text(entry.explanation).font(Theme.font(16)).foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("journalStudyExplanation")
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("What made it click?").font(Theme.font(17, weight: .medium))
+                    TextField("A thought to keep…", text: $note, axis: .vertical).lineLimit(4...12).modifier(FieldStyle())
+                        .disabled(!model.purchases.hasPlus)
+                    Text("Your note stays on this device and saves as you write.")
+                        .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                }
+            } else {
+                Button { revealAnswer() } label: {
+                    Label("Reveal answer and explanation", systemImage: "eye")
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                }.buttonStyle(CommitStyle()).accessibilityIdentifier("revealJournalAnswer")
             }
             if let error = model.storageError { Notice(message: error) }
-        }.navigationTitle("A connection kept").navigationBarTitleDisplayMode(.inline)
+        }.navigationTitle("Study puzzle").navigationBarTitleDisplayMode(.inline)
             .onAppear { note = model.journal.entries.first(where: { $0.id == entry.id })?.note ?? entry.note }
             .onChange(of: note) { _, value in
-                guard model.player?.id == accountID, model.purchases.hasPlus, let index = model.journal.entries.firstIndex(where: { $0.id == entry.id }) else { return }
+                guard answerRevealed, model.player?.id == accountID, model.purchases.hasPlus,
+                      let index = model.journal.entries.firstIndex(where: { $0.id == entry.id }) else { return }
                 model.journal.entries[index].note = String(value.prefix(10_000)); model.saveJournal()
             }
+    }
+
+    private func revealNextHint() {
+        guard revealedHintCount < studyHints.count else { return }
+        if reduceMotion {
+            revealedHintCount += 1
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) { revealedHintCount += 1 }
+        }
+    }
+
+    private func revealAnswer() {
+        if reduceMotion {
+            answerRevealed = true
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) { answerRevealed = true }
+        }
     }
 }
