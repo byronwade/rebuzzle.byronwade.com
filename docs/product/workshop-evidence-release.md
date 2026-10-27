@@ -22,6 +22,8 @@ Source commit: `546d3cc180cf4471054722c31a43fdafb4cee7ff` (PR 206).
 
 TestFlight 1.0.0 (11), build `872d1fd7-9f15-479b-8ce9-76f41ee8713b`, is Testing in the existing Rebuzzle Automatic Updates internal group (one tester). What to Test notes saved. No new invitation required. Physical installation on Byron’s iPhone has not been observed.
 
+The motion-aware daily completion stars are in build 13 (`1.0.0`), archived and uploaded to App Store Connect on 2026-10-26 at 10:27 PM Eastern. The upload succeeded; App Store Connect still reports Processing, so the build cannot yet be assigned to a tester group. Hayley Wade is already listed in the existing Family external-testing group, which keeps its existing public invite link. That group currently has no approved build available; external installation remains gated on Apple’s TestFlight review.
+
 Vercel deployment `dpl_AjbxX3mn69AAxVABJx5vEv4euoSc` is READY and aliased to `rebuzzle.byronwade.com`. Production smoke comparison confirmed the complete public daily puzzle payload unchanged: `604c4218-eecf-4733-9cd0-76312676bb60`, date 2026-10-26, reset 2026-10-27T04:00:00.000Z.
 
 No new production puzzle was published merely to exercise paid AI review. Provider success is covered by deterministic fixtures here, not a claim that a live candidate passed. Public App Store submission remains separate from this TestFlight release.
