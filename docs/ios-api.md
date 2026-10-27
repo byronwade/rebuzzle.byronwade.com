@@ -6,6 +6,7 @@ All routes use JSON over HTTPS on the configured Rebuzzle origin. Send `Authoriz
 
 - `POST /api/auth/login`: `{email,password}` → `{success:true,token,user:{id,username,email}}`.
 - `POST /api/auth/signup`: existing signup contract, `{username,email,password}`; returns token and user on success.
+- `POST /api/auth/guest/upgrade`: requires the current guest Bearer token and `{username,email,password}`; converts that exact guest identity in place and returns `{success:true,token,user:{id,username,email,guest:false}}`. The user ID (and its saved Journey zone and progress) stays the same. A retry after a lost response succeeds only when the supplied credentials verify against that same upgraded identity. Store the returned token in Keychain only after the server confirms success.
 - `POST /api/auth/guest/lazy`: `X-Device-Id`, optional existing Bearer token → `{success:true,token,user:{id,username,email,isGuest},isNewGuest?,identifiedBy?,alreadyAuthenticated?}`. Existing authenticated sessions preserve their token; new/identified guest sessions receive a fresh JWT. Guest identity uses the device ID or guest cookie, not the posted `localStorageGuestId`.
 - `GET /api/auth/session`: `{authenticated:true,user:{id,username,email,createdAt,lastLogin}}` or `{authenticated:false,user:null}`. Dates are ISO strings. `isGuest` is absent here; guest emails end in `@guest.rebuzzle.local`.
 - `POST /api/auth/logout` clears browser cookies; native must also delete its Keychain token.

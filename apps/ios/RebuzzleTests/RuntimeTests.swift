@@ -33,6 +33,68 @@ final class StubProtocol: URLProtocol, @unchecked Sendable {
     override func stopLoading() {}
 }
 extension RuntimeTests {
+    @MainActor func testGuestUpgradeKeepsIdentityAndRotatesBearerAfterSuccess() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("guest-token", key: "token")
+        try secure.write("guest", key: "identity-kind")
+        defer { try? secure.write(nil, key: "token"); try? secure.write(nil, key: "device"); try? secure.write(nil, key: "identity-kind") }
+        let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [StubProtocol.self]
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today": return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2099-01-01","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session": return (200, #"{"authenticated":true,"user":{"id":"guest-a","username":"Guest","email":"guest_token@guest.rebuzzle.local","isGuest":true}}"#)
+            case "/api/puzzle/session": return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2099-01-01","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/auth/guest/upgrade":
+                XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer guest-token")
+                XCTAssertEqual(request.httpMethod, "POST")
+                return (200, #"{"success":true,"token":"member-token","user":{"id":"guest-a","username":"Byron","email":"byron@example.com"}}"#)
+            default: return (200, #"{"success":true,"stats":{}}"#)
+            }
+        }
+        let model = AppModel(api: APIClient(deviceID: "stable-device", session: URLSession(configuration: config)), storage: LocalStore(root: root), credentials: secure)
+        await model.load()
+        XCTAssertTrue(model.sessionReady)
+        XCTAssertTrue(model.player?.guest == true)
+
+        let upgraded = await model.upgradeGuestAccount(username: "Byron", email: "byron@example.com", password: "strong-pass")
+
+        XCTAssertTrue(upgraded)
+        XCTAssertEqual(model.player?.id, "guest-a")
+        XCTAssertFalse(model.player?.guest ?? true)
+        XCTAssertEqual(try secure.read("token"), "member-token")
+        XCTAssertEqual(try secure.read("identity-kind"), "member")
+    }
+
+    @MainActor func testGuestUpgradeFailureLeavesGuestCredentialsUntouched() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("guest-token", key: "token")
+        try secure.write("guest", key: "identity-kind")
+        defer { try? secure.write(nil, key: "token"); try? secure.write(nil, key: "device"); try? secure.write(nil, key: "identity-kind") }
+        let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [StubProtocol.self]
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today": return (200, #"{"success":true,"puzzle":{"id":"a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2099-01-01","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session": return (200, #"{"authenticated":true,"user":{"id":"guest-a","username":"Guest","email":"guest_token@guest.rebuzzle.local","isGuest":true}}"#)
+            case "/api/puzzle/session": return (200, #"{"success":true,"puzzleId":"a","puzzleDate":"2099-01-01","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/auth/guest/upgrade": return (503, #"{"error":"Try again later."}"#)
+            default: return (200, #"{"success":true,"stats":{}}"#)
+            }
+        }
+        let model = AppModel(api: APIClient(deviceID: "stable-device", session: URLSession(configuration: config)), storage: LocalStore(root: root), credentials: secure)
+        await model.load()
+
+        let upgraded = await model.upgradeGuestAccount(username: "Byron", email: "byron@example.com", password: "strong-pass")
+
+        XCTAssertFalse(upgraded)
+        XCTAssertTrue(model.player?.guest == true)
+        XCTAssertEqual(try secure.read("token"), "guest-token")
+        XCTAssertEqual(try secure.read("identity-kind"), "guest")
+    }
+
     @MainActor func testExpiredGuestSessionRenewsStableGuestIdentity() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

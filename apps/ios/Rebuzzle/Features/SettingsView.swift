@@ -22,12 +22,18 @@ struct SettingsView: View {
             Section {
                 if let player = model.player {
                     LabeledContent("Playing as", value: player.guest ? "Guest" : player.username)
-                    if player.guest { NavigationLink("Sign in to your account") { SignInView() } }
-                    else { Button("Sign out") { Task { await model.signOut() } }.disabled(model.busy || model.submitting) }
-                } else { NavigationLink("Sign in") { SignInView() } }
-                Link("Create an account", destination: URL(string: "https://rebuzzle.byronwade.com/signup")!)
+                    if player.guest {
+                        NavigationLink("Save this journey with an account") { GuestUpgradeView() }
+                        NavigationLink("Sign in to an existing account") { SignInView() }
+                    } else {
+                        Button("Sign out") { Task { await model.signOut() } }.disabled(model.busy || model.submitting)
+                    }
+                } else {
+                    NavigationLink("Sign in") { SignInView() }
+                    Link("Create an account", destination: URL(string: "https://rebuzzle.byronwade.com/signup")!)
+                }
                 if let message = model.accountError { Text(message).foregroundStyle(Theme.error) }
-            } header: { Text("Your account") } footer: { Text("An account keeps your gameplay statistics with you. Journal entries and notes stay on this device.") }
+            } header: { Text("Your account") } footer: { Text("Creating an account keeps this guest journey under the same identity. Journal entries and notes stay on this device.") }
             Section("Make it yours") {
                 Picker("Appearance", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
                 Toggle("Haptic feedback", isOn: $haptics)
@@ -56,6 +62,60 @@ struct SettingsView: View {
         }
         .scrollContentBackground(.hidden).background(Theme.canvas).foregroundStyle(Theme.ink)
         .navigationTitle("You").navigationBarTitleDisplayMode(.inline)
+    }
+}
+struct GuestUpgradeView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: Field?
+    @State private var username = ""
+    @State private var email = ""
+    @State private var password = ""
+
+    private enum Field { case username, email, password }
+
+    var body: some View {
+        Page {
+            VStack(alignment: .leading, spacing: 10) {
+                Eyebrow(text: "KEEP YOUR JOURNEY")
+                Text("Make it yours.").font(Theme.font(32, weight: .medium))
+                Text("Your account will keep the progress you’ve already made, so you can bring this same daily practice to another device.")
+                    .font(Theme.font(16)).foregroundStyle(Theme.secondary)
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Username").font(Theme.font(14, weight: .medium))
+                TextField("Choose a username", text: $username)
+                    .textContentType(.nickname).textInputAutocapitalization(.words).autocorrectionDisabled()
+                    .focused($focusedField, equals: .username).submitLabel(.next)
+                    .onSubmit { focusedField = .email }.modifier(FieldStyle())
+                Text("Email").font(Theme.font(14, weight: .medium)).padding(.top, 8)
+                TextField("you@example.com", text: $email)
+                    .textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .focused($focusedField, equals: .email).submitLabel(.next)
+                    .onSubmit { focusedField = .password }.modifier(FieldStyle())
+                Text("Password").font(Theme.font(14, weight: .medium)).padding(.top, 8)
+                SecureField("At least 6 characters", text: $password)
+                    .textContentType(.newPassword).focused($focusedField, equals: .password).submitLabel(.done)
+                    .onSubmit { focusedField = nil }.modifier(FieldStyle())
+                if let error = model.accountError { Notice(message: error) }
+                Button {
+                    Task {
+                        focusedField = nil
+                        if await model.upgradeGuestAccount(username: username, email: email, password: password) { dismiss() }
+                    }
+                } label: {
+                    HStack { Text("Save my journey"); if model.busy { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") } }
+                }.buttonStyle(CommitStyle()).disabled(model.busy || model.submitting)
+            }
+            Notice(message: "This converts your guest account in place. Your puzzle history stays with it; private journal notes remain on this device. Signing into another account does not merge progress.")
+        }
+        .navigationTitle("Create account").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
     }
 }
 struct SignInView: View {

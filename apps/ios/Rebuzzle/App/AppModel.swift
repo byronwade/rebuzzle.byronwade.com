@@ -204,6 +204,36 @@ import RebuzzleCore
             return true
         } catch { accountError = error.localizedDescription; return false }
     }
+    func upgradeGuestAccount(username: String, email: String, password: String) async -> Bool {
+        guard !busy, !submitting, let guest = player, guest.guest else { return false }
+        busy = true; accountError = nil; defer { busy = false }
+        do {
+            let auth: AuthResponse = try await api.request(
+                "/api/auth/guest/upgrade",
+                method: "POST",
+                body: [
+                    "username": username.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "email": email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "password": password,
+                ]
+            )
+            guard let token = auth.token, let user = auth.user, user.id == guest.id, !user.guest else {
+                throw APIError(status: 0, message: "Your account was created, but Rebuzzle could not confirm the saved identity. Try again.")
+            }
+
+            // Keep the old guest token until the server confirms conversion and
+            // the new bearer token is safely stored. The current puzzle and
+            // identity-scoped journal remain attached to this same user ID.
+            try credentials.write(token, key: "token")
+            api.token = token
+            player = user
+            try? credentials.write("member", key: "identity-kind")
+            return true
+        } catch {
+            accountError = error.localizedDescription
+            return false
+        }
+    }
     func signOut() async {
         guard !busy, !submitting else { return }
         busy = true
