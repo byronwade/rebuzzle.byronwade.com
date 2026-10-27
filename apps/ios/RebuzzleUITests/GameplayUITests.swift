@@ -373,7 +373,15 @@ import StoreKitTest
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
         let journey = app.buttons["viewJourney"]
-        for _ in 0..<8 where !journey.isHittable { app.swipeUp() }
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.exists, "The app should expose its native tab bar")
+        for _ in 0..<12 {
+            if journey.isHittable && journey.frame.maxY <= tabBar.frame.minY { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(journey.isHittable)
+        XCTAssertLessThanOrEqual(journey.frame.maxY, tabBar.frame.minY,
+                                 "The Journey call to action should scroll clear of the floating tab bar")
         journey.tap()
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("150 XP"))

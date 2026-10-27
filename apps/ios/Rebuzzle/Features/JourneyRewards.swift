@@ -224,7 +224,7 @@ struct DailyStreakCard: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .foregroundStyle(Theme.ink)
-                if let current = presentation.current {
+                if let current = presentation.current, !dynamicTypeSize.isAccessibilitySize {
                     Text(current == 1 ? "DAY" : "DAYS")
                         .font(Theme.font(8, weight: .bold, relativeTo: .caption2))
                         .tracking(0.7)
