@@ -8,10 +8,12 @@ import type { Filter } from "mongodb";
 import type {
   Achievement,
   BlogPost,
+  DailyProgress,
   GameSession,
   Level,
   NewAchievement,
   NewBlogPost,
+  NewDailyProgress,
   NewGameSession,
   NewLevel,
   NewPushSubscription,
@@ -397,6 +399,109 @@ export const puzzleOps = {
 // ============================================================================
 // PUZZLE ATTEMPT OPERATIONS
 // ============================================================================
+
+const isValidPuzzleDate = (value: unknown): value is string => {
+  if (typeof value !== "string") return false;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!parts) return false;
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const day = Number(parts[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+};
+
+const isValidIanaTimeZone = (value: unknown): value is string => {
+  if (typeof value !== "string" || value.length === 0 || value !== value.trim()) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const dailyProgressFromAttempt = (attempt: PuzzleAttempt): NewDailyProgress | null => {
+  if (
+    attempt.isFinal !== true ||
+    typeof attempt.isCorrect !== "boolean" ||
+    typeof attempt.userId !== "string" ||
+    attempt.userId.length === 0 ||
+    typeof attempt.puzzleId !== "string" ||
+    attempt.puzzleId.length === 0 ||
+    !isValidPuzzleDate(attempt.puzzleDate) ||
+    attempt.puzzleDate.startsWith("archive:")
+  ) {
+    return null;
+  }
+
+  const attemptNumber = attempt.attemptNumber;
+  if (
+    typeof attemptNumber !== "number" ||
+    !Number.isInteger(attemptNumber) ||
+    attemptNumber < 1 ||
+    attemptNumber > 3 ||
+    (!attempt.isCorrect && attemptNumber !== 3)
+  ) {
+    return null;
+  }
+
+  if (!(attempt.attemptedAt instanceof Date) || Number.isNaN(attempt.attemptedAt.getTime())) {
+    return null;
+  }
+
+  const hintsUsed = attempt.hintsUsed;
+  const hintCount =
+    typeof hintsUsed === "number" && Number.isInteger(hintsUsed) && hintsUsed >= 0
+      ? hintsUsed
+      : null;
+
+  return {
+    userId: attempt.userId,
+    puzzleDate: attempt.puzzleDate,
+    puzzleId: attempt.puzzleId,
+    outcome: attempt.isCorrect ? "solved" : "failed",
+    attempts: attemptNumber,
+    hintCount,
+    completedAt: attempt.attemptedAt,
+    timeZone: isValidIanaTimeZone(attempt.puzzleTimeZone) ? attempt.puzzleTimeZone : null,
+  };
+};
+
+/**
+ * Idempotently project a persisted terminal daily attempt into Journey storage.
+ * The unique {userId, puzzleDate} index is the concurrency boundary; this is a
+ * projection of accepted server state, never a client-authored reward ledger.
+ */
+export const dailyProgressOps = {
+  async materializeFromAttempt(attempt: PuzzleAttempt): Promise<DailyProgress | null> {
+    const progress = dailyProgressFromAttempt(attempt);
+    if (!progress) return null;
+
+    const collection = getCollection<DailyProgress>("dailyProgress");
+    const key = { userId: progress.userId, puzzleDate: progress.puzzleDate };
+
+    try {
+      await collection.updateOne(key, { $setOnInsert: progress }, { upsert: true });
+    } catch (error) {
+      if ((error as { code?: number })?.code !== 11000) throw error;
+
+      const winner = await collection.findOne(key);
+      if (winner) return winner;
+      throw error;
+    }
+
+    const stored = await collection.findOne(key);
+    if (!stored) {
+      throw new Error("Daily progress upsert completed without a readable row");
+    }
+    return stored;
+  },
+};
 
 export const puzzleAttemptOps = {
   async create(attempt: NewPuzzleAttempt): Promise<PuzzleAttempt> {

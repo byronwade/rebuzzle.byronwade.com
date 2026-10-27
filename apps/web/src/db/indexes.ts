@@ -157,7 +157,7 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { puzzleId: 1, isCorrect: 1 } },
       // Time-based analytics
       { spec: { attemptedAt: -1 } },
-      // Daily final-attempt lock: one completed/abandoned play per user per UTC day
+      // Daily final-attempt lock: one completed/abandoned play per user per accepted local date
       {
         spec: { userId: 1, puzzleDate: 1 },
         options: {
@@ -168,6 +168,17 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       },
       // Count today's guesses quickly
       { spec: { userId: 1, puzzleDate: 1, attemptedAt: 1 } },
+    ],
+  },
+
+  // One immutable Journey projection per account and accepted local puzzle date.
+  {
+    collection: "dailyProgress",
+    indexes: [
+      {
+        spec: { userId: 1, puzzleDate: 1 },
+        options: { unique: true, name: "userId_1_puzzleDate_1" },
+      },
     ],
   },
 

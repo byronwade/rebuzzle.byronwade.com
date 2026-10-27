@@ -21,6 +21,8 @@ export interface User {
   isGuest?: boolean; // True for anonymous guest accounts
   guestToken?: string; // Unique token for guest identification
   convertedFromGuestId?: string; // If converted from guest, stores original guest ID
+  /** Stable calendar used for official daily puzzles and Journey week bounds. */
+  journeyTimeZone?: string;
   // Avatar preferences
   avatarColorIndex?: number; // Index into avatar color palette (0-9)
   avatarCustomInitials?: string; // Custom initials (1-2 characters)
@@ -312,8 +314,10 @@ export interface PuzzleAttempt {
 
   isCorrect: boolean;
   attemptedAt: Date;
-  /** Lock key: UTC YYYY-MM-DD for daily, or `archive:{puzzleId}` for replays */
+  /** Accepted local YYYY-MM-DD key for daily, or `archive:{puzzleId}` for replays. */
   puzzleDate?: string;
+  /** IANA zone used to resolve this daily puzzle; absent on historical rows. */
+  puzzleTimeZone?: string;
   /** True when this row finalizes the day (win or out of attempts) */
   isFinal?: boolean;
   // Enhanced tracking for learning system
@@ -341,6 +345,24 @@ export interface GameSession {
   completed: boolean;
   hintsUsed: number;
 }
+
+/** Minimal account-backed projection of one finalized official daily puzzle. */
+export interface DailyProgress {
+  _id?: string;
+  userId: string;
+  puzzleDate: string;
+  puzzleId: string;
+  outcome: "solved" | "failed";
+  attempts: number;
+  /** Best-effort client-reported hint count; null means unavailable historically. */
+  hintCount: number | null;
+  /** Timestamp of the persisted terminal attempt, for both wins and losses. */
+  completedAt: Date;
+  /** IANA zone used for the attempt, or null when historical metadata is absent. */
+  timeZone: string | null;
+}
+
+export type NewDailyProgress = Omit<DailyProgress, "_id">;
 
 // Blog post FAQ item for structured data
 export interface BlogFAQItem {
@@ -575,6 +597,8 @@ export interface NewUser {
   isGuest?: boolean;
   guestToken?: string;
   convertedFromGuestId?: string;
+  /** Stable calendar used for official daily puzzles and Journey week bounds. */
+  journeyTimeZone?: string;
   // IP-bound guest identification
   ipHash?: string;
   deviceId?: string;
@@ -653,6 +677,8 @@ export interface NewPuzzleAttempt
   isCorrect: boolean;
   attemptedAt: Date;
   puzzleDate?: string;
+  /** IANA zone used to resolve this daily puzzle; absent on historical rows. */
+  puzzleTimeZone?: string;
   isFinal?: boolean;
   // Enhanced tracking for learning system
   timeSpentSeconds?: number;
