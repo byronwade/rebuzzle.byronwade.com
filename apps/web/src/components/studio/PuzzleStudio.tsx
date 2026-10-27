@@ -1267,21 +1267,33 @@ export function PuzzleStudio() {
                 <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
                   {filteredCatalog.map((item) => (
                     <button
-                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
+                      className={cn(
+                        "items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground focus-ring",
+                        item.commonConfusions?.length
+                          ? "col-span-3 grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-3 text-left"
+                          : "flex flex-col"
+                      )}
                       key={item.id}
                       onClick={() => addPictogram(item)}
                       title={`Add ${labelFromSlug(item.concept)}. Reads as: ${(item.approvedReadings ?? [item.concept]).join(", ")}.`}
                       type="button"
                     >
                       <span
-                        className="inline-flex h-9 w-9 items-center justify-center [&_svg]:h-6 [&_svg]:w-6"
+                        className="row-span-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#f7f4ee] [&_svg]:h-7 [&_svg]:w-7"
                         dangerouslySetInnerHTML={{ __html: item.svg }}
                       />
-                      <span className="w-full truncate text-center">
+                      <span
+                        className={cn(
+                          "w-full truncate",
+                          item.commonConfusions?.length
+                            ? "text-left font-medium text-foreground"
+                            : "text-center"
+                        )}
+                      >
                         {labelFromSlug(item.concept)}
                       </span>
                       {Boolean(item.commonConfusions?.length) && (
-                        <span className="text-center text-[11px] leading-snug">
+                        <span className="text-left text-xs leading-relaxed">
                           Reads as {(item.approvedReadings ?? [item.concept]).join(", ")}. Not
                           specific enough for {item.commonConfusions!.join(" or ")}.
                         </span>
