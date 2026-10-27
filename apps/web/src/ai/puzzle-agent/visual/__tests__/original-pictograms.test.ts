@@ -21,8 +21,8 @@ const firstBatch = [
 describe("original Rebuzzle artwork candidates", () => {
   it("contains the complete first family with distinct immutable identities", () => {
     const candidates = listOriginalPictogramCandidates();
-    expect(candidates.map((asset) => asset.concept)).toEqual(firstBatch);
-    expect(new Set(candidates.map((asset) => asset.assetId)).size).toBe(12);
+    expect(candidates.slice(0, 12).map((asset) => asset.concept)).toEqual(firstBatch);
+    expect(new Set(candidates.map((asset) => asset.assetId)).size).toBe(40);
     for (const asset of candidates) {
       expect(asset.assetId).toBe(`rebuzzle-ink:${asset.concept}:v1`);
       expect(asset.status).toBe("candidate");
@@ -71,4 +71,50 @@ describe("original Rebuzzle artwork candidates", () => {
       )
     ).toMatchSnapshot();
   });
+});
+
+it("includes the source-demand nature batch without replacing earlier drawings", () => {
+  const assets = listOriginalPictogramCandidates();
+  expect(assets.slice(12, 21).map((asset) => asset.concept)).toEqual([
+    "fire",
+    "snowflake",
+    "rain",
+    "flower",
+    "wheat",
+    "tree",
+    "star",
+    "egg",
+    "sprout",
+  ]);
+  expect(assets.every((asset) => asset.collectionVersion === "rebuzzle-ink-collection-v3")).toBe(
+    true
+  );
+});
+
+it("completes the forty-object source-demand collection", () => {
+  expect(
+    listOriginalPictogramCandidates()
+      .slice(21)
+      .map((asset) => asset.concept)
+  ).toEqual([
+    "dog",
+    "cat",
+    "bird",
+    "fish",
+    "heart",
+    "brain",
+    "ear",
+    "hand",
+    "footprints",
+    "skull",
+    "envelope",
+    "door",
+    "boat",
+    "music",
+    "gift",
+    "camera",
+    "diamond",
+    "globe",
+    "newspaper",
+  ]);
 });
