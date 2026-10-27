@@ -53,12 +53,6 @@ const STATUS_STYLES: Record<LiveCheckStatus, string> = {
   skip: "bg-inset text-subtle",
 };
 
-const PHASE_DOT: Record<LivePhase["status"], string> = {
-  pending: "bg-border-strong",
-  running: "bg-foreground animate-pulse",
-  done: "bg-success",
-};
-
 export function emptyEveReviewState(
   phases: Array<{ id: string; label: string; summary: string }> = [],
   checks: Array<{
@@ -84,88 +78,84 @@ export function emptyEveReviewState(
   };
 }
 
+const METER_STYLES: Record<LiveCheckStatus, string> = {
+  pending: "bg-inset",
+  running: "bg-foreground animate-pulse",
+  pass: "bg-success",
+  fail: "bg-destructive",
+  warn: "bg-warning",
+  skip: "bg-border-strong",
+};
+
+const VERDICT_COPY: Record<NonNullable<EveReviewLiveState["verdict"]>, string> = {
+  ship: "Ready to publish",
+  revise: "Needs changes",
+  reject: "Can’t publish this one",
+};
+
+/**
+ * Eve's check, shown like a level's clear check: a meter that fills as each
+ * test runs, one line of what she is thinking now, the verdict, and every
+ * check folded away for anyone who wants the detail.
+ */
 export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
   const activePhase = state.phases.find((p) => p.status === "running");
   const latestThinking =
     [...state.thinking].reverse().find((t) => t.phaseId === activePhase?.id) ??
     state.thinking[state.thinking.length - 1];
   const latestAnswer = state.answers[state.answers.length - 1];
+  const finished = state.checks.filter((c) => c.status !== "pending" && c.status !== "running");
+  const started = state.running || finished.length > 0 || Boolean(state.verdict);
 
   return (
-    <div className="mt-5 space-y-4">
-      <div className="rounded-lg border border-border bg-inset px-4 py-3">
-        <h3 className="font-semibold text-sm tracking-[-0.01em]">What Eve checks</h3>
-        <p className="mt-1 text-muted-foreground text-xs leading-5">
-          Safety first, then structure, quality floors, adversarial critique, and optional player
-          simulation. Status, thinking, and answers stream live.
-        </p>
-        <ol className="mt-3 grid gap-2 sm:grid-cols-2">
-          {state.phases.map((phase) => (
-            <li
-              className="flex gap-2 rounded-md border border-border bg-card px-2.5 py-2 text-xs"
-              key={phase.id}
-            >
-              <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", PHASE_DOT[phase.status])} />
-              <span>
-                <span className="font-medium">{phase.label}</span>
-                <span className="mt-0.5 block text-muted-foreground">{phase.summary}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      {state.running || latestThinking || latestAnswer ? (
-        <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-medium text-xs text-subtle">
-              {state.running ? "Eve is thinking" : "Latest answer"}
+    <div className="space-y-3">
+      {state.checks.length ? (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <p className="font-medium">
+              {state.running
+                ? activePhase
+                  ? activePhase.label
+                  : "Starting"
+                : state.verdict
+                  ? "Check complete"
+                  : "Not checked yet"}
             </p>
-            {activePhase ? (
-              <span className="rounded-full border border-border bg-inset px-2 py-0.5 font-medium text-xs">
-                {activePhase.label}
-              </span>
-            ) : null}
+            <p className="font-mono text-subtle tabular-nums">
+              {finished.length}/{state.checks.length}
+            </p>
           </div>
-          {latestThinking ? <p className="mt-2 text-sm leading-6">{latestThinking.text}</p> : null}
-          {latestAnswer ? (
-            <p className="mt-2 border-border border-t pt-2 font-medium text-sm">
-              {latestAnswer.summary}
+          <div aria-hidden className="mt-2 flex gap-0.5">
+            {state.checks.map((check) => (
+              <span
+                className={cn(
+                  "h-2 flex-1 rounded-full transition-colors",
+                  METER_STYLES[check.status]
+                )}
+                key={check.id}
+              />
+            ))}
+          </div>
+          {state.running && latestThinking ? (
+            <p aria-live="polite" className="mt-3 text-muted-foreground text-sm leading-6">
+              {latestThinking.text}
+            </p>
+          ) : null}
+          {!state.running && latestAnswer && !state.verdict ? (
+            <p className="mt-3 text-sm leading-6">{latestAnswer.summary}</p>
+          ) : null}
+          {!started ? (
+            <p className="mt-3 text-muted-foreground text-xs leading-5">
+              {state.phases.map((p) => p.label).join(" · ")}
             </p>
           ) : null}
         </div>
       ) : null}
 
-      <div className="max-h-[360px] space-y-2 overflow-auto rounded-lg border border-border bg-card p-3">
-        {state.checks.map((check) => (
-          <div className="rounded-md border border-border px-3 py-2.5" key={check.id}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 font-medium text-xs font-semibold",
-                  STATUS_STYLES[check.status]
-                )}
-              >
-                {check.status}
-              </span>
-              <span className="font-medium text-sm">{check.label}</span>
-              {check.spend && check.spend !== "none" ? (
-                <span className="font-medium text-xs text-subtle">{check.spend}</span>
-              ) : null}
-            </div>
-            <p className="mt-1 text-muted-foreground text-xs">Looking for: {check.lookingFor}</p>
-            {check.thinking ? (
-              <p className="mt-1 text-subtle text-xs italic">Thinking: {check.thinking}</p>
-            ) : null}
-            {check.detail ? <p className="mt-1 text-xs">Answer: {check.detail}</p> : null}
-          </div>
-        ))}
-      </div>
-
       {state.verdict ? (
         <div
           className={cn(
-            "rounded-lg border px-4 py-3 text-sm",
+            "rb-enter rounded-xl border px-4 py-3 text-sm",
             state.verdict === "ship"
               ? "border-success/40 bg-success/10"
               : state.verdict === "reject"
@@ -173,7 +163,7 @@ export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
                 : "border-warning/40 bg-warning/10"
           )}
         >
-          <p className="font-semibold capitalize">Verdict: {state.verdict}</p>
+          <p className="font-semibold">{VERDICT_COPY[state.verdict]}</p>
           {state.summary ? <p className="mt-1 opacity-90">{state.summary}</p> : null}
           {state.blockers.length ? (
             <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -185,7 +175,7 @@ export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
           {state.warnings.length ? (
             <ul className="mt-2 list-disc space-y-1 pl-5 opacity-80">
               {state.warnings.map((w) => (
-                <li key={w}>Warning: {w}</li>
+                <li key={w}>Worth a look: {w}</li>
               ))}
             </ul>
           ) : null}
@@ -193,9 +183,38 @@ export function EveReviewPanel({ state }: { state: EveReviewLiveState }) {
       ) : null}
 
       {state.error ? (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive text-sm">
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive text-sm">
           {state.error}
         </p>
+      ) : null}
+
+      {started && state.checks.length ? (
+        <details className="rounded-xl border border-border bg-card">
+          <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-sm">
+            Every check
+          </summary>
+          <ul className="max-h-[360px] space-y-2 overflow-auto border-border border-t p-3">
+            {state.checks.map((check) => (
+              <li className="rounded-lg border border-border px-3 py-2.5" key={check.id}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 font-semibold text-xs",
+                      STATUS_STYLES[check.status]
+                    )}
+                  >
+                    {check.status}
+                  </span>
+                  <span className="font-medium text-sm">{check.label}</span>
+                </div>
+                <p className="mt-1 text-muted-foreground text-xs">
+                  Looking for: {check.lookingFor}
+                </p>
+                {check.detail ? <p className="mt-1 text-xs">{check.detail}</p> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
       ) : null}
     </div>
   );
