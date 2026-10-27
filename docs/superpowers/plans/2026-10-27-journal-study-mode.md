@@ -77,4 +77,4 @@
 - [x] Run `git diff --check` and inspect the complete scoped diff.
 - [x] Obtain independent review of the full branch diff's scope and complete Journal feature diff; resolve the minor hint, row-label, and Plus-copy findings with regression coverage.
 - [x] Document the unrelated `testTabNavigation` test-order failure and the focused rerun results before finalizing verification.
-- [ ] Commit and push the verified change to the existing native daily PR; do not create a replacement TestFlight link.
+- [x] Commit and push the verified change to the existing native daily PR; do not create a replacement TestFlight link.
