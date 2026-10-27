@@ -20,6 +20,7 @@
 		332D4A22003F027D74734846 /* SubmissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA288848438C453BD345991 /* SubmissionTests.swift */; };
 		337DCC35B945F5A5824E3CAD /* PlusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D915DE26C2DDCDAB6087A8 /* PlusView.swift */; };
 		64582E5D3376061BEB464AF3 /* PurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */; };
+		67C8DB586DBF1B0A57352057 /* Rebuzzle.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EF86991A32908751C121291 /* Rebuzzle.storekit */; };
 		68F7EB05659BA3B7725673C0 /* Inter-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 81EC6F3B7EEA1B6424FCE082 /* Inter-LICENSE.txt */; };
 		6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */; };
 		795EA28E446ACA22A9CAA2D2 /* PurchaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B1C0F63409D81A96104531 /* PurchaseStore.swift */; };
@@ -313,6 +314,7 @@
 			buildConfigurationList = 38054E0C2F44E00AF62874BC /* Build configuration list for PBXNativeTarget "RebuzzleUITests" */;
 			buildPhases = (
 				0C9E3A783F3DFB661A878CB1 /* Sources */,
+				EDB69ADBB06090455D885AAA /* Resources */,
 			);
 			buildRules = (
 			);
@@ -434,6 +436,14 @@
 				68F7EB05659BA3B7725673C0 /* Inter-LICENSE.txt in Resources */,
 				FFC955A3CB1A30FB514AB254 /* Inter.ttf in Resources */,
 				23D5626DE99DB5C8E5F330C8 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EDB69ADBB06090455D885AAA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				67C8DB586DBF1B0A57352057 /* Rebuzzle.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -591,7 +601,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -701,7 +711,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

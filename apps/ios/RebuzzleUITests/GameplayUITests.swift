@@ -1,7 +1,25 @@
 import XCTest
+import StoreKitTest
 
 @MainActor final class GameplayUITests: XCTestCase {
     private var app: XCUIApplication!
+    private var store: SKTestSession!
+
+    override func setUp() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Rebuzzle", withExtension: "storekit"))
+        store = try SKTestSession(contentsOf: url)
+        store.resetToDefaultState()
+        store.disableDialogs = true
+        store.clearTransactions()
+        XCTAssertTrue(store.allTransactions().isEmpty, "Every UI test starts without a purchase")
+    }
+
+    override func tearDown() async throws {
+        app?.terminate()
+        store?.clearTransactions()
+        store?.resetToDefaultState()
+        store = nil
+    }
 
     private func launchFixture(extraArguments: [String] = []) {
         continueAfterFailure = false
@@ -33,9 +51,7 @@ import XCTest
 
     func testStudyPuzzlePreservesDraftAndGuesses() {
         launchFixture()
-        let field = app.descendants(matching: .any)["answerField"].firstMatch
-        for _ in 0..<5 where !field.isHittable { app.swipeUp() }
-        field.tap()
+        let field = focusAnswerField()
         field.typeText("sun")
         app.buttons["dismissAnswerKeyboard"].tap()
         let study = app.buttons["studyPuzzle"]
@@ -133,6 +149,67 @@ import XCTest
         capture("Daily reminder settings")
     }
 
+    func testRealPurchaseDeliversJournalNotesInsightsAndRestoresAfterRelaunch() throws {
+        launchFixture()
+        submit("lighthouse")
+        let journal = app.buttons["keepConnection"]
+        reveal(journal)
+        journal.tap()
+        app.buttons["Explore Rebuzzle Plus"].tap()
+        let unlock = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch
+        XCTAssertTrue(unlock.waitForExistence(timeout: 15), "Real StoreKit product must load")
+        reveal(unlock)
+        unlock.tap()
+        XCTAssertTrue(app.staticTexts["You have Rebuzzle Plus"].waitForExistence(timeout: 15))
+        XCTAssertEqual(store.allTransactions().count, 1, "The UI must perform one actual StoreKit test purchase")
+        let open = app.buttons["openPlusJournal"]
+        reveal(open)
+        open.tap()
+        let entry = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "lighthouse")).firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["A connection kept"].waitForExistence(timeout: 5))
+        let note = app.textFields.firstMatch
+        XCTAssertTrue(note.waitForExistence(timeout: 5))
+        reveal(note)
+        XCTAssertTrue(note.isEnabled)
+        note.tap()
+        note.typeText("Light and house made the connection click.")
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.tap()
+        XCTAssertTrue(note.waitForExistence(timeout: 5))
+        XCTAssertEqual(note.value as? String, "Light and house made the connection click.")
+        capture("Plus — purchased journal and note")
+        selectTab("Journey")
+        let insights = app.staticTexts["How you find the answer"]
+        reveal(insights)
+        XCTAssertTrue(insights.exists)
+        XCTAssertTrue(app.staticTexts["Solve rate"].exists)
+        capture("Plus — paid solving insights")
+
+        // Gameplay fixture intentionally starts fresh storage each launch; StoreKit ownership must survive.
+        app.terminate()
+        launchFixture()
+        selectTab("You")
+        let plus = app.buttons["Rebuzzle Plus"]
+        reveal(plus)
+        plus.tap()
+        XCTAssertTrue(app.staticTexts["You have Rebuzzle Plus"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch.exists)
+        let restore = app.buttons["Restore purchases"]
+        reveal(restore)
+        restore.tap()
+        XCTAssertTrue(app.staticTexts["Plus restored."].waitForExistence(timeout: 15))
+        XCTAssertEqual(store.allTransactions().count, 1, "Restore must not repurchase")
+        capture("Plus — restored ownership")
+    }
+
+    private func reveal(_ element: XCUIElement) {
+        for _ in 0..<10 where !element.isHittable { app.swipeUp() }
+        XCTAssertTrue(element.isHittable)
+    }
+
     func testPlusShowsMyCompletedPuzzleBeforePurchase() {
         launchFixture()
         submit("lighthouse")
@@ -218,7 +295,18 @@ import XCTest
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("150 XP"))
         capture("Journey — first reward")
         let journal = app.buttons["openJournal"]
-        for _ in 0..<8 where !journal.isHittable { app.swipeUp() }
+        // Keep the entire link clear of navigation chrome; hittable alone includes overlays.
+        for _ in 0..<8 {
+            let frame = journal.frame
+            if journal.isHittable && frame.minY > 140 && frame.maxY < app.frame.height * 0.7 { break }
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: frame.minY <= 140 ? 0.65 : 0.35))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+        XCTAssertTrue(journal.isHittable)
+        XCTAssertGreaterThan(journal.frame.minY, 140)
+        XCTAssertLessThan(journal.frame.maxY, app.frame.height * 0.7)
+        capture("Journey — journal link clear of navigation chrome")
         journal.tap()
         XCTAssertTrue(app.staticTexts["Keep the moments when it clicked."].waitForExistence(timeout: 5))
         selectTab("You")
@@ -238,14 +326,18 @@ import XCTest
         XCTAssertTrue(app.buttons["checkAnswer"].exists)
     }
 
-    private func submit(_ guess: String) {
+    private func focusAnswerField() -> XCUIElement {
         let field = app.descendants(matching: .any)["answerField"].firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         for _ in 0..<5 where !field.isHittable { app.swipeUp() }
         field.tap()
         if !app.keyboards.firstMatch.waitForExistence(timeout: 2) { field.tap() }
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
-        field.typeText(guess)
+        return field
+    }
+
+    private func submit(_ guess: String) {
+        focusAnswerField().typeText(guess)
         let button = app.buttons["checkAnswer"]
         for _ in 0..<5 where !button.isHittable { app.swipeUp() }
         button.tap()

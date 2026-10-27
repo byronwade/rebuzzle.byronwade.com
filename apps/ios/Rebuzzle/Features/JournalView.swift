@@ -37,7 +37,7 @@ struct JournalView: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(model.journal.entries) { entry in
-                        NavigationLink(value: entry) {
+                        NavigationLink { JournalDetail(entry: entry, accountID: model.player?.id) } label: {
                             HStack(alignment: .top, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(entry.puzzleDate).font(Theme.font(12)).foregroundStyle(Theme.secondary)
@@ -60,7 +60,6 @@ struct JournalView: View {
             Notice(message: "Saved on this device for this Rebuzzle account. Export a copy before changing devices. Restoring Plus restores the purchase, not journal data.")
             if let error = model.storageError { Notice(message: error) }
         }.navigationTitle("Journal").navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: JournalEntry.self) { entry in JournalDetail(entry: entry, accountID: model.player?.id) }
     }
 }
 struct JournalDetail: View {

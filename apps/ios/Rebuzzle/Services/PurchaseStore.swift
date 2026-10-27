@@ -7,7 +7,19 @@ import StoreKit
     private(set) var product: Product?
     private(set) var hasPlus = false
     private(set) var busy = false
-    var message: String?
+    private var storeMessage: String?
+    private enum ActionStatus {
+        case ownershipConfirmed(String)
+        case notice(String)
+
+        var text: String {
+            switch self {
+            case .ownershipConfirmed(let text), .notice(let text): text
+            }
+        }
+    }
+    private var actionStatus: ActionStatus?
+    var message: String? { storeMessage ?? actionStatus?.text }
     @ObservationIgnored private var updates: Task<Void, Never>?
     init() {
         updates = Task { [weak self] in
@@ -24,8 +36,8 @@ import StoreKit
         await refreshEntitlements()
         do {
             product = try await Product.products(for: [Self.plusID]).first
-            message = product == nil ? "Plus isn’t available in the store right now. Daily play is always free." : nil
-        } catch { message = "Could not load the store. Check your connection and try again." }
+            storeMessage = product == nil ? "Plus isn’t available in the store right now. Daily play is always free." : nil
+        } catch { storeMessage = "Could not load the store. Check your connection and try again." }
     }
     func refreshEntitlements() async {
         var active = false
@@ -34,33 +46,35 @@ import StoreKit
                transaction.productID == Self.plusID, transaction.revocationDate == nil { active = true }
         }
         hasPlus = active
+        if !active, case .ownershipConfirmed = actionStatus { actionStatus = nil }
     }
     func purchase() async {
         guard let product, !busy else { return }
-        busy = true; message = nil
+        busy = true; actionStatus = nil; storeMessage = nil
         defer { busy = false }
         do {
             switch try await product.purchase() {
             case .success(let result):
                 guard case .verified(let transaction) = result else {
-                    message = "Apple could not verify this purchase. Try Restore purchases."; return
+                    actionStatus = .notice("Apple could not verify this purchase. Try Restore purchases."); return
                 }
                 await refreshEntitlements()
                 await transaction.finish()
-                message = hasPlus ? "Welcome to Plus. Your journal is ready." : "Purchase received. Try restoring purchases to refresh access."
-            case .pending: message = "Your purchase is awaiting approval. Plus will unlock when Apple confirms it."
+                actionStatus = hasPlus ? .ownershipConfirmed("Welcome to Plus. Your journal is ready.") : .notice("Purchase received. Try restoring purchases to refresh access.")
+            case .pending: actionStatus = .notice("Your purchase is awaiting approval. Plus will unlock when Apple confirms it.")
             case .userCancelled: break
-            @unknown default: message = "The purchase could not be completed. Try again."
+            @unknown default: actionStatus = .notice("The purchase could not be completed. Try again.")
             }
-        } catch { message = "The purchase could not be completed. You can try again or restore purchases." }
+        } catch { actionStatus = .notice("The purchase could not be completed. You can try again or restore purchases.") }
     }
     func restore() async {
         guard !busy else { return }
-        busy = true; defer { busy = false }
+        busy = true; actionStatus = nil; storeMessage = nil
+        defer { busy = false }
         do {
             try await AppStore.sync()
             await refreshEntitlements()
-            message = hasPlus ? "Plus restored." : "No Plus purchase was found for this Apple Account."
-        } catch { message = "Could not restore purchases. Please try again." }
+            actionStatus = hasPlus ? .ownershipConfirmed("Plus restored.") : .notice("No Plus purchase was found for this Apple Account.")
+        } catch { actionStatus = .notice("Could not restore purchases. Please try again.") }
     }
 }

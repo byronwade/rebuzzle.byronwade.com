@@ -125,6 +125,65 @@ extension DirectPurchaseTests {
         XCTAssertEqual(store.message, "Plus restored.")
     }
 
+    @MainActor func testProductReloadPreservesExplicitRestoreOutcome() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        let store = PurchaseStore()
+        await store.restore()
+        XCTAssertEqual(store.message, "Plus restored.")
+        // PlusView and app startup both load products asynchronously. Their completion
+        // must not erase the outcome of an explicit restore action.
+        await store.load()
+        XCTAssertNotNil(store.product)
+        XCTAssertTrue(store.hasPlus)
+        XCTAssertEqual(store.message, "Plus restored.")
+    }
+
+    @MainActor func testStoreFailureAfterRestoreRemainsVisible() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        let store = PurchaseStore()
+        await store.restore()
+        try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
+        await store.load()
+        XCTAssertTrue(store.hasPlus)
+        XCTAssertEqual(store.message, "Could not load the store. Check your connection and try again.")
+    }
+
+    @MainActor func testExplicitRestoreClearsEarlierStoreLoadFailure() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        let store = PurchaseStore()
+        try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
+        await store.load()
+        XCTAssertEqual(store.message, "Could not load the store. Check your connection and try again.")
+        session.resetToDefaultState()
+        session.disableDialogs = true
+        await store.restore()
+        XCTAssertTrue(store.hasPlus)
+        XCTAssertEqual(store.message, "Plus restored.")
+    }
+
+    @MainActor func testRevocationClearsOwnershipConfirmation() async throws {
+        let session = try restoreSession()
+        defer { session.clearTransactions(); session.resetToDefaultState() }
+        let transaction = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        let store = PurchaseStore()
+        await store.restore()
+        XCTAssertEqual(store.message, "Plus restored.")
+        try session.refundTransaction(identifier: UInt(transaction.id))
+        for _ in 0..<50 {
+            await store.refreshEntitlements()
+            if !store.hasPlus { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertFalse(store.hasPlus)
+        XCTAssertNil(store.message, "Revoked access must not retain an ownership confirmation")
+    }
+
     @MainActor func testExplicitRestoreWithoutOwnershipDoesNotGrantPlus() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
