@@ -52,7 +52,14 @@ public struct JourneyProgressEntry: Codable, Equatable, Sendable {
         completedAt = try container.decode(String.self, forKey: .completedAt)
         timeZone = try container.decode(String.self, forKey: .timeZone)
 
-        guard validPuzzleDate(puzzleDate), !puzzleId.isEmpty, (0...3).contains(attempts),
+        let validAttemptCount: Bool
+        switch outcome {
+        case .solved:
+            validAttemptCount = (1...3).contains(attempts)
+        case .failed:
+            validAttemptCount = attempts == 3
+        }
+        guard validPuzzleDate(puzzleDate), !puzzleId.isEmpty, validAttemptCount,
               hintCount.map({ $0 >= 0 }) ?? true,
               isISO8601Timestamp(completedAt), TimeZone(identifier: timeZone) != nil else {
             throw invalidPayload(decoder, "Invalid Journey progress entry")

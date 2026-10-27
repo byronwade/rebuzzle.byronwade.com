@@ -12,6 +12,14 @@ private func snapshotPayload(
     """.utf8)
 }
 
+private func progressEntry(outcome: String, attempts: Int) -> String {
+    "{\"puzzleDate\":\"2026-10-26\",\"puzzleId\":\"daily-1\",\"outcome\":\"\(outcome)\",\"attempts\":\(attempts),\"hintCount\":0,\"completedAt\":\"2026-10-26T12:34:56Z\",\"timeZone\":\"UTC\"}"
+}
+
+private func progressEntries(outcome: String, attempts: Int) -> String {
+    "[" + progressEntry(outcome: outcome, attempts: attempts) + "]"
+}
+
 @Test func completeSnapshotDecodesServerOwnedSummaryAndEntries() throws {
     let snapshot = try JSONDecoder().decode(JourneyProgressSnapshot.self, from: snapshotPayload())
 
@@ -55,6 +63,31 @@ private func snapshotPayload(
     let revealed = snapshotPayload(entries: #"[{"puzzleDate":"2026-10-26","puzzleId":"daily-1","outcome":"revealed","attempts":3,"hintCount":0,"completedAt":"2026-10-26T12:34:56Z","timeZone":"UTC"}]"#)
     #expect(throws: DecodingError.self) {
         try JSONDecoder().decode(JourneyProgressSnapshot.self, from: revealed)
+    }
+}
+
+@Test func terminalOutcomesRequireGameValidGuessCounts() throws {
+    for attempts in 1...3 {
+        let solved = snapshotPayload(entries: progressEntries(outcome: "solved", attempts: attempts))
+        let snapshot = try JSONDecoder().decode(JourneyProgressSnapshot.self, from: solved)
+        #expect(snapshot.recentEntries.first?.attempts == attempts)
+        #expect(snapshot.recentEntries.first?.outcome == .solved)
+    }
+
+    let failedAfterThreeGuesses = snapshotPayload(entries: progressEntries(outcome: "failed", attempts: 3))
+    let failedSnapshot = try JSONDecoder().decode(JourneyProgressSnapshot.self, from: failedAfterThreeGuesses)
+    #expect(failedSnapshot.recentEntries.first?.attempts == 3)
+    #expect(failedSnapshot.recentEntries.first?.outcome == .failed)
+
+    let solvedWithoutGuesses = snapshotPayload(entries: progressEntries(outcome: "solved", attempts: 0))
+    #expect(throws: DecodingError.self) {
+        try JSONDecoder().decode(JourneyProgressSnapshot.self, from: solvedWithoutGuesses)
+    }
+    for attempts in 1...2 {
+        let earlyFailure = snapshotPayload(entries: progressEntries(outcome: "failed", attempts: attempts))
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(JourneyProgressSnapshot.self, from: earlyFailure)
+        }
     }
 }
 
