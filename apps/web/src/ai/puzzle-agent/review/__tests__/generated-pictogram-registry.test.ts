@@ -315,7 +315,7 @@ describe("human-governed generated pictogram registry", () => {
     expect(store.candidates[0]?.auditHistory.at(-1)?.reason).toContain("integrity validation");
   });
 
-  it("keeps a reviewed simple asset eligible when its current pixels remain intact", async () => {
+  it("rejects replacement artwork even when its stored hash is updated", async () => {
     const store = memoryRepository();
     const registry = createGeneratedPictogramRegistry(store.repository);
     await registry.submitCandidate(automatedInput());
@@ -326,12 +326,37 @@ describe("human-governed generated pictogram registry", () => {
     store.candidates[0]!.svg = simpleSvg;
     store.candidates[0]!.assetSha256 = createHash("sha256").update(simpleSvg).digest("hex");
 
-    await expect(registry.findApproved("lighthouse")).resolves.toMatchObject({
-      status: "approved",
-      svg: simpleSvg,
-    });
-    expect(store.candidates[0]?.status).toBe("approved");
+    await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+    expect(store.candidates[0]?.status).toBe("quarantined");
   });
+
+  it("refuses an approval flag without the underlying human decisions", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+    await registry.submitCandidate(automatedInput());
+    store.candidates[0]!.status = "approved";
+    await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+    expect(store.candidates[0]?.status).toBe("quarantined");
+  });
+
+  it.each(["missing", "wrong fixture", "wrong answer", "duplicate reviewer"])(
+    "refuses approval when human evidence is %s",
+    async (damage) => {
+      const store = memoryRepository();
+      const registry = createGeneratedPictogramRegistry(store.repository);
+      await registry.submitCandidate(automatedInput());
+      for (const reviewer of ["one", "two", "three"]) {
+        await completeReviewer(registry, reviewer, "lighthouse");
+      }
+      if (damage === "missing") store.reviews.pop();
+      if (damage === "wrong fixture") store.reviews[0]!.fixtureId = "stale-fixture";
+      if (damage === "wrong answer") store.reviews[0]!.rawGuess = "tower";
+      if (damage === "duplicate reviewer")
+        store.reviews[0]!.reviewerId = store.reviews[2]!.reviewerId;
+      await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+      expect(store.candidates[0]?.status).toBe("quarantined");
+    }
+  );
 
   it("ignores stale registry versions", async () => {
     const store = memoryRepository();

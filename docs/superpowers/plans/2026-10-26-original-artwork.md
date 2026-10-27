@@ -38,8 +38,8 @@
 - [ ] Run hydration, semantics, quality, publication-assets and rubric tests. Independently review the identity boundary before committing.
 
 ### Task 3: Evidence-backed promotion and selection
-**Modify:** `visual/generated-pictogram-registry.ts`, `review/icon-recognition-service.ts`, `visual/generate-pictogram.ts`, catalog API and both agent catalog tools. Extend authored provenance explicitly; do not call authored artwork generated.
-**Interface:** Reuse audited registry approval transitions, binding exact authored asset ID, sanitized SVG hash, style and recognition-policy versions, and evidence references. An approved original lookup must return only a currently eligible exact version. A candidate source file is never a substitute for this lookup.
+**Modify:** `review/generated-pictogram-registry.ts`, `review/icon-recognition-service.ts`, `visual/generate-pictogram.ts`, catalog API and both agent catalog tools. Extend authored provenance explicitly; do not call authored artwork generated.
+**Interface:** Use a dedicated authored-candidate panel in the existing calibrated recognition service, binding exact authored asset ID, sanitized SVG hash, style and reading/recognition-policy versions, and actual decision references. Retain its five-reviewer, qualified-control and per-size recognition standards. Use disjoint controls and asset-based aggregation so an original and a Lucide drawing cannot share approval. A separate audited promotion must bind this evidence before original selection becomes eligible. A candidate source file or panel report alone is never publication approval. Harden the generated registry independently; do not relabel authored art as generated or silently substitute its three-reviewer standard.
 - [ ] Add failing boundary tests for absent/stale/wrong-hash/quarantined approval, candidate exclusion, and successful exact-version promotion with real-shaped evidence.
 - [ ] Connect authored candidates to the existing review workflow. No synthetic production approval records.
 - [ ] Prefer an eligible original for new concept-only requests; keep explicit old IDs unchanged. Expose only eligible selection options to Studio and generation.
@@ -50,3 +50,9 @@
 - [ ] Inspect Studio selection and actual player/canonical renders; compare stored canonical PNGs and public daily responses before/after release.
 - [ ] Independently review integration, push reviewed source, wait for applicable CI and deploy exact tested commit.
 - [ ] Record promoted coverage, pending candidates, review evidence and production receipt. Do not claim the40-object goal, improved enjoyment, or retention from a partial batch or structural test results.
+
+## Task 3 implementation finding (2026-10-26)
+
+The generated registry's content-addressed IDs and three-person unanimous panel are not interchangeable with the calibrated candidate panel. The latter already supports controls, five reviewers and per-size thresholds. Extend that panel for authored candidates, score raw answers against each exact original reading policy, and retain distinct evidence-backed promotion. This preserves stricter recognition standards without dual-registering the same artwork under competing identities.
+
+Before this integration, a regression in generated approval lookup was reproduced: replacing both SVG and stored hash retained approval under the original identity. Lookup now verifies the content-derived ID and underlying unique current-policy human decisions, including raw answer, fixture and both sizes. Six regression cases failed before the fix. This does not approve any original candidates or change published frozen boards.
