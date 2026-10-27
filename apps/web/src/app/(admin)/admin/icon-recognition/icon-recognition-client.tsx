@@ -21,6 +21,8 @@ import { fail } from "@/lib/fail";
 import { safeJsonParse } from "@/lib/utils";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
 
+import { OriginalArtworkControls } from "./original-artwork-controls";
+
 type NextResponse = {
   success?: boolean;
   specimen?: BlindIconRecognitionSpecimen | null;
@@ -431,6 +433,7 @@ function IconRecognitionPageInner() {
             </CardContent>
           </Card>
 
+          {report.panelId === "originals" && <OriginalArtworkControls />}
           {report.panelId !== "publication" && (
             <Card>
               <CardHeader>

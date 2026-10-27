@@ -5,8 +5,9 @@ import { createMongoOriginalArtworkPromotionRepository } from "./mongo-original-
 import { createOriginalArtworkPromotionService } from "./original-artwork-promotion";
 
 const recognition = createMongoIconRecognitionRepository();
+export const originalArtworkPromotionRepository = createMongoOriginalArtworkPromotionRepository();
 export const originalArtworkPromotionService = createOriginalArtworkPromotionService(
-  createMongoOriginalArtworkPromotionRepository(),
+  originalArtworkPromotionRepository,
   async () => {
     const policy = scoreIconRecognitionCalibration({ panelId: "originals", reviews: [] });
     const reviews = await recognition.listCalibrationDecisions({
