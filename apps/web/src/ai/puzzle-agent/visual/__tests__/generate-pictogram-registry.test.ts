@@ -1,3 +1,10 @@
+const findEligible = jest.fn();
+jest.mock("../../review/original-artwork-promotion-server", () => ({
+  originalArtworkPromotionService: { findEligible },
+}));
+
+import { listOriginalPictogramCandidates } from "../original-pictograms";
+
 const generateAIText = jest.fn();
 const recognizePictogramIcon = jest.fn();
 const findApproved = jest.fn();
@@ -58,6 +65,7 @@ describe("generated pictogram registry integration", () => {
     jest.clearAllMocks();
     delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
     findApproved.mockResolvedValue(null);
+    findEligible.mockResolvedValue(null);
     generateAIText.mockResolvedValue({ text: svg });
     recognizePictogramIcon.mockResolvedValue(recognition());
     submitCandidate.mockResolvedValue({ id: "generated-pictogram:approved-later" });
@@ -66,6 +74,49 @@ describe("generated pictogram registry integration", () => {
     delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
   });
   afterEach(() => jest.restoreAllMocks());
+
+  it("prefers an approved original and records actual player-size recognition", async () => {
+    const clock = listOriginalPictogramCandidates()[0];
+    findEligible.mockResolvedValue({ assetId: clock.assetId });
+    recognizePictogramIcon.mockResolvedValue(recognition(true, "clock"));
+    const result = await generatePictogram({ concept: "clock" });
+    expect(result).toMatchObject({
+      ok: true,
+      source: "approved-cache",
+      assetId: clock.assetId,
+      svg: clock.svg,
+    });
+    expect(result.recognitionProfiles).toHaveLength(2);
+    expect(recognizePictogramIcon).toHaveBeenCalledWith({ svg: clock.svg, concept: "clock" });
+    expect(generateAIText).not.toHaveBeenCalled();
+  });
+
+  it("falls back to existing artwork if original approval is unavailable", async () => {
+    findEligible.mockRejectedValue(new Error("Unavailable"));
+    const result = await generatePictogram({ concept: "clock" });
+    expect(result).toMatchObject({
+      ok: true,
+      source: "catalog",
+      assetId: resolveCuratedPictogram("clock")!.assetId,
+    });
+  });
+
+  it("falls back when an approved original fails fresh recognition", async () => {
+    const clock = listOriginalPictogramCandidates()[0];
+    findEligible.mockResolvedValue({ assetId: clock.assetId });
+    recognizePictogramIcon
+      .mockResolvedValueOnce(recognition(false, "watch"))
+      .mockResolvedValueOnce(recognition(true, "clock"));
+    const result = await generatePictogram({ concept: "clock" });
+    expect(result).toMatchObject({ ok: true, source: "catalog" });
+    expect(recognizePictogramIcon).toHaveBeenCalledTimes(2);
+  });
+
+  it("never selects an original through a discovery-only reading", async () => {
+    findEligible.mockResolvedValue({ assetId: "rebuzzle-ink:clock:v1" });
+    await generatePictogram({ concept: "watch" });
+    expect(findEligible).not.toHaveBeenCalled();
+  });
 
   it.each(["heart", "clock"])(
     "sends the real catalog %s to player-size recognition",

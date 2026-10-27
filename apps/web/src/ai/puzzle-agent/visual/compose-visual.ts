@@ -6,6 +6,7 @@
 import { defaultLayoutForTechnique } from "../apex/rule-graph";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
 import { computeFunScore, displayLeaksAnswer, isKnownTechniqueId } from "../quality";
+import { evaluateSemanticAlignment } from "../semantic-alignment";
 import { getTechniques } from "../technique-library";
 import {
   buildUnicodeFallback,
@@ -30,6 +31,8 @@ export type ComposePuzzleVisualInput = {
   renderImages?: boolean;
   /** Internal review tooling may display newly generated, unapproved assets. */
   assetUsage?: GeneratePictogramInput["usage"];
+  /** Internal retry preserves established readings when an original changes the clue. */
+  preferOriginalArtwork?: boolean;
 };
 
 export type ComposePuzzleVisualResult = {
@@ -78,6 +81,7 @@ export async function composePuzzleVisual(
         emojiFallback: layer.emojiFallback,
         maxRetries: 2,
         usage: input.assetUsage ?? "publication",
+        preferOriginalArtwork: input.preferOriginalArtwork,
       });
       if (pic.ok && pic.svg) {
         filledLayers.push({
@@ -198,6 +202,32 @@ export async function composePuzzleVisual(
 
   if (!parsed.success) {
     issues.push(`Visual schema issues: ${parsed.error.issues[0]?.message ?? "invalid"}`);
+  }
+
+  if (
+    issues.length === 0 &&
+    input.preferOriginalArtwork !== false &&
+    visual.layers.some(
+      (layer) => layer.kind === "pictogram" && layer.assetId?.startsWith("rebuzzle-ink:")
+    ) &&
+    !evaluateSemanticAlignment({ answer: input.answer, techniqueId: input.techniqueId, visual }).ok
+  ) {
+    // Resolve before review/rendering, never swap assets in an approved board.
+    // Reuse already-rendered image layers and bound this retry to one legacy pass.
+    const legacy = await composePuzzleVisual({
+      ...input,
+      layers: visual.layers,
+      preferOriginalArtwork: false,
+    });
+    if (
+      evaluateSemanticAlignment({
+        answer: input.answer,
+        techniqueId: input.techniqueId,
+        visual: legacy.visual,
+      }).ok
+    ) {
+      return legacy;
+    }
   }
 
   const totalParts = countVisualParts(visual);

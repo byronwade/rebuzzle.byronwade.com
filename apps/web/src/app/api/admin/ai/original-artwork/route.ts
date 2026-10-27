@@ -42,14 +42,12 @@ export async function GET(request: Request) {
           statusVersion: record?.statusVersion ?? 0,
           recognitionEligible: eligible.has(asset.assetId),
           auditHistory:
-            record?.auditHistory
-              .slice(-10)
-              .map((event) => ({
-                action: event.action,
-                reason: event.reason,
-                actorId: event.actorId,
-                createdAt: event.createdAt.toISOString(),
-              })) ?? [],
+            record?.auditHistory.slice(-10).map((event) => ({
+              action: event.action,
+              reason: event.reason,
+              actorId: event.actorId,
+              createdAt: event.createdAt.toISOString(),
+            })) ?? [],
         };
       })
     );

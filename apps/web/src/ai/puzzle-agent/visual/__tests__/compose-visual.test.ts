@@ -1,3 +1,11 @@
+const findEligible = jest.fn();
+jest.mock("../../review/original-artwork-promotion-server", () => ({
+  originalArtworkPromotionService: { findEligible },
+}));
+
+import { preflightComposeAnswerSeedCuePlan } from "../../apex/cue-plan-preflight";
+import { evaluateSemanticAlignment } from "../../semantic-alignment";
+
 const recognizePictogramIcon = jest.fn();
 const generateAIText = jest.fn();
 const findApproved = jest.fn();
@@ -55,6 +63,7 @@ function compose(pictogram: PictogramLayer) {
 beforeEach(() => {
   jest.clearAllMocks();
   findApproved.mockResolvedValue(null);
+  findEligible.mockResolvedValue(null);
   recognizePictogramIcon.mockResolvedValue(recognition());
 });
 
@@ -172,4 +181,70 @@ it("composes ordinary text when spatial placement carries the mechanism", async 
   });
   expect(result.visual.mode).toBe("composed");
   expect(result.issues).toEqual([]);
+});
+
+it("preserves a legacy mechanism reading when original artwork would break the answer", async () => {
+  findEligible.mockImplementation(async (assetId: string) => ({ assetId }));
+  const result = await composePuzzleVisual({
+    answer: "lighthouse",
+    targetDifficulty: 4,
+    techniqueId: "simple_compound",
+    layers: [
+      layer({ concept: "lightbulb" }),
+      { kind: "operator", symbol: "+" },
+      layer({ concept: "house" }),
+    ],
+  });
+  expect(
+    evaluateSemanticAlignment({
+      answer: "lighthouse",
+      techniqueId: "simple_compound",
+      visual: result.visual,
+    }).ok
+  ).toBe(true);
+  expect(result.visual.layers.filter((l) => l.kind === "pictogram").map((l) => l.assetId)).toEqual([
+    resolveCuratedPictogram("lightbulb")!.assetId,
+    resolveCuratedPictogram("house")!.assetId,
+  ]);
+});
+
+it("materializes approved originals through the actual rule-graph preflight", async () => {
+  findEligible.mockImplementation(async (assetId: string) => ({ assetId }));
+  const result = await preflightComposeAnswerSeedCuePlan({
+    answer: "flower pot",
+    targetDifficulty: 5,
+    techniqueId: "simple_compound",
+    cues: [
+      { kind: "catalog", concept: "flower", role: "word-part" },
+      { kind: "text", content: "POT", role: "word-part" },
+    ],
+  });
+  expect(result.ok).toBe(true);
+  expect(result.composition?.visual.layers).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: "pictogram",
+        assetId: "rebuzzle-ink:flower:v1",
+        source: "approved-cache",
+      }),
+    ])
+  );
+});
+
+it("preserves first-pass validation failures during a legacy artwork retry", async () => {
+  findEligible.mockImplementation(async (assetId: string) => ({ assetId }));
+  const result = await composePuzzleVisual({
+    answer: "lighthouse",
+    targetDifficulty: 4,
+    techniqueId: "simple_compound",
+    layers: [
+      layer({ concept: "lightbulb" }),
+      { kind: "operator", symbol: "+" },
+      layer({ concept: "house" }),
+      { kind: "image", concept: "", prompt: "a shape", alt: "shape" },
+    ],
+  });
+  expect(result.issues).toContain(
+    "Image layers require one concrete concept for blind recognition"
+  );
 });

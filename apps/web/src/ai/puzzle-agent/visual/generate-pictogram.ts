@@ -5,6 +5,7 @@
 
 import { generateAIText } from "@/ai/client";
 import { logger } from "@/lib/logger";
+import { generateApprovedOriginalPictogram } from "./approved-original-pictogram";
 import { recognizePictogramIcon } from "./critique-pictogram";
 import { resolveCuratedPictogram } from "./curated-pictograms";
 import { getIconFeatureHints } from "./icon-features";
@@ -24,6 +25,8 @@ export type GeneratePictogramInput = {
   maxRetries?: number;
   /** Skip blind recognition (tests / offline) */
   skipRecognition?: boolean;
+  /** Internal semantic fallback when a legacy interpretation is required. */
+  preferOriginalArtwork?: boolean;
   /**
    * Publication is fail-closed: fresh generated assets are queued for blind
    * human review but cannot be returned to a player-facing composition.
@@ -330,6 +333,15 @@ export async function generatePictogram(
     | Array<{ tileSize: number; seenAs: string; confidence: number }>
     | undefined;
   let lastPixelIntegrity: PictogramPixelIntegrityResult | undefined;
+
+  if (!input.skipRecognition && input.preferOriginalArtwork !== false) {
+    const original = await generateApprovedOriginalPictogram({
+      concept,
+      role: input.role,
+      emojiFallback,
+    });
+    if (original) return original;
+  }
 
   const curated = resolveCuratedPictogram(concept);
   if (curated) {
