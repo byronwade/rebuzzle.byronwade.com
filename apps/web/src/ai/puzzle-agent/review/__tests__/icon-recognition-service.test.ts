@@ -367,3 +367,21 @@ describe("blind human icon-recognition calibration", () => {
     ]);
   });
 });
+
+it("retains unsupported citrus readings as human confusion evidence", () => {
+  const fixtures = buildIconRecognitionFixtures();
+  const citrus = fixtures.find((fixture) => fixture.conceptId === "citrus")!;
+  const wrong = {
+    ...review({ fixture: citrus, reviewerId: "reader", correct: false }),
+    rawGuess: "lemon",
+    normalizedGuess: "lemon",
+    uncertain: false,
+  };
+  const report = scoreIconRecognitionCalibration({ fixtures, reviews: [wrong] });
+  expect(resolveIconNamingGuess("lemon")).toBeUndefined();
+  expect(report.topConfusions).toContainEqual({
+    intendedConcept: "citrus",
+    guessedConcept: "lemon",
+    count: 1,
+  });
+});

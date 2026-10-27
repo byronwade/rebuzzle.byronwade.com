@@ -27,7 +27,14 @@ import {
 } from "@/lib/ugc/studio-templates";
 import { cn } from "@/lib/utils";
 
-type CatalogPictogram = { id: string; concept: string; svg: string };
+type CatalogPictogram = {
+  id: string;
+  concept: string;
+  svg: string;
+  searchAliases?: string[];
+  approvedReadings?: string[];
+  commonConfusions?: string[];
+};
 type TechniqueOption = { id: string; name: string; summary: string };
 type AiQuota = { used: number; limit: number; remaining: number };
 
@@ -448,6 +455,7 @@ export function PuzzleStudio() {
       (p) =>
         p.concept.includes(q) ||
         p.id.includes(q) ||
+        p.searchAliases?.some((alias) => alias.toLowerCase().includes(q)) ||
         labelFromSlug(p.concept).toLowerCase().includes(q)
     );
   }, [catalogQuery, pictograms]);
@@ -1262,7 +1270,7 @@ export function PuzzleStudio() {
                       className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
                       key={item.id}
                       onClick={() => addPictogram(item)}
-                      title={`Add ${labelFromSlug(item.concept)}`}
+                      title={`Add ${labelFromSlug(item.concept)}. Reads as: ${(item.approvedReadings ?? [item.concept]).join(", ")}.`}
                       type="button"
                     >
                       <span
@@ -1272,6 +1280,12 @@ export function PuzzleStudio() {
                       <span className="w-full truncate text-center">
                         {labelFromSlug(item.concept)}
                       </span>
+                      {Boolean(item.commonConfusions?.length) && (
+                        <span className="text-center text-[11px] leading-snug">
+                          Reads as {(item.approvedReadings ?? [item.concept]).join(", ")}. Not
+                          specific enough for {item.commonConfusions!.join(" or ")}.
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>

@@ -1,4 +1,5 @@
 import {
+  getCuratedPictogramReadingPolicy,
   isAuthenticCuratedPictogram,
   listCuratedPictogramIds,
   QUARANTINED_CURATED_PICTOGRAM_IDS,
@@ -71,5 +72,33 @@ describe("curated pictogram catalog", () => {
 
     expect(diagnostic?.assetId).toBe("lucide:rainbow:v2");
     expect(diagnostic?.canonicalConcept).toBe("rainbow");
+  });
+});
+
+describe("catalog reading policy", () => {
+  it("keeps citrus discoverable without authorizing a specific fruit", () => {
+    const policy = getCuratedPictogramReadingPolicy("lemon");
+    expect(policy?.canonicalConcept).toBe("citrus");
+    expect(policy?.searchAliases).toContain("lemon");
+    expect(policy?.approvedReadings).toEqual(["citrus"]);
+    expect(policy?.commonConfusions).toEqual(["orange", "lemon"]);
+    expect(resolveCuratedPictogram("lemon")).toBeNull();
+    expect(resolveCuratedPictogram("orange")).toBeNull();
+    expect(resolveCuratedPictogram("citrus")?.assetId).toBe("lucide:citrus:v2");
+  });
+
+  it("rejects unsupported subtype readings but preserves supported synonyms", () => {
+    for (const concept of ["planet", "kitten", "puppy", "sedan"]) {
+      expect(resolveCuratedPictogram(concept)).toBeNull();
+    }
+    expect(resolveCuratedPictogram("bike")?.assetId).toBe("lucide:bicycle:v2");
+    expect(resolveCuratedPictogram("automobile")?.assetId).toBe("lucide:car:v2");
+  });
+
+  it("does not authenticate a search alias as the meaning of catalog artwork", () => {
+    const citrus = resolveCuratedPictogram("citrus")!;
+    expect(isAuthenticCuratedPictogram({ ...citrus, concept: "lemon" })).toBe(false);
+    expect(getCuratedPictogramReadingPolicy(citrus.assetId)?.approvedReadings).toEqual(["citrus"]);
+    expect(getCuratedPictogramReadingPolicy("lucide:citrus:v999")).toBeNull();
   });
 });

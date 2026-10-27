@@ -35,6 +35,8 @@ import {
 import { PuzzleVisualSchema, VisualLayerSchema } from "./visual/composition";
 import {
   CURATED_PICTOGRAM_CATALOG_VERSION,
+  CURATED_PICTOGRAM_READING_POLICY_VERSION,
+  getCuratedPictogramReadingPolicy,
   listCuratedPictogramIds,
 } from "./visual/curated-pictograms";
 
@@ -126,11 +128,13 @@ export const puzzleAgentTools: ToolSet = {
 
   list_pictogram_catalog: tool({
     description:
-      "List exact, reviewed pictogram concept IDs that are immediately eligible for publication. Use these exact nouns in compose_puzzle_visual.",
+      "List exact, reviewed pictogram concept IDs that are immediately eligible for publication. Use approved readings in compose_puzzle_visual; search aliases and common confusions are not approved readings.",
     inputSchema: z.object({}),
     execute: async () => ({
       version: CURATED_PICTOGRAM_CATALOG_VERSION,
       concepts: listCuratedPictogramIds(),
+      readingPolicyVersion: CURATED_PICTOGRAM_READING_POLICY_VERSION,
+      readings: listCuratedPictogramIds().map(getCuratedPictogramReadingPolicy),
       rule: "Publication compositions must use these exact concept IDs or an existing approved-cache asset.",
     }),
   }),

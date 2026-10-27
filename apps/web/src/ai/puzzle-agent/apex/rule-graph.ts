@@ -66,7 +66,7 @@ function emojiForConcept(concept: string): string {
 function cueToLayer(cue: AnswerSeedVisualCue): VisualLayer {
   if (cue.kind === "catalog") {
     const resolved = resolveCuratedPictogram(cue.concept);
-    const concept = resolved?.canonicalConcept ?? cue.concept;
+    const concept = cue.concept;
     return {
       kind: "pictogram",
       concept,

@@ -13,7 +13,7 @@ import {
 import { PLAYER_ICON_GATE_SIZES } from "../visual/presentation";
 
 /** v3 aligns blind naming specimens to live player tile sizes (44px + 72px). */
-export const HUMAN_ICON_RECOGNITION_CONTRACT_VERSION = "human-icon-recognition-v3";
+export const HUMAN_ICON_RECOGNITION_CONTRACT_VERSION = "human-icon-recognition-v4";
 export const ICON_RECOGNITION_SIZES = PLAYER_ICON_GATE_SIZES;
 export const ICON_RECOGNITION_MIN_REVIEWERS = 3;
 export const ICON_RECOGNITION_CANDIDATE_MIN_REVIEWERS = 5;
@@ -485,12 +485,14 @@ export function scoreIconRecognitionCalibration(input: {
     .sort();
   const confusionCounts = new Map<string, IconRecognitionConfusion>();
   for (const review of targetReviews) {
-    if (review.correct || !review.matchedConceptId) continue;
-    const key = `${review.conceptId}\u0000${review.matchedConceptId}`;
+    if (review.correct || review.uncertain) continue;
+    const guessedConcept = review.matchedConceptId ?? normalizeIconNamingGuess(review.rawGuess);
+    if (!guessedConcept) continue;
+    const key = `${review.conceptId}\u0000${guessedConcept}`;
     const current = confusionCounts.get(key);
     confusionCounts.set(key, {
       intendedConcept: review.conceptId,
-      guessedConcept: review.matchedConceptId,
+      guessedConcept,
       count: (current?.count ?? 0) + 1,
     });
   }

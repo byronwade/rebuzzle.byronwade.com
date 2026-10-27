@@ -1,0 +1,13 @@
+# Artwork reading contract — October 26 checkpoint
+
+Creator discovery and puzzle meaning now have separate catalog fields: search aliases, approved readings, and common confusions. Citrus remains discoverable as lemon/orange, but neither word selects its generic slice for a new puzzle. Subtypes unsupported by their silhouettes are restricted; genuine synonyms remain available. Nut/acorn is deliberately retained because the drawing has the identifying cap. Existing SVG bytes and asset IDs are unchanged.
+
+Strict selection flows through the existing generator and seed checks. Studio rejects mismatched asset IDs instead of silently replacing artwork, while preserving supported requested words such as bike. The rule composer also retains that requested reading. Unresolved seed cues no longer match each other merely because both lookups return nothing.
+
+Semantic checks use catalog asset identity rather than an arbitrary layer label. Recognition does not recover removed aliases through feature hints. Human naming reports retain unknown/confusion labels instead of dropping them. Interpretation, human calibration, and new-publication evidence policies are versioned; already published boards are not rewritten.
+
+Studio and both agent catalogs expose supported readings/confusions. Studio search uses discovery aliases and shows explicit inline ambiguity copy. This UI has not yet been visually inspected in a running authenticated Studio session.
+
+Verification: 175 Jest suites / 1,011 tests passed; TypeScript passed; lint passed with ten existing warnings and one configuration deprecation notice. Behavioral regressions were observed failing before their fixes. Generator integration confirms missing lemon cannot fall back to citrus while independently approved registry artwork remains eligible for recognition. Independent scoped review found no actionable issue.
+
+Status: reviewed source checkpoint, not deployed. Production daily data unchanged by this work. Studio visual inspection and deployment smoke verification remain. No original illustration collection, human difficulty improvement, enjoyment increase, or revenue result is claimed. TestFlight build12 is still the latest delivered native build; this server/editor change needs no new iOS binary.

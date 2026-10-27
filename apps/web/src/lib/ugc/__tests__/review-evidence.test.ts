@@ -4,6 +4,7 @@ import {
   completePlayerEvidence,
   hasCompletePublicationEvidence,
   reviewFingerprint,
+  STUDIO_EVIDENCE_POLICY,
 } from "../review-evidence";
 
 const png = Buffer.from("fixture");
@@ -29,7 +30,7 @@ const content = {
 const profiles = PUZZLE_BOARD_RECOGNITION_PROFILES.map((p) => p.id);
 it("binds approval to all content and exact bytes", () => {
   const evidence = {
-    policyVersion: "studio-evidence-v1",
+    policyVersion: STUDIO_EVIDENCE_POLICY,
     fingerprint: reviewFingerprint(content),
     complete: true,
     profileIds: profiles,
@@ -100,5 +101,24 @@ it("requires every profile and nonzero judge evidence", () => {
       },
       2
     )
+  ).toBe(false);
+});
+
+it("rejects approval from before the artwork reading policy", () => {
+  expect(
+    hasCompletePublicationEvidence({
+      ...content,
+      eveReview: {
+        ok: true,
+        verdict: "ship",
+        spend: { critique: "ran", playerSim: "ran" },
+        evidence: {
+          policyVersion: "studio-evidence-v1",
+          fingerprint: reviewFingerprint(content),
+          complete: true,
+          profileIds: profiles,
+        },
+      },
+    })
   ).toBe(false);
 });

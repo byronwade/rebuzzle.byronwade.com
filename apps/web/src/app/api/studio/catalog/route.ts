@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { listAllTechniques } from "@/ai/puzzle-agent/technique-library";
 import {
+  CURATED_PICTOGRAM_READING_POLICY_VERSION,
+  getCuratedPictogramReadingPolicy,
   listCuratedPictogramIds,
   resolveCuratedPictogram,
 } from "@/ai/puzzle-agent/visual/curated-pictograms";
@@ -28,6 +30,7 @@ export async function GET(request: Request) {
         id: resolved.assetId,
         concept: resolved.canonicalConcept,
         svg: resolved.svg,
+        ...getCuratedPictogramReadingPolicy(resolved.assetId),
       };
     })
     .filter((row): row is NonNullable<typeof row> => Boolean(row))
@@ -37,6 +40,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     pictograms,
+    readingPolicyVersion: CURATED_PICTOGRAM_READING_POLICY_VERSION,
     marks: STUDIO_MARKS,
     aiQuota,
     techniques: listAllTechniques().map((technique) => ({

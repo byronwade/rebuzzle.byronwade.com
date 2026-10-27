@@ -34,8 +34,10 @@ export function hydrateStudioVisual(input: {
     }
     if (layer.kind !== "pictogram") return layer;
     const curated = resolveCuratedPictogram(layer.concept);
-    if (!curated) {
-      issues.push(`Unknown pictogram concept "${layer.concept}" — pick from the catalog`);
+    if (!curated || (layer.assetId && layer.assetId !== curated.assetId)) {
+      issues.push(
+        `Unsupported pictogram reading or asset "${layer.concept}" — pick an approved reading from the catalog`
+      );
       return {
         ...layer,
         emojiFallback: layer.emojiFallback || emojiFallbackFor(layer.concept),
@@ -43,7 +45,7 @@ export function hydrateStudioVisual(input: {
     }
     return {
       kind: "pictogram" as const,
-      concept: curated.canonicalConcept,
+      concept: layer.concept,
       role: layer.role,
       svg: curated.svg,
       assetId: curated.assetId,

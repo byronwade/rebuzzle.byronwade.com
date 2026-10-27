@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
+import { CURATED_PICTOGRAM_READING_POLICY_VERSION } from "@/ai/puzzle-agent/visual/curated-pictograms";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "@/ai/puzzle-agent/visual/presentation";
 
-export const STUDIO_EVIDENCE_POLICY = "studio-evidence-v1";
+export const STUDIO_EVIDENCE_POLICY = `studio-evidence-v2:${CURATED_PICTOGRAM_READING_POLICY_VERSION}`;
 export type StudioReviewEvidence = {
   policyVersion: string;
   fingerprint: string;

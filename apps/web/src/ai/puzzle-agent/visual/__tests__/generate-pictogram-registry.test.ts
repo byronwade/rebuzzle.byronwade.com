@@ -132,6 +132,26 @@ describe("generated pictogram registry integration", () => {
     expect(submitCandidate).not.toHaveBeenCalled();
   });
 
+  it("never substitutes generic citrus for an unavailable lemon asset", async () => {
+    const result = await generatePictogram({ concept: "lemon", skipRecognition: true });
+    expect(result).toMatchObject({ ok: false, error: "approved_asset_required" });
+    expect(result.source).not.toBe("catalog");
+    expect(generateAIText).not.toHaveBeenCalled();
+  });
+
+  it("allows an independently approved lemon without borrowing citrus identity", async () => {
+    findApproved.mockResolvedValue({ id: "generated-pictogram:lemon", svg });
+    recognizePictogramIcon.mockResolvedValue(recognition(true, "lemon"));
+    const result = await generatePictogram({ concept: "lemon" });
+    expect(result).toMatchObject({
+      ok: true,
+      source: "approved-cache",
+      assetId: "generated-pictogram:lemon",
+      concept: "lemon",
+    });
+    expect(recognizePictogramIcon).toHaveBeenCalledWith({ svg, concept: "lemon" });
+  });
+
   it("returns a newly generated asset to explicit review tooling", async () => {
     const result = await generatePictogram({
       concept: "lighthouse",

@@ -115,3 +115,14 @@ describe("evaluateSemanticAlignment", () => {
     expect(plain.blockers[0]).toContain("styled text layer");
   });
 });
+
+it("does not let a relabeled citrus asset form a lemon compound", () => {
+  const citrus = pictogram("citrus");
+  const result = evaluateSemanticAlignment({
+    answer: "lemonade",
+    techniqueId: "simple_compound",
+    visual: visual([{ ...citrus, concept: "lemon" } as VisualLayer, text("ADE")]),
+  });
+  expect(result.ok).toBe(false);
+  expect(result.cues.flatMap((cue) => cue.variants)).not.toContain("lemon");
+});

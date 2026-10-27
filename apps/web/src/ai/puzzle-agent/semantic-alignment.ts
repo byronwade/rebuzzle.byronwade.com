@@ -1,5 +1,8 @@
 import type { PuzzleVisual, VisualLayer } from "./visual/composition";
-import { getCuratedPictogramAliases } from "./visual/curated-pictograms";
+import {
+  getCuratedPictogramAliases,
+  getCuratedPictogramReadingPolicy,
+} from "./visual/curated-pictograms";
 import { lookupIconFeatures } from "./visual/icon-features";
 
 /**
@@ -10,7 +13,7 @@ import { lookupIconFeatures } from "./visual/icon-features";
  * the declared answer. Keeping this gate deterministic means a bad board is
  * rejected before novelty, calibration, or model judges spend budget on it.
  */
-export const SEMANTIC_ALIGNMENT_VERSION = "semantic-alignment-v1";
+export const SEMANTIC_ALIGNMENT_VERSION = "semantic-alignment-v2";
 
 export type SemanticAlignmentInput = {
   answer: string;
@@ -140,6 +143,19 @@ function cueBaseVariants(layer: VisualLayer): string[] {
   if (layer.kind === "image") return layer.concept ? [layer.concept] : [];
 
   if (layer.kind !== "pictogram") return [];
+
+  const catalogIdentity = layer.assetId?.startsWith("lucide:")
+    ? getCuratedPictogramReadingPolicy(layer.assetId)
+    : !layer.assetId
+      ? getCuratedPictogramReadingPolicy(layer.concept)
+      : null;
+  if (layer.assetId?.startsWith("lucide:") && !catalogIdentity) return [];
+  if (catalogIdentity) {
+    return [
+      ...catalogIdentity.approvedReadings,
+      ...(REBUS_CUE_ALIASES[compact(catalogIdentity.canonicalConcept)] ?? []),
+    ];
+  }
 
   const concept = layer.concept.trim();
   const canonical = compact(concept);

@@ -60,3 +60,15 @@ describe("answer-first visual cue contracts", () => {
     ).toBe('flower [reviewed pictogram; word-part]; "POT" [visible text; word-part]');
   });
 });
+
+it("never treats two unresolved catalog concepts as a matching reserved cue", () => {
+  expect(
+    missingAnswerSeedCues({
+      visual: {
+        ...visual,
+        layers: [{ kind: "pictogram", concept: "unknown object", emojiFallback: "◆" }],
+      },
+      cues: [{ kind: "catalog", concept: "lemon", role: "word-part" }],
+    })
+  ).toEqual(["Missing catalog cue lemon"]);
+});
