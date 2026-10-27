@@ -4,12 +4,18 @@ import RebuzzleCore
 struct ProgressViewScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    private var progress: JourneyProgress { JourneyProgress(entries: model.journal.entries) }
+    private var progress: JourneyProgress? {
+        guard let summary = model.journeySnapshot?.summary else { return nil }
+        return JourneyProgress(summary: summary)
+    }
 
     var body: some View {
         Page {
-            JourneyLevelView(progress: progress)
-            weeklyChallenge
+            if let progress {
+                JourneyLevelView(progress: progress)
+            } else {
+                journeyUnavailable
+            }
             NavigationLink { JournalView() } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "book.closed").font(.system(size: 22)).foregroundStyle(Theme.reward)
@@ -21,14 +27,17 @@ struct ProgressViewScreen: View {
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
                 }.foregroundStyle(Theme.ink).frame(minHeight: 56)
             }.accessibilityIdentifier("openJournal")
-            badgeCollection
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Your story so far").font(Theme.font(20, weight: .medium))
-                let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(spacing: 16))
-                layout {
-                    metric("\(model.stats?.totalGames ?? model.journal.entries.count)", "Played")
-                    metric("\(model.stats?.wins ?? model.journal.wins)", "Solved")
-                    metric("\(model.stats?.streak ?? 0)", "Day streak")
+            if let progress, let summary = model.journeySnapshot?.summary {
+                weeklyChallenge(progress)
+                badgeCollection(progress)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Your story so far").font(Theme.font(20, weight: .medium))
+                    let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(spacing: 16))
+                    layout {
+                        metric("\(summary.finishes)", "Finished")
+                        metric("\(summary.solves)", "Solved")
+                        metric("\(summary.firstGuessSolves)", "First guess")
+                    }
                 }
             }
             if model.purchases.hasPlus {
@@ -66,21 +75,60 @@ struct ProgressViewScreen: View {
                     HStack { VStack(alignment: .leading, spacing: 6) { Text("See your solving patterns").font(Theme.font(16, weight: .medium)); Text("Guess distribution and more with Plus").font(Theme.font(13)).foregroundStyle(Theme.secondary) }; Spacer(); Image(systemName: "arrow.up.right") }.foregroundStyle(Theme.ink).padding(.vertical, 8)
                 }
             }
-            Text("XP, badges and weekly progress come from completed puzzles saved on this device. Account statistics refresh when connected.")
+            Text(model.player?.guest == true
+                 ? "Journey progress belongs to this guest profile. Create an account to carry it to another device; journal notes stay on this device."
+                 : "Journey progress syncs with your account. Journal notes and puzzle answers stay on this device.")
                 .font(Theme.font(12)).foregroundStyle(Theme.secondary)
             DisclosureGroup("How do I earn XP?") {
                 Text("Finish a puzzle: 25 XP. Solve it: +75. Solve on your first guess: +25. Solve without hints: +25. Each level takes 300 XP. Revealing the answer still counts toward your weekly challenge.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary).padding(.top, 8)
             }.font(Theme.font(14)).tint(Theme.ink)
-        }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable { await model.load() }
+        }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable { await model.refreshJourneyProgress() }
     }
-    private var weeklyChallenge: some View {
+    private var journeyUnavailable: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if model.journeySyncing { ProgressView().tint(Theme.accent) }
+            Text(journeyStatusTitle).font(Theme.display(26))
+            Text(journeyStatusMessage)
+                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if !model.journeySyncing {
+                Button("Try again") { Task { await model.refreshJourneyProgress() } }
+                    .buttonStyle(CommitStyle())
+                    .accessibilityIdentifier("retryJourneySync")
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+            .accessibilityIdentifier("journeyUnavailable")
+    }
+    private var journeyStatusTitle: String {
+        switch model.journeySnapshot?.backfill.status {
+        case .notStarted, .inProgress: "Bringing your Journey together"
+        case .failed: "Journey sync needs a retry"
+        case .complete: "Journey is offline"
+        case nil: model.journeySyncError == nil ? "Syncing your Journey" : "Journey unavailable"
+        }
+    }
+    private var journeyStatusMessage: String {
+        if model.journeySnapshot?.backfill.status == .notStarted || model.journeySnapshot?.backfill.status == .inProgress {
+            return "We’re bringing your past puzzles into Journey. Your daily puzzle is ready either way."
+        }
+        if model.journeySyncError != nil {
+            return "Your daily puzzle and private notes are still here. Journey will refresh when you’re back online."
+        }
+        return "Your Journey will appear here when progress finishes syncing."
+    }
+    private func weeklyChallenge(_ progress: JourneyProgress) -> some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
                 Eyebrow(text: "THE WEEKLY TRAIL")
                 Spacer()
                 Text("\(min(progress.weeklyDays, 3))/3")
                     .font(Theme.font(13, weight: .semibold)).monospacedDigit()
+            }
+            if let snapshot = model.journeySnapshot {
+                Text("Week of \(shortDate(snapshot.currentWeekStart)) – \(shortDate(snapshot.currentWeekEnd))")
+                    .font(Theme.font(12)).foregroundStyle(Theme.secondary)
             }
             Text(progress.weeklyDays >= 3 ? "Three days.\nLook at you." : "A little further\nevery day.")
                 .font(Theme.display(30)).tracking(-0.8).fixedSize(horizontal: false, vertical: true)
@@ -116,7 +164,7 @@ struct ProgressViewScreen: View {
             }
         }.padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
     }
-    private var badgeCollection: some View {
+    private func badgeCollection(_ progress: JourneyProgress) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
                 Text("The trophy shelf").font(Theme.display(24))
@@ -159,5 +207,18 @@ struct ProgressViewScreen: View {
             Text(value).font(Theme.font(28, weight: .medium, relativeTo: .title)).monospacedDigit()
             Text(label).font(Theme.font(13)).foregroundStyle(Theme.secondary)
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private func shortDate(_ puzzleDate: String) -> String {
+        let parser = DateFormatter()
+        parser.calendar = Calendar(identifier: .gregorian)
+        parser.timeZone = TimeZone(secondsFromGMT: 0)
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: puzzleDate) else { return puzzleDate }
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
     }
 }

@@ -112,6 +112,7 @@ export async function POST(request: Request) {
       userId: user.id,
       username: user.username,
       email: user.email,
+      isGuest: false,
     });
     const response = NextResponse.json({
       success: true,

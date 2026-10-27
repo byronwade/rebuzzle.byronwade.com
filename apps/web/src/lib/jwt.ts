@@ -30,6 +30,8 @@ export interface TokenPayload {
   userId: string;
   username: string;
   email: string;
+  /** Explicit identity type; undefined is reserved for compatibility with older tokens. */
+  isGuest?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -41,6 +43,7 @@ export async function signToken(payload: {
   userId: string;
   username: string;
   email: string;
+  isGuest?: boolean;
 }): Promise<string> {
   const secret = getSecret();
   const expirationTime = Math.floor(Date.now() / 1000 + TOKEN_EXPIRATION_DAYS * 24 * 60 * 60);
@@ -49,6 +52,7 @@ export async function signToken(payload: {
     userId: payload.userId,
     username: payload.username,
     email: payload.email,
+    ...(payload.isGuest === undefined ? {} : { isGuest: payload.isGuest }),
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -81,6 +85,7 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
       userId: payload.userId,
       username: payload.username,
       email: payload.email,
+      isGuest: typeof payload.isGuest === "boolean" ? payload.isGuest : undefined,
       iat: typeof payload.iat === "number" ? payload.iat : undefined,
       exp: typeof payload.exp === "number" ? payload.exp : undefined,
     };
@@ -116,6 +121,7 @@ function decodeToken(token: string): TokenPayload | null {
       userId: payload.userId,
       username: payload.username,
       email: payload.email,
+      isGuest: typeof payload.isGuest === "boolean" ? payload.isGuest : undefined,
       iat: typeof payload.iat === "number" ? payload.iat : undefined,
       exp: typeof payload.exp === "number" ? payload.exp : undefined,
     };

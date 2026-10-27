@@ -14,7 +14,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(model.player?.guest == false ? (model.player?.username ?? "Curious mind") : "Hello, curious mind.")
                             .font(Theme.font(20, weight: .medium))
-                        Text("Level \(JourneyProgress(entries: model.journal.entries).level) · Your daily aha club")
+                        Text(model.journeySnapshot?.summary.map { "Level \($0.level) · Your daily aha club" } ?? "Your daily aha club")
                             .font(Theme.font(13)).foregroundStyle(Theme.secondary)
                     }
                 }.padding(.vertical, 8)
@@ -33,7 +33,11 @@ struct SettingsView: View {
                     Link("Create an account", destination: URL(string: "https://rebuzzle.byronwade.com/signup")!)
                 }
                 if let message = model.accountError { Text(message).foregroundStyle(Theme.error) }
-            } header: { Text("Your account") } footer: { Text("Creating an account keeps this guest journey under the same identity. Journal entries and notes stay on this device.") }
+            } header: { Text("Your account") } footer: {
+                Text(model.player?.guest == true
+                     ? "Daily puzzles reset according to the time zone saved to this guest profile. Creating an account keeps this Journey under the same identity; journal notes stay on this device."
+                     : "Daily puzzles reset using the time zone saved to this account, keeping the puzzle day consistent across devices. Journal notes stay on this device.")
+            }
             Section("Make it yours") {
                 Picker("Appearance", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
                 Toggle("Haptic feedback", isOn: $haptics)

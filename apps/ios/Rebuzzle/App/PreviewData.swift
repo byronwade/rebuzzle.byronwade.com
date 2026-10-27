@@ -79,6 +79,8 @@ private final class FixtureServer: @unchecked Sendable {
             return (200, try JSONEncoder().encode(game))
         case "/api/user/stats":
             payload = ["success": true, "stats": ["totalGames": game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0]]
+        case "/api/user/progress":
+            payload = journeyProgressPayload()
         case "/api/puzzles/quip":
             if ProcessInfo.processInfo.arguments.contains("--ui-quip-unavailable") { return (503, Data()) }
             let reply = game.wasSuccessful == true ? "That connection deserves a little victory lap." : "That guess took the scenic route."
@@ -109,6 +111,46 @@ private final class FixtureServer: @unchecked Sendable {
         default: status = 404; payload = ["error": "This route is not available in the UI fixture."]
         }
         return (status, try JSONSerialization.data(withJSONObject: payload))
+    }
+
+    private func journeyProgressPayload() -> [String: Any] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        calendar.firstWeekday = 2
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        let puzzleDate = formatter.date(from: game.puzzleDate) ?? Date()
+        let week = calendar.dateInterval(of: .weekOfYear, for: puzzleDate) ?? DateInterval(start: puzzleDate, duration: 7 * 24 * 60 * 60)
+        let completed = game.gameOver
+        let solved = game.wasSuccessful == true
+        let firstGuessSolve = solved && game.attempts.count == 1
+        let unassistedSolve = solved && game.hintsUsed == 0
+        let xp = completed ? 25 + (solved ? 75 : 0) + (firstGuessSolve ? 25 : 0) + (unassistedSolve ? 25 : 0) : 0
+        var badges: [String] = []
+        if completed { badges.append("first-finish") }
+        if firstGuessSolve { badges.append("first-guess-solve") }
+
+        return [
+            "asOfPuzzleDate": game.puzzleDate,
+            "currentWeekStart": formatter.string(from: week.start),
+            "currentWeekEnd": formatter.string(from: week.end.addingTimeInterval(-24 * 60 * 60)),
+            "summary": [
+                "totalXP": xp,
+                "level": xp / 300 + 1,
+                "xpIntoLevel": xp % 300,
+                "finishes": completed ? 1 : 0,
+                "solves": solved ? 1 : 0,
+                "firstGuessSolves": firstGuessSolve ? 1 : 0,
+                "unassistedSolves": unassistedSolve ? 1 : 0,
+                "completedThisWeek": completed ? 1 : 0,
+                "badges": badges
+            ],
+            "recentEntries": [],
+            "backfill": ["status": "complete"]
+        ]
     }
 
     private func bodyData(_ request: URLRequest) -> Data {

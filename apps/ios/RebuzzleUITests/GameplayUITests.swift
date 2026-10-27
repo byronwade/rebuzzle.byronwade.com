@@ -338,6 +338,8 @@ import StoreKitTest
 
     private func submit(_ guess: String) {
         focusAnswerField().typeText(guess)
+        let dismissKeyboard = app.buttons["dismissAnswerKeyboard"]
+        if dismissKeyboard.exists { dismissKeyboard.tap() }
         let button = app.buttons["checkAnswer"]
         for _ in 0..<5 where !button.isHittable { app.swipeUp() }
         button.tap()

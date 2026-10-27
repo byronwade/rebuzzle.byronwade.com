@@ -53,6 +53,7 @@ beforeEach(() => {
     userId: guest.id,
     email: guest.email,
     username: guest.username,
+    isGuestToken: true,
   } as never);
   jest.mocked(db.userOps.findById).mockResolvedValue(guest as never);
   jest.mocked(db.userOps.findByEmail).mockResolvedValue(null);
@@ -82,7 +83,7 @@ it("converts the authenticated guest in place and returns a native bearer token"
   expect(response.status).toBe(200);
   expect(body.user.id).toBe(guest.id);
   expect(body.token).toBe("member-token");
-  expect(body.user.guest).toBe(false);
+  expect(body.user.isGuest).toBe(false);
   expect(db.userOps.convertGuestToUser).toHaveBeenCalledWith(guest.id, {
     username: "Curious Player",
     email: "curious@example.com",
@@ -92,6 +93,10 @@ it("converts the authenticated guest in place and returns a native bearer token"
     userId: guest.id,
     username: "Curious Player",
     email: "curious@example.com",
+    isGuest: false,
+  });
+  expect(getAuthenticatedUser).toHaveBeenCalledWith(expect.any(Request), {
+    allowConvertedGuestToken: true,
   });
 });
 
@@ -100,6 +105,7 @@ it("rejects a non-guest member token", async () => {
     userId: "member_123",
     email: "member@example.com",
     username: "Member",
+    isGuestToken: false,
   } as never);
   jest.mocked(db.userOps.findById).mockResolvedValue({
     ...guest,
@@ -135,6 +141,19 @@ it("rejects invalid signup fields before hashing a password", async () => {
   expect((await upgrade({ username: "x", email: "bad", password: "tiny" })).status).toBe(400);
   expect(hashPassword).not.toHaveBeenCalled();
   expect(db.userOps.convertGuestToUser).not.toHaveBeenCalled();
+});
+
+it("rejects the internal guest email domain for a real account", async () => {
+  expect(
+    (
+      await upgrade({
+        username: "Curious Player",
+        email: "player@guest.rebuzzle.local",
+        password: "sixteen?",
+      })
+    ).status
+  ).toBe(400);
+  expect(hashPassword).not.toHaveBeenCalled();
 });
 
 it("allows a lost-response retry only with credentials for the same upgraded identity", async () => {

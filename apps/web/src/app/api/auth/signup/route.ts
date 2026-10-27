@@ -246,6 +246,7 @@ export async function POST(request: Request) {
       userId,
       username,
       email,
+      isGuest: false,
     });
 
     // Create response with cookies

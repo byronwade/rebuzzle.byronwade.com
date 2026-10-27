@@ -13,6 +13,8 @@ export interface AuthenticatedUser {
   userId: string;
   username: string;
   email: string;
+  /** Whether this bearer was issued to a guest identity. */
+  isGuestToken: boolean;
   /** Token issue time (seconds), for exact revocation checks on admin paths */
   issuedAt?: number;
 }
@@ -39,7 +41,10 @@ function getAuthToken(request: Request): string | null {
  * Supports both Bearer token (Authorization header) and cookie-based auth
  * Returns null if user is not authenticated or token is invalid
  */
-export async function getAuthenticatedUser(request: Request): Promise<AuthenticatedUser | null> {
+export async function getAuthenticatedUser(
+  request: Request,
+  options: { allowConvertedGuestToken?: boolean } = {}
+): Promise<AuthenticatedUser | null> {
   const token = getAuthToken(request);
 
   if (!token) {
@@ -58,10 +63,21 @@ export async function getAuthenticatedUser(request: Request): Promise<Authentica
     return null;
   }
 
+  const legacyGuestEmail = payload.email.endsWith("@guest.rebuzzle.local");
+  const isGuestToken =
+    payload.isGuest === true ||
+    (payload.isGuest === undefined &&
+      legacyGuestEmail &&
+      (user.isGuest || payload.email !== user.email));
+  if (isGuestToken && !user.isGuest && !options.allowConvertedGuestToken) {
+    return null;
+  }
+
   return {
     userId: payload.userId,
     username: payload.username,
     email: payload.email,
+    isGuestToken,
     issuedAt: payload.iat,
   };
 }

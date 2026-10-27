@@ -2,39 +2,36 @@ import Foundation
 import Testing
 @testable import RebuzzleCore
 
-private func entry(_ id: String, _ date: String = "2026-10-26", won: Bool = true, attempts: Int = 1, hints: Int = 0) -> JournalEntry {
-    JournalEntry(puzzleID: id, puzzleDate: date, puzzleType: "rebus", clue: "clue", answer: "secret", explanation: "explanation", won: won, attempts: attempts, hintsUsed: hints)
+private func journeySnapshot(completedThisWeek: Int = 2) throws -> JourneyProgressSnapshot {
+    let data = Data("""
+    {"asOfPuzzleDate":"2026-10-26","currentWeekStart":"2026-10-26","currentWeekEnd":"2026-11-01","summary":{"totalXP":325,"level":2,"xpIntoLevel":25,"finishes":3,"solves":2,"firstGuessSolves":1,"unassistedSolves":1,"completedThisWeek":\(completedThisWeek),"badges":["first-finish","first-guess-solve"]},"recentEntries":[],"backfill":{"status":"complete"}}
+    """.utf8)
+    return try JSONDecoder().decode(JourneyProgressSnapshot.self, from: data)
 }
-private var monday: Date { ISO8601DateFormatter().date(from: "2026-10-26T16:00:00Z")! }
-private var utc: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(secondsFromGMT: 0)!; return c }
 
-@Test func duplicateRestoreDoesNotAwardMoreXP() {
-    let p = JourneyProgress(entries: [entry("a"), entry("a")], now: monday, calendar: utc)
-    #expect(p.totalXP == 150)
-    #expect(p.level == 1)
-    #expect(p.weeklyDays == 1)
+@Test func serverSummaryOwnsLifetimeLevelWeeklyProgressAndBadges() throws {
+    let snapshot = try journeySnapshot()
+    let progress = try JourneyProgress(summary: #require(snapshot.summary))
+
+    #expect(progress.totalXP == 325)
+    #expect(progress.level == 2)
+    #expect(progress.levelXP == 25)
+    #expect(progress.weeklyDays == 2)
+    #expect(progress.badges.filter(\.earned).map(\.id) == ["first-finish", "first-guess-solve"])
 }
-@Test func completionRewardsAndLevelBoundary() {
-    let p = JourneyProgress(entries: [entry("a"), entry("b", "2026-10-25")], now: monday, calendar: utc)
-    #expect(p.totalXP == 300)
-    #expect(p.level == 2)
-    #expect(p.levelXP == 0)
+
+@Test func weeklyTrailUsesServerCountAndCapsTheThreeDayGoal() throws {
+    let emptyWeek = try journeySnapshot(completedThisWeek: 0)
+    let completeWeek = try journeySnapshot(completedThisWeek: 5)
+    let emptySummary = try #require(emptyWeek.summary)
+    let completeSummary = try #require(completeWeek.summary)
+
+    #expect(JourneyProgress(summary: emptySummary).weeklyDays == 0)
+    #expect(JourneyProgress(summary: completeSummary).weeklyDays == 3)
+}
+
+@Test func perPuzzleRewardPreviewMatchesTheServerRewardRules() {
     #expect(JourneyProgress.points(won: false, attempts: 3, hintsUsed: 0) == 25)
     #expect(JourneyProgress.points(won: true, attempts: 2, hintsUsed: 1) == 100)
     #expect(JourneyProgress.points(won: true, attempts: 2, hintsUsed: 0) == 125)
-}
-@Test func weeklyGoalCountsDistinctDatesAndExcludesFutureAndPreviousWeek() {
-    let p = JourneyProgress(entries: [entry("a"), entry("b"), entry("old", "2026-10-25"), entry("future", "2026-10-27")], now: monday, calendar: utc)
-    #expect(p.weeklyDays == 1)
-    let sunday = ISO8601DateFormatter().date(from: "2026-11-01T23:00:00Z")!
-    let week = JourneyProgress(entries: [entry("a"), entry("b", "2026-10-28", won: false), entry("c", "2026-11-01")], now: sunday, calendar: utc)
-    #expect(week.weeklyDays == 3)
-}
-@Test func badgesRequireRealAchievementsAndEmptyIdentityStartsFresh() {
-    let p = JourneyProgress(entries: [entry("loss", won: false, attempts: 3)], now: monday, calendar: utc)
-    #expect(p.badges.filter(\.earned).map(\.id) == ["first"])
-    let empty = JourneyProgress(entries: [], now: monday, calendar: utc)
-    #expect(empty.totalXP == 0)
-    #expect(empty.level == 1)
-    #expect(empty.badges.allSatisfy { !$0.earned })
 }

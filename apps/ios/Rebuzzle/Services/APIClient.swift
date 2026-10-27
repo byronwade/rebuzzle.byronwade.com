@@ -43,6 +43,9 @@ struct APIError: LocalizedError {
         do { return try JSONDecoder().decode(T.self, from: data) }
         catch { throw APIError(status: http.statusCode, message: "Rebuzzle sent an unexpected response. Your progress is safe; please try again.") }
     }
+    func fetchJourneyProgress() async throws -> JourneyProgressSnapshot {
+        try await request("/api/user/progress")
+    }
     /// Eve is optional commentary; scoring remains exclusively in the guess endpoint.
     func streamQuip(puzzleID: String, guess: Guess, onUpdate: @escaping @MainActor (String) -> Void) async throws {
         guard let tier = guess.reaction?.tier else { return }

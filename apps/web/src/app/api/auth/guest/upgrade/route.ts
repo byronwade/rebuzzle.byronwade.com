@@ -10,10 +10,15 @@ import { hashPassword } from "@/lib/password";
 const guestEmailSuffix = "@guest.rebuzzle.local";
 
 async function guestTokenResponse(user: { id: string; username: string; email: string }) {
-  const token = await signToken({ userId: user.id, username: user.username, email: user.email });
+  const token = await signToken({
+    userId: user.id,
+    username: user.username,
+    email: user.email,
+    isGuest: false,
+  });
   return NextResponse.json({
     success: true,
-    user: { id: user.id, username: user.username, email: user.email, guest: false },
+    user: { id: user.id, username: user.username, email: user.email, isGuest: false },
     token,
   });
 }
@@ -30,7 +35,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const auth = await getAuthenticatedUser(request);
+  const auth = await getAuthenticatedUser(request, { allowConvertedGuestToken: true });
   if (!auth) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   try {
@@ -39,8 +44,7 @@ export async function POST(request: Request) {
 
     // A member token must never be able to invoke the guest conversion path.
     // The original guest token remains usable only to recover a lost upgrade response.
-    const isOriginalGuestToken = auth.email.endsWith(guestEmailSuffix);
-    if (!isOriginalGuestToken) {
+    if (!auth.isGuestToken) {
       return NextResponse.json({ error: "Only a guest account can be upgraded" }, { status: 403 });
     }
 
@@ -64,6 +68,12 @@ export async function POST(request: Request) {
     if (usernameError) return NextResponse.json({ error: usernameError }, { status: 400 });
     if (!isValidEmail(email))
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+    if (email.endsWith(guestEmailSuffix)) {
+      return NextResponse.json(
+        { error: "Choose an email address outside the guest domain" },
+        { status: 400 }
+      );
+    }
     if (password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },

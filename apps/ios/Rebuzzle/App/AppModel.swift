@@ -14,6 +14,9 @@ import RebuzzleCore
     var player: Player?
     var journal = Journal()
     var stats: PlayerStats?
+    var journeySnapshot: JourneyProgressSnapshot?
+    var journeySyncError: String?
+    var journeySyncing = false
     var draft = ""
     var busy = false
     var submitting = false
@@ -32,6 +35,8 @@ import RebuzzleCore
     @ObservationIgnored private var started = Date()
     @ObservationIgnored private var initialSetupError: String?
     @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var journeyIdentityID: String?
+    @ObservationIgnored private var journeyRefreshGeneration = 0
     @ObservationIgnored let api: APIClient
 
     init(api: APIClient? = nil, storage: LocalStore? = nil, credentials: CredentialStore = CredentialStore()) {
@@ -81,6 +86,7 @@ import RebuzzleCore
                 if response.authenticated == true, let user = response.user {
                     if player?.id != user.id { eve.reset(); game = nil; sessionReady = false; draft = "" }
                     player = user
+                    loadJourneyCache(for: user.id)
                     try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
                     try loadJournal()
                     return
@@ -91,8 +97,9 @@ import RebuzzleCore
             guard try credentials.read("identity-kind") == "guest" else {
                 throw APIError(status: 401, message: "Your session has expired. Sign in again in Settings to continue.")
             }
-            // A definitive expired guest session may be renewed using the stable device ID.
-            api.token = nil
+            // Keep the old guest bearer on the renewal request: a still-valid token
+            // whose guest identity was converted must reach the server so it can
+            // prompt for sign-in instead of silently creating a second guest.
         }
         let response: AuthResponse = try await api.request("/api/auth/guest/lazy", method: "POST", body: [:])
         guard let user = response.user, let token = response.token else {
@@ -102,6 +109,7 @@ import RebuzzleCore
         try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
         if player?.id != user.id { eve.reset(); game = nil; sessionReady = false; draft = "" }
         api.token = token; player = user
+        loadJourneyCache(for: user.id)
         try loadJournal()
     }
     func restore() async throws {
@@ -115,6 +123,37 @@ import RebuzzleCore
         draft = storage.draft(account: player.id, puzzle: daily.puzzle.id)
         needsReconciliation = false; sessionReady = true
         recordCompletion()
+        scheduleJourneyRefresh()
+    }
+    private func loadJourneyCache(for userID: String) {
+        guard journeyIdentityID != userID else { return }
+        journeyRefreshGeneration += 1
+        journeyIdentityID = userID
+        journeySnapshot = try? storage.load(JourneyProgressSnapshot.self, key: "journey:\(userID)")
+        journeySyncError = nil
+        journeySyncing = false
+    }
+    private func scheduleJourneyRefresh() {
+        guard player != nil else { return }
+        Task { await refreshJourneyProgress() }
+    }
+    func refreshJourneyProgress() async {
+        guard let userID = player?.id else { return }
+        journeyRefreshGeneration += 1
+        let requestGeneration = journeyRefreshGeneration
+        journeySyncing = true
+        do {
+            let snapshot = try await api.fetchJourneyProgress()
+            try? storage.save(snapshot, key: "journey:\(userID)")
+            guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return }
+            journeySnapshot = snapshot
+            journeySyncError = nil
+            journeySyncing = false
+        } catch {
+            guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return }
+            journeySyncError = error.localizedDescription
+            journeySyncing = false
+        }
     }
     func submit() async {
         guard !submitting, !busy, sessionReady, let daily, let player, game?.gameOver == false else { return }
@@ -147,6 +186,7 @@ import RebuzzleCore
             if game?.gameOver == true {
                 try? await reminders.schedule(completedToday: true)
                 if let result: StatsResponse = try? await api.request("/api/user/stats") { stats = result.stats }
+                scheduleJourneyRefresh()
             }
         } catch {
             guard run == generation else { return }
@@ -198,6 +238,7 @@ import RebuzzleCore
             try credentials.write("member", key: "identity-kind")
             eve.reset()
             generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; sessionReady = false
+            loadJourneyCache(for: user.id)
             journal = Journal(); journalWritable = false
             try loadJournal()
             try await restore()
@@ -228,6 +269,7 @@ import RebuzzleCore
             api.token = token
             player = user
             try? credentials.write("member", key: "identity-kind")
+            scheduleJourneyRefresh()
             return true
         } catch {
             accountError = error.localizedDescription
@@ -257,6 +299,7 @@ import RebuzzleCore
         try credentials.write(nil, key: "token")
         eve.reset()
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
+        journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; journeySyncError = nil; journeySyncing = false
         draft = ""; journal = Journal(); journalWritable = false; hintsShown = 0; sessionReady = false; error = nil
     }
 }
