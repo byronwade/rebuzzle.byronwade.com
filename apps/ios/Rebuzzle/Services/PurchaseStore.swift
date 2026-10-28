@@ -73,7 +73,8 @@ import StoreKit
     private static let verifiedPurchaseAttributionAccountIDDefaultsKey = "com.byronwade.rebuzzle.plus.verifiedAttributionAccountID.v1"
     private static let verifiedPurchaseAttributionSourceDefaultsKey = "com.byronwade.rebuzzle.plus.verifiedAttributionSource.v1"
 
-    init(defaults: UserDefaults = .standard) {
+    /// Set `monitorsStoreKit` to false only for tests that need deterministic explicit StoreKit calls.
+    init(defaults: UserDefaults = .standard, monitorsStoreKit: Bool = true) {
         self.defaults = defaults
         // Older builds persisted pending flags without the initiating app account.
         // Drop that ambiguous attribution rather than assigning it to a later login.
@@ -85,6 +86,7 @@ import StoreKit
             verifiedPurchaseAttributionPending = false
             verifiedPurchaseAttributionSource = nil
         }
+        guard monitorsStoreKit else { return }
         updates = Task { [weak self] in
             for await result in Transaction.updates {
                 guard let self else { return }

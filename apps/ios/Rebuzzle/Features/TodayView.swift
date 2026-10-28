@@ -309,7 +309,14 @@ struct TodayView: View {
         let shouldResign = answerFocused || forceResign
         answerFocused = false
         guard shouldResign else { return }
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        // Let SwiftUI commit the FocusState change before asking UIKit to resign.
+        // Sending both in the same update can leave a large-type TextField visually
+        // unfocused but unable to reacquire the keyboard on its next tap.
+        Task { @MainActor in
+            await Task.yield()
+            guard !answerFocused else { return }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
     private var awaitingScoreLockDecision: Bool {
         guard let game = model.game else { return false }

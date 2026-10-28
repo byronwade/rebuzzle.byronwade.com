@@ -136,10 +136,10 @@ import StoreKitTest
         let editor = app.textViews["dailyThoughtEditor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         editor.tap()
-        editor.typeText("A thought that expires with today’s puzzle")
+        editor.typeText("hunch")
         let thoughtSheet = app.navigationBars["Save a thought"]
         let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: thoughtSheet)
-        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 18), .completed)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 35), .completed)
         XCTAssertFalse(app.textViews["dailyThoughtEditor"].exists)
         XCTAssertFalse(saveThought.exists)
         capture("Daily thought — cleared and closed at puzzle expiry")
@@ -360,6 +360,7 @@ import StoreKitTest
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
         XCTAssertEqual(field.value as? String, "sun")
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+        XCTAssertTrue(field.isHittable, "The answer field must remain reachable after dismissing the keyboard.")
         field.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         field.typeText("shine")

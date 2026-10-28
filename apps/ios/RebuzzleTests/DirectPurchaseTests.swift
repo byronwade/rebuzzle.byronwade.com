@@ -3,8 +3,11 @@ import StoreKitTest
 @testable import Rebuzzle
 
 final class DirectPurchaseTests: XCTestCase {
-    @MainActor private func isolatedPurchaseStore() -> PurchaseStore {
-        PurchaseStore(defaults: UserDefaults(suiteName: "rebuzzle.direct-purchase-tests.\(UUID().uuidString)")!)
+    @MainActor private func isolatedPurchaseStore(monitorsStoreKit: Bool = true) -> PurchaseStore {
+        PurchaseStore(
+            defaults: UserDefaults(suiteName: "rebuzzle.direct-purchase-tests.\(UUID().uuidString)")!,
+            monitorsStoreKit: monitorsStoreKit
+        )
     }
 
     @MainActor func testDirectPurchaseGrantsVerifiedPlus() async throws {
@@ -248,7 +251,8 @@ extension DirectPurchaseTests {
     @MainActor func testRestoreFailureReleasesBusyAndCanRecover() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = isolatedPurchaseStore()
+        let store = isolatedPurchaseStore(monitorsStoreKit: false)
+        XCTAssertFalse(store.hasPlus, "A failed-restore test must begin without StoreKit ownership.")
         var events = [[String: String]]()
         store.onGrowthEvent = { events.append($0.payload) }
         try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .appStoreSync)
