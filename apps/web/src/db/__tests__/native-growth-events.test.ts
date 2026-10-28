@@ -169,9 +169,24 @@ describe("nativeGrowthEventOps.recordOnce", () => {
     await nativeGrowthEventOps.recordOnce(base);
 
     expect(filters).toEqual([
-      { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27", source: "archive" },
-      { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27", source: "archive" },
-      { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27", source: "settings" },
+      {
+        userId: "account-1",
+        eventType: "plus_offer_viewed",
+        dayKey: "2026-10-27",
+        source: "archive",
+      },
+      {
+        userId: "account-1",
+        eventType: "plus_offer_viewed",
+        dayKey: "2026-10-27",
+        source: "archive",
+      },
+      {
+        userId: "account-1",
+        eventType: "plus_offer_viewed",
+        dayKey: "2026-10-27",
+        source: "settings",
+      },
       { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27" },
     ]);
   });

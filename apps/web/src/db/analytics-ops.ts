@@ -124,15 +124,16 @@ type PlusSourceCountKey =
   | "cancelledAccounts"
   | "unverifiedAccounts"
   | "failedAccounts";
-const plusSourceCountKeyByEvent: Record<(typeof plusSourceEventTypes)[number], PlusSourceCountKey> = {
-  plus_offer_viewed: "viewerAccounts",
-  plus_purchase_started: "purchaseStarterAccounts",
-  plus_purchase_verified: "verifiedPurchaserAccounts",
-  plus_purchase_pending: "pendingAccounts",
-  plus_purchase_cancelled: "cancelledAccounts",
-  plus_purchase_unverified: "unverifiedAccounts",
-  plus_purchase_failed: "failedAccounts",
-};
+const plusSourceCountKeyByEvent: Record<(typeof plusSourceEventTypes)[number], PlusSourceCountKey> =
+  {
+    plus_offer_viewed: "viewerAccounts",
+    plus_purchase_started: "purchaseStarterAccounts",
+    plus_purchase_verified: "verifiedPurchaserAccounts",
+    plus_purchase_pending: "pendingAccounts",
+    plus_purchase_cancelled: "cancelledAccounts",
+    plus_purchase_unverified: "unverifiedAccounts",
+    plus_purchase_failed: "failedAccounts",
+  };
 const emptyPlusSourceCounts = (): Record<PlusSourceCountKey, number> => ({
   viewerAccounts: 0,
   purchaseStarterAccounts: 0,

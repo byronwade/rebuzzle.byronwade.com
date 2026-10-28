@@ -107,8 +107,7 @@ export async function POST(request: Request) {
   ) {
     // Valid Plus event with an optional closed offer source; source-free legacy events stay valid.
   } else if (
-    (eventType === "reminder_enabled" ||
-      eventType === "daily_solve_pulse_viewed") &&
+    (eventType === "reminder_enabled" || eventType === "daily_solve_pulse_viewed") &&
     hasExactKeys(body, ["eventType"])
   ) {
     // Valid client event.
