@@ -44,7 +44,7 @@
 **Interfaces:**
 - Produces `DailySolveDistributionPayload`: `available`, `minimumSolves`, `oneGuessPercent`, `twoGuessesPercent`, `threeGuessesPercent`, and `fourPlusPercent`.
 - Produces `bucketForAttemptNumber(attemptNumber)`, mapping 1, 2, and 3 directly and all valid larger values to `fourPlus`; produces `buildDailySolveDistribution(counts)`, which withholds fewer than 20 unique solvers and otherwise returns 5-point percentages summing to 100.
-- Route accepts only `GET /api/puzzles/solve-distribution?puzzleId=<id>` and returns no identity or puzzle content.
+- Route accepts only `GET /api/puzzles/solve-distribution?puzzleId=<id>`, deduplicates each player by their minimum valid solve count, and returns no identity or puzzle content.
 
 - [x] **Step 1: Write failing helper tests** for the 19/20 sample boundary, 1/2/3/4+ bucket mapping, integer percentages summing to 100, and malformed counts.
 - [x] **Step 2: Run** `pnpm --filter @rebuzzle/web test -- src/lib/game/__tests__/daily-solve-distribution.test.ts --runInBand` and confirm the missing helper causes the expected failure.

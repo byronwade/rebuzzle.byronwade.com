@@ -66,7 +66,7 @@ export async function GET(request: Request) {
             $expr: { $eq: ["$attemptNumber", { $floor: "$attemptNumber" }] },
           },
         },
-        { $group: { _id: "$userId", attemptNumber: { $max: "$attemptNumber" } } },
+        { $group: { _id: "$userId", attemptNumber: { $min: "$attemptNumber" } } },
         {
           $group: {
             _id: {

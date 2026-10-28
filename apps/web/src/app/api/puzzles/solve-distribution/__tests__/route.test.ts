@@ -111,7 +111,7 @@ it("deduplicates by server-owned player ID and groups continuations into four pl
     $match: { $expr: { $eq: ["$attemptNumber", { $floor: "$attemptNumber" }] } },
   });
   expect(pipeline[2]).toMatchObject({
-    $group: { _id: "$userId", attemptNumber: { $max: "$attemptNumber" } },
+    $group: { _id: "$userId", attemptNumber: { $min: "$attemptNumber" } },
   });
   expect(pipeline.some((stage) => JSON.stringify(stage).includes("fourPlus"))).toBe(true);
   expect(Object.keys(result).sort()).toEqual([
