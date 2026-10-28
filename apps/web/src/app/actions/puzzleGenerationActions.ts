@@ -11,11 +11,19 @@ import {
   resolveAdaptiveDifficultyForDate,
 } from "@/ai/learning";
 import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
+import { assertDailyChallenge } from "@/ai/puzzle-agent/daily-challenge";
 import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
 import { db } from "@/db";
-import { formatPuzzleFromDb, getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
+import type { DailyPuzzleCandidate } from "@/db/models";
+import { createMongoDailyPuzzleCandidateRepository } from "@/lib/game/daily-puzzle-candidate-repository";
+import {
+  formatPuzzleFromDb,
+  getCachedDailyPuzzleFromDb,
+} from "@/lib/cache/daily-puzzle";
 import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
+import { createDailyPuzzleCandidateQueue } from "@/lib/game/queue-daily-puzzle-candidate";
+import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { logger } from "@/lib/logger";
 
 /**
@@ -59,7 +67,10 @@ async function calculateDailyDifficulty(date?: Date): Promise<{
   }
 }
 
-async function persistReservePuzzle(dateString: string, fallbackReason: string) {
+async function persistReservePuzzle(
+  dateString: string,
+  fallbackReason: string,
+) {
   // Studio lottery: occasionally fill reserve days with approved player puzzles.
   try {
     const { trySelectUgcLotteryFiller } = await import("@/lib/ugc/lottery");
@@ -138,7 +149,9 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
         reserveId: reserve.id,
         validation: "catalog-grounded-structural-novelty",
       },
-      ...("reasoningEvidence" in reserve ? { reasoningEvidence: reserve.reasoningEvidence } : {}),
+      ...("reasoningEvidence" in reserve
+        ? { reasoningEvidence: reserve.reasoningEvidence }
+        : {}),
       reasoningEvidenceSource: "curated",
     },
   });
@@ -160,6 +173,24 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
   };
 }
 
+function queuedCandidateResult(
+  candidate: DailyPuzzleCandidate,
+  dateString: string,
+) {
+  return {
+    id: candidate.id,
+    puzzle: "",
+    puzzleType: "rebus",
+    date: dateString,
+    aiGenerated: true,
+    fromDatabase: false,
+    queuedForHumanReview: candidate.status === "reviewing",
+    candidateStatus: candidate.status,
+    candidateQueueSkipped:
+      candidate.status === "rejected" ? "candidate_rejected" : undefined,
+  };
+}
+
 /**
  * Get or generate today's puzzle
  *
@@ -175,11 +206,20 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
 async function getOrGenerateDailyPuzzle(
   dateString: string,
   puzzleType?: string,
-  options?: { allowAiGenerate?: boolean; failOnAiError?: boolean }
+  options?: {
+    allowAiGenerate?: boolean;
+    failOnAiError?: boolean;
+    queueForPlaytest?: boolean;
+  },
 ) {
   const allowAiGenerate = options?.allowAiGenerate !== false;
   const failOnAiError = options?.failOnAiError === true;
-  logger.info("Getting puzzle for date", { dateString, allowAiGenerate, failOnAiError });
+  const queueForPlaytest = options?.queueForPlaytest === true;
+  logger.info("Getting puzzle for date", {
+    dateString,
+    allowAiGenerate,
+    failOnAiError,
+  });
 
   // STEP 1: Cross-request cached DB read via Cache Components ("use cache")
   try {
@@ -190,10 +230,10 @@ async function getOrGenerateDailyPuzzle(
   } catch (dbError) {
     logger.error(
       "Cached daily puzzle lookup failed. Refusing to generate to prevent duplicates.",
-      dbError instanceof Error ? dbError : new Error(String(dbError))
+      dbError instanceof Error ? dbError : new Error(String(dbError)),
     );
     throw new Error(
-      "Cannot verify puzzle existence in database. Refusing to generate new puzzle to prevent duplicates. Please check database connection."
+      "Cannot verify puzzle existence in database. Refusing to generate new puzzle to prevent duplicates. Please check database connection.",
     );
   }
 
@@ -208,14 +248,41 @@ async function getOrGenerateDailyPuzzle(
   } catch (finalCheckError) {
     logger.error(
       "Final pre-generation check failed",
-      finalCheckError instanceof Error ? finalCheckError : new Error(String(finalCheckError))
+      finalCheckError instanceof Error
+        ? finalCheckError
+        : new Error(String(finalCheckError)),
     );
+  }
+
+  if (queueForPlaytest) {
+    const candidateRepository = createMongoDailyPuzzleCandidateRepository();
+    const candidateQueue = createDailyPuzzleCandidateQueue(
+      candidateRepository,
+      puzzlePlaytestService,
+    );
+    const existingCandidate =
+      await candidateRepository.findByGenerationKey(dateString);
+    if (existingCandidate) {
+      const candidate =
+        existingCandidate.status === "reviewing" &&
+        !existingCandidate.playtestSubmittedAt
+          ? await candidateQueue.enqueue({
+              generationKey: dateString,
+              payload: existingCandidate.payload,
+            })
+          : existingCandidate;
+      return queuedCandidateResult(candidate, dateString);
+    }
+    await candidateQueue.retryPending(20);
   }
 
   // Interactive play path: never block TTFB on Eve — persist a validated reserve puzzle.
   // Cron / regenerate / admin regenerate should call with allowAiGenerate: true.
   if (!allowAiGenerate) {
-    return persistReservePuzzle(dateString, "Play-path reserve (AI deferred to cron)");
+    return persistReservePuzzle(
+      dateString,
+      "Play-path reserve (AI deferred to cron)",
+    );
   }
 
   const genStarted = Date.now();
@@ -231,22 +298,31 @@ async function getOrGenerateDailyPuzzle(
     reason: "unset",
   };
 
-  let qualityDrift: Awaited<ReturnType<typeof loadQualityDriftReport>> | null = null;
+  let qualityDrift: Awaited<ReturnType<typeof loadQualityDriftReport>> | null =
+    null;
   try {
     qualityDrift = await loadQualityDriftReport();
   } catch (error) {
-    logger.warn("Quality drift telemetry unavailable; retaining per-puzzle fail-closed gates", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.warn(
+      "Quality drift telemetry unavailable; retaining per-puzzle fail-closed gates",
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
   }
 
-  let humanCalibration: Awaited<ReturnType<typeof loadHumanCalibrationGate>> | null = null;
+  let humanCalibration: Awaited<
+    ReturnType<typeof loadHumanCalibrationGate>
+  > | null = null;
   try {
     humanCalibration = await loadHumanCalibrationGate();
   } catch (error) {
-    logger.warn("Human calibration telemetry unavailable; retaining automated fail-closed gates", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.warn(
+      "Human calibration telemetry unavailable; retaining automated fail-closed gates",
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
   }
 
   const reserveReason = qualityDrift?.shouldUseReserve
@@ -266,7 +342,7 @@ async function getOrGenerateDailyPuzzle(
             contractVersion: qualityDrift.version,
             status: qualityDrift.status,
             criticalMetrics: qualityDrift.metrics.flatMap((metric) =>
-              metric.status === "critical" ? [metric.id] : []
+              metric.status === "critical" ? [metric.id] : [],
             ),
           }
         : null,
@@ -278,6 +354,19 @@ async function getOrGenerateDailyPuzzle(
           }
         : null,
     });
+
+    if (queueForPlaytest) {
+      return {
+        id: `blocked:${dateString}`,
+        puzzle: "",
+        puzzleType: "rebus",
+        date: dateString,
+        aiGenerated: false,
+        fromDatabase: false,
+        queuedForHumanReview: false,
+        candidateQueueSkipped: reserveReason,
+      };
+    }
 
     const reserve = await persistReservePuzzle(dateString, reserveReason);
     void recordGenerationAudit({
@@ -342,7 +431,10 @@ async function getOrGenerateDailyPuzzle(
     const puzzleDisplayField = typeToUse === "rebus" ? "rebusPuzzle" : "puzzle";
     const puzzleAny = result.puzzle as any;
     let puzzleDisplay =
-      puzzleAny[puzzleDisplayField] || puzzleAny.puzzle || puzzleAny.rebusPuzzle || "";
+      puzzleAny[puzzleDisplayField] ||
+      puzzleAny.puzzle ||
+      puzzleAny.rebusPuzzle ||
+      "";
 
     // Safety check: Ensure puzzle text is not the same as answer
     // This can happen if AI mistakenly puts answer in puzzle field
@@ -363,7 +455,11 @@ async function getOrGenerateDailyPuzzle(
         puzzleAny.clues.length > 0
       ) {
         puzzleDisplay = puzzleAny.clues.join("\n\n");
-      } else if (typeToUse === "logic-grid" && puzzleAny.categories && puzzleAny.items) {
+      } else if (
+        typeToUse === "logic-grid" &&
+        puzzleAny.categories &&
+        puzzleAny.items
+      ) {
         // Construct a basic puzzle description from categories
         const categoryList = Array.isArray(puzzleAny.categories)
           ? puzzleAny.categories.join(", ")
@@ -380,6 +476,79 @@ async function getOrGenerateDailyPuzzle(
       puzzleDisplay = visual.unicodeFallback;
     }
 
+    const metadataExtra = {
+      qualityScore: result.metadata.qualityMetrics?.scores?.overall,
+      uniquenessScore: result.metadata.uniquenessScore,
+      funScore: result.metadata.qualityMetrics?.scores?.fun,
+      techniqueId: result.puzzle.techniqueId,
+      visualStyleId: visual?.styleId,
+      difficultyLevel: result.puzzle.difficultyLevel,
+      difficultyScore: result.puzzle.difficulty,
+      fingerprint: result.metadata.fingerprint,
+      noveltyEvidence: result.metadata.noveltyEvidence,
+      calibratedDifficulty: result.metadata.calibratedDifficulty,
+      generationMethod:
+        result.metadata.engine === "apex"
+          ? "apex-tournament"
+          : "eve-tool-agent",
+      engine: result.metadata.engine ?? "eve",
+      answerSeed: result.metadata.answerSeed,
+      answerSeedCuePlan: result.metadata.answerSeedCuePlan,
+      answerResearch: result.metadata.answerResearch,
+      learningBaselineDifficulty: difficultyPlan.baseline,
+      learningDifficultyDelta: difficultyPlan.delta,
+      learningReason: difficultyPlan.reason,
+      selfLearning: true,
+      estimatedSolveRate: result.metadata.estimatedSolveRate,
+      simCalibrationBias: result.metadata.simCalibrationBias,
+      playabilityEvidence: result.metadata.playabilityEvidence,
+      reasoningEvidence: result.metadata.reasoningEvidence,
+      reasoningEvidenceSource: "independent-editorial",
+      boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
+      boardRecognitionModels: result.metadata.boardRecognitionModels,
+      boardConceptVotes: result.metadata.boardConceptVotes,
+      boardTextVotes: result.metadata.boardTextVotes,
+      boardOperatorVotes: result.metadata.boardOperatorVotes,
+      boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
+    };
+
+    if (queueForPlaytest) {
+      assertDailyChallenge({
+        difficulty: result.puzzle.difficulty,
+        answer: result.puzzle.answer,
+        visual,
+        reasoningEvidence: result.metadata.reasoningEvidence,
+        reasoningEvidenceSource: "independent-editorial",
+      });
+      const candidateQueue = createDailyPuzzleCandidateQueue(
+        createMongoDailyPuzzleCandidateRepository(),
+        puzzlePlaytestService,
+      );
+      const candidate = await candidateQueue.enqueue({
+        generationKey: dateString,
+        payload: {
+          puzzleDisplay,
+          puzzleType: typeToUse,
+          answer: result.puzzle.answer,
+          difficulty: result.puzzle.difficulty,
+          category: result.puzzle.category || "general",
+          explanation: result.puzzle.explanation,
+          hints: result.puzzle.hints || [],
+          aiGenerated: true,
+          rebusPuzzle: typeToUse === "rebus" ? puzzleDisplay : undefined,
+          visual,
+          metadataExtra,
+        },
+      });
+      logger.info("Queued generated daily puzzle for blind human playtesting", {
+        candidateId: candidate.id,
+        generationKey: dateString,
+        candidateStatus: candidate.status,
+        playtestSubmitted: Boolean(candidate.playtestSubmittedAt),
+      });
+      return queuedCandidateResult(candidate, dateString);
+    }
+
     // Persist first — clients must receive a real DB id for /api/puzzles/guess
     const persisted = await persistDailyPuzzle({
       dateString,
@@ -393,46 +562,14 @@ async function getOrGenerateDailyPuzzle(
       aiGenerated: true,
       rebusPuzzle: typeToUse === "rebus" ? puzzleDisplay : undefined,
       visual,
-      metadataExtra: {
-        qualityScore: result.metadata.qualityMetrics?.scores?.overall,
-        uniquenessScore: result.metadata.uniquenessScore,
-        funScore: result.metadata.qualityMetrics?.scores?.fun,
-        techniqueId: result.puzzle.techniqueId,
-        visualStyleId: visual?.styleId,
-        difficultyLevel: result.puzzle.difficultyLevel,
-        difficultyScore: result.puzzle.difficulty,
-        fingerprint: result.metadata.fingerprint,
-        noveltyEvidence: result.metadata.noveltyEvidence,
-        calibratedDifficulty: result.metadata.calibratedDifficulty,
-        generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
-        engine: result.metadata.engine ?? "eve",
-        answerSeed: result.metadata.answerSeed,
-        answerSeedCuePlan: result.metadata.answerSeedCuePlan,
-        answerResearch: result.metadata.answerResearch,
-        learningBaselineDifficulty: difficultyPlan.baseline,
-        learningDifficultyDelta: difficultyPlan.delta,
-        learningReason: difficultyPlan.reason,
-        selfLearning: true,
-        estimatedSolveRate: result.metadata.estimatedSolveRate,
-        simCalibrationBias: result.metadata.simCalibrationBias,
-        playabilityEvidence: result.metadata.playabilityEvidence,
-        reasoningEvidence: result.metadata.reasoningEvidence,
-        reasoningEvidenceSource: "independent-editorial",
-        boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
-        boardRecognitionModels: result.metadata.boardRecognitionModels,
-        boardConceptVotes: result.metadata.boardConceptVotes,
-        boardTextVotes: result.metadata.boardTextVotes,
-        boardOperatorVotes: result.metadata.boardOperatorVotes,
-        boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
-      },
+      metadataExtra,
     });
 
     // Best-effort embedding (non-blocking)
     void (async () => {
       try {
-        const { generatePuzzleEmbedding, isEmbeddingAvailable } = await import(
-          "@/ai/services/embeddings"
-        );
+        const { generatePuzzleEmbedding, isEmbeddingAvailable } =
+          await import("@/ai/services/embeddings");
         if (isEmbeddingAvailable()) {
           const embedding = await generatePuzzleEmbedding({
             puzzle: puzzleDisplay,
@@ -445,7 +582,10 @@ async function getOrGenerateDailyPuzzle(
         }
       } catch (embeddingError) {
         logger.warn("Failed to generate embedding (non-critical)", {
-          error: embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
+          error:
+            embeddingError instanceof Error
+              ? embeddingError.message
+              : String(embeddingError),
         });
       }
     })();
@@ -487,7 +627,9 @@ async function getOrGenerateDailyPuzzle(
       date: dateString,
       topic: result.puzzle.category,
       category: result.puzzle.category,
-      relevanceScore: Math.round((result.metadata.qualityMetrics?.scores?.overall || 85) / 10),
+      relevanceScore: Math.round(
+        (result.metadata.qualityMetrics?.scores?.overall || 85) / 10,
+      ),
       aiGenerated: true,
       generationMethod: "ai-master",
       qualityScore: result.metadata.qualityMetrics?.scores?.overall || 0,
@@ -499,8 +641,11 @@ async function getOrGenerateDailyPuzzle(
       "Failed to generate puzzle with AI",
       error instanceof Error ? error : new Error(String(error)),
       {
-        code: error && typeof error === "object" && "code" in error ? error.code : undefined,
-      }
+        code:
+          error && typeof error === "object" && "code" in error
+            ? error.code
+            : undefined,
+      },
     );
 
     // Admin / Dev regenerate: surface the real failure instead of seeding a fallback.
@@ -515,7 +660,10 @@ async function getOrGenerateDailyPuzzle(
       reason: "AI generation failed",
     });
 
-    const fallback = await persistReservePuzzle(dateString, "AI generation failed");
+    const fallback = await persistReservePuzzle(
+      dateString,
+      "AI generation failed",
+    );
 
     void recordGenerationAudit({
       dateString,
@@ -551,14 +699,22 @@ async function getOrGenerateDailyPuzzle(
 export async function getTodaysPuzzle(
   puzzleType?: string,
   dateString?: string,
-  options?: { allowAiGenerate?: boolean; failOnAiError?: boolean }
+  options?: {
+    allowAiGenerate?: boolean;
+    failOnAiError?: boolean;
+    queueForPlaytest?: boolean;
+  },
 ) {
   try {
     // Use provided date string or get today's date
     // NOTE: If called from generateMetadata, dateString should be provided
     // after accessing headers/cookies to satisfy Next.js 16 requirements
     const todayString = dateString || getTodayDateString();
-    const puzzle = await getOrGenerateDailyPuzzle(todayString, puzzleType, options);
+    const puzzle = await getOrGenerateDailyPuzzle(
+      todayString,
+      puzzleType,
+      options,
+    );
 
     return {
       success: true,
@@ -566,11 +722,21 @@ export async function getTodaysPuzzle(
       generatedAt: new Date().toISOString(),
       cached: "fromDatabase" in puzzle && puzzle.fromDatabase === true,
       aiGenerated: puzzle.aiGenerated ?? false,
+      queuedForHumanReview:
+        "queuedForHumanReview" in puzzle &&
+        puzzle.queuedForHumanReview === true,
+      candidateId: "candidateStatus" in puzzle ? puzzle.id : undefined,
+      candidateStatus:
+        "candidateStatus" in puzzle ? puzzle.candidateStatus : undefined,
+      candidateQueueSkipped:
+        "candidateQueueSkipped" in puzzle
+          ? puzzle.candidateQueueSkipped
+          : undefined,
     };
   } catch (error) {
     logger.error(
       "Error in getTodaysPuzzle",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     // Dev/admin regenerate must not paper over AI Gateway auth failures.
@@ -582,7 +748,10 @@ export async function getTodaysPuzzle(
     const todayString = dateString || getTodayDateString();
 
     try {
-      const reserve = await persistReservePuzzle(todayString, "Emergency reserve");
+      const reserve = await persistReservePuzzle(
+        todayString,
+        "Emergency reserve",
+      );
 
       return {
         success: true,
@@ -595,7 +764,9 @@ export async function getTodaysPuzzle(
     } catch (persistError) {
       logger.error(
         "Failed to persist emergency fallback",
-        persistError instanceof Error ? persistError : new Error(String(persistError))
+        persistError instanceof Error
+          ? persistError
+          : new Error(String(persistError)),
       );
       return {
         success: false,
@@ -628,7 +799,7 @@ export async function getPuzzleForDate(dateString: string) {
     logger.error(
       "Error generating puzzle for date",
       error instanceof Error ? error : new Error(String(error)),
-      { dateString }
+      { dateString },
     );
 
     return {
@@ -664,13 +835,14 @@ export async function previewPuzzleGeneration() {
       success: true,
       puzzle: result.puzzle,
       metadata: result.metadata,
-      message: "Successfully generated puzzle via Eve ToolLoopAgent + AI Gateway",
+      message:
+        "Successfully generated puzzle via Eve ToolLoopAgent + AI Gateway",
       provider: "ai-gateway",
     };
   } catch (error) {
     logger.error(
       "Error in puzzle preview",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
 
     return {
