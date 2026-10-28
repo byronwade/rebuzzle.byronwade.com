@@ -474,7 +474,10 @@ enum JournalSyncStatus: Equatable {
         guard let player else { return }
         if let previousPuzzleID = storage.lastDailyPuzzle(account: player.id), previousPuzzleID != puzzleID {
             do { try storage.removeDailyThought(account: player.id, puzzle: previousPuzzleID) }
-            catch { storageError = "Your previous puzzle thought could not be cleared on this device." }
+            catch {
+                storageError = "Your previous puzzle thought could not be cleared on this device."
+                return
+            }
         }
         do { try storage.saveLastDailyPuzzle(puzzleID, account: player.id) }
         catch { storageError = "Your current puzzle could not be saved on this device." }
@@ -652,19 +655,23 @@ enum JournalSyncStatus: Equatable {
         do {
             let auth: AuthResponse = try await api.request("/api/auth/login", method: "POST", body: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
             guard let token = auth.token, let user = auth.user else { throw APIError(status: 401, message: "Sign-in could not be completed.") }
+            let identityChanged = player?.id != user.id
             try credentials.write(token, key: "token")
             try credentials.write("member", key: "identity-kind")
-            if player?.id != user.id {
-                dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
-                dailyThought = ""; dailyThoughtAvailable = false
-            }
+            dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
+            dailyThought = ""; dailyThoughtAvailable = false
             eve.reset()
             generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; hintsShown = 0; nudgeReveals = []; sessionReady = false
             completedStreakRefreshState = .idle
-            if let puzzleID = daily?.puzzle.id { synchronizeDailyThoughtPuzzle(for: puzzleID) }
+            if identityChanged { started = Date() }
             loadJourneyCache(for: user.id)
             journal = Journal(); journalWritable = false
             try loadJournal()
+            let response: DailyResponse = try await api.request("/api/puzzle/today")
+            if daily?.puzzle.id != response.puzzle.id { started = Date() }
+            daily = response
+            try? storage.save(response, key: "daily-cache")
+            synchronizeDailyThoughtPuzzle(for: response.puzzle.id)
             purchases.retryPendingPurchaseAttribution()
             try await restore()
             if journalPlusEntitlementProvider() { await syncJournal() }

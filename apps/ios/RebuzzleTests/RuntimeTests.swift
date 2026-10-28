@@ -10,6 +10,21 @@ private func journeyPayload(xp: Int) -> String {
     """
 }
 
+private func requestBodyData(_ request: URLRequest) -> Data? {
+    if let body = request.httpBody { return body }
+    guard let stream = request.httpBodyStream else { return nil }
+    stream.open()
+    defer { stream.close() }
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 1024)
+    while stream.hasBytesAvailable {
+        let count = stream.read(&buffer, maxLength: buffer.count)
+        if count <= 0 { break }
+        data.append(buffer, count: count)
+    }
+    return data
+}
+
 final class RuntimeTests: XCTestCase {
     func testAPIErrorPreservesStatusAndUsefulMessage() {
         let error = APIError(status: 429, message: "Wait a moment before trying again.")
@@ -450,7 +465,8 @@ private final class NudgeRuntimeState: @unchecked Sendable {
     StubProtocol.responder = { request in
         switch request.url!.path {
         case "/api/puzzle/today":
-            return (200, #"{"success":true,"puzzle":{"id":"\#(puzzleID)","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["First hint.","Second hint.","Third hint."]},"puzzleDate":"2099-01-01","nextPuzzleTime":"\#(nextPuzzleTime)"}"#)
+            let responsePuzzleID = state.shouldFailRestoredSession ? "puzzle-b" : puzzleID
+            return (200, #"{"success":true,"puzzle":{"id":"\#(responsePuzzleID)","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["First hint.","Second hint.","Third hint."]},"puzzleDate":"2099-01-01","nextPuzzleTime":"\#(nextPuzzleTime)"}"#)
         case "/api/auth/session":
             return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
         case "/api/auth/login":
@@ -827,13 +843,140 @@ extension RuntimeTests {
         let secure = CredentialStore(service: "test." + UUID().uuidString)
         defer { try? secure.write(nil, key: "token"); try? secure.write(nil, key: "device"); try? secure.write(nil, key: "identity-kind") }
         let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [StubProtocol.self]
-        StubProtocol.responder = { _ in (200, #"{"success":true,"token":"bob-token","user":{"id":"bob","username":"Bob","email":"bob@example.com"}}"#) }
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/auth/login":
+                return (200, #"{"success":true,"token":"bob-token","user":{"id":"bob","username":"Bob","email":"bob@example.com"}}"#)
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"today","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2099-01-01","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"today","puzzleDate":"2099-01-01","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            default:
+                return (200, #"{"success":true,"stats":{}}"#)
+            }
+        }
         let model = AppModel(api: APIClient(deviceID: "test", session: URLSession(configuration: config)), storage: store, credentials: secure)
         model.journal.record(JournalEntry(puzzleID: "private", puzzleDate: "2026-10-25", puzzleType: "rebus", clue: "x", answer: "alice-secret", explanation: "", won: true, attempts: 1, hintsUsed: 0))
         _ = await model.signIn(email: "bob@example.com", password: "password")
         XCTAssertFalse(model.journal.exportText.contains("alice-secret"))
         model.saveJournal()
         XCTAssertEqual(try store.load(String.self, key: "journal:bob"), "corrupt journal")
+    }
+
+    @MainActor func testFailedDailyFetchCannotExportPreviousAccountJournal() async throws {
+        defer { StubProtocol.responder = nil }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalStore(root: root)
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("alice-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                if request.value(forHTTPHeaderField: "Authorization") == "Bearer bob-token" {
+                    return (503, #"{"error":"Daily puzzle is unavailable."}"#)
+                }
+                return (200, #"{"success":true,"puzzle":{"id":"today","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2099-01-01","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"alice","username":"Alice","email":"alice@example.com","isGuest":false}}"#)
+            case "/api/auth/login":
+                return (200, #"{"success":true,"token":"bob-token","user":{"id":"bob","username":"Bob","email":"bob@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"today","puzzleDate":"2099-01-01","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            default:
+                return (200, #"{"success":true,"stats":{}}"#)
+            }
+        }
+        let model = AppModel(
+            api: APIClient(deviceID: "test", session: URLSession(configuration: config)),
+            storage: store,
+            credentials: secure
+        )
+        await model.load()
+        model.journal.record(JournalEntry(puzzleID: "private", puzzleDate: "2026-10-25", puzzleType: "rebus", clue: "x", answer: "alice-secret", explanation: "", won: true, attempts: 1, hintsUsed: 0))
+
+        let signedIn = await model.signIn(email: "bob@example.com", password: "password")
+
+        XCTAssertFalse(signedIn, "Sign-in should report the daily-puzzle fetch failure.")
+        XCTAssertEqual(model.player?.id, "bob")
+        XCTAssertFalse(model.journal.exportText.contains("alice-secret"))
+    }
+
+    @MainActor func testAccountSwitchResetsSolveClockWhenPuzzleIDIsUnchanged() async throws {
+        defer { StubProtocol.responder = nil }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("alice-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        var bobLoginAt: Date?
+        var guessTimeSpentSeconds: Int?
+        var guessBodyDescription: String?
+        var requestPaths: [String] = []
+        StubProtocol.responder = { request in
+            let path = request.url!.path
+            requestPaths.append(path)
+            switch path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"same-daily","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2099-01-01","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"alice","username":"Alice","email":"alice@example.com","isGuest":false}}"#)
+            case "/api/auth/login":
+                bobLoginAt = Date()
+                return (200, #"{"success":true,"token":"bob-token","user":{"id":"bob","username":"Bob","email":"bob@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"same-daily","puzzleDate":"2099-01-01","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/puzzles/guess":
+                let bodyData = requestBodyData(request) ?? Data()
+                guessBodyDescription = String(data: bodyData, encoding: .utf8) ?? "non-UTF8 body"
+                let body = (try? JSONSerialization.jsonObject(with: bodyData)) as? [String: Any]
+                guessTimeSpentSeconds = (body?["timeSpentSeconds"] as? NSNumber)?.intValue
+                return (200, #"{"success":true,"correct":false,"attemptsLeft":2,"maxAttempts":3,"gameOver":false,"attemptNumber":1}"#)
+            default:
+                return (200, #"{"success":true,"stats":{}}"#)
+            }
+        }
+        let model = AppModel(
+            api: APIClient(deviceID: "test", session: URLSession(configuration: config)),
+            storage: LocalStore(root: root),
+            credentials: secure
+        )
+        await model.load()
+        try await Task.sleep(for: .seconds(3))
+
+        let signedIn = await model.signIn(email: "bob@example.com", password: "password")
+        XCTAssertTrue(signedIn)
+        XCTAssertEqual(model.daily?.puzzle.id, "same-daily")
+        XCTAssertTrue(model.sessionReady)
+        XCTAssertEqual(model.game?.puzzleId, "same-daily")
+        XCTAssertFalse(model.game?.gameOver ?? true)
+        XCTAssertFalse(model.needsReconciliation)
+        XCTAssertFalse(model.busy)
+        XCTAssertFalse(model.submitting)
+        XCTAssertGreaterThan(try XCTUnwrap(DailyReturnTiming.deadline(model.daily!.nextPuzzleTime)).timeIntervalSinceNow, 0)
+        model.draft = "a guess"
+        await model.submit()
+
+        XCTAssertTrue(requestPaths.contains("/api/puzzles/guess"), "Unexpected requests: \(requestPaths)")
+        XCTAssertNotNil(guessTimeSpentSeconds, "Guess body: \(guessBodyDescription ?? "missing")")
+        let elapsedSinceLogin = Date().timeIntervalSince(try XCTUnwrap(bobLoginAt))
+        let measuredElapsed = try XCTUnwrap(guessTimeSpentSeconds)
+        XCTAssertLessThanOrEqual(measuredElapsed, Int(elapsedSinceLogin) + 1)
     }
 }
 
@@ -1256,7 +1399,8 @@ extension RuntimeTests {
             try? secure.write(nil, key: "identity-kind")
         }
         let store = LocalStore(root: root)
-        try store.saveDailyThought("Member B’s saved thought", account: "member-b", puzzle: "puzzle-a")
+        try store.saveDailyThought("Member B’s saved thought", account: "member-b", puzzle: "puzzle-b")
+        try store.saveLastDailyPuzzle("puzzle-b", account: "member-b")
         let expiry = ISO8601DateFormatter().string(from: Date().addingTimeInterval(5))
         let state = NudgeRuntimeState()
         let model = makeNudgeTestModel(
@@ -1274,9 +1418,50 @@ extension RuntimeTests {
 
         XCTAssertFalse(signedIn)
         XCTAssertEqual(model.player?.id, "member-b")
+        XCTAssertEqual(model.daily?.puzzle.id, "puzzle-b")
         XCTAssertEqual(model.dailyThought, "")
         try await Task.sleep(for: .seconds(6))
-        XCTAssertEqual(store.dailyThought(account: "member-b", puzzle: "puzzle-a"), "Member B’s saved thought")
+        XCTAssertEqual(store.dailyThought(account: "member-b", puzzle: "puzzle-b"), "Member B’s saved thought")
+    }
+
+    @MainActor func testFailedRolloverCleanupRetriesBeforeAdvancingPuzzleMarker() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let store = LocalStore(root: root)
+        try store.saveDailyThought("Previous puzzle hunch", account: "member-a", puzzle: "puzzle-a")
+        try store.saveLastDailyPuzzle("puzzle-a", account: "member-a")
+        let accountDirectory = try XCTUnwrap(
+            FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
+                .first(where: { $0.lastPathComponent.hasPrefix("account-") })
+        )
+        let model = makeNudgeTestModel(
+            root: root,
+            credentials: secure,
+            state: NudgeRuntimeState(puzzleID: "puzzle-b"),
+            puzzleID: "puzzle-b"
+        )
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: accountDirectory.path)
+        await model.load()
+        let retainedThought = store.dailyThought(account: "member-a", puzzle: "puzzle-a")
+        let retainedMarker = store.lastDailyPuzzle(account: "member-a")
+        let cleanupError = model.storageError
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: accountDirectory.path)
+        await model.load()
+        XCTAssertEqual(retainedThought, "Previous puzzle hunch")
+        XCTAssertEqual(retainedMarker, "puzzle-a")
+        XCTAssertEqual(cleanupError, "Your previous puzzle thought could not be cleared on this device.")
+        XCTAssertEqual(store.dailyThought(account: "member-a", puzzle: "puzzle-a"), "")
+        XCTAssertEqual(store.lastDailyPuzzle(account: "member-a"), "puzzle-b")
     }
 
     @MainActor func testLegacyHintCountRestoresAfterCurrentGuesses() async throws {
