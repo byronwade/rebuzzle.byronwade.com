@@ -25,6 +25,7 @@ import StoreKit
     @ObservationIgnored var onPlusActivated: (() -> Void)?
     @ObservationIgnored var purchaseAccountIDProvider: (() -> String?)?
     @ObservationIgnored var onVerifiedPurchase: ((GrowthEvent, String) async -> Bool)?
+    @ObservationIgnored var purchaseOperationForTesting: ((Product) async throws -> Product.PurchaseResult)?
     @ObservationIgnored private let defaults: UserDefaults
     private var awaitingApproval: Bool {
         get { defaults.bool(forKey: Self.awaitingApprovalDefaultsKey) }
@@ -177,7 +178,13 @@ import StoreKit
         defer { busy = false }
         onGrowthEvent?(.plusPurchaseStarted(source))
         do {
-            switch try await product.purchase() {
+            let purchaseResult: Product.PurchaseResult
+            if let purchaseOperationForTesting {
+                purchaseResult = try await purchaseOperationForTesting(product)
+            } else {
+                purchaseResult = try await product.purchase()
+            }
+            switch purchaseResult {
             case .success(let result):
                 guard case .verified(let transaction) = result else {
                     onGrowthEvent?(.plusPurchaseUnverified(source))

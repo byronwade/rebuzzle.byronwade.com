@@ -77,61 +77,6 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
                         if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty { conversation }
-                        if model.canSaveDailyThought {
-                            Button {
-                                dismissAnswerKeyboard()
-                                dailyThoughtEditor = true
-                            } label: {
-                                Group {
-                                    if typeSize.isAccessibilitySize {
-                                        VStack(alignment: .leading, spacing: 10) {
-                                            HStack(alignment: .top, spacing: 10) {
-                                                dailyThoughtIcon
-                                                Text("Save a thought")
-                                                    .font(Theme.font(15, weight: .semibold))
-                                                    .foregroundStyle(Theme.ink)
-                                                    .fixedSize(horizontal: false, vertical: true)
-                                                Spacer(minLength: 4)
-                                                Image(systemName: "chevron.right")
-                                                    .font(.system(size: 12, weight: .semibold))
-                                                    .foregroundStyle(Theme.secondary)
-                                                    .padding(.top, 10)
-                                            }
-                                            Text(dailyThoughtSubtitle)
-                                                .font(Theme.font(12))
-                                                .foregroundStyle(Theme.secondary)
-                                                .fixedSize(horizontal: false, vertical: true)
-                                        }
-                                    } else {
-                                        HStack(spacing: 12) {
-                                            dailyThoughtIcon
-                                            VStack(alignment: .leading, spacing: 3) {
-                                                Text("Save a thought")
-                                                    .font(Theme.font(15, weight: .semibold))
-                                                    .foregroundStyle(Theme.ink)
-                                                Text(dailyThoughtSubtitle)
-                                                    .font(Theme.font(12))
-                                                    .foregroundStyle(Theme.secondary)
-                                                    .fixedSize(horizontal: false, vertical: true)
-                                            }
-                                            Spacer(minLength: 4)
-                                            Image(systemName: "chevron.right")
-                                                .font(.system(size: 12, weight: .semibold))
-                                                .foregroundStyle(Theme.secondary)
-                                        }
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
-                                .padding(.horizontal, 12)
-                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-                                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
-                                .contentShape(RoundedRectangle(cornerRadius: 16))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Save a thought")
-                            .accessibilityHint("Write a private note and return to it later. It is not sent to Eve or submitted as an answer.")
-                            .accessibilityIdentifier("saveDailyThought")
-                        }
                         if model.game?.gameOver != true, model.hintsShown < daily.puzzle.hints.count {
                             Button {
                                 dismissAnswerKeyboard()
@@ -201,6 +146,61 @@ struct TodayView: View {
                             expiredReviewCard(review)
                         }
                     }.id("answerSection")
+                    if model.canSaveDailyThought {
+                        Button {
+                            dismissAnswerKeyboard()
+                            dailyThoughtEditor = true
+                        } label: {
+                            Group {
+                                if typeSize.isAccessibilitySize {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        HStack(alignment: .top, spacing: 10) {
+                                            dailyThoughtIcon
+                                            Text("Save a thought")
+                                                .font(Theme.font(15, weight: .semibold))
+                                                .foregroundStyle(Theme.ink)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                            Spacer(minLength: 4)
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 12, weight: .semibold))
+                                                .foregroundStyle(Theme.secondary)
+                                                .padding(.top, 10)
+                                        }
+                                        Text(dailyThoughtSubtitle)
+                                            .font(Theme.font(12))
+                                            .foregroundStyle(Theme.secondary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                } else {
+                                    HStack(spacing: 12) {
+                                        dailyThoughtIcon
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text("Save a thought")
+                                                .font(Theme.font(15, weight: .semibold))
+                                                .foregroundStyle(Theme.ink)
+                                            Text(dailyThoughtSubtitle)
+                                                .font(Theme.font(12))
+                                                .foregroundStyle(Theme.secondary)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                        Spacer(minLength: 4)
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(Theme.secondary)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
+                            .contentShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Save a thought")
+                        .accessibilityHint("Write a private note and return to it later. It is not sent to Eve or submitted as an answer.")
+                        .accessibilityIdentifier("saveDailyThought")
+                    }
                 }
             } else if model.busy {
                 VStack(spacing: 16) { ProgressView(); Text("Finding today’s puzzle…").font(Theme.font(15)) }.frame(maxWidth: .infinity, minHeight: 280)

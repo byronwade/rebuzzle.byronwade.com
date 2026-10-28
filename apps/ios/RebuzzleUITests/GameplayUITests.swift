@@ -86,7 +86,7 @@ import StoreKitTest
         let progress = app.descendants(matching: .any)["dailyGuessProgress"].firstMatch
         XCTAssertEqual(progress.value as? String, "3 guesses remaining")
         let saveThought = app.buttons["saveDailyThought"]
-        for _ in 0..<5 where !saveThought.isHittable { app.swipeDown() }
+        for _ in 0..<5 where !saveThought.isHittable { app.swipeUp() }
         XCTAssertTrue(saveThought.waitForExistence(timeout: 5))
         saveThought.tap()
 
@@ -129,7 +129,7 @@ import StoreKitTest
     func testDailyThoughtSheetClosesAndClearsAtPuzzleExpiry() {
         launchFixture(extraArguments: ["--ui-daily-thought-expiry"])
         let saveThought = app.buttons["saveDailyThought"]
-        for _ in 0..<5 where !saveThought.isHittable { app.swipeDown() }
+        for _ in 0..<5 where !saveThought.isHittable { app.swipeUp() }
         XCTAssertTrue(saveThought.waitForExistence(timeout: 5))
         saveThought.tap()
 

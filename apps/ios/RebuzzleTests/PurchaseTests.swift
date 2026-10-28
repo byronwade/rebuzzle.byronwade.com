@@ -209,16 +209,21 @@ extension PurchaseTests {
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
+        var attempts = 0
+        store.purchaseOperationForTesting = { _ in
+            attempts += 1
+            throw URLError(.notConnectedToInternet)
+        }
         await store.load()
-        try await session.setSimulatedError(.generic(.notAvailableInStorefront), forAPI: .purchase)
+        XCTAssertNotNil(store.product)
         await store.purchase(source: .archive)
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertNotNil(store.message)
-        let firstCount = session.allTransactions().count
+        XCTAssertEqual(attempts, 1)
         await store.purchase(source: .archive)
         XCTAssertFalse(store.busy)
         XCTAssertFalse(store.hasPlus)
-        XCTAssertGreaterThan(session.allTransactions().count, firstCount, "A failed purchase releases the busy gate so another attempt reaches StoreKit")
+        XCTAssertEqual(attempts, 2, "A failed purchase releases the busy gate so another attempt can run")
     }
 }
