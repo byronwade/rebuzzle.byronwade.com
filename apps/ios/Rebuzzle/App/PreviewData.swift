@@ -67,6 +67,7 @@ private final class FixtureServer: @unchecked Sendable {
     private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
     private var dailyRequestCount = 0
     private var quipRequestCount = 0
+    private var solveDistributionRequestCount = 0
     private var game = GameSession(puzzleId: "fixture-lighthouse", puzzleDate: FixtureServer.todayKey)
     private static var todayKey: String {
         let formatter = DateFormatter()
@@ -85,6 +86,7 @@ private final class FixtureServer: @unchecked Sendable {
     }
 
     init() {
+        UserDefaults.standard.set(0, forKey: "uiFixtureDailySolvePulseRequestCount")
         if existingInstallFixture {
             game.attempts = [Guess(guess: "sunrise", correct: false, attemptNumber: 1)]
             game.attemptsLeft = 2
@@ -195,6 +197,21 @@ private final class FixtureServer: @unchecked Sendable {
             }
             let reply = game.wasSuccessful == true ? "That connection deserves a little victory lap." : "That guess took the scenic route."
             return (200, Data(reply.utf8))
+        case "/api/puzzles/solve-distribution":
+            solveDistributionRequestCount += 1
+            UserDefaults.standard.set(solveDistributionRequestCount, forKey: "uiFixtureDailySolvePulseRequestCount")
+            if ProcessInfo.processInfo.arguments.contains("--ui-pulse-fails-once"), solveDistributionRequestCount == 1 {
+                return (503, Data())
+            }
+            let available = !ProcessInfo.processInfo.arguments.contains("--ui-pulse-unavailable")
+            payload = [
+                "available": available,
+                "minimumSolves": 20,
+                "oneGuessPercent": available ? 15 : 0,
+                "twoGuessesPercent": available ? 25 : 0,
+                "threeGuessesPercent": available ? 25 : 0,
+                "fourPlusPercent": available ? 35 : 0
+            ]
         case "/api/puzzles/guess":
             if ProcessInfo.processInfo.arguments.contains("--ui-guess-unavailable") { return (503, Data()) }
             if game.gameOver {
@@ -280,6 +297,7 @@ private final class FixtureServer: @unchecked Sendable {
                 payload = ["success": false, "error": "Finish the three-guess practice round before revealing its solution."]
             }
         case "/api/auth/logout": payload = ["success": true]
+        case "/api/native/analytics": payload = ["success": true]
         default: status = 404; payload = ["error": "This route is not available in the UI fixture."]
         }
         return (status, try JSONSerialization.data(withJSONObject: payload))

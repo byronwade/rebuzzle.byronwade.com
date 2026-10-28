@@ -11,8 +11,10 @@
 		038400E6AF2CE286AC2274C0 /* RebuzzleCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF1979FC80E572D39514BA34 /* RebuzzleCore */; };
 		0C6B69B973C70656980CC090 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 116205D9538019F049FCA9CD /* Assets.xcassets */; };
 		0EA74FBE313E4E4FAE4D0036 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */; };
+		D4A5E8B40A7F44E2B0100003 /* DailySolvePulseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A5E8B40A7F44E2B0100004 /* DailySolvePulseCard.swift */; };
 		0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */; };
 		204460933C36A26B4797190F /* GameplayUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */; };
+		D4A5E8B40A7F44E2B0100001 /* DailySolvePulseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A5E8B40A7F44E2B0100002 /* DailySolvePulseUITests.swift */; };
 		23D5626DE99DB5C8E5F330C8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8ADE7D9D79BE0F1DE6FEC864 /* PrivacyInfo.xcprivacy */; };
 		254EF4828C224146D49A04C9 /* EveReplyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BCFB0E67A92A9F6D61433A4 /* EveReplyTests.swift */; };
 		259DD512FDEA823516C5CC87 /* VisualBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124C2F26141BC60AD508780F /* VisualBoard.swift */; };
@@ -132,6 +134,8 @@
 		C62B307E9DA571BC57ADE91D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		C75275B0B43507AD24CDA8AF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayUITests.swift; sourceTree = "<group>"; };
+		D4A5E8B40A7F44E2B0100004 /* DailySolvePulseCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySolvePulseCard.swift; sourceTree = "<group>"; };
+		D4A5E8B40A7F44E2B0100002 /* DailySolvePulseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySolvePulseUITests.swift; sourceTree = "<group>"; };
 		CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseTests.swift; sourceTree = "<group>"; };
 		D63BEA008263AB548D99CB36 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		DCAF7BA641A3CD33255264BC /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
@@ -272,6 +276,7 @@
 		A7F88AD1C67B7925DAB2384C /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				D4A5E8B40A7F44E2B0100004 /* DailySolvePulseCard.swift */,
 				AB01C0FE1234567890ABCDE0 /* DailyResultShareCard.swift */,
 				DCAF7BA641A3CD33255264BC /* ArchiveView.swift */,
 				F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */,
@@ -292,6 +297,7 @@
 			isa = PBXGroup;
 			children = (
 				C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */,
+				D4A5E8B40A7F44E2B0100002 /* DailySolvePulseUITests.swift */,
 			);
 			path = RebuzzleUITests;
 			sourceTree = "<group>";
@@ -473,6 +479,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				204460933C36A26B4797190F /* GameplayUITests.swift in Sources */,
+				D4A5E8B40A7F44E2B0100001 /* DailySolvePulseUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -527,6 +534,7 @@
 				BC0F558FDC9CF64D04711ACD /* SettingsView.swift in Sources */,
 				FAB53A6F032B4E120AB54893 /* Theme.swift in Sources */,
 				0EA74FBE313E4E4FAE4D0036 /* TodayView.swift in Sources */,
+				D4A5E8B40A7F44E2B0100003 /* DailySolvePulseCard.swift in Sources */,
 				259DD512FDEA823516C5CC87 /* VisualBoard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

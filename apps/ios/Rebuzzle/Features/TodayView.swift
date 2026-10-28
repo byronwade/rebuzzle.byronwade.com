@@ -563,6 +563,17 @@ struct ResultView: View {
                 Text("Same puzzle. Your answer stays a secret.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
                 DailyReturnCard()
                 DailyStreakCard(presentation: model.streakPresentation(for: game), context: .result)
+                if let daily = model.daily,
+                   game.puzzleId == daily.puzzle.id,
+                   game.puzzleDate == daily.puzzleDate {
+                    DailySolvePulseCard(
+                        puzzleID: daily.puzzle.id,
+                        solvedAttemptNumber: game.attempts.first(where: \.correct)?.attemptNumber,
+                        isSolved: game.wasSuccessful == true,
+                        api: model.api,
+                        onViewed: { model.recordGrowthEvent(.dailySolvePulseViewed) }
+                    )
+                }
                 JourneyRewards(game: game)
                 let metrics = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(spacing: 32))
                 metrics {

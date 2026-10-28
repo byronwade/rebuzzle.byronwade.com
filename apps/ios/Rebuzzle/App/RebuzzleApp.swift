@@ -20,10 +20,23 @@ import SwiftUI
 private struct ApplicationView: View {
     @State private var model = AppModelFactory.make()
     @AppStorage("appearance") private var appearance = "system"
+    @AppStorage("uiFixtureDailySolvePulseRequestCount") private var solvePulseRequestCount = 0
     var body: some View {
         RootView().environment(model)
             .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
             .tint(Theme.accent)
+            #if DEBUG
+            .overlay {
+                if ProcessInfo.processInfo.arguments.contains("--ui-fixture") {
+                    Text(String(solvePulseRequestCount))
+                        .accessibilityIdentifier("fixtureDailySolvePulseRequestCount")
+                        .accessibilityElement()
+                        .frame(width: 1, height: 1)
+                        .opacity(0.01)
+                        .allowsHitTesting(false)
+                }
+            }
+            #endif
     }
 }
 enum AppTab: Hashable { case play, journey, you }
