@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import type { TrackRecordDay, TrackRecordStatus, TrackRecordTotals } from "@/lib/game/track-record";
 import { cn } from "@/lib/utils";
 
@@ -9,7 +9,7 @@ const STATUS_LABEL: Record<TrackRecordStatus, string> = {
   failed: "Didn’t get it",
   missed: "Missed",
   pending: "Not played yet",
-  none: "",
+  none: "No record",
 };
 
 const STATUS_CLASS: Record<TrackRecordStatus, string> = {
@@ -50,6 +50,40 @@ export function TrackRecordCalendar({
   const scrollRef = useRef<HTMLDivElement>(null);
   const weeks = Math.ceil(days.length / 7);
   const labels = monthLabels(days);
+  const cellRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  // Last selectable day is today; cells after it only pad the final week.
+  const lastIndex = days.reduce(
+    (last, day, index) => (day.status === "none" && index > last ? last : index),
+    0
+  );
+  const [selected, setSelected] = useState<number | null>(null);
+  const active = selected ?? lastIndex;
+  const activeDay = days[active];
+
+  const moveTo = (index: number) => {
+    const next = Math.min(Math.max(index, 0), lastIndex);
+    setSelected(next);
+    cellRefs.current[next]?.focus();
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step: Record<string, number> = {
+      ArrowUp: -1,
+      ArrowDown: 1,
+      ArrowLeft: -7,
+      ArrowRight: 7,
+    };
+    if (event.key in step) {
+      event.preventDefault();
+      moveTo(active + (step[event.key] ?? 0));
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      moveTo(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      moveTo(lastIndex);
+    }
+  };
 
   // Newest week sits at the right edge; on narrow screens start scrolled there.
   useEffect(() => {
@@ -65,7 +99,7 @@ export function TrackRecordCalendar({
         <div
           aria-label={summary}
           className="inline-grid gap-x-2"
-          role="img"
+          role="group"
           style={{ gridTemplateColumns: "auto auto" }}
         >
           <div className="sticky left-0 z-10 bg-card" />
@@ -82,31 +116,59 @@ export function TrackRecordCalendar({
           </div>
           <div
             aria-hidden
-            className="sticky left-0 z-10 grid grid-rows-7 gap-[3px] bg-card pr-1 font-mono text-[10px] text-subtle leading-[11px]"
+            className="sticky left-0 z-10 grid gap-[3px] bg-card pr-1 font-mono text-[10px] text-subtle leading-[11px]"
+            style={{ gridTemplateRows: "repeat(7, 11px)" }}
           >
             {DAY_LABELS.map((label, row) => (
               <span key={row}>{label}</span>
             ))}
           </div>
+          {/* Arrow keys move between days; one tab stop for the whole year. */}
           <div
-            className="grid grid-flow-col grid-rows-7 gap-[3px]"
-            style={{ gridTemplateColumns: `repeat(${weeks}, 11px)` }}
+            className="grid grid-flow-col gap-[3px]"
+            style={{
+              gridTemplateColumns: `repeat(${weeks}, 11px)`,
+              gridTemplateRows: "repeat(7, 11px)",
+            }}
           >
-            {days.map((day) => (
-              <div
-                className={cn("h-[11px] w-[11px] rounded-[2px]", STATUS_CLASS[day.status])}
-                data-status={day.status}
-                key={day.date}
-                title={
-                  day.status === "none"
-                    ? undefined
-                    : `${formatDay(day.date)}: ${STATUS_LABEL[day.status]}`
-                }
-              />
-            ))}
+            {days.map((day, index) =>
+              index > lastIndex ? (
+                <span aria-hidden key={day.date} />
+              ) : (
+                <button
+                  aria-label={`${formatDay(day.date)}: ${STATUS_LABEL[day.status]}`}
+                  aria-pressed={index === active}
+                  className={cn(
+                    "h-[11px] w-[11px] rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-offset-1",
+                    STATUS_CLASS[day.status],
+                    index === active &&
+                      selected !== null &&
+                      "outline outline-1 outline-foreground outline-offset-1"
+                  )}
+                  data-status={day.status}
+                  key={day.date}
+                  onClick={() => setSelected(index)}
+                  onKeyDown={onKeyDown}
+                  ref={(node) => {
+                    cellRefs.current[index] = node;
+                  }}
+                  tabIndex={index === active ? 0 : -1}
+                  title={`${formatDay(day.date)}: ${STATUS_LABEL[day.status]}`}
+                  type="button"
+                />
+              )
+            )}
           </div>
         </div>
       </div>
+
+      {activeDay ? (
+        <p aria-hidden className="mt-2 text-muted-foreground text-xs">
+          <span className="text-foreground">{formatDay(activeDay.date)}</span>
+          {" · "}
+          {STATUS_LABEL[activeDay.status]}
+        </p>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs">
         {(["solved", "failed", "missed"] as const).map((status) => (

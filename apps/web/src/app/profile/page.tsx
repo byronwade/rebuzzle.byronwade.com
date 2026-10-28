@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
-import { TrackRecordCalendar } from "@/components/TrackRecordCalendar";
+import { TrackRecordCalendar } from "@/components/track-record-calendar-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
