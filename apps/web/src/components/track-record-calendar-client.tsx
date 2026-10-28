@@ -1,6 +1,8 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import type { TrackRecordDay, TrackRecordStatus, TrackRecordTotals } from "@/lib/game/track-record";
 import { cn } from "@/lib/utils";
 
@@ -162,12 +164,35 @@ export function TrackRecordCalendar({
         </div>
       </div>
 
+      {/* Full-size day stepper: the 11px squares are too small to tap reliably. */}
       {activeDay ? (
-        <p aria-hidden className="mt-2 text-muted-foreground text-xs">
-          <span className="text-foreground">{formatDay(activeDay.date)}</span>
-          {" · "}
-          {STATUS_LABEL[activeDay.status]}
-        </p>
+        <div className="mt-2 flex items-center gap-1">
+          <Button
+            aria-label="Previous day"
+            className="h-11 w-11 sm:h-8 sm:w-8"
+            disabled={active === 0}
+            onClick={() => setSelected(Math.max(active - 1, 0))}
+            size="icon"
+            variant="ghost"
+          >
+            <ChevronLeft aria-hidden className="h-4 w-4" />
+          </Button>
+          <p aria-live="polite" className="min-w-0 flex-1 text-muted-foreground text-xs">
+            <span className="text-foreground">{formatDay(activeDay.date)}</span>
+            {" · "}
+            {STATUS_LABEL[activeDay.status]}
+          </p>
+          <Button
+            aria-label="Next day"
+            className="h-11 w-11 sm:h-8 sm:w-8"
+            disabled={active === lastIndex}
+            onClick={() => setSelected(Math.min(active + 1, lastIndex))}
+            size="icon"
+            variant="ghost"
+          >
+            <ChevronRight aria-hidden className="h-4 w-4" />
+          </Button>
+        </div>
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs">
