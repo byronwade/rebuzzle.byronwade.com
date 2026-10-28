@@ -80,7 +80,7 @@ struct DailyReturnCard: View {
         NavigationLink { ReminderView() } label: {
             Label {
                 Text(model.reminders.nextReminder == nil ? "Remind me" : "Edit time")
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             } icon: {
                 Image(systemName: model.reminders.nextReminder == nil ? "bell.badge" : "bell.fill")
                     .accessibilityHidden(true)
@@ -88,7 +88,11 @@ struct DailyReturnCard: View {
             .font(Theme.font(13, weight: .semibold, relativeTo: .subheadline))
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, 12)
-            .frame(minHeight: 44)
+            .frame(
+                maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil,
+                minHeight: 44,
+                alignment: .leading
+            )
             .background(Theme.field, in: Capsule())
             .contentShape(Capsule())
         }
