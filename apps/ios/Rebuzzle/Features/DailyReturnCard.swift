@@ -78,15 +78,22 @@ struct DailyReturnCard: View {
 
     private var reminderLink: some View {
         NavigationLink { ReminderView() } label: {
-            Image(systemName: model.reminders.nextReminder == nil ? "bell.badge" : "bell.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-                .frame(width: 42, height: 42)
-                .background(Theme.field, in: Circle())
-                .contentShape(Circle())
+            Label {
+                Text(model.reminders.nextReminder == nil ? "Remind me" : "Edit time")
+                    .lineLimit(1)
+            } icon: {
+                Image(systemName: model.reminders.nextReminder == nil ? "bell.badge" : "bell.fill")
+                    .accessibilityHidden(true)
+            }
+            .font(Theme.font(13, weight: .semibold, relativeTo: .subheadline))
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(Theme.field, in: Capsule())
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(model.reminders.nextReminder == nil ? "Set a daily reminder" : "Edit daily reminder")
+        .accessibilityLabel(model.reminders.nextReminder == nil ? "Remind me" : "Edit time")
         .accessibilityHint("Choose a local time for an optional daily reminder.")
         .accessibilityIdentifier("configureReminder")
     }

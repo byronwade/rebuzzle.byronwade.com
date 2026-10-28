@@ -423,6 +423,8 @@ import StoreKitTest
 
         let reminder = app.buttons["configureReminder"]
         XCTAssertTrue(reminder.isHittable, "Setting an optional reminder should not require scrolling")
+        XCTAssertEqual(reminder.label, "Remind me", "The reminder action should explain its purpose without relying on its bell icon")
+        XCTAssertGreaterThanOrEqual(reminder.frame.height, 44, "The optional reminder action should have a comfortable touch target")
         let streakCard = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
         XCTAssertTrue(streakCard.isHittable, "The return cue should not displace the streak celebration off screen")
         capture("Result · countdown and optional reminder in first viewport")
@@ -510,6 +512,8 @@ import StoreKitTest
         capture("Next puzzle countdown")
         let reminder = app.buttons["configureReminder"]
         for _ in 0..<10 where !reminder.isHittable { scrollView.swipeUp() }
+        XCTAssertEqual(reminder.label, "Remind me")
+        XCTAssertGreaterThanOrEqual(reminder.frame.height, 44)
         reminder.tap()
         XCTAssertTrue(app.switches["Daily reminder"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Your daily invitation"].exists)
