@@ -4,6 +4,23 @@ import { nativeGrowthEventOps } from "../analytics-ops";
 import { getCollection } from "../mongodb";
 
 const mockGetCollection = jest.mocked(getCollection);
+const emptyPlusOffersBySource = () =>
+  Object.fromEntries(
+    ["archive", "settings", "journey_insights", "journal", "free_sample"].map((source) => [
+      source,
+      {
+        viewerAccounts: 0,
+        purchaseStarterAccounts: 0,
+        verifiedPurchaserAccounts: 0,
+        pendingAccounts: 0,
+        cancelledAccounts: 0,
+        unverifiedAccounts: 0,
+        failedAccounts: 0,
+        sameDayVerifiedPurchaserAccounts: 0,
+        sameDayConversionRate: null,
+      },
+    ])
+  );
 
 describe("nativeGrowthEventOps.recordOnce", () => {
   beforeEach(() => jest.clearAllMocks());
@@ -301,6 +318,7 @@ describe("nativeGrowthEventOps.getSummary", () => {
       plusRestoreFailedAccounts: 1,
       plusSameDayPurchasers: 1,
       plusSameDayConversionRate: 1 / 6,
+      plusOffersBySource: emptyPlusOffersBySource(),
       reminderEnabledAccounts: 4,
       dailySolvePulseViewAccountDays: 3,
       qualityFeedback: { too_easy: 2, just_right: 3, tough_but_fair: 1, unclear: 0 },
@@ -418,9 +436,150 @@ describe("nativeGrowthEventOps.getSummary", () => {
       plusRestoreFailedAccounts: 0,
       plusSameDayPurchasers: 0,
       plusSameDayConversionRate: 0,
+      plusOffersBySource: emptyPlusOffersBySource(),
       reminderEnabledAccounts: 0,
       dailySolvePulseViewAccountDays: 0,
       qualityFeedback: { too_easy: 0, just_right: 0, tough_but_fair: 0, unclear: 0 },
     });
+  });
+
+  it("aggregates source outcomes and suppresses small or non-convertible cohorts", async () => {
+    const sources = ["archive", "settings", "journey_insights", "journal", "free_sample"];
+    const plusSourceEventCounts = [
+      { source: "archive", eventType: "plus_offer_viewed", count: 6 },
+      { source: "archive", eventType: "plus_purchase_started", count: 5 },
+      { source: "archive", eventType: "plus_purchase_verified", count: 5 },
+      { source: "archive", eventType: "plus_purchase_pending", count: 1 },
+      { source: "settings", eventType: "plus_offer_viewed", count: 5 },
+      { source: "settings", eventType: "plus_purchase_verified", count: 6 },
+      { source: "journey_insights", eventType: "plus_offer_viewed", count: 4 },
+      { source: "journal", eventType: "plus_offer_viewed", count: 1 },
+      { source: "free_sample", eventType: "plus_offer_viewed", count: 1 },
+    ].map(({ source, eventType, count }) => ({ _id: { source, eventType }, count }));
+    const aggregate = jest.fn().mockReturnValue({
+      toArray: async () => [
+        {
+          plusSourceEventCounts,
+          plusSourceSameDayPurchasers: [
+            { _id: "archive", count: 5 },
+            { _id: "settings", count: 4 },
+            { _id: "free_sample", count: 1 },
+          ],
+        },
+      ],
+    });
+    mockGetCollection.mockReturnValue({ aggregate } as never);
+
+    const summary = await nativeGrowthEventOps.getSummary(
+      new Date("2026-09-27T12:00:00.000Z"),
+      new Date("2026-10-27T12:00:00.000Z")
+    );
+    const facets = (aggregate.mock.calls[0][0][1] as { $facet: Record<string, unknown[]> }).$facet;
+
+    expect(summary.plusOffersBySource).toEqual({
+      archive: {
+        viewerAccounts: 6,
+        purchaseStarterAccounts: 5,
+        verifiedPurchaserAccounts: 5,
+        pendingAccounts: null,
+        cancelledAccounts: 0,
+        unverifiedAccounts: 0,
+        failedAccounts: 0,
+        sameDayVerifiedPurchaserAccounts: 5,
+        sameDayConversionRate: 5 / 6,
+      },
+      settings: {
+        viewerAccounts: 5,
+        purchaseStarterAccounts: 0,
+        verifiedPurchaserAccounts: 6,
+        pendingAccounts: 0,
+        cancelledAccounts: 0,
+        unverifiedAccounts: 0,
+        failedAccounts: 0,
+        sameDayVerifiedPurchaserAccounts: null,
+        sameDayConversionRate: null,
+      },
+      journey_insights: {
+        viewerAccounts: null,
+        purchaseStarterAccounts: 0,
+        verifiedPurchaserAccounts: 0,
+        pendingAccounts: 0,
+        cancelledAccounts: 0,
+        unverifiedAccounts: 0,
+        failedAccounts: 0,
+        sameDayVerifiedPurchaserAccounts: 0,
+        sameDayConversionRate: null,
+      },
+      journal: {
+        viewerAccounts: null,
+        purchaseStarterAccounts: 0,
+        verifiedPurchaserAccounts: 0,
+        pendingAccounts: 0,
+        cancelledAccounts: 0,
+        unverifiedAccounts: 0,
+        failedAccounts: 0,
+        sameDayVerifiedPurchaserAccounts: 0,
+        sameDayConversionRate: null,
+      },
+      free_sample: {
+        viewerAccounts: null,
+        purchaseStarterAccounts: 0,
+        verifiedPurchaserAccounts: 0,
+        pendingAccounts: 0,
+        cancelledAccounts: 0,
+        unverifiedAccounts: 0,
+        failedAccounts: 0,
+        sameDayVerifiedPurchaserAccounts: null,
+        sameDayConversionRate: null,
+      },
+    });
+    expect(facets.plusSourceEventCounts).toEqual([
+      {
+        $match: {
+          eventType: {
+            $in: [
+              "plus_offer_viewed",
+              "plus_purchase_started",
+              "plus_purchase_verified",
+              "plus_purchase_pending",
+              "plus_purchase_cancelled",
+              "plus_purchase_unverified",
+              "plus_purchase_failed",
+            ],
+          },
+          source: { $in: sources },
+        },
+      },
+      {
+        $group: {
+          _id: { userId: "$userId", source: "$source", eventType: "$eventType" },
+        },
+      },
+      {
+        $group: {
+          _id: { source: "$_id.source", eventType: "$_id.eventType" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    expect(facets.plusSourceSameDayPurchasers).toEqual([
+      {
+        $match: {
+          eventType: { $in: ["plus_offer_viewed", "plus_purchase_verified"] },
+          source: { $in: sources },
+        },
+      },
+      {
+        $group: {
+          _id: { userId: "$userId", source: "$source", dayKey: "$dayKey" },
+          eventTypes: { $addToSet: "$eventType" },
+        },
+      },
+      { $match: { eventTypes: { $all: ["plus_offer_viewed", "plus_purchase_verified"] } } },
+      { $group: { _id: { userId: "$_id.userId", source: "$_id.source" } } },
+      { $group: { _id: "$_id.source", count: { $sum: 1 } } },
+    ]);
+    expect(JSON.stringify(summary)).not.toContain("userId");
+    expect(JSON.stringify(summary)).not.toContain("account-1");
   });
 });

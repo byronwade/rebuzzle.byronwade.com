@@ -8,6 +8,7 @@ import type {
   AnalyticsEvent,
   NativeGrowthEvent,
   NativeGrowthEventSource,
+  NativeGrowthPlusOfferSource,
   NativeGrowthQualityRating,
   NewAnalyticsEvent,
   NewUserSession,
@@ -40,9 +41,22 @@ export interface NativeGrowthSummary {
   plusRestoreFailedAccounts: number;
   plusSameDayPurchasers: number;
   plusSameDayConversionRate: number;
+  plusOffersBySource: Record<NativeGrowthPlusOfferSource, NativeGrowthPlusSourceSummary>;
   reminderEnabledAccounts: number;
   dailySolvePulseViewAccountDays: number;
   qualityFeedback: Record<NativeGrowthQualityRating, number>;
+}
+
+export interface NativeGrowthPlusSourceSummary {
+  viewerAccounts: number | null;
+  purchaseStarterAccounts: number | null;
+  verifiedPurchaserAccounts: number | null;
+  pendingAccounts: number | null;
+  cancelledAccounts: number | null;
+  unverifiedAccounts: number | null;
+  failedAccounts: number | null;
+  sameDayVerifiedPurchaserAccounts: number | null;
+  sameDayConversionRate: number | null;
 }
 
 export interface DailyPuzzleQualitySummary {
@@ -86,6 +100,49 @@ type DailyPuzzleAttemptSummary = Omit<
 >;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const plusOfferSources: NativeGrowthPlusOfferSource[] = [
+  "archive",
+  "settings",
+  "journey_insights",
+  "journal",
+  "free_sample",
+];
+const plusSourceEventTypes = [
+  "plus_offer_viewed",
+  "plus_purchase_started",
+  "plus_purchase_verified",
+  "plus_purchase_pending",
+  "plus_purchase_cancelled",
+  "plus_purchase_unverified",
+  "plus_purchase_failed",
+] as const;
+type PlusSourceCountKey =
+  | "viewerAccounts"
+  | "purchaseStarterAccounts"
+  | "verifiedPurchaserAccounts"
+  | "pendingAccounts"
+  | "cancelledAccounts"
+  | "unverifiedAccounts"
+  | "failedAccounts";
+const plusSourceCountKeyByEvent: Record<(typeof plusSourceEventTypes)[number], PlusSourceCountKey> = {
+  plus_offer_viewed: "viewerAccounts",
+  plus_purchase_started: "purchaseStarterAccounts",
+  plus_purchase_verified: "verifiedPurchaserAccounts",
+  plus_purchase_pending: "pendingAccounts",
+  plus_purchase_cancelled: "cancelledAccounts",
+  plus_purchase_unverified: "unverifiedAccounts",
+  plus_purchase_failed: "failedAccounts",
+};
+const emptyPlusSourceCounts = (): Record<PlusSourceCountKey, number> => ({
+  viewerAccounts: 0,
+  purchaseStarterAccounts: 0,
+  verifiedPurchaserAccounts: 0,
+  pendingAccounts: 0,
+  cancelledAccounts: 0,
+  unverifiedAccounts: 0,
+  failedAccounts: 0,
+});
+const suppressSmallCount = (value: number) => (value > 0 && value < 5 ? null : value);
 
 function ensureNativeGrowthIndexes(
   collection: ReturnType<typeof getCollection<NativeGrowthEvent>>
@@ -421,7 +478,7 @@ export const nativeGrowthEventOps = {
         Record<
           string,
           Array<{
-            _id?: string;
+            _id?: string | { source?: string; eventType?: string };
             count?: number;
             openWithStartDays?: number;
             openWithFinishDays?: number;
@@ -572,6 +629,46 @@ export const nativeGrowthEventOps = {
               { $group: { _id: "$_id.userId" } },
               { $count: "count" },
             ],
+            plusSourceEventCounts: [
+              {
+                $match: {
+                  eventType: { $in: plusSourceEventTypes },
+                  source: { $in: plusOfferSources },
+                },
+              },
+              {
+                $group: {
+                  _id: { userId: "$userId", source: "$source", eventType: "$eventType" },
+                },
+              },
+              {
+                $group: {
+                  _id: { source: "$_id.source", eventType: "$_id.eventType" },
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+            plusSourceSameDayPurchasers: [
+              {
+                $match: {
+                  eventType: { $in: ["plus_offer_viewed", "plus_purchase_verified"] },
+                  source: { $in: plusOfferSources },
+                },
+              },
+              {
+                $group: {
+                  _id: { userId: "$userId", source: "$source", dayKey: "$dayKey" },
+                  eventTypes: { $addToSet: "$eventType" },
+                },
+              },
+              {
+                $match: {
+                  eventTypes: { $all: ["plus_offer_viewed", "plus_purchase_verified"] },
+                },
+              },
+              { $group: { _id: { userId: "$_id.userId", source: "$_id.source" } } },
+              { $group: { _id: "$_id.source", count: { $sum: 1 } } },
+            ],
             reminderAccounts: [
               { $match: { eventType: "reminder_enabled" } },
               { $group: { _id: "$userId" } },
@@ -605,6 +702,12 @@ export const nativeGrowthEventOps = {
       tough_but_fair: 0,
       unclear: 0,
     };
+    const plusSourceCounts = Object.fromEntries(
+      plusOfferSources.map((source) => [source, emptyPlusSourceCounts()])
+    ) as Record<NativeGrowthPlusOfferSource, Record<PlusSourceCountKey, number>>;
+    const sameDayPurchasersBySource = Object.fromEntries(
+      plusOfferSources.map((source) => [source, 0])
+    ) as Record<NativeGrowthPlusOfferSource, number>;
     for (const source of facets?.sourceDays ?? []) {
       if (
         source._id === "app" ||
@@ -626,6 +729,49 @@ export const nativeGrowthEventOps = {
         qualityFeedback[rating._id] = rating.count ?? 0;
       }
     }
+    for (const row of facets?.plusSourceEventCounts ?? []) {
+      if (!row._id || typeof row._id === "string") continue;
+      const source = row._id.source as NativeGrowthPlusOfferSource | undefined;
+      const eventType = row._id.eventType as (typeof plusSourceEventTypes)[number] | undefined;
+      if (
+        !source ||
+        !plusOfferSources.includes(source) ||
+        !eventType ||
+        !Object.hasOwn(plusSourceCountKeyByEvent, eventType)
+      ) {
+        continue;
+      }
+      plusSourceCounts[source][plusSourceCountKeyByEvent[eventType]] = row.count ?? 0;
+    }
+    for (const row of facets?.plusSourceSameDayPurchasers ?? []) {
+      if (
+        typeof row._id !== "string" ||
+        !plusOfferSources.includes(row._id as NativeGrowthPlusOfferSource)
+      ) {
+        continue;
+      }
+      sameDayPurchasersBySource[row._id as NativeGrowthPlusOfferSource] = row.count ?? 0;
+    }
+    const plusOffersBySource = Object.fromEntries(
+      plusOfferSources.map((source) => {
+        const counts = plusSourceCounts[source];
+        const sameDayVerifiedPurchaserAccounts = sameDayPurchasersBySource[source];
+        const viewerAccounts = counts.viewerAccounts;
+        return [
+          source,
+          {
+            ...Object.fromEntries(
+              Object.entries(counts).map(([key, value]) => [key, suppressSmallCount(value)])
+            ),
+            sameDayVerifiedPurchaserAccounts: suppressSmallCount(sameDayVerifiedPurchaserAccounts),
+            sameDayConversionRate:
+              viewerAccounts >= 5 && sameDayVerifiedPurchaserAccounts >= 5
+                ? sameDayVerifiedPurchaserAccounts / viewerAccounts
+                : null,
+          },
+        ];
+      })
+    ) as Record<NativeGrowthPlusOfferSource, NativeGrowthPlusSourceSummary>;
 
     const openedAccountDays = count("openDays");
     const finishedAccountDays = count("finishDays");
@@ -653,6 +799,7 @@ export const nativeGrowthEventOps = {
       plusSameDayPurchasers: count("plusSameDayPurchasers"),
       plusSameDayConversionRate:
         count("plusViewers") > 0 ? count("plusSameDayPurchasers") / count("plusViewers") : 0,
+      plusOffersBySource,
       reminderEnabledAccounts: count("reminderAccounts"),
       dailySolvePulseViewAccountDays: count("solvePulseViewDays"),
       qualityFeedback,
