@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		008EE794056149197CEC05D6 /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B1F8BD8F4BBCDCB0435F0DA /* CredentialStore.swift */; };
 		038400E6AF2CE286AC2274C0 /* RebuzzleCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF1979FC80E572D39514BA34 /* RebuzzleCore */; };
+		0546102F9B4BBB47AE734CDE /* GameKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = D223A8FBF4645D36B5452446 /* GameKit.swift */; };
 		0C6B69B973C70656980CC090 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 116205D9538019F049FCA9CD /* Assets.xcassets */; };
 		0EA74FBE313E4E4FAE4D0036 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */; };
 		0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */; };
@@ -130,6 +131,7 @@
 		C75275B0B43507AD24CDA8AF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayUITests.swift; sourceTree = "<group>"; };
 		CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseTests.swift; sourceTree = "<group>"; };
+		D223A8FBF4645D36B5452446 /* GameKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit.swift; sourceTree = "<group>"; };
 		D63BEA008263AB548D99CB36 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		DCAF7BA641A3CD33255264BC /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
 		E0DD9980C84C32503F71017B /* VisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTests.swift; sourceTree = "<group>"; };
@@ -184,6 +186,7 @@
 		143D71F1986C6A61F9B0235E /* Design */ = {
 			isa = PBXGroup;
 			children = (
+				D223A8FBF4645D36B5452446 /* GameKit.swift */,
 				D63BEA008263AB548D99CB36 /* Theme.swift */,
 			);
 			path = Design;
@@ -505,6 +508,7 @@
 				008EE794056149197CEC05D6 /* CredentialStore.swift in Sources */,
 				D6CC2EB0E2F84527E662812A /* DailyReturnCard.swift in Sources */,
 				ECE6239380306C5ADE9C4471 /* EveReplyStore.swift in Sources */,
+				0546102F9B4BBB47AE734CDE /* GameKit.swift in Sources */,
 				0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */,
 				DB16E04E84B4DA3CBD373891 /* JourneyRewards.swift in Sources */,
 				2B387063BD4572478BD436B4 /* LocalStore.swift in Sources */,

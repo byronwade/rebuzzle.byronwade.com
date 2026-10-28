@@ -39,9 +39,11 @@ struct RootView: View {
             NavigationStack { TodayView() }
                 .id("play-" + (model.player?.id ?? "signed-out") + playNavigation.uuidString)
                 .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
+                // A badge nudges like an unplayed lesson until today's puzzle is finished.
+                .badge(model.daily != nil && !model.completedCurrentPuzzle ? 1 : 0)
             NavigationStack { ProgressViewScreen() }
                 .id("journey-" + (model.player?.id ?? "signed-out"))
-                .tabItem { Label("Journey", systemImage: "map") }.tag(AppTab.journey)
+                .tabItem { Label("Journey", systemImage: "trophy") }.tag(AppTab.journey)
             NavigationStack { SettingsView() }
                 .id("you-" + (model.player?.id ?? "signed-out"))
                 .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)

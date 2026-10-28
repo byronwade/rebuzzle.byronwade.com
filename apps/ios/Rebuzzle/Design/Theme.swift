@@ -25,20 +25,8 @@ enum Theme {
         })
     }
 }
-struct CommitStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(Theme.font(16, weight: .medium))
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .foregroundStyle(Theme.canvas)
-            .background(Theme.ink.opacity(configuration.isPressed ? 0.8 : 1), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.secondary.opacity(0.25), lineWidth: 1))
-            .compositingGroup()
-            .shadow(color: Theme.ink.opacity(0.22), radius: 0, y: configuration.isPressed ? 0 : 3)
-            .offset(y: configuration.isPressed ? 2 : 0)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
+/// Primary game action: a raised, chunky button (see GameKit).
+typealias CommitStyle = ChunkyButtonStyle
 struct FieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content.font(Theme.font(17)).padding(16)
