@@ -25,6 +25,20 @@ final class RuntimeTests: XCTestCase {
         XCTAssertEqual(storage.draft(account: "bob", puzzle: "today"), "")
     }
 
+    @MainActor func testDailyThoughtStorageIsScopedByAccountAndPuzzle() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = LocalStore(root: root)
+
+        try storage.saveDailyThought("Try reading the gaps", account: "alice", puzzle: "today")
+
+        XCTAssertEqual(storage.dailyThought(account: "alice", puzzle: "today"), "Try reading the gaps")
+        XCTAssertEqual(storage.dailyThought(account: "bob", puzzle: "today"), "")
+        XCTAssertEqual(storage.dailyThought(account: "alice", puzzle: "tomorrow"), "")
+        try storage.removeDailyThought(account: "alice", puzzle: "today")
+        XCTAssertEqual(storage.dailyThought(account: "alice", puzzle: "today"), "")
+    }
+
     func testInMemoryCredentialStorePersistsOnlyWithinItsFixtureInstance() throws {
         let first = CredentialStore(inMemory: true)
         let second = CredentialStore(inMemory: true)
@@ -406,13 +420,18 @@ private final class NudgeRuntimeState: @unchecked Sendable {
     }
 }
 
-@MainActor private func makeNudgeTestModel(root: URL, credentials: CredentialStore, state: NudgeRuntimeState) -> AppModel {
+@MainActor private func makeNudgeTestModel(
+    root: URL,
+    credentials: CredentialStore,
+    state: NudgeRuntimeState,
+    nextPuzzleTime: String = "2099-01-02T00:00:00Z"
+) -> AppModel {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [StubProtocol.self]
     StubProtocol.responder = { request in
         switch request.url!.path {
         case "/api/puzzle/today":
-            return (200, #"{"success":true,"puzzle":{"id":"puzzle-a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["First hint.","Second hint.","Third hint."]},"puzzleDate":"2099-01-01","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+            return (200, #"{"success":true,"puzzle":{"id":"puzzle-a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["First hint.","Second hint.","Third hint."]},"puzzleDate":"2099-01-01","nextPuzzleTime":"\#(nextPuzzleTime)"}"#)
         case "/api/auth/session":
             return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
         case "/api/puzzle/session":
@@ -420,6 +439,8 @@ private final class NudgeRuntimeState: @unchecked Sendable {
         case "/api/puzzles/guess":
             state.acceptGuess()
             return (200, #"{"success":true,"correct":false,"attemptsLeft":2,"maxAttempts":3,"gameOver":false,"attemptNumber":1,"phase":"scored"}"#)
+        case "/api/puzzles/reveal":
+            return (200, #"{"success":true,"puzzleId":"puzzle-a","puzzleDate":"2099-01-01","phase":"scored","scoreLocked":false,"correct":false,"wasSuccessful":false,"gameOver":true,"attempts":[],"attemptsLeft":3,"maxAttempts":3,"answer":"sunshine","explanation":"sun plus shine","pointsEarned":0}"#)
         default:
             return (200, #"{"success":true,"stats":{}}"#)
         }
@@ -799,12 +820,16 @@ extension RuntimeTests {
         defer { try? FileManager.default.removeItem(at: root) }
         let store = LocalStore(root: root)
         try store.saveDraft("private", account: "alice", puzzle: "today")
+        try store.saveDailyThought("private thought", account: "alice", puzzle: "today")
         try store.save(2, key: "hints:alice:today")
         try store.saveDraft("keep", account: "bob", puzzle: "today")
+        try store.saveDailyThought("keep thought", account: "bob", puzzle: "today")
         try store.removeAccount("alice")
         XCTAssertEqual(store.draft(account: "alice", puzzle: "today"), "")
+        XCTAssertEqual(store.dailyThought(account: "alice", puzzle: "today"), "")
         XCTAssertNil(try store.load(Int.self, key: "hints:alice:today"))
         XCTAssertEqual(store.draft(account: "bob", puzzle: "today"), "keep")
+        XCTAssertEqual(store.dailyThought(account: "bob", puzzle: "today"), "keep thought")
     }
     func testSVGDisallowsScriptsAndRemoteImages() {
         let source = #"<svg viewBox="0 0 10 10"><script>alert(1)</script><image href="https://tracker.invalid/x"/><path d="M0 0 L10 10" stroke="currentColor"/></svg>"#
@@ -1108,6 +1133,58 @@ extension RuntimeTests {
         XCTAssertEqual(relaunchedModel.hintsShown, 2)
         XCTAssertEqual(relaunchedModel.game?.attempts.count, 1)
         XCTAssertEqual(relaunchedModel.nudgeReveals, expected)
+    }
+
+    @MainActor func testDailyThoughtRestoresForItsActivePuzzleAndClearsAfterReveal() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let store = LocalStore(root: root)
+        try store.saveDailyThought("Try reading the gaps", account: "member-a", puzzle: "puzzle-a")
+        let model = makeNudgeTestModel(root: root, credentials: secure, state: NudgeRuntimeState())
+
+        await model.load()
+
+        XCTAssertEqual(model.dailyThought, "Try reading the gaps")
+        XCTAssertTrue(model.canSaveDailyThought)
+        await model.revealAnswer()
+        XCTAssertTrue(model.game?.gameOver == true)
+        XCTAssertEqual(model.dailyThought, "")
+        XCTAssertEqual(store.dailyThought(account: "member-a", puzzle: "puzzle-a"), "")
+    }
+
+    @MainActor func testExpiredDailyThoughtIsClearedWhenSessionRestores() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let store = LocalStore(root: root)
+        try store.saveDailyThought("An old hunch", account: "member-a", puzzle: "puzzle-a")
+        let model = makeNudgeTestModel(
+            root: root,
+            credentials: secure,
+            state: NudgeRuntimeState(),
+            nextPuzzleTime: "2000-01-02T00:00:00Z"
+        )
+
+        await model.load()
+
+        XCTAssertEqual(model.dailyThought, "")
+        XCTAssertEqual(store.dailyThought(account: "member-a", puzzle: "puzzle-a"), "")
+        XCTAssertFalse(model.canSaveDailyThought)
     }
 
     @MainActor func testLegacyHintCountRestoresAfterCurrentGuesses() async throws {

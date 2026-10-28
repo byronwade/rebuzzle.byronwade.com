@@ -16,6 +16,7 @@ struct TodayView: View {
     @State private var showingExpiredReviewFor: String?
     @State private var dismissedExpiredReviewID: String?
     @State private var hintFeedback = 0
+    @State private var dailyThoughtEditor = false
     @FocusState private var answerFocused: Bool
     var body: some View {
         @Bindable var model = model
@@ -76,6 +77,61 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
                         if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty { conversation }
+                        if model.canSaveDailyThought {
+                            Button {
+                                dismissAnswerKeyboard()
+                                dailyThoughtEditor = true
+                            } label: {
+                                Group {
+                                    if typeSize.isAccessibilitySize {
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            HStack(alignment: .top, spacing: 10) {
+                                                dailyThoughtIcon
+                                                Text("Save a thought")
+                                                    .font(Theme.font(15, weight: .semibold))
+                                                    .foregroundStyle(Theme.ink)
+                                                    .fixedSize(horizontal: false, vertical: true)
+                                                Spacer(minLength: 4)
+                                                Image(systemName: "chevron.right")
+                                                    .font(.system(size: 12, weight: .semibold))
+                                                    .foregroundStyle(Theme.secondary)
+                                                    .padding(.top, 10)
+                                            }
+                                            Text(dailyThoughtSubtitle)
+                                                .font(Theme.font(12))
+                                                .foregroundStyle(Theme.secondary)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                    } else {
+                                        HStack(spacing: 12) {
+                                            dailyThoughtIcon
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text("Save a thought")
+                                                    .font(Theme.font(15, weight: .semibold))
+                                                    .foregroundStyle(Theme.ink)
+                                                Text(dailyThoughtSubtitle)
+                                                    .font(Theme.font(12))
+                                                    .foregroundStyle(Theme.secondary)
+                                                    .fixedSize(horizontal: false, vertical: true)
+                                            }
+                                            Spacer(minLength: 4)
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 12, weight: .semibold))
+                                                .foregroundStyle(Theme.secondary)
+                                        }
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
+                                .contentShape(RoundedRectangle(cornerRadius: 16))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Save a thought")
+                            .accessibilityHint("Write a private note and return to it later. It is not sent to Eve or submitted as an answer.")
+                            .accessibilityIdentifier("saveDailyThought")
+                        }
                         if model.game?.gameOver != true, model.hintsShown < daily.puzzle.hints.count {
                             Button {
                                 dismissAnswerKeyboard()
@@ -219,6 +275,9 @@ struct TodayView: View {
         }
         .sheet(item: $study) { selection in
             PuzzleStudyView(puzzle: selection.puzzle)
+        }
+        .sheet(isPresented: $dailyThoughtEditor) {
+            DailyThoughtSheet()
         }
         .refreshable { await model.load() }
         .onChange(of: model.daily?.puzzle.id) { _, _ in
@@ -373,6 +432,16 @@ struct TodayView: View {
             }
         }
     }
+    private var dailyThoughtIcon: some View {
+        Image(systemName: "pencil.and.list.clipboard")
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(Theme.accent)
+            .frame(width: 42, height: 42)
+            .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+    }
+    private var dailyThoughtSubtitle: String {
+        model.dailyThought.isEmpty ? "Leave yourself a clue for later" : "Your thought is saved on this device"
+    }
     private var dateLabel: String {
         guard let date = model.daily?.puzzleDate else { return Date().formatted(.dateTime.weekday(.wide).month(.wide).day()) }
         let formatter = DateFormatter()
@@ -448,6 +517,115 @@ struct TodayView: View {
         }
     }
 }
+
+private struct DailyThoughtSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @FocusState private var editorFocused: Bool
+    @State private var thought = ""
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Pick up where you left off.")
+                            .font(Theme.display(30))
+                            .tracking(-0.6)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("Jot down a connection, a hunch, or what you want to try next.")
+                            .font(Theme.font(15))
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("TODAY’S THOUGHT")
+                                .font(Theme.font(11, weight: .semibold))
+                                .tracking(1.1)
+                                .foregroundStyle(Theme.secondary)
+                            Spacer()
+                            Text("\(thought.count)/600")
+                                .font(Theme.font(12, weight: .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.secondary)
+                                .accessibilityLabel("\(thought.count) of 600 characters")
+                        }
+                        ZStack(alignment: .topLeading) {
+                            if thought.isEmpty {
+                                Text("What have you noticed so far?")
+                                    .font(.body)
+                                    .foregroundStyle(Theme.secondary.opacity(0.78))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 9)
+                                    .allowsHitTesting(false)
+                            }
+                            TextEditor(text: $thought)
+                                .font(.body)
+                                .foregroundStyle(Theme.ink)
+                                .scrollContentBackground(.hidden)
+                                .focused($editorFocused)
+                                .accessibilityLabel("Private thought for today’s puzzle")
+                                .accessibilityHint("Saved on this device and never sent to Eve or submitted as a guess.")
+                                .accessibilityIdentifier("dailyThoughtEditor")
+                        }
+                        .frame(minHeight: 176)
+                        .padding(8)
+                        .background(Theme.canvas, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
+                        Text("Saved on this device for today’s puzzle. It is never sent to Eve, submitted as a guess, or shared.")
+                            .font(Theme.font(12))
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if !thought.isEmpty {
+                        Button("Clear thought", systemImage: "trash") {
+                            thought = ""
+                            editorFocused = false
+                            model.saveDailyThought("")
+                        }
+                        .font(Theme.font(14, weight: .semibold))
+                        .foregroundStyle(Theme.secondary)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .accessibilityIdentifier("clearDailyThought")
+                    }
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Theme.canvas.ignoresSafeArea())
+            .navigationTitle("Save a thought")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        editorFocused = false
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .accessibilityIdentifier("closeDailyThought")
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { editorFocused = false }
+                        .accessibilityIdentifier("dismissDailyThoughtKeyboard")
+                }
+            }
+            .onAppear { thought = model.dailyThought }
+            .onChange(of: thought) { _, updated in
+                let bounded = String(updated.prefix(600))
+                if bounded != updated { thought = bounded }
+                model.saveDailyThought(bounded)
+            }
+        }
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
 private struct PuzzleStudy: Identifiable {
     let id = UUID()
     let puzzle: Puzzle

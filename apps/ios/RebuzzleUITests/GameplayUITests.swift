@@ -75,6 +75,57 @@ import StoreKitTest
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
     }
 
+    func testDailyThoughtCanBeSavedAndReopenedWithoutChangingTheGuess() {
+        launchFixture()
+        let field = app.descendants(matching: .any)["answerField"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("sun")
+        app.buttons["dismissAnswerKeyboard"].tap()
+
+        let progress = app.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        let saveThought = app.buttons["saveDailyThought"]
+        for _ in 0..<5 where !saveThought.isHittable { app.swipeDown() }
+        XCTAssertTrue(saveThought.waitForExistence(timeout: 5))
+        saveThought.tap()
+
+        let editor = app.textViews["dailyThoughtEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("Maybe sunshine is hidden in the layout")
+        app.buttons["dismissDailyThoughtKeyboard"].tap()
+        app.buttons["closeDailyThought"].tap()
+
+        XCTAssertEqual(field.value as? String, "sun")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+        saveThought.tap()
+        XCTAssertEqual(editor.value as? String, "Maybe sunshine is hidden in the layout")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        capture("Daily thought — saved privately while the puzzle stays in progress")
+    }
+
+    func testDailyThoughtEditorSupportsAccessibilityTextAndKeyboardDismissal() {
+        launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        let saveThought = app.buttons["saveDailyThought"]
+        for _ in 0..<8 where !saveThought.isHittable { app.swipeUp() }
+        XCTAssertTrue(saveThought.waitForExistence(timeout: 5))
+        saveThought.tap()
+
+        let editor = app.textViews["dailyThoughtEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(editor.frame.height, 100)
+        editor.tap()
+        editor.typeText("A hunch for later")
+        app.buttons["dismissDailyThoughtKeyboard"].tap()
+        XCTAssertTrue(editor.isHittable)
+        capture("Daily thought editor — accessibility text size")
+        app.buttons["closeDailyThought"].tap()
+        XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "3 guesses remaining")
+        capture("Daily thought — accessibility text size")
+    }
+
     func testDismissKeyboardPreservesUnsubmittedAnswer() {
         verifyKeyboardDismissal()
     }

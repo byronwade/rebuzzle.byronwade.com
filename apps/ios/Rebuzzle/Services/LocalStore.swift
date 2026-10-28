@@ -29,6 +29,15 @@ import RebuzzleCore
     }
     func saveDraft(_ draft: String, account: String, puzzle: String) throws { try save(draft, key: "draft:\(account):\(puzzle)") }
     func draft(account: String, puzzle: String) -> String { (try? load(String.self, key: "draft:\(account):\(puzzle)")) ?? "" }
+    func saveDailyThought(_ thought: String, account: String, puzzle: String) throws {
+        try save(thought, key: "daily-thought:\(account):\(puzzle)")
+    }
+    func dailyThought(account: String, puzzle: String) -> String {
+        (try? load(String.self, key: "daily-thought:\(account):\(puzzle)")) ?? ""
+    }
+    func removeDailyThought(account: String, puzzle: String) throws {
+        try remove(key: "daily-thought:\(account):\(puzzle)")
+    }
     func remove(key: String) throws {
         let location = url(key)
         if FileManager.default.fileExists(atPath: location.path) { try FileManager.default.removeItem(at: location) }
