@@ -9,7 +9,10 @@ import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
-import { STOREKIT_TRANSACTION_HEADER, verifyPlusTransaction } from "@/lib/storekit/plus-entitlement";
+import {
+  STOREKIT_TRANSACTION_HEADER,
+  verifyPlusTransaction,
+} from "@/lib/storekit/plus-entitlement";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
 const sources = new Set<NativeGrowthEventSource>([
@@ -85,7 +88,9 @@ export async function POST(request: Request) {
   ) {
     // Valid client event.
   } else if (
-    (eventType === "plus_offer_viewed" || eventType === "reminder_enabled") &&
+    (eventType === "plus_offer_viewed" ||
+      eventType === "reminder_enabled" ||
+      eventType === "daily_solve_pulse_viewed") &&
     hasExactKeys(body, ["eventType"])
   ) {
     // Valid client event.

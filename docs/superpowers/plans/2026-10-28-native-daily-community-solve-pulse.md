@@ -82,6 +82,10 @@
 
 **Files:**
 - Modify: `apps/ios/Rebuzzle/Services/APIClient.swift`
+- Modify: `apps/ios/RebuzzleTests/NativeGrowthReportingTests.swift`
+- Modify: `apps/web/src/db/models.ts`
+- Modify: `apps/web/src/db/analytics-ops.ts`
+- Modify: `apps/web/src/db/__tests__/native-growth-events.test.ts`
 - Modify: `apps/web/src/app/api/native/analytics/route.ts`
 - Modify: `apps/web/src/app/api/native/analytics/__tests__/route.test.ts`
 - Modify: `apps/web/src/app/api/admin/native-funnel/route.ts`
@@ -94,13 +98,13 @@
 - Produces `GrowthEvent.dailySolvePulseViewed` with payload exactly `{ eventType: "daily_solve_pulse_viewed" }`.
 - Admin funnel exposes unique account-day views only; it does not include puzzle IDs or raw events.
 
-- [ ] **Step 1: Write failing growth-route and admin-summary tests** asserting the allowlisted event is accepted, account identity remains server-derived, the payload has no extra fields, and the summary returns aggregate account-day viewers.
-- [ ] **Step 2: Run** `pnpm --filter @rebuzzle/web test -- src/app/api/native/analytics/__tests__/route.test.ts src/app/api/admin/native-funnel/__tests__/route.test.ts src/components/admin/tabs/__tests__/native-growth-card.test.ts --runInBand` and confirm the expected missing-event failures.
-- [ ] **Step 3: Implement** the event allowlist and aggregate-only summary/card field using the existing 90-day event store.
-- [ ] **Step 4: Add** the Swift event case with the exact payload above.
-- [ ] **Step 5: Run the focused server tests and** `swift test --package-path apps/ios/Core` to verify the event contract and existing Core behavior.
-- [ ] **Step 6: Update** the scorecard with implementation status and the planned adoption/next-day-return measures, without claiming an outcome.
-- [ ] **Step 7: Commit** as `feat: measure daily solve pulse views`.
+- [x] **Step 1: Write failing growth-route and admin-summary tests** asserting the allowlisted event is accepted, account identity remains server-derived, the payload has no extra fields, and the summary returns aggregate account-day viewers.
+- [x] **Step 2: Run** `pnpm --filter @rebuzzle/web test -- src/app/api/native/analytics/__tests__/route.test.ts src/app/api/admin/native-funnel/__tests__/route.test.ts src/db/__tests__/native-growth-events.test.ts src/components/admin/tabs/__tests__/native-growth-card.test.ts --runInBand` and confirm the expected missing-event failures.
+- [x] **Step 3: Implement** the event allowlist and aggregate-only summary/card field using the existing 90-day event store.
+- [x] **Step 4: Add** the Swift event case with the exact payload above.
+- [x] **Step 5: Run the focused server tests and** `swift test --package-path apps/ios/Core` to verify the event contract and existing Core behavior.
+- [x] **Step 6: Update** the scorecard with implementation status and the planned adoption/next-day-return measures, without claiming an outcome.
+- [x] **Step 7: Commit** as `feat: measure daily solve pulse views`.
 
 ### Task 4: Add the opt-in native result debrief
 

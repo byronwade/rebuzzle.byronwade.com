@@ -216,6 +216,7 @@ describe("nativeGrowthEventOps.getSummary", () => {
           shareStartedDays: [{ count: 7 }],
           shareCompletedDays: [{ count: 3 }],
           shareJourney: [{ openWithStartDays: 1, openWithFinishDays: 2 }],
+          solvePulseViewDays: [{ count: 3 }],
           sourceDays: [
             { _id: "app", count: 4 },
             { _id: "widget", count: 3 },
@@ -270,6 +271,7 @@ describe("nativeGrowthEventOps.getSummary", () => {
       plusSameDayPurchasers: 1,
       plusSameDayConversionRate: 1 / 6,
       reminderEnabledAccounts: 4,
+      dailySolvePulseViewAccountDays: 3,
       qualityFeedback: { too_easy: 2, just_right: 3, tough_but_fair: 1, unclear: 0 },
     });
     expect(pipeline[0]).toEqual({ $match: { occurredAt: { $gte: start, $lt: end } } });
@@ -278,6 +280,7 @@ describe("nativeGrowthEventOps.getSummary", () => {
     expect(pipeline[1]).toHaveProperty("$facet.shareStartedDays");
     expect(pipeline[1]).toHaveProperty("$facet.shareCompletedDays");
     expect(pipeline[1]).toHaveProperty("$facet.shareJourney");
+    expect(pipeline[1]).toHaveProperty("$facet.solvePulseViewDays");
     expect(pipeline[1]).toHaveProperty("$facet.sourceDays");
     expect(pipeline[1]).toHaveProperty("$facet.returners");
     expect(pipeline[1]).toHaveProperty("$facet.plusViewers");
@@ -294,6 +297,11 @@ describe("nativeGrowthEventOps.getSummary", () => {
     expect(pipeline[1]).toHaveProperty("$facet.reminderAccounts");
     expect(pipeline[1]).toHaveProperty("$facet.qualityFeedback");
     const facets = (pipeline[1] as { $facet: Record<string, unknown[]> }).$facet;
+    expect(facets.solvePulseViewDays).toEqual([
+      { $match: { eventType: "daily_solve_pulse_viewed" } },
+      { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
+      { $count: "count" },
+    ]);
     expect(facets.shareJourney).toEqual([
       {
         $group: {
@@ -380,6 +388,7 @@ describe("nativeGrowthEventOps.getSummary", () => {
       plusSameDayPurchasers: 0,
       plusSameDayConversionRate: 0,
       reminderEnabledAccounts: 0,
+      dailySolvePulseViewAccountDays: 0,
       qualityFeedback: { too_easy: 0, just_right: 0, tough_but_fair: 0, unclear: 0 },
     });
   });

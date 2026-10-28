@@ -41,6 +41,7 @@ export interface NativeGrowthSummary {
   plusSameDayPurchasers: number;
   plusSameDayConversionRate: number;
   reminderEnabledAccounts: number;
+  dailySolvePulseViewAccountDays: number;
   qualityFeedback: Record<NativeGrowthQualityRating, number>;
 }
 
@@ -574,6 +575,11 @@ export const nativeGrowthEventOps = {
               { $group: { _id: "$userId" } },
               { $count: "count" },
             ],
+            solvePulseViewDays: [
+              { $match: { eventType: "daily_solve_pulse_viewed" } },
+              { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
+              { $count: "count" },
+            ],
             qualityFeedback: [
               { $match: { eventType: "daily_quality_feedback" } },
               { $group: { _id: "$rating", count: { $sum: 1 } } },
@@ -646,6 +652,7 @@ export const nativeGrowthEventOps = {
       plusSameDayConversionRate:
         count("plusViewers") > 0 ? count("plusSameDayPurchasers") / count("plusViewers") : 0,
       reminderEnabledAccounts: count("reminderAccounts"),
+      dailySolvePulseViewAccountDays: count("solvePulseViewDays"),
       qualityFeedback,
     };
   },

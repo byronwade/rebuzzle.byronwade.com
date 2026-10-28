@@ -134,6 +134,23 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
         XCTAssertNil(capturedBody["metadata"])
     }
 
+    func testSolvePulseViewSendsOnlyItsEventType() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        var capturedBody: [String: String] = [:]
+        StubProtocol.responder = { request in
+            capturedBody = try growthPayload(from: request)
+            return (200, #"{"success":true}"#)
+        }
+
+        let client = APIClient(deviceID: "private-device", session: URLSession(configuration: config))
+        await client.report(.dailySolvePulseViewed)
+
+        XCTAssertEqual(capturedBody, ["eventType": "daily_solve_pulse_viewed"])
+        XCTAssertNil(capturedBody["puzzleId"])
+        XCTAssertNil(capturedBody["answer"])
+    }
+
     func testCancelledShareDoesNotCreateACompletedEvent() {
         XCTAssertNil(GrowthEvent.dailyShareCompletionEvent(completed: false))
         XCTAssertEqual(

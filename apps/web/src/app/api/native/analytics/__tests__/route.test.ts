@@ -75,6 +75,9 @@ it("rejectsExtraFieldsAndInvalidSource", async () => {
     (await post({ eventType: "daily_opened", source: "email", occurredAt: "2026-10-27" })).status
   ).toBe(400);
   expect((await post({ eventType: "daily_share_started", platform: "messages" })).status).toBe(400);
+  expect((await post({ eventType: "daily_solve_pulse_viewed", puzzleId: "daily-1" })).status).toBe(
+    400
+  );
   expect((await post({ eventType: "plus_purchase_verified", userId: "victim" })).status).toBe(400);
   expect(nativeGrowthEventOps.recordOnce).not.toHaveBeenCalled();
 });
@@ -119,6 +122,7 @@ it.each([
   "reminder_enabled",
   "daily_share_started",
   "daily_share_completed",
+  "daily_solve_pulse_viewed",
 ] as const)("accepts the closed %s event without client metadata", async (eventType) => {
   expect((await post({ eventType })).status).toBe(200);
   expect(nativeGrowthEventOps.recordOnce).toHaveBeenCalledWith({
@@ -130,9 +134,12 @@ it.each([
 });
 
 it("requires a server-verified Apple transaction before recording a verified purchase", async () => {
-  const response = await post({ eventType: "plus_purchase_verified" }, {
-    "X-Rebuzzle-StoreKit-Transaction": "signed-transaction",
-  });
+  const response = await post(
+    { eventType: "plus_purchase_verified" },
+    {
+      "X-Rebuzzle-StoreKit-Transaction": "signed-transaction",
+    }
+  );
 
   expect(response.status).toBe(403);
   expect(verifyPlusTransaction).toHaveBeenCalledWith("signed-transaction");
@@ -141,9 +148,12 @@ it("requires a server-verified Apple transaction before recording a verified pur
 
 it("records verified-purchase analytics only after StoreKit proof is accepted", async () => {
   jest.mocked(verifyPlusTransaction).mockResolvedValue({ transactionId: "verified" } as never);
-  const response = await post({ eventType: "plus_purchase_verified" }, {
-    "X-Rebuzzle-StoreKit-Transaction": "signed-transaction",
-  });
+  const response = await post(
+    { eventType: "plus_purchase_verified" },
+    {
+      "X-Rebuzzle-StoreKit-Transaction": "signed-transaction",
+    }
+  );
 
   expect(response.status).toBe(200);
   expect(verifyPlusTransaction).toHaveBeenCalledWith("signed-transaction");

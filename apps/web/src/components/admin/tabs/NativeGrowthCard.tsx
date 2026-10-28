@@ -42,6 +42,7 @@ type NativeFunnelSummary = {
   plusSameDayPurchasers: number;
   plusSameDayConversionRate: number;
   reminderEnabledAccounts: number;
+  dailySolvePulseViewAccountDays: number;
   qualityFeedback: {
     too_easy: number;
     just_right: number;
@@ -170,6 +171,7 @@ export function NativeGrowthCard() {
                 value={count(summary.finishedAccountDays)}
                 detail={`${(summary.finishOpenRatio * 100).toFixed(1)}% of opened account-days`}
               />
+              <DailySolvePulseMetric accountDays={summary.dailySolvePulseViewAccountDays} />
               <Metric
                 label="Returned on 2+ days"
                 value={count(summary.multiDayReturners)}
@@ -468,8 +470,8 @@ export function DailyPuzzleQualityTable({ rows }: { rows: DailyPuzzleQualitySumm
       <p className="text-muted-foreground text-xs">
         Median wall-clock time runs from the first recorded session restore to a correct solve and
         includes idle/background time. Session restoration is requested during initial daily setup,
-        so it approximates presentation but does not prove attention or exact first render. It is not
-        active thinking time. Dates appear only after at least five qualifying solves; “first
+        so it approximates presentation but does not prove attention or exact first render. It is
+        not active thinking time. Dates appear only after at least five qualifying solves; “first
         recorded” accounts for analytics write retries.
       </p>
 
@@ -592,5 +594,15 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
       <div className="mt-1 font-semibold text-2xl tabular-nums">{value}</div>
       <div className="mt-1 text-muted-foreground text-xs">{detail}</div>
     </div>
+  );
+}
+
+export function DailySolvePulseMetric({ accountDays }: { accountDays: number }) {
+  return (
+    <Metric
+      label="Solve mix viewed"
+      value={count(accountDays)}
+      detail="Optional post-solve view · distinct account-days"
+    />
   );
 }

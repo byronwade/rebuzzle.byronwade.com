@@ -1,6 +1,16 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DailyPuzzleQualityTable } from "../NativeGrowthCard";
+import { DailyPuzzleQualityTable, DailySolvePulseMetric } from "../NativeGrowthCard";
+
+describe("DailySolvePulseMetric", () => {
+  it("labels the optional view as a distinct account-day aggregate", () => {
+    const markup = renderToStaticMarkup(createElement(DailySolvePulseMetric, { accountDays: 7 }));
+
+    expect(markup).toContain("Solve mix viewed");
+    expect(markup).toContain("distinct account-days");
+    expect(markup).toContain(">7</div>");
+  });
+});
 
 describe("DailyPuzzleQualityTable", () => {
   it("renders all-platform daily player counts and outcome distributions in an accessible table", () => {

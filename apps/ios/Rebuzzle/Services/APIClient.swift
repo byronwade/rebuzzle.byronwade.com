@@ -92,6 +92,7 @@ enum GrowthEvent: Sendable {
     case plusRestoreFailed
     case reminderEnabled
     case dailyQualityFeedback(DailyQualityRating, puzzleDate: String)
+    case dailySolvePulseViewed
     case dailyShareStarted
     case dailyShareCompleted
 
@@ -118,6 +119,7 @@ enum GrowthEvent: Sendable {
             "rating": rating.rawValue,
             "puzzleDate": puzzleDate
         ]
+        case .dailySolvePulseViewed: ["eventType": "daily_solve_pulse_viewed"]
         case .dailyShareStarted: ["eventType": "daily_share_started"]
         case .dailyShareCompleted: ["eventType": "daily_share_completed"]
         }

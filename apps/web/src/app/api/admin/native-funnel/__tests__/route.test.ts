@@ -38,6 +38,7 @@ describe("GET /api/admin/native-funnel", () => {
     plusSameDayPurchasers: 1,
     plusSameDayConversionRate: 1 / 6,
     reminderEnabledAccounts: 4,
+    dailySolvePulseViewAccountDays: 3,
     qualityFeedback: { too_easy: 2, just_right: 7, tough_but_fair: 4, unclear: 1 },
   };
   const dailyPuzzleQuality = [

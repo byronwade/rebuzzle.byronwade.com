@@ -947,6 +947,9 @@ export type NativeGrowthEvent =
   | (NativeGrowthEventBase & {
       eventType: "daily_quality_feedback";
       rating: NativeGrowthQualityRating;
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_solve_pulse_viewed";
     });
 
 export type NativeGrowthEventType = NativeGrowthEvent["eventType"];
