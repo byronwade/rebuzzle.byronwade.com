@@ -8,17 +8,8 @@ struct SettingsView: View {
     @AppStorage("haptics") private var haptics = true
     var body: some View {
         Form {
-            Section {
-                HStack(spacing: 14) {
-                    Image(systemName: "person.crop.circle.fill").font(.system(size: 42)).foregroundStyle(Theme.accent)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(model.player?.guest == false ? (model.player?.username ?? "Curious mind") : "Hello, curious mind.")
-                            .font(Theme.font(20, weight: .medium))
-                        Text(model.journeySnapshot?.summary.map { "Level \($0.level) · Your daily aha club" } ?? "Your daily aha club")
-                            .font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                    }
-                }.padding(.vertical, 8)
-            }
+            Section { PlayerCard() }
+                .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             Section {
                 if let player = model.player {
                     LabeledContent("Playing as", value: player.guest ? "Guest" : player.username)
@@ -219,5 +210,62 @@ struct ReminderView: View {
             .onChange(of: phase) { _, next in
                 if next == .active { Task { await model.reminders.refreshAuthorization() } }
             }
+    }
+}
+
+/// Game-profile header: avatar with level badge and a Duolingo-style statistics grid.
+private struct PlayerCard: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
+    private var progress: JourneyProgress? { model.journeySnapshot?.summary.map(JourneyProgress.init(summary:)) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                Image(systemName: "face.smiling.inverse")
+                    .font(.system(size: 44)).foregroundStyle(.white)
+                    .frame(width: 76, height: 76)
+                    .background(Theme.accent, in: Circle())
+                    .overlay(alignment: .bottomTrailing) {
+                        if let progress {
+                            Text("\(progress.level)")
+                                .font(Theme.display(14)).monospacedDigit().foregroundStyle(.white)
+                                .frame(minWidth: 28, minHeight: 28)
+                                .background(Theme.bolt.mix(with: .black, by: 0.1), in: Circle())
+                                .overlay(Circle().strokeBorder(Theme.canvas, lineWidth: 3))
+                                .offset(x: 4, y: 4)
+                        }
+                    }
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.player?.guest == false ? (model.player?.username ?? "Curious mind") : "Hello, curious mind.")
+                        .font(Theme.display(22)).fixedSize(horizontal: false, vertical: true)
+                    Text(progress.map { "Level \($0.level) · \($0.title)" } ?? "Your daily aha club")
+                        .font(Theme.font(13, weight: .semibold)).foregroundStyle(Theme.secondary)
+                }
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 10) {
+                stat("flame.fill", Theme.flame, model.stats?.streak, "Day streak")
+                stat("crown.fill", Theme.bolt, model.stats?.maxStreak, "Best streak")
+                stat("bolt.fill", Theme.accent, progress?.totalXP, "Total XP")
+                stat("checkmark.seal.fill", Theme.go, model.journeySnapshot?.summary?.solves, "Solved")
+            }
+        }
+        .padding(.vertical, 8)
+        .accessibilityIdentifier("playerCard")
+    }
+    private func stat(_ symbol: String, _ tint: Color, _ value: Int?, _ label: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).font(.system(size: 20, weight: .semibold)).foregroundStyle(tint)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value.map(String.init) ?? "–").font(Theme.display(18)).monospacedDigit()
+                Text(label).font(Theme.font(12)).foregroundStyle(Theme.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.secondary.opacity(0.22), lineWidth: 2))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value.map(String.init) ?? "syncing")")
     }
 }

@@ -173,9 +173,10 @@ struct ConfettiBurst: View {
     @State private var start = Date()
     private let pieces: [Piece] = (0..<70).map { _ in Piece() }
     private let duration: Double = 2.6
+    @State private var finished = false
     var body: some View {
-        if !reduceMotion {
-            TimelineView(.animation(paused: false)) { context in
+        if !reduceMotion && !finished {
+            TimelineView(.animation(paused: finished)) { context in
                 let t = context.date.timeIntervalSince(start)
                 Canvas { canvas, size in
                     guard t < duration else { return }
@@ -196,6 +197,8 @@ struct ConfettiBurst: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .onAppear { start = Date() }
+            // Stop the animation timeline once the burst is over so the screen can idle.
+            .task { try? await Task.sleep(for: .seconds(duration)); finished = true }
         }
     }
     private struct Piece {

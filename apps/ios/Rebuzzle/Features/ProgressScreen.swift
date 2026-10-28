@@ -84,7 +84,9 @@ struct ProgressViewScreen: View {
                 Text("Finish a puzzle: 25 XP. Solve it: +75. Solve on your first guess: +25. Solve without hints: +25. Each level takes 300 XP. Revealing the answer still counts toward your weekly challenge.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary).padding(.top, 8)
             }.font(Theme.font(14)).tint(Theme.ink)
-        }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable {
+        }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { GameHUDStreakChip() } }
+        .refreshable {
             await model.refreshJourneyProgress()
             await model.refreshStreakProgress()
         }
@@ -143,12 +145,14 @@ struct ProgressViewScreen: View {
                     let completed = day < progress.weeklyDays
                     let current = day == progress.weeklyDays
                     VStack(spacing: 8) {
-                        Image(systemName: completed ? "checkmark" : current ? "flag.fill" : "flag")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(completed ? Theme.panel : current ? Theme.accent : Theme.secondary)
-                            .frame(width: 56, height: 56)
-                            .background(completed ? Theme.success : Theme.field, in: Circle())
-                            .overlay(Circle().strokeBorder(current ? Theme.accent : .clear, lineWidth: 2))
+                        let node = completed ? Theme.go : current ? Theme.accent : Theme.field
+                        Image(systemName: completed ? "checkmark" : current ? "star.fill" : "lock.fill")
+                            .font(.system(size: 22, weight: .heavy))
+                            .foregroundStyle(completed || current ? .white : Theme.secondary.opacity(0.6))
+                            .frame(width: 60, height: 54)
+                            .background(node, in: Ellipse())
+                            .background(Ellipse().fill(completed || current ? node.mix(with: .black, by: 0.28) : Theme.secondary.opacity(0.25)).offset(y: 6))
+                            .padding(.bottom, 6)
                         Text("Day \(day + 1)").font(Theme.font(12, weight: .medium))
                     }.frame(maxWidth: .infinity)
                     if day < 2 {
@@ -159,8 +163,8 @@ struct ProgressViewScreen: View {
             }.accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(min(progress.weeklyDays, 3)) of 3 days completed this week")
             if model.game?.gameOver != true {
-                Button { model.selectedTab = .play } label: { Label("Play today’s puzzle", systemImage: "arrow.right") }
-                    .buttonStyle(CommitStyle())
+                Button { model.selectedTab = .play } label: { Label("Play today’s puzzle  +XP", systemImage: "play.fill") }
+                    .buttonStyle(ChunkyButtonStyle(fill: Theme.go))
             } else {
                 Label(progress.weeklyDays >= 3 ? "Trail complete. Every extra day is a bonus." : "Today counts. See you at the next stop.", systemImage: "checkmark.circle")
                     .font(Theme.font(13)).foregroundStyle(Theme.secondary)

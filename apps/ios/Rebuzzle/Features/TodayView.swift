@@ -64,6 +64,8 @@ struct TodayView: View {
                                 .onSubmit { submitAnswer() }
                                 .onChange(of: model.draft) { _, _ in model.saveDraft() }
                             if let error = model.error { Notice(message: error) }
+                            // Large text keeps the action inline so it never covers the answer field.
+                            if typeSize.isAccessibilitySize && !answerFocused { actionButton }
                         }
                         if model.hintsShown > 0 {
                             VStack(alignment: .leading, spacing: 12) {
@@ -111,7 +113,7 @@ struct TodayView: View {
         }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if model.daily != nil, model.game?.gameOver != true, !answerFocused { actionBar }
+            if model.daily != nil, model.game?.gameOver != true, !answerFocused, !typeSize.isAccessibilitySize { actionBar }
         }
         .overlay {
             if celebrate { ConfettiBurst().ignoresSafeArea() }
@@ -150,7 +152,13 @@ struct TodayView: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
     }
     private var actionBar: some View {
-        VStack(spacing: 0) {
+        actionButton
+            .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 8)
+            .frame(maxWidth: 600).frame(maxWidth: .infinity)
+            .background(Theme.canvas.opacity(0.96))
+            .overlay(alignment: .top) { Rectangle().fill(Theme.secondary.opacity(0.14)).frame(height: 1) }
+    }
+    @ViewBuilder private var actionButton: some View {
             if model.needsReconciliation || !model.sessionReady {
                 Button { Task { await model.load() } } label: {
                     HStack { if model.busy { ProgressView().tint(.white) }; Text("Refresh progress"); Image(systemName: "arrow.clockwise") }
@@ -161,11 +169,6 @@ struct TodayView: View {
                 }.buttonStyle(ChunkyButtonStyle(fill: Theme.go))
                 .disabled(model.submitting || model.busy).accessibilityIdentifier("checkAnswer")
             }
-        }
-        .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 8)
-        .frame(maxWidth: 600).frame(maxWidth: .infinity)
-        .background(Theme.canvas.opacity(0.96))
-        .overlay(alignment: .top) { Rectangle().fill(Theme.secondary.opacity(0.14)).frame(height: 1) }
     }
     private func submitAnswer() {
         answerFocused = false
