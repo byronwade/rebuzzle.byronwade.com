@@ -43,9 +43,10 @@ function profile(
   return {
     ...result,
     profileId,
-    viewportWidth: profileId === "compact-320" ? 320 : 768,
-    tileSize: profileId === "compact-320" ? 44 : 72,
-    width: profileId === "compact-320" ? 320 : 768,
+    viewportWidth:
+      profileId === "compact-320" ? 320 : profileId.startsWith("mobile-375") ? 375 : 768,
+    tileSize: profileId === "compact-320" ? 44 : profileId === "mobile-375-medium" ? 52 : 72,
+    width: profileId === "compact-320" ? 320 : profileId.startsWith("mobile-375") ? 375 : 768,
     height: 120,
     wrappedRows: 1,
   };
@@ -302,7 +303,7 @@ describe("board perception consensus", () => {
         profile("mobile-375", passing),
         profile("desktop-768", passing),
       ],
-      expectedProfileIds: ["compact-320", "mobile-375", "desktop-768"],
+      expectedProfileIds: ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"],
     });
 
     expect(result.ok).toBe(false);
@@ -319,7 +320,7 @@ describe("board perception consensus", () => {
     const result = evaluateBoardProfileConsensus({
       visual,
       profileResults: [profile("mobile-375", passing), profile("desktop-768", passing)],
-      expectedProfileIds: ["compact-320", "mobile-375", "desktop-768"],
+      expectedProfileIds: ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"],
     });
 
     expect(result.ok).toBe(false);

@@ -17,9 +17,15 @@ export async function GET(request: Request) {
 
     const end = new Date();
     const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const summary = await nativeGrowthEventOps.getSummary(start, end);
+    const [summary, dailyPuzzleQuality] = await Promise.all([
+      nativeGrowthEventOps.getSummary(start, end),
+      nativeGrowthEventOps.getDailyPuzzleQuality(start, end),
+    ]);
     return NextResponse.json(
-      { period: { start: start.toISOString(), end: end.toISOString() }, summary },
+      {
+        period: { start: start.toISOString(), end: end.toISOString() },
+        summary: { ...summary, dailyPuzzleQuality },
+      },
       { headers: noStore }
     );
   } catch (error) {

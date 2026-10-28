@@ -18,9 +18,42 @@ it("signs a short-lived round token bound to the authenticated player and puzzle
     wrongGuessCount: 2,
   });
 
-  await expect(verifyPracticeRoundToken(token, "player-1", "puzzle-1")).resolves.toBe(2);
+  await expect(verifyPracticeRoundToken(token, "player-1", "puzzle-1")).resolves.toMatchObject({
+    userId: "player-1",
+    puzzleId: "puzzle-1",
+    wrongGuessCount: 2,
+    roundId: expect.any(String),
+    expiresAt: expect.any(Date),
+  });
   await expect(verifyPracticeRoundToken(token, "player-2", "puzzle-1")).resolves.toBeNull();
   await expect(verifyPracticeRoundToken(token, "player-1", "puzzle-2")).resolves.toBeNull();
+});
+
+it("gives each round a distinct ID and preserves an ID across its token chain", async () => {
+  const firstRoundToken = await createPracticeRoundToken({
+    userId: "player-1",
+    puzzleId: "puzzle-1",
+    wrongGuessCount: 1,
+  });
+  const firstRound = await verifyPracticeRoundToken(firstRoundToken, "player-1", "puzzle-1");
+  if (!firstRound) throw new Error("Expected a valid first-round token");
+
+  const nextToken = await createPracticeRoundToken({
+    userId: "player-1",
+    puzzleId: "puzzle-1",
+    wrongGuessCount: 2,
+    roundId: firstRound.roundId,
+  });
+  const nextRound = await verifyPracticeRoundToken(nextToken, "player-1", "puzzle-1");
+  const separateToken = await createPracticeRoundToken({
+    userId: "player-1",
+    puzzleId: "puzzle-1",
+    wrongGuessCount: 1,
+  });
+  const separateRound = await verifyPracticeRoundToken(separateToken, "player-1", "puzzle-1");
+
+  expect(nextRound?.roundId).toBe(firstRound.roundId);
+  expect(separateRound?.roundId).not.toBe(firstRound.roundId);
 });
 
 it("rejects malformed, forged, and expired round tokens", async () => {

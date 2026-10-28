@@ -176,6 +176,17 @@ describe("rubric + tournament", () => {
     expect(rubric.ahaMoment).toBeGreaterThanOrEqual(60);
   });
 
+  it("keeps fairness separate from estimated difficulty", () => {
+    const easierEstimate = scoreRubric(
+      fakeCandidate({ playerSim: { ...fakeCandidate().playerSim!, estimatedSolveRate: 0.92 } })
+    );
+    const harderEstimate = scoreRubric(
+      fakeCandidate({ playerSim: { ...fakeCandidate().playerSim!, estimatedSolveRate: 0.15 } })
+    );
+
+    expect(easierEstimate.fairness).toBe(harderEstimate.fairness);
+  });
+
   it("rejects critique-reject and non-unique candidates in tournament", () => {
     const good = fakeCandidate({ id: "good" });
     const bad = fakeCandidate({

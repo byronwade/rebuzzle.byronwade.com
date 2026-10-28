@@ -28,6 +28,7 @@ export type GradeSubmissionInput = {
   difficulty: number;
   visual: {
     layout?: PuzzleVisual["layout"];
+    freeCanvasHeight?: PuzzleVisual["freeCanvasHeight"];
     layers: PuzzleVisual["layers"];
     caption?: string;
   };

@@ -56,14 +56,15 @@ const review = {
   checks: [],
   spend: { critique: "ran" as const, playerSim: "ran" as const },
 };
-const request = (submit: boolean) =>
+const request = (submit: boolean, freeCanvasHeight?: number) =>
   new Request("http://localhost/api/studio/submissions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       ...content,
-      layout: "row",
+      layout: freeCanvasHeight ? "free" : "row",
       layers: content.visual.layers,
+      ...(freeCanvasHeight ? { freeCanvasHeight } : {}),
       submit,
       deepReview: false,
     }),
@@ -72,6 +73,7 @@ beforeEach(() => {
   insertOne.mockClear();
   updateOne.mockClear();
   jest.mocked(runEveStudioReview).mockReset();
+  jest.mocked(gradeUserPuzzleSubmission).mockClear();
   jest.mocked(gradeUserPuzzleSubmission).mockResolvedValue(grade);
 });
 it("keeps pending reviews out of the puzzle collection", async () => {
@@ -88,6 +90,61 @@ it("allows drafts while required providers are unavailable", async () => {
   expect(response.status).toBe(200);
   expect((await response.json()).submission.status).toBe("draft");
   expect(insertOne).not.toHaveBeenCalled();
+});
+it("passes the expanded free-canvas height through grading and draft persistence", async () => {
+  jest.mocked(gradeUserPuzzleSubmission).mockResolvedValue({
+    ...grade,
+    visual: { ...content.visual, layout: "free", freeCanvasHeight: 876 },
+  });
+
+  const response = await POST(request(false, 876));
+
+  expect(response.status).toBe(200);
+  expect(gradeUserPuzzleSubmission).toHaveBeenCalledWith(
+    expect.objectContaining({
+      visual: expect.objectContaining({ layout: "free", freeCanvasHeight: 876 }),
+    })
+  );
+  expect(updateOne).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      $set: expect.objectContaining({
+        visual: expect.objectContaining({ freeCanvasHeight: 876 }),
+      }),
+    }),
+    expect.anything()
+  );
+});
+it("keeps tall free canvases editable as drafts", async () => {
+  jest.mocked(gradeUserPuzzleSubmission).mockResolvedValue({
+    ...grade,
+    visual: { ...content.visual, layout: "free", freeCanvasHeight: 8_000 },
+  });
+
+  const response = await POST(request(false, 8_000));
+
+  expect(response.status).toBe(200);
+  expect(updateOne).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      $set: expect.objectContaining({
+        visual: expect.objectContaining({ freeCanvasHeight: 8_000 }),
+      }),
+    }),
+    expect.anything()
+  );
+});
+it("rejects unsupported free-canvas heights", async () => {
+  const response = await POST(request(false, 20_161));
+  expect(response.status).toBe(400);
+  expect(gradeUserPuzzleSubmission).not.toHaveBeenCalled();
+});
+it("allows tall free-canvas drafts but blocks submissions the canonical renderer cannot fit", async () => {
+  const response = await POST(request(true, 8_000));
+
+  expect(response.status).toBe(400);
+  expect((await response.json()).error).toMatch(/up to 2,000 pixels tall/);
+  expect(runEveStudioReview).not.toHaveBeenCalled();
 });
 it("publishes only a complete matching server review", async () => {
   jest.mocked(runEveStudioReview).mockResolvedValue(review);

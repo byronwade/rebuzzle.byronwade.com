@@ -26,6 +26,7 @@ function emojiFallbackFor(concept: string): string {
 
 export function hydrateStudioVisual(input: {
   layout?: PuzzleVisual["layout"];
+  freeCanvasHeight?: PuzzleVisual["freeCanvasHeight"];
   layers: VisualLayer[];
   caption?: string;
 }): { visual: PuzzleVisual; issues: string[] } {
@@ -70,6 +71,7 @@ export function hydrateStudioVisual(input: {
       styleId: INK_PICTOGRAM_STYLE_ID,
       mode: "composed",
       layout: input.layout ?? "row",
+      ...(input.freeCanvasHeight !== undefined ? { freeCanvasHeight: input.freeCanvasHeight } : {}),
       layers,
       unicodeFallback,
       caption: input.caption,

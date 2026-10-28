@@ -32,13 +32,13 @@ This adds a concrete use for the existing one-time Plus purchase. It does not es
 - Plus remains scoped to the verified Apple Account purchase, matching StoreKit restore behavior. The same valid Apple transaction proof can unlock server Plus features under any authenticated Rebuzzle account on that Apple Account; the server does not bind the purchase to the first Rebuzzle account that claims it.
 - Archive listing, practice guesses, solution reveal, and practice-mode Eve replies require both Rebuzzle authentication and a server-verified Plus transaction. Missing proof is denied; verifier configuration or Apple verification failures fail closed.
 - A verified App Store Server Notifications V2 endpoint records transaction revocations/refunds so a previously issued transaction proof cannot preserve access after Apple revokes a purchase. The release checklist must identify the matching App Store Connect notification URL and server configuration.
-- The client never supplies an authoritative attempt count. Each wrong practice guess receives a short-lived signed token bound to the authenticated user, puzzle, purpose, and cumulative wrong-guess count. The next guess advances that token; reveal accepts only a valid token at count three. Correct guesses reveal immediately. Practice guesses and sessions remain unpersisted.
+- The client never supplies an authoritative attempt count. Each wrong practice guess receives a short-lived signed token bound to the authenticated user, puzzle, round, purpose, and cumulative wrong-guess count. The server stores only a digest of the current token, its user/puzzle/round binding, and its expiry, then atomically rotates that digest on the next guess. Replaying an older token or racing two requests cannot advance one round twice. Reveal accepts only the active token at count three; a correct guess invalidates the active token and reveals immediately. Guess text, answer, explanation, hint count, and practice progress remain unpersisted.
 - Apply a bounded rate limit to archive listing as well as practice mutations, and describe the current limiter accurately as per-instance best-effort unless a shared store is configured.
 
 ## Persistence and privacy
 
 - Use the authenticated player identity for access control and existing account isolation, but do not create persisted attempts, progress rows, analytics events, or journal entries for practice.
-- Keep practice guesses and transient hint/round state in memory only. Leaving the screen, ending the process, or switching accounts discards the session.
+- Keep practice guesses and transient hint/round state in memory only. Leaving the screen, ending the process, or switching accounts discards the session. The server retains only a short-lived token digest for replay protection and automatically expires it.
 - Follow existing no-store response headers and avoid logging raw guesses, answer material, or explanation text in the practice path.
 - Archive list data is read-only and contains only presentation-safe metadata and puzzle identifiers; the answer remains server-side until the practice result permits disclosure.
 

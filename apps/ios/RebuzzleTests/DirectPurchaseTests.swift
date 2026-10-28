@@ -3,6 +3,10 @@ import StoreKitTest
 @testable import Rebuzzle
 
 final class DirectPurchaseTests: XCTestCase {
+    @MainActor private func isolatedPurchaseStore() -> PurchaseStore {
+        PurchaseStore(defaults: UserDefaults(suiteName: "rebuzzle.direct-purchase-tests.\(UUID().uuidString)")!)
+    }
+
     @MainActor func testDirectPurchaseGrantsVerifiedPlus() async throws {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Rebuzzle", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: url)
@@ -10,7 +14,10 @@ final class DirectPurchaseTests: XCTestCase {
         session.disableDialogs = true
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
+        store.onVerifiedPurchase = { _, _ in true }
         await store.load()
         XCTAssertNotNil(store.product)
         XCTAssertFalse(store.hasPlus)
@@ -18,6 +25,10 @@ final class DirectPurchaseTests: XCTestCase {
         XCTAssertFalse(store.busy)
         XCTAssertTrue(store.hasPlus, "Direct purchase should unlock Plus: \(store.message ?? "No message")")
         XCTAssertTrue(store.message?.contains("Welcome to Plus") == true)
+        XCTAssertEqual(events, [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_verified"],
+        ])
     }
 
     @MainActor func testDirectPurchaseCanRetryAfterStorefrontFailure() async throws {
@@ -27,12 +38,19 @@ final class DirectPurchaseTests: XCTestCase {
         session.disableDialogs = true
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
+        store.onVerifiedPurchase = { _, _ in true }
         await store.load()
         try await session.setSimulatedError(.generic(.notAvailableInStorefront), forAPI: .purchase)
         await store.purchase()
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
+        XCTAssertEqual(Array(events.prefix(2)), [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_failed"],
+        ])
         // Clearing a simulated purchase error with nil leaves the local StoreKit server
         // returning an unknown error. Reset only session overrides; keep store and transactions.
         session.resetToDefaultState()
@@ -40,6 +58,12 @@ final class DirectPurchaseTests: XCTestCase {
         await store.purchase()
         XCTAssertTrue(store.hasPlus, "Direct retry should unlock Plus: \(store.message ?? "No message")")
         XCTAssertFalse(store.busy)
+        XCTAssertEqual(events, [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_failed"],
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_verified"],
+        ])
     }
 
     @MainActor func testCancelledPurchaseDoesNotUnlockOrReportFailure() async throws {
@@ -49,7 +73,9 @@ final class DirectPurchaseTests: XCTestCase {
         session.disableDialogs = true
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
         await store.load()
         XCTAssertNotNil(store.product)
         try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
@@ -57,6 +83,10 @@ final class DirectPurchaseTests: XCTestCase {
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertNil(store.message, "Cancelling is a normal choice, not a failed purchase.")
+        XCTAssertEqual(events, [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_cancelled"],
+        ])
     }
 
     @MainActor func testStoreLoadRecoveryClearsUnavailableMessage() async throws {
@@ -66,7 +96,7 @@ final class DirectPurchaseTests: XCTestCase {
         session.disableDialogs = true
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
         await store.load()
         XCTAssertNil(store.product)
@@ -92,7 +122,7 @@ final class DirectPurchaseTests: XCTestCase {
         session.disableDialogs = true
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         await store.load()
         XCTAssertNil(store.product)
         XCTAssertNotNil(store.message)
@@ -118,11 +148,14 @@ extension DirectPurchaseTests {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
         await store.restore()
         XCTAssertTrue(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertEqual(store.message, "Plus restored.")
+        XCTAssertEqual(events, [["eventType": "plus_restore_completed"]])
     }
 
     @MainActor func testFreshStoreDiscoversExistingOwnershipWithoutWaitingForDailyLoad() async throws {
@@ -132,7 +165,7 @@ extension DirectPurchaseTests {
         await transaction.finish()
 
         // Simulate a cold app launch after the purchase has already been completed.
-        let relaunched = PurchaseStore()
+        let relaunched = isolatedPurchaseStore()
         for _ in 0..<50 {
             if relaunched.hasPlus { break }
             try await Task.sleep(for: .milliseconds(100))
@@ -144,7 +177,7 @@ extension DirectPurchaseTests {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         await store.restore()
         XCTAssertEqual(store.message, "Plus restored.")
         // PlusView and app startup both load products asynchronously. Their completion
@@ -159,7 +192,7 @@ extension DirectPurchaseTests {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         await store.restore()
         try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
         await store.load()
@@ -171,7 +204,7 @@ extension DirectPurchaseTests {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
         await store.load()
         XCTAssertEqual(store.message, "Could not load the store. Check your connection and try again.")
@@ -186,7 +219,7 @@ extension DirectPurchaseTests {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let transaction = try await session.buyProduct(identifier: PurchaseStore.plusID)
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         await store.restore()
         XCTAssertEqual(store.message, "Plus restored.")
         try session.refundTransaction(identifier: UInt(transaction.id))
@@ -202,17 +235,22 @@ extension DirectPurchaseTests {
     @MainActor func testExplicitRestoreWithoutOwnershipDoesNotGrantPlus() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
         await store.restore()
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertEqual(store.message, "No Plus purchase was found for this Apple Account.")
+        XCTAssertEqual(events, [["eventType": "plus_restore_empty"]])
     }
 
     @MainActor func testRestoreFailureReleasesBusyAndCanRecover() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
         try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .appStoreSync)
         await store.restore()
         XCTAssertFalse(store.hasPlus)
@@ -225,13 +263,17 @@ extension DirectPurchaseTests {
         XCTAssertTrue(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertEqual(store.message, "Plus restored.")
+        XCTAssertEqual(events, [
+            ["eventType": "plus_restore_failed"],
+            ["eventType": "plus_restore_completed"],
+        ])
     }
 
     @MainActor func testRestoreNetworkFailurePreservesVerifiedAccess() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         await store.refreshEntitlements()
         XCTAssertTrue(store.hasPlus)
         try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .appStoreSync)
@@ -244,7 +286,9 @@ extension DirectPurchaseTests {
     @MainActor func testUnverifiedPurchaseAndRestoreNeverGrantPlus() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
         await store.load()
         try await session.setSimulatedError(.verification(.invalidSignature), forAPI: .verification)
         await store.purchase()
@@ -257,5 +301,10 @@ extension DirectPurchaseTests {
         await store.restore()
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
+        XCTAssertEqual(events, [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_unverified"],
+            ["eventType": "plus_restore_empty"],
+        ])
     }
 }

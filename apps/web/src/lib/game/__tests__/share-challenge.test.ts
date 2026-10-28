@@ -3,22 +3,41 @@ import {
   buildBeatMeUrl,
   buildShareSquares,
   parseBeatMeChallenge,
+  shouldReportShareArrival,
 } from "../share-challenge";
 
 describe("share-challenge", () => {
-  it("builds a beat-me deep link with sharer id", () => {
-    expect(buildBeatMeUrl("https://rebuzzle.com", "user-123")).toBe(
-      "https://rebuzzle.com/?beat=user-123&from=share"
+  it("builds one share link without embedding the sharer's account id", () => {
+    expect(buildBeatMeUrl("https://rebuzzle.com/old?beat=user-123&from=share#result")).toBe(
+      "https://rebuzzle.com/?source=share"
     );
-    expect(buildBeatMeUrl("https://rebuzzle.com/", null)).toBe("https://rebuzzle.com");
+    expect(buildBeatMeUrl("https://rebuzzle.com/")).toBe("https://rebuzzle.com/?source=share");
   });
 
-  it("parses challenge params from the landing query", () => {
-    expect(parseBeatMeChallenge("?beat=abc&from=share")).toEqual({
-      challengerId: "abc",
+  it("recognizes canonical and legacy share links without exposing a sharer id", () => {
+    expect(parseBeatMeChallenge("?source=share")).toEqual({
       fromShare: true,
     });
-    expect(parseBeatMeChallenge("")).toEqual({ challengerId: null, fromShare: false });
+    expect(parseBeatMeChallenge("?beat=abc&from=share")).toEqual({
+      fromShare: true,
+    });
+    expect(parseBeatMeChallenge("")).toEqual({ fromShare: false });
+  });
+
+  it("reports a share arrival only after identity and puzzle restoration are ready", () => {
+    const ready = {
+      fromShare: true,
+      userId: "guest-1",
+      authLoading: false,
+      sessionRestoreSucceeded: true,
+      alreadyReported: false,
+    };
+
+    expect(shouldReportShareArrival({ ...ready, sessionRestoreSucceeded: false })).toBe(false);
+    expect(shouldReportShareArrival({ ...ready, userId: null })).toBe(false);
+    expect(shouldReportShareArrival({ ...ready, authLoading: true })).toBe(false);
+    expect(shouldReportShareArrival({ ...ready, alreadyReported: true })).toBe(false);
+    expect(shouldReportShareArrival(ready)).toBe(true);
   });
 
   it("invites a spoiler-free challenge", () => {

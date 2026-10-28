@@ -51,12 +51,17 @@ struct Eyebrow: View {
     var body: some View { Text(text).font(Theme.font(12, weight: .medium, relativeTo: .caption)).foregroundStyle(Theme.secondary) }
 }
 struct Page<Content: View>: View {
+    var spacing: CGFloat = 24
+    var bottomSafeAreaClearance: CGFloat = 0
     @ViewBuilder var content: Content
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) { content }
+            VStack(alignment: .leading, spacing: spacing) { content }
                 .padding(.horizontal, 24).padding(.vertical, 20).frame(maxWidth: 600).frame(maxWidth: .infinity)
         }.scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Color.clear.frame(height: bottomSafeAreaClearance).accessibilityHidden(true)
+            }
             .background(Theme.canvas).foregroundStyle(Theme.ink)
     }
 }

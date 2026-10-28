@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import * as compiler from "../canonical-board";
-import { validateCanonicalBoard } from "../canonical-contract";
+import { canonicalBoardForProfile, validateCanonicalBoard } from "../canonical-contract";
 import type { PuzzleVisual } from "../composition";
 import { renderPuzzleVisualProfiles } from "../render-board";
 
@@ -20,16 +20,21 @@ test("compiles independently of supplied artifacts and freezes all profile geome
       canonicalBoard: { ...board, sha256: "0".repeat(64) },
     })
   ).toEqual(board);
-  const bytes = await validateCanonicalBoard(board);
   const profiles = await renderPuzzleVisualProfiles({ ...visual, canonicalBoard: board });
   for (const profile of profiles) {
-    const expected = await sharp(bytes).resize({ width: profile.width }).png().toBuffer();
+    const bytes = await validateCanonicalBoard(canonicalBoardForProfile(board, profile.profileId));
+    const expected = await sharp(bytes).png().toBuffer();
     expect(Buffer.from(profile.pixels)).toEqual(expected);
   }
+  expect(Object.keys(board.profileVariants ?? {})).toEqual([
+    "compact-320",
+    "mobile-375",
+    "mobile-375-medium",
+  ]);
   expect(
     (await compiler.compileCanonicalBoard({ ...visual, caption: "Different" })).sha256
   ).not.toBe(board.sha256);
-});
+}, 30_000);
 test("fails closed for remote images, missing pictograms and unsupported mode", async () => {
   await expect(
     compiler.compileCanonicalBoard({
@@ -98,3 +103,18 @@ test("preserves semantic SVG color in compiled pixels", async () => {
     if (pixels[i] === 255 && pixels[i + 1] === 0 && pixels[i + 2] === 0) red++;
   expect(red).toBeGreaterThan(1000);
 });
+
+test("legacy canonical boards without profile rasters use the shared responsive renderer", async () => {
+  const board = await compiler.compileCanonicalBoard(visual);
+  const legacyBoard = { ...board, profileVariants: undefined };
+  const expected = await renderPuzzleVisualProfiles(visual);
+  const actual = await renderPuzzleVisualProfiles({ ...visual, canonicalBoard: legacyBoard });
+
+  expect(actual.map((profile) => profile.width)).toEqual(expected.map((profile) => profile.width));
+  expect(actual.map((profile) => profile.height)).toEqual(
+    expected.map((profile) => profile.height)
+  );
+  expect(actual.map((profile) => Buffer.from(profile.pixels))).toEqual(
+    expected.map((profile) => Buffer.from(profile.pixels))
+  );
+}, 30_000);

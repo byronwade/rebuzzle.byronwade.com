@@ -87,7 +87,7 @@ public struct GuessWordResult: Codable, Sendable {
     public let correct: Bool
     public let similarity: Double?
 }
-public struct GuessResponse: Decodable, Sendable {
+public struct GuessResponse: Codable, Sendable {
     public let success: Bool
     public let correct: Bool
     public let attemptsLeft: Int
@@ -101,6 +101,40 @@ public struct GuessResponse: Decodable, Sendable {
     public let wordResults: [GuessWordResult]?
     public let pointsEarned: Int?
     public let streak: Int?
+    public let phase: String?
+    public let scoreLocked: Bool?
+    public let playMode: String?
+}
+
+public struct RevealResponse: Decodable, Sendable {
+    public let success: Bool
+    public let puzzleId: String
+    public let puzzleDate: String
+    public let phase: String
+    public let scoreLocked: Bool
+    public let correct: Bool
+    public let wasSuccessful: Bool
+    public let gameOver: Bool
+    public let attempts: [Guess]
+    public let attemptsLeft: Int
+    public let maxAttempts: Int
+    public let answer: String?
+    public let explanation: String?
+    public let pointsEarned: Int?
+}
+
+public struct ExpiredDailyReview: Codable, Sendable {
+    public let puzzleId: String
+    public let puzzleDate: String
+    public let answer: String
+    public let explanation: String
+
+    public init(puzzleId: String, puzzleDate: String, answer: String, explanation: String) {
+        self.puzzleId = puzzleId
+        self.puzzleDate = puzzleDate
+        self.answer = answer
+        self.explanation = explanation
+    }
 }
 public struct StatsResponse: Decodable, Sendable {
     public let success: Bool

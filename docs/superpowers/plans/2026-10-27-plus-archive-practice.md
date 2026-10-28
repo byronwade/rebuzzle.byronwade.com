@@ -4,7 +4,7 @@
 
 **Goal:** Let Plus players replay published past dailies with hints and answer-blind feedback, without changing today's result, stats, rewards, or streak.
 
-**Architecture:** Add a read-only, paginated archive endpoint over active puzzles published before the server-resolved daily date. Add distinct practice guess and solution-reveal routes that reuse existing normalization and feedback but never enter the scored attempt pipeline. Verify current Apple-signed Plus transactions on every paid server route and process signed App Store revocation notifications. Bind practice-round progress to a short-lived signed token so only the server can advance wrong-guess count. Build an isolated SwiftUI practice flow and separate Eve reply scope; keep attempt, token, and hint state in memory.
+**Architecture:** Add a read-only, paginated archive endpoint over active puzzles published before the server-resolved daily date. Add distinct practice guess and solution-reveal routes that reuse existing normalization and feedback but never enter the scored attempt pipeline. Verify current Apple-signed Plus transactions on every paid server route and process signed App Store revocation notifications. Bind practice-round progress to a short-lived signed token and atomically rotate its server-stored digest so replayed or concurrent requests cannot advance one round twice. Build an isolated SwiftUI practice flow and separate Eve reply scope; keep attempt, token, and hint state in memory.
 
 **Tech Stack:** Next.js route handlers, MongoDB puzzle operations, existing answer-validation and reaction helpers, Jest, SwiftUI, Swift Codable, XCTest, XCUITest, StoreKitTest.
 
@@ -21,6 +21,7 @@
 - Practice uses no-store responses, preserves answer-blind feedback and Eve prompts, and keeps rate limits.
 - Every archive/practice endpoint independently verifies a current Apple-signed Plus transaction; refund notifications revoke access.
 - Solution reveal requires a server-signed, user- and puzzle-bound round token recording three wrong guesses; never trust the client attempt count.
+- Practice token replay protection stores only a digest, user/puzzle/round binding, and expiry; create the TTL index before enabling the routes in a deployment.
 - Preserve existing Journal study behavior, Plus purchase/restore, keyboard dismissal, account isolation, VoiceOver, Dynamic Type, and Reduce Motion.
 - Do not modify or stage the user-owned untracked Xcode project directories.
 
@@ -31,6 +32,7 @@
 - Guess, reveal, or accessibility content must not expose answer/explanation early — endpoint serialization and UI tests assert absence before explicit reveal.
 - Finishing today's daily must not block practice Eve feedback, while the existing daily guard remains — quip-route tests cover both modes and preserve answer-blind prompting/rate limits.
 - Correct, failed, restarted, and abandoned practice sessions must not alter daily state — server mutation mocks and native UI/session tests assert no reward or persistence path.
+- Replayed and concurrent use of a signed round token must not advance the same round twice; database updates compare-and-set the current token digest.
 
 ---
 
@@ -174,11 +176,11 @@
 - Modify: `apps/ios/Core/Sources/RebuzzleCore/PracticeSession.swift`, `APIClient.swift`, `PracticeGameView.swift`, and API tests
 
 **Interfaces:**
-- Wrong practice guesses return a signed token valid for 24 hours and bound to user ID, puzzle ID, purpose, and cumulative wrong-guess count.
+- Wrong practice guesses return a signed token valid for 24 hours and bound to user ID, puzzle ID, round ID, purpose, and cumulative wrong-guess count. The backend atomically stores and rotates only the token digest, and removes it when a correct guess ends the round.
 - Subsequent guesses submit the preceding token; client `attemptNumber` is removed from authority.
-- Reveal accepts only a valid token for the same user and puzzle with exactly three wrong guesses.
+- Reveal accepts only the active token for the same user, puzzle, and round with exactly three wrong guesses. Replaying an old token or racing duplicate requests cannot advance a round twice.
 
-- [x] Add tests for direct reveal with a claimed attempt count, missing/tampered/expired/cross-user/cross-puzzle tokens, and reveal after three wrong responses.
+- [x] Add tests for direct reveal with a claimed attempt count, missing/tampered/expired/cross-user/cross-puzzle tokens, reveal after three wrong responses, and replayed or concurrent token advancement.
 - [x] Run the reveal-spoof test against the client-only guard and observe that it fails before adding server verification.
 - [x] Sign and verify purpose-specific tokens with `AUTH_SECRET`; advance only after wrong answers, and keep correct-answer disclosure immediate.
 - [x] Update native `PracticeSession` and request/response models to carry the token; never persist it or practice guesses.
@@ -191,4 +193,5 @@
 
 - [x] Correct test counts and accurately record the keyboard simulator result.
 - [x] Document required backend deployment and App Store Server Notifications setup without recording secret values.
-- [ ] Run the full applicable regression suite and final diff check; record every remaining blocker without implying a TestFlight upload.
+- [x] Add the `practiceRoundTokens` TTL index to the database index migration; executing that migration remains required before route deployment.
+- [x] Run the full applicable Web and iOS regression suites and final diff check; record every remaining blocker without implying a TestFlight upload.

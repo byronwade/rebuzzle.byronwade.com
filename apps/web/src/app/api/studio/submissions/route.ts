@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  CANONICAL_BOARD_HEIGHT_LIMIT_MESSAGE,
+  MAX_CANONICAL_BOARD_HEIGHT,
+} from "@/ai/puzzle-agent/visual/canonical-contract";
+import { MAX_FREE_CANVAS_HEIGHT } from "@/ai/puzzle-agent/visual/composition";
+import { layoutPuzzleBoard } from "@/ai/puzzle-agent/visual/layout-plan";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { publicEveReview, runEveStudioReview } from "@/lib/ugc/eve-review";
@@ -63,6 +69,7 @@ type Body = {
   techniqueId?: string;
   difficulty?: number;
   layout?: "row" | "stack" | "grid" | "overlay" | "free";
+  freeCanvasHeight?: number;
   layers?: unknown[];
   caption?: string;
   submit?: boolean;
@@ -97,6 +104,16 @@ export async function POST(request: Request) {
   const title = typeof body.title === "string" ? body.title.trim() : undefined;
   const draftId = typeof body.id === "string" ? body.id : undefined;
 
+  if (
+    body.freeCanvasHeight !== undefined &&
+    (body.layout !== "free" ||
+      !Number.isInteger(body.freeCanvasHeight) ||
+      body.freeCanvasHeight < 200 ||
+      body.freeCanvasHeight > MAX_FREE_CANVAS_HEIGHT)
+  ) {
+    return NextResponse.json({ error: "Invalid free-canvas height" }, { status: 400 });
+  }
+
   if (!answer || !techniqueId || layers.length === 0) {
     return NextResponse.json(
       { error: "Add at least one board piece, an answer, and a technique." },
@@ -107,9 +124,16 @@ export async function POST(request: Request) {
   try {
     const visualInput = {
       layout: body.layout,
+      ...(body.freeCanvasHeight !== undefined ? { freeCanvasHeight: body.freeCanvasHeight } : {}),
       layers: layers as never,
       caption: typeof body.caption === "string" ? body.caption : undefined,
     };
+    if (
+      body.submit &&
+      layoutPuzzleBoard(visualInput, "desktop-768").height > MAX_CANONICAL_BOARD_HEIGHT
+    ) {
+      return NextResponse.json({ error: CANONICAL_BOARD_HEIGHT_LIMIT_MESSAGE }, { status: 400 });
+    }
 
     // Publish path: full Eve review (safety → grade → critique → required screenshot simulation).
     // Draft saves keep the lighter deterministic grade for fast iteration.

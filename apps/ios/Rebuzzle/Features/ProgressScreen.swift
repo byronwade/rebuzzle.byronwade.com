@@ -17,7 +17,7 @@ struct ProgressViewScreen: View {
             } else {
                 journeyUnavailable
             }
-            NavigationLink { JournalView() } label: {
+            NavigationLink(value: RebuzzleRoute.journal) {
                 HStack(spacing: 12) {
                     Image(systemName: "book.closed").font(.system(size: 22)).foregroundStyle(Theme.reward)
                     VStack(alignment: .leading, spacing: 4) {
@@ -72,13 +72,13 @@ struct ProgressViewScreen: View {
                     Text("Based on results saved on this device.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
                 }
             } else {
-                NavigationLink { PlusView() } label: {
+                NavigationLink(value: RebuzzleRoute.plus) {
                     HStack { VStack(alignment: .leading, spacing: 6) { Text("See your solving patterns").font(Theme.font(16, weight: .medium)); Text("Guess distribution and more with Plus").font(Theme.font(13)).foregroundStyle(Theme.secondary) }; Spacer(); Image(systemName: "arrow.up.right") }.foregroundStyle(Theme.ink).padding(.vertical, 8)
                 }
             }
             Text(model.player?.guest == true
-                 ? "Journey progress belongs to this guest profile. Create an account to carry it to another device; journal notes stay on this device."
-                 : "Journey progress syncs with your account. Journal notes and puzzle answers stay on this device.")
+                 ? "Journey progress belongs to this guest profile. Create an account to carry it to another device; guest journal notes can sync after an upgrade with Plus."
+                 : "Journey progress syncs with your account. With Plus, your journal notes sync across devices and remain available offline.")
                 .font(Theme.font(12)).foregroundStyle(Theme.secondary)
             DisclosureGroup("How do I earn XP?") {
                 Text("Finish a puzzle: 25 XP. Solve it: +75. Solve on your first guess: +25. Solve without hints: +25. Each level takes 300 XP. Revealing the answer still counts toward your weekly challenge.")

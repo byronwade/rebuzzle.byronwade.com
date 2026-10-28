@@ -1,8 +1,10 @@
 import { z } from "zod";
 export const CANONICAL_MAX_BYTES = 1_048_576;
-export const CanonicalBoardSchema = z
+export const MAX_CANONICAL_BOARD_HEIGHT = 2_000;
+export const CANONICAL_BOARD_HEIGHT_LIMIT_MESSAGE =
+  "Review and publishing support boards up to 2,000 pixels tall. Shorten its stacked clues before Eve review, or save it as a draft to keep editing.";
+const CanonicalRasterSchema = z
   .object({
-    version: z.literal(1),
     pngDataUrl: z
       .string()
       .max(22 + 4 * Math.ceil(CANONICAL_MAX_BYTES / 3))
@@ -10,10 +12,38 @@ export const CanonicalBoardSchema = z
     sha256: z.string().regex(/^[a-f0-9]{64}$/),
     width: z.number().int().min(1).max(2048),
     height: z.number().int().min(1).max(2048),
-    sourceFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict();
+const CanonicalProfileVariantsSchema = z
+  .object({
+    "compact-320": CanonicalRasterSchema.optional(),
+    "mobile-375": CanonicalRasterSchema.optional(),
+    "mobile-375-medium": CanonicalRasterSchema.optional(),
+  })
+  .strict();
+export const CanonicalBoardSchema = CanonicalRasterSchema.extend({
+  version: z.literal(1),
+  sourceFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  /** Optional responsive rasters; absent on legacy canonical boards. */
+  profileVariants: CanonicalProfileVariantsSchema.optional(),
+}).strict();
 export type CanonicalBoard = z.infer<typeof CanonicalBoardSchema>;
+
+export type CanonicalBoardProfileId =
+  | "compact-320"
+  | "mobile-375"
+  | "mobile-375-medium"
+  | "desktop-768";
+
+/** Select an exact-size raster when available, preserving legacy fallback. */
+export function canonicalBoardForProfile(
+  board: CanonicalBoard,
+  profileId: CanonicalBoardProfileId
+): CanonicalBoard {
+  if (profileId === "desktop-768") return board;
+  const variant = board.profileVariants?.[profileId];
+  return variant ? { ...board, ...variant } : board;
+}
 /** Browser-safe bounded integrity check before any pixels are displayed. */
 export async function validateCanonicalBoard(value: unknown): Promise<Uint8Array<ArrayBuffer>> {
   const board = CanonicalBoardSchema.parse(value);

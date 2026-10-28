@@ -331,7 +331,9 @@ export type UpdateUserStatsResult = {
 
 export async function updateUserStats(
   userId: string,
-  gameResult: GameResultInput
+  gameResult: GameResultInput,
+  effectiveAt: Date = new Date(),
+  idempotencyKey?: string
 ): Promise<UpdateUserStatsResult> {
   const empty: UpdateUserStatsResult = {
     ok: false,
@@ -346,18 +348,54 @@ export async function updateUserStats(
   };
   try {
     const currentStats = await db.userStatsOps.findByUserId(userId);
+    if (idempotencyKey && currentStats?.appliedStatsEventIds?.includes(idempotencyKey)) {
+      return {
+        ok: true,
+        pointsEarned: 0,
+        streak: currentStats.streak,
+        maxStreak: currentStats.maxStreak,
+        streakFreezes: currentStats.streakFreezes ?? 0,
+        streakFrozen: false,
+        freezeSource: null,
+        guessDistribution: currentStats.guessDistribution ?? [0, 0, 0],
+        recentPlayDates: currentStats.recentPlayDates ?? [],
+      };
+    }
     const { stats, pointsEarned, streakFrozen, freezeSource } = calculateNewStats(
       currentStats,
-      gameResult
+      gameResult,
+      effectiveAt
     );
 
     if (currentStats) {
-      await db.userStatsOps.updateStats(userId, stats);
+      if (idempotencyKey) {
+        const applied = await db.userStatsOps.updateStatsOnce(userId, idempotencyKey, stats);
+        if (!applied) {
+          const latestStats = await db.userStatsOps.findByUserId(userId);
+          if (!latestStats?.appliedStatsEventIds?.includes(idempotencyKey)) {
+            throw new Error("Stats update was not applied");
+          }
+          return {
+            ok: true,
+            pointsEarned: 0,
+            streak: latestStats.streak,
+            maxStreak: latestStats.maxStreak,
+            streakFreezes: latestStats.streakFreezes ?? 0,
+            streakFrozen: false,
+            freezeSource: null,
+            guessDistribution: latestStats.guessDistribution ?? [0, 0, 0],
+            recentPlayDates: latestStats.recentPlayDates ?? [],
+          };
+        }
+      } else {
+        await db.userStatsOps.updateStats(userId, stats);
+      }
     } else {
       await db.userStatsOps.create({
         id: crypto.randomUUID(),
         userId,
         ...stats,
+        ...(idempotencyKey ? { appliedStatsEventIds: [idempotencyKey] } : {}),
         createdAt: new Date(),
         updatedAt: new Date(),
       });

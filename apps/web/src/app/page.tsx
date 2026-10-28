@@ -2,9 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AlreadyPlayedPanel } from "@/components/AlreadyPlayedPanel";
+import { AuthProvider } from "@/components/AuthProvider";
 import GameBoard from "@/components/GameBoard";
 import Layout from "@/components/Layout";
 import { HomePageSkeleton } from "@/components/page-skeletons";
+import type { GameData } from "@/lib/gameSettings";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { generatePuzzleMetadata } from "@/lib/seo/metadata";
 import {
@@ -54,6 +56,18 @@ interface SearchParams {
   preview?: string;
   test?: string;
 }
+
+const extendedDailyE2EGameData = {
+  id: "e2e-extended-daily",
+  puzzle: "🐝 + 4",
+  puzzleType: "rebus",
+  explanation: "",
+  difficulty: 5,
+  leaderboard: [],
+  hints: [],
+  isCompleted: false,
+  blogPost: null,
+} satisfies Omit<GameData, "answer"> & { answer?: never };
 
 /**
  * Shared status surface for the three non-playable states.
@@ -168,13 +182,37 @@ function PuzzleAlreadyAttemptedDisplay({ wasSuccessful }: { wasSuccessful: boole
 /**
  * Dynamic puzzle content - will be streamed with PPR
  */
-async function PuzzleContent({ params }: { params: { preview: boolean; test: boolean } }) {
+async function PuzzleContent({ params }: { params: { preview: boolean; test: string } }) {
   let attemptStatus;
   let gameData;
   let previewAllowed;
   try {
     // Opt into request-time rendering before Date/cookie-dependent work
     await connection();
+
+    if (
+      process.env.NODE_ENV === "development" &&
+      process.env.REBUZZLE_E2E === "true" &&
+      params.test === "extended-daily"
+    ) {
+      return (
+        <Layout isGamePage puzzleType="rebus">
+          <AuthProvider
+            initialSession={{
+              authenticated: true,
+              user: {
+                id: "e2e-player",
+                username: "Player",
+                email: "player@example.com",
+                isGuest: false,
+              },
+            }}
+          >
+            <GameBoard gameData={extendedDailyE2EGameData} />
+          </AuthProvider>
+        </Layout>
+      );
+    }
 
     const wantsPreview = params.preview;
     // Parallelize lock check + puzzle fetch + admin preview auth
@@ -331,7 +369,7 @@ async function HomeContent({ searchParams }: { searchParams: Promise<SearchParam
     <PuzzleContent
       params={{
         preview: params?.preview === "true",
-        test: params?.test === "true",
+        test: params?.test ?? "",
       }}
     />
   );

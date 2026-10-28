@@ -79,6 +79,8 @@ export interface UserStats {
   // Wordle-style retention stats
   guessDistribution?: number[]; // wins by attempt count [1, 2, 3]
   recentPlayDates?: string[]; // UTC YYYY-MM-DD keys, newest first
+  /** Durable deduplication keys for completion stats that can be retried. */
+  appliedStatsEventIds?: string[];
 }
 
 /** Free-canvas center as % of artboard (0–100). */
@@ -320,6 +322,13 @@ export interface PuzzleAttempt {
   puzzleTimeZone?: string;
   /** True when this row finalizes the day (win or out of attempts) */
   isFinal?: boolean;
+  /** Only new daily clients opt into continuation; absent means legacy behavior. */
+  playMode?: "extended";
+  /** Finalization rows are not player guesses and must not appear in guess history. */
+  attemptType?: "guess" | "finalization";
+  /** Attempts after the scored round are still evaluated but do not earn performance points. */
+  isScoredAttempt?: boolean;
+  finalizationReason?: "revealed" | "expired";
   // Enhanced tracking for learning system
   timeSpentSeconds?: number; // Time spent before solving/abandoning
   hintsUsed?: number; // Number of hints used
@@ -360,9 +369,21 @@ export interface DailyProgress {
   completedAt: Date;
   /** IANA zone used for the attempt, or null when historical metadata is absent. */
   timeZone: string | null;
+  /** Extended mode may contain solves after three scored guesses or synthetic finalizations. */
+  playMode?: "extended";
 }
 
 export type NewDailyProgress = Omit<DailyProgress, "_id">;
+
+/** Account-owned note text for a completed official daily puzzle. Empty notes are tombstones. */
+export interface JournalNote {
+  _id?: string;
+  userId: string;
+  puzzleId: string;
+  note: string;
+  revision: number;
+  updatedAt: Date;
+}
 
 /** Per-account checkpoint for the resumable Journey legacy backfill. */
 export interface DailyProgressBackfillState {
@@ -703,6 +724,10 @@ export interface NewPuzzleAttempt
   /** IANA zone used to resolve this daily puzzle; absent on historical rows. */
   puzzleTimeZone?: string;
   isFinal?: boolean;
+  playMode?: "extended";
+  attemptType?: "guess" | "finalization";
+  isScoredAttempt?: boolean;
+  finalizationReason?: "revealed" | "expired";
   // Enhanced tracking for learning system
   timeSpentSeconds?: number;
   hintsUsed?: number;
@@ -873,7 +898,7 @@ export interface NewAnalyticsEvent {
   };
 }
 
-export type NativeGrowthEventSource = "app" | "notification" | "widget" | "shortcut";
+export type NativeGrowthEventSource = "app" | "notification" | "widget" | "shortcut" | "share";
 export type NativeGrowthQualityRating = "too_easy" | "just_right" | "tough_but_fair" | "unclear";
 
 type NativeGrowthEventBase = {
@@ -894,7 +919,30 @@ export type NativeGrowthEvent =
       outcome: "solved" | "ran_out";
     })
   | (NativeGrowthEventBase & {
+      /** Server-authored on the first accepted official daily guess. */
+      eventType: "daily_started";
+    })
+  | (NativeGrowthEventBase & {
+      /** Server-authored on a verified restore of the current official daily. */
+      eventType: "daily_session_restored";
+    })
+  | (NativeGrowthEventBase & {
       eventType: "plus_offer_viewed" | "reminder_enabled";
+    })
+  | (NativeGrowthEventBase & {
+      eventType:
+        | "plus_purchase_started"
+        | "plus_purchase_verified"
+        | "plus_purchase_pending"
+        | "plus_purchase_cancelled"
+        | "plus_purchase_unverified"
+        | "plus_purchase_failed"
+        | "plus_restore_completed"
+        | "plus_restore_empty"
+        | "plus_restore_failed";
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_share_started" | "daily_share_completed";
     })
   | (NativeGrowthEventBase & {
       eventType: "daily_quality_feedback";

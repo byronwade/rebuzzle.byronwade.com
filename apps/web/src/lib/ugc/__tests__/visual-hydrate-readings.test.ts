@@ -27,6 +27,16 @@ it("rejects a citrus search alias as a requested puzzle reading", () => {
   expect(result.issues.length).toBeGreaterThan(0);
 });
 
+it("preserves the expanded free-canvas height while hydrating a Studio board", () => {
+  const result = hydrateStudioVisual({
+    layout: "free",
+    freeCanvasHeight: 8_000,
+    layers: [{ kind: "text", content: "UP", emphasis: "normal", x: 50, y: 50 }],
+  });
+
+  expect(result.visual).toMatchObject({ layout: "free", freeCanvasHeight: 8_000 });
+});
+
 it("preserves an explicit legacy identity independently of the current concept default", () => {
   const original = catalog.resolveCuratedPictogram("clock")!;
   const changedDefault = jest.spyOn(catalog, "resolveCuratedPictogram").mockReturnValue({

@@ -1,5 +1,6 @@
 import XCTest
 @testable import Rebuzzle
+import RebuzzleCore
 
 private func growthPayload(from request: URLRequest) throws -> [String: String] {
     let data: Data
@@ -87,7 +88,7 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
         XCTAssertEqual(GrowthEvent.reminderEnabled.payload, ["eventType": "reminder_enabled"])
     }
 
-    func testQualityFeedbackSendsOnlyRatingAndEventType() async throws {
+    func testQualityFeedbackIncludesPuzzleDateForServerValidation() async throws {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubProtocol.self]
         var capturedBody: [String: String] = [:]
@@ -97,17 +98,48 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
         }
 
         let client = APIClient(deviceID: "private-device", session: URLSession(configuration: config))
-        await client.report(.dailyQualityFeedback(.toughButFair))
+        await client.report(.dailyQualityFeedback(.toughButFair, puzzleDate: "2026-10-27"))
 
         XCTAssertEqual(capturedBody, [
             "eventType": "daily_quality_feedback",
             "rating": "tough_but_fair",
+            "puzzleDate": "2026-10-27",
         ])
         XCTAssertNil(capturedBody["userId"])
         XCTAssertNil(capturedBody["puzzleId"])
         XCTAssertNil(capturedBody["answer"])
         XCTAssertNil(capturedBody["guess"])
         XCTAssertNil(capturedBody["metadata"])
+    }
+
+    func testShareEventsSendOnlyTheirEventType() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        var capturedBody: [String: String] = [:]
+        StubProtocol.responder = { request in
+            capturedBody = try growthPayload(from: request)
+            return (200, #"{"success":true}"#)
+        }
+
+        let client = APIClient(deviceID: "private-device", session: URLSession(configuration: config))
+        await client.report(.dailyShareStarted)
+        XCTAssertEqual(capturedBody, ["eventType": "daily_share_started"])
+
+        await client.report(.dailyShareCompleted)
+        XCTAssertEqual(capturedBody, ["eventType": "daily_share_completed"])
+        XCTAssertNil(capturedBody["userId"])
+        XCTAssertNil(capturedBody["puzzleId"])
+        XCTAssertNil(capturedBody["answer"])
+        XCTAssertNil(capturedBody["guess"])
+        XCTAssertNil(capturedBody["metadata"])
+    }
+
+    func testCancelledShareDoesNotCreateACompletedEvent() {
+        XCTAssertNil(GrowthEvent.dailyShareCompletionEvent(completed: false))
+        XCTAssertEqual(
+            GrowthEvent.dailyShareCompletionEvent(completed: true)?.payload,
+            ["eventType": "daily_share_completed"]
+        )
     }
 
     func testDropsTelemetryFailures() async {
@@ -119,10 +151,110 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
         await client.report(.plusOfferViewed)
     }
 
+    func testVerifiedPurchaseEventIncludesStoreKitProofHeader() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        var capturedBody: [String: String] = [:]
+        var capturedTransaction: String?
+        StubProtocol.responder = { request in
+            capturedBody = try growthPayload(from: request)
+            capturedTransaction = request.value(forHTTPHeaderField: "X-Rebuzzle-StoreKit-Transaction")
+            return (200, #"{"success":true}"#)
+        }
+
+        let client = APIClient(deviceID: "test-device", session: URLSession(configuration: config))
+        client.plusTransactionJWSProvider = { "verified-test-transaction" }
+        await client.report(.plusPurchaseVerified)
+
+        XCTAssertEqual(capturedBody, ["eventType": "plus_purchase_verified"])
+        XCTAssertEqual(capturedTransaction, "verified-test-transaction")
+    }
+
+    func testPurchaseStoreEventsUseTheAuthenticatedClosedAnalyticsPath() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let credentials = CredentialStore(service: "test." + UUID().uuidString, inMemory: true)
+        try credentials.write("member-token", key: "token")
+        defer { try? credentials.write(nil, key: "token") }
+
+        let recorder = GrowthRequestRecorder()
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        StubProtocol.responder = { request in
+            if request.url?.path == "/api/native/analytics" { try recorder.record(request) }
+            return (200, #"{"success":true}"#)
+        }
+
+        let model = AppModel(
+            api: APIClient(deviceID: "test-device", session: URLSession(configuration: config)),
+            storage: LocalStore(root: root),
+            credentials: credentials
+        )
+        model.player = try JSONDecoder().decode(
+            Player.self,
+            from: Data(#"{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}"#.utf8)
+        )
+
+        model.purchases.onGrowthEvent?(.plusPurchaseStarted)
+        for _ in 0..<100 where recorder.payload == nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        XCTAssertEqual(recorder.payload, ["eventType": "plus_purchase_started"])
+    }
+
+    func testVerifiedPurchaseReportingWaitsForRestoredAppAccount() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let credentials = CredentialStore(service: "test." + UUID().uuidString, inMemory: true)
+        try credentials.write("member-token", key: "token")
+        defer { try? credentials.write(nil, key: "token") }
+
+        let recorder = GrowthRequestRecorder()
+        var capturedAuthorization: String?
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        StubProtocol.responder = { request in
+            if request.url?.path == "/api/native/analytics" {
+                capturedAuthorization = request.value(forHTTPHeaderField: "Authorization")
+                try recorder.record(request)
+            }
+            return (200, #"{"success":true}"#)
+        }
+
+        let model = AppModel(
+            api: APIClient(deviceID: "test-device", session: URLSession(configuration: config)),
+            storage: LocalStore(root: root),
+            credentials: credentials
+        )
+        let report = try XCTUnwrap(model.purchases.onVerifiedPurchase)
+        let rejectedBeforeAuthentication = await report(.plusPurchaseVerified, "member-a")
+        XCTAssertFalse(rejectedBeforeAuthentication)
+        XCTAssertNil(recorder.payload, "A verified event must wait until the app identity is restored.")
+
+        model.player = try JSONDecoder().decode(
+            Player.self,
+            from: Data(#"{"id":"member-b","username":"Member B","email":"member-b@example.com","isGuest":false}"#.utf8)
+        )
+
+        let rejectedForWrongAccount = await report(.plusPurchaseVerified, "member-a")
+        XCTAssertFalse(rejectedForWrongAccount)
+        XCTAssertNil(recorder.payload, "A verified event must not be attributed to a different signed-in account.")
+
+        model.player = try JSONDecoder().decode(
+            Player.self,
+            from: Data(#"{"id":"member-a","username":"Member A","email":"member-a@example.com","isGuest":false}"#.utf8)
+        )
+        let deliveredAfterAuthentication = await report(.plusPurchaseVerified, "member-a")
+        XCTAssertTrue(deliveredAfterAuthentication)
+        XCTAssertEqual(recorder.payload, ["eventType": "plus_purchase_verified"])
+        XCTAssertEqual(capturedAuthorization, "Bearer member-token")
+    }
+
     func testDailyOpenIsReportedAfterSessionRestorationWithTheEntrySource() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let credentials = CredentialStore(service: "test." + UUID().uuidString)
+        let credentials = CredentialStore(service: "test." + UUID().uuidString, inMemory: true)
         try credentials.write("member-token", key: "token")
         try credentials.write("member", key: "identity-kind")
         defer {

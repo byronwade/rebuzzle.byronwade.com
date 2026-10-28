@@ -127,6 +127,12 @@ export const PUZZLE_BOARD_RECOGNITION_PROFILES = [
     padding: 16,
   },
   {
+    id: "mobile-375-medium",
+    size: "medium",
+    viewportWidth: 375,
+    padding: 16,
+  },
+  {
     id: "desktop-768",
     size: "large",
     viewportWidth: 768,
@@ -146,4 +152,54 @@ export function getPuzzleBoardRecognitionProfile(
   id: PuzzleBoardRecognitionProfileId
 ): PuzzleBoardRecognitionProfile {
   return PUZZLE_BOARD_RECOGNITION_PROFILES.find((profile) => profile.id === id)!;
+}
+
+export type LargePlayerLayout = {
+  profileId: "compact-320" | "mobile-375-medium" | "mobile-375" | "desktop-768";
+  size: PuzzleBoardSize;
+  viewportWidth: number;
+  padding: number;
+  useCanonicalProfile: boolean;
+  isSupportedWidth: boolean;
+};
+
+/** Narrower boards use the Unicode fallback instead of clipped layer geometry. */
+export const MIN_RESPONSIVE_PLAYER_WIDTH = 158;
+
+/** Fluid geometry between canonical widths keeps large artwork at 72px. */
+export function getLargePlayerLayout(containerWidth: number): LargePlayerLayout {
+  const measuredWidth = Number.isFinite(containerWidth)
+    ? Math.max(1, Math.round(containerWidth))
+    : 375;
+  const viewportWidth = Math.min(measuredWidth, 768);
+  const size = viewportWidth < 184 ? "small" : viewportWidth < 320 ? "medium" : "large";
+  const profileId =
+    size === "small"
+      ? "compact-320"
+      : size === "medium"
+        ? "mobile-375-medium"
+        : viewportWidth <= 375
+          ? "mobile-375"
+          : "desktop-768";
+  const padding =
+    size === "small"
+      ? Math.max(0, Math.min(8, (viewportWidth - 158) / 2))
+      : size === "medium"
+        ? Math.max(0, Math.min(16, (viewportWidth - 182) / 2))
+        : profileId === "mobile-375"
+          ? 16
+          : Math.min(24, 16 + ((viewportWidth - 375) * 8) / (768 - 375));
+  const useCanonicalProfile =
+    size === "large" &&
+    ((profileId === "mobile-375" && viewportWidth === 375) ||
+      (profileId === "desktop-768" && viewportWidth === 768));
+
+  return {
+    profileId,
+    size,
+    viewportWidth,
+    padding,
+    useCanonicalProfile,
+    isSupportedWidth: viewportWidth >= MIN_RESPONSIVE_PLAYER_WIDTH,
+  };
 }

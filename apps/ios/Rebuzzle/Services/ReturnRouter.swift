@@ -12,11 +12,37 @@ import AppIntents
         request = UUID()
     }
     @discardableResult func open(_ url: URL) -> Bool {
-        guard url.scheme == "rebuzzle", url.host == "play", url.path.isEmpty || url.path == "/" else { return false }
-        let source = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
-            .first(where: { $0.name == "source" })?.value
-            .flatMap(DailyEntrySource.init(rawValue:)) ?? .app
-        openPlay(source: source); return true
+        if url.scheme == "rebuzzle" {
+            guard url.host == "play", url.path.isEmpty || url.path == "/" else { return false }
+            let source = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .first(where: { $0.name == "source" })?.value
+                .flatMap(DailyEntrySource.init(rawValue:)) ?? .app
+            openPlay(source: source)
+            return true
+        }
+
+        let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let isCanonicalShare = queryItems.count == 1 &&
+            queryItems[0].name == "source" && queryItems[0].value == "share"
+        let legacyNames = Set(queryItems.map(\.name))
+        let legacySharer = queryItems.first(where: { $0.name == "beat" })?.value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let legacySource = queryItems.first(where: { $0.name == "from" })?.value
+        let isLegacyShare = queryItems.count == 2 &&
+            legacyNames == Set(["beat", "from"]) &&
+            !(legacySharer?.isEmpty ?? true) && legacySource == "share"
+
+        guard url.scheme == "https",
+              url.host == "rebuzzle.byronwade.com",
+              url.port == nil,
+              url.user == nil,
+              url.password == nil,
+              url.path == "/",
+              url.fragment == nil,
+              isCanonicalShare || isLegacyShare
+        else { return false }
+
+        openPlay(source: .share)
+        return true
     }
 }
 

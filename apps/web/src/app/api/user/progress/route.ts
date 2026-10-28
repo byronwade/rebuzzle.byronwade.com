@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import type { DailyProgress, DailyProgressBackfillState } from "@/db/models";
+import type { DailyProgress } from "@/db/models";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { addCalendarDays, getLocalPuzzleDate, isValidIanaTimeZone } from "@/lib/game/daily-lock";
 import { buildCacheControl } from "@/lib/http/cache-headers";
+import {
+  getDailyProgressBackfillStatus,
+  type DailyProgressBackfillStatus,
+} from "@/lib/daily-progress-backfill-status";
 import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
-type BackfillStatus = "not_started" | "in_progress" | "complete" | "failed";
+export { getDailyProgressBackfillStatus };
 type JourneyEntry = {
   puzzleDate: string;
   puzzleId: string;
@@ -66,31 +70,6 @@ function normalizeEntry(row: unknown): JourneyEntry | null {
     completedAt: value.completedAt,
     timeZone,
   };
-}
-
-function getBackfillStatus(
-  state: DailyProgressBackfillState | null,
-  finalAttemptCount: number,
-  progressCount: number
-): BackfillStatus {
-  const reconciliationPending = state
-    ? state.reconciliationGeneration !== undefined
-      ? state.reconciliationGeneration > (state.reconciliationProcessedGeneration ?? 0)
-      : Boolean(
-          state.reconciliationRequestedAt &&
-            (!state.reconciliationProcessedAt ||
-              state.reconciliationRequestedAt > state.reconciliationProcessedAt)
-        )
-    : false;
-  if (reconciliationPending) {
-    return "in_progress";
-  }
-  if (state?.status === "complete") {
-    return finalAttemptCount > progressCount ? "in_progress" : "complete";
-  }
-  if (state?.status === "scanning" || state?.status === "delta") return "in_progress";
-  if (state) return "failed";
-  return finalAttemptCount <= progressCount ? "complete" : "not_started";
 }
 
 function summarize(entries: JourneyEntry[], weekStart: string, asOf: string) {
@@ -202,11 +181,11 @@ export async function GET(request: Request) {
     ) {
       await requestReconciliation();
     }
-    const backfillStatus = reconciliationRequested
+    const backfillStatus: DailyProgressBackfillStatus = reconciliationRequested
       ? "in_progress"
       : reconciliationFailed
         ? "failed"
-        : getBackfillStatus(backfillState, finalAttemptCount, progressCount);
+        : getDailyProgressBackfillStatus(backfillState, finalAttemptCount, progressCount);
 
     if (backfillStatus !== "complete") {
       return NextResponse.json(

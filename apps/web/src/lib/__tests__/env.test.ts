@@ -6,7 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
-import { getAppUrl, getDatabaseUrl, validateEnv } from "../env";
+import { getAppUrl, getDatabaseUrl, getMongoDatabaseName, validateEnv } from "../env";
 
 describe("Environment Validation", () => {
   const originalEnv = process.env;
@@ -59,6 +59,32 @@ describe("Environment Validation", () => {
       process.env.MONGODB_URI = undefined;
       process.env.DATABASE_URL = "postgresql://localhost/rebuzzle";
       expect(() => getDatabaseUrl()).toThrow("configured but invalid");
+    });
+  });
+
+  describe("getMongoDatabaseName", () => {
+    it("should prefer MONGODB_DB over the database path in the URI", () => {
+      process.env.MONGODB_DB = "rebuzzle_testflight";
+
+      expect(getMongoDatabaseName("mongodb+srv://example.invalid/rebuzzle?retryWrites=true")).toBe(
+        "rebuzzle_testflight"
+      );
+    });
+
+    it("should preserve the URI database path when MONGODB_DB is unset", () => {
+      process.env.MONGODB_DB = undefined;
+
+      expect(getMongoDatabaseName("mongodb://localhost:27017/uri_database?retryWrites=true")).toBe(
+        "uri_database"
+      );
+    });
+
+    it("should use the default name when the URI has no database path", () => {
+      process.env.MONGODB_DB = undefined;
+
+      expect(getMongoDatabaseName("mongodb+srv://example.invalid/?retryWrites=true")).toBe(
+        "rebuzzle"
+      );
     });
   });
 

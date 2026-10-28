@@ -4,14 +4,34 @@ import Foundation
     static func make() -> AppModel {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-fixture") || ProcessInfo.processInfo.arguments.contains("--preview") {
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("--ui-fresh-install") {
+                UserDefaults.standard.removeObject(forKey: "hasSeenFirstSessionQuickStart")
+            } else if arguments.contains("--ui-returning-player") {
+                UserDefaults.standard.set(true, forKey: "hasSeenFirstSessionQuickStart")
+            }
+            let credentials = CredentialStore(service: "com.byronwade.rebuzzle.ui-fixture", inMemory: true)
+            if arguments.contains("--ui-existing-install") {
+                try? credentials.write("fixture-existing-device", key: "device")
+            }
+            markQuickStartSeenForExistingInstall(credentials)
             let configuration = URLSessionConfiguration.ephemeral
             configuration.protocolClasses = [FixtureURLProtocol.self]
             let run = UUID().uuidString
             let api = APIClient(baseURL: URL(string: "https://fixture.invalid")!, deviceID: "ui-fixture", session: URLSession(configuration: configuration))
-            return AppModel(api: api, storage: LocalStore(root: FileManager.default.temporaryDirectory.appendingPathComponent("rebuzzle-ui-\(run)")), credentials: CredentialStore(service: "com.byronwade.rebuzzle.ui-fixture.\(run)"))
+            return AppModel(api: api, storage: LocalStore(root: FileManager.default.temporaryDirectory.appendingPathComponent("rebuzzle-ui-\(run)")), credentials: credentials)
         }
         #endif
-        return AppModel()
+        let credentials = CredentialStore()
+        markQuickStartSeenForExistingInstall(credentials)
+        return AppModel(credentials: credentials)
+    }
+
+    private static func markQuickStartSeenForExistingInstall(_ credentials: CredentialStore) {
+        let key = "hasSeenFirstSessionQuickStart"
+        guard UserDefaults.standard.object(forKey: key) == nil,
+              (try? credentials.read("device")) != nil else { return }
+        UserDefaults.standard.set(true, forKey: key)
     }
 }
 
@@ -39,6 +59,14 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
 private final class FixtureServer: @unchecked Sendable {
     private let lock = NSLock()
     private let nextPuzzleTime = ISO8601DateFormatter().string(from: Date().addingTimeInterval(86_400))
+    private let expiredNextPuzzleTime = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-1))
+    private let expiredResetFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-reset-manual")
+    private let scoreLockedFixture = ProcessInfo.processInfo.arguments.contains("--ui-score-locked")
+    private let lateSolveFixture = ProcessInfo.processInfo.arguments.contains("--ui-late-solve")
+    private let expiredReviewFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-review")
+    private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
+    private var dailyRequestCount = 0
+    private var quipRequestCount = 0
     private var game = GameSession(puzzleId: "fixture-lighthouse", puzzleDate: FixtureServer.todayKey)
     private static var todayKey: String {
         let formatter = DateFormatter()
@@ -47,6 +75,63 @@ private final class FixtureServer: @unchecked Sendable {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: Date())
     }
+    private static var nextDayKey: String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+    }
+
+    init() {
+        if existingInstallFixture {
+            game.attempts = [Guess(guess: "sunrise", correct: false, attemptNumber: 1)]
+            game.attemptsLeft = 2
+        }
+        if scoreLockedFixture {
+            game.attempts = [
+                Guess(guess: "beacon home", correct: false, attemptNumber: 1),
+                Guess(guess: "ship light", correct: false, attemptNumber: 2),
+                Guess(guess: "harbor", correct: false, attemptNumber: 3)
+            ]
+            game.attemptsLeft = 0
+            game.phase = "score_locked"
+            game.scoreLocked = true
+            game.playMode = "extended"
+        }
+        if lateSolveFixture {
+            game.attempts = [
+                Guess(guess: "beacon home", correct: false, attemptNumber: 1),
+                Guess(guess: "ship light", correct: false, attemptNumber: 2),
+                Guess(guess: "harbor", correct: false, attemptNumber: 3),
+                Guess(guess: "lighthouse", correct: true, attemptNumber: 4)
+            ]
+            game.attemptsLeft = 0
+            game.gameOver = true
+            game.wasSuccessful = true
+            game.answer = "lighthouse"
+            game.explanation = "Light + house makes lighthouse: a beacon that helps ships find their way."
+            game.phase = "solved"
+            game.scoreLocked = true
+            game.playMode = "extended"
+        }
+        if expiredReviewFixture {
+            game.expiredReview = ExpiredDailyReview(
+                puzzleId: "fixture-yesterday",
+                puzzleDate: "2026-10-26",
+                answer: "yesterday’s answer",
+                explanation: "A reviewed explanation from yesterday’s puzzle."
+            )
+        }
+        if expiredResetFixture {
+            let terminalGuess = Data(#"{"success":true,"correct":true,"attemptsLeft":2,"maxAttempts":3,"gameOver":true,"attemptNumber":1,"answer":"lighthouse","explanation":"Light + house makes lighthouse.","reaction":{"tier":"correct","line":"You made the connection."}}"#.utf8)
+            if let response = try? JSONDecoder().decode(GuessResponse.self, from: terminalGuess) {
+                game.apply(response, guess: "lighthouse")
+            }
+        }
+    }
+
     private static var visual: [String: Any] {
         if ProcessInfo.processInfo.arguments.contains("--ui-canonical-invalid") {
             return ["mode": "unicode", "unicodeFallback": "Do not display this legacy clue", "layers": [], "canonicalBoard": NSNull()]
@@ -72,6 +157,12 @@ private final class FixtureServer: @unchecked Sendable {
         let payload: [String: Any]
         switch request.url?.path {
         case "/api/puzzle/today":
+            dailyRequestCount += 1
+            if ProcessInfo.processInfo.arguments.contains("--ui-today-unavailable") { return (503, Data()) }
+            if expiredResetFixture && dailyRequestCount > 1 && game.puzzleId == "fixture-lighthouse" {
+                game = GameSession(puzzleId: "fixture-next-daily", puzzleDate: Self.nextDayKey)
+            }
+            let deadline = expiredResetFixture && dailyRequestCount == 1 ? expiredNextPuzzleTime : nextPuzzleTime
             let hints: [String]
             if ProcessInfo.processInfo.arguments.contains("--ui-no-hints") {
                 hints = []
@@ -80,22 +171,28 @@ private final class FixtureServer: @unchecked Sendable {
             } else {
                 hints = ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."]
             }
-            payload = ["success": true, "puzzle": ["id": game.puzzleId, "puzzle": Self.visual["unicodeFallback"] ?? "💡 + 🏠", "puzzleType": "rebus", "difficulty": 5, "visual": Self.visual, "hints": hints, "date": game.puzzleDate], "puzzleDate": game.puzzleDate, "nextPuzzleTime": nextPuzzleTime]
+            payload = ["success": true, "puzzle": ["id": game.puzzleId, "puzzle": Self.visual["unicodeFallback"] ?? "💡 + 🏠", "puzzleType": "rebus", "difficulty": 5, "visual": Self.visual, "hints": hints, "date": game.puzzleDate], "puzzleDate": game.puzzleDate, "nextPuzzleTime": deadline]
         case "/api/puzzles/archive":
             payload = ["items": [
                 ["id": "archive-lighthouse", "puzzle": "💡 + 🏠", "puzzleType": "rebus", "difficulty": 6, "visual": Self.visual, "hints": ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."], "date": "2026-10-25"],
                 ["id": "archive-headheels", "puzzle": "HEAD over HEELS", "puzzleType": "wordplay", "difficulty": 7, "hints": ["Pay attention to position."], "date": "2026-10-24"]
             ], "nextCursor": NSNull()]
+        case "/api/puzzles/practice/sample":
+            payload = ["id": "archive-lighthouse", "puzzle": "💡 + 🏠", "puzzleType": "rebus", "difficulty": 6, "visual": Self.visual, "hints": ["Read each clue from left to right.", "Name each picture plainly.", "Join the parts into one familiar word."], "date": "2026-10-25"]
         case "/api/auth/guest/lazy", "/api/auth/session":
             payload = ["success": true, "authenticated": true, "user": user, "token": "fixture-token"]
         case "/api/puzzle/session":
             return (200, try JSONEncoder().encode(game))
         case "/api/user/stats":
-            payload = ["success": true, "stats": ["totalGames": game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0, "maxStreak": game.wasSuccessful == true ? 1 : 0]]
+            payload = ["success": true, "stats": ["totalGames": existingInstallFixture || game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0, "maxStreak": game.wasSuccessful == true ? 1 : 0]]
         case "/api/user/progress":
             payload = journeyProgressPayload()
         case "/api/puzzles/quip":
             if ProcessInfo.processInfo.arguments.contains("--ui-quip-unavailable") { return (503, Data()) }
+            if ProcessInfo.processInfo.arguments.contains("--ui-quip-fails-once") {
+                quipRequestCount += 1
+                if quipRequestCount == 1 { return (503, Data()) }
+            }
             let reply = game.wasSuccessful == true ? "That connection deserves a little victory lap." : "That guess took the scenic route."
             return (200, Data(reply.utf8))
         case "/api/puzzles/guess":
@@ -107,8 +204,9 @@ private final class FixtureServer: @unchecked Sendable {
                 let guess = body?["guess"] as? String ?? ""
                 let correct = guess.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "lighthouse"
                 let count = game.attempts.count + 1
-                let finished = correct || count == 3
-                var result: [String: Any] = ["success": true, "correct": correct, "attemptsLeft": 3 - count, "maxAttempts": 3, "gameOver": finished, "attemptNumber": count]
+                let finished = correct
+                let phase = finished ? (correct ? "solved" : "exhausted") : count == 3 ? "score_locked" : count > 3 ? "continuing" : "scored"
+                var result: [String: Any] = ["success": true, "correct": correct, "attemptsLeft": max(0, 3 - count), "maxAttempts": 3, "gameOver": finished, "attemptNumber": count, "phase": phase, "scoreLocked": count >= 3, "playMode": "extended"]
                 result["similarity"] = correct ? 100 : 20
                 result["reaction"] = ["tier": correct ? "correct" : finished ? "out" : "cold", "line": correct ? "You made the connection." : "A fresh angle might help."]
                 result["wordResults"] = [["word": guess.uppercased(), "correct": correct, "similarity": correct ? 100 : 20]]
@@ -121,6 +219,28 @@ private final class FixtureServer: @unchecked Sendable {
                 game.hintsUsed = body?["hintsUsed"] as? Int ?? 0
                 payload = result
             }
+        case "/api/puzzles/reveal":
+            let guesses = game.attempts.map { ["guess": $0.guess, "correct": $0.correct, "attemptNumber": $0.attemptNumber] as [String: Any] }
+            let result: [String: Any] = [
+                "success": true,
+                "puzzleId": game.puzzleId,
+                "puzzleDate": game.puzzleDate,
+                "phase": "revealed",
+                "scoreLocked": true,
+                "correct": false,
+                "wasSuccessful": false,
+                "gameOver": true,
+                "attempts": guesses,
+                "attemptsLeft": 0,
+                "maxAttempts": 3,
+                "answer": "lighthouse",
+                "explanation": "Light + house makes lighthouse: a beacon that helps ships find their way.",
+                "pointsEarned": 0
+            ]
+            if let decoded = try? JSONDecoder().decode(RevealResponse.self, from: JSONSerialization.data(withJSONObject: result)) {
+                game.applyReveal(decoded)
+            }
+            payload = result
         case "/api/puzzles/practice/guess":
             let body = try JSONSerialization.jsonObject(with: bodyData(request)) as? [String: Any]
             let guess = body?["guess"] as? String ?? ""

@@ -13,6 +13,33 @@ import UserNotifications
         XCTAssertNotEqual(first, router.request)
         XCTAssertFalse(router.open(URL(string: "rebuzzle://delete")!))
     }
+
+    func testOnlyAttributedRebuzzleHTTPSRootRoutesAsShare() {
+        let router = ReturnRouter()
+        XCTAssertTrue(router.open(URL(string: "https://rebuzzle.byronwade.com/?source=share")!))
+        XCTAssertEqual(router.entrySource, .share)
+        let acceptedRequest = router.request
+
+        let unsupportedURLs = [
+            "http://rebuzzle.byronwade.com/?source=share",
+            "https://rebuzzle.byronwade.com/play?source=share",
+            "https://rebuzzle.byronwade.com/?source=widget",
+            "https://rebuzzle.byronwade.com/?source=share&extra=1",
+            "https://rebuzzle.byronwade.com:443/?source=share",
+            "https://rebuzzle.byronwade.com/#result",
+            "https://rebuzzle.byronwade.com.evil.example/?source=share",
+            "https://user@rebuzzle.byronwade.com/?source=share",
+        ]
+        for value in unsupportedURLs {
+            XCTAssertFalse(router.open(URL(string: value)!), "Unexpectedly routed \(value)")
+            XCTAssertEqual(router.request, acceptedRequest)
+        }
+    }
+    func testLegacyWebShareLinkRoutesWithoutRetainingSharerIdentity() {
+        let router = ReturnRouter()
+        XCTAssertTrue(router.open(URL(string: "https://rebuzzle.byronwade.com/?beat=old-account-id&from=share")!))
+        XCTAssertEqual(router.entrySource, .share)
+    }
     func testNotificationContentIsActionableWithoutSpoilers() {
         let content = ReminderStore.content(for: 2)
         XCTAssertEqual(content.categoryIdentifier, "REBUZZLE_DAILY")

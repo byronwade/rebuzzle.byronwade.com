@@ -31,6 +31,13 @@ Status: public release preparation; later dated evidence records completed beta 
 - [ ] Verify `/api/user/account` DELETE for guest and registered test users, wrong-password rejection, removal of associated data, stale-token rejection and local account-data cleanup. MongoDB transactions must work in production.
 - [ ] Check privacy, terms, feedback, signup and password recovery links on device; publish reconciled privacy policy.
 
+## Universal Links — outstanding configuration gate
+
+- [ ] In Apple Developer → Certificates, Identifiers & Profiles → Identifiers, open `com.byronwade.rebuzzle` and copy its **App ID Prefix**. Do not assume it matches the Team ID.
+- [ ] In the Vercel project `wades-web-dev/rebuzzle`, set `APPLE_APP_ID_PREFIX` to that prefix in the Production environment and redeploy. The AASA route intentionally returns HTTP 503 until this value is present.
+- [ ] Request `https://rebuzzle.byronwade.com/.well-known/apple-app-site-association` and confirm HTTP 200, JSON content type, and an `appID` equal to `<App ID Prefix>.com.byronwade.rebuzzle`; the response must not redirect.
+- [ ] Enable Associated Domains for the app identifier, ensure the signed provisioning profile includes `applinks:rebuzzle.byronwade.com`, then install the signed TestFlight build on a physical iPhone. Open the exact `https://rebuzzle.byronwade.com/?source=share` link from Messages and verify it opens Rebuzzle and lands on today’s puzzle. Repeat with the app closed and already open.
+
 ## Apple account and purchases — external gates
 
 October 26 read-only Connect check: Paid Apps Agreement and Free Apps Agreement Active; banking and US tax form Active; Digital Services Act Active. No financial details are retained here and no agreements/settings were changed. Signing/upload evidence is recorded in `docs/product/workshop-evidence-release.md`; the broad account/signing checklist item below remains open until its remaining checks are reconciled.
@@ -39,8 +46,8 @@ October 26 read-only Connect check: Paid Apps Agreement and Free Apps Agreement 
 - [x] App Store Connect inspected October 26: non-consumable `com.byronwade.rebuzzle.plus` (Apple ID 6827099582), US $9.99, all countries/regions selected, English name/description and review screenshot present. Status Prepare for Submission; first product must accompany the app version. This is configuration evidence, not production purchase availability.
 - [x] Local StoreKit tests cover direct purchase success, cancellation, pending approval, failure/recovery, missing product, relaunch entitlement and refund revocation. Store-load recovery clears stale error copy. See Verification.md.
 - [x] Local unverified-transaction and explicit Restore purchases service flows: 34 hosted tests passed on October 26, source e017f35. Real StoreKitTest invalid-signature, owned/empty restore, network recovery and preservation of verified access are covered. Physical-device sandbox validation remains open below.
-- [ ] On a signed physical device with StoreKit fixture disabled, test real sandbox product discovery, localized price, purchase and restore. Test entitlement recovery on a second device: journal data must not be implied to sync.
-- [ ] Test revocation removes paid access while preserving notes and export. Verify Apple-account/Rebuzzle-account switching does not expose another Rebuzzle account's journal.
+- [ ] On signed physical devices with the StoreKit fixture disabled, test real sandbox product discovery, localized price, purchase and restore. Verify Plus journal sync between two devices signed into the same Rebuzzle account, offline edits, account switching, conflict resolution, and entitlement recovery.
+- [ ] Test revocation removes paid sync access while preserving notes locally and remotely until account deletion. Verify Apple-account/Rebuzzle-account switching does not expose another Rebuzzle account's journal.
 - [ ] Verify local reminders enabled/disabled/denied, chosen time, completed-day suppression, timezone changes and app relaunch on device.
 
 ## Submit

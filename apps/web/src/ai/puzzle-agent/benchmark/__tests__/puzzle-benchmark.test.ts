@@ -27,7 +27,7 @@ describe("whole-puzzle solve benchmark", () => {
     expect(new Set(corpus.map((entry) => entry.id)).size).toBe(corpus.length);
     expect(new Set(corpus.map((entry) => entry.techniqueId)).size).toBeGreaterThanOrEqual(8);
     expect(corpus.every((entry) => entry.visual.layers.length > 0)).toBe(true);
-    expect(corpus.length * PUZZLE_BOARD_RECOGNITION_PROFILES.length).toBe(72);
+    expect(corpus.length * PUZZLE_BOARD_RECOGNITION_PROFILES.length).toBe(96);
   });
 
   it("promotes complete multi-profile solve evidence", () => {
@@ -52,7 +52,7 @@ describe("whole-puzzle solve benchmark", () => {
     );
     const report = scorePuzzleSolveBenchmark({ cases: corpus, observations });
     expect(report.promotion.passed).toBe(false);
-    expect(report.coverage).toBeCloseTo(2 / 3);
+    expect(report.coverage).toBeCloseTo(3 / 4);
     expect(report.promotion.failures.join(" ")).toContain("Compact target detection");
   });
 

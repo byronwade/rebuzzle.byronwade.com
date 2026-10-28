@@ -13,19 +13,32 @@ struct PlusView: View {
                 Text("Turn daily discoveries into puzzles you can study, remember, and return to.")
                     .font(Theme.font(15)).foregroundStyle(Theme.secondary)
             }
+            if !model.purchases.hasPlus {
+                NavigationLink(value: RebuzzleRoute.archive) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 20, weight: .medium)).foregroundStyle(Theme.reward)
+                            .frame(width: 44, height: 44)
+                            .background(Theme.reward.opacity(0.12), in: Circle())
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Try one archive puzzle free")
+                                .font(Theme.font(16, weight: .medium)).foregroundStyle(Theme.ink)
+                            Text("Three guesses. No score or streak impact.")
+                                .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                        }
+                        Spacer(minLength: 4)
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.accent)
+                    }
+                    .padding(16)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("openFreeArchiveSample")
+            }
             if let entry = model.journal.entries.first, !model.purchases.hasPlus {
                 journalPreview(entry)
-            }
-            purchase
-            if model.purchases.hasPlus {
-                NavigationLink {
-                    ArchiveView()
-                } label: {
-                    Label("Browse past puzzles", systemImage: "calendar.badge.clock")
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                }
-                .buttonStyle(CommitStyle())
-                .accessibilityIdentifier("openPuzzleArchive")
             }
             VStack(alignment: .leading, spacing: 24) {
                 feature("calendar.badge.clock", "Past daily puzzles", "Replay earlier clues with fresh guesses, progressive hints, and answer-blind feedback. Practice never changes your score, streak, or rewards.")
@@ -33,9 +46,18 @@ struct PlusView: View {
                 feature("pencil.line", "A place for the aha", "Save a note about what made the answer click.")
                 feature("chart.bar.xaxis", "Your solving patterns", "Explore guess distribution, solve rate, and hint-free wins.")
             }
+            purchase
+            if model.purchases.hasPlus {
+                NavigationLink(value: RebuzzleRoute.archive) {
+                    Label("Browse past puzzles", systemImage: "calendar.badge.clock")
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                }
+                .buttonStyle(CommitStyle())
+                .accessibilityIdentifier("openPuzzleArchive")
+            }
             VStack(alignment: .leading, spacing: 8) {
                 Text("Yours to keep. Yours to export.").font(Theme.font(15, weight: .medium))
-                Text("Plus applies to your Apple Account. Your journal stays on this device for this Rebuzzle account. Export a copy before changing devices. Restoring Plus restores the purchase, not your journal data.")
+                Text("Plus applies to your Apple Account. With Plus, your private journal notes sync with your signed-in Rebuzzle account and remain available on this device when you’re offline.")
                     .font(Theme.font(13)).foregroundStyle(Theme.secondary)
             }
             HStack(spacing: 24) {
@@ -47,6 +69,7 @@ struct PlusView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await model.purchases.load()
+            await model.retryJournalSyncIfNeeded()
             if !model.purchases.hasPlus { model.recordGrowthEvent(.plusOfferViewed) }
         }
     }
@@ -79,7 +102,7 @@ struct PlusView: View {
                     .font(Theme.font(18, weight: .medium)).foregroundStyle(Theme.success)
                 Text("Your journal and deeper insights are unlocked.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary)
-                NavigationLink { JournalView() } label: {
+                NavigationLink(value: RebuzzleRoute.journal) {
                     Label("Open your journal", systemImage: "book.closed")
                 }.buttonStyle(CommitStyle()).accessibilityIdentifier("openPlusJournal")
             } else if let product = model.purchases.product {
@@ -105,7 +128,7 @@ struct PlusView: View {
             }
             Text("Daily puzzles, hints, and sharing stay free.").font(Theme.font(13)).foregroundStyle(Theme.secondary)
             if let message = model.purchases.message { Notice(message: message) }
-            Button("Restore purchases") { Task { await model.purchases.restore() } }
+            Button("Restore purchases") { Task { await model.purchases.restore(); await model.retryJournalSyncIfNeeded() } }
                 .font(Theme.font(14)).frame(minHeight: 44).disabled(model.purchases.busy)
         }
     }

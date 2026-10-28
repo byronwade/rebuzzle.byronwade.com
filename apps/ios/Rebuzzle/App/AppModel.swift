@@ -9,6 +9,15 @@ enum CompletedStreakRefreshState: Equatable {
     case failed(puzzleID: String)
 }
 
+enum JournalSyncStatus: Equatable {
+    case onDevice
+    case syncing
+    case synced
+    case offline
+    case historyArriving
+    case conflict
+}
+
 @MainActor @Observable final class AppModel {
     var selectedTab: AppTab = .play
     var completedCurrentPuzzle: Bool {
@@ -20,6 +29,19 @@ enum CompletedStreakRefreshState: Equatable {
     var game: GameSession?
     var player: Player?
     var journal = Journal()
+    var journalSyncStatus: JournalSyncStatus = .onDevice
+    var journalSyncConflicts: [JournalSyncConflict] {
+        journalSyncCheckpoint.entries.compactMap { puzzleID, value in
+            guard let remote = value.remoteConflict,
+                  let local = journal.entries.first(where: { $0.puzzleID == puzzleID }) else { return nil }
+            return JournalSyncConflict(
+                puzzleID: puzzleID,
+                localNote: local.note,
+                accountNote: remote.note,
+                accountRevision: remote.revision
+            )
+        }.sorted { $0.puzzleID < $1.puzzleID }
+    }
     var stats: PlayerStats?
     var completedStreakRefreshState: CompletedStreakRefreshState = .idle
     var journeySnapshot: JourneyProgressSnapshot?
@@ -34,9 +56,15 @@ enum CompletedStreakRefreshState: Equatable {
     var needsReconciliation = false
     var sessionReady = false
     private var journalWritable = false
+    @ObservationIgnored private var journalSyncCheckpoint = JournalSyncCheckpoint()
+    @ObservationIgnored private var journalHistoryComplete = true
+    @ObservationIgnored private var journalSyncTask: Task<Void, Never>?
+    @ObservationIgnored private var journalSyncRunGeneration: Int?
+    @ObservationIgnored private let journalPlusEntitlementProvider: @MainActor () -> Bool
     var hintsShown = 0
+    private(set) var nudgeReveals: [DailyNudgeReveal] = []
     let eve: EveReplyStore
-    let purchases = PurchaseStore()
+    let purchases: PurchaseStore
     let reminders = ReminderStore()
     @ObservationIgnored let storage: LocalStore
     @ObservationIgnored let credentials: CredentialStore
@@ -48,9 +76,17 @@ enum CompletedStreakRefreshState: Equatable {
     @ObservationIgnored private var pendingEntrySource: DailyEntrySource?
     @ObservationIgnored let api: APIClient
 
-    init(api: APIClient? = nil, storage: LocalStore? = nil, credentials: CredentialStore = CredentialStore()) {
+    init(
+        api: APIClient? = nil,
+        storage: LocalStore? = nil,
+        credentials: CredentialStore = CredentialStore(),
+        journalPlusEntitlementProvider: (@MainActor () -> Bool)? = nil
+    ) {
         self.storage = storage ?? LocalStore()
         self.credentials = credentials
+        let purchaseStore = PurchaseStore()
+        self.purchases = purchaseStore
+        self.journalPlusEntitlementProvider = journalPlusEntitlementProvider ?? { purchaseStore.hasPlus }
         var device = UUID().uuidString
         let secure = credentials
         do {
@@ -66,6 +102,18 @@ enum CompletedStreakRefreshState: Equatable {
             purchases?.plusTransactionJWS
         }
         do { self.api.token = try secure.read("token") } catch { initialSetupError = error.localizedDescription }
+        self.purchases.onGrowthEvent = { [weak self] event in
+            if case .plusPurchaseVerified = event { return }
+            self?.recordGrowthEvent(event)
+        }
+        self.purchases.purchaseAccountIDProvider = { [weak self] in self?.player?.id }
+        self.purchases.onPlusActivated = { [weak self] in
+            Task { @MainActor [weak self] in await self?.syncJournal() }
+        }
+        self.purchases.onVerifiedPurchase = { [weak self] event, accountID in
+            guard let self else { return false }
+            return await self.reportGrowthEventWhenAuthenticated(event, expectedAccountID: accountID)
+        }
     }
     func load(entrySource: DailyEntrySource = .app) async {
         if entrySource != .app || pendingEntrySource == nil {
@@ -79,14 +127,16 @@ enum CompletedStreakRefreshState: Equatable {
             let response: DailyResponse = try await api.request("/api/puzzle/today")
             if daily?.puzzle.id != response.puzzle.id {
                 eve.reset()
-                game = nil; sessionReady = false; draft = ""; hintsShown = 0; started = Date()
+                game = nil; sessionReady = false; draft = ""; hintsShown = 0; nudgeReveals = []; started = Date()
                 completedStreakRefreshState = .idle
             }
             daily = response
             try? storage.save(response, key: "daily-cache")
             try await authenticate()
+            purchases.retryPendingPurchaseAttribution()
             if !journalWritable { try loadJournal() }
             try await restore()
+            if journalPlusEntitlementProvider() { await syncJournal() }
             let completedPuzzleID = game?.gameOver == true ? game?.puzzleId : nil
             await refreshPlayerStats(forCompletedPuzzleID: completedPuzzleID, celebrates: false)
             try? await reminders.schedule(completedToday: completedCurrentPuzzle)
@@ -108,7 +158,7 @@ enum CompletedStreakRefreshState: Equatable {
                 if response.authenticated == true, let user = response.user {
                     if player?.id != user.id {
                         generation += 1
-                        eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil
+                        eve.reset(); game = nil; sessionReady = false; draft = ""; hintsShown = 0; nudgeReveals = []; stats = nil
                         completedStreakRefreshState = .idle
                     }
                     player = user
@@ -135,7 +185,7 @@ enum CompletedStreakRefreshState: Equatable {
         try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
         if player?.id != user.id {
             generation += 1
-            eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil
+            eve.reset(); game = nil; sessionReady = false; draft = ""; hintsShown = 0; nudgeReveals = []; stats = nil
             completedStreakRefreshState = .idle
         }
         api.token = token; player = user
@@ -149,7 +199,19 @@ enum CompletedStreakRefreshState: Equatable {
         guard restored.puzzleId == daily.puzzle.id else { throw APIError(status: 0, message: "The puzzle changed. Reload today’s puzzle to continue.") }
         eve.activate(accountID: player.id, puzzleID: daily.puzzle.id)
         game = restored
-        hintsShown = max(restored.hintsUsed, (try? storage.load(Int.self, key: "hints:\(player.id):\(daily.puzzle.id)")) ?? 0)
+        let hintKey = "hints:\(player.id):\(daily.puzzle.id)"
+        hintsShown = min(daily.puzzle.hints.count, max(0, max(restored.hintsUsed, (try? storage.load(Int.self, key: hintKey)) ?? 0)))
+        let nudgeKey = "nudge-turns:\(player.id):\(daily.puzzle.id)"
+        let savedReveals = (try? storage.load([DailyNudgeReveal].self, key: nudgeKey)) ?? []
+        nudgeReveals = DailyConversationTimeline.reconcile(
+            savedReveals,
+            revealedHintCount: hintsShown,
+            attemptCount: restored.attempts.count
+        )
+        if !nudgeReveals.isEmpty, nudgeReveals != savedReveals {
+            do { try storage.save(nudgeReveals, key: nudgeKey) }
+            catch { storageError = "Your hint progress could not be saved on this device." }
+        }
         draft = storage.draft(account: player.id, puzzle: daily.puzzle.id)
         needsReconciliation = false; sessionReady = true
         recordCompletion()
@@ -173,6 +235,10 @@ enum CompletedStreakRefreshState: Equatable {
             guard let self, self.player?.id == userID, self.api.token == token else { return }
             await self.api.report(event)
         }
+    }
+    private func reportGrowthEventWhenAuthenticated(_ event: GrowthEvent, expectedAccountID: String) async -> Bool {
+        guard player?.id == expectedAccountID, api.token != nil else { return false }
+        return await api.report(event)
     }
     func refreshJourneyProgress() async {
         guard let userID = player?.id else { return }
@@ -211,7 +277,7 @@ enum CompletedStreakRefreshState: Equatable {
                 error = "Progress refreshed. Review your guesses before checking another answer."
                 return
             }
-            let result: GuessResponse = try await api.request("/api/puzzles/guess", method: "POST", body: ["puzzleId": daily.puzzle.id, "guess": guess, "hintsUsed": hintsShown, "consecutiveCold": game?.attempts.reversed().prefix(while: { $0.reaction?.tier == "cold" }).count ?? 0, "timeSpentSeconds": max(0, Int(Date().timeIntervalSince(started)))])
+            let result: GuessResponse = try await api.request("/api/puzzles/guess", method: "POST", body: ["puzzleId": daily.puzzle.id, "guess": guess, "playMode": "extended", "hintsUsed": hintsShown, "consecutiveCold": game?.attempts.reversed().prefix(while: { $0.reaction?.tier == "cold" }).count ?? 0, "timeSpentSeconds": max(0, Int(Date().timeIntervalSince(started)))])
             guard run == generation else { return }
             if result.gameOver {
                 completedStreakRefreshState = .refreshing(puzzleID: daily.puzzle.id, celebrates: true)
@@ -232,6 +298,45 @@ enum CompletedStreakRefreshState: Equatable {
             guard run == generation else { return }
             needsReconciliation = true
             self.error = "We couldn’t confirm that response. Refresh progress before trying again."
+        }
+    }
+    func revealAnswer() async {
+        guard !submitting, !busy, sessionReady, let daily, game?.gameOver == false else { return }
+        guard let expiry = ResultView.date(daily.nextPuzzleTime), expiry > Date() else {
+            await load()
+            error = "A new daily puzzle is ready. Take a look before revealing yesterday’s answer."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        let run = generation
+        do {
+            if needsReconciliation {
+                try await restore()
+                error = "Progress refreshed. Review the puzzle before revealing its answer."
+                return
+            }
+            let result: RevealResponse = try await api.request(
+                "/api/puzzles/reveal",
+                method: "POST",
+                body: ["puzzleId": daily.puzzle.id]
+            )
+            guard run == generation else { return }
+            guard result.puzzleId == daily.puzzle.id else {
+                throw APIError(status: 0, message: "The puzzle changed. Refresh today’s progress before continuing.")
+            }
+            completedStreakRefreshState = .refreshing(puzzleID: daily.puzzle.id, celebrates: false)
+            game?.applyReveal(result)
+            game?.hintsUsed = hintsShown
+            recordCompletion()
+            try? await reminders.schedule(completedToday: true)
+            await refreshPlayerStats(forCompletedPuzzleID: daily.puzzle.id, celebrates: false)
+            scheduleJourneyRefresh()
+        } catch {
+            guard run == generation else { return }
+            needsReconciliation = true
+            self.error = "We couldn’t confirm the reveal. Refresh progress before trying again."
         }
     }
     func reconcile() async {
@@ -295,8 +400,11 @@ enum CompletedStreakRefreshState: Equatable {
     }
     func revealHint() {
         guard let daily, let player, sessionReady, game?.gameOver == false, hintsShown < daily.puzzle.hints.count else { return }
+        nudgeReveals.append(DailyNudgeReveal(hintIndex: hintsShown, afterAttemptCount: game?.attempts.count ?? 0))
         hintsShown += 1
         do { try storage.save(hintsShown, key: "hints:\(player.id):\(daily.puzzle.id)") }
+        catch { storageError = "Your hint progress could not be saved on this device." }
+        do { try storage.save(nudgeReveals, key: "nudge-turns:\(player.id):\(daily.puzzle.id)") }
         catch { storageError = "Your hint progress could not be saved on this device." }
     }
     func saveDraft() {
@@ -307,15 +415,155 @@ enum CompletedStreakRefreshState: Equatable {
     private func loadJournal() throws {
         journalWritable = false
         journal = Journal()
+        journalSyncCheckpoint = JournalSyncCheckpoint()
+        journalHistoryComplete = true
         guard let player else { return }
         journal = try storage.load(Journal.self, key: "journal:\(player.id)") ?? Journal()
+        journalSyncCheckpoint = try storage.load(JournalSyncCheckpoint.self, key: "journal-sync:\(player.id)") ?? JournalSyncCheckpoint()
+        journalSyncStatus = journalSyncCheckpoint.entries.values.contains(where: { $0.remoteConflict != nil }) ? .conflict : .onDevice
         journalWritable = true
     }
     func saveJournal() {
         guard let player, journalWritable else { return }
         do { try storage.save(journal, key: "journal:\(player.id)"); storageError = nil }
         catch { storageError = "Your journal could not be saved. Export a copy before leaving." }
+        scheduleJournalSync()
     }
+    private var canSyncJournal: Bool {
+        guard let player else { return false }
+        return !player.guest && api.token != nil && journalPlusEntitlementProvider()
+    }
+
+    private func scheduleJournalSync() {
+        guard canSyncJournal else {
+            if journalSyncRunGeneration == nil { journalSyncStatus = .onDevice }
+            return
+        }
+        journalSyncTask?.cancel()
+        journalSyncTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .milliseconds(650)) } catch { return }
+            await self?.syncJournal()
+        }
+    }
+
+    func syncJournal() async {
+        guard canSyncJournal, journalSyncRunGeneration != generation, let userID = player?.id else { return }
+        let requestGeneration = generation
+        journalSyncTask = nil
+        journalSyncRunGeneration = requestGeneration
+        journalSyncStatus = .syncing
+        var failedStatus: JournalSyncStatus?
+        defer {
+            if journalSyncRunGeneration == requestGeneration { journalSyncRunGeneration = nil }
+            if requestGeneration == generation, player?.id == userID {
+                if let failedStatus {
+                    journalSyncStatus = failedStatus
+                } else if !journalSyncConflicts.isEmpty {
+                    journalSyncStatus = .conflict
+                } else if hasPendingJournalWrites {
+                    journalSyncStatus = .offline
+                    scheduleJournalSync()
+                } else if journalHistoryComplete == false {
+                    journalSyncStatus = .historyArriving
+                } else {
+                    journalSyncStatus = .synced
+                }
+            }
+        }
+
+        do {
+            let remote = try await api.fetchJournal()
+            guard requestGeneration == generation, player?.id == userID else { return }
+            let pendingWrites = applyJournalReconciliation(remote)
+
+            for write in pendingWrites {
+                guard requestGeneration == generation, player?.id == userID else { return }
+                do {
+                    let saved = try await api.saveJournalNote(write)
+                    guard requestGeneration == generation, player?.id == userID else { return }
+                    JournalSyncReconciler.markSaved(write, revision: saved.revision, checkpoint: &journalSyncCheckpoint)
+                    persistJournalAndCheckpoint(for: userID)
+                } catch let error as APIError where error.status == 409 {
+                    let refreshed = try await api.fetchJournal()
+                    guard requestGeneration == generation, player?.id == userID else { return }
+                    _ = applyJournalReconciliation(refreshed)
+                    break
+                }
+            }
+        } catch {
+            guard requestGeneration == generation, player?.id == userID else { return }
+            failedStatus = (error as? APIError)?.status == 403 ? .onDevice : .offline
+            journalSyncStatus = failedStatus ?? .offline
+        }
+    }
+
+    func retryJournalSyncIfNeeded() async {
+        guard canSyncJournal, journalSyncRunGeneration != generation else { return }
+        switch journalSyncStatus {
+        case .onDevice, .offline, .historyArriving:
+            await syncJournal()
+        case .syncing, .synced, .conflict:
+            return
+        }
+    }
+
+    private var hasPendingJournalWrites: Bool {
+        journal.entries.contains { entry in
+            guard !entry.note.isEmpty,
+                  let baseline = journalSyncCheckpoint.entries[entry.puzzleID],
+                  baseline.remoteConflict == nil else { return false }
+            return baseline.lastSyncedNote != entry.note
+        } || journalSyncCheckpoint.entries.contains { puzzleID, baseline in
+            guard baseline.remoteConflict == nil,
+                  let local = journal.entries.first(where: { $0.puzzleID == puzzleID }) else { return false }
+            return !baseline.lastSyncedNote.isEmpty && local.note.isEmpty
+        }
+    }
+
+    @discardableResult
+    private func applyJournalReconciliation(_ remote: JournalFetchResult) -> [JournalSyncNoteWrite] {
+        let reconciled = JournalSyncReconciler.reconcile(
+            local: journal,
+            checkpoint: journalSyncCheckpoint,
+            remote: remote.entries
+        )
+        journal = reconciled.journal
+        journalSyncCheckpoint = reconciled.checkpoint
+        journalHistoryComplete = remote.historyStatus == "complete"
+        guard let userID = player?.id else { return reconciled.pendingWrites }
+        persistJournalAndCheckpoint(for: userID)
+        return reconciled.pendingWrites
+    }
+
+    private func persistJournalAndCheckpoint(for userID: String) {
+        do {
+            try storage.save(journal, key: "journal:\(userID)")
+            try storage.save(journalSyncCheckpoint, key: "journal-sync:\(userID)")
+            storageError = nil
+        } catch {
+            storageError = "Your journal could not be saved on this device. Export a copy before leaving."
+        }
+    }
+
+    func resolveJournalConflict(puzzleID: String, choice: JournalSyncConflictChoice) {
+        guard let userID = player?.id else { return }
+        let write = JournalSyncReconciler.resolve(
+            puzzleID: puzzleID,
+            choice: choice,
+            journal: &journal,
+            checkpoint: &journalSyncCheckpoint
+        )
+        persistJournalAndCheckpoint(for: userID)
+        if !journalSyncConflicts.isEmpty {
+            journalSyncStatus = .conflict
+        } else if write != nil {
+            journalSyncStatus = .onDevice
+            scheduleJournalSync()
+        } else {
+            journalSyncStatus = canSyncJournal ? (journalHistoryComplete ? .synced : .historyArriving) : .onDevice
+        }
+    }
+
     private func recordCompletion() {
         guard journalWritable, let game, game.gameOver, let answer = game.revealedAnswer, let daily else { return }
         journal.record(JournalEntry(puzzleID: daily.puzzle.id, puzzleDate: game.puzzleDate, puzzleType: daily.puzzle.puzzleType, clue: daily.puzzle.clue, answer: answer, explanation: game.explanation ?? "", won: game.wasSuccessful == true, attempts: game.attempts.count, hintsUsed: hintsShown, visual: daily.puzzle.visual, hints: daily.puzzle.hints))
@@ -330,12 +578,14 @@ enum CompletedStreakRefreshState: Equatable {
             try credentials.write(token, key: "token")
             try credentials.write("member", key: "identity-kind")
             eve.reset()
-            generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; sessionReady = false
+            generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; hintsShown = 0; nudgeReveals = []; sessionReady = false
             completedStreakRefreshState = .idle
             loadJourneyCache(for: user.id)
             journal = Journal(); journalWritable = false
             try loadJournal()
+            purchases.retryPendingPurchaseAttribution()
             try await restore()
+            if journalPlusEntitlementProvider() { await syncJournal() }
             await refreshStreakProgress()
             return true
         } catch { accountError = error.localizedDescription; return false }
@@ -363,8 +613,10 @@ enum CompletedStreakRefreshState: Equatable {
             try credentials.write(token, key: "token")
             api.token = token
             player = user
+            purchases.retryPendingPurchaseAttribution()
             try? credentials.write("member", key: "identity-kind")
             scheduleJourneyRefresh()
+            if journalPlusEntitlementProvider() { await syncJournal() }
             return true
         } catch {
             accountError = error.localizedDescription
@@ -391,11 +643,12 @@ enum CompletedStreakRefreshState: Equatable {
         } catch { accountError = error.localizedDescription; return false }
     }
     private func clearIdentity() throws {
+        journalSyncTask?.cancel(); journalSyncTask = nil
         try credentials.write(nil, key: "token")
         eve.reset()
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
         completedStreakRefreshState = .idle
         journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; journeySyncError = nil; journeySyncing = false
-        draft = ""; journal = Journal(); journalWritable = false; hintsShown = 0; sessionReady = false; error = nil
+        draft = ""; journal = Journal(); journalSyncCheckpoint = JournalSyncCheckpoint(); journalSyncStatus = .onDevice; journalHistoryComplete = true; journalWritable = false; hintsShown = 0; nudgeReveals = []; sessionReady = false; error = nil
     }
 }

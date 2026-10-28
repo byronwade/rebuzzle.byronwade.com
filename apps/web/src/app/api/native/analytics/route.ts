@@ -9,14 +9,32 @@ import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
+import { STOREKIT_TRANSACTION_HEADER, verifyPlusTransaction } from "@/lib/storekit/plus-entitlement";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
-const sources = new Set<NativeGrowthEventSource>(["app", "notification", "widget", "shortcut"]);
+const sources = new Set<NativeGrowthEventSource>([
+  "app",
+  "notification",
+  "widget",
+  "shortcut",
+  "share",
+]);
 const qualityRatings = new Set<NativeGrowthQualityRating>([
   "too_easy",
   "just_right",
   "tough_but_fair",
   "unclear",
+]);
+const purchaseFunnelEvents = new Set([
+  "plus_purchase_started",
+  "plus_purchase_verified",
+  "plus_purchase_pending",
+  "plus_purchase_cancelled",
+  "plus_purchase_unverified",
+  "plus_purchase_failed",
+  "plus_restore_completed",
+  "plus_restore_empty",
+  "plus_restore_failed",
 ]);
 const failure = (error: string, status: number) =>
   NextResponse.json(
@@ -71,18 +89,34 @@ export async function POST(request: Request) {
     hasExactKeys(body, ["eventType"])
   ) {
     // Valid client event.
+  } else if (purchaseFunnelEvents.has(eventType) && hasExactKeys(body, ["eventType"])) {
+    // Valid purchase lifecycle event; identity, time, product, and transaction stay server-owned.
+  } else if (
+    (eventType === "daily_share_started" || eventType === "daily_share_completed") &&
+    hasExactKeys(body, ["eventType"])
+  ) {
+    // Valid share activity event with no client-owned metadata.
   } else if (
     eventType === "daily_quality_feedback" &&
-    hasExactKeys(body, ["eventType", "rating"]) &&
+    hasExactKeys(body, ["eventType", "rating", "puzzleDate"]) &&
     typeof body.rating === "string" &&
+    typeof body.puzzleDate === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(body.puzzleDate) &&
     qualityRatings.has(body.rating as NativeGrowthQualityRating)
   ) {
-    // Valid closed-schema client event.
+    // Valid closed-schema event; puzzleDate is checked against the server's local day below.
   } else {
     return failure("Unsupported event", 400);
   }
 
   try {
+    if (
+      eventType === "plus_purchase_verified" &&
+      !(await verifyPlusTransaction(request.headers.get(STOREKIT_TRANSACTION_HEADER)))
+    ) {
+      return failure("A valid Apple transaction is required", 403);
+    }
+
     const occurredAt = new Date();
     const requestTimeZone = await resolveRequestTimeZone();
     const timeZone = await resolveStableJourneyTimeZone(auth.userId, requestTimeZone);
@@ -93,6 +127,9 @@ export async function POST(request: Request) {
     };
 
     if (eventType === "daily_quality_feedback") {
+      if (body.puzzleDate !== eventBase.dayKey) {
+        return failure("Puzzle date does not match the current daily.", 409);
+      }
       await nativeGrowthEventOps.recordDailyQualityFeedback({
         ...eventBase,
         eventType,

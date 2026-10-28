@@ -3,13 +3,17 @@ import StoreKitTest
 @testable import Rebuzzle
 
 final class PurchaseTests: XCTestCase {
+    @MainActor private func isolatedPurchaseStore() -> PurchaseStore {
+        PurchaseStore(defaults: UserDefaults(suiteName: "rebuzzle.purchase-tests.\(UUID().uuidString)")!)
+    }
+
     @MainActor func testVerifiedPurchaseGrantsAccessAndRefundRevokesIt() async throws {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Rebuzzle", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: url)
         session.disableDialogs = true
         session.clearTransactions()
         defer { session.clearTransactions() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         await store.load()
         XCTAssertNotNil(store.product)
         XCTAssertFalse(store.hasPlus)
@@ -20,7 +24,7 @@ final class PurchaseTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(100))
         }
         XCTAssertTrue(store.hasPlus)
-        let relaunched = PurchaseStore()
+        let relaunched = isolatedPurchaseStore()
         await relaunched.refreshEntitlements()
         XCTAssertTrue(relaunched.hasPlus, "Verified ownership survives relaunch")
         try session.refundTransaction(identifier: UInt(transaction.id))
@@ -42,19 +46,96 @@ extension PurchaseTests {
         session.askToBuyEnabled = true
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
+        var events = [[String: String]]()
+        store.onGrowthEvent = { events.append($0.payload) }
+        store.purchaseAccountIDProvider = { "member-a" }
+        store.onVerifiedPurchase = { _, accountID in accountID == "member-a" }
         await store.load()
         await store.purchase()
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertTrue(store.message?.contains("awaiting approval") == true)
+        XCTAssertEqual(events, [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_pending"],
+        ])
         let pending = try XCTUnwrap(session.allTransactions().first)
         try session.approveAskToBuyTransaction(identifier: pending.identifier)
         for _ in 0..<50 {
-            if store.hasPlus { break }
+            if store.hasPlus && events.contains(["eventType": "plus_purchase_verified"]) { break }
             try await Task.sleep(for: .milliseconds(100))
         }
         XCTAssertTrue(store.hasPlus, "Transaction updates unlock the approved purchase without relaunch")
+        XCTAssertEqual(events, [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_pending"],
+            ["eventType": "plus_purchase_verified"],
+        ])
+    }
+
+    @MainActor func testAskToBuyApprovalAfterPurchaseStoreRecreationReportsVerified() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Rebuzzle", withExtension: "storekit"))
+        let session = try SKTestSession(contentsOf: url)
+        session.resetToDefaultState()
+        session.disableDialogs = true
+        session.askToBuyEnabled = true
+        session.clearTransactions()
+        let suiteName = "rebuzzle.purchase-tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            session.clearTransactions()
+            session.resetToDefaultState()
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        var firstStore: PurchaseStore? = PurchaseStore(defaults: defaults)
+        var firstEvents = [[String: String]]()
+        firstStore?.purchaseAccountIDProvider = { "member-a" }
+        firstStore?.onGrowthEvent = { firstEvents.append($0.payload) }
+        await firstStore?.load()
+        await firstStore?.purchase()
+        XCTAssertEqual(firstEvents, [
+            ["eventType": "plus_purchase_started"],
+            ["eventType": "plus_purchase_pending"],
+        ])
+        let pending = try XCTUnwrap(session.allTransactions().first)
+
+        // The original store is released as if the app process had ended.
+        firstStore = nil
+        try session.approveAskToBuyTransaction(identifier: pending.identifier)
+
+        // StoreKit must replay the unfinished approval to the new launch listener.
+        let relaunchedStore = PurchaseStore(defaults: defaults)
+        var reportedEvents = [[String: String]]()
+        var currentAccountID = "member-b"
+        var rejectedForWrongAccount = false
+        relaunchedStore.purchaseAccountIDProvider = { currentAccountID }
+        relaunchedStore.onVerifiedPurchase = { event, attributionAccountID in
+            guard currentAccountID == attributionAccountID else {
+                rejectedForWrongAccount = true
+                return false
+            }
+            reportedEvents.append(event.payload)
+            return true
+        }
+        for _ in 0..<50 {
+            if rejectedForWrongAccount { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(rejectedForWrongAccount, "A purchase must not be attributed to a different signed-in app account.")
+
+        currentAccountID = "member-a"
+        relaunchedStore.retryPendingPurchaseAttribution()
+        for _ in 0..<50 {
+            if relaunchedStore.hasPlus && reportedEvents.contains(["eventType": "plus_purchase_verified"]) {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+
+        XCTAssertTrue(relaunchedStore.hasPlus)
+        XCTAssertEqual(reportedEvents, [["eventType": "plus_purchase_verified"]])
     }
 
     @MainActor func testFailedPurchaseKeepsFreeAccessAndAllowsAnotherAttempt() async throws {
@@ -64,7 +145,7 @@ extension PurchaseTests {
         session.disableDialogs = true
         session.clearTransactions()
         defer { session.clearTransactions(); session.resetToDefaultState() }
-        let store = PurchaseStore()
+        let store = isolatedPurchaseStore()
         await store.load()
         try await session.setSimulatedError(.generic(.notAvailableInStorefront), forAPI: .purchase)
         await store.purchase()

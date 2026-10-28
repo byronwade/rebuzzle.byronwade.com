@@ -4,6 +4,7 @@
  * Clean, efficient MongoDB operations for Rebuzzle
  */
 
+import { createHash } from "node:crypto";
 import type { Filter } from "mongodb";
 import type {
   Achievement,
@@ -11,6 +12,7 @@ import type {
   DailyProgress,
   DailyProgressBackfillState,
   GameSession,
+  JournalNote,
   Level,
   NewAchievement,
   NewBlogPost,
@@ -224,6 +226,25 @@ export const userStatsOps = {
     await collection.updateOne({ userId }, { $set: { ...defined, updatedAt: new Date() } });
   },
 
+  async updateStatsOnce(
+    userId: string,
+    eventId: string,
+    updates: Partial<UserStats>
+  ): Promise<boolean> {
+    const collection = getCollection<UserStats>("userStats");
+    const defined = Object.fromEntries(
+      Object.entries(updates).filter(([, value]) => value !== undefined)
+    ) as Partial<UserStats>;
+    const result = await collection.updateOne(
+      { userId, appliedStatsEventIds: { $ne: eventId } },
+      {
+        $set: { ...defined, updatedAt: new Date() },
+        $addToSet: { appliedStatsEventIds: eventId },
+      }
+    );
+    return result.matchedCount === 1;
+  },
+
   async getLeaderboard(
     limit = 10,
     timeframe?: "today" | "week" | "month" | "allTime"
@@ -393,6 +414,12 @@ export const puzzleOps = {
     return await collection.findOne({ id });
   },
 
+  async findByIds(ids: string[]): Promise<Puzzle[]> {
+    if (ids.length === 0) return [];
+    const collection = getCollection<Puzzle>("puzzles");
+    return await collection.find({ id: { $in: ids } }).toArray();
+  },
+
   /** Find the active puzzle published on a UTC calendar day (YYYY-MM-DD). */
   async findByDate(dateString: string): Promise<Puzzle | null> {
     const collection = getCollection<Puzzle>("puzzles");
@@ -433,6 +460,15 @@ export const puzzleOps = {
       .sort({ publishedAt: -1, id: -1 })
       .limit(input.limit)
       .toArray();
+  },
+
+  /** Select one stable, oldest archive puzzle for the free sample. */
+  async findOldestPublishedBefore(beforeUtc: Date): Promise<Puzzle | null> {
+    const collection = getCollection<Puzzle>("puzzles");
+    return await collection.findOne(
+      { active: true, publishedAt: { $lt: beforeUtc } },
+      { sort: { publishedAt: 1, id: 1 } }
+    );
   },
 
   async findTodaysPuzzle(): Promise<Puzzle | null> {
@@ -500,14 +536,51 @@ const dailyProgressFromAttempt = (attempt: PuzzleAttempt): NewDailyProgress | nu
   }
 
   const attemptNumber = attempt.attemptNumber;
-  if (
-    typeof attemptNumber !== "number" ||
-    !Number.isInteger(attemptNumber) ||
-    attemptNumber < 1 ||
-    attemptNumber > 3 ||
-    (!attempt.isCorrect && attemptNumber !== 3)
-  ) {
+  if (typeof attemptNumber !== "number" || !Number.isInteger(attemptNumber) || attemptNumber < 1) {
     return null;
+  }
+
+  const isExtended = attempt.playMode === "extended";
+  const withinScoredRound = attemptNumber <= 3;
+  let outcome: NewDailyProgress["outcome"];
+  let attempts: number;
+
+  if (isExtended && attempt.attemptType === "finalization") {
+    if (
+      attempt.isCorrect ||
+      attempt.isScoredAttempt !== false ||
+      typeof attempt.maxAttempts !== "number" ||
+      !Number.isInteger(attempt.maxAttempts) ||
+      attempt.maxAttempts < 1 ||
+      attemptNumber - 1 < attempt.maxAttempts ||
+      (attempt.finalizationReason !== "revealed" && attempt.finalizationReason !== "expired")
+    ) {
+      return null;
+    }
+    outcome = "failed";
+    // The finalization row is a server event, not an answer submitted by the player.
+    attempts = attemptNumber - 1;
+  } else if (isExtended) {
+    if (
+      (attempt.attemptType !== undefined && attempt.attemptType !== "guess") ||
+      !attempt.isCorrect ||
+      attempt.isScoredAttempt !== withinScoredRound
+    ) {
+      return null;
+    }
+    outcome = "solved";
+    attempts = attemptNumber;
+  } else {
+    if (
+      attempt.playMode !== undefined ||
+      attempt.attemptType === "finalization" ||
+      attemptNumber > 3 ||
+      (!attempt.isCorrect && attemptNumber !== 3)
+    ) {
+      return null;
+    }
+    outcome = attempt.isCorrect ? "solved" : "failed";
+    attempts = attemptNumber;
   }
 
   if (!(attempt.attemptedAt instanceof Date) || Number.isNaN(attempt.attemptedAt.getTime())) {
@@ -524,11 +597,12 @@ const dailyProgressFromAttempt = (attempt: PuzzleAttempt): NewDailyProgress | nu
     userId: attempt.userId,
     puzzleDate: attempt.puzzleDate,
     puzzleId: attempt.puzzleId,
-    outcome: attempt.isCorrect ? "solved" : "failed",
-    attempts: attemptNumber,
+    outcome,
+    attempts,
     hintCount,
     completedAt: attempt.attemptedAt,
     timeZone: isValidIanaTimeZone(attempt.puzzleTimeZone) ? attempt.puzzleTimeZone : null,
+    ...(isExtended ? { playMode: "extended" as const } : {}),
   };
 };
 
@@ -536,9 +610,18 @@ const isValidStoredDailyProgress = (value: unknown): value is DailyProgress => {
   if (!value || typeof value !== "object") return false;
   const progress = value as Partial<DailyProgress>;
   const validAttempts =
-    progress.outcome === "solved"
-      ? Number.isInteger(progress.attempts) && progress.attempts! >= 1 && progress.attempts! <= 3
-      : progress.outcome === "failed" && progress.attempts === 3;
+    progress.playMode === "extended"
+      ? progress.outcome === "solved"
+        ? Number.isInteger(progress.attempts) && progress.attempts! >= 1
+        : progress.outcome === "failed" &&
+          Number.isInteger(progress.attempts) &&
+          progress.attempts! >= 1
+      : progress.playMode === undefined &&
+        (progress.outcome === "solved"
+          ? Number.isInteger(progress.attempts) &&
+            progress.attempts! >= 1 &&
+            progress.attempts! <= 3
+          : progress.outcome === "failed" && progress.attempts === 3);
   return (
     typeof progress.userId === "string" &&
     typeof progress.puzzleId === "string" &&
@@ -605,6 +688,29 @@ export const dailyProgressOps = {
     return await collection.find({ userId }).sort({ puzzleDate: -1 }).toArray();
   },
 
+  async listForUserPage(
+    userId: string,
+    input: { limit: number; beforePuzzleDate?: string }
+  ): Promise<DailyProgress[]> {
+    const collection = getCollection<DailyProgress>("dailyProgress");
+    const filter = validDailyProgressFilter(userId, input.beforePuzzleDate);
+    return await collection.find(filter).sort({ puzzleDate: -1 }).limit(input.limit).toArray();
+  },
+
+  async countValidForUser(userId: string): Promise<number> {
+    const collection = getCollection<DailyProgress>("dailyProgress");
+    return await collection.countDocuments(validDailyProgressFilter(userId));
+  },
+
+  async findForUserPuzzle(userId: string, puzzleId: string): Promise<DailyProgress | null> {
+    const collection = getCollection<DailyProgress>("dailyProgress");
+    return await collection.findOne({
+      userId,
+      puzzleId,
+      outcome: { $in: ["solved", "failed"] },
+    });
+  },
+
   async materializeFromAttempt(attempt: PuzzleAttempt): Promise<DailyProgress | null> {
     return (await materializeDailyProgressWithStatus(attempt)).progress;
   },
@@ -613,6 +719,98 @@ export const dailyProgressOps = {
     attempt: PuzzleAttempt
   ): Promise<{ progress: DailyProgress | null; inserted: boolean }> {
     return materializeDailyProgressWithStatus(attempt);
+  },
+};
+
+function validDailyProgressFilter(
+  userId: string,
+  beforePuzzleDate?: string
+): Filter<DailyProgress> {
+  return {
+    userId,
+    puzzleDate: {
+      $type: "string",
+      $regex: /^\d{4}-\d{2}-\d{2}$/,
+      ...(beforePuzzleDate ? { $lt: beforePuzzleDate } : {}),
+    },
+    puzzleId: { $type: "string", $ne: "" },
+    completedAt: { $type: "date" },
+    $or: [
+      {
+        outcome: "solved",
+        playMode: { $ne: "extended" },
+        attempts: { $gte: 1, $lte: 3 },
+      },
+      { outcome: "failed", playMode: { $ne: "extended" }, attempts: 3 },
+      { outcome: "solved", playMode: "extended", attempts: { $gte: 1 } },
+      { outcome: "failed", playMode: "extended", attempts: { $gte: 1 } },
+    ],
+    $expr: {
+      $eq: [
+        {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: {
+              $dateFromString: {
+                dateString: "$puzzleDate",
+                onError: null,
+                onNull: null,
+              },
+            },
+          },
+        },
+        "$puzzleDate",
+      ],
+    },
+  } as Filter<DailyProgress>;
+}
+
+export const journalNoteOps = {
+  async listForUserPage(userId: string, puzzleIds: string[]): Promise<JournalNote[]> {
+    if (puzzleIds.length === 0) return [];
+    const collection = getCollection<JournalNote>("journalNotes");
+    return await collection.find({ userId, puzzleId: { $in: puzzleIds } }).toArray();
+  },
+
+  async findForUser(userId: string, puzzleId: string): Promise<JournalNote | null> {
+    const collection = getCollection<JournalNote>("journalNotes");
+    return await collection.findOne({ userId, puzzleId });
+  },
+
+  async compareAndSet(input: {
+    userId: string;
+    puzzleId: string;
+    note: string;
+    expectedRevision: number;
+    updatedAt: Date;
+  }): Promise<JournalNote | null> {
+    const collection = getCollection<JournalNote>("journalNotes");
+    try {
+      return await collection.findOneAndUpdate(
+        {
+          userId: input.userId,
+          puzzleId: input.puzzleId,
+          revision: input.expectedRevision,
+        },
+        {
+          $set: { note: input.note, updatedAt: input.updatedAt },
+          $setOnInsert: { userId: input.userId, puzzleId: input.puzzleId },
+          $inc: { revision: 1 },
+        },
+        { upsert: input.expectedRevision === 0, returnDocument: "after" }
+      );
+    } catch (error) {
+      if (
+        input.expectedRevision === 0 &&
+        error !== null &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === 11000
+      ) {
+        return null;
+      }
+      throw error;
+    }
   },
 };
 
@@ -960,23 +1158,39 @@ export const puzzleAttemptOps = {
     guessCount: number;
     firstGuessAt: Date | null;
     maxHintsUsed: number;
+    playMode?: "extended";
   }> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
     const rows = await collection
       .find({ userId, puzzleDate })
-      .project({ isFinal: 1, isCorrect: 1, abandoned: 1, attemptedAt: 1, hintsUsed: 1 })
+      .project({
+        isFinal: 1,
+        isCorrect: 1,
+        abandoned: 1,
+        attemptedAt: 1,
+        hintsUsed: 1,
+        playMode: 1,
+        attemptType: 1,
+      })
       .toArray();
 
     let hasFinal = false;
     let wasSuccessful = false;
     let firstGuessAt: Date | null = null;
     let maxHintsUsed = 0;
+    let guessCount = 0;
+    let playMode: "extended" | undefined;
 
     for (const row of rows) {
       if (row.isFinal || row.isCorrect || row.abandoned) {
         hasFinal = true;
         if (row.isCorrect) wasSuccessful = true;
       }
+      if (row.attemptType !== "finalization") {
+        guessCount += 1;
+        if (row.playMode === "extended") playMode = "extended";
+      }
+      if (row.attemptType === "finalization") continue;
       if (row.attemptedAt) {
         const at = new Date(row.attemptedAt);
         if (!firstGuessAt || at < firstGuessAt) firstGuessAt = at;
@@ -989,10 +1203,70 @@ export const puzzleAttemptOps = {
     return {
       hasFinal,
       wasSuccessful,
-      guessCount: rows.length,
+      guessCount,
       firstGuessAt,
       maxHintsUsed,
+      ...(playMode ? { playMode } : {}),
     };
+  },
+
+  /** Open, score-locked extended daily runs that can no longer accept guesses. */
+  async findExpiredExtendedDailyRuns(
+    userId: string,
+    beforePuzzleDate: string
+  ): Promise<Array<{ puzzleId: string; puzzleDate: string; attempts: PuzzleAttempt[] }>> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const rows = await collection
+      .find({
+        userId,
+        playMode: "extended",
+        $or: [
+          { isFinal: { $ne: true }, attemptType: { $ne: "finalization" } },
+          { isFinal: true, attemptType: "finalization" },
+        ],
+        puzzleDate: { $type: "string", $regex: /^\d{4}-\d{2}-\d{2}$/, $lt: beforePuzzleDate },
+      })
+      .sort({ puzzleDate: 1, attemptNumber: 1 })
+      .toArray();
+
+    const groups = new Map<string, PuzzleAttempt[]>();
+    for (const row of rows) {
+      if (!row.puzzleDate || !row.puzzleId) continue;
+      const key = `${row.puzzleDate}:${row.puzzleId}`;
+      groups.set(key, [...(groups.get(key) ?? []), row]);
+    }
+
+    return [...groups.values()]
+      .filter((attempts) => {
+        const maxAttempts = attempts.at(-1)?.maxAttempts ?? 3;
+        return (
+          attempts.filter((attempt) => attempt.isScoredAttempt !== false).length >= maxAttempts
+        );
+      })
+      .map((attempts) => ({
+        puzzleId: attempts[0]!.puzzleId,
+        puzzleDate: attempts[0]!.puzzleDate!,
+        attempts,
+      }));
+  },
+
+  /** Last expired score-locked run for a prior local day, for its optional answer review. */
+  async findExpiredExtendedDailyRun(
+    userId: string,
+    puzzleDate: string
+  ): Promise<PuzzleAttempt | null> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    return await collection.findOne(
+      {
+        userId,
+        puzzleDate,
+        playMode: "extended",
+        attemptType: "finalization",
+        finalizationReason: "expired",
+        isFinal: true,
+      },
+      { sort: { attemptedAt: -1 } }
+    );
   },
 
   /** Dev tools: wipe a user's guesses for a UTC day so they can replay. */
@@ -1471,5 +1745,85 @@ export const storeKitOps = {
       }
       await collection.updateOne(filter, update);
     }
+  },
+};
+
+export interface PracticeRoundTokenState {
+  userId: string;
+  puzzleId: string;
+  roundId: string;
+  token: string;
+  expiresAt: Date;
+}
+
+interface PracticeRoundTokenRecord {
+  _id: string;
+  userId: string;
+  puzzleId: string;
+  tokenDigest: string;
+  expiresAt: Date;
+}
+
+function practiceRoundTokenDigest(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function practiceRoundTokenFilter(state: PracticeRoundTokenState) {
+  return {
+    _id: state.roundId,
+    userId: state.userId,
+    puzzleId: state.puzzleId,
+    tokenDigest: practiceRoundTokenDigest(state.token),
+    expiresAt: { $gt: new Date() },
+  };
+}
+
+/** Replay-protection state for signed tokens; stores no guesses, answers, or attempt count. */
+export const practiceRoundOps = {
+  async activateToken(state: PracticeRoundTokenState): Promise<void> {
+    const collection = getCollection<PracticeRoundTokenRecord>("practiceRoundTokens");
+    await collection.insertOne({
+      _id: state.roundId,
+      userId: state.userId,
+      puzzleId: state.puzzleId,
+      tokenDigest: practiceRoundTokenDigest(state.token),
+      expiresAt: state.expiresAt,
+    });
+  },
+
+  async isTokenActive(state: PracticeRoundTokenState): Promise<boolean> {
+    const collection = getCollection<PracticeRoundTokenRecord>("practiceRoundTokens");
+    return Boolean(
+      await collection.findOne(practiceRoundTokenFilter(state), { projection: { _id: 1 } })
+    );
+  },
+
+  async advanceToken(
+    current: PracticeRoundTokenState,
+    next: PracticeRoundTokenState | null
+  ): Promise<boolean> {
+    const collection = getCollection<PracticeRoundTokenRecord>("practiceRoundTokens");
+    if (
+      next &&
+      (next.userId !== current.userId ||
+        next.puzzleId !== current.puzzleId ||
+        next.roundId !== current.roundId)
+    ) {
+      throw new Error("Practice round token transition must remain within the same round");
+    }
+
+    const filter = practiceRoundTokenFilter(current);
+    if (!next) {
+      const result = await collection.deleteOne(filter);
+      return result.deletedCount === 1;
+    }
+
+    const result = await collection.updateOne(filter, {
+      $set: {
+        tokenDigest: practiceRoundTokenDigest(next.token),
+        expiresAt: next.expiresAt,
+      },
+    });
+    return result.modifiedCount === 1;
   },
 };

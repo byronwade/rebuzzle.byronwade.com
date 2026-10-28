@@ -20,6 +20,10 @@ import {
 } from "../visual/presentation";
 import { renderPuzzleVisualProfile } from "../visual/render-board";
 import {
+  PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS,
+  PUZZLE_PLAYTEST_RELEASE_SAMPLE,
+} from "./puzzle-playtest-campaign";
+import {
   absoluteBootstrapBound,
   estimatePuzzlePlaytestClusterEvidence,
   type PuzzlePlaytestClusterEvidence,
@@ -28,6 +32,11 @@ import {
 import { buildPuzzlePlaytestControlCorpus } from "./puzzle-playtest-controls";
 import { expectedHumanSolveFloor, humanSolveFloorEvidence } from "./puzzle-playtest-solve-floor";
 
+export {
+  PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS,
+  PUZZLE_PLAYTEST_RELEASE_SAMPLE,
+} from "./puzzle-playtest-campaign";
+
 export { expectedHumanSolveFloor, humanSolveFloorEvidence } from "./puzzle-playtest-solve-floor";
 
 export const PUZZLE_PLAYTEST_CONTRACT_VERSION = "puzzle-playtest-v3";
@@ -35,9 +44,7 @@ export const PUZZLE_PLAYTEST_READINESS_VERSION = "puzzle-playtest-readiness-v3";
 export const PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE = 5;
 export const PUZZLE_PLAYTEST_REQUIRED_CONTROLS_PER_REVIEWER = 4;
 export const PUZZLE_PLAYTEST_MINIMUM_CORRECT_CONTROLS = 3;
-export const PUZZLE_PLAYTEST_RELEASE_SAMPLE = 30;
 export const PUZZLE_PLAYTEST_MARKET_SAMPLE = 100;
-export const PUZZLE_PLAYTEST_RELEASE_MIN_REVIEWERS = 20;
 export const PUZZLE_PLAYTEST_MARKET_MIN_REVIEWERS = 50;
 export const PUZZLE_PLAYTEST_RELEASE_MAX_REVIEWER_SHARE = 0.075;
 export const PUZZLE_PLAYTEST_MARKET_MAX_REVIEWER_SHARE = 0.035;

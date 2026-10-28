@@ -324,13 +324,7 @@ export function applyPlayerSimHeuristics(
       hintUnlockOrderLooksFair = false;
     }
   });
-  if (input.tierLabel === "Impossible" && sim.estimatedSolveRate > 0.7) {
-    return {
-      ...sim,
-      estimatedSolveRate: Math.min(sim.estimatedSolveRate, 0.55),
-      hintUnlockOrderLooksFair,
-      unfairReasons,
-    };
-  }
+  // Keep the blind solver's estimate intact: it feeds tournament difficulty
+  // ranking, so tier labels must not make a puzzle appear harder than it read.
   return { ...sim, hintUnlockOrderLooksFair, unfairReasons };
 }

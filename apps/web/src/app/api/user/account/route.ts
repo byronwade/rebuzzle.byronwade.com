@@ -40,6 +40,8 @@ export async function DELETE(request: Request) {
           "puzzleAttempts",
           "dailyProgress",
           "dailyProgressBackfills",
+          "practiceRoundTokens",
+          "journalNotes",
           "gameSessions",
           "userAchievements",
           "pushSubscriptions",

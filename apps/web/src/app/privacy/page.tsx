@@ -12,7 +12,7 @@ export const metadata: Metadata = generateStaticPageMetadata({
 });
 
 /** Static legal copy — no request-time Date/connection (keeps the page prerenderable). */
-const LAST_UPDATED = "October 26, 2026";
+const LAST_UPDATED = "October 28, 2026";
 
 const SECTIONS = [
   { id: "introduction", title: "Introduction" },
@@ -81,7 +81,9 @@ export default function PrivacyPolicyPage() {
               <li>
                 Native daily-play events: when a daily puzzle is opened and its entry path, whether
                 a daily puzzle is finished, whether the Plus offer is viewed, and whether a reminder
-                is successfully scheduled, and an optional rating after the daily result is revealed
+                is successfully scheduled, an optional rating after the daily result is revealed,
+                when sharing starts or iOS reports that a share activity completed, and a verified
+                session restore for the current official daily puzzle
               </li>
             </ul>
             <p>
@@ -92,14 +94,27 @@ export default function PrivacyPolicyPage() {
               limiting and stores IP-derived hashes on guest records.
             </p>
             <p>
-              Native funnel events are linked to your account. Their stored fields are limited to
+              Daily engagement events are linked to your account. Their stored fields are limited to
               the event type, local puzzle day, server-recorded time, and, where relevant, the entry
-              path, finish outcome, or one of four optional puzzle ratings. If you change your
+              path, finish outcome, or one of four optional puzzle ratings. The server also records
+              when an authenticated session restores the current official daily puzzle. We use that
+              timestamp with a later correct-solve event to calculate an aggregate median elapsed
+              wall-clock time by puzzle date, shown to administrators only when at least five
+              qualifying solves are available. Wall-clock time includes idle and background time; it
+              does not measure active play or thinking time. A failed event write may be retried on a
+              later restore, so the interval begins at the first recorded restore. The `share` entry
+              path
+              identifies a daily open attributed to a Rebuzzle share link. If you change your
               rating, the latest choice replaces your earlier choice for that account and puzzle
               day. These event records do not contain puzzle IDs, answers, guesses, explanations,
-              journal notes, email addresses, or reminder text. We use them to understand daily play
-              and improve the game; ratings are self-selected and are not treated as objective
-              difficulty measurements.
+              journal notes, email addresses, reminder text, share contents, recipients, or the
+              destination you choose. We use them to understand daily play and improve the game;
+              ratings are self-selected and are not treated as objective difficulty measurements. An
+              iOS-reported share completion does not confirm delivery or a recipient opening the
+              link. When the web game reports a share-attributed open, the server also records the
+              first accepted daily guess and terminal outcome for that same account and puzzle day.
+              These account-day overlaps do not identify a recipient or prove that the sender and
+              player are different people.
             </p>
           </div>
           <div>
@@ -108,11 +123,17 @@ export default function PrivacyPolicyPage() {
               Journey syncs a limited completion summary to your account: puzzle dates and IDs,
               solved or failed outcomes, attempt counts, optional hint counts, completion times, and
               the timezone used for the daily reset. It does not include your answers, submitted
-              guesses, explanations, or journal notes. Journal notes, unsent drafts, cached puzzle
-              results, and reminder preferences are stored locally. The app does not upload journal
-              notes to Rebuzzle. If you export journal text or share a result using the system share
-              sheet, the destination you choose handles that information. Device backups may also
-              include local app data, depending on your device and backup settings.
+              guesses, explanations, or journal notes. With a registered Rebuzzle account and
+              current Plus access, journal note text is sent to Rebuzzle and stored with your account
+              and puzzle ID so it can sync across your devices. The iOS app also keeps a local copy
+              for offline use. Guest notes remain on the device until that guest account is upgraded;
+              notes are not merged when you sign in to a different Rebuzzle account. Unsent drafts,
+              cached puzzle results, and reminder preferences are stored locally. Journal notes are
+              not included in analytics or prompts to AI providers. If you share a result using the
+              system share sheet, the image or spoiler-safe text includes the puzzle date, result,
+              attempt marks, hints used, and a Rebuzzle link. The destination you choose handles the
+              content you share. Device backups may also include local app data, depending on your
+              device and backup settings.
             </p>
           </div>
         </div>
@@ -192,7 +213,8 @@ export default function PrivacyPolicyPage() {
               Some submitted guesses are sent through Vercel AI Gateway to an AI model provider for
               answer checking. Eve’s short reactions also use a guess, puzzle type, and score
               category. These prompts do not intentionally include your account ID or email address,
-              but anything you type in a guess may be included.
+              but anything you type in a guess may be included. Journal notes are not sent to these
+              AI providers.
             </p>
             <p>
               The providers configured for these features include Google, with OpenAI and xAI
@@ -204,16 +226,19 @@ export default function PrivacyPolicyPage() {
             <h3>Apple and Rebuzzle Plus</h3>
             <p>
               Apple processes purchases of Rebuzzle Plus. The iOS app checks purchase entitlements
-              through StoreKit and does not ask for or receive your payment-card details. Restoring
-              purchases restores access to Plus; it does not restore journal entries. Apple handles
-              purchase records under its own policies.
+              through StoreKit and does not ask for or receive your payment-card details. Plus access
+              is required to sync journal notes with a registered Rebuzzle account. Restoring a
+              purchase restores Plus access; Rebuzzle stores the synced note text, not Apple. Apple
+              handles purchase records under its own policies.
             </p>
           </div>
           <div>
             <h3>MongoDB</h3>
             <p>
-              We use MongoDB to store your account information, game statistics, and analytics
-              events.
+              We use MongoDB to store your account information, game statistics, account-linked
+              journal notes for eligible Plus players, and analytics events. Journal note records
+              contain the Rebuzzle account ID, puzzle ID, note text, revision number, and update
+              time. We do not include note text in analytics or application logs.
             </p>
           </div>
         </div>
@@ -243,17 +268,19 @@ export default function PrivacyPolicyPage() {
           contact us about deleting your account and associated data.
         </p>
         <p>
-          Native funnel events are configured in our application code to expire from the application
+          Daily engagement events are configured in our application code to expire from the application
           database after 90 days. We have not yet verified the live production expiration index, so
           this code-level schedule is not a guarantee that every deployed record expires on that
           timeline. Database backups and service logs may have separate retention schedules.
         </p>
         <p>
           Account deletion removes your account and associated records from the application
-          collections covered by that process, including its native daily-funnel events. Public
-          puzzle content may remain after creator attribution is removed. Export any journal you
-          wish to keep before deleting your account. The app removes that account’s local files, but
-          its installation identifier remains in the Keychain.
+          collections covered by that process, including synced journal notes and native daily-
+          funnel events. Public puzzle content may remain after creator attribution is removed.
+          Export any journal you wish to keep before deleting your account. The app removes that
+          account’s local files, but its installation identifier remains in the Keychain. If Plus
+          access ends or is revoked, journal syncing stops; account-stored notes remain until account
+          deletion and can be accessed again if Plus access is restored.
         </p>
         <p>
           This process does not delete Apple’s purchase records or independently erase records in

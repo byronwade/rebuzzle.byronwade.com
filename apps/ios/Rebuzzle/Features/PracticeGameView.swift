@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import RebuzzleCore
 
 @MainActor struct PracticeGameView: View {
@@ -6,19 +7,22 @@ import RebuzzleCore
     private let api: APIClient
     private let storage: LocalStore
     private let accountID: String
+    private let isFreeSample: Bool
 
     @State private var session: PracticeSession
     @State private var practiceEve: EveReplyStore
+    @State private var plusOfferExposure = PlusOfferExposure()
     @State private var answerDraft = ""
     @State private var busy = false
     @State private var error: String?
     @FocusState private var answerFocused: Bool
 
-    init(puzzle: Puzzle, api: APIClient, storage: LocalStore, accountID: String) {
+    init(puzzle: Puzzle, api: APIClient, storage: LocalStore, accountID: String, isFreeSample: Bool = false) {
         self.puzzle = puzzle
         self.api = api
         self.storage = storage
         self.accountID = accountID
+        self.isFreeSample = isFreeSample
         _session = State(initialValue: PracticeSession(puzzleId: puzzle.id, hints: puzzle.hints))
         _practiceEve = State(initialValue: EveReplyStore(storage: storage) { puzzleID, guess, scope, update in
             try await api.streamQuip(puzzleID: puzzleID, guess: guess, scope: scope, onUpdate: update)
@@ -28,7 +32,7 @@ import RebuzzleCore
     var body: some View {
         Page {
             VStack(alignment: .leading, spacing: 8) {
-                Eyebrow(text: puzzle.date ?? "PAST DAILY")
+                Eyebrow(text: isFreeSample ? "FREE ARCHIVE SAMPLE" : (puzzle.date ?? "PAST DAILY"))
                 Text(session.state == .solved ? "Aha, again." : "A fresh look.")
                     .font(Theme.display(36)).tracking(-1)
                     .fixedSize(horizontal: false, vertical: true)
@@ -45,7 +49,7 @@ import RebuzzleCore
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: 8) {
-                Label("Practice · unscored", systemImage: "sparkles")
+                Label(isFreeSample ? "Sample · unscored" : "Practice · unscored", systemImage: "sparkles")
                     .font(Theme.font(14, weight: .medium)).foregroundStyle(Theme.reward)
                     .accessibilityIdentifier("practiceUnscored")
                 Text("Three fresh guesses. Your daily result, streak, and rewards stay untouched.")
@@ -64,35 +68,14 @@ import RebuzzleCore
                             .font(Theme.font(13, weight: .medium)).monospacedDigit().foregroundStyle(Theme.secondary)
                             .accessibilityIdentifier("practiceAttemptsRemaining")
                     }
-                    ForEach(session.guesses) { guess in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(guess.text).font(Theme.font(16, weight: .medium))
-                                Spacer()
-                                Text(guess.correct ? "Aha" : "Guess \(guess.attemptNumber) of 3")
-                                    .font(Theme.font(12, weight: .medium)).foregroundStyle(guess.correct ? Theme.success : Theme.secondary)
-                            }
-                            Text(guess.correct ? "You found the connection." : (guess.reaction?.line ?? "Try looking at the clue from a fresh angle."))
-                                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
-                                .accessibilityIdentifier("practiceFeedback.\(guess.attemptNumber)")
-                            if let reply = practiceEve.replies[guess.attemptNumber] {
-                                Text("Eve · \(reply)").font(Theme.font(14)).foregroundStyle(Theme.accent)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .accessibilityIdentifier("practiceEveReply.\(guess.attemptNumber)")
-                            } else if practiceEve.pendingAttempt == guess.attemptNumber {
-                                Text("Eve is thinking…").font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                            }
-                        }
-                        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
-                    }
+                    ForEach(session.guesses) { practiceGuessCard($0) }
                     VStack(alignment: .leading, spacing: 12) {
                         TextField("Your answer", text: $answerDraft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
                             .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
                             .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
                             .accessibilityLabel("Your answer")
                             .accessibilityIdentifier("practiceAnswerField")
-                            .onSubmit { answerFocused = false; Task { await submit() } }
+                            .onSubmit { dismissAnswerKeyboard(); Task { await submit() } }
                         if let error { Notice(message: error) }
                         Button { Task { await submit() } } label: {
                             HStack {
@@ -107,6 +90,12 @@ import RebuzzleCore
                 }
             } else {
                 solutionCard
+                if !session.guesses.isEmpty {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Your guesses").font(Theme.font(17, weight: .medium))
+                        ForEach(session.guesses) { practiceGuessCard($0) }
+                    }
+                }
             }
 
             hintsSection
@@ -128,13 +117,33 @@ import RebuzzleCore
                 }
                 .buttonStyle(CommitStyle()).accessibilityIdentifier("restartPracticeRound")
             }
+            if isFreeSample && session.state != .playing {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("More daily aha moments", systemImage: "sparkles")
+                        .font(Theme.font(16, weight: .medium)).foregroundStyle(Theme.reward)
+                    Text("Rebuzzle Plus opens every past daily, your puzzle journal, and deeper solving insights.")
+                        .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                    NavigationLink(value: RebuzzleRoute.plus) {
+                        Label("Explore Rebuzzle Plus", systemImage: "arrow.right")
+                            .padding(.horizontal, 16).padding(.vertical, 8)
+                    }
+                    .buttonStyle(CommitStyle())
+                    .accessibilityIdentifier("freeSamplePlusCTA")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
+                .background(Theme.reward.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+                .onScrollVisibilityChange(threshold: 0.5) { isVisible in
+                    recordVisibleFreeSampleOffer(isVisible: isVisible)
+                }
+            }
             if let error, session.state != .playing { Notice(message: error) }
         }
         .navigationTitle("Practice")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
-                Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") { answerFocused = false }
+                Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") { dismissAnswerKeyboard(forceResign: true) }
                     .accessibilityIdentifier("dismissPracticeKeyboard")
                 Spacer()
                 Button("Check answer", systemImage: "arrow.right") { Task { await submit() } }
@@ -147,6 +156,60 @@ import RebuzzleCore
             try? storage.remove(key: practiceEveKey)
             practiceEve.activate(accountID: accountID, puzzleID: puzzle.id, scope: .practice)
         }
+    }
+
+    private func practiceGuessCard(_ guess: PracticeGuess) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(guess.text).font(Theme.font(16, weight: .medium))
+                Spacer()
+                Text(guess.correct ? "Aha" : "Guess \(guess.attemptNumber) of 3")
+                    .font(Theme.font(12, weight: .medium)).foregroundStyle(guess.correct ? Theme.success : Theme.secondary)
+            }
+            Text(guess.correct ? "You found the connection." : (guess.reaction?.line ?? "Try looking at the clue from a fresh angle."))
+                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                .accessibilityIdentifier("practiceFeedback.\(guess.attemptNumber)")
+            if let reply = practiceEve.replies[guess.attemptNumber] {
+                Text("Eve · \(reply)").font(Theme.font(14)).foregroundStyle(Theme.accent)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("practiceEveReply.\(guess.attemptNumber)")
+            }
+            if practiceEve.pendingAttempts.contains(guess.attemptNumber) {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.mini)
+                    Text("Eve is thinking…").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                }
+                .accessibilityLabel("Eve is thinking")
+                .accessibilityIdentifier("practiceEvePending.\(guess.attemptNumber)")
+            } else if practiceEve.failedAttempts.contains(guess.attemptNumber) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Eve couldn't reply just now. Your guess is saved.")
+                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("practiceEveReplyFailure.\(guess.attemptNumber)")
+                    Button {
+                        _ = practiceEve.retry(guess: Guess(
+                            guess: guess.text,
+                            correct: guess.correct,
+                            attemptNumber: guess.attemptNumber,
+                            reaction: guess.reaction,
+                            similarity: guess.similarity,
+                            wordResults: guess.wordResults
+                        ))
+                    } label: {
+                        Label("Ask Eve again", systemImage: "arrow.clockwise")
+                            .font(Theme.font(13, weight: .semibold))
+                            .frame(minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent)
+                    .accessibilityLabel("Ask Eve to retry the reply for guess \(guess.attemptNumber)")
+                    .accessibilityIdentifier("retryPracticeEveReply.\(guess.attemptNumber)")
+                }
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var solutionCard: some View {
@@ -208,6 +271,22 @@ import RebuzzleCore
 
     private var practiceEveKey: String { "eve:\(accountID):\(puzzle.id):practice" }
 
+    private func recordVisibleFreeSampleOffer(isVisible: Bool) {
+        guard plusOfferExposure.markVisible(
+            isFreeSample: isFreeSample,
+            roundComplete: session.state != .playing,
+            isVisible: isVisible
+        ) else { return }
+        Task { _ = await api.report(.plusOfferViewed) }
+    }
+
+    private func dismissAnswerKeyboard(forceResign: Bool = false) {
+        let shouldResign = answerFocused || forceResign
+        answerFocused = false
+        guard shouldResign else { return }
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
     private func submit() async {
         guard !busy else { return }
         var updated = session
@@ -218,7 +297,7 @@ import RebuzzleCore
             return
         }
         session = updated
-        answerFocused = false
+        dismissAnswerKeyboard()
         busy = true
         error = nil
         defer { busy = false }
@@ -257,7 +336,7 @@ import RebuzzleCore
         guard !busy, session.state == .outOfGuesses, let roundToken = session.roundToken else { return }
         busy = true
         error = nil
-        answerFocused = false
+        dismissAnswerKeyboard()
         defer { busy = false }
         do {
             let solution = try await api.revealPracticeSolution(puzzleID: puzzle.id, roundToken: roundToken)

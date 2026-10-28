@@ -1,4 +1,23 @@
-jest.mock("@/db", () => ({ db: { puzzleOps: { findById: jest.fn() } } }));
+const mockActivePracticeRoundTokens = new Set<string>();
+
+jest.mock("@/db", () => ({
+  db: {
+    puzzleOps: { findById: jest.fn(), findOldestPublishedBefore: jest.fn() },
+    practiceRoundOps: {
+      activateToken: jest.fn(async ({ token }: { token: string }) => {
+        mockActivePracticeRoundTokens.add(token);
+      }),
+      isTokenActive: jest.fn(async ({ token }: { token: string }) =>
+        mockActivePracticeRoundTokens.has(token)
+      ),
+      advanceToken: jest.fn(async ({ token }: { token: string }) => {
+        if (!mockActivePracticeRoundTokens.has(token)) return false;
+        mockActivePracticeRoundTokens.delete(token);
+        return true;
+      }),
+    },
+  },
+}));
 jest.mock("@/lib/auth-middleware", () => ({
   getAuthenticatedUser: jest.fn().mockResolvedValue({ userId: "tester" }),
 }));
@@ -38,16 +57,26 @@ function request(body: unknown, withProof = true) {
 
 async function completedRoundToken(puzzleId = "past-puzzle") {
   process.env.AUTH_SECRET = "test-only-practice-round-secret-with-sufficient-entropy";
-  return createPracticeRoundToken({ userId: "tester", puzzleId, wrongGuessCount: 3 });
+  const token = await createPracticeRoundToken({ userId: "tester", puzzleId, wrongGuessCount: 3 });
+  mockActivePracticeRoundTokens.add(token);
+  return token;
 }
 
 beforeEach(() => {
+  mockActivePracticeRoundTokens.clear();
   jest.useFakeTimers().setSystemTime(new Date("2026-10-25T12:00:00.000Z"));
   jest.clearAllMocks();
   jest.mocked(getAuthenticatedUser).mockResolvedValue({ userId: "tester" } as never);
   jest.mocked(resolveStableJourneyTimeZone).mockResolvedValue("UTC");
   jest.mocked(db.puzzleOps.findById).mockResolvedValue({
     id: "past-puzzle",
+    active: true,
+    answer: "moonlight",
+    explanation: "The moon is shining at night.",
+    publishedAt: new Date("2026-10-24T12:00:00.000Z"),
+  } as never);
+  jest.mocked(db.puzzleOps.findOldestPublishedBefore).mockResolvedValue({
+    id: "free-sample",
     active: true,
     answer: "moonlight",
     explanation: "The moon is shining at night.",
@@ -74,7 +103,74 @@ it("returns the solution for an explicit reveal of an eligible published puzzle"
     answer: "moonlight",
     explanation: "The moon is shining at night.",
   });
+  expect(db.puzzleOps.findOldestPublishedBefore).not.toHaveBeenCalled();
   expect(resolveStableJourneyTimeZone).toHaveBeenCalledWith("tester", "UTC");
+});
+
+it("allows one explicit reveal of the free sample after its third wrong guess", async () => {
+  const roundToken = await completedRoundToken("free-sample");
+  const body = { puzzleId: "free-sample", roundToken };
+
+  const response = await request(body, false);
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    success: true,
+    puzzleId: "free-sample",
+    answer: "moonlight",
+    explanation: "The moon is shining at night.",
+  });
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+  expect(db.practiceRoundOps.advanceToken).toHaveBeenCalledTimes(1);
+
+  const replay = await request(body, false);
+  expect(replay.status).toBe(409);
+  expect(await replay.json()).not.toHaveProperty("answer");
+});
+
+it("keeps explicit reveal for every non-sample puzzle behind Plus", async () => {
+  const response = await request(
+    { puzzleId: "past-puzzle", roundToken: await completedRoundToken("past-puzzle") },
+    false
+  );
+
+  expect(response.status).toBe(403);
+  expect(await response.json()).not.toHaveProperty("answer");
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+});
+
+it("does not reveal the free sample without an accepted three-guess token", async () => {
+  const response = await request({ puzzleId: "free-sample" }, false);
+
+  expect(response.status).toBe(409);
+  expect(await response.json()).not.toHaveProperty("answer");
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+});
+
+it("does not reveal the free sample with an expired completed-round token", async () => {
+  const roundToken = await completedRoundToken("free-sample");
+  jest.advanceTimersByTime(25 * 60 * 60 * 1000);
+
+  const response = await request({ puzzleId: "free-sample", roundToken }, false);
+
+  expect(response.status).toBe(409);
+  expect(await response.json()).not.toHaveProperty("answer");
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["another player", "other-player", "free-sample"],
+  ["another puzzle", "tester", "past-puzzle"],
+])("does not reveal the free sample with a token bound to %s", async (_label, userId, puzzleId) => {
+  process.env.AUTH_SECRET = "test-only-practice-round-secret-with-sufficient-entropy";
+  const roundToken = await createPracticeRoundToken({ userId, puzzleId, wrongGuessCount: 3 });
+  mockActivePracticeRoundTokens.add(roundToken);
+
+  const response = await request({ puzzleId: "free-sample", roundToken }, false);
+
+  expect(response.status).toBe(409);
+  expect(await response.json()).not.toHaveProperty("answer");
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
 });
 
 it.each([
@@ -130,6 +226,21 @@ it("does not accept a caller-supplied attemptNumber of three as proof of a finis
   expect(db.puzzleOps.findById).not.toHaveBeenCalled();
 });
 
+it("does not reveal with a signed but superseded round token", async () => {
+  process.env.AUTH_SECRET = "test-only-practice-round-secret-with-sufficient-entropy";
+  const staleToken = await createPracticeRoundToken({
+    userId: "tester",
+    puzzleId: "past-puzzle",
+    wrongGuessCount: 3,
+  });
+
+  const response = await request({ puzzleId: "past-puzzle", roundToken: staleToken });
+
+  expect(response.status).toBe(409);
+  expect(await response.json()).not.toHaveProperty("answer");
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+});
+
 it("requires server-verifiable StoreKit proof before looking up a solution", async () => {
   const response = await request(
     { puzzleId: "past-puzzle", roundToken: await completedRoundToken() },
@@ -151,5 +262,15 @@ it("requires authentication and never writes progress", async () => {
     roundToken: await completedRoundToken(),
   });
   expect(response.status).toBe(200);
-  expect(db).toEqual({ puzzleOps: { findById: expect.any(Function) } });
+  expect(db).toEqual({
+    puzzleOps: {
+      findById: expect.any(Function),
+      findOldestPublishedBefore: expect.any(Function),
+    },
+    practiceRoundOps: {
+      activateToken: expect.any(Function),
+      isTokenActive: expect.any(Function),
+      advanceToken: expect.any(Function),
+    },
+  });
 });

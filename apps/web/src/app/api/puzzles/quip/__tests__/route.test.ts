@@ -2,7 +2,7 @@ jest.mock("@/ai/client", () => ({ streamAIText: jest.fn() }));
 jest.mock("@/db", () => ({
   db: {
     puzzleAttemptOps: { hasTodayAttempt: jest.fn() },
-    puzzleOps: { findById: jest.fn() },
+    puzzleOps: { findById: jest.fn(), findOldestPublishedBefore: jest.fn() },
   },
 }));
 jest.mock("@/lib/auth-middleware", () => ({
@@ -38,6 +38,7 @@ const pastPuzzle = {
   explanation: "The moon is shining at night.",
   publishedAt: new Date("2026-10-24T12:00:00.000Z"),
 };
+const freeSamplePuzzle = { ...pastPuzzle, id: "free-sample" };
 
 function request(body: unknown, withProof = true) {
   return POST(
@@ -63,6 +64,7 @@ beforeEach(() => {
     .mocked(db.puzzleAttemptOps.hasTodayAttempt)
     .mockResolvedValue({ hasAttempt: false } as never);
   jest.mocked(db.puzzleOps.findById).mockResolvedValue(pastPuzzle as never);
+  jest.mocked(db.puzzleOps.findOldestPublishedBefore).mockResolvedValue(freeSamplePuzzle as never);
   jest.mocked(streamAIText).mockResolvedValue({
     toTextStreamResponse: () => new Response("Eve is thinking."),
   } as never);
@@ -103,8 +105,32 @@ it("allows practice Eve feedback after today's daily is complete", async () => {
   expect(response.status).toBe(200);
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   expect(db.puzzleAttemptOps.hasTodayAttempt).not.toHaveBeenCalled();
+  expect(db.puzzleOps.findOldestPublishedBefore).not.toHaveBeenCalled();
   expect(streamAIText).toHaveBeenCalledTimes(1);
   expect(resolveStableJourneyTimeZone).toHaveBeenCalledWith("tester", "UTC");
+});
+
+it("allows answer-blind Eve feedback for the exact free sample without Plus proof", async () => {
+  const response = await request(
+    { ...baseBody, puzzleId: "free-sample", mode: "practice" },
+    false
+  );
+
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  expect(streamAIText).toHaveBeenCalledTimes(1);
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+  const payload = jest.mocked(streamAIText).mock.calls[0]![0];
+  expect(`${payload.system}\n${payload.prompt}`).not.toContain("moonlight");
+});
+
+it("keeps practice Eve feedback for every non-sample puzzle behind Plus", async () => {
+  const response = await request({ ...baseBody, mode: "practice" }, false);
+
+  expect(response.status).toBe(403);
+  expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  expect(streamAIText).not.toHaveBeenCalled();
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
 });
 
 it("requires server-verifiable StoreKit proof for practice Eve feedback", async () => {

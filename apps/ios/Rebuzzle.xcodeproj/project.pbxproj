@@ -41,6 +41,7 @@
 		CDEA12895B0622352AA1AE61 /* ReturnRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC41A3A59FA99CEB4C55C91E /* ReturnRouter.swift */; };
 		D6CC2EB0E2F84527E662812A /* DailyReturnCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003E39205E6D983A152AF798 /* DailyReturnCard.swift */; };
 		DA428A581C6A0117D592D470 /* ReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E74F7577CC547034168ACF15 /* ReminderStore.swift */; };
+		AB01C0FE1234567890ABCDEF /* DailyResultShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB01C0FE1234567890ABCDE0 /* DailyResultShareCard.swift */; };
 		DB16E04E84B4DA3CBD373891 /* JourneyRewards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265BEFC14F6F5011653FD71E /* JourneyRewards.swift */; };
 		DF8FAF83322B78C9BC4A6468 /* PracticeGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */; };
 		E67A910F2D2A7F02AEE397B4 /* RebuzzleCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2717B274CD2417AA0C29D2A2 /* RebuzzleCore */; };
@@ -132,6 +133,7 @@
 		CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseTests.swift; sourceTree = "<group>"; };
 		D63BEA008263AB548D99CB36 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		DCAF7BA641A3CD33255264BC /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
+		AB01C0FE1234567890ABCDE0 /* DailyResultShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyResultShareCard.swift; sourceTree = "<group>"; };
 		E0DD9980C84C32503F71017B /* VisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTests.swift; sourceTree = "<group>"; };
 		E74F7577CC547034168ACF15 /* ReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderStore.swift; sourceTree = "<group>"; };
 		F2B711BF40A0A3DB6098E304 /* RebuzzleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RebuzzleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -267,6 +269,7 @@
 		A7F88AD1C67B7925DAB2384C /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				AB01C0FE1234567890ABCDE0 /* DailyResultShareCard.swift */,
 				DCAF7BA641A3CD33255264BC /* ArchiveView.swift */,
 				F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */,
 				003E39205E6D983A152AF798 /* DailyReturnCard.swift */,
@@ -498,6 +501,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB01C0FE1234567890ABCDEF /* DailyResultShareCard.swift in Sources */,
 				AB38228E20708790BE02B519 /* APIClient.swift in Sources */,
 				A619DFE7183A1F093D7857C0 /* AppModel.swift in Sources */,
 				A12AB77947C0F6758AB3E3B6 /* ArchiveView.swift in Sources */,
@@ -561,6 +565,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				CODE_SIGN_ENTITLEMENTS = Rebuzzle/Rebuzzle.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.byronwade.rebuzzle;
 				REBUZZLE_API_BASE_URL = "https://rebuzzle.byronwade.com";
 				SDKROOT = iphoneos;
@@ -618,7 +623,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -728,7 +733,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -798,6 +803,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				CODE_SIGN_ENTITLEMENTS = Rebuzzle/Rebuzzle.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.byronwade.rebuzzle;
 				REBUZZLE_API_BASE_URL = "https://rebuzzle.byronwade.com";
 				SDKROOT = iphoneos;

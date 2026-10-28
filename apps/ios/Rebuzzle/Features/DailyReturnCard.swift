@@ -3,55 +3,106 @@ import RebuzzleCore
 
 struct DailyReturnCard: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Label("Your next daily aha", systemImage: "sunrise")
-                .font(Theme.font(18, weight: .medium))
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    countdownSummary
+                    reminderLink
+                }
+            } else {
+                HStack(spacing: 12) {
+                    Image(systemName: "sunrise.fill")
+                        .font(.system(size: 19, weight: .medium))
+                        .foregroundStyle(Theme.reward)
+                        .accessibilityHidden(true)
+                    countdownSummary
+                    Spacer(minLength: 8)
+                    reminderLink
+                }
+            }
+        }
+        .padding(14)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    @ViewBuilder
+    private var countdownSummary: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("NEXT DAILY")
+                .font(Theme.font(10, weight: .semibold, relativeTo: .caption))
+                .tracking(1.1)
+                .foregroundStyle(Theme.secondary)
             if let raw = model.daily?.nextPuzzleTime, let end = DailyReturnTiming.deadline(raw) {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let seconds = DailyReturnTiming.remaining(until: end, now: context.date)
                     if seconds > 0 {
-                        HStack(spacing: 8) {
-                            digit(seconds / 3600, label: "hours", identifier: "countdownHours")
-                            digit(seconds / 60 % 60, label: "minutes", identifier: "countdownMinutes")
-                            digit(seconds % 60, label: "seconds", identifier: "countdownSeconds")
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            countdownUnit(seconds / 3600, suffix: "h", identifier: "countdownHours")
+                            countdownUnit(seconds / 60 % 60, suffix: "m", identifier: "countdownMinutes")
+                            countdownUnit(seconds % 60, suffix: "s", identifier: "countdownSeconds")
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityIdentifier("puzzleCountdown")
-                        .accessibilityLabel("Next puzzle at \(end.formatted(date: .abbreviated, time: .shortened))")
+                        .accessibilityLabel("Next puzzle countdown")
+                        .accessibilityValue("\(seconds / 3600) hours, \(seconds / 60 % 60) minutes, \(seconds % 60) seconds remaining")
                     } else {
-                        Text(model.busy ? "Finding your next connection…" : "Time for a fresh puzzle")
-                            .font(Theme.font(22, weight: .medium)).accessibilityIdentifier("countdownReady")
-                        Button("Check for today’s puzzle") { Task { await model.load() } }
-                            .buttonStyle(CommitStyle()).disabled(model.busy || model.submitting)
+                        if model.busy {
+                            Text("Finding your next aha…")
+                                .font(Theme.font(16, weight: .semibold, relativeTo: .headline))
+                                .accessibilityIdentifier("countdownReady")
+                        } else {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("A fresh puzzle is ready")
+                                    .font(Theme.font(16, weight: .semibold, relativeTo: .headline))
+                                    .accessibilityIdentifier("countdownReady")
+                                Button("Check for today’s puzzle") {
+                                    Task { await model.load() }
+                                }
+                                .font(Theme.font(13, weight: .medium))
+                                .accessibilityIdentifier("checkForTodayPuzzle")
+                            }
+                        }
                     }
                 }
-                Text("A fresh puzzle \(end.formatted(date: .abbreviated, time: .shortened)). Your progress is safe.")
-                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
             } else {
-                Text("Connect to check when the next puzzle arrives.").font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                Text("Your next aha is on its way")
+                    .font(Theme.font(15, weight: .medium, relativeTo: .headline))
+                    .foregroundStyle(Theme.ink)
             }
-            NavigationLink { ReminderView() } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: model.reminders.nextReminder == nil ? "bell.badge" : "bell.fill").foregroundStyle(Theme.accent)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(model.reminders.nextReminder == nil ? "Save a little time for wonder" : "Your daily moment is set")
-                            .font(Theme.font(14, weight: .medium))
-                        if let next = model.reminders.nextReminder {
-                            Text(next.formatted(date: .abbreviated, time: .shortened)).font(Theme.font(12)).foregroundStyle(Theme.secondary)
-                        } else { Text("Choose a gentle daily reminder").font(Theme.font(12)).foregroundStyle(Theme.secondary) }
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.caption)
-                }.frame(minHeight: 44).contentShape(Rectangle())
-            }.foregroundStyle(Theme.ink).accessibilityIdentifier("configureReminder")
-        }.padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
-    private func digit(_ value: Int, label: String, identifier: String) -> some View {
-        VStack(spacing: 6) {
-            Text(String(format: "%02d", value)).font(Theme.font(30, weight: .semibold, relativeTo: .title)).monospacedDigit()
-                .minimumScaleFactor(0.5).lineLimit(1).accessibilityIdentifier(identifier)
-            Text(label).font(Theme.font(11, relativeTo: .caption)).foregroundStyle(Theme.secondary).lineLimit(1).minimumScaleFactor(0.7)
-        }.frame(maxWidth: .infinity).padding(.vertical, 12).background(Theme.field, in: RoundedRectangle(cornerRadius: 10))
+
+    private var reminderLink: some View {
+        NavigationLink { ReminderView() } label: {
+            Image(systemName: model.reminders.nextReminder == nil ? "bell.badge" : "bell.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 42, height: 42)
+                .background(Theme.field, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(model.reminders.nextReminder == nil ? "Set a daily reminder" : "Edit daily reminder")
+        .accessibilityHint("Choose a local time for an optional daily reminder.")
+        .accessibilityIdentifier("configureReminder")
+    }
+
+    private func countdownUnit(_ value: Int, suffix: String, identifier: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 1) {
+            Text(String(format: "%02d", value))
+                .font(Theme.font(21, weight: .semibold, relativeTo: .title3))
+                .monospacedDigit()
+                .minimumScaleFactor(0.8)
+                .lineLimit(1)
+                .accessibilityIdentifier(identifier)
+            Text(suffix)
+                .font(Theme.font(11, weight: .medium, relativeTo: .caption))
+                .foregroundStyle(Theme.secondary)
+        }
+        .fixedSize(horizontal: true, vertical: false)
     }
 }

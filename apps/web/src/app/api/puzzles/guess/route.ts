@@ -58,6 +58,7 @@ export async function POST(request: Request) {
         guess?: string;
         timeSpentSeconds?: number;
         hintsUsed?: number;
+        playMode?: "extended";
         /** Prior consecutive cold misses this session (for sharper Eve lines). */
         consecutiveCold?: number;
       }>,
@@ -90,6 +91,13 @@ export async function POST(request: Request) {
     if (!puzzleId || !guess) {
       return NextResponse.json(
         { success: false, error: "puzzleId and guess are required" },
+        { status: 400 }
+      );
+    }
+
+    if (body.playMode !== undefined && body.playMode !== "extended") {
+      return NextResponse.json(
+        { success: false, error: "Invalid daily play mode" },
         { status: 400 }
       );
     }
@@ -152,6 +160,17 @@ export async function POST(request: Request) {
 
     const context = await db.puzzleAttemptOps.getTodayGuessContext(user.userId, lockKey);
     const maxAttempts = gameSettings.maxAttempts;
+    // A run's first accepted attempt fixes its mode. Historical/in-progress
+    // rows without playMode stay on the classic limit; they never unlock the
+    // new continuation flow just because a client has since upgraded.
+    const playMode =
+      isDaily &&
+      (context.playMode === "extended" ||
+        (context.guessCount === 0 && body.playMode === "extended"))
+        ? "extended"
+        : undefined;
+    const isExtendedDaily = isDaily && playMode === "extended";
+    const scoreLockedBeforeGuess = isExtendedDaily && context.guessCount >= maxAttempts;
 
     if (context.hasFinal) {
       return NextResponse.json(
@@ -168,7 +187,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (context.guessCount >= maxAttempts) {
+    if (context.guessCount >= maxAttempts && !scoreLockedBeforeGuess) {
       return NextResponse.json(
         {
           success: false,
@@ -199,9 +218,21 @@ export async function POST(request: Request) {
       correctAnswer: puzzle.answer,
     });
     const isCorrect = validation.isCorrect;
-    const abandoned = !isCorrect && attemptNumber >= maxAttempts;
+    const isScoredAttempt = attemptNumber <= maxAttempts;
+    const isContinuationAttempt = isExtendedDaily && !isScoredAttempt;
+    const abandoned = !isCorrect && attemptNumber >= maxAttempts && !isExtendedDaily;
     const isFinal = isCorrect || abandoned;
     const attemptsLeft = isCorrect ? 0 : Math.max(0, maxAttempts - attemptNumber);
+    const scoreLocked = isExtendedDaily && attemptNumber >= maxAttempts;
+    const phase = isCorrect
+      ? "solved"
+      : isFinal
+        ? "exhausted"
+        : scoreLocked
+          ? isContinuationAttempt
+            ? "continuing"
+            : "score_locked"
+          : "scored";
     const wordResults = buildWordResults(guess, puzzle.answer);
     const difficultyLevel =
       typeof puzzle.difficulty === "number"
@@ -242,6 +273,8 @@ export async function POST(request: Request) {
         isCorrect,
         abandoned,
         isFinal,
+        ...(isExtendedDaily ? { playMode: "extended" as const, isScoredAttempt } : {}),
+        attemptType: "guess" as const,
         puzzleDate: lockKey,
         ...(isDaily ? { puzzleTimeZone: timeZone } : {}),
         attemptedAt: new Date(),
@@ -278,6 +311,22 @@ export async function POST(request: Request) {
       );
     }
 
+    if (isDaily && attemptNumber === 1) {
+      const uid = user.userId;
+      after(async () => {
+        try {
+          await nativeGrowthEventOps.recordOnce({
+            userId: uid,
+            eventType: "daily_started",
+            dayKey: localDateKey,
+            occurredAt: new Date(),
+          });
+        } catch (error) {
+          console.error("[guess] Daily start event write failed:", error);
+        }
+      });
+    }
+
     if (isDaily && isFinal) {
       try {
         await db.dailyProgressOps.materializeFromAttempt(write.attempt);
@@ -306,10 +355,13 @@ export async function POST(request: Request) {
     >["newlyUnlocked"] = [];
 
     if (isFinal && isCorrect) {
-      isLucky = !isArchive && engagement.isLucky;
-      hasDailyBonus = !isArchive && engagement.hasDailyBonus;
+      const performancePointsLocked = isExtendedDaily && !isScoredAttempt;
+      isLucky = !performancePointsLocked && !isArchive && engagement.isLucky;
+      hasDailyBonus = !performancePointsLocked && !isArchive && engagement.hasDailyBonus;
       dailyBonusMultiplier = hasDailyBonus ? engagement.dailyBonusMultiplier : 1;
-      pointsMultiplier = composePointsMultiplier(basePointsMultiplier, engagement, true);
+      pointsMultiplier = performancePointsLocked
+        ? 0
+        : composePointsMultiplier(basePointsMultiplier, engagement, true);
       // Archive keeps half-points only — no lucky/daily stacking.
       if (isArchive) {
         pointsMultiplier = basePointsMultiplier;
@@ -459,6 +511,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       correct: isCorrect,
+      phase,
+      scoreLocked,
       similarity,
       // Eve's instant read on the guess. Derived from the similarity score, so
       // the client learns "how close" without ever receiving the answer.
@@ -467,6 +521,7 @@ export async function POST(request: Request) {
       attemptNumber,
       attemptsLeft,
       maxAttempts,
+      playMode: isExtendedDaily ? "extended" : "classic",
       gameOver: isFinal,
       locked: isFinal,
       wordResults,

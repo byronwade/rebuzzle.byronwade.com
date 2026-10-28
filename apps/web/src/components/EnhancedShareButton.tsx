@@ -24,6 +24,7 @@ interface EnhancedShareButtonProps {
   success: boolean;
   attempts: number;
   maxAttempts: number;
+  lateSolve?: boolean;
   streak?: number;
   difficulty?: number;
   answer?: string;
@@ -39,6 +40,7 @@ export function EnhancedShareButton({
   success,
   attempts,
   maxAttempts,
+  lateSolve = false,
   streak = 0,
   nearMiss = false,
   className,
@@ -84,7 +86,7 @@ export function EnhancedShareButton({
     return "https://rebuzzle.byronwade.com";
   };
 
-  const generateShareUrl = () => buildBeatMeUrl(getBaseUrl(), userId);
+  const generateShareUrl = () => buildBeatMeUrl(getBaseUrl());
 
   const generateShareText = () => {
     const url = generateShareUrl();
@@ -94,12 +96,18 @@ export function EnhancedShareButton({
       timeZone: "UTC",
     });
 
-    const squares = buildShareSquares(success, attempts, maxAttempts);
+    const squares = lateSolve
+      ? buildShareSquares(false, maxAttempts, maxAttempts)
+      : buildShareSquares(success, attempts, maxAttempts);
 
-    let message = `Rebuzzle ${today} · ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
+    let message = lateSolve
+      ? `Rebuzzle ${today} · solved after score lock\n\n${squares}\n\n`
+      : `Rebuzzle ${today} · ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
 
     if (success) {
-      if (attempts === 1) {
+      if (lateSolve) {
+        message += `Solved after the scored round.`;
+      } else if (attempts === 1) {
         message += `First guess.`;
       } else if (attempts >= maxAttempts) {
         message += `Clutch — last heart.`;
@@ -127,11 +135,16 @@ export function EnhancedShareButton({
       day: "numeric",
       timeZone: "UTC",
     });
-    const squares = buildShareSquares(success, attempts, maxAttempts);
+    const squares = lateSolve
+      ? buildShareSquares(false, maxAttempts, maxAttempts)
+      : buildShareSquares(success, attempts, maxAttempts);
 
-    let tweet = `Rebuzzle ${today} ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
+    let tweet = lateSolve
+      ? `Rebuzzle ${today} solved after score lock\n\n${squares}\n\n`
+      : `Rebuzzle ${today} ${success ? attempts : "X"}/${maxAttempts}\n\n${squares}\n\n`;
     if (success) {
-      if (attempts === 1) tweet += `First guess. `;
+      if (lateSolve) tweet += `Solved after the scored round. `;
+      else if (attempts === 1) tweet += `First guess. `;
       else if (attempts >= maxAttempts) tweet += `Clutch. `;
       else if (nearMiss) tweet += `Almost → got it. `;
       else tweet += `Solved. `;
@@ -167,7 +180,11 @@ export function EnhancedShareButton({
         case "native": {
           if (navigator.share) {
             await navigator.share({
-              title: success ? `Rebuzzle — solved in ${attempts}` : "Rebuzzle — daily puzzle",
+              title: lateSolve
+                ? "Rebuzzle — solved after the scored round"
+                : success
+                  ? `Rebuzzle — solved in ${attempts}`
+                  : "Rebuzzle — daily puzzle",
               text: generateShareText(),
               url,
             });
@@ -203,7 +220,11 @@ export function EnhancedShareButton({
           break;
         }
         case "reddit": {
-          const title = success ? `Rebuzzle ${attempts}/${maxAttempts}` : "Rebuzzle — daily puzzle";
+          const title = lateSolve
+            ? "Rebuzzle — solved after the scored round"
+            : success
+              ? `Rebuzzle ${attempts}/${maxAttempts}`
+              : "Rebuzzle — daily puzzle";
           window.open(
             `https://reddit.com/submit?url=${encodedUrl}&title=${encodeURIComponent(title)}`,
             "_blank",
@@ -212,9 +233,11 @@ export function EnhancedShareButton({
           break;
         }
         case "email": {
-          const subject = success
-            ? `I solved today's Rebuzzle in ${attempts} attempts`
-            : "Try today’s Rebuzzle";
+          const subject = lateSolve
+            ? "I solved today's Rebuzzle after the scored round"
+            : success
+              ? `I solved today's Rebuzzle in ${attempts} attempts`
+              : "Try today’s Rebuzzle";
           const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(generateShareText())}`;
           window.open(mailto, "_self");
           break;

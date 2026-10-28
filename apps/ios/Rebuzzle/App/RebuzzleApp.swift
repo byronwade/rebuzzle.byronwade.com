@@ -28,36 +28,69 @@ private struct ApplicationView: View {
 }
 enum AppTab: Hashable { case play, journey, you }
 
+enum RebuzzleRoute: Hashable {
+    case journal
+    case plus
+    case reminder
+    case help
+    case signIn
+    case guestUpgrade
+    case deleteAccount
+    case archive
+    case journalEntry(entryID: String, accountID: String?)
+}
+
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
-    @State private var playNavigation = UUID()
-    private let returnRouter = ReturnRouter.shared
+    @State private var playPath = NavigationPath()
+    @State private var journeyPath = NavigationPath()
+    @State private var youPath = NavigationPath()
+    @State private var returnRouter = ReturnRouter.shared
     var body: some View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
-            NavigationStack { TodayView() }
-                .id("play-" + (model.player?.id ?? "signed-out") + playNavigation.uuidString)
+            NavigationStack(path: $playPath) {
+                TodayView()
+                    .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
+            }
                 .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
-            NavigationStack { ProgressViewScreen() }
-                .id("journey-" + (model.player?.id ?? "signed-out"))
+            NavigationStack(path: $journeyPath) {
+                ProgressViewScreen()
+                    .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
+            }
                 .tabItem { Label("Journey", systemImage: "map") }.tag(AppTab.journey)
-            NavigationStack { SettingsView() }
-                .id("you-" + (model.player?.id ?? "signed-out"))
+            NavigationStack(path: $youPath) {
+                SettingsView()
+                    .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
+            }
                 .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)
         }
         .onOpenURL { returnRouter.open($0) }
-        .task(id: returnRouter.request) {
-            guard let request = returnRouter.request else { return }
+        .onChange(of: model.player?.id) {
+            playPath = NavigationPath()
+            journeyPath = NavigationPath()
+            youPath = NavigationPath()
+        }
+        .onChange(of: returnRouter.request) { _, request in
+            guard let request else { return }
             let source = returnRouter.entrySource
             model.saveDraft()
             model.selectedTab = .play
-            playNavigation = UUID()
-            await model.load(entrySource: source)
-            if returnRouter.request == request { returnRouter.request = nil }
+            playPath = NavigationPath()
+            Task { @MainActor in
+                await model.load(entrySource: source)
+                if returnRouter.request == request { returnRouter.request = nil }
+            }
         }
-        .task { await model.reminders.refreshAuthorization(); await model.load(); await model.purchases.load() }
+        .task {
+            await model.reminders.refreshAuthorization()
+            await model.load()
+            await model.purchases.load()
+            await model.retryJournalSyncIfNeeded()
+        }
         .task(id: model.daily?.nextPuzzleTime) {
+            guard !ProcessInfo.processInfo.arguments.contains("--ui-expired-reset-manual") else { return }
             guard let raw = model.daily?.nextPuzzleTime, let next = ResultView.date(raw) else { return }
             while !Task.isCancelled {
                 let seconds = next.timeIntervalSinceNow + 1
@@ -76,8 +109,48 @@ struct RootView: View {
             }
         }
         .onChange(of: phase) { _, next in
-            if next == .active { Task { await model.reminders.refreshAuthorization(); await model.load(); await model.purchases.refreshEntitlements() } }
+            if next == .active {
+                Task {
+                    await model.reminders.refreshAuthorization()
+                    await model.load()
+                    await model.purchases.refreshEntitlements()
+                    await model.retryJournalSyncIfNeeded()
+                }
+            }
             if next == .background { model.saveDraft() }
+        }
+    }
+
+    @ViewBuilder
+    private func destination(for route: RebuzzleRoute) -> some View {
+        switch route {
+        case .journal:
+            JournalView()
+        case .plus:
+            PlusView()
+        case .reminder:
+            ReminderView()
+        case .help:
+            HelpView()
+        case .signIn:
+            SignInView()
+        case .guestUpgrade:
+            GuestUpgradeView()
+        case .deleteAccount:
+            DeleteAccountView()
+        case .archive:
+            ArchiveView()
+        case let .journalEntry(entryID, accountID):
+            if model.player?.id == accountID,
+               let entry = model.journal.entries.first(where: { $0.id == entryID }) {
+                JournalDetail(entry: entry, accountID: accountID)
+            } else {
+                ContentUnavailableView(
+                    "Journal entry unavailable",
+                    systemImage: "book.closed",
+                    description: Text("This entry isn't available for the current Rebuzzle account.")
+                )
+            }
         }
     }
 }

@@ -98,6 +98,11 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       },
       // Speeds UTC-day lookups used by findByDate
       { spec: { active: 1, publishedAt: 1 } },
+      // Selects one stable oldest published daily for the free archive sample
+      {
+        spec: { active: 1, publishedAt: 1, id: 1 },
+        options: { name: "puzzle_free_archive_sample" },
+      },
       // Archive-wide answer lookups (app enforces uniqueness; sparse for legacy rows)
       {
         spec: { "metadata.answerKey": 1 },
@@ -157,6 +162,8 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { puzzleId: 1, isCorrect: 1 } },
       // Time-based analytics
       { spec: { attemptedAt: -1 } },
+      // Recent official daily puzzle quality aggregates
+      { spec: { puzzleDate: 1 }, options: { name: "puzzleAttempts_puzzleDate_1" } },
       // Daily final-attempt lock: one completed/abandoned play per user per accepted local date
       {
         spec: { userId: 1, puzzleDate: 1 },
@@ -178,6 +185,17 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       {
         spec: { userId: 1, puzzleDate: 1 },
         options: { unique: true, name: "userId_1_puzzleDate_1" },
+      },
+    ],
+  },
+
+  // One revisioned private note per account and completed daily puzzle.
+  {
+    collection: "journalNotes",
+    indexes: [
+      {
+        spec: { userId: 1, puzzleId: 1 },
+        options: { unique: true, name: "userId_1_puzzleId_1" },
       },
     ],
   },
@@ -323,6 +341,17 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         },
       },
       { spec: { eventType: 1, occurredAt: -1 } },
+    ],
+  },
+
+  // Opaque one-time nonces for replay-resistant Plus practice rounds.
+  {
+    collection: "practiceRoundTokens",
+    indexes: [
+      {
+        spec: { expiresAt: 1 },
+        options: { expireAfterSeconds: 0, name: "practiceRoundTokens_ttl" },
+      },
     ],
   },
 

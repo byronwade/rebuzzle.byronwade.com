@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import type { Puzzle } from "@/db/models";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { isPublishedPastPuzzle } from "@/lib/game/archive-puzzles";
-import { getLocalPuzzleDate, getUtcPuzzleDate } from "@/lib/game/daily-lock";
-import { toPublicPuzzle } from "@/lib/game/public-puzzle";
-import { toPublicVisual } from "@/lib/game/public-visual";
+import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
+import { toPublicArchivePuzzle } from "@/lib/game/public-archive-puzzle";
 import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { hasPlusEntitlement } from "@/lib/storekit/plus-entitlement";
@@ -63,27 +61,6 @@ function encodeCursor(cursor: ArchiveCursor): string {
   return Buffer.from(
     JSON.stringify({ publishedAt: cursor.publishedAt.toISOString(), id: cursor.id })
   ).toString("base64url");
-}
-
-function toArchiveItem(puzzle: Puzzle) {
-  const raw = puzzle as unknown as Record<string, unknown>;
-  const publishedAt =
-    raw.publishedAt instanceof Date ? raw.publishedAt : new Date(String(raw.publishedAt));
-  const puzzleText = raw.puzzle ?? raw.rebusPuzzle;
-
-  return toPublicPuzzle({
-    id: raw.id,
-    puzzle: puzzleText,
-    rebusPuzzle: raw.rebusPuzzle,
-    puzzleType: raw.puzzleType ?? "rebus",
-    difficulty: raw.difficulty,
-    hints: Array.isArray(raw.hints)
-      ? raw.hints.filter((hint): hint is string => typeof hint === "string")
-      : [],
-    date: getUtcPuzzleDate(publishedAt),
-    visual: toPublicVisual(raw.visual),
-    aiGenerated: raw.aiGenerated ?? false,
-  });
 }
 
 /** Read-only catalog of published daily puzzles before the caller's daily date. */
@@ -145,7 +122,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       {
-        items: page.map(toArchiveItem),
+        items: page.map(toPublicArchivePuzzle),
         nextCursor:
           hasMore && last && lastPublishedAt instanceof Date
             ? encodeCursor({ publishedAt: lastPublishedAt, id: last.id })

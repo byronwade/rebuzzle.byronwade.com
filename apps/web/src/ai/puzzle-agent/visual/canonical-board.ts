@@ -4,11 +4,16 @@ import sharp from "sharp";
 import {
   CANONICAL_MAX_BYTES,
   type CanonicalBoard,
+  canonicalBoardForProfile,
+  MAX_CANONICAL_BOARD_HEIGHT,
   validateCanonicalBoard,
 } from "./canonical-contract";
 import { type PuzzleVisual, PuzzleVisualSchema } from "./composition";
 import { layoutLayersLocked } from "./layout-plan";
-import { getPuzzleBoardRecognitionProfile } from "./presentation";
+import {
+  getPuzzleBoardRecognitionProfile,
+  PUZZLE_BOARD_RECOGNITION_PROFILES,
+} from "./presentation";
 import { renderPuzzleVisualProfile } from "./render-board";
 import { sanitizePictogramSvg } from "./sanitize-svg";
 
@@ -64,21 +69,41 @@ export async function compileCanonicalBoard(input: PuzzleVisual): Promise<Canoni
   const layout = layoutLayersLocked(visual, getPuzzleBoardRecognitionProfile("desktop-768"));
   if (
     layout.width > 2048 ||
-    layout.height > 2000 ||
+    layout.height > MAX_CANONICAL_BOARD_HEIGHT ||
     layout.positions.some(
       (p) => p.x < 0 || p.y < 0 || p.x + p.width > layout.width || p.y + p.height > layout.height
     )
   )
     throw new Error("Canonical layers exceed board bounds");
-  const rendered = await renderPuzzleVisualProfile(visual, "desktop-768");
+  const renderRaster = async (
+    profileId: (typeof PUZZLE_BOARD_RECOGNITION_PROFILES)[number]["id"]
+  ) => {
+    const rendered = await renderPuzzleVisualProfile(visual, profileId);
+    const bytes = Buffer.from(rendered.pixels);
+    return {
+      pngDataUrl: `data:image/png;base64,${bytes.toString("base64")}`,
+      sha256: hash(bytes),
+      width: rendered.width,
+      height: rendered.height,
+    };
+  };
+  const desktop = await renderRaster("desktop-768");
+  const profileVariants = Object.fromEntries(
+    await Promise.all(
+      PUZZLE_BOARD_RECOGNITION_PROFILES.filter((profile) => profile.id !== "desktop-768").map(
+        async (profile) => [profile.id, await renderRaster(profile.id)] as const
+      )
+    )
+  ) as NonNullable<CanonicalBoard["profileVariants"]>;
   const board: CanonicalBoard = {
     version: 1,
-    pngDataUrl: `data:image/png;base64,${Buffer.from(rendered.pixels).toString("base64")}`,
-    sha256: hash(rendered.pixels),
-    width: rendered.width,
-    height: rendered.height,
+    ...desktop,
     sourceFingerprint: hash(JSON.stringify(visual)),
+    profileVariants,
   };
   await validateCanonicalBoard(board);
+  for (const profile of PUZZLE_BOARD_RECOGNITION_PROFILES) {
+    await validateCanonicalBoard(canonicalBoardForProfile(board, profile.id));
+  }
   return board;
 }

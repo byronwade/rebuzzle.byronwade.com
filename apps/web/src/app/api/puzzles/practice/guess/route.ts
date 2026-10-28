@@ -3,6 +3,7 @@ import { validateAnswer } from "@/ai/services/answer-validation";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { isPublishedPastPuzzle } from "@/lib/game/archive-puzzles";
+import { findFreeArchiveSample } from "@/lib/game/archive-sample";
 import { buildWordResults } from "@/lib/game/build-word-results";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import {
@@ -61,13 +62,6 @@ export async function POST(request: Request) {
           : {}
       );
     }
-    if (!(await hasPlusEntitlement(request))) {
-      return json(
-        { success: false, error: "Rebuzzle Plus is required for archive practice." },
-        403
-      );
-    }
-
     let body: unknown;
     try {
       body = await request.json();
@@ -100,11 +94,30 @@ export async function POST(request: Request) {
       return json({ success: false, error: "Invalid attempt number" }, 400);
     }
 
-    const previousWrongGuessCount =
-      input.roundToken === undefined
-        ? 0
-        : await verifyPracticeRoundToken(input.roundToken, user.userId, puzzleId);
-    if (previousWrongGuessCount === null || attemptNumber !== previousWrongGuessCount + 1) {
+    const submittedRoundToken = input.roundToken;
+    const previousRoundClaims =
+      submittedRoundToken === undefined
+        ? null
+        : await verifyPracticeRoundToken(submittedRoundToken, user.userId, puzzleId);
+    if (
+      submittedRoundToken !== undefined &&
+      (typeof submittedRoundToken !== "string" ||
+        !previousRoundClaims ||
+        attemptNumber !== previousRoundClaims.wrongGuessCount + 1 ||
+        !(await db.practiceRoundOps.isTokenActive({
+          userId: user.userId,
+          puzzleId,
+          roundId: previousRoundClaims.roundId,
+          token: submittedRoundToken,
+          expiresAt: previousRoundClaims.expiresAt,
+        })))
+    ) {
+      return json(
+        { success: false, error: "This practice round has expired or no longer matches." },
+        409
+      );
+    }
+    if (submittedRoundToken === undefined && attemptNumber !== 1) {
       return json(
         { success: false, error: "This practice round has expired or no longer matches." },
         409
@@ -114,7 +127,16 @@ export async function POST(request: Request) {
     const requestTimeZone = await resolveRequestTimeZone();
     const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
-    const puzzle = await db.puzzleOps.findById(puzzleId);
+    const hasPlus = await hasPlusEntitlement(request);
+    const freeSample = hasPlus ? null : await findFreeArchiveSample(localDateKey);
+    const isFreeSample = freeSample?.id === puzzleId;
+    if (!isFreeSample && !hasPlus) {
+      return json(
+        { success: false, error: "Rebuzzle Plus is required for archive practice." },
+        403
+      );
+    }
+    const puzzle = isFreeSample ? freeSample : await db.puzzleOps.findById(puzzleId);
     if (!puzzle?.answer || !isPublishedPastPuzzle(puzzle, localDateKey)) {
       return json({ success: false, error: "Puzzle not found" }, 404);
     }
@@ -130,6 +152,55 @@ export async function POST(request: Request) {
       attemptsLeft,
       guess,
     });
+    const nextRoundToken = !correct
+      ? await createPracticeRoundToken({
+          userId: user.userId,
+          puzzleId,
+          wrongGuessCount: attemptNumber,
+          ...(previousRoundClaims ? { roundId: previousRoundClaims.roundId } : {}),
+        })
+      : null;
+    const nextRoundClaims = nextRoundToken
+      ? await verifyPracticeRoundToken(nextRoundToken, user.userId, puzzleId)
+      : null;
+    if (nextRoundToken && !nextRoundClaims) {
+      throw new Error("New practice round token did not verify");
+    }
+
+    if (previousRoundClaims && typeof submittedRoundToken === "string") {
+      const advanced = await db.practiceRoundOps.advanceToken(
+        {
+          userId: user.userId,
+          puzzleId,
+          roundId: previousRoundClaims.roundId,
+          token: submittedRoundToken,
+          expiresAt: previousRoundClaims.expiresAt,
+        },
+        nextRoundToken && nextRoundClaims
+          ? {
+              userId: user.userId,
+              puzzleId,
+              roundId: nextRoundClaims.roundId,
+              token: nextRoundToken,
+              expiresAt: nextRoundClaims.expiresAt,
+            }
+          : null
+      );
+      if (!advanced) {
+        return json(
+          { success: false, error: "This practice round has expired or no longer matches." },
+          409
+        );
+      }
+    } else if (nextRoundToken && nextRoundClaims) {
+      await db.practiceRoundOps.activateToken({
+        userId: user.userId,
+        puzzleId,
+        roundId: nextRoundClaims.roundId,
+        token: nextRoundToken,
+        expiresAt: nextRoundClaims.expiresAt,
+      });
+    }
 
     return json({
       success: true,
@@ -149,15 +220,7 @@ export async function POST(request: Request) {
       isArchive: true,
       isPractice: true,
       unscored: true,
-      ...(!correct
-        ? {
-            roundToken: await createPracticeRoundToken({
-              userId: user.userId,
-              puzzleId,
-              wrongGuessCount: attemptNumber,
-            }),
-          }
-        : {}),
+      ...(nextRoundToken ? { roundToken: nextRoundToken } : {}),
       ...(correct ? { answer: puzzle.answer, explanation: puzzle.explanation ?? "" } : {}),
     });
   } catch (error) {

@@ -1,4 +1,5 @@
 import { distinctJudgeResults } from "../quality-contract";
+import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "./presentation";
 import { type ReasoningEvidence, ReasoningEvidenceSchema } from "./reasoning-evidence";
 
 export const EDITORIAL_FAILURE_KINDS = [
@@ -45,7 +46,7 @@ export function editorialReviewPublishBlockers(
     editorialFailureKinds?: string[];
     editorialReasons?: string[];
   },
-  expectedProfileCount = 3
+  expectedProfileCount = PUZZLE_BOARD_RECOGNITION_PROFILES.length
 ): string[] {
   const blockers: string[] = [];
   if ((evidence.editorialProfileCount ?? 0) < expectedProfileCount) {

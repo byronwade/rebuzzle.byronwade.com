@@ -25,14 +25,14 @@ function accepted(index: number): LiveGeneratorCanaryObservation {
     uniquenessScore: 90,
     assetSources: [index % 2 ? "approved-cache" : "catalog"],
     boardDeclaredCueCount: 4,
-    boardProfileCount: 3,
-    boardCompleteProfileCount: 3,
+    boardProfileCount: 4,
+    boardCompleteProfileCount: 4,
     boardDistinctModels: 2,
-    blindProfileCount: 3,
-    blindCompleteProfileCount: 3,
-    editorialProfileCount: 3,
-    editorialAcceptedProfiles: 3,
-    renderedProfileCount: 3,
+    blindProfileCount: 4,
+    blindCompleteProfileCount: 4,
+    editorialProfileCount: 4,
+    editorialAcceptedProfiles: 4,
+    renderedProfileCount: 4,
   };
 }
 
@@ -211,10 +211,11 @@ describe("hasCompleteBoardCueEvidence", () => {
     const profiles = [
       completeProfile,
       { ...completeProfile, profileId: "mobile-375" },
+      { ...completeProfile, profileId: "mobile-375-medium" },
       { ...completeProfile, profileId: "desktop-768" },
     ];
 
-    expect(countCompleteBoardCueProfiles({ visual, profiles })).toBe(3);
+    expect(countCompleteBoardCueProfiles({ visual, profiles })).toBe(4);
     expect(
       countCompleteBoardCueProfiles({
         visual,
@@ -226,6 +227,6 @@ describe("hasCompleteBoardCueEvidence", () => {
         visual,
         profiles: [...profiles, { ...completeProfile, profileId: "tablet-500" }],
       })
-    ).toBe(3);
+    ).toBe(4);
   });
 });

@@ -22,7 +22,7 @@ const REPRESENTATIVE_TECHNIQUES = [
   "idiom_as_picture",
   "size_or_case_semantics",
 ] as const;
-const PROFILE_IDS = ["compact-320", "mobile-375", "desktop-768"] as const;
+const PROFILE_IDS = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"] as const;
 
 function inMemoryRepository() {
   const store = {
@@ -447,10 +447,10 @@ describe("blind human generated-puzzle playtesting", () => {
     await ensureControls(service);
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 15 }, (_, index) => `reviewer-${index}`)
+      Array.from({ length: 20 }, (_, index) => `reviewer-${index}`)
     );
 
-    for (let index = 0; index < 14; index++) {
+    for (let index = 0; index < 19; index++) {
       const reviewerId = `reviewer-${index}`;
       const next = await service.getNext(reviewerId);
       await service.submitReview({
@@ -463,10 +463,10 @@ describe("blind human generated-puzzle playtesting", () => {
     }
     expect(store.candidates[0]?.status).toBe("open");
 
-    const fifteenth = await service.getNext("reviewer-14");
+    const twentieth = await service.getNext("reviewer-19");
     await service.submitReview({
-      reviewerId: "reviewer-14",
-      fixtureId: fifteenth.specimen!.fixtureId,
+      reviewerId: "reviewer-19",
+      fixtureId: twentieth.specimen!.fixtureId,
       guess: "sunflower",
       confidence: 5,
       elapsedMs: 12_000,
@@ -484,7 +484,12 @@ describe("blind human generated-puzzle playtesting", () => {
           ).length,
         ])
       )
-    ).toEqual({ "compact-320": 5, "mobile-375": 5, "desktop-768": 5 });
+    ).toEqual({
+      "compact-320": 5,
+      "mobile-375": 5,
+      "mobile-375-medium": 5,
+      "desktop-768": 5,
+    });
   });
 
   it("does not reveal a candidate answer until that reviewer has judged it", async () => {
@@ -563,7 +568,7 @@ describe("blind human generated-puzzle playtesting", () => {
       });
       for (const [profileIndex, profileId] of PROFILE_IDS.entries()) {
         for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
-          const reviewerId = `reviewer-${(candidateIndex * 15 + profileIndex * 5 + reviewerIndex) % 50}`;
+          const reviewerId = `reviewer-${(candidateIndex * 20 + profileIndex * 5 + reviewerIndex) % 50}`;
           store.reviews.push({
             id: `${candidateId}:${profileId}:${reviewerIndex}`,
             contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
@@ -588,7 +593,7 @@ describe("blind human generated-puzzle playtesting", () => {
     );
 
     const report = await service.getReport("outside-reviewer");
-    expect(report.completedDecisionCount).toBe(1500);
+    expect(report.completedDecisionCount).toBe(2000);
     expect(report.readinessVersion).toBe(PUZZLE_PLAYTEST_READINESS_VERSION);
     expect(report.reviewerCount).toBe(50);
     expect(report.reviewerCoverage.maximumDecisionShare).toBe(0.02);

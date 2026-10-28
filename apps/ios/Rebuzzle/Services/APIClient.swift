@@ -7,8 +7,66 @@ struct APIError: LocalizedError {
     let message: String
     var errorDescription: String? { message }
 }
+
+struct JournalFetchResult: Sendable {
+    let entries: [JournalSyncRemoteEntry]
+    let historyStatus: String
+}
+
+struct JournalNoteWriteResult: Decodable, Sendable {
+    let note: String
+    let revision: Int
+}
+
+private struct JournalPageResponse: Decodable {
+    let entries: [JournalEntryPayload]
+    let nextCursor: String?
+    let historyStatus: String
+}
+
+private struct JournalEntryPayload: Decodable {
+    let puzzleID: String
+    let puzzleDate: String
+    let puzzleType: String
+    let clue: String
+    let answer: String
+    let explanation: String
+    let won: Bool
+    let attempts: Int
+    let hintsUsed: Int?
+    let visual: PuzzleVisual?
+    let hints: [String]
+    let note: String
+    let noteRevision: Int
+
+    enum CodingKeys: String, CodingKey {
+        case puzzleID = "puzzleId"
+        case puzzleDate, puzzleType, clue, answer, explanation, won, attempts, hintsUsed, visual, hints, note, noteRevision
+    }
+
+    var remoteEntry: JournalSyncRemoteEntry {
+        JournalSyncRemoteEntry(
+            entry: JournalEntry(
+                puzzleID: puzzleID,
+                puzzleDate: puzzleDate,
+                puzzleType: puzzleType,
+                clue: clue,
+                answer: answer,
+                explanation: explanation,
+                won: won,
+                attempts: attempts,
+                hintsUsed: hintsUsed,
+                note: note,
+                visual: visual,
+                hints: hints
+            ),
+            noteRevision: noteRevision
+        )
+    }
+}
+
 enum DailyEntrySource: String, Hashable, Sendable {
-    case app, notification, widget, shortcut
+    case app, notification, widget, shortcut, share
 }
 
 enum DailyQualityRating: String, CaseIterable, Identifiable, Sendable {
@@ -23,15 +81,45 @@ enum DailyQualityRating: String, CaseIterable, Identifiable, Sendable {
 enum GrowthEvent: Sendable {
     case dailyOpened(DailyEntrySource)
     case plusOfferViewed
+    case plusPurchaseStarted
+    case plusPurchaseVerified
+    case plusPurchasePending
+    case plusPurchaseCancelled
+    case plusPurchaseUnverified
+    case plusPurchaseFailed
+    case plusRestoreCompleted
+    case plusRestoreEmpty
+    case plusRestoreFailed
     case reminderEnabled
-    case dailyQualityFeedback(DailyQualityRating)
+    case dailyQualityFeedback(DailyQualityRating, puzzleDate: String)
+    case dailyShareStarted
+    case dailyShareCompleted
+
+    static func dailyShareCompletionEvent(completed: Bool) -> GrowthEvent? {
+        completed ? .dailyShareCompleted : nil
+    }
 
     var payload: [String: String] {
         switch self {
         case .dailyOpened(let source): ["eventType": "daily_opened", "source": source.rawValue]
         case .plusOfferViewed: ["eventType": "plus_offer_viewed"]
+        case .plusPurchaseStarted: ["eventType": "plus_purchase_started"]
+        case .plusPurchaseVerified: ["eventType": "plus_purchase_verified"]
+        case .plusPurchasePending: ["eventType": "plus_purchase_pending"]
+        case .plusPurchaseCancelled: ["eventType": "plus_purchase_cancelled"]
+        case .plusPurchaseUnverified: ["eventType": "plus_purchase_unverified"]
+        case .plusPurchaseFailed: ["eventType": "plus_purchase_failed"]
+        case .plusRestoreCompleted: ["eventType": "plus_restore_completed"]
+        case .plusRestoreEmpty: ["eventType": "plus_restore_empty"]
+        case .plusRestoreFailed: ["eventType": "plus_restore_failed"]
         case .reminderEnabled: ["eventType": "reminder_enabled"]
-        case .dailyQualityFeedback(let rating): ["eventType": "daily_quality_feedback", "rating": rating.rawValue]
+        case .dailyQualityFeedback(let rating, let puzzleDate): [
+            "eventType": "daily_quality_feedback",
+            "rating": rating.rawValue,
+            "puzzleDate": puzzleDate
+        ]
+        case .dailyShareStarted: ["eventType": "daily_share_started"]
+        case .dailyShareCompleted: ["eventType": "daily_share_completed"]
         }
     }
 }
@@ -130,12 +218,13 @@ enum GrowthEvent: Sendable {
         request.setValue(deviceID, forHTTPHeaderField: "X-Device-Id")
         request.setValue("rebuzzle-tz=\(TimeZone.current.identifier)", forHTTPHeaderField: "Cookie")
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        if path.hasPrefix("/api/puzzles/guess") || path.hasPrefix("/api/puzzle/session") {
+        if path.hasPrefix("/api/puzzles/guess") || path.hasPrefix("/api/puzzles/reveal") || path.hasPrefix("/api/puzzle/session") {
             request.setValue("true", forHTTPHeaderField: "X-Rebuzzle-Daily-Only")
         }
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         request.setValue("1", forHTTPHeaderField: "X-Rebuzzle-Canonical-Board")
-        if url.path == "/api/puzzles/archive" || url.path.hasPrefix("/api/puzzles/practice/"),
+        let isFreeArchiveSample = url.path == "/api/puzzles/practice/sample"
+        if url.path.hasPrefix("/api/user/journal") || url.path == "/api/puzzles/archive" || (url.path.hasPrefix("/api/puzzles/practice/") && !isFreeArchiveSample),
            let transactionJWS = plusTransactionJWSProvider?() {
             request.setValue(transactionJWS, forHTTPHeaderField: "X-Rebuzzle-StoreKit-Transaction")
         }
@@ -153,6 +242,43 @@ enum GrowthEvent: Sendable {
     func fetchJourneyProgress() async throws -> JourneyProgressSnapshot {
         try await request("/api/user/progress")
     }
+    func fetchJournal() async throws -> JournalFetchResult {
+        var entries: [JournalSyncRemoteEntry] = []
+        var cursor: String?
+        var historyStatus = "complete"
+        var seenCursors = Set<String>()
+
+        repeat {
+            var components = URLComponents(url: baseURL.appendingPathComponent("api/user/journal"), resolvingAgainstBaseURL: false)
+            var queryItems = [URLQueryItem(name: "limit", value: "100")]
+            if let cursor { queryItems.append(URLQueryItem(name: "before", value: cursor)) }
+            components?.queryItems = queryItems
+            guard let url = components?.url else {
+                throw APIError(status: 0, message: "Your journal could not be opened. Please try again.")
+            }
+            let page: JournalPageResponse = try await request(url.absoluteString)
+            entries.append(contentsOf: page.entries.map(\.remoteEntry))
+            historyStatus = page.historyStatus
+            guard let nextCursor = page.nextCursor, !nextCursor.isEmpty else { break }
+            guard seenCursors.insert(nextCursor).inserted else {
+                throw APIError(status: 0, message: "Your journal history could not be read completely. Please try again.")
+            }
+            cursor = nextCursor
+        } while true
+
+        return JournalFetchResult(entries: entries, historyStatus: historyStatus)
+    }
+    func saveJournalNote(_ write: JournalSyncNoteWrite) async throws -> JournalNoteWriteResult {
+        try await request(
+            "/api/user/journal/note",
+            method: "PUT",
+            body: [
+                "puzzleId": write.puzzleID,
+                "note": write.note,
+                "expectedRevision": write.expectedRevision,
+            ]
+        )
+    }
     func fetchArchive(cursor: String? = nil, limit: Int = 20) async throws -> PuzzleArchivePage {
         var components = URLComponents(url: baseURL.appendingPathComponent("api/puzzles/archive"), resolvingAgainstBaseURL: false)
         var queryItems = [URLQueryItem(name: "limit", value: String(min(50, max(1, limit))))]
@@ -160,6 +286,9 @@ enum GrowthEvent: Sendable {
         components?.queryItems = queryItems
         guard let url = components?.url else { throw APIError(status: 0, message: "The archive could not be opened. Please try again.") }
         return try await request(url.absoluteString)
+    }
+    func fetchArchiveSample() async throws -> Puzzle {
+        try await request("/api/puzzles/practice/sample")
     }
     func submitPracticeGuess(puzzleID: String, guess: String, attemptNumber: Int, roundToken: String?) async throws -> PracticeGuessResponse {
         var body: [String: Any] = ["puzzleId": puzzleID, "guess": guess, "attemptNumber": attemptNumber]
@@ -179,12 +308,24 @@ enum GrowthEvent: Sendable {
             headers: ["X-Rebuzzle-Daily-Only": "false"]
         )
     }
-    /// Growth reporting is best-effort: telemetry must never interrupt a puzzle or purchase flow.
-    func report(_ event: GrowthEvent) async {
+    /// Growth reporting never changes puzzle or purchase access; callers may retry when needed.
+    @discardableResult func report(_ event: GrowthEvent) async -> Bool {
         do {
-            let _: SuccessResponse = try await request("/api/native/analytics", method: "POST", body: event.payload)
+            var headers: [String: String] = [:]
+            if case .plusPurchaseVerified = event,
+               let transactionJWS = plusTransactionJWSProvider?() {
+                headers["X-Rebuzzle-StoreKit-Transaction"] = transactionJWS
+            }
+            let _: SuccessResponse = try await request(
+                "/api/native/analytics",
+                method: "POST",
+                body: event.payload,
+                headers: headers
+            )
+            return true
         } catch {
             // The server intentionally receives no retry queue or puzzle data.
+            return false
         }
     }
     /// Eve is optional commentary; scoring remains exclusively in the guess endpoint.

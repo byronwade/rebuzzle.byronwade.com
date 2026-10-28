@@ -1606,6 +1606,26 @@
   filter: grayscale(1) contrast(1.12);
 }
 
+/* SSR shows canonical profile rasters until ResizeObserver selects measured geometry. */
+.puzzle-board-profile-mobile,
+.puzzle-board-profile-single {
+  display: block;
+}
+
+.puzzle-board-profile-desktop {
+  display: none;
+}
+
+@container rb-puzzle-board (min-width: 768px) {
+  .puzzle-visual-board[data-responsive-profile="large"] .puzzle-board-profile-mobile {
+    display: none;
+  }
+
+  .puzzle-visual-board[data-responsive-profile="large"] .puzzle-board-profile-desktop {
+    display: block;
+  }
+}
+
 /* Monospace puzzles (number-sequence, caesar-cipher) */
 .puzzle-monospace-sm {
   font-size: clamp(1rem, 3vh, 1.5rem);

@@ -54,16 +54,44 @@ describe("renderPuzzleVisual", () => {
     expect(profiles.map((profile) => profile.profileId)).toEqual([
       "compact-320",
       "mobile-375",
+      "mobile-375-medium",
       "desktop-768",
     ]);
-    expect(profiles.map((profile) => profile.width)).toEqual([320, 375, 768]);
+    expect(profiles.map((profile) => profile.width)).toEqual([320, 375, 375, 768]);
     expect(profiles[0]!.tileSize).toBe(44);
     expect(profiles[1]!.tileSize).toBe(72);
+    expect(profiles[2]!.tileSize).toBe(52);
     expect(profiles[0]!.locked).toBe(true);
     expect(profiles[0]!.rowIndexes).toEqual(profiles[1]!.rowIndexes);
     expect(profiles[1]!.rowIndexes).toEqual(profiles[2]!.rowIndexes);
+    expect(profiles[2]!.rowIndexes).toEqual(profiles[3]!.rowIndexes);
     expect(profiles[0]!.wrappedRows).toBe(profiles[1]!.wrappedRows);
     expect(profiles[1]!.wrappedRows).toBe(profiles[2]!.wrappedRows);
+    expect(profiles[2]!.wrappedRows).toBe(profiles[3]!.wrappedRows);
+  });
+
+  it("keeps wide text inside its planned frame in the SVG renderer", async () => {
+    const visual: PuzzleVisual = {
+      styleId: "ink-pictogram-v1",
+      mode: "composed",
+      layout: "row",
+      unicodeFallback: "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+      layers: [{ kind: "text", content: "W".repeat(40), emphasis: "normal" }],
+    };
+    const rendered = await renderPuzzleVisual(visual);
+    const { data, info } = await sharp(rendered)
+      .flatten({ background: INK_PICTOGRAM_PALETTE.canvas })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const outsidePlannedTextFrameHasInk = Array.from({ length: info.height }, (_, y) => y).some(
+      (y) =>
+        Array.from({ length: 16 }, (_, x) => x).some((x) => {
+          const offset = (y * info.width + x) * info.channels;
+          return data[offset]! < 230 || data[offset + 1]! < 230 || data[offset + 2]! < 230;
+        })
+    );
+
+    expect(outsidePlannedTextFrameHasInk).toBe(false);
   });
 
   it("paints recognition boards with the shared ink palette only", async () => {

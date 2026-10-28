@@ -34,3 +34,9 @@ The initial PR commit passed hosted iOS build/tests, web lint/types/unit tests a
 Store retry follow-up: a failed product lookup previously left an error visible after a successful retry. A StoreKit service test reproduced the stale message; successful loading now clears it. Cancellation leaves access locked without reporting an error, and an absent product cannot start a purchase.
 
 Journal follow-up: completed entries retain optional composed visual data and use the same sanitized board renderer as daily play. Legacy text-only entries still decode. Core coverage verifies artwork round-trip and legacy notes. Completion offers a secondary journal link; Today navigation is account-scoped so journal destinations cannot survive an account change.
+
+## 2026-10-28 StoreKit UI verification
+
+The focused `GameplayUITests.testRealPurchaseDeliversJournalNotesInsightsAndRestoresAfterRelaunch` passed on an iPhone 16 Pro / iOS 18.2 simulator (1 test, 0 failures). With the local StoreKit test session, the visible Plus button completed the one-time $9.99 purchase, unlocked the journal and insights, retained a private journal note, and restored ownership after relaunch. This verifies the simulator UI path; it does not replace a signed physical-device sandbox or TestFlight purchase check.
+
+A separate full-scheme run on iOS 26.3 stalled in the hosted `DirectPurchaseTests.testCancelledPurchaseDoesNotUnlockOrReportFailure` case. StoreKit logged test-session configuration errors and displayed an Apple Account sign-in prompt; no credentials were entered, and the run was stopped without a suite result. The focused UI test subsequently passed on the separate iOS 18.2 simulator. Treat the hosted StoreKit case as unresolved test-harness evidence; do not infer that the full native test suite passed or that TestFlight checkout was verified.

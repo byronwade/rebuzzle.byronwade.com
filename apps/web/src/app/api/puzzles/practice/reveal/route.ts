@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { isPublishedPastPuzzle } from "@/lib/game/archive-puzzles";
+import { findFreeArchiveSample } from "@/lib/game/archive-sample";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { verifyPracticeRoundToken } from "@/lib/game/practice-round-token";
 import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
@@ -43,13 +44,6 @@ export async function POST(request: Request) {
     if ((ipLimit && !ipLimit.success) || (userLimit && !userLimit.success)) {
       return json({ success: false, error: "Too many reveals. Slow down." }, 429);
     }
-    if (!(await hasPlusEntitlement(request))) {
-      return json(
-        { success: false, error: "Rebuzzle Plus is required for archive practice." },
-        403
-      );
-    }
-
     let body: unknown;
     try {
       body = await request.json();
@@ -64,12 +58,19 @@ export async function POST(request: Request) {
     if (typeof puzzleId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(puzzleId.trim())) {
       return json({ success: false, error: "Invalid puzzle ID" }, 400);
     }
-    const wrongGuessCount = await verifyPracticeRoundToken(
-      input.roundToken,
-      user.userId,
-      puzzleId.trim()
-    );
-    if (wrongGuessCount !== 3) {
+    const roundToken = input.roundToken;
+    const roundClaims = await verifyPracticeRoundToken(roundToken, user.userId, puzzleId.trim());
+    if (
+      typeof roundToken !== "string" ||
+      roundClaims?.wrongGuessCount !== 3 ||
+      !(await db.practiceRoundOps.isTokenActive({
+        userId: user.userId,
+        puzzleId: puzzleId.trim(),
+        roundId: roundClaims.roundId,
+        token: roundToken,
+        expiresAt: roundClaims.expiresAt,
+      }))
+    ) {
       return json(
         {
           success: false,
@@ -82,9 +83,39 @@ export async function POST(request: Request) {
     const requestTimeZone = await resolveRequestTimeZone();
     const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
-    const puzzle = await db.puzzleOps.findById(puzzleId.trim());
+    const normalizedPuzzleId = puzzleId.trim();
+    const hasPlus = await hasPlusEntitlement(request);
+    const freeSample = hasPlus ? null : await findFreeArchiveSample(localDateKey);
+    const isFreeSample = freeSample?.id === normalizedPuzzleId;
+    if (!isFreeSample && !hasPlus) {
+      return json(
+        { success: false, error: "Rebuzzle Plus is required for archive practice." },
+        403
+      );
+    }
+    const puzzle = isFreeSample ? freeSample : await db.puzzleOps.findById(normalizedPuzzleId);
     if (!puzzle?.answer || !isPublishedPastPuzzle(puzzle, localDateKey)) {
       return json({ success: false, error: "Puzzle not found" }, 404);
+    }
+
+    const consumed = await db.practiceRoundOps.advanceToken(
+      {
+        userId: user.userId,
+        puzzleId: normalizedPuzzleId,
+        roundId: roundClaims.roundId,
+        token: roundToken,
+        expiresAt: roundClaims.expiresAt,
+      },
+      null
+    );
+    if (!consumed) {
+      return json(
+        {
+          success: false,
+          error: "Finish the three-guess practice round before revealing its solution",
+        },
+        409
+      );
     }
 
     return json({

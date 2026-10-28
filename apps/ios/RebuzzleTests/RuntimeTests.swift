@@ -24,6 +24,331 @@ final class RuntimeTests: XCTestCase {
         XCTAssertEqual(storage.draft(account: "alice", puzzle: "today"), "my thought")
         XCTAssertEqual(storage.draft(account: "bob", puzzle: "today"), "")
     }
+
+    func testInMemoryCredentialStorePersistsOnlyWithinItsFixtureInstance() throws {
+        let first = CredentialStore(inMemory: true)
+        let second = CredentialStore(inMemory: true)
+        XCTAssertNil(try first.read("token"))
+        try first.write("fixture-token", key: "token")
+        XCTAssertEqual(try first.read("token"), "fixture-token")
+        XCTAssertNil(try second.read("token"))
+        try first.write(nil, key: "token")
+        XCTAssertNil(try first.read("token"))
+    }
+}
+
+@MainActor private final class JournalSyncTestEntitlement {
+    var enabled = false
+}
+
+private final class JournalSyncRequestRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var writes: [[String: Any]] = []
+
+    func record(_ request: URLRequest) {
+        guard request.url?.path == "/api/user/journal/note" else { return }
+        let data: Data?
+        if let body = request.httpBody {
+            data = body
+        } else if let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+            var bytes = [UInt8](repeating: 0, count: 1024)
+            var body = Data()
+            while stream.hasBytesAvailable {
+                let count = stream.read(&bytes, maxLength: bytes.count)
+                guard count > 0 else { break }
+                body.append(bytes, count: count)
+            }
+            data = body
+        } else {
+            data = nil
+        }
+        guard let data,
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        lock.lock()
+        writes.append(payload)
+        lock.unlock()
+    }
+
+    var noteWrites: [[String: Any]] {
+        lock.lock()
+        defer { lock.unlock() }
+        return writes
+    }
+}
+
+private final class JournalSyncRequestLatch: @unchecked Sendable {
+    private let condition = NSCondition()
+    private var didStart = false
+
+    func signal() {
+        condition.lock()
+        didStart = true
+        condition.broadcast()
+        condition.unlock()
+    }
+
+    func wait(timeout: TimeInterval) -> Bool {
+        condition.lock()
+        defer { condition.unlock() }
+        let deadline = Date().addingTimeInterval(timeout)
+        while !didStart && condition.wait(until: deadline) {}
+        return didStart
+    }
+}
+
+private func journalSyncPage(puzzleID: String, note: String, revision: Int) -> String {
+    let encodedNote = (try? JSONEncoder().encode(note)).flatMap { String(data: $0, encoding: .utf8) } ?? "\"\""
+    return """
+    {"success":true,"entries":[{"puzzleId":"\(puzzleID)","puzzleDate":"2026-10-27","puzzleType":"rebus","clue":"☀️ + 🏠","answer":"sunshine","explanation":"Sun + shine.","won":true,"attempts":2,"hintsUsed":0,"visual":null,"hints":[],"note":\(encodedNote),"noteRevision":\(revision)}],"nextCursor":null,"historyStatus":"complete"}
+    """
+}
+
+@MainActor private func journalSyncTestModel(root: URL, credentials: CredentialStore, entitlement: JournalSyncTestEntitlement) -> AppModel {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [StubProtocol.self]
+    let client = APIClient(deviceID: "journal-sync-test", session: URLSession(configuration: configuration))
+    return AppModel(
+        api: client,
+        storage: LocalStore(root: root),
+        credentials: credentials,
+        journalPlusEntitlementProvider: { entitlement.enabled }
+    )
+}
+
+extension RuntimeTests {
+    @MainActor func testJournalSyncMigratesAnExistingDeviceNoteToTheAccount() async throws {
+        defer { StubProtocol.responder = nil }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = LocalStore(root: root)
+        let credentials = CredentialStore(service: "test." + UUID().uuidString)
+        try credentials.write("alice-token", key: "token")
+        try credentials.write("member", key: "identity-kind")
+        defer {
+            try? credentials.write(nil, key: "token")
+            try? credentials.write(nil, key: "device")
+            try? credentials.write(nil, key: "identity-kind")
+        }
+        var journal = Journal()
+        journal.record(JournalEntry(
+            puzzleID: "daily-a", puzzleDate: "2026-10-27", puzzleType: "rebus", clue: "☀️ + 🏠",
+            answer: "sunshine", explanation: "Sun + shine.", won: true, attempts: 2, hintsUsed: 0, note: "A local aha."
+        ))
+        try storage.save(journal, key: "journal:alice")
+        let recorder = JournalSyncRequestRecorder()
+        StubProtocol.responder = { request in
+            recorder.record(request)
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"daily-a","puzzle":"☀️ + 🏠","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-27","nextPuzzleTime":"2026-10-28T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"alice","username":"Alice","email":"alice@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"daily-a","puzzleDate":"2026-10-27","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/user/journal":
+                return (200, journalSyncPage(puzzleID: "daily-a", note: "", revision: 0))
+            case "/api/user/journal/note":
+                return (200, #"{"success":true,"note":"A local aha.","revision":1,"updatedAt":"2026-10-28T01:00:00Z"}"#)
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 0))
+            default:
+                return (404, #"{"success":false,"error":"not found"}"#)
+            }
+        }
+
+        let entitlement = JournalSyncTestEntitlement()
+        entitlement.enabled = true
+        let model = journalSyncTestModel(root: root, credentials: credentials, entitlement: entitlement)
+        await model.load()
+
+        XCTAssertEqual(model.journal.entries.first?.note, "A local aha.")
+        XCTAssertEqual(model.journalSyncStatus, .synced)
+        XCTAssertEqual(try storage.load(JournalSyncCheckpoint.self, key: "journal-sync:alice")?.entries["daily-a"]?.revision, 1)
+        XCTAssertEqual(recorder.noteWrites.count, 1)
+        XCTAssertEqual(recorder.noteWrites.first?["expectedRevision"] as? Int, 0)
+        XCTAssertEqual(recorder.noteWrites.first?["note"] as? String, "A local aha.")
+    }
+
+    @MainActor func testOfflineJournalSyncKeepsTheLocalFirstEditOnDevice() async throws {
+        defer { StubProtocol.responder = nil }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = LocalStore(root: root)
+        let credentials = CredentialStore(service: "test." + UUID().uuidString)
+        try credentials.write("alice-token", key: "token")
+        try credentials.write("member", key: "identity-kind")
+        defer {
+            try? credentials.write(nil, key: "token")
+            try? credentials.write(nil, key: "device")
+            try? credentials.write(nil, key: "identity-kind")
+        }
+        var journal = Journal()
+        journal.record(JournalEntry(
+            puzzleID: "daily-a", puzzleDate: "2026-10-27", puzzleType: "rebus", clue: "☀️ + 🏠",
+            answer: "sunshine", explanation: "Sun + shine.", won: true, attempts: 2, hintsUsed: 0
+        ))
+        try storage.save(journal, key: "journal:alice")
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"daily-a","puzzle":"☀️ + 🏠","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-27","nextPuzzleTime":"2026-10-28T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"alice","username":"Alice","email":"alice@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"daily-a","puzzleDate":"2026-10-27","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 0))
+            case "/api/user/journal":
+                return (503, #"{"success":false,"error":"offline"}"#)
+            default:
+                return (404, #"{"success":false,"error":"not found"}"#)
+            }
+        }
+
+        let entitlement = JournalSyncTestEntitlement()
+        let model = journalSyncTestModel(root: root, credentials: credentials, entitlement: entitlement)
+        await model.load()
+        model.journal.entries[0].note = "Keep this thought offline."
+        model.saveJournal()
+        entitlement.enabled = true
+        await model.syncJournal()
+
+        XCTAssertEqual(model.journal.entries.first?.note, "Keep this thought offline.")
+        XCTAssertEqual(try storage.load(Journal.self, key: "journal:alice")?.entries.first?.note, "Keep this thought offline.")
+        XCTAssertEqual(model.journalSyncStatus, .offline)
+
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/user/journal":
+                return (200, journalSyncPage(puzzleID: "daily-a", note: "", revision: 0))
+            case "/api/user/journal/note":
+                return (200, #"{"success":true,"note":"Keep this thought offline.","revision":1,"updatedAt":"2026-10-28T01:00:00Z"}"#)
+            default:
+                return (404, #"{"success":false,"error":"not found"}"#)
+            }
+        }
+        await model.retryJournalSyncIfNeeded()
+        XCTAssertEqual(model.journalSyncStatus, .synced)
+        XCTAssertEqual(try storage.load(JournalSyncCheckpoint.self, key: "journal-sync:alice")?.entries["daily-a"]?.revision, 1)
+    }
+
+    @MainActor func testGuestUpgradeKeepsIdentityAndSyncsItsExistingJournalNote() async throws {
+        defer { StubProtocol.responder = nil }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = LocalStore(root: root)
+        let credentials = CredentialStore(service: "test." + UUID().uuidString)
+        try credentials.write("guest-token", key: "token")
+        try credentials.write("guest", key: "identity-kind")
+        defer {
+            try? credentials.write(nil, key: "token")
+            try? credentials.write(nil, key: "device")
+            try? credentials.write(nil, key: "identity-kind")
+        }
+        var journal = Journal()
+        journal.record(JournalEntry(
+            puzzleID: "daily-a", puzzleDate: "2026-10-27", puzzleType: "rebus", clue: "☀️ + 🏠",
+            answer: "sunshine", explanation: "Sun + shine.", won: true, attempts: 2, hintsUsed: 0, note: "Guest aha."
+        ))
+        try storage.save(journal, key: "journal:guest-a")
+        let recorder = JournalSyncRequestRecorder()
+        StubProtocol.responder = { request in
+            recorder.record(request)
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"daily-a","puzzle":"☀️ + 🏠","puzzleType":"rebus","difficulty":5,"hints":[]} ,"puzzleDate":"2026-10-27","nextPuzzleTime":"2026-10-28T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"guest-a","username":"Guest","email":"guest-a@guest.rebuzzle.local","isGuest":true}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"daily-a","puzzleDate":"2026-10-27","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/auth/guest/upgrade":
+                return (200, #"{"success":true,"token":"member-token","user":{"id":"guest-a","username":"Guest","email":"guest@example.com","isGuest":false}}"#)
+            case "/api/user/journal":
+                return (200, journalSyncPage(puzzleID: "daily-a", note: "", revision: 0))
+            case "/api/user/journal/note":
+                return (200, #"{"success":true,"note":"Guest aha.","revision":1,"updatedAt":"2026-10-28T01:00:00Z"}"#)
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 0))
+            default:
+                return (404, #"{"success":false,"error":"not found"}"#)
+            }
+        }
+
+        let entitlement = JournalSyncTestEntitlement()
+        entitlement.enabled = true
+        let model = journalSyncTestModel(root: root, credentials: credentials, entitlement: entitlement)
+        await model.load()
+        XCTAssertTrue(model.player?.guest == true)
+
+        let upgraded = await model.upgradeGuestAccount(
+            username: "Guest",
+            email: "guest@example.com",
+            password: "password"
+        )
+
+        XCTAssertTrue(upgraded)
+        XCTAssertEqual(model.player?.id, "guest-a")
+        XCTAssertFalse(model.player?.guest ?? true)
+        XCTAssertEqual(model.journal.entries.first?.note, "Guest aha.")
+        XCTAssertEqual(recorder.noteWrites.count, 1)
+        XCTAssertEqual(recorder.noteWrites.first?["note"] as? String, "Guest aha.")
+    }
+
+    @MainActor func testOldAccountJournalResponseCannotReplaceTheNewAccountJournal() async throws {
+        defer { StubProtocol.responder = nil }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let credentials = CredentialStore(service: "test." + UUID().uuidString)
+        try credentials.write("alice-token", key: "token")
+        try credentials.write("member", key: "identity-kind")
+        defer {
+            try? credentials.write(nil, key: "token")
+            try? credentials.write(nil, key: "device")
+            try? credentials.write(nil, key: "identity-kind")
+        }
+        let latch = JournalSyncRequestLatch()
+        StubProtocol.responder = { request in
+            switch request.url!.path {
+            case "/api/puzzle/today":
+                return (200, #"{"success":true,"puzzle":{"id":"daily-a","puzzle":"☀️ + 🏠","puzzleType":"rebus","difficulty":5,"hints":[]},"puzzleDate":"2026-10-27","nextPuzzleTime":"2026-10-28T00:00:00Z"}"#)
+            case "/api/auth/session":
+                return (200, #"{"authenticated":true,"user":{"id":"alice","username":"Alice","email":"alice@example.com","isGuest":false}}"#)
+            case "/api/auth/login":
+                return (200, #"{"success":true,"token":"bob-token","user":{"id":"bob","username":"Bob","email":"bob@example.com","isGuest":false}}"#)
+            case "/api/puzzle/session":
+                return (200, #"{"success":true,"puzzleId":"daily-a","puzzleDate":"2026-10-27","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false}"#)
+            case "/api/user/journal":
+                if request.value(forHTTPHeaderField: "Authorization") == "Bearer alice-token" {
+                    latch.signal()
+                    Thread.sleep(forTimeInterval: 1.2)
+                    return (200, journalSyncPage(puzzleID: "daily-a", note: "Alice's note", revision: 2))
+                }
+                return (200, journalSyncPage(puzzleID: "daily-b", note: "Bob's note", revision: 1))
+            case "/api/user/progress":
+                return (200, journeyPayload(xp: 0))
+            default:
+                return (404, #"{"success":false,"error":"not found"}"#)
+            }
+        }
+
+        let entitlement = JournalSyncTestEntitlement()
+        let model = journalSyncTestModel(root: root, credentials: credentials, entitlement: entitlement)
+        await model.load()
+        entitlement.enabled = true
+        let staleSync = Task { await model.syncJournal() }
+        let journalRequestStarted = await Task.detached { latch.wait(timeout: 2) }.value
+        XCTAssertTrue(journalRequestStarted, "The old account request should be in flight before switching accounts.")
+
+        let signedIn = await model.signIn(email: "bob@example.com", password: "password")
+        XCTAssertTrue(signedIn)
+        XCTAssertEqual(model.player?.id, "bob")
+        XCTAssertEqual(model.journal.entries.first?.note, "Bob's note")
+        await staleSync.value
+        XCTAssertEqual(model.player?.id, "bob")
+        XCTAssertEqual(model.journal.entries.first?.note, "Bob's note")
+    }
 }
 
 final class StubProtocol: URLProtocol, @unchecked Sendable {
@@ -56,6 +381,54 @@ private final class CompletionRefreshState: @unchecked Sendable {
         defer { lock.unlock() }
         return didCompletePuzzle
     }
+}
+
+private final class NudgeRuntimeState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var acceptedGuess: Bool
+
+    init(acceptedGuess: Bool = false) {
+        self.acceptedGuess = acceptedGuess
+    }
+
+    func acceptGuess() {
+        lock.lock()
+        defer { lock.unlock() }
+        acceptedGuess = true
+    }
+
+    var sessionPayload: String {
+        lock.lock()
+        defer { lock.unlock() }
+        let attempts = acceptedGuess ? #"[{"guess":"wrong answer","correct":false,"attemptNumber":1}]"# : "[]"
+        let attemptsLeft = acceptedGuess ? 2 : 3
+        return #"{"success":true,"puzzleId":"puzzle-a","puzzleDate":"2099-01-01","attempts":\#(attempts),"hintsUsed":0,"attemptsLeft":\#(attemptsLeft),"maxAttempts":3,"gameOver":false}"#
+    }
+}
+
+@MainActor private func makeNudgeTestModel(root: URL, credentials: CredentialStore, state: NudgeRuntimeState) -> AppModel {
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [StubProtocol.self]
+    StubProtocol.responder = { request in
+        switch request.url!.path {
+        case "/api/puzzle/today":
+            return (200, #"{"success":true,"puzzle":{"id":"puzzle-a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["First hint.","Second hint.","Third hint."]},"puzzleDate":"2099-01-01","nextPuzzleTime":"2099-01-02T00:00:00Z"}"#)
+        case "/api/auth/session":
+            return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
+        case "/api/puzzle/session":
+            return (200, state.sessionPayload)
+        case "/api/puzzles/guess":
+            state.acceptGuess()
+            return (200, #"{"success":true,"correct":false,"attemptsLeft":2,"maxAttempts":3,"gameOver":false,"attemptNumber":1,"phase":"scored"}"#)
+        default:
+            return (200, #"{"success":true,"stats":{}}"#)
+        }
+    }
+    return AppModel(
+        api: APIClient(deviceID: "nudge-test-device", session: URLSession(configuration: config)),
+        storage: LocalStore(root: root),
+        credentials: credentials
+    )
 }
 
 extension RuntimeTests {
@@ -696,5 +1069,148 @@ extension RuntimeTests {
         let nextPuzzle = try XCTUnwrap(model.game)
         XCTAssertEqual(model.streakPresentation(for: nextPuzzle).message, .syncing)
         XCTAssertNil(model.streakPresentation(for: nextPuzzle).current)
+    }
+
+    @MainActor func testNudgesPersistAtTheirConversationPositionsAcrossReload() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let state = NudgeRuntimeState()
+        let store = LocalStore(root: root)
+        let firstModel = makeNudgeTestModel(root: root, credentials: secure, state: state)
+
+        await firstModel.load()
+        XCTAssertTrue(firstModel.sessionReady)
+        firstModel.revealHint()
+        firstModel.draft = "wrong answer"
+        await firstModel.submit()
+        firstModel.revealHint()
+
+        let expected = [
+            DailyNudgeReveal(hintIndex: 0, afterAttemptCount: 0),
+            DailyNudgeReveal(hintIndex: 1, afterAttemptCount: 1),
+        ]
+        XCTAssertEqual(firstModel.nudgeReveals, expected)
+        XCTAssertEqual(
+            try store.load([DailyNudgeReveal].self, key: "nudge-turns:member-a:puzzle-a"),
+            expected
+        )
+
+        let relaunchedModel = makeNudgeTestModel(root: root, credentials: secure, state: state)
+        await relaunchedModel.load()
+        XCTAssertEqual(relaunchedModel.hintsShown, 2)
+        XCTAssertEqual(relaunchedModel.game?.attempts.count, 1)
+        XCTAssertEqual(relaunchedModel.nudgeReveals, expected)
+    }
+
+    @MainActor func testLegacyHintCountRestoresAfterCurrentGuesses() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalStore(root: root)
+        try store.save(1, key: "hints:member-a:puzzle-a")
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+
+        let model = makeNudgeTestModel(
+            root: root,
+            credentials: secure,
+            state: NudgeRuntimeState(acceptedGuess: true)
+        )
+        await model.load()
+
+        XCTAssertEqual(model.hintsShown, 1)
+        XCTAssertEqual(model.game?.attempts.count, 1)
+        XCTAssertEqual(model.nudgeReveals, [DailyNudgeReveal(hintIndex: 0, afterAttemptCount: 1)])
+        XCTAssertEqual(
+            try store.load([DailyNudgeReveal].self, key: "nudge-turns:member-a:puzzle-a"),
+            [DailyNudgeReveal(hintIndex: 0, afterAttemptCount: 1)]
+        )
+    }
+
+    @MainActor func testRestoredHintCountIsClampedToAvailableAuthoredHints() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalStore(root: root)
+        try store.save(99, key: "hints:member-a:puzzle-a")
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+
+        let model = makeNudgeTestModel(root: root, credentials: secure, state: NudgeRuntimeState())
+        await model.load()
+
+        XCTAssertEqual(model.hintsShown, 3)
+        XCTAssertEqual(model.nudgeReveals, [
+            DailyNudgeReveal(hintIndex: 0, afterAttemptCount: 0),
+            DailyNudgeReveal(hintIndex: 1, afterAttemptCount: 0),
+            DailyNudgeReveal(hintIndex: 2, afterAttemptCount: 0),
+        ])
+    }
+
+    @MainActor func testNudgeRestoreIgnoresOtherAccountsAndPuzzles() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalStore(root: root)
+        try store.save(2, key: "hints:member-b:puzzle-a")
+        try store.save([DailyNudgeReveal(hintIndex: 0, afterAttemptCount: 0)], key: "nudge-turns:member-b:puzzle-a")
+        try store.save(1, key: "hints:member-a:another-puzzle")
+        try store.save([DailyNudgeReveal(hintIndex: 0, afterAttemptCount: 0)], key: "nudge-turns:member-a:another-puzzle")
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+
+        let model = makeNudgeTestModel(root: root, credentials: secure, state: NudgeRuntimeState())
+        await model.load()
+
+        XCTAssertEqual(model.hintsShown, 0)
+        XCTAssertTrue(model.nudgeReveals.isEmpty)
+    }
+
+    @MainActor func testNudgeRemainsAvailableInMemoryWhenPersistenceFails() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+
+        let model = makeNudgeTestModel(root: root, credentials: secure, state: NudgeRuntimeState())
+        await model.load()
+        try FileManager.default.removeItem(at: root)
+        try Data("storage is unavailable".utf8).write(to: root)
+
+        model.revealHint()
+
+        XCTAssertEqual(model.hintsShown, 1)
+        XCTAssertEqual(model.nudgeReveals, [DailyNudgeReveal(hintIndex: 0, afterAttemptCount: 0)])
+        XCTAssertEqual(model.storageError, "Your hint progress could not be saved on this device.")
     }
 }

@@ -49,3 +49,17 @@ it("uses a stable descending publication-date and ID cursor", async () => {
   expect(cursor.sort).toHaveBeenCalledWith({ publishedAt: -1, id: -1 });
   expect(cursor.limit).toHaveBeenCalledWith(21);
 });
+
+it("selects the oldest active published puzzle before the server date in stable order", async () => {
+  const row = { id: "oldest", publishedAt: new Date("2025-01-02T00:00:00.000Z") };
+  const findOne = jest.fn().mockResolvedValue(row);
+  mockGetCollection.mockReturnValue({ findOne } as never);
+  const beforeUtc = new Date("2026-10-28T00:00:00.000Z");
+
+  await expect(puzzleOps.findOldestPublishedBefore(beforeUtc)).resolves.toEqual(row);
+
+  expect(findOne).toHaveBeenCalledWith(
+    { active: true, publishedAt: { $lt: beforeUtc } },
+    { sort: { publishedAt: 1, id: 1 } }
+  );
+});

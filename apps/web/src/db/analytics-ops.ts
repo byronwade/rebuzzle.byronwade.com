@@ -11,6 +11,7 @@ import type {
   NativeGrowthQualityRating,
   NewAnalyticsEvent,
   NewUserSession,
+  PuzzleAttempt,
   UserSession,
 } from "./models";
 import { getCollection } from "./mongodb";
@@ -20,13 +21,70 @@ const nativeGrowthIndexPromises = new Map<string, Promise<void>>();
 export interface NativeGrowthSummary {
   openedAccountDays: number;
   finishedAccountDays: number;
+  shareStartedAccountDays: number;
+  shareCompletedAccountDays: number;
+  shareOpenWithStartDays: number;
+  shareOpenWithFinishDays: number;
   finishOpenRatio: number;
   entrySources: Record<NativeGrowthEventSource, number>;
   multiDayReturners: number;
   plusOfferViewers: number;
+  plusPurchaseStarters: number;
+  plusVerifiedPurchasers: number;
+  plusPendingAccounts: number;
+  plusCancelledAccounts: number;
+  plusUnverifiedAccounts: number;
+  plusFailedAccounts: number;
+  plusRestoreCompletedAccounts: number;
+  plusRestoreEmptyAccounts: number;
+  plusRestoreFailedAccounts: number;
+  plusSameDayPurchasers: number;
+  plusSameDayConversionRate: number;
   reminderEnabledAccounts: number;
   qualityFeedback: Record<NativeGrowthQualityRating, number>;
 }
+
+export interface DailyPuzzleQualitySummary {
+  puzzleDate: string;
+  players: number;
+  medianWallClockHoursToSolve: number | null;
+  guessBuckets: { one: number; two: number; three: number; fourPlus: number };
+  outcomes: {
+    solved: number;
+    revealed: number;
+    expired: number;
+    ranOut: number;
+    inProgress: number;
+  };
+  nativeRatings: {
+    total: number;
+    too_easy: number;
+    just_right: number;
+    tough_but_fair: number;
+    unclear: number;
+  };
+}
+
+interface DailyNativeRatingSummary {
+  puzzleDate: string;
+  total: number;
+  too_easy: number;
+  just_right: number;
+  tough_but_fair: number;
+  unclear: number;
+}
+
+interface DailySolveTimeSummary {
+  puzzleDate: string;
+  medianWallClockHoursToSolve: number;
+}
+
+type DailyPuzzleAttemptSummary = Omit<
+  DailyPuzzleQualitySummary,
+  "nativeRatings" | "medianWallClockHoursToSolve"
+>;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function ensureNativeGrowthIndexes(
   collection: ReturnType<typeof getCollection<NativeGrowthEvent>>
@@ -82,11 +140,291 @@ export const nativeGrowthEventOps = {
     );
   },
 
+  /** Aggregate daily puzzle outcomes and ratings into date-only quality signals. */
+  async getDailyPuzzleQuality(start: Date, end: Date): Promise<DailyPuzzleQualitySummary[]> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const ratingCollection = getCollection<NativeGrowthEvent>("nativeGrowthEvents");
+    const startPuzzleDate = new Date(start.getTime() - DAY_MS).toISOString().slice(0, 10);
+    const endPuzzleDate = new Date(end.getTime() + DAY_MS).toISOString().slice(0, 10);
+    // dayKey is account-local, so cover the full UTC interval for its buffered date range.
+    const occurredAtStart = new Date(`${startPuzzleDate}T00:00:00.000Z`);
+    occurredAtStart.setUTCDate(occurredAtStart.getUTCDate() - 1);
+    const occurredAtEnd = new Date(`${endPuzzleDate}T00:00:00.000Z`);
+    occurredAtEnd.setUTCDate(occurredAtEnd.getUTCDate() + 2);
+    const [attemptRows, ratingRows, solveTimeRows] = await Promise.all([
+      collection
+        .aggregate<DailyPuzzleAttemptSummary>([
+          {
+            $match: {
+              puzzleDate: {
+                $gte: startPuzzleDate,
+                $lte: endPuzzleDate,
+                $regex: /^\d{4}-\d{2}-\d{2}$/,
+              },
+            },
+          },
+          {
+            $group: {
+              _id: { userId: "$userId", puzzleDate: "$puzzleDate" },
+              guessCount: {
+                $sum: { $cond: [{ $ne: ["$attemptType", "finalization"] }, 1, 0] },
+              },
+              solved: {
+                $max: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ne: ["$attemptType", "finalization"] },
+                        { $eq: ["$isCorrect", true] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              },
+              revealed: {
+                $max: { $cond: [{ $eq: ["$finalizationReason", "revealed"] }, 1, 0] },
+              },
+              expired: {
+                $max: { $cond: [{ $eq: ["$finalizationReason", "expired"] }, 1, 0] },
+              },
+              ranOut: {
+                $max: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ne: ["$attemptType", "finalization"] },
+                        { $eq: ["$isFinal", true] },
+                        { $ne: ["$isCorrect", true] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+          { $match: { guessCount: { $gt: 0 } } },
+          {
+            $group: {
+              _id: "$_id.puzzleDate",
+              players: { $sum: 1 },
+              oneGuess: { $sum: { $cond: [{ $eq: ["$guessCount", 1] }, 1, 0] } },
+              twoGuesses: { $sum: { $cond: [{ $eq: ["$guessCount", 2] }, 1, 0] } },
+              threeGuesses: { $sum: { $cond: [{ $eq: ["$guessCount", 3] }, 1, 0] } },
+              fourPlusGuesses: { $sum: { $cond: [{ $gte: ["$guessCount", 4] }, 1, 0] } },
+              solved: { $sum: "$solved" },
+              revealed: { $sum: "$revealed" },
+              expired: { $sum: "$expired" },
+              ranOut: { $sum: "$ranOut" },
+              inProgress: {
+                $sum: {
+                  $cond: [
+                    { $eq: [{ $add: ["$solved", "$revealed", "$expired", "$ranOut"] }, 0] },
+                    1,
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+          { $sort: { _id: -1 } },
+          { $limit: 30 },
+          {
+            $project: {
+              _id: 0,
+              puzzleDate: "$_id",
+              players: 1,
+              guessBuckets: {
+                one: "$oneGuess",
+                two: "$twoGuesses",
+                three: "$threeGuesses",
+                fourPlus: "$fourPlusGuesses",
+              },
+              outcomes: {
+                solved: "$solved",
+                revealed: "$revealed",
+                expired: "$expired",
+                ranOut: "$ranOut",
+                inProgress: "$inProgress",
+              },
+            },
+          },
+        ])
+        .toArray(),
+      ratingCollection
+        .aggregate<DailyNativeRatingSummary>([
+          {
+            $match: {
+              eventType: "daily_quality_feedback",
+              dayKey: { $gte: startPuzzleDate, $lte: endPuzzleDate },
+              occurredAt: {
+                $gte: occurredAtStart,
+                $lt: occurredAtEnd,
+              },
+            },
+          },
+          {
+            $group: {
+              _id: "$dayKey",
+              total: { $sum: 1 },
+              too_easy: { $sum: { $cond: [{ $eq: ["$rating", "too_easy"] }, 1, 0] } },
+              just_right: { $sum: { $cond: [{ $eq: ["$rating", "just_right"] }, 1, 0] } },
+              tough_but_fair: {
+                $sum: { $cond: [{ $eq: ["$rating", "tough_but_fair"] }, 1, 0] },
+              },
+              unclear: { $sum: { $cond: [{ $eq: ["$rating", "unclear"] }, 1, 0] } },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              puzzleDate: "$_id",
+              total: 1,
+              too_easy: 1,
+              just_right: 1,
+              tough_but_fair: 1,
+              unclear: 1,
+            },
+          },
+        ])
+        .toArray(),
+      ratingCollection
+        .aggregate<DailySolveTimeSummary>([
+          {
+            $match: {
+              eventType: "daily_session_restored",
+              dayKey: { $gte: startPuzzleDate, $lte: endPuzzleDate },
+              occurredAt: {
+                $gte: occurredAtStart,
+                $lt: occurredAtEnd,
+              },
+            },
+          },
+          {
+            $lookup: {
+              from: "nativeGrowthEvents",
+              let: {
+                userId: "$userId",
+                dayKey: "$dayKey",
+                restoredAt: "$occurredAt",
+              },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ["$eventType", "daily_finished"] },
+                        { $eq: ["$outcome", "solved"] },
+                        { $eq: ["$userId", "$$userId"] },
+                        { $eq: ["$dayKey", "$$dayKey"] },
+                        { $gte: ["$occurredAt", "$$restoredAt"] },
+                      ],
+                    },
+                  },
+                },
+                { $sort: { occurredAt: 1 } },
+                { $limit: 1 },
+                { $project: { _id: 0, occurredAt: 1 } },
+              ],
+              as: "solvedFinish",
+            },
+          },
+          { $unwind: "$solvedFinish" },
+          {
+            $addFields: {
+              elapsedHours: {
+                $divide: [
+                  { $subtract: ["$solvedFinish.occurredAt", "$occurredAt"] },
+                  60 * 60 * 1000,
+                ],
+              },
+            },
+          },
+          { $sort: { dayKey: 1, elapsedHours: 1 } },
+          {
+            $group: {
+              _id: "$dayKey",
+              elapsedHours: { $push: "$elapsedHours" },
+            },
+          },
+          {
+            $addFields: {
+              sampleCount: { $size: "$elapsedHours" },
+            },
+          },
+          { $match: { sampleCount: { $gte: 5 } } },
+          {
+            $project: {
+              _id: 0,
+              puzzleDate: "$_id",
+              medianWallClockHoursToSolve: {
+                $let: {
+                  vars: {
+                    length: { $size: "$elapsedHours" },
+                    midpoint: { $floor: { $divide: [{ $size: "$elapsedHours" }, 2] } },
+                  },
+                  in: {
+                    $cond: [
+                      { $eq: [{ $mod: ["$$length", 2] }, 1] },
+                      { $arrayElemAt: ["$elapsedHours", "$$midpoint"] },
+                      {
+                        $avg: [
+                          {
+                            $arrayElemAt: ["$elapsedHours", { $subtract: ["$$midpoint", 1] }],
+                          },
+                          { $arrayElemAt: ["$elapsedHours", "$$midpoint"] },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
+
+    const ratingsByDate = new Map(
+      ratingRows.map(({ puzzleDate, ...ratings }) => [puzzleDate, ratings])
+    );
+    const solveTimesByDate = new Map(
+      solveTimeRows.map(({ puzzleDate, medianWallClockHoursToSolve }) => [
+        puzzleDate,
+        medianWallClockHoursToSolve,
+      ])
+    );
+    return attemptRows.map((row) => ({
+      ...row,
+      medianWallClockHoursToSolve: solveTimesByDate.get(row.puzzleDate) ?? null,
+      nativeRatings: ratingsByDate.get(row.puzzleDate) ?? {
+        total: 0,
+        too_easy: 0,
+        just_right: 0,
+        tough_but_fair: 0,
+        unclear: 0,
+      },
+    }));
+  },
+
   /** Aggregate funnel counts only; account identifiers never leave MongoDB. */
   async getSummary(start: Date, end: Date): Promise<NativeGrowthSummary> {
     const collection = getCollection<NativeGrowthEvent>("nativeGrowthEvents");
     const [facets] = await collection
-      .aggregate<Record<string, Array<{ _id?: string; count?: number }>>>([
+      .aggregate<
+        Record<
+          string,
+          Array<{
+            _id?: string;
+            count?: number;
+            openWithStartDays?: number;
+            openWithFinishDays?: number;
+          }>
+        >
+      >([
         { $match: { occurredAt: { $gte: start, $lt: end } } },
         {
           $facet: {
@@ -99,6 +437,51 @@ export const nativeGrowthEventOps = {
               { $match: { eventType: "daily_finished" } },
               { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
               { $count: "count" },
+            ],
+            shareStartedDays: [
+              { $match: { eventType: "daily_share_started" } },
+              { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
+              { $count: "count" },
+            ],
+            shareCompletedDays: [
+              { $match: { eventType: "daily_share_completed" } },
+              { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
+              { $count: "count" },
+            ],
+            shareJourney: [
+              {
+                $group: {
+                  _id: { userId: "$userId", dayKey: "$dayKey" },
+                  openedViaShare: {
+                    $max: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$eventType", "daily_opened"] },
+                            { $eq: ["$source", "share"] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  started: {
+                    $max: { $cond: [{ $eq: ["$eventType", "daily_started"] }, 1, 0] },
+                  },
+                  finished: {
+                    $max: { $cond: [{ $eq: ["$eventType", "daily_finished"] }, 1, 0] },
+                  },
+                },
+              },
+              { $match: { openedViaShare: 1 } },
+              {
+                $group: {
+                  _id: null,
+                  openWithStartDays: { $sum: "$started" },
+                  openWithFinishDays: { $sum: "$finished" },
+                },
+              },
             ],
             sourceDays: [
               { $match: { eventType: "daily_opened" } },
@@ -121,6 +504,71 @@ export const nativeGrowthEventOps = {
               { $group: { _id: "$userId" } },
               { $count: "count" },
             ],
+            plusPurchaseStarters: [
+              { $match: { eventType: "plus_purchase_started" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusVerifiedPurchasers: [
+              { $match: { eventType: "plus_purchase_verified" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusPendingAccounts: [
+              { $match: { eventType: "plus_purchase_pending" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusCancelledAccounts: [
+              { $match: { eventType: "plus_purchase_cancelled" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusUnverifiedAccounts: [
+              { $match: { eventType: "plus_purchase_unverified" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusFailedAccounts: [
+              { $match: { eventType: "plus_purchase_failed" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusRestoreCompletedAccounts: [
+              { $match: { eventType: "plus_restore_completed" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusRestoreEmptyAccounts: [
+              { $match: { eventType: "plus_restore_empty" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusRestoreFailedAccounts: [
+              { $match: { eventType: "plus_restore_failed" } },
+              { $group: { _id: "$userId" } },
+              { $count: "count" },
+            ],
+            plusSameDayPurchasers: [
+              {
+                $match: {
+                  eventType: { $in: ["plus_offer_viewed", "plus_purchase_verified"] },
+                },
+              },
+              {
+                $group: {
+                  _id: { userId: "$userId", dayKey: "$dayKey" },
+                  eventTypes: { $addToSet: "$eventType" },
+                },
+              },
+              {
+                $match: {
+                  eventTypes: { $all: ["plus_offer_viewed", "plus_purchase_verified"] },
+                },
+              },
+              { $group: { _id: "$_id.userId" } },
+              { $count: "count" },
+            ],
             reminderAccounts: [
               { $match: { eventType: "reminder_enabled" } },
               { $group: { _id: "$userId" } },
@@ -141,6 +589,7 @@ export const nativeGrowthEventOps = {
       notification: 0,
       widget: 0,
       shortcut: 0,
+      share: 0,
     };
     const qualityFeedback: Record<NativeGrowthQualityRating, number> = {
       too_easy: 0,
@@ -153,7 +602,8 @@ export const nativeGrowthEventOps = {
         source._id === "app" ||
         source._id === "notification" ||
         source._id === "widget" ||
-        source._id === "shortcut"
+        source._id === "shortcut" ||
+        source._id === "share"
       ) {
         entrySources[source._id] = source.count ?? 0;
       }
@@ -171,13 +621,30 @@ export const nativeGrowthEventOps = {
 
     const openedAccountDays = count("openDays");
     const finishedAccountDays = count("finishDays");
+    const shareJourney = facets?.shareJourney?.[0];
     return {
       openedAccountDays,
       finishedAccountDays,
+      shareStartedAccountDays: count("shareStartedDays"),
+      shareCompletedAccountDays: count("shareCompletedDays"),
+      shareOpenWithStartDays: shareJourney?.openWithStartDays ?? 0,
+      shareOpenWithFinishDays: shareJourney?.openWithFinishDays ?? 0,
       finishOpenRatio: openedAccountDays > 0 ? finishedAccountDays / openedAccountDays : 0,
       entrySources,
       multiDayReturners: count("returners"),
       plusOfferViewers: count("plusViewers"),
+      plusPurchaseStarters: count("plusPurchaseStarters"),
+      plusVerifiedPurchasers: count("plusVerifiedPurchasers"),
+      plusPendingAccounts: count("plusPendingAccounts"),
+      plusCancelledAccounts: count("plusCancelledAccounts"),
+      plusUnverifiedAccounts: count("plusUnverifiedAccounts"),
+      plusFailedAccounts: count("plusFailedAccounts"),
+      plusRestoreCompletedAccounts: count("plusRestoreCompletedAccounts"),
+      plusRestoreEmptyAccounts: count("plusRestoreEmptyAccounts"),
+      plusRestoreFailedAccounts: count("plusRestoreFailedAccounts"),
+      plusSameDayPurchasers: count("plusSameDayPurchasers"),
+      plusSameDayConversionRate:
+        count("plusViewers") > 0 ? count("plusSameDayPurchasers") / count("plusViewers") : 0,
       reminderEnabledAccounts: count("reminderAccounts"),
       qualityFeedback,
     };

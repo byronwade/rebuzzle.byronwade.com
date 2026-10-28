@@ -19,6 +19,7 @@ import { streamAIText } from "@/ai/client";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { isPublishedPastPuzzle } from "@/lib/game/archive-puzzles";
+import { findFreeArchiveSample } from "@/lib/game/archive-sample";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
@@ -118,16 +119,18 @@ export async function POST(request: Request) {
       );
     }
 
-    if (mode === "practice" && !(await hasPlusEntitlement(request))) {
+    const requestTimeZone = await resolveRequestTimeZone();
+    const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
+    const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
+    const hasPlus = mode === "practice" ? await hasPlusEntitlement(request) : false;
+    const freeSample = mode === "practice" && !hasPlus ? await findFreeArchiveSample(localDateKey) : null;
+    const isFreeSample = freeSample?.id === puzzleId;
+    if (mode === "practice" && !isFreeSample && !hasPlus) {
       return json(
         { success: false, error: "Rebuzzle Plus is required for archive practice." },
         403
       );
     }
-
-    const requestTimeZone = await resolveRequestTimeZone();
-    const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
-    const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
     if (mode === "daily") {
       // Day already locked — only the closing win/loss riff may still spend credits.
       const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, localDateKey);
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
     }
 
     // Only the type is read from the puzzle. The answer stays in the database.
-    const puzzle = await db.puzzleOps.findById(puzzleId);
+    const puzzle = isFreeSample ? freeSample : await db.puzzleOps.findById(puzzleId);
     if (!puzzle) {
       return json({ success: false, error: "Puzzle not found" }, 404);
     }

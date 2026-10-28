@@ -194,12 +194,137 @@ describe("dailyProgressOps.materializeFromAttempt", () => {
     expect(first?.puzzleId).toMatch(/^(puzzle-2026-10-26|competing-puzzle)$/);
   });
 
+  it("records an unscored extended solve using its actual guess number", async () => {
+    const expected = {
+      userId: "user-1",
+      puzzleDate: "2026-10-26",
+      puzzleId: "puzzle-2026-10-26",
+      outcome: "solved",
+      attempts: 4,
+      hintCount: 1,
+      completedAt: new Date("2026-10-27T06:59:10.000Z"),
+      timeZone: "America/Los_Angeles",
+      playMode: "extended",
+    };
+    const updateOne = jest.fn().mockResolvedValue({ acknowledged: true, upsertedCount: 1 });
+    const findOne = jest.fn().mockResolvedValue(expected);
+    mockGetCollection.mockReturnValue({ updateOne, findOne } as never);
+
+    await expect(
+      dailyProgressOps.materializeFromAttempt(
+        terminalAttempt({
+          attemptNumber: 4,
+          playMode: "extended",
+          attemptType: "guess",
+          isScoredAttempt: false,
+        })
+      )
+    ).resolves.toEqual(expected);
+    expect(updateOne.mock.calls[0]?.[1]).toEqual({ $setOnInsert: expected });
+  });
+
+  it.each(["revealed", "expired"] as const)(
+    "records an extended %s finalization using the prior guess count",
+    async (finalizationReason) => {
+      const expected = {
+        userId: "user-1",
+        puzzleDate: "2026-10-26",
+        puzzleId: "puzzle-2026-10-26",
+        outcome: "failed",
+        attempts: 4,
+        hintCount: 1,
+        completedAt: new Date("2026-10-27T06:59:10.000Z"),
+        timeZone: "America/Los_Angeles",
+        playMode: "extended",
+      };
+      const updateOne = jest.fn().mockResolvedValue({ acknowledged: true, upsertedCount: 1 });
+      const findOne = jest.fn().mockResolvedValue(expected);
+      mockGetCollection.mockReturnValue({ updateOne, findOne } as never);
+
+      await expect(
+        dailyProgressOps.materializeFromAttempt(
+          terminalAttempt({
+            attemptNumber: 5,
+            isCorrect: false,
+            playMode: "extended",
+            attemptType: "finalization",
+            isScoredAttempt: false,
+            finalizationReason,
+            maxAttempts: 3,
+          })
+        )
+      ).resolves.toEqual(expected);
+      expect(updateOne.mock.calls[0]?.[1]).toEqual({ $setOnInsert: expected });
+    }
+  );
+
+  it("recognizes a valid extended winner already stored after a duplicate-key retry", async () => {
+    const winner = {
+      userId: "user-1",
+      puzzleDate: "2026-10-26",
+      puzzleId: "puzzle-2026-10-26",
+      outcome: "solved",
+      attempts: 4,
+      hintCount: 1,
+      completedAt: new Date("2026-10-27T06:59:10.000Z"),
+      timeZone: "America/Los_Angeles",
+      playMode: "extended",
+    };
+    const updateOne = jest.fn().mockRejectedValue(duplicateKeyError());
+    const findOne = jest.fn().mockResolvedValue(winner);
+    mockGetCollection.mockReturnValue({ updateOne, findOne } as never);
+
+    await expect(
+      dailyProgressOps.materializeFromAttempt(
+        terminalAttempt({
+          attemptNumber: 4,
+          playMode: "extended",
+          attemptType: "guess",
+          isScoredAttempt: false,
+        })
+      )
+    ).resolves.toEqual(winner);
+    expect(updateOne).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ["archive", terminalAttempt({ puzzleDate: "archive:puzzle-123" })],
     ["non-final", terminalAttempt({ isFinal: false })],
     ["invalid puzzle date", terminalAttempt({ puzzleDate: "2026-02-30" })],
     ["missing attempt count", terminalAttempt({ attemptNumber: undefined })],
     ["solve above three attempts", terminalAttempt({ attemptNumber: 4 })],
+    [
+      "extended solve with a scored marker after three guesses",
+      terminalAttempt({
+        attemptNumber: 4,
+        playMode: "extended",
+        attemptType: "guess",
+        isScoredAttempt: true,
+      }),
+    ],
+    [
+      "extended finalization with an unknown reason",
+      terminalAttempt({
+        attemptNumber: 4,
+        isCorrect: false,
+        playMode: "extended",
+        attemptType: "finalization",
+        isScoredAttempt: false,
+        maxAttempts: 3,
+      }),
+    ],
+    [
+      "extended finalization before all scored guesses",
+      terminalAttempt({
+        attemptNumber: 3,
+        isCorrect: false,
+        playMode: "extended",
+        attemptType: "finalization",
+        isScoredAttempt: false,
+        finalizationReason: "revealed",
+        maxAttempts: 3,
+      }),
+    ],
     ["loss before all three attempts", terminalAttempt({ isCorrect: false, attemptNumber: 2 })],
   ])("does not materialize an %s attempt", async (_label, attempt) => {
     const updateOne = jest.fn();
@@ -308,6 +433,11 @@ describe("dailyProgress index", () => {
         collection: "dailyProgress",
         spec: { userId: 1, puzzleDate: 1 },
         options: { unique: true, name: "userId_1_puzzleDate_1" },
+      });
+      expect(createdIndexes).toContainEqual({
+        collection: "journalNotes",
+        spec: { userId: 1, puzzleId: 1 },
+        options: { unique: true, name: "userId_1_puzzleId_1" },
       });
     } finally {
       logSpy.mockRestore();

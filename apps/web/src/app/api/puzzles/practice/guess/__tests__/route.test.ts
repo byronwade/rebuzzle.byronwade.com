@@ -1,8 +1,25 @@
+const mockActivePracticeRoundTokens = new Set<string>();
+
 jest.mock("@/db", () => ({
   db: {
-    puzzleOps: { findById: jest.fn() },
+    puzzleOps: { findById: jest.fn(), findOldestPublishedBefore: jest.fn() },
     puzzleAttemptOps: { createAtomicDailyAttempt: jest.fn() },
     dailyProgressOps: { materializeFromAttempt: jest.fn() },
+    practiceRoundOps: {
+      activateToken: jest.fn(async ({ token }: { token: string }) => {
+        mockActivePracticeRoundTokens.add(token);
+        return true;
+      }),
+      isTokenActive: jest.fn(async ({ token }: { token: string }) =>
+        mockActivePracticeRoundTokens.has(token)
+      ),
+      advanceToken: jest.fn(async (current: { token: string }, next: { token: string } | null) => {
+        if (!mockActivePracticeRoundTokens.has(current.token)) return false;
+        mockActivePracticeRoundTokens.delete(current.token);
+        if (next) mockActivePracticeRoundTokens.add(next.token);
+        return true;
+      }),
+    },
   },
 }));
 jest.mock("@/lib/auth-middleware", () => ({
@@ -53,6 +70,7 @@ const puzzle = {
   difficulty: 5,
   hints: ["Look up", "It arrives after sunset"],
 };
+const freeSamplePuzzle = { ...puzzle, id: "free-sample" };
 
 function request(body: unknown, withProof = true) {
   return new Request("https://example.com/api/puzzles/practice/guess", {
@@ -71,16 +89,24 @@ async function submit(body: unknown, withProof = true) {
 
 async function roundToken(wrongGuessCount: number) {
   process.env.AUTH_SECRET = "test-only-practice-round-secret-with-sufficient-entropy";
-  return createPracticeRoundToken({ userId: "tester", puzzleId: "past-puzzle", wrongGuessCount });
+  const token = await createPracticeRoundToken({
+    userId: "tester",
+    puzzleId: "past-puzzle",
+    wrongGuessCount,
+  });
+  mockActivePracticeRoundTokens.add(token);
+  return token;
 }
 
 beforeEach(() => {
+  mockActivePracticeRoundTokens.clear();
   process.env.AUTH_SECRET = "test-only-practice-round-secret-with-sufficient-entropy";
   jest.useFakeTimers().setSystemTime(new Date("2026-10-25T12:00:00.000Z"));
   jest.clearAllMocks();
   jest.mocked(getAuthenticatedUser).mockResolvedValue({ userId: "tester" } as never);
   jest.mocked(resolveStableJourneyTimeZone).mockResolvedValue("UTC");
   jest.mocked(db.puzzleOps.findById).mockResolvedValue(puzzle as never);
+  jest.mocked(db.puzzleOps.findOldestPublishedBefore).mockResolvedValue(freeSamplePuzzle as never);
   jest.mocked(validateAnswer).mockResolvedValue({
     isCorrect: false,
     confidence: 0.15,
@@ -111,8 +137,41 @@ it("returns answer-blind feedback for an incorrect guess", async () => {
   expect(body.explanation).toBeUndefined();
   expect(body.attemptId).toBeUndefined();
   expect(typeof body.roundToken).toBe("string");
-  await expect(verifyPracticeRoundToken(body.roundToken, "tester", "past-puzzle")).resolves.toBe(1);
+  expect(db.puzzleOps.findOldestPublishedBefore).not.toHaveBeenCalled();
+  await expect(
+    verifyPracticeRoundToken(body.roundToken, "tester", "past-puzzle")
+  ).resolves.toMatchObject({ wrongGuessCount: 1, userId: "tester", puzzleId: "past-puzzle" });
   expect(validateAnswer).toHaveBeenCalledWith({ guess: "sunshine", correctAnswer: "moonlight" });
+});
+
+it("allows an unscored guess on the exact free archive sample without Plus proof", async () => {
+  const response = await submit(
+    { puzzleId: "free-sample", guess: "sunshine", attemptNumber: 1 },
+    false
+  );
+
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body).toMatchObject({ success: true, isPractice: true, unscored: true, correct: false });
+  expect(body.answer).toBeUndefined();
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+  expect(validateAnswer).toHaveBeenCalledWith({ guess: "sunshine", correctAnswer: "moonlight" });
+  expect(db.puzzleAttemptOps.createAtomicDailyAttempt).not.toHaveBeenCalled();
+  expect(db.dailyProgressOps.materializeFromAttempt).not.toHaveBeenCalled();
+  expect(updateUserStats).not.toHaveBeenCalled();
+  expect(checkAndAwardAchievements).not.toHaveBeenCalled();
+  expect(nativeGrowthEventOps.recordFinalAttemptSignal).not.toHaveBeenCalled();
+});
+
+it("keeps every non-sample archive puzzle behind Plus", async () => {
+  const response = await submit(
+    { puzzleId: "past-puzzle", guess: "sunshine", attemptNumber: 1 },
+    false
+  );
+
+  expect(response.status).toBe(403);
+  expect(db.puzzleOps.findById).not.toHaveBeenCalled();
+  expect(validateAnswer).not.toHaveBeenCalled();
 });
 
 it("returns the solution only when the guess is correct", async () => {
@@ -239,6 +298,27 @@ it("rejects a caller that skips ahead without the previous signed guess", async 
   expect(await response.json()).not.toHaveProperty("answer");
   expect(db.puzzleOps.findById).not.toHaveBeenCalled();
   expect(validateAnswer).not.toHaveBeenCalled();
+});
+
+it("rejects replaying a previously accepted round token", async () => {
+  const token = await roundToken(1);
+  const body = { puzzleId: "past-puzzle", guess: "sunshine", attemptNumber: 2, roundToken: token };
+
+  const first = await submit(body);
+  const replay = await submit(body);
+
+  expect(first.status).toBe(200);
+  expect(replay.status).toBe(409);
+  expect(validateAnswer).toHaveBeenCalledTimes(1);
+});
+
+it("allows only one concurrent request to advance a round token", async () => {
+  const token = await roundToken(1);
+  const body = { puzzleId: "past-puzzle", guess: "sunshine", attemptNumber: 2, roundToken: token };
+
+  const responses = await Promise.all([submit(body), submit(body)]);
+
+  expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
 });
 
 it("does not call daily scoring, progress, or learning writes", async () => {

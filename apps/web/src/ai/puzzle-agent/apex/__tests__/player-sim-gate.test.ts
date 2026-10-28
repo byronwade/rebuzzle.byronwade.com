@@ -1,16 +1,21 @@
 import { blindSolvePublishBlockers } from "../blind-solve-consensus";
+import { applyPlayerSimHeuristics } from "../player-sim";
 import type { PlayerSimResult } from "../types";
 
+jest.mock("../../../client", () => ({ generateAIObjectFromImage: jest.fn() }));
+
 function passingSim(): PlayerSimResult {
-  const blindProfileResults = ["compact-320", "mobile-375", "desktop-768"].map((profileId) => ({
-    profileId,
-    judgeCount: 2,
-    targetFoundBy: 2,
-    topTargetFoundBy: 2,
-    dominantTargetFoundBy: 2,
-    meanReciprocalRank: 1,
-    strongestWrongConfidence: 0.2,
-  }));
+  const blindProfileResults = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"].map(
+    (profileId) => ({
+      profileId,
+      judgeCount: 2,
+      targetFoundBy: 2,
+      topTargetFoundBy: 2,
+      dominantTargetFoundBy: 2,
+      meanReciprocalRank: 1,
+      strongestWrongConfidence: 0.2,
+    })
+  );
   return {
     firstWrongParses: [],
     likelySolvePath: "Visible cue mapping",
@@ -18,12 +23,12 @@ function passingSim(): PlayerSimResult {
     unfairReasons: [],
     estimatedSolveRate: 0.55,
     confidence: 0.8,
-    blindProfileCount: 3,
-    blindProfilesWithTarget: 3,
-    blindTopTargetFoundBy: 3,
-    blindDominantTargetFoundBy: 3,
-    blindProfilesWithTopTarget: 3,
-    blindProfilesWithDominantTarget: 3,
+    blindProfileCount: 4,
+    blindProfilesWithTarget: 4,
+    blindTopTargetFoundBy: 4,
+    blindDominantTargetFoundBy: 4,
+    blindProfilesWithTopTarget: 4,
+    blindProfilesWithDominantTarget: 4,
     blindMeanReciprocalRank: 0.8,
     blindStrongestWrongConfidence: 0.35,
     blindRequiredVotes: 2,
@@ -108,5 +113,19 @@ describe("blind solve publication gate", () => {
 
     expect(blockers.join(" ")).toContain("missing: compact-320");
     expect(blockers.join(" ")).toContain("unexpected: unknown-profile");
+  });
+});
+
+describe("player simulation difficulty evidence", () => {
+  it("preserves the blind solver estimate for Impossible-tier candidates", () => {
+    const raw = { ...passingSim(), estimatedSolveRate: 0.92 };
+
+    const result = applyPlayerSimHeuristics(raw, {
+      answer: "A HARD ANSWER",
+      hints: ["Look carefully", "Notice the arrangement", "A HARD ANSWER"],
+      tierLabel: "Impossible",
+    });
+
+    expect(result.estimatedSolveRate).toBe(0.92);
   });
 });

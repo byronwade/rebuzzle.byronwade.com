@@ -9,9 +9,12 @@ struct JournalView: View {
                 Text("Keep the moments when it clicked.")
                     .font(Theme.font(24, weight: .medium, relativeTo: .title2)).tracking(-0.5)
                 if model.purchases.hasPlus && !model.journal.entries.isEmpty {
-                    Text("\(model.journal.entries.count) connections kept on this device")
+                    Text("\(model.journal.entries.count) connections in your journal")
                         .font(Theme.font(14)).foregroundStyle(Theme.secondary)
                 }
+            }
+            if model.purchases.hasPlus {
+                journalSyncNotice
             }
             if !model.purchases.hasPlus {
                 VStack(alignment: .leading, spacing: 16) {
@@ -21,7 +24,7 @@ struct JournalView: View {
                         Text("Study completed puzzles again, reveal the answer when you’re ready, and keep a note. Unlock your journal with Plus.")
                             .font(Theme.font(15)).foregroundStyle(Theme.secondary)
                     }
-                    NavigationLink { PlusView() } label: {
+                    NavigationLink(value: RebuzzleRoute.plus) {
                         Text("Explore Rebuzzle Plus").padding(.horizontal, 16).padding(.vertical, 8)
                     }.buttonStyle(CommitStyle())
                     Text("Completed results are already saved locally, ready when you unlock Plus.")
@@ -37,7 +40,7 @@ struct JournalView: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(model.journal.entries) { entry in
-                        NavigationLink { JournalDetail(entry: entry, accountID: model.player?.id) } label: {
+                        NavigationLink(value: RebuzzleRoute.journalEntry(entryID: entry.id, accountID: model.player?.id)) {
                             HStack(alignment: .top, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     let puzzleType = entry.puzzleType
@@ -59,9 +62,115 @@ struct JournalView: View {
             if !model.journal.entries.isEmpty {
                 ShareLink(item: model.journal.exportText) { Label("Export your journal", systemImage: "square.and.arrow.up") }.font(Theme.font(14)).frame(minHeight: 44)
             }
-            Notice(message: "Saved on this device for this Rebuzzle account. Export a copy before changing devices. Restoring Plus restores the purchase, not journal data.")
+            ForEach(model.journalSyncConflicts) { conflict in
+                conflictCard(conflict)
+            }
             if let error = model.storageError { Notice(message: error) }
-        }.navigationTitle("Journal").navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationTitle("Journal")
+        .navigationBarTitleDisplayMode(.inline)
+        #if DEBUG
+        .toolbar {
+            if ProcessInfo.processInfo.arguments.contains("--ui-fixture") {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button("Simulate share return", systemImage: "link") {
+                        if let url = URL(string: DailyShareSummary.shareURL) {
+                            ReturnRouter.shared.open(url)
+                        }
+                    }
+                    .accessibilityIdentifier("uiSimulateShareLink")
+                    Button("Simulate identity change", systemImage: "person.crop.circle.badge.xmark") {
+                        Task { await model.signOut() }
+                    }
+                    .accessibilityIdentifier("uiSimulateIdentityChange")
+                }
+            }
+        }
+        #endif
+    }
+
+    private var journalSyncNotice: some View {
+        let message: String
+        let symbol: String
+        switch model.journalSyncStatus {
+        case .onDevice:
+            message = model.player?.guest == false
+                ? "Your notes are on this device. They sync when Plus access is available."
+                : "Your notes are saved on this device. Sign in with Plus to sync them across devices."
+            symbol = "iphone"
+        case .syncing:
+            message = "Syncing your journal with your Rebuzzle account…"
+            symbol = "arrow.triangle.2.circlepath"
+        case .synced:
+            message = "Your journal is synced with this Rebuzzle account. Offline edits will sync when you reconnect."
+            symbol = "checkmark.icloud"
+        case .offline:
+            message = "Your notes are safe on this device. Tap Retry sync when you’re connected."
+            symbol = "icloud.slash"
+        case .historyArriving:
+            message = "Your notes are safe. Older puzzle history is still arriving."
+            symbol = "clock.arrow.circlepath"
+        case .conflict:
+            message = "A note changed on another device. Choose which version to keep or combine them."
+            symbol = "arrow.left.arrow.right"
+        }
+        return VStack(alignment: .leading, spacing: 8) {
+            Label(message, systemImage: symbol)
+                .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if model.journalSyncStatus == .offline {
+                Button("Retry sync", systemImage: "arrow.clockwise") {
+                    Task { await model.syncJournal() }
+                }
+                .frame(minHeight: 44)
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("retryJournalSync")
+            }
+        }
+        .padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("journalSyncStatus")
+    }
+
+    private func conflictCard(_ conflict: JournalSyncConflict) -> some View {
+        let combinedNote = [conflict.localNote, conflict.accountNote]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+        let canCombine = JournalNoteLimits.truncated(combinedNote) == combinedNote
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("This note changed on another device")
+                .font(Theme.font(16, weight: .medium))
+            VStack(alignment: .leading, spacing: 10) {
+                conflictVersion(title: "THIS DEVICE", note: conflict.localNote)
+                conflictVersion(title: "YOUR ACCOUNT", note: conflict.accountNote)
+            }
+            Button("Keep this device") {
+                model.resolveJournalConflict(puzzleID: conflict.puzzleID, choice: .device)
+            }.frame(maxWidth: .infinity, minHeight: 44).buttonStyle(.bordered).tint(Theme.ink)
+            Button("Use account version") {
+                model.resolveJournalConflict(puzzleID: conflict.puzzleID, choice: .account)
+            }.frame(maxWidth: .infinity, minHeight: 44).buttonStyle(.bordered).tint(Theme.ink)
+            Button("Combine both notes") {
+                model.resolveJournalConflict(puzzleID: conflict.puzzleID, choice: .combine)
+            }.frame(maxWidth: .infinity, minHeight: 44).buttonStyle(CommitStyle()).disabled(!canCombine)
+            if !canCombine {
+                Text("Together these notes are too long to combine. Edit this device’s note in Study puzzle, then keep this device.")
+                    .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier("journalConflict.\(conflict.puzzleID)")
+    }
+
+    private func conflictVersion(title: String, note: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow(text: title)
+            Text(note.isEmpty ? "No note" : note)
+                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                .lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 struct JournalDetail: View {
@@ -128,9 +237,15 @@ struct JournalDetail: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 VStack(alignment: .leading, spacing: 12) {
                     Text("What made it click?").font(Theme.font(17, weight: .medium))
-                    TextField("A thought to keep…", text: $note, axis: .vertical).lineLimit(4...12).modifier(FieldStyle())
+                    TextField(
+                        "A thought to keep…",
+                        text: Binding(get: { note }, set: { note = JournalNoteLimits.truncated($0) }),
+                        axis: .vertical
+                    ).lineLimit(4...12).modifier(FieldStyle())
                         .disabled(!model.purchases.hasPlus)
-                    Text("Your note stays on this device and saves as you write.")
+                    Text(model.player?.guest == false && model.purchases.hasPlus
+                         ? "Saved on this device and synced to your Rebuzzle account when you’re online."
+                         : "Saved on this device and ready to sync when you sign in with Plus.")
                         .font(Theme.font(12)).foregroundStyle(Theme.secondary)
                 }
             } else {
@@ -145,7 +260,7 @@ struct JournalDetail: View {
             .onChange(of: note) { _, value in
                 guard answerRevealed, model.player?.id == accountID, model.purchases.hasPlus,
                       let index = model.journal.entries.firstIndex(where: { $0.id == entry.id }) else { return }
-                model.journal.entries[index].note = String(value.prefix(10_000)); model.saveJournal()
+                model.journal.entries[index].note = JournalNoteLimits.truncated(value); model.saveJournal()
             }
     }
 

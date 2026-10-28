@@ -1,15 +1,15 @@
 /**
  * Viewport-invariant layout planning.
  *
- * Row breaks and grid columns are computed once from a canonical compact
- * profile (or a fixed column rule), then reused at every recognition width so
+ * Row breaks and grid columns are computed once from a canonical large-tile
+ * profile at the minimum supported width (or a fixed column rule), then reused at every recognition width so
  * flex-wrap cannot change cue adjacency or meaning.
  */
 
 import {
   getPuzzleBoardRecognitionProfile,
   PUZZLE_BOARD_SIZE_SPECS,
-  type PuzzleBoardRecognitionProfile,
+  type PuzzleBoardRecognitionProfileId,
   type PuzzleBoardSize,
   puzzleBoardFontSize,
   puzzleBoardOperatorWidth,
@@ -26,7 +26,27 @@ function clampPercent(value: number): number {
  */
 export type LayoutPlanVisual = {
   layout?: "row" | "stack" | "grid" | "overlay" | "free";
+  freeCanvasHeight?: number;
   layers: readonly LayoutPlanLayer[];
+};
+
+export type PuzzleBoardLayoutOptions = {
+  size?: PuzzleBoardSize;
+  /** Optional fluid player width between canonical review profiles. */
+  viewportWidth?: number;
+  /** Optional fluid player padding between canonical review profiles. */
+  padding?: number;
+  rowIndexes?: number[][];
+  /** Minimum total height for a temporary free layout, including outer padding. */
+  freeCanvasHeight?: number;
+};
+
+type PuzzleBoardLayoutProfile = {
+  id: PuzzleBoardRecognitionProfileId;
+  viewportWidth: number;
+  padding: number;
+  size: PuzzleBoardSize;
+  freeCanvasHeight?: number;
 };
 
 export type LayoutPlanLayer = {
@@ -56,12 +76,14 @@ export type LockedLayoutPlan = {
   locked: true;
 };
 
-/** Narrowest production profile — the topology source of truth. */
-export const LAYOUT_LOCK_CANONICAL_PROFILE_ID = "compact-320" as const;
+/** Recognition profile that supplies the large game tile size for locked rows. */
+export const LAYOUT_LOCK_CANONICAL_PROFILE_ID = "mobile-375" as const;
+/** Minimum supported game-board width; row topology must fit large tiles here. */
+export const LAYOUT_LOCK_MINIMUM_WIDTH = 320;
 
 export function estimateLayerBox(
   layer: LayoutPlanLayer,
-  profile: PuzzleBoardRecognitionProfile,
+  profile: PuzzleBoardLayoutProfile,
   availableWidth: number
 ): LayoutBox {
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
@@ -83,10 +105,29 @@ export function estimateLayerBox(
   return {
     width: Math.max(
       size.tile * 0.7,
-      Math.min(availableWidth, content.length * fontSize * 0.68 + fontSize * 0.5)
+      Math.min(availableWidth, estimateTextNaturalWidth(content, fontSize))
     ),
     height: size.tile,
   };
+}
+
+function estimateTextNaturalWidth(content: string, fontSize: number): number {
+  return content.length * fontSize * 0.68 + fontSize * 0.5;
+}
+
+/** Shared text fit scale used by the browser board and the server SVG renderer. */
+export function estimateTextFontScale(
+  layer: LayoutPlanLayer,
+  availableWidth: number,
+  sizeName: PuzzleBoardSize
+): number {
+  if (layer.kind !== "text" || layer.emphasis === "stacked") return 1;
+  const baseFontSize = puzzleBoardFontSize(
+    layer.emphasis,
+    PUZZLE_BOARD_SIZE_SPECS[sizeName].fontSize
+  );
+  const naturalWidth = estimateTextNaturalWidth(layer.content ?? "", baseFontSize);
+  return naturalWidth > availableWidth ? availableWidth / naturalWidth : 1;
 }
 
 function planRows(
@@ -148,8 +189,13 @@ export function planLockedRowIndexes(visual: LayoutPlanVisual): number[][] {
     return rows;
   }
 
-  // row (default): wrap plan from the canonical compact profile only
-  const canonical = getPuzzleBoardRecognitionProfile(LAYOUT_LOCK_CANONICAL_PROFILE_ID);
+  // Row topology is locked using large player tiles at the narrowest supported
+  // width. This keeps the visible row membership stable without overflowing
+  // the 72px artwork on narrow phones.
+  const canonical = {
+    ...getPuzzleBoardRecognitionProfile(LAYOUT_LOCK_CANONICAL_PROFILE_ID),
+    viewportWidth: LAYOUT_LOCK_MINIMUM_WIDTH,
+  };
   const availableWidth = canonical.viewportWidth - canonical.padding * 2;
   const gap = PUZZLE_BOARD_SIZE_SPECS[canonical.size].gap;
   const boxes = layers.map((layer) => estimateLayerBox(layer, canonical, availableWidth));
@@ -161,7 +207,7 @@ export function planLockedRowIndexes(visual: LayoutPlanVisual): number[][] {
  */
 export function layoutLayersLocked(
   visual: LayoutPlanVisual,
-  profile: PuzzleBoardRecognitionProfile,
+  profile: PuzzleBoardLayoutProfile,
   rowIndexes: number[][] = planLockedRowIndexes(visual)
 ): LockedLayoutPlan {
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
@@ -249,7 +295,10 @@ export function layoutLayersLocked(
 
   if (visual.layout === "free") {
     const boardWidth = availableWidth;
-    const boardHeight = Math.max(size.tile * 2.4, Math.round(boardWidth * (10 / 16)));
+    const minimumHeight = Math.max(size.tile * 2.4, Math.round(boardWidth * (10 / 16)));
+    const requestedCanvasHeight = profile.freeCanvasHeight ?? visual.freeCanvasHeight ?? 0;
+    const requestedHeight = Math.max(0, requestedCanvasHeight - profile.padding * 2);
+    const boardHeight = Math.max(minimumHeight, requestedHeight);
     const positions = boxes.map((box, index) => {
       const layer = layers[index];
       const cx =
@@ -306,6 +355,23 @@ export function layoutLayersLocked(
     wrappedRows: rowIndexes.length,
     locked: true,
   };
+}
+
+export function layoutPuzzleBoard(
+  visual: LayoutPlanVisual,
+  profileId: PuzzleBoardRecognitionProfileId,
+  options: PuzzleBoardLayoutOptions = {}
+): LockedLayoutPlan {
+  const baseProfile = getPuzzleBoardRecognitionProfile(profileId);
+  const profile: PuzzleBoardLayoutProfile = {
+    ...baseProfile,
+    size: options.size ?? baseProfile.size,
+    viewportWidth: options.viewportWidth ?? baseProfile.viewportWidth,
+    padding: options.padding ?? baseProfile.padding,
+    freeCanvasHeight: options.freeCanvasHeight,
+  };
+
+  return layoutLayersLocked(visual, profile, options.rowIndexes);
 }
 
 /**

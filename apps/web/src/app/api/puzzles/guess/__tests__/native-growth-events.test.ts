@@ -131,9 +131,21 @@ it.each([
 
   expect(response.status).toBe(200);
   expect(nativeGrowthEventOps.recordOnce).not.toHaveBeenCalled();
-  expect(mockAfterCallbacks).toHaveLength(1);
-  await mockAfterCallbacks[0]!();
+  expect(mockAfterCallbacks).toHaveLength(isCorrect ? 2 : 1);
+  await Promise.all(mockAfterCallbacks.map((callback) => callback()));
 
+  if (isCorrect) {
+    expect(nativeGrowthEventOps.recordOnce).toHaveBeenCalledWith({
+      userId: "self",
+      eventType: "daily_started",
+      dayKey: "2026-10-25",
+      occurredAt: expect.any(Date),
+    });
+  } else {
+    expect(nativeGrowthEventOps.recordOnce).not.toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "daily_started" })
+    );
+  }
   expect(nativeGrowthEventOps.recordOnce).toHaveBeenCalledWith({
     userId: "self",
     eventType: "daily_finished",
@@ -149,15 +161,22 @@ it.each([
   );
 });
 
-it("doesNotRecordArchiveOrNonterminalAttempts", async () => {
+it("doesNotRecordArchiveEventsOrFinishNonterminalAttempts", async () => {
   await guess({ publishedAt: new Date("2026-10-24T00:00:00.000Z"), dailyOnly: false });
   await mockAfterCallbacks[0]!();
   expect(nativeGrowthEventOps.recordOnce).not.toHaveBeenCalled();
 
   mockAfterCallbacks.length = 0;
   await guess({ isCorrect: false, guessCount: 0 });
-  expect(mockAfterCallbacks).toHaveLength(0);
-  expect(nativeGrowthEventOps.recordOnce).not.toHaveBeenCalled();
+  expect(mockAfterCallbacks).toHaveLength(1);
+  await mockAfterCallbacks[0]!();
+  expect(nativeGrowthEventOps.recordOnce).toHaveBeenCalledTimes(1);
+  expect(nativeGrowthEventOps.recordOnce).toHaveBeenCalledWith({
+    userId: "self",
+    eventType: "daily_started",
+    dayKey: "2026-10-25",
+    occurredAt: expect.any(Date),
+  });
 });
 
 it("doesNotRecordWhenAttemptWriteFailsOrDuplicates", async () => {

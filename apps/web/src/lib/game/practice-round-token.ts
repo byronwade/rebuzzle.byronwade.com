@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 const ROUND_TOKEN_LIFETIME_SECONDS = 24 * 60 * 60;
 const MAX_WRONG_GUESSES = 3;
@@ -7,6 +7,15 @@ export interface PracticeRoundTokenClaims {
   userId: string;
   puzzleId: string;
   wrongGuessCount: number;
+  roundId?: string;
+}
+
+export interface VerifiedPracticeRoundTokenClaims {
+  userId: string;
+  puzzleId: string;
+  wrongGuessCount: number;
+  roundId: string;
+  expiresAt: Date;
 }
 
 function getSecret(): string {
@@ -29,7 +38,11 @@ export async function createPracticeRoundToken(claims: PracticeRoundTokenClaims)
     !claims.puzzleId ||
     !Number.isInteger(claims.wrongGuessCount) ||
     claims.wrongGuessCount < 0 ||
-    claims.wrongGuessCount > MAX_WRONG_GUESSES
+    claims.wrongGuessCount > MAX_WRONG_GUESSES ||
+    (claims.roundId !== undefined &&
+      (typeof claims.roundId !== "string" ||
+        claims.roundId.length === 0 ||
+        claims.roundId.length > 128))
   ) {
     throw new Error("Invalid practice round token claims");
   }
@@ -41,6 +54,7 @@ export async function createPracticeRoundToken(claims: PracticeRoundTokenClaims)
     sub: claims.userId,
     puzzleId: claims.puzzleId,
     wrongGuessCount: claims.wrongGuessCount,
+    roundId: claims.roundId ?? randomUUID(),
     iat: issuedAt,
     exp: issuedAt + ROUND_TOKEN_LIFETIME_SECONDS,
   });
@@ -52,7 +66,7 @@ export async function verifyPracticeRoundToken(
   token: unknown,
   userId: string,
   puzzleId: string
-): Promise<number | null> {
+): Promise<VerifiedPracticeRoundTokenClaims | null> {
   if (typeof token !== "string" || token.length > 4096 || !userId || !puzzleId) return null;
 
   try {
@@ -69,6 +83,7 @@ export async function verifyPracticeRoundToken(
       sub?: unknown;
       puzzleId?: unknown;
       wrongGuessCount?: unknown;
+      roundId?: unknown;
       iat?: unknown;
       exp?: unknown;
     };
@@ -96,6 +111,9 @@ export async function verifyPracticeRoundToken(
       payload.purpose !== "practice-round" ||
       payload.sub !== userId ||
       payload.puzzleId !== puzzleId ||
+      typeof payload.roundId !== "string" ||
+      payload.roundId.length === 0 ||
+      payload.roundId.length > 128 ||
       typeof wrongGuessCount !== "number" ||
       !Number.isInteger(wrongGuessCount) ||
       wrongGuessCount < 0 ||
@@ -103,7 +121,13 @@ export async function verifyPracticeRoundToken(
     ) {
       return null;
     }
-    return wrongGuessCount;
+    return {
+      userId,
+      puzzleId,
+      wrongGuessCount,
+      roundId: payload.roundId,
+      expiresAt: new Date(payload.exp * 1000),
+    };
   } catch {
     return null;
   }

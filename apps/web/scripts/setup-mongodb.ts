@@ -9,6 +9,7 @@
 
 import { config } from "dotenv";
 import { MongoClient } from "mongodb";
+import { getMongoDatabaseName } from "../src/lib/env";
 
 // Load environment variables
 config({ path: ".env.local" });
@@ -33,8 +34,7 @@ async function setupMongoDB() {
     const client = new MongoClient(connectionString);
     await client.connect();
 
-    const uriHasDbPath = /mongodb(?:\+srv)?:\/\/[^/]+\/[^/?]+/.test(connectionString);
-    const db = uriHasDbPath ? client.db() : client.db(process.env.MONGODB_DB || "rebuzzle");
+    const db = client.db(getMongoDatabaseName(connectionString));
     console.log("✅ Connected to MongoDB successfully!");
 
     // Create collections with indexes

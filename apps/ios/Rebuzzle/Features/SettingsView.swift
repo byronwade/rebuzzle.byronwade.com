@@ -22,34 +22,35 @@ struct SettingsView: View {
             Section {
                 if let player = model.player {
                     LabeledContent("Playing as", value: player.guest ? "Guest" : player.username)
+                        .accessibilityIdentifier("settingsIdentityLoaded")
                     if player.guest {
-                        NavigationLink("Save this journey with an account") { GuestUpgradeView() }
-                        NavigationLink("Sign in to an existing account") { SignInView() }
+                        NavigationLink("Save this journey with an account", value: RebuzzleRoute.guestUpgrade)
+                        NavigationLink("Sign in to an existing account", value: RebuzzleRoute.signIn)
                     } else {
                         Button("Sign out") { Task { await model.signOut() } }.disabled(model.busy || model.submitting)
                     }
                 } else {
-                    NavigationLink("Sign in") { SignInView() }
+                    NavigationLink("Sign in", value: RebuzzleRoute.signIn)
                     Link("Create an account", destination: URL(string: "https://rebuzzle.byronwade.com/signup")!)
                 }
                 if let message = model.accountError { Text(message).foregroundStyle(Theme.error) }
             } header: { Text("Your account") } footer: {
                 Text(model.player?.guest == true
-                     ? "Daily puzzles reset according to the time zone saved to this guest profile. Creating an account keeps this Journey under the same identity; journal notes stay on this device."
-                     : "Daily puzzles reset using the time zone saved to this account, keeping the puzzle day consistent across devices. Journal notes stay on this device.")
+                     ? "Daily puzzles reset according to the time zone saved to this guest profile. Creating an account keeps this Journey under the same identity; guest journal notes can sync after you upgrade with Plus."
+                     : "Daily puzzles reset using the time zone saved to this account, keeping the puzzle day consistent across devices. With Plus, journal notes sync to this account and remain available offline.")
             }
             Section("Make it yours") {
                 Picker("Appearance", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
                 Toggle("Haptic feedback", isOn: $haptics)
-                NavigationLink("Daily reminder") { ReminderView() }
+                NavigationLink("Daily reminder", value: RebuzzleRoute.reminder)
             }
             Section {
-                NavigationLink("Rebuzzle Plus") { PlusView() }
+                NavigationLink("Rebuzzle Plus", value: RebuzzleRoute.plus)
                 Button("Restore purchases") { Task { await model.purchases.restore() } }.disabled(model.purchases.busy)
                 if let message = model.purchases.message { Text(message).font(.footnote).foregroundStyle(Theme.secondary) }
             } header: { Text("A little more Rebuzzle") }
             Section("About") {
-                NavigationLink("How to play") { HelpView() }
+                NavigationLink("How to play", value: RebuzzleRoute.help)
                 Link("Privacy policy", destination: URL(string: "https://rebuzzle.byronwade.com/privacy")!)
                 Link("Terms of use", destination: URL(string: "https://rebuzzle.byronwade.com/terms")!)
                 Link("Help and feedback", destination: URL(string: "https://rebuzzle.byronwade.com/how-it-works#feedback")!)
@@ -60,7 +61,7 @@ struct SettingsView: View {
             }
             if model.player != nil {
                 Section {
-                    NavigationLink { DeleteAccountView() } label: { Text("Delete account").foregroundStyle(Theme.error) }
+                    NavigationLink(value: RebuzzleRoute.deleteAccount) { Text("Delete account").foregroundStyle(Theme.error) }
                 } footer: { Text("Permanently removes your account and associated gameplay data. Export your journal first if you want to keep it.") }
             }
         }
@@ -111,7 +112,7 @@ struct GuestUpgradeView: View {
                     HStack { Text("Save my journey"); if model.busy { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") } }
                 }.buttonStyle(CommitStyle()).disabled(model.busy || model.submitting)
             }
-            Notice(message: "This converts your guest account in place. Your puzzle history stays with it; private journal notes remain on this device. Signing into another account does not merge progress.")
+            Notice(message: "This converts your guest account in place. Your puzzle history stays with it; guest journal notes sync after the upgrade when you have Plus. Signing into another account does not merge progress or notes.")
         }
         .navigationTitle("Create account").navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -153,7 +154,7 @@ struct DeleteAccountView: View {
     var body: some View {
         Page {
             Text("Leave with a clean slate.").font(Theme.font(30, weight: .medium))
-            Text("Deleting your account permanently removes its gameplay history and personal account data, including this account’s local journal. This cannot be undone. Your Apple purchase history is managed by Apple.").font(Theme.font(16))
+            Text("Deleting your account permanently removes its gameplay history and personal account data, including synced journal notes and this account’s local journal. This cannot be undone. Your Apple purchase history is managed by Apple.").font(Theme.font(16))
             if !model.journal.entries.isEmpty { ShareLink(item: model.journal.exportText) { Label("Export journal first", systemImage: "square.and.arrow.up") } }
             if model.player?.guest == false {
                 VStack(alignment: .leading, spacing: 12) { Text("Confirm your password"); SecureField("Current password", text: $password).textContentType(.password).modifier(FieldStyle()) }
@@ -164,7 +165,7 @@ struct DeleteAccountView: View {
             .alert("Permanently delete your account?", isPresented: $confirmation) {
                 Button("Keep account", role: .cancel) {}
                 Button("Delete account", role: .destructive) { Task { if await model.deleteAccount(password: password) { dismiss() } } }
-            } message: { Text("Your account, progress, and local journal will be removed. This cannot be undone.") }
+            } message: { Text("Your account, progress, and journal notes will be removed from Rebuzzle and this device. This cannot be undone.") }
     }
 }
 struct ReminderView: View {

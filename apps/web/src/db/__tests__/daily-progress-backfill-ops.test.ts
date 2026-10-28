@@ -4,6 +4,7 @@ import {
   dailyProgressOps,
   puzzleAttemptOps,
   userOps,
+  userStatsOps,
 } from "../operations";
 
 jest.mock("@/db/mongodb", () => ({ getCollection: jest.fn() }));
@@ -68,6 +69,63 @@ it("repairs a malformed non-string account zone using an exact compare-and-set",
       { journeyTimeZone: 0 },
     ],
   });
+});
+
+it("atomically applies a stats patch once per completion event", async () => {
+  const updateOne = jest.fn().mockResolvedValue({ matchedCount: 1 });
+  mockGetCollection.mockReturnValue({ updateOne } as never);
+
+  await expect(
+    userStatsOps.updateStatsOnce("user-1", "daily:2026-10-24", { points: 10 })
+  ).resolves.toBe(true);
+
+  expect(updateOne).toHaveBeenCalledWith(
+    { userId: "user-1", appliedStatsEventIds: { $ne: "daily:2026-10-24" } },
+    {
+      $set: expect.objectContaining({ points: 10, updatedAt: expect.any(Date) }),
+      $addToSet: { appliedStatsEventIds: "daily:2026-10-24" },
+    }
+  );
+});
+
+it("returns expired extended runs that already have a finalization row for safe stats retry", async () => {
+  const rows = [1, 2, 3].map((attemptNumber) => ({
+    userId: "user-1",
+    puzzleId: "puzzle-1",
+    puzzleDate: "2026-10-24",
+    attemptedAt: new Date(`2026-10-24T12:0${attemptNumber}:00.000Z`),
+    attemptNumber,
+    playMode: "extended",
+    isScoredAttempt: true,
+    maxAttempts: 3,
+    isFinal: false,
+  }));
+  rows.push({
+    ...rows[0]!,
+    attemptedAt: new Date("2026-10-25T00:00:00.000Z"),
+    attemptNumber: 4,
+    isScoredAttempt: false,
+    isFinal: true,
+    attemptType: "finalization",
+    finalizationReason: "expired",
+  } as never);
+  const toArray = jest.fn().mockResolvedValue(rows);
+  const sort = jest.fn().mockReturnValue({ toArray });
+  const find = jest.fn().mockReturnValue({ sort });
+  mockGetCollection.mockReturnValue({ find } as never);
+
+  const runs = await puzzleAttemptOps.findExpiredExtendedDailyRuns("user-1", "2026-10-25");
+
+  expect(find).toHaveBeenCalledWith(
+    expect.objectContaining({
+      $or: expect.arrayContaining([
+        { isFinal: { $ne: true }, attemptType: { $ne: "finalization" } },
+        { isFinal: true, attemptType: "finalization" },
+      ]),
+    })
+  );
+  expect(runs).toHaveLength(1);
+  expect(runs[0]?.attempts).toHaveLength(4);
 });
 
 it("returns the concurrent valid zone when an invalid legacy value changed first", async () => {

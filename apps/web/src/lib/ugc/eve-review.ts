@@ -46,6 +46,7 @@ export type EveReviewInput = {
   difficulty: number;
   visual: {
     layout?: PuzzleVisual["layout"];
+    freeCanvasHeight?: PuzzleVisual["freeCanvasHeight"];
     layers: PuzzleVisual["layers"];
     caption?: string;
   };
@@ -723,6 +724,9 @@ export async function runEveStudioReview(
         styleId: INK_PICTOGRAM_STYLE_ID,
         mode: "composed",
         layout: input.visual.layout ?? "row",
+        ...(input.visual.freeCanvasHeight !== undefined
+          ? { freeCanvasHeight: input.visual.freeCanvasHeight }
+          : {}),
         layers: input.visual.layers,
         unicodeFallback: "◆",
       },

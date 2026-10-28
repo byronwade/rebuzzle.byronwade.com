@@ -25,8 +25,143 @@ final class EveReplyTests: XCTestCase {
         let store = EveReplyStore(storage: LocalStore(root: root)) { _, _, _, _ in throw URLError(.notConnectedToInternet) }
         store.activate(accountID: "a", puzzleID: "p")
         await store.request(guess: Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction()))?.value
-        XCTAssertNil(store.pendingAttempt)
+        XCTAssertTrue(store.pendingAttempts.isEmpty)
         XCTAssertTrue(store.replies.isEmpty)
+        XCTAssertEqual(store.failedAttempts, Set([1]))
+    }
+
+    @MainActor func testFailedReplyCanRetryTheSameConfirmedGuess() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var requests: [(String, Int)] = []
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, guess, _, update in
+            requests.append((guess.guess, guess.attemptNumber))
+            if requests.count == 1 { throw URLError(.notConnectedToInternet) }
+            update("Look at the relationship between the clues.")
+        }
+        store.activate(accountID: "a", puzzleID: "p")
+        let guess = Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction())
+
+        XCTAssertNil(store.retry(guess: guess))
+        await store.request(guess: guess)?.value
+        XCTAssertEqual(store.failedAttempts, Set([1]))
+
+        let retry = store.retry(guess: guess)
+        XCTAssertNotNil(retry)
+        await retry?.value
+
+        XCTAssertEqual(requests.map(\.0), ["sun", "sun"])
+        XCTAssertEqual(requests.map(\.1), [1, 1])
+        XCTAssertTrue(store.failedAttempts.isEmpty)
+        XCTAssertTrue(store.pendingAttempts.isEmpty)
+        XCTAssertEqual(store.replies[1], "Look at the relationship between the clues.")
+    }
+
+    @MainActor func testBlankReplyIsRetryable() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, _, _, update in update(" \n\t") }
+        store.activate(accountID: "a", puzzleID: "p")
+
+        await store.request(guess: Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction()))?.value
+
+        XCTAssertNil(store.replies[1])
+        XCTAssertEqual(store.failedAttempts, Set([1]))
+    }
+
+    @MainActor func testTimedOutReplyCanBeRetried() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, _, _, _ in
+            try await Task.sleep(for: .seconds(30))
+        }
+        store.activate(accountID: "a", puzzleID: "p")
+
+        await store.request(guess: Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction()))?.value
+
+        XCTAssertTrue(store.pendingAttempts.isEmpty)
+        XCTAssertEqual(store.failedAttempts, Set([1]))
+    }
+
+    @MainActor func testFailureStateDoesNotCrossAccounts() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, _, _, _ in throw URLError(.notConnectedToInternet) }
+        store.activate(accountID: "a", puzzleID: "p")
+        await store.request(guess: Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction()))?.value
+        XCTAssertEqual(store.failedAttempts, Set([1]))
+
+        store.activate(accountID: "b", puzzleID: "p")
+
+        XCTAssertTrue(store.failedAttempts.isEmpty)
+    }
+
+    @MainActor func testRetryDoesNotCancelAnotherEveReplyInProgress() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var attemptOneRequests = 0
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, guess, _, update in
+            if guess.attemptNumber == 1 {
+                attemptOneRequests += 1
+                if attemptOneRequests == 1 { throw URLError(.notConnectedToInternet) }
+            }
+            try await Task.sleep(for: .milliseconds(40))
+            update("Reply for guess \(guess.attemptNumber).")
+        }
+        store.activate(accountID: "a", puzzleID: "p")
+        let failedGuess = Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction())
+        let currentGuess = Guess(guess: "flower", correct: false, attemptNumber: 2, reaction: try reaction())
+        await store.request(guess: failedGuess)?.value
+
+        let currentReply = store.request(guess: currentGuess)
+        let retry = store.retry(guess: failedGuess)
+        defer { retry?.cancel() }
+
+        XCTAssertNotNil(retry)
+        XCTAssertEqual(store.pendingAttempts, Set([1, 2]))
+        await currentReply?.value
+        await retry?.value
+        XCTAssertEqual(store.pendingAttempts, [])
+        XCTAssertEqual(store.replies[1], "Reply for guess 1.")
+        XCTAssertEqual(store.replies[2], "Reply for guess 2.")
+    }
+
+    @MainActor func testNewGuessDoesNotCancelEarlierEveReply() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var firstRequestStarted = false
+        var releaseFirstRequest: CheckedContinuation<Void, Never>?
+        let store = EveReplyStore(storage: LocalStore(root: root)) { _, guess, _, update in
+            if guess.attemptNumber == 1 {
+                firstRequestStarted = true
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    releaseFirstRequest = continuation
+                }
+                update("The first guess has a connection worth following.")
+            } else {
+                update("The second guess shifts the picture.")
+            }
+        }
+        store.activate(accountID: "a", puzzleID: "p")
+        let firstGuess = Guess(guess: "sun", correct: false, attemptNumber: 1, reaction: try reaction())
+        let secondGuess = Guess(guess: "moon", correct: false, attemptNumber: 2, reaction: try reaction())
+
+        let firstReply = store.request(guess: firstGuess)
+        while !firstRequestStarted { await Task.yield() }
+        XCTAssertEqual(store.pendingAttempts, Set([1]))
+
+        let secondReply = store.request(guess: secondGuess)
+        XCTAssertEqual(store.pendingAttempts, Set([1, 2]))
+        await secondReply?.value
+        XCTAssertEqual(store.pendingAttempts, Set([1]))
+        let resumeFirst = releaseFirstRequest
+        releaseFirstRequest = nil
+        resumeFirst?.resume()
+        await firstReply?.value
+
+        XCTAssertEqual(store.replies[1], "The first guess has a connection worth following.")
+        XCTAssertEqual(store.replies[2], "The second guess shifts the picture.")
+        XCTAssertTrue(store.failedAttempts.isEmpty)
     }
 
     @MainActor func testLateResponseCannotCrossAccountAndCachedReplyRestores() async throws {
@@ -53,7 +188,7 @@ final class EveReplyTests: XCTestCase {
         late.activate(accountID: "b", puzzleID: "p")
         await work?.value
         XCTAssertTrue(late.replies.isEmpty)
-        XCTAssertNil(late.pendingAttempt)
+        XCTAssertTrue(late.pendingAttempts.isEmpty)
     }
 
     @MainActor func testHTTPFailureNeverAppearsAsAnEveReply() async throws {

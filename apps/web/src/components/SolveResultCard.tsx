@@ -29,6 +29,9 @@ export interface SolveResultCardProps {
   maxAttempts: number;
   resultsHref: string;
   answer?: string | null;
+  explanation?: string | null;
+  lateSolve?: boolean;
+  revealed?: boolean;
   nextPlayTime?: Date | null;
   nearMiss?: boolean;
   isLucky?: boolean;
@@ -132,6 +135,9 @@ export function SolveResultCard({
   maxAttempts,
   resultsHref,
   answer = null,
+  explanation = null,
+  lateSolve = false,
+  revealed = false,
   nextPlayTime = null,
   nearMiss = false,
   isLucky = false,
@@ -190,7 +196,7 @@ export function SolveResultCard({
   const streakLocked = Boolean(scoreDone && success && streak > 0);
   const isMilestone = success && [3, 7, 14, 30, 100].includes(streak);
   const cleanSolve = success && hintsUsed === 0;
-  const clutchSolve = success && attempts >= maxAttempts;
+  const clutchSolve = success && attempts >= maxAttempts && !lateSolve;
   const showBestGhost = !success && maxStreak > 0;
   const personalBest = pbLabel(success, timeTakenSeconds, previousBestSeconds);
   const levelProgress = success && totalPoints > 0 ? getLevelProgress(totalPoints) : 0;
@@ -250,7 +256,7 @@ export function SolveResultCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-foreground text-base tracking-tight">
-            {success ? "Solved" : "Out of guesses"}
+            {success ? "Solved" : revealed ? "Answer revealed" : "Out of guesses"}
           </p>
           <p
             className={cn(
@@ -265,6 +271,11 @@ export function SolveResultCard({
               Unlocked · {unlockedAchievementName}
             </p>
           ) : null}
+          {lateSolve ? (
+            <p className="mt-1 font-medium text-xs text-subtle">
+              The scored round ended after three guesses. This solve still counts toward your streak.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -277,6 +288,9 @@ export function SolveResultCard({
             ) : null}
           </div>
           <p className="mt-1 font-semibold text-foreground text-lg tracking-tight">{answer}</p>
+          {explanation ? (
+            <p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">{explanation}</p>
+          ) : null}
           <Button asChild className="mt-2.5" size="sm" variant="link">
             <Link className="h-auto px-0" href={resultsHref}>
               Explain more
@@ -434,6 +448,7 @@ export function SolveResultCard({
           success={success}
           attempts={attempts}
           maxAttempts={maxAttempts}
+          lateSolve={lateSolve}
           streak={streak}
           nearMiss={nearMiss}
         />

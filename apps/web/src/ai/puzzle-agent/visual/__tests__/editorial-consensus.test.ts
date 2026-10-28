@@ -4,7 +4,7 @@ import {
   summarizeEditorialReviewAttempts,
 } from "../editorial-consensus";
 
-const PROFILES = ["compact-320", "mobile-375", "desktop-768"] as const;
+const PROFILES = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"] as const;
 
 function acceptedAttempts(): EditorialReviewAttempt[] {
   return PROFILES.flatMap((profileId) =>
@@ -30,7 +30,7 @@ describe("answer-aware screenshot editorial consensus", () => {
       minConfidence: 0.68,
     });
     expect(summary.ok).toBe(true);
-    expect(summary.acceptedProfiles).toBe(3);
+    expect(summary.acceptedProfiles).toBe(4);
     expect(
       editorialReviewPublishBlockers({
         editorialProfileCount: summary.profileCount,
@@ -63,7 +63,7 @@ describe("answer-aware screenshot editorial consensus", () => {
     });
 
     expect(summary.ok).toBe(true);
-    expect(summary.acceptedProfiles).toBe(3);
+    expect(summary.acceptedProfiles).toBe(4);
     expect(summary.failureKinds).toEqual([]);
     expect(summary.reasons).toEqual([]);
   });
@@ -85,7 +85,7 @@ describe("answer-aware screenshot editorial consensus", () => {
       minConfidence: 0.68,
     });
     expect(summary.ok).toBe(false);
-    expect(summary.acceptedProfiles).toBe(2);
+    expect(summary.acceptedProfiles).toBe(3);
     expect(summary.failureKinds).toEqual(["ambiguous"]);
     const blockers = editorialReviewPublishBlockers({
       editorialProfileCount: summary.profileCount,

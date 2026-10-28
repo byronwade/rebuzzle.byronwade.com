@@ -112,6 +112,107 @@ import RebuzzleCore
         XCTAssertEqual(request.storeKitProof, "signed-plus-proof")
     }
 
+    func testFetchArchiveSampleDecodesPublicPuzzleAndUsesAuthenticatedFreeRequest() async throws {
+        defer { StubProtocol.responder = nil }
+        let capture = RequestCapture()
+        StubProtocol.responder = { request in
+            capture.record(request)
+            return (200, #"{"id":"sample-1","puzzle":"MIND over MATTER","puzzleType":"wordplay","difficulty":7,"visual":{"mode":"composed","layout":"row","unicodeFallback":"MIND over MATTER","layers":[]},"hints":["Notice the placement."],"date":"2025-02-03"}"#)
+        }
+
+        let puzzle = try await makeClient().fetchArchiveSample()
+
+        XCTAssertEqual(puzzle.id, "sample-1")
+        XCTAssertEqual(puzzle.clue, "MIND over MATTER")
+        XCTAssertEqual(puzzle.date, "2025-02-03")
+        let request = capture.snapshot()
+        XCTAssertEqual(request.path, "/api/puzzles/practice/sample")
+        XCTAssertEqual(request.authorization, "Bearer member-token")
+        XCTAssertNil(request.dailyOnly)
+        XCTAssertNil(request.storeKitProof, "The free sample request should not send Plus purchase proof")
+    }
+
+    func testFetchJournalDecodesAccountEntryAndAttachesPlusProof() async throws {
+        defer { StubProtocol.responder = nil }
+        let capture = RequestCapture()
+        StubProtocol.responder = { request in
+            capture.record(request)
+            return (200, #"{"success":true,"entries":[{"puzzleId":"daily-7","puzzleDate":"2026-10-27","puzzleType":"rebus","clue":"☀️ + 🏠","answer":"sunshine","explanation":"Sun + shine.","won":true,"attempts":2,"hintsUsed":null,"visual":null,"hints":[],"note":"my thought","noteRevision":3}],"nextCursor":null,"historyStatus":"complete"}"#)
+        }
+
+        let result = try await makeClient().fetchJournal()
+
+        XCTAssertEqual(result.entries.count, 1)
+        XCTAssertEqual(result.entries[0].entry.puzzleID, "daily-7")
+        XCTAssertEqual(result.entries[0].entry.answer, "sunshine")
+        XCTAssertNil(result.entries[0].entry.hintsUsed)
+        XCTAssertEqual(result.entries[0].entry.note, "my thought")
+        XCTAssertEqual(result.entries[0].noteRevision, 3)
+        XCTAssertEqual(result.historyStatus, "complete")
+        XCTAssertEqual(capture.snapshot().path, "/api/user/journal")
+        XCTAssertEqual(capture.snapshot().query["limit"], "100")
+        XCTAssertEqual(capture.snapshot().storeKitProof, "signed-plus-proof")
+    }
+
+    func testFetchJournalFollowsEveryHistoryCursor() async throws {
+        defer { StubProtocol.responder = nil }
+        let capture = RequestCapture()
+        StubProtocol.responder = { request in
+            capture.record(request)
+            let isSecondPage = request.url?.query?.contains("before=2026-10-27") == true
+            if !isSecondPage {
+                return (200, #"{"success":true,"entries":[{"puzzleId":"daily-7","puzzleDate":"2026-10-27","puzzleType":"rebus","clue":"☀️ + 🏠","answer":"sunshine","explanation":"Sun + shine.","won":true,"attempts":2,"hintsUsed":null,"visual":null,"hints":[],"note":"first","noteRevision":1}],"nextCursor":"2026-10-27","historyStatus":"in_progress"}"#)
+            }
+            return (200, #"{"success":true,"entries":[{"puzzleId":"daily-6","puzzleDate":"2026-10-26","puzzleType":"rebus","clue":"🌧️ + 🐈","answer":"raining cats and dogs","explanation":"Rain + cats + dogs.","won":true,"attempts":3,"hintsUsed":1,"visual":null,"hints":[],"note":"second","noteRevision":2}],"nextCursor":null,"historyStatus":"complete"}"#)
+        }
+
+        let result = try await makeClient().fetchJournal()
+
+        XCTAssertEqual(result.entries.map { $0.entry.puzzleID }, ["daily-7", "daily-6"])
+        XCTAssertEqual(result.historyStatus, "complete")
+        XCTAssertEqual(capture.snapshots().count, 2)
+        XCTAssertEqual(capture.snapshots().last?.query["before"], "2026-10-27")
+        XCTAssertTrue(capture.snapshots().allSatisfy { $0.storeKitProof == "signed-plus-proof" })
+    }
+
+    func testJournalNoteWriteUsesCompareAndSetAndAttachesPlusProof() async throws {
+        defer { StubProtocol.responder = nil }
+        let capture = RequestCapture()
+        StubProtocol.responder = { request in
+            capture.record(request)
+            return (200, #"{"success":true,"note":"kept","revision":4,"updatedAt":"2026-10-28T01:00:00.000Z"}"#)
+        }
+
+        let saved = try await makeClient().saveJournalNote(
+            JournalSyncNoteWrite(puzzleID: "daily-7", note: "kept", expectedRevision: 3)
+        )
+
+        XCTAssertEqual(saved.note, "kept")
+        XCTAssertEqual(saved.revision, 4)
+        let request = capture.snapshot()
+        XCTAssertEqual(request.path, "/api/user/journal/note")
+        XCTAssertEqual(request.method, "PUT")
+        XCTAssertEqual(request.storeKitProof, "signed-plus-proof")
+        let body = try XCTUnwrap(request.jsonBody)
+        XCTAssertEqual(body["puzzleId"] as? String, "daily-7")
+        XCTAssertEqual(body["note"] as? String, "kept")
+        XCTAssertEqual(body["expectedRevision"] as? Int, 3)
+    }
+
+    func testJournalConflictRetainsHTTPStatusForRefetch() async throws {
+        defer { StubProtocol.responder = nil }
+        StubProtocol.responder = { _ in (409, #"{"success":false,"error":"This note changed on another device."}"#) }
+
+        do {
+            _ = try await makeClient().saveJournalNote(
+                JournalSyncNoteWrite(puzzleID: "daily-7", note: "local", expectedRevision: 2)
+            )
+            XCTFail("A stale note revision must be surfaced to the sync coordinator.")
+        } catch let error as APIError {
+            XCTAssertEqual(error.status, 409)
+        }
+    }
+
     func testPracticeGuessUsesUnscoredEndpointAndExplicitlyOptsOutOfDailyHeader() async throws {
         defer { StubProtocol.responder = nil }
         let capture = RequestCapture()
@@ -206,7 +307,7 @@ private struct RequestSnapshot {
 
 private final class RequestCapture: @unchecked Sendable {
     private let lock = NSLock()
-    private var saved: RequestSnapshot?
+    private var saved: [RequestSnapshot] = []
 
     func record(_ request: URLRequest) {
         let query = URLComponents(url: request.url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -238,13 +339,19 @@ private final class RequestCapture: @unchecked Sendable {
             jsonBody: json
         )
         lock.lock()
-        saved = next
+        saved.append(next)
         lock.unlock()
     }
 
     func snapshot() -> RequestSnapshot {
         lock.lock()
         defer { lock.unlock() }
-        return saved ?? RequestSnapshot(path: nil, method: nil, query: [:], authorization: nil, dailyOnly: nil, storeKitProof: nil, jsonBody: nil)
+        return saved.last ?? RequestSnapshot(path: nil, method: nil, query: [:], authorization: nil, dailyOnly: nil, storeKitProof: nil, jsonBody: nil)
+    }
+
+    func snapshots() -> [RequestSnapshot] {
+        lock.lock()
+        defer { lock.unlock() }
+        return saved
     }
 }

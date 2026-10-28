@@ -53,3 +53,16 @@ export async function consumeStudioAiGeneration(userId: string): Promise<{
     remaining: studioAiRemaining(used),
   };
 }
+
+/** Restore one reserved Studio AI credit after an unsuccessful generation request. */
+export async function refundStudioAiGeneration(userId: string): Promise<void> {
+  const collection = getCollection<{
+    id: string;
+    studioAiGenerationsUsed?: number;
+  }>("users");
+
+  await collection.updateOne(
+    { id: userId, studioAiGenerationsUsed: { $gt: 0 } },
+    { $inc: { studioAiGenerationsUsed: -1 } }
+  );
+}
