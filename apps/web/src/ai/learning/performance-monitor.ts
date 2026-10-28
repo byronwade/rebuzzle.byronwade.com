@@ -2,6 +2,7 @@
  * Real-player performance monitor — the signal that drives self-learning.
  */
 
+import type { NativeGrowthQualityRating } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 
 export type WindowPerformance = {
@@ -35,6 +36,27 @@ type FinalAttempt = {
   hintsUsed?: number;
 };
 
+type WebPerceptionVotes = {
+  tooEasy: number;
+  justRight: number;
+  tooHard: number;
+};
+
+type NativePerceptionVotes = {
+  tooEasy: number;
+  justRight: number;
+  toughButFair: number;
+  unclear: number;
+  nativePlayers: number;
+};
+
+type NativeDifficultyRating = {
+  userId?: string;
+  rating?: NativeGrowthQualityRating;
+};
+
+const MIN_NATIVE_PERCEPTION_ACCOUNTS = 10;
+
 function median(values: number[]): number | null {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -50,13 +72,7 @@ function avg(values: number[]): number | null {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-async function loadPerceptionVotes(lookbackDays: number): Promise<{
-  tooEasy: number;
-  justRight: number;
-  tooHard: number;
-}> {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - lookbackDays);
+async function loadWebPerceptionVotes(cutoff: Date): Promise<WebPerceptionVotes> {
   try {
     const docs = (await getCollection("aiFeedback")
       .find({
@@ -82,6 +98,84 @@ async function loadPerceptionVotes(lookbackDays: number): Promise<{
   } catch {
     return { tooEasy: 0, justRight: 0, tooHard: 0 };
   }
+}
+
+async function loadNativePerceptionVotes(cutoff: Date): Promise<NativePerceptionVotes> {
+  const empty = {
+    tooEasy: 0,
+    justRight: 0,
+    toughButFair: 0,
+    unclear: 0,
+    nativePlayers: 0,
+  };
+  try {
+    const docs = (await getCollection("nativeGrowthEvents")
+      .find({
+        eventType: "daily_quality_feedback",
+        occurredAt: { $gte: cutoff },
+      })
+      .project({ userId: 1, rating: 1 })
+      .sort({ occurredAt: -1 })
+      .limit(5000)
+      .toArray()) as NativeDifficultyRating[];
+
+    const latestRatingByAccount = new Map<string, NativeGrowthQualityRating>();
+    for (const doc of docs) {
+      if (!doc.userId || latestRatingByAccount.has(doc.userId) || !doc.rating) continue;
+      latestRatingByAccount.set(doc.userId, doc.rating);
+    }
+
+    if (latestRatingByAccount.size < MIN_NATIVE_PERCEPTION_ACCOUNTS) return empty;
+
+    let tooEasy = 0;
+    let justRight = 0;
+    let toughButFair = 0;
+    let unclear = 0;
+    for (const rating of latestRatingByAccount.values()) {
+      switch (rating) {
+        case "too_easy":
+          tooEasy += 1;
+          break;
+        case "just_right":
+          justRight += 1;
+          break;
+        case "tough_but_fair":
+          toughButFair += 1;
+          break;
+        case "unclear":
+          unclear += 1;
+          break;
+        default:
+          continue;
+      }
+    }
+    return {
+      tooEasy,
+      justRight,
+      toughButFair,
+      unclear,
+      nativePlayers: latestRatingByAccount.size,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+async function loadPerceptionVotes(lookbackDays: number) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - lookbackDays);
+  const [webVotes, nativeVotes] = await Promise.all([
+    loadWebPerceptionVotes(cutoff),
+    loadNativePerceptionVotes(cutoff),
+  ]);
+  return {
+    tooEasy: webVotes.tooEasy + nativeVotes.tooEasy,
+    justRight: webVotes.justRight + nativeVotes.justRight,
+    tooHard: webVotes.tooHard,
+    toughButFair: nativeVotes.toughButFair,
+    unclear: nativeVotes.unclear,
+    nativePlayers: nativeVotes.nativePlayers,
+  };
 }
 
 /**
@@ -203,6 +297,11 @@ export async function measureWindowPerformance(input?: {
       const { aggregatePerceptionDelta } = await import("./difficulty-perception");
       const votes = await loadPerceptionVotes(lookbackDays);
       const perception = aggregatePerceptionDelta(votes);
+      if (votes.nativePlayers >= MIN_NATIVE_PERCEPTION_ACCOUNTS) {
+        notes.push(
+          `Native daily ratings from ${votes.nativePlayers} distinct accounts informed calibration guidance`
+        );
+      }
       if (perception.delta !== 0) {
         // Soft blend: perception can nudge ±1 beyond behavioral delta
         const blended = Math.max(-2, Math.min(2, difficultyDelta + Math.sign(perception.delta)));
@@ -212,6 +311,10 @@ export async function measureWindowPerformance(input?: {
         } else {
           notes.push(...perception.notes);
         }
+      } else if (votes.nativePlayers >= MIN_NATIVE_PERCEPTION_ACCOUNTS) {
+        notes.push(
+          ...perception.notes.filter((note) => /tough but fair|unclear puzzles/i.test(note))
+        );
       }
     } catch {
       // non-blocking
