@@ -570,6 +570,22 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
 
   // Blind human playtesting of actual AI-generated puzzle boards
   {
+    collection: "dailyPuzzleCandidates",
+    indexes: [
+      { spec: { id: 1 }, options: { unique: true, name: "daily_candidate_id_unique" } },
+      {
+        spec: { generationKey: 1 },
+        options: { unique: true, name: "daily_candidate_generation_key_unique" },
+      },
+      {
+        spec: { assignedDate: 1 },
+        options: { unique: true, sparse: true, name: "daily_candidate_assigned_date_unique" },
+      },
+      { spec: { status: 1, playtestSubmittedAt: 1, createdAt: 1 } },
+      { spec: { status: 1, createdAt: 1 } },
+    ],
+  },
+  {
     collection: "puzzlePlaytestCandidates",
     indexes: [
       { spec: { id: 1 }, options: { unique: true } },

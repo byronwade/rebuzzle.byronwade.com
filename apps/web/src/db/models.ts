@@ -1348,6 +1348,44 @@ export type PuzzlePlaytestFailureReason =
   | "too-hard"
   | "other";
 
+export type DailyPuzzleCandidateStatus =
+  | "reviewing"
+  | "ready"
+  | "assigned"
+  | "published"
+  | "rejected";
+
+/** Private, unpublished snapshot awaiting qualified human playtesting and a daily date. */
+export interface DailyPuzzleCandidate {
+  _id?: string;
+  id: string;
+  /** Stable generation-date key, used to make scheduled generation retries idempotent. */
+  generationKey: string;
+  policyVersion: "human-reviewed-daily-v1";
+  status: DailyPuzzleCandidateStatus;
+  statusVersion: number;
+  payload: {
+    puzzleDisplay: string;
+    puzzleType: string;
+    answer: string;
+    difficulty: number;
+    category: string;
+    explanation: string;
+    hints: string[];
+    aiGenerated: true;
+    rebusPuzzle?: string;
+    visual?: PuzzleVisual;
+    metadataExtra?: Record<string, unknown>;
+  };
+  playtestSubmittedAt?: Date;
+  playtestSubmissionError?: string;
+  assignedDate?: string;
+  publishedPuzzleId?: string;
+  rejectionReason?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 /** Immutable snapshot of an AI-generated board sampled for blind human playtesting. */
 export interface PuzzlePlaytestCandidate {
   _id?: string;
