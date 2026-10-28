@@ -1,5 +1,8 @@
 import type { Filter } from "mongodb";
-import type { PuzzlePlaytestCandidate, PuzzlePlaytestReview } from "@/db/models";
+import type {
+  PuzzlePlaytestCandidate,
+  PuzzlePlaytestReview,
+} from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import type { PuzzlePlaytestRepository } from "./puzzle-playtest-service";
 
@@ -35,7 +38,9 @@ export function createMongoPuzzlePlaytestRepository(): PuzzlePlaytestRepository 
       const filter: Filter<PuzzlePlaytestCandidate> = {
         contractVersion: input.contractVersion,
         ...(input.statuses?.length ? { status: { $in: input.statuses } } : {}),
-        ...(input.evidenceRoles?.length ? { evidenceRole: { $in: input.evidenceRoles } } : {}),
+        ...(input.evidenceRoles?.length
+          ? { evidenceRole: { $in: input.evidenceRoles } }
+          : {}),
       };
       return candidates()
         .find(filter)
@@ -56,8 +61,12 @@ export function createMongoPuzzlePlaytestRepository(): PuzzlePlaytestRepository 
             }
           : {
               ...(input.reviewerId ? { reviewerId: input.reviewerId } : {}),
-              ...(input.reviewerIds?.length ? { reviewerId: { $in: input.reviewerIds } } : {}),
-              ...(input.candidateIds?.length ? { candidateId: { $in: input.candidateIds } } : {}),
+              ...(input.reviewerIds?.length
+                ? { reviewerId: { $in: input.reviewerIds } }
+                : {}),
+              ...(input.candidateIds?.length
+                ? { candidateId: { $in: input.candidateIds } }
+                : {}),
             }),
       };
       return reviews().find(filter).sort({ createdAt: 1, id: 1 }).toArray();
@@ -75,12 +84,16 @@ export function createMongoPuzzlePlaytestRepository(): PuzzlePlaytestRepository 
 
     async completeCandidate(input) {
       return candidates().findOneAndUpdate(
-        { id: input.id, status: "open", statusVersion: input.expectedStatusVersion },
+        {
+          id: input.id,
+          status: "open",
+          statusVersion: input.expectedStatusVersion,
+        },
         {
           $set: { status: "complete", updatedAt: input.updatedAt },
           $inc: { statusVersion: 1 },
         },
-        { returnDocument: "after" }
+        { returnDocument: "after" },
       );
     },
   };

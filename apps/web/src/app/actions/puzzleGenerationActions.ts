@@ -16,14 +16,15 @@ import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzle
 import { db } from "@/db";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import { createMongoDailyPuzzleCandidateRepository } from "@/lib/game/daily-puzzle-candidate-repository";
+import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import {
   formatPuzzleFromDb,
   getCachedDailyPuzzleFromDb,
 } from "@/lib/cache/daily-puzzle";
 import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
+import { publishReviewedDailyPuzzle } from "@/lib/game/publish-reviewed-daily-puzzle";
 import { createDailyPuzzleCandidateQueue } from "@/lib/game/queue-daily-puzzle-candidate";
-import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { logger } from "@/lib/logger";
 
 /**
@@ -212,7 +213,8 @@ async function getOrGenerateDailyPuzzle(
     queueForPlaytest?: boolean;
   },
 ) {
-  const allowAiGenerate = options?.allowAiGenerate !== false;
+  const allowAiGenerate =
+    options?.allowAiGenerate === true && options?.queueForPlaytest === true;
   const failOnAiError = options?.failOnAiError === true;
   const queueForPlaytest = options?.queueForPlaytest === true;
   logger.info("Getting puzzle for date", {
@@ -276,9 +278,31 @@ async function getOrGenerateDailyPuzzle(
     await candidateQueue.retryPending(20);
   }
 
-  // Interactive play path: never block TTFB on Eve — persist a validated reserve puzzle.
-  // Cron / regenerate / admin regenerate should call with allowAiGenerate: true.
+  // Interactive play path: never block TTFB on Eve. Only publish a reviewed candidate
+  // or use the existing community/curated reserve path.
   if (!allowAiGenerate) {
+    if (dateString === getTodayDateString()) {
+      try {
+        const reviewed = await publishReviewedDailyPuzzle({
+          dateString,
+          repository: createMongoDailyPuzzleCandidateRepository(),
+          reviewService: puzzlePlaytestService,
+          persist: persistDailyPuzzle,
+        });
+        if (reviewed) {
+          logger.info("Published a human-reviewed daily candidate", {
+            dateString,
+            puzzleId: reviewed.id,
+          });
+          return reviewed;
+        }
+      } catch (error) {
+        logger.warn("Reviewed candidate unavailable; using the daily reserve", {
+          dateString,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
     return persistReservePuzzle(
       dateString,
       "Play-path reserve (AI deferred to cron)",

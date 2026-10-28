@@ -1,5 +1,9 @@
 import type { Filter } from "mongodb";
-import type { DailyPuzzleCandidate, DailyPuzzleCandidateStatus } from "@/db/models";
+import type {
+  DailyPuzzleCandidate,
+  DailyPuzzleCandidateHumanEvidence,
+  DailyPuzzleCandidateStatus,
+} from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 
 function candidates() {
@@ -9,22 +13,41 @@ function candidates() {
 export type DailyPuzzleCandidateRepository = {
   insert(candidate: DailyPuzzleCandidate): Promise<DailyPuzzleCandidate>;
   findById(id: string): Promise<DailyPuzzleCandidate | null>;
-  findByGenerationKey(generationKey: string): Promise<DailyPuzzleCandidate | null>;
-  findAssignmentForDate(dateString: string): Promise<DailyPuzzleCandidate | null>;
+  findByGenerationKey(
+    generationKey: string,
+  ): Promise<DailyPuzzleCandidate | null>;
+  findAssignmentForDate(
+    dateString: string,
+  ): Promise<DailyPuzzleCandidate | null>;
   list(input?: {
     statuses?: DailyPuzzleCandidateStatus[];
     withoutPlaytestSubmission?: boolean;
     limit?: number;
   }): Promise<DailyPuzzleCandidate[]>;
-  markPlaytestSubmitted(input: { id: string; submittedAt: Date }): Promise<DailyPuzzleCandidate | null>;
+  markPlaytestSubmitted(input: {
+    id: string;
+    submittedAt: Date;
+  }): Promise<DailyPuzzleCandidate | null>;
   markPlaytestSubmissionFailed(input: {
     id: string;
     message: string;
     updatedAt: Date;
   }): Promise<DailyPuzzleCandidate | null>;
-  markReady(input: { id: string; expectedStatusVersion: number; updatedAt: Date }): Promise<DailyPuzzleCandidate | null>;
-  claimReadyForDate(input: { id: string; dateString: string }): Promise<DailyPuzzleCandidate | null>;
-  skip(input: { id: string; reason: string; updatedAt: Date }): Promise<DailyPuzzleCandidate | null>;
+  markReady(input: {
+    id: string;
+    expectedStatusVersion: number;
+    updatedAt: Date;
+    humanEvidence: DailyPuzzleCandidateHumanEvidence;
+  }): Promise<DailyPuzzleCandidate | null>;
+  claimReadyForDate(input: {
+    id: string;
+    dateString: string;
+  }): Promise<DailyPuzzleCandidate | null>;
+  skip(input: {
+    id: string;
+    reason: string;
+    updatedAt: Date;
+  }): Promise<DailyPuzzleCandidate | null>;
   markPublished(input: {
     id: string;
     dateString: string;
@@ -34,7 +57,12 @@ export type DailyPuzzleCandidateRepository = {
 };
 
 const duplicateKey = (error: unknown) =>
-  Boolean(error && typeof error === "object" && "code" in error && error.code === 11000);
+  Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === 11000,
+  );
 
 export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidateRepository {
   return {
@@ -45,12 +73,16 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
       } catch (error) {
         if (!duplicateKey(error)) throw error;
         const existing =
-          (await candidates().findOne({ generationKey: candidate.generationKey })) ??
-          (await candidates().findOne({ id: candidate.id }));
+          (await candidates().findOne({
+            generationKey: candidate.generationKey,
+          })) ?? (await candidates().findOne({ id: candidate.id }));
         if (existing) return existing;
-        throw new Error("Daily candidate insert collided without a matching generation record", {
-          cause: error,
-        });
+        throw new Error(
+          "Daily candidate insert collided without a matching generation record",
+          {
+            cause: error,
+          },
+        );
       }
     },
 
@@ -69,7 +101,9 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
     async list(input = {}) {
       const filter: Filter<DailyPuzzleCandidate> = {
         ...(input.statuses?.length ? { status: { $in: input.statuses } } : {}),
-        ...(input.withoutPlaytestSubmission ? { playtestSubmittedAt: { $exists: false } } : {}),
+        ...(input.withoutPlaytestSubmission
+          ? { playtestSubmittedAt: { $exists: false } }
+          : {}),
       };
       return candidates()
         .find(filter)
@@ -82,10 +116,13 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
       return candidates().findOneAndUpdate(
         { id: input.id, status: "reviewing" },
         {
-          $set: { playtestSubmittedAt: input.submittedAt, updatedAt: input.submittedAt },
+          $set: {
+            playtestSubmittedAt: input.submittedAt,
+            updatedAt: input.submittedAt,
+          },
           $unset: { playtestSubmissionError: "" },
         },
-        { returnDocument: "after" }
+        { returnDocument: "after" },
       );
     },
 
@@ -98,7 +135,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
             updatedAt: input.updatedAt,
           },
         },
-        { returnDocument: "after" }
+        { returnDocument: "after" },
       );
     },
 
@@ -110,10 +147,14 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
           statusVersion: input.expectedStatusVersion,
         },
         {
-          $set: { status: "ready", updatedAt: input.updatedAt },
+          $set: {
+            status: "ready",
+            humanEvidence: input.humanEvidence,
+            updatedAt: input.updatedAt,
+          },
           $inc: { statusVersion: 1 },
         },
-        { returnDocument: "after" }
+        { returnDocument: "after" },
       );
     },
 
@@ -122,10 +163,14 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
         const claimed = await candidates().findOneAndUpdate(
           { id: input.id, status: "ready", assignedDate: { $exists: false } },
           {
-            $set: { status: "assigned", assignedDate: input.dateString, updatedAt: new Date() },
+            $set: {
+              status: "assigned",
+              assignedDate: input.dateString,
+              updatedAt: new Date(),
+            },
             $inc: { statusVersion: 1 },
           },
-          { returnDocument: "after" }
+          { returnDocument: "after" },
         );
         if (claimed) return claimed;
       } catch (error) {
@@ -146,7 +191,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
           $inc: { statusVersion: 1 },
           $unset: { assignedDate: "" },
         },
-        { returnDocument: "after" }
+        { returnDocument: "after" },
       );
     },
 
@@ -161,7 +206,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
           },
           $inc: { statusVersion: 1 },
         },
-        { returnDocument: "after" }
+        { returnDocument: "after" },
       );
     },
   };

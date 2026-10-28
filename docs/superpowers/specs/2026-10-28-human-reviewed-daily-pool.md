@@ -13,7 +13,9 @@ The daily game remains available when the review pool is empty: publish an eligi
 - The existing blind playtest shows only the rendered board and opaque fixture ID. It continues to qualify reviewers with control puzzles and collect one decision per reviewer per responsive profile.
 - The current contract has four responsive profiles and requires five qualified reviewers on each, for 20 decisions per candidate. A generated candidate is eligible only after the contract marks it complete, its qualified decisions pass the existing difficulty-adjusted one-sided Wilson solve floor, it has at most one multiple-answer report, and it has no reported visual failure (unrecognizable artwork, unreadable layout, or missing cue).
 - If no candidate passes, the date uses the existing community/curated reserve flow. Already published dates remain immutable.
+- A candidate that remains in review for more than 60 days is retired from the release pool so an unreviewed backlog cannot starve newer submissions.
 - A candidate's full puzzle payload and visual are stored separately from the public `puzzles` collection until release. Review evidence is bound to the candidate ID and visual snapshot.
+- Administrative regeneration queues a proposal for review; it does not archive today's live puzzle or clear player attempts while the proposal is pending.
 
 ## Scope and constraints
 

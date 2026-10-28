@@ -43,10 +43,12 @@
 
 - [ ] At daily publication, try an existing claim for the same date, otherwise find the oldest candidate that passes individual human admission and atomically claim it.
 - [ ] Persist with the existing answer and date uniqueness checks, adding admission contract and evidence reference to publication metadata.
+- [ ] Require candidate-level admission in `persistDailyPuzzle` for every AI-generated daily rebus; skip duplicate shadow review submission after admission.
 - [ ] Mark the candidate published only after the public puzzle row is created; make retries recover the same candidate.
 - [ ] Skip candidates with duplicate archived answers and continue to the next eligible candidate.
 - [ ] Keep community and curated reserve fallback behavior unchanged when no candidate passes or review services fail.
 - [ ] Ensure public daily requests never call AI generation; candidate generation remains a scheduled workflow action.
+- [ ] Make administrative regeneration queue a candidate without archiving today's live puzzle or clearing player attempts.
 
 ### Task 5: Wire schedule, explain gates, and verify
 

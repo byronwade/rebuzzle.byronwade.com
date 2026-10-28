@@ -1,7 +1,8 @@
 jest.mock("next/cache", () => ({ revalidateTag: jest.fn() }));
 jest.mock("@/ai/learning/answer-registry", () => ({
   isAnswerRegistered: jest.fn(),
-  normalizeAnswerKey: (answer: string) => answer.toLowerCase().replace(/[^a-z0-9]/g, ""),
+  normalizeAnswerKey: (answer: string) =>
+    answer.toLowerCase().replace(/[^a-z0-9]/g, ""),
 }));
 jest.mock("@/db", () => ({
   db: {
@@ -21,7 +22,10 @@ jest.mock("@/ai/puzzle-agent/review/puzzle-playtest-server", () => ({
 import { isAnswerRegistered } from "@/ai/learning/answer-registry";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { db } from "@/db";
-import { type PersistDailyPuzzleInput, persistDailyPuzzle } from "../persist-daily-puzzle";
+import {
+  type PersistDailyPuzzleInput,
+  persistDailyPuzzle,
+} from "../persist-daily-puzzle";
 
 const input: PersistDailyPuzzleInput = {
   dateString: "2026-08-01",
@@ -31,7 +35,11 @@ const input: PersistDailyPuzzleInput = {
   difficulty: 7,
   category: "phrases_and_idioms",
   explanation: "Two copies of FEET read toward the left: two left feet.",
-  hints: ["Read in a different direction", "Count what you find", "Which way do both feet read?"],
+  hints: [
+    "Read in a different direction",
+    "Count what you find",
+    "Which way do both feet read?",
+  ],
   metadataExtra: {
     reasoningEvidenceSource: "curated",
     reasoningEvidence: {
@@ -71,7 +79,29 @@ const input: PersistDailyPuzzleInput = {
 const findByDate = jest.mocked(db.puzzleOps.findByDate);
 const create = jest.mocked(db.puzzleOps.create);
 const answerRegistered = jest.mocked(isAnswerRegistered);
-const submitPlaytestCandidate = jest.mocked(puzzlePlaytestService.submitCandidate);
+const submitPlaytestCandidate = jest.mocked(
+  puzzlePlaytestService.submitCandidate,
+);
+
+const humanPlaytestAdmission = {
+  policyVersion: "human-reviewed-daily-v1" as const,
+  candidateId: "daily-candidate-1",
+  contractVersion: "puzzle-playtest-v3",
+  qualifiedDecisions: 20,
+  profileCoverage: [
+    { profileId: "compact-320", decisions: 5 },
+    { profileId: "mobile-375", decisions: 5 },
+    { profileId: "mobile-375-medium", decisions: 5 },
+    { profileId: "desktop-768", decisions: 5 },
+  ],
+  correct: 15,
+  solveRate: 0.75,
+  solveRateLowerBound: 0.52,
+  expectedSolveFloor: 0.35,
+  ambiguityReports: 1,
+  visualFailureReports: 0,
+  admittedAt: "2026-10-28T00:00:00.000Z",
+};
 
 describe("daily puzzle publication locks", () => {
   beforeEach(() => {
@@ -104,14 +134,16 @@ describe("daily puzzle publication locks", () => {
             { kind: "text", content: "TRUCK", emphasis: "normal" },
           ],
         },
-      })
+      }),
     ).rejects.toThrow("Daily challenge");
     expect(create).not.toHaveBeenCalled();
   });
 
   it("keeps an already published easy puzzle stable under the new policy", async () => {
     findByDate.mockResolvedValue({ id: "already-playing" } as never);
-    await expect(persistDailyPuzzle({ ...input, difficulty: 4 })).resolves.toEqual({
+    await expect(
+      persistDailyPuzzle({ ...input, difficulty: 4 }),
+    ).resolves.toEqual({
       id: "already-playing",
       alreadyExisted: true,
     });
@@ -119,9 +151,14 @@ describe("daily puzzle publication locks", () => {
   });
 
   it("refuses every duplicate answer without an emergency bypass", async () => {
-    answerRegistered.mockResolvedValue({ taken: true, puzzleId: "archived-puzzle" });
+    answerRegistered.mockResolvedValue({
+      taken: true,
+      puzzleId: "archived-puzzle",
+    });
 
-    await expect(persistDailyPuzzle(input)).rejects.toThrow("Refusing to persist duplicate answer");
+    await expect(persistDailyPuzzle(input)).rejects.toThrow(
+      "Refusing to persist duplicate answer",
+    );
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -166,45 +203,30 @@ describe("daily puzzle publication locks", () => {
     create.mockRejectedValue({ code: 11_000 });
 
     await expect(persistDailyPuzzle(input)).rejects.toThrow(
-      "Concurrent publication used this answer"
+      "Concurrent publication used this answer",
     );
   });
 
-  it("queues real AI-generated rebus boards for shadow human playtesting", async () => {
-    const visual = input.visual!;
+  it("refuses to publish an AI-generated rebus without candidate-level human admission", async () => {
+    await expect(
+      persistDailyPuzzle({ ...input, aiGenerated: true, visual: input.visual }),
+    ).rejects.toThrow("Human playtest admission is required");
+
+    expect(create).not.toHaveBeenCalled();
+    expect(submitPlaytestCandidate).not.toHaveBeenCalled();
+  });
+
+  it("records human admission and does not queue an already-reviewed board again", async () => {
     await persistDailyPuzzle({
       ...input,
       aiGenerated: true,
-      visual,
-      metadataExtra: {
-        ...input.metadataExtra,
-        techniqueId: "triple_layer_composition",
-        difficultyLevel: "Evil",
-        generationMethod: "apex-tournament",
-        estimatedSolveRate: 0.78,
-      },
+      visual: input.visual,
+      humanPlaytestAdmission,
     });
 
-    expect(submitPlaytestCandidate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        answer: "two left feet",
-        visual,
-        difficultyScore: 7,
-        techniqueId: "triple_layer_composition",
-        automatedEstimatedSolveRate: 0.78,
-      })
+    expect(create.mock.calls[0]?.[0]?.metadata?.humanPlaytestAdmission).toEqual(
+      humanPlaytestAdmission,
     );
-  });
-
-  it("does not fail publication when the shadow playtest queue is unavailable", async () => {
-    submitPlaytestCandidate.mockRejectedValueOnce(new Error("playtest database offline"));
-
-    await expect(
-      persistDailyPuzzle({
-        ...input,
-        aiGenerated: true,
-        visual: input.visual,
-      })
-    ).resolves.toEqual(expect.objectContaining({ alreadyExisted: false }));
+    expect(submitPlaytestCandidate).not.toHaveBeenCalled();
   });
 });
