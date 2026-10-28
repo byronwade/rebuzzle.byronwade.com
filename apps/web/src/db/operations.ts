@@ -551,6 +551,39 @@ export const puzzleAttemptOps = {
     };
   },
 
+  /**
+   * One row per daily played since `fromDate` (YYYY-MM-DD): solved if any
+   * guess was correct, final if the day was finished. Archive and community
+   * lock keys ("archive:…") sort after any date key, so the range drops them.
+   */
+  async getDailyResults(
+    userId: string,
+    fromDate: string
+  ): Promise<Array<{ date: string; solved: boolean; final: boolean }>> {
+    const collection = getCollection<PuzzleAttempt>("puzzleAttempts");
+    const rows = await collection
+      .aggregate<{ _id: string; solved: boolean; final: boolean }>([
+        { $match: { userId, puzzleDate: { $gte: fromDate, $lte: "9999-12-31" } } },
+        {
+          $group: {
+            _id: "$puzzleDate",
+            solved: { $max: { $eq: ["$isCorrect", true] } },
+            final: {
+              $max: {
+                $or: [
+                  { $eq: ["$isFinal", true] },
+                  { $eq: ["$isCorrect", true] },
+                  { $eq: ["$abandoned", true] },
+                ],
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+    return rows.map((row) => ({ date: row._id, solved: row.solved, final: row.final }));
+  },
+
   /** Dev tools: wipe a user's guesses for a UTC day so they can replay. */
   async clearAttemptsForDate(userId: string, puzzleDate: string): Promise<number> {
     const collection = getCollection<PuzzleAttempt>("puzzleAttempts");

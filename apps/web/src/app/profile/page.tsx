@@ -6,12 +6,14 @@ import { useEffect, useState } from "react";
 import { AppLink as Link } from "@/components/AppLink";
 import { useAuth } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
+import { TrackRecordCalendar } from "@/components/TrackRecordCalendar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { WordleStatsPanel } from "@/components/WordleStatsPanel";
 import { type AvatarPreferences, generateAvatarProps, getAvatarClassName } from "@/lib/avatar";
+import type { TrackRecordDay, TrackRecordTotals } from "@/lib/game/track-record";
 import { profilePathForUsername } from "@/lib/ugc/slug";
 
 type UserStats = {
@@ -155,6 +157,20 @@ const loadAchievementsFromAPI = async (): Promise<ProfileAchievement[]> => {
   }
 };
 
+type TrackRecord = { days: TrackRecordDay[]; totals: TrackRecordTotals };
+
+const loadTrackRecordFromAPI = async (): Promise<TrackRecord | null> => {
+  try {
+    const response = await fetch("/api/user/track-record", { credentials: "include" });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!(data.success && Array.isArray(data.days) && data.totals)) return null;
+    return { days: data.days, totals: data.totals };
+  } catch {
+    return null;
+  }
+};
+
 // Helper function to load stats from localStorage
 const loadStatsFromLocalStorage = (): UserStats | null => {
   const savedStats = localStorage.getItem("userStats");
@@ -177,6 +193,7 @@ export default function ProfilePage() {
   });
   const [avatarPreferences, setAvatarPreferences] = useState<AvatarPreferences | null>(null);
   const [unlockedAchievements, setUnlockedAchievements] = useState<ProfileAchievement[]>([]);
+  const [trackRecord, setTrackRecord] = useState<TrackRecord | null>(null);
 
   // Get username from auth context
   const username = user?.username ?? "Guest";
@@ -199,14 +216,16 @@ export default function ProfilePage() {
 
     const loadStats = async () => {
       if (isAuthenticated && user) {
-        const [apiStats, achievements] = await Promise.all([
+        const [apiStats, achievements, record] = await Promise.all([
           loadStatsFromAPI(user.id),
           loadAchievementsFromAPI(),
+          loadTrackRecordFromAPI(),
         ]);
         if (apiStats) {
           setStats(apiStats);
         }
         setUnlockedAchievements(achievements);
+        setTrackRecord(record);
         if (apiStats) return;
       }
 
@@ -351,6 +370,18 @@ export default function ProfilePage() {
             ))}
           </dl>
         </Card>
+
+        {trackRecord ? (
+          <Card className="mt-6 p-5 sm:p-6">
+            <div className="mb-4 flex items-baseline justify-between gap-3">
+              <h2 className="font-semibold text-base text-foreground tracking-[-0.02em]">
+                Track record
+              </h2>
+              <p className="text-muted-foreground text-xs">Daily puzzles, last 12 months</p>
+            </div>
+            <TrackRecordCalendar days={trackRecord.days} totals={trackRecord.totals} />
+          </Card>
+        ) : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <Card className="flex flex-col p-5 sm:p-6">
