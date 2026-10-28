@@ -41,6 +41,7 @@ type NativeFunnelSummary = {
   plusRestoreFailedAccounts: number;
   plusSameDayPurchasers: number;
   plusSameDayConversionRate: number;
+  plusOffersBySource: Record<PlusOfferSource, PlusOfferSourceSummary>;
   reminderEnabledAccounts: number;
   dailySolvePulseViewAccountDays: number;
   qualityFeedback: {
@@ -50,6 +51,19 @@ type NativeFunnelSummary = {
     unclear: number;
   };
   dailyPuzzleQuality: DailyPuzzleQualitySummary[];
+};
+
+type PlusOfferSource = "archive" | "settings" | "journey_insights" | "journal" | "free_sample";
+type PlusOfferSourceSummary = {
+  viewerAccounts: number | null;
+  purchaseStarterAccounts: number | null;
+  verifiedPurchaserAccounts: number | null;
+  pendingAccounts: number | null;
+  cancelledAccounts: number | null;
+  unverifiedAccounts: number | null;
+  failedAccounts: number | null;
+  sameDayVerifiedPurchaserAccounts: number | null;
+  sameDayConversionRate: number | null;
 };
 
 type DailyPuzzleQualitySummary = {
@@ -93,6 +107,14 @@ const dailyRatingLabels = [
   { key: "just_right", label: "Just right" },
   { key: "tough_but_fair", label: "Tough but fair" },
   { key: "unclear", label: "Unclear" },
+] as const;
+
+const plusOfferSourceLabels = [
+  { key: "archive", label: "Archive" },
+  { key: "settings", label: "Settings" },
+  { key: "journey_insights", label: "Journey insights" },
+  { key: "journal", label: "Journal" },
+  { key: "free_sample", label: "Free sample" },
 ] as const;
 
 function count(value: number) {
@@ -310,6 +332,8 @@ export function NativeGrowthCard() {
                 </div>
               </div>
 
+              <PlusOfferSourceBreakdown sources={summary.plusOffersBySource} />
+
               <p className="border-t pt-3 text-muted-foreground text-xs">
                 These are account counts, not revenue or proceeds. Use App Store Connect for sales,
                 refunds, and proceeds.
@@ -344,6 +368,79 @@ export function NativeGrowthCard() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+export function PlusOfferSourceBreakdown({
+  sources,
+}: {
+  sources: Record<PlusOfferSource, PlusOfferSourceSummary>;
+}) {
+  const displayCount = (value: number | null) => (value === null ? "Hidden (<5)" : count(value));
+
+  return (
+    <section
+      aria-label="Plus offer performance by entry surface"
+      className="space-y-3 border-t pt-4"
+    >
+      <div>
+        <h4 className="font-medium text-sm">Offer performance by entry surface</h4>
+        <p className="mt-1 text-muted-foreground text-xs">
+          Unique account counts. Accounts may appear under more than one surface; counts are not raw
+          taps or revenue.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {plusOfferSourceLabels.map(({ key, label }) => {
+          const source = sources[key];
+          return (
+            <article className="space-y-3 rounded-xl border bg-background/70 p-3" key={key}>
+              <h5 className="font-semibold text-sm">{label}</h5>
+              <div className="grid grid-cols-3 gap-2">
+                <SourceMetric label="Viewed" value={displayCount(source.viewerAccounts)} />
+                <SourceMetric
+                  label="Started"
+                  value={displayCount(source.purchaseStarterAccounts)}
+                />
+                <SourceMetric
+                  label="Verified"
+                  value={displayCount(source.verifiedPurchaserAccounts)}
+                />
+              </div>
+              <div className="grid grid-cols-4 gap-2 border-t pt-2">
+                <SourceMetric label="Pending" value={displayCount(source.pendingAccounts)} />
+                <SourceMetric label="Cancelled" value={displayCount(source.cancelledAccounts)} />
+                <SourceMetric label="Unverified" value={displayCount(source.unverifiedAccounts)} />
+                <SourceMetric label="Failed" value={displayCount(source.failedAccounts)} />
+              </div>
+              <div className="flex items-end justify-between gap-2 border-t pt-2">
+                <SourceMetric
+                  label="Same-day verified"
+                  value={displayCount(source.sameDayVerifiedPurchaserAccounts)}
+                />
+                <div className="text-right">
+                  <div className="text-muted-foreground text-xs">Same-day conversion</div>
+                  <div className="font-semibold tabular-nums">
+                    {source.sameDayConversionRate === null
+                      ? "Hidden (<5)"
+                      : `${(source.sameDayConversionRate * 100).toFixed(1)}%`}
+                  </div>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SourceMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="truncate font-semibold tabular-nums text-sm">{value}</div>
+      <div className="truncate text-muted-foreground text-[11px]">{label}</div>
+    </div>
   );
 }
 

@@ -1,6 +1,88 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DailyPuzzleQualityTable, DailySolvePulseMetric } from "../NativeGrowthCard";
+import {
+  DailyPuzzleQualityTable,
+  DailySolvePulseMetric,
+  PlusOfferSourceBreakdown,
+} from "../NativeGrowthCard";
+
+describe("PlusOfferSourceBreakdown", () => {
+  it("shows account counts, hides small counts, and labels every offer surface", () => {
+    const markup = renderToStaticMarkup(
+      createElement(PlusOfferSourceBreakdown, {
+        sources: {
+          archive: {
+            viewerAccounts: 6,
+            purchaseStarterAccounts: 0,
+            verifiedPurchaserAccounts: 5,
+            pendingAccounts: null,
+            cancelledAccounts: 0,
+            unverifiedAccounts: 0,
+            failedAccounts: 0,
+            sameDayVerifiedPurchaserAccounts: 5,
+            sameDayConversionRate: 5 / 6,
+          },
+          settings: {
+            viewerAccounts: null,
+            purchaseStarterAccounts: 0,
+            verifiedPurchaserAccounts: 0,
+            pendingAccounts: 0,
+            cancelledAccounts: 0,
+            unverifiedAccounts: 0,
+            failedAccounts: 0,
+            sameDayVerifiedPurchaserAccounts: null,
+            sameDayConversionRate: null,
+          },
+          journey_insights: {
+            viewerAccounts: 0,
+            purchaseStarterAccounts: 0,
+            verifiedPurchaserAccounts: 0,
+            pendingAccounts: 0,
+            cancelledAccounts: 0,
+            unverifiedAccounts: 0,
+            failedAccounts: 0,
+            sameDayVerifiedPurchaserAccounts: 0,
+            sameDayConversionRate: null,
+          },
+          journal: {
+            viewerAccounts: 4,
+            purchaseStarterAccounts: 0,
+            verifiedPurchaserAccounts: 0,
+            pendingAccounts: 0,
+            cancelledAccounts: 0,
+            unverifiedAccounts: 0,
+            failedAccounts: 0,
+            sameDayVerifiedPurchaserAccounts: 0,
+            sameDayConversionRate: null,
+          },
+          free_sample: {
+            viewerAccounts: 5,
+            purchaseStarterAccounts: 0,
+            verifiedPurchaserAccounts: 4,
+            pendingAccounts: 0,
+            cancelledAccounts: 0,
+            unverifiedAccounts: 0,
+            failedAccounts: 0,
+            sameDayVerifiedPurchaserAccounts: 4,
+            sameDayConversionRate: null,
+          },
+        },
+      })
+    );
+
+    expect(markup).toContain("Unique account counts");
+    expect(markup).toContain("Archive");
+    expect(markup).toContain("Settings");
+    expect(markup).toContain("Journey insights");
+    expect(markup).toContain("Journal");
+    expect(markup).toContain("Free sample");
+    expect(markup).toContain("Accounts may appear under more than one surface");
+    expect(markup).toContain("Hidden (&lt;5)");
+    expect(markup).toContain("83.3%");
+    expect(markup).toMatch(/>0</);
+    expect(markup).not.toContain("5 of 6");
+  });
+});
 
 describe("DailySolvePulseMetric", () => {
   it("labels the optional view as a distinct account-day aggregate", () => {

@@ -37,6 +37,19 @@ describe("GET /api/admin/native-funnel", () => {
     plusRestoreFailedAccounts: 0,
     plusSameDayPurchasers: 1,
     plusSameDayConversionRate: 1 / 6,
+    plusOffersBySource: {
+      archive: {
+        viewerAccounts: 6,
+        purchaseStarterAccounts: 4,
+        verifiedPurchaserAccounts: 2,
+        pendingAccounts: 1,
+        cancelledAccounts: 0,
+        unverifiedAccounts: 0,
+        failedAccounts: 0,
+        sameDayVerifiedPurchaserAccounts: 1,
+        sameDayConversionRate: null,
+      },
+    },
     reminderEnabledAccounts: 4,
     dailySolvePulseViewAccountDays: 3,
     qualityFeedback: { too_easy: 2, just_right: 7, tough_but_fair: 4, unclear: 1 },
@@ -94,6 +107,7 @@ describe("GET /api/admin/native-funnel", () => {
       tough_but_fair: 4,
       unclear: 1,
     });
+    expect(body.summary.plusOffersBySource).toEqual(summary.plusOffersBySource);
     expect(body.period).toEqual({
       start: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
       end: now.toISOString(),
@@ -102,6 +116,8 @@ describe("GET /api/admin/native-funnel", () => {
     expect(JSON.stringify(body)).not.toContain("email");
     expect(JSON.stringify(body)).not.toContain("rawEvents");
     expect(JSON.stringify(body)).not.toContain("attemptedAnswer");
+    expect(JSON.stringify(body)).not.toContain("account-1");
+    expect(JSON.stringify(body)).not.toContain('"events"');
   });
 
   it("returns 503 when the daily quality aggregation fails", async () => {
