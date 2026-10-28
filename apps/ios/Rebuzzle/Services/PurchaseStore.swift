@@ -37,6 +37,13 @@ import StoreKit
             else { defaults.removeObject(forKey: Self.awaitingApprovalAccountIDDefaultsKey) }
         }
     }
+    private var awaitingApprovalSource: PlusOfferSource? {
+        get { defaults.string(forKey: Self.awaitingApprovalSourceDefaultsKey).flatMap(PlusOfferSource.init(rawValue:)) }
+        set {
+            if let newValue { defaults.set(newValue.rawValue, forKey: Self.awaitingApprovalSourceDefaultsKey) }
+            else { defaults.removeObject(forKey: Self.awaitingApprovalSourceDefaultsKey) }
+        }
+    }
     private var verifiedPurchaseAttributionPending: Bool {
         get { defaults.bool(forKey: Self.verifiedPurchaseAttributionPendingDefaultsKey) }
         set { defaults.set(newValue, forKey: Self.verifiedPurchaseAttributionPendingDefaultsKey) }
@@ -48,21 +55,34 @@ import StoreKit
             else { defaults.removeObject(forKey: Self.verifiedPurchaseAttributionAccountIDDefaultsKey) }
         }
     }
+    private var verifiedPurchaseAttributionSource: PlusOfferSource? {
+        get { defaults.string(forKey: Self.verifiedPurchaseAttributionSourceDefaultsKey).flatMap(PlusOfferSource.init(rawValue:)) }
+        set {
+            if let newValue { defaults.set(newValue.rawValue, forKey: Self.verifiedPurchaseAttributionSourceDefaultsKey) }
+            else { defaults.removeObject(forKey: Self.verifiedPurchaseAttributionSourceDefaultsKey) }
+        }
+    }
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var reportingVerifiedPurchase = false
     @ObservationIgnored private var retryVerifiedPurchaseAfterCurrentAttempt = false
     private static let awaitingApprovalDefaultsKey = "com.byronwade.rebuzzle.plus.awaitingApproval.v1"
     private static let awaitingApprovalAccountIDDefaultsKey = "com.byronwade.rebuzzle.plus.awaitingApprovalAccountID.v1"
+    private static let awaitingApprovalSourceDefaultsKey = "com.byronwade.rebuzzle.plus.awaitingApprovalSource.v1"
     private static let verifiedPurchaseAttributionPendingDefaultsKey = "com.byronwade.rebuzzle.plus.verifiedAttributionPending.v1"
     private static let verifiedPurchaseAttributionAccountIDDefaultsKey = "com.byronwade.rebuzzle.plus.verifiedAttributionAccountID.v1"
+    private static let verifiedPurchaseAttributionSourceDefaultsKey = "com.byronwade.rebuzzle.plus.verifiedAttributionSource.v1"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         // Older builds persisted pending flags without the initiating app account.
         // Drop that ambiguous attribution rather than assigning it to a later login.
-        if awaitingApproval, awaitingApprovalAccountID == nil { awaitingApproval = false }
+        if awaitingApproval, awaitingApprovalAccountID == nil {
+            awaitingApproval = false
+            awaitingApprovalSource = nil
+        }
         if verifiedPurchaseAttributionPending, verifiedPurchaseAttributionAccountID == nil {
             verifiedPurchaseAttributionPending = false
+            verifiedPurchaseAttributionSource = nil
         }
         updates = Task { [weak self] in
             for await result in Transaction.updates {
@@ -70,12 +90,15 @@ import StoreKit
                 if case .verified(let transaction) = result {
                     if transaction.productID == Self.plusID, self.awaitingApproval {
                         let accountID = self.awaitingApprovalAccountID
+                        let source = self.awaitingApprovalSource
                         self.awaitingApproval = false
                         self.awaitingApprovalAccountID = nil
+                        self.awaitingApprovalSource = nil
                         if let accountID {
                             self.verifiedPurchaseAttributionAccountID = accountID
+                            self.verifiedPurchaseAttributionSource = source
                             self.verifiedPurchaseAttributionPending = true
-                            self.onGrowthEvent?(.plusPurchaseVerified)
+                            self.onGrowthEvent?(.plusPurchaseVerified(source))
                         }
                     }
                     await self.refreshEntitlements()
@@ -105,6 +128,7 @@ import StoreKit
         guard verifiedPurchaseAttributionPending else { return }
         guard let accountID = verifiedPurchaseAttributionAccountID else {
             verifiedPurchaseAttributionPending = false
+            verifiedPurchaseAttributionSource = nil
             return
         }
         guard !reportingVerifiedPurchase else {
@@ -112,12 +136,16 @@ import StoreKit
             return
         }
         reportingVerifiedPurchase = true
+        let source = verifiedPurchaseAttributionSource
         Task { [weak self] in
             guard let self else { return }
-            let delivered = await self.onVerifiedPurchase?(.plusPurchaseVerified, accountID) ?? false
-            if delivered, self.verifiedPurchaseAttributionAccountID == accountID {
+            let delivered = await self.onVerifiedPurchase?(.plusPurchaseVerified(source), accountID) ?? false
+            if delivered,
+               self.verifiedPurchaseAttributionAccountID == accountID,
+               self.verifiedPurchaseAttributionSource == source {
                 self.verifiedPurchaseAttributionPending = false
                 self.verifiedPurchaseAttributionAccountID = nil
+                self.verifiedPurchaseAttributionSource = nil
             }
             self.reportingVerifiedPurchase = false
             if self.retryVerifiedPurchaseAfterCurrentAttempt {
@@ -142,24 +170,26 @@ import StoreKit
         if active && !wasActive { onPlusActivated?() }
         if !active, case .ownershipConfirmed = actionStatus { actionStatus = nil }
     }
-    func purchase() async {
+    func purchase(source: PlusOfferSource) async {
         guard let product, !busy else { return }
         let purchaseAccountID = purchaseAccountIDProvider?()
         busy = true; actionStatus = nil; storeMessage = nil
         defer { busy = false }
-        onGrowthEvent?(.plusPurchaseStarted)
+        onGrowthEvent?(.plusPurchaseStarted(source))
         do {
             switch try await product.purchase() {
             case .success(let result):
                 guard case .verified(let transaction) = result else {
-                    onGrowthEvent?(.plusPurchaseUnverified)
+                    onGrowthEvent?(.plusPurchaseUnverified(source))
                     actionStatus = .notice("Apple could not verify this purchase. Try Restore purchases."); return
                 }
                 awaitingApproval = false
                 awaitingApprovalAccountID = nil
+                awaitingApprovalSource = nil
                 verifiedPurchaseAttributionAccountID = purchaseAccountID
+                verifiedPurchaseAttributionSource = purchaseAccountID == nil ? nil : source
                 verifiedPurchaseAttributionPending = purchaseAccountID != nil
-                onGrowthEvent?(.plusPurchaseVerified)
+                onGrowthEvent?(.plusPurchaseVerified(source))
                 await refreshEntitlements()
                 await transaction.finish()
                 retryPendingPurchaseAttribution()
@@ -167,16 +197,17 @@ import StoreKit
             case .pending:
                 awaitingApproval = true
                 awaitingApprovalAccountID = purchaseAccountID
-                onGrowthEvent?(.plusPurchasePending)
+                awaitingApprovalSource = source
+                onGrowthEvent?(.plusPurchasePending(source))
                 actionStatus = .notice("Your purchase is awaiting approval. Plus will unlock when Apple confirms it.")
             case .userCancelled:
-                onGrowthEvent?(.plusPurchaseCancelled)
+                onGrowthEvent?(.plusPurchaseCancelled(source))
             @unknown default:
-                onGrowthEvent?(.plusPurchaseFailed)
+                onGrowthEvent?(.plusPurchaseFailed(source))
                 actionStatus = .notice("The purchase could not be completed. Try again.")
             }
         } catch {
-            onGrowthEvent?(.plusPurchaseFailed)
+            onGrowthEvent?(.plusPurchaseFailed(source))
             actionStatus = .notice("The purchase could not be completed. You can try again or restore purchases.")
         }
     }

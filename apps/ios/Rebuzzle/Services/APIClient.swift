@@ -69,6 +69,14 @@ enum DailyEntrySource: String, Hashable, Sendable {
     case app, notification, widget, shortcut, share
 }
 
+enum PlusOfferSource: String, Hashable, Sendable {
+    case archive
+    case settings
+    case journeyInsights = "journey_insights"
+    case journal
+    case freeSample = "free_sample"
+}
+
 enum DailyQualityRating: String, CaseIterable, Identifiable, Sendable {
     case tooEasy = "too_easy"
     case justRight = "just_right"
@@ -80,13 +88,13 @@ enum DailyQualityRating: String, CaseIterable, Identifiable, Sendable {
 
 enum GrowthEvent: Sendable {
     case dailyOpened(DailyEntrySource)
-    case plusOfferViewed
-    case plusPurchaseStarted
-    case plusPurchaseVerified
-    case plusPurchasePending
-    case plusPurchaseCancelled
-    case plusPurchaseUnverified
-    case plusPurchaseFailed
+    case plusOfferViewed(PlusOfferSource?)
+    case plusPurchaseStarted(PlusOfferSource?)
+    case plusPurchaseVerified(PlusOfferSource?)
+    case plusPurchasePending(PlusOfferSource?)
+    case plusPurchaseCancelled(PlusOfferSource?)
+    case plusPurchaseUnverified(PlusOfferSource?)
+    case plusPurchaseFailed(PlusOfferSource?)
     case plusRestoreCompleted
     case plusRestoreEmpty
     case plusRestoreFailed
@@ -103,13 +111,13 @@ enum GrowthEvent: Sendable {
     var payload: [String: String] {
         switch self {
         case .dailyOpened(let source): ["eventType": "daily_opened", "source": source.rawValue]
-        case .plusOfferViewed: ["eventType": "plus_offer_viewed"]
-        case .plusPurchaseStarted: ["eventType": "plus_purchase_started"]
-        case .plusPurchaseVerified: ["eventType": "plus_purchase_verified"]
-        case .plusPurchasePending: ["eventType": "plus_purchase_pending"]
-        case .plusPurchaseCancelled: ["eventType": "plus_purchase_cancelled"]
-        case .plusPurchaseUnverified: ["eventType": "plus_purchase_unverified"]
-        case .plusPurchaseFailed: ["eventType": "plus_purchase_failed"]
+        case .plusOfferViewed(let source): Self.plusPayload("plus_offer_viewed", source: source)
+        case .plusPurchaseStarted(let source): Self.plusPayload("plus_purchase_started", source: source)
+        case .plusPurchaseVerified(let source): Self.plusPayload("plus_purchase_verified", source: source)
+        case .plusPurchasePending(let source): Self.plusPayload("plus_purchase_pending", source: source)
+        case .plusPurchaseCancelled(let source): Self.plusPayload("plus_purchase_cancelled", source: source)
+        case .plusPurchaseUnverified(let source): Self.plusPayload("plus_purchase_unverified", source: source)
+        case .plusPurchaseFailed(let source): Self.plusPayload("plus_purchase_failed", source: source)
         case .plusRestoreCompleted: ["eventType": "plus_restore_completed"]
         case .plusRestoreEmpty: ["eventType": "plus_restore_empty"]
         case .plusRestoreFailed: ["eventType": "plus_restore_failed"]
@@ -123,6 +131,11 @@ enum GrowthEvent: Sendable {
         case .dailyShareStarted: ["eventType": "daily_share_started"]
         case .dailyShareCompleted: ["eventType": "daily_share_completed"]
         }
+    }
+
+    private static func plusPayload(_ eventType: String, source: PlusOfferSource?) -> [String: String] {
+        guard let source else { return ["eventType": eventType] }
+        return ["eventType": eventType, "source": source.rawValue]
     }
 }
 
@@ -325,7 +338,7 @@ enum GrowthEvent: Sendable {
     @discardableResult func report(_ event: GrowthEvent) async -> Bool {
         do {
             var headers: [String: String] = [:]
-            if case .plusPurchaseVerified = event,
+            if case .plusPurchaseVerified(_) = event,
                let transactionJWS = plusTransactionJWSProvider?() {
                 headers["X-Rebuzzle-StoreKit-Transaction"] = transactionJWS
             }

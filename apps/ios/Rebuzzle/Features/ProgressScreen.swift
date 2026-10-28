@@ -72,7 +72,7 @@ struct ProgressViewScreen: View {
                     Text("Based on results saved on this device.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
                 }
             } else {
-                NavigationLink(value: RebuzzleRoute.plus) {
+                NavigationLink(value: RebuzzleRoute.plus(source: .journeyInsights)) {
                     HStack { VStack(alignment: .leading, spacing: 6) { Text("See your solving patterns").font(Theme.font(16, weight: .medium)); Text("Guess distribution and more with Plus").font(Theme.font(13)).foregroundStyle(Theme.secondary) }; Spacer(); Image(systemName: "arrow.up.right") }.foregroundStyle(Theme.ink).padding(.vertical, 8)
                 }
             }

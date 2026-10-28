@@ -123,7 +123,7 @@ import RebuzzleCore
                         .font(Theme.font(16, weight: .medium)).foregroundStyle(Theme.reward)
                     Text("Rebuzzle Plus opens every past daily, your puzzle journal, and deeper solving insights.")
                         .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
-                    NavigationLink(value: RebuzzleRoute.plus) {
+                    NavigationLink(value: RebuzzleRoute.plus(source: .freeSample)) {
                         Label("Explore Rebuzzle Plus", systemImage: "arrow.right")
                             .padding(.horizontal, 16).padding(.vertical, 8)
                     }
@@ -277,7 +277,7 @@ import RebuzzleCore
             roundComplete: session.state != .playing,
             isVisible: isVisible
         ) else { return }
-        Task { _ = await api.report(.plusOfferViewed) }
+        Task { _ = await api.report(.plusOfferViewed(.freeSample)) }
     }
 
     private func dismissAnswerKeyboard(forceResign: Bool = false) {

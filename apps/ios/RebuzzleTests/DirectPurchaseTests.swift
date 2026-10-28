@@ -21,13 +21,13 @@ final class DirectPurchaseTests: XCTestCase {
         await store.load()
         XCTAssertNotNil(store.product)
         XCTAssertFalse(store.hasPlus)
-        await store.purchase()
+        await store.purchase(source: .archive)
         XCTAssertFalse(store.busy)
         XCTAssertTrue(store.hasPlus, "Direct purchase should unlock Plus: \(store.message ?? "No message")")
         XCTAssertTrue(store.message?.contains("Welcome to Plus") == true)
         XCTAssertEqual(events, [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_verified"],
+            ["eventType": "plus_purchase_started", "source": "archive"],
+            ["eventType": "plus_purchase_verified", "source": "archive"],
         ])
     }
 
@@ -44,25 +44,25 @@ final class DirectPurchaseTests: XCTestCase {
         store.onVerifiedPurchase = { _, _ in true }
         await store.load()
         try await session.setSimulatedError(.generic(.notAvailableInStorefront), forAPI: .purchase)
-        await store.purchase()
+        await store.purchase(source: .settings)
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertEqual(Array(events.prefix(2)), [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_failed"],
+            ["eventType": "plus_purchase_started", "source": "settings"],
+            ["eventType": "plus_purchase_failed", "source": "settings"],
         ])
         // Clearing a simulated purchase error with nil leaves the local StoreKit server
         // returning an unknown error. Reset only session overrides; keep store and transactions.
         session.resetToDefaultState()
         session.disableDialogs = true
-        await store.purchase()
+        await store.purchase(source: .settings)
         XCTAssertTrue(store.hasPlus, "Direct retry should unlock Plus: \(store.message ?? "No message")")
         XCTAssertFalse(store.busy)
         XCTAssertEqual(events, [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_failed"],
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_verified"],
+            ["eventType": "plus_purchase_started", "source": "settings"],
+            ["eventType": "plus_purchase_failed", "source": "settings"],
+            ["eventType": "plus_purchase_started", "source": "settings"],
+            ["eventType": "plus_purchase_verified", "source": "settings"],
         ])
     }
 
@@ -79,13 +79,13 @@ final class DirectPurchaseTests: XCTestCase {
         await store.load()
         XCTAssertNotNil(store.product)
         try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
-        await store.purchase()
+        await store.purchase(source: .journeyInsights)
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertNil(store.message, "Cancelling is a normal choice, not a failed purchase.")
         XCTAssertEqual(events, [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_cancelled"],
+            ["eventType": "plus_purchase_started", "source": "journey_insights"],
+            ["eventType": "plus_purchase_cancelled", "source": "journey_insights"],
         ])
     }
 
@@ -126,7 +126,7 @@ final class DirectPurchaseTests: XCTestCase {
         await store.load()
         XCTAssertNil(store.product)
         XCTAssertNotNil(store.message)
-        await store.purchase()
+        await store.purchase(source: .journal)
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertTrue(session.allTransactions().isEmpty)
@@ -291,7 +291,7 @@ extension DirectPurchaseTests {
         store.onGrowthEvent = { events.append($0.payload) }
         await store.load()
         try await session.setSimulatedError(.verification(.invalidSignature), forAPI: .verification)
-        await store.purchase()
+        await store.purchase(source: .freeSample)
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertEqual(store.message, "Apple could not verify this purchase. Try Restore purchases.")
@@ -302,8 +302,8 @@ extension DirectPurchaseTests {
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertEqual(events, [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_unverified"],
+            ["eventType": "plus_purchase_started", "source": "free_sample"],
+            ["eventType": "plus_purchase_unverified", "source": "free_sample"],
             ["eventType": "plus_restore_empty"],
         ])
     }

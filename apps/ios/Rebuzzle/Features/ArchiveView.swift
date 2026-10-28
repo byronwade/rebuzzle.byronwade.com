@@ -173,7 +173,7 @@ struct ArchiveView: View {
                 .font(Theme.font(20, weight: .medium))
             Text("Replay every past daily, keep a personal puzzle journal, and explore your solving patterns.")
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
-            NavigationLink(value: RebuzzleRoute.plus) {
+            NavigationLink(value: RebuzzleRoute.plus(source: .archive)) {
                 Text("Explore Rebuzzle Plus").padding(.horizontal, 16).padding(.vertical, 8)
             }
             .buttonStyle(CommitStyle())

@@ -111,7 +111,7 @@ enum JournalSyncStatus: Equatable {
         }
         do { self.api.token = try secure.read("token") } catch { initialSetupError = error.localizedDescription }
         self.purchases.onGrowthEvent = { [weak self] event in
-            if case .plusPurchaseVerified = event { return }
+            if case .plusPurchaseVerified(_) = event { return }
             self?.recordGrowthEvent(event)
         }
         self.purchases.purchaseAccountIDProvider = { [weak self] in self?.player?.id }

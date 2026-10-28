@@ -52,25 +52,25 @@ extension PurchaseTests {
         store.purchaseAccountIDProvider = { "member-a" }
         store.onVerifiedPurchase = { _, accountID in accountID == "member-a" }
         await store.load()
-        await store.purchase()
+        await store.purchase(source: .settings)
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertTrue(store.message?.contains("awaiting approval") == true)
         XCTAssertEqual(events, [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_pending"],
+            ["eventType": "plus_purchase_started", "source": "settings"],
+            ["eventType": "plus_purchase_pending", "source": "settings"],
         ])
         let pending = try XCTUnwrap(session.allTransactions().first)
         try session.approveAskToBuyTransaction(identifier: pending.identifier)
         for _ in 0..<50 {
-            if store.hasPlus && events.contains(["eventType": "plus_purchase_verified"]) { break }
+            if store.hasPlus && events.contains(["eventType": "plus_purchase_verified", "source": "settings"]) { break }
             try await Task.sleep(for: .milliseconds(100))
         }
         XCTAssertTrue(store.hasPlus, "Transaction updates unlock the approved purchase without relaunch")
         XCTAssertEqual(events, [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_pending"],
-            ["eventType": "plus_purchase_verified"],
+            ["eventType": "plus_purchase_started", "source": "settings"],
+            ["eventType": "plus_purchase_pending", "source": "settings"],
+            ["eventType": "plus_purchase_verified", "source": "settings"],
         ])
     }
 
@@ -94,10 +94,10 @@ extension PurchaseTests {
         firstStore?.purchaseAccountIDProvider = { "member-a" }
         firstStore?.onGrowthEvent = { firstEvents.append($0.payload) }
         await firstStore?.load()
-        await firstStore?.purchase()
+        await firstStore?.purchase(source: .freeSample)
         XCTAssertEqual(firstEvents, [
-            ["eventType": "plus_purchase_started"],
-            ["eventType": "plus_purchase_pending"],
+            ["eventType": "plus_purchase_started", "source": "free_sample"],
+            ["eventType": "plus_purchase_pending", "source": "free_sample"],
         ])
         let pending = try XCTUnwrap(session.allTransactions().first)
 
@@ -128,13 +128,34 @@ extension PurchaseTests {
         currentAccountID = "member-a"
         relaunchedStore.retryPendingPurchaseAttribution()
         for _ in 0..<50 {
-            if relaunchedStore.hasPlus && reportedEvents.contains(["eventType": "plus_purchase_verified"]) {
+            if relaunchedStore.hasPlus && reportedEvents.contains(["eventType": "plus_purchase_verified", "source": "free_sample"]) {
                 break
             }
             try await Task.sleep(for: .milliseconds(100))
         }
 
         XCTAssertTrue(relaunchedStore.hasPlus)
+        XCTAssertEqual(reportedEvents, [["eventType": "plus_purchase_verified", "source": "free_sample"]])
+    }
+
+    @MainActor func testLegacyPendingVerifiedAttributionStaysSourceFree() async throws {
+        let suiteName = "rebuzzle.purchase-tests.legacy.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(true, forKey: "com.byronwade.rebuzzle.plus.verifiedAttributionPending.v1")
+        defaults.set("member-a", forKey: "com.byronwade.rebuzzle.plus.verifiedAttributionAccountID.v1")
+
+        let store = PurchaseStore(defaults: defaults)
+        var reportedEvents = [[String: String]]()
+        store.onVerifiedPurchase = { event, _ in
+            reportedEvents.append(event.payload)
+            return true
+        }
+        store.retryPendingPurchaseAttribution()
+        for _ in 0..<50 where reportedEvents.isEmpty {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
         XCTAssertEqual(reportedEvents, [["eventType": "plus_purchase_verified"]])
     }
 
@@ -148,12 +169,12 @@ extension PurchaseTests {
         let store = isolatedPurchaseStore()
         await store.load()
         try await session.setSimulatedError(.generic(.notAvailableInStorefront), forAPI: .purchase)
-        await store.purchase()
+        await store.purchase(source: .archive)
         XCTAssertFalse(store.hasPlus)
         XCTAssertFalse(store.busy)
         XCTAssertNotNil(store.message)
         let firstCount = session.allTransactions().count
-        await store.purchase()
+        await store.purchase(source: .archive)
         XCTAssertFalse(store.busy)
         XCTAssertFalse(store.hasPlus)
         XCTAssertGreaterThan(session.allTransactions().count, firstCount, "A failed purchase releases the busy gate so another attempt reaches StoreKit")

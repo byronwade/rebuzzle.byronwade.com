@@ -43,7 +43,7 @@ enum AppTab: Hashable { case play, journey, you }
 
 enum RebuzzleRoute: Hashable {
     case journal
-    case plus
+    case plus(source: PlusOfferSource)
     case reminder
     case help
     case signIn
@@ -139,8 +139,8 @@ struct RootView: View {
         switch route {
         case .journal:
             JournalView()
-        case .plus:
-            PlusView()
+        case let .plus(source):
+            PlusView(source: source)
         case .reminder:
             ReminderView()
         case .help:

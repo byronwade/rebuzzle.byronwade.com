@@ -83,8 +83,33 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
         XCTAssertEqual(capturedBody, ["eventType": "daily_opened", "source": "widget"])
     }
 
-    func testOfferAndReminderPayloadsContainOnlyTheirEventType() {
-        XCTAssertEqual(GrowthEvent.plusOfferViewed.payload, ["eventType": "plus_offer_viewed"])
+    func testPlusOfferPayloadsCarryOnlyTheirClosedSourceAndLegacyEventsStaySourceFree() {
+        XCTAssertEqual(GrowthEvent.plusOfferViewed(.archive).payload, [
+            "eventType": "plus_offer_viewed",
+            "source": "archive",
+        ])
+        XCTAssertEqual(GrowthEvent.plusPurchaseStarted(.settings).payload, [
+            "eventType": "plus_purchase_started",
+            "source": "settings",
+        ])
+        XCTAssertEqual(GrowthEvent.plusPurchasePending(.journeyInsights).payload, [
+            "eventType": "plus_purchase_pending",
+            "source": "journey_insights",
+        ])
+        XCTAssertEqual(GrowthEvent.plusPurchaseVerified(.freeSample).payload, [
+            "eventType": "plus_purchase_verified",
+            "source": "free_sample",
+        ])
+        XCTAssertEqual(GrowthEvent.plusPurchaseFailed(.journal).payload, [
+            "eventType": "plus_purchase_failed",
+            "source": "journal",
+        ])
+        XCTAssertEqual(GrowthEvent.plusPurchaseVerified(nil).payload, [
+            "eventType": "plus_purchase_verified",
+        ])
+        XCTAssertEqual(GrowthEvent.plusRestoreCompleted.payload, [
+            "eventType": "plus_restore_completed",
+        ])
         XCTAssertEqual(GrowthEvent.reminderEnabled.payload, ["eventType": "reminder_enabled"])
     }
 
@@ -165,7 +190,7 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
         StubProtocol.responder = { _ in throw URLError(.notConnectedToInternet) }
 
         let client = APIClient(deviceID: "test-device", session: URLSession(configuration: config))
-        await client.report(.plusOfferViewed)
+        await client.report(.plusOfferViewed(.archive))
     }
 
     func testVerifiedPurchaseEventIncludesStoreKitProofHeader() async throws {
@@ -181,9 +206,9 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
 
         let client = APIClient(deviceID: "test-device", session: URLSession(configuration: config))
         client.plusTransactionJWSProvider = { "verified-test-transaction" }
-        await client.report(.plusPurchaseVerified)
+        await client.report(.plusPurchaseVerified(.archive))
 
-        XCTAssertEqual(capturedBody, ["eventType": "plus_purchase_verified"])
+        XCTAssertEqual(capturedBody, ["eventType": "plus_purchase_verified", "source": "archive"])
         XCTAssertEqual(capturedTransaction, "verified-test-transaction")
     }
 
@@ -212,12 +237,12 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
             from: Data(#"{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}"#.utf8)
         )
 
-        model.purchases.onGrowthEvent?(.plusPurchaseStarted)
+        model.purchases.onGrowthEvent?(.plusPurchaseStarted(.settings))
         for _ in 0..<100 where recorder.payload == nil {
             try await Task.sleep(for: .milliseconds(10))
         }
 
-        XCTAssertEqual(recorder.payload, ["eventType": "plus_purchase_started"])
+        XCTAssertEqual(recorder.payload, ["eventType": "plus_purchase_started", "source": "settings"])
     }
 
     func testVerifiedPurchaseReportingWaitsForRestoredAppAccount() async throws {
@@ -245,7 +270,7 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
             credentials: credentials
         )
         let report = try XCTUnwrap(model.purchases.onVerifiedPurchase)
-        let rejectedBeforeAuthentication = await report(.plusPurchaseVerified, "member-a")
+        let rejectedBeforeAuthentication = await report(.plusPurchaseVerified(.freeSample), "member-a")
         XCTAssertFalse(rejectedBeforeAuthentication)
         XCTAssertNil(recorder.payload, "A verified event must wait until the app identity is restored.")
 
@@ -254,7 +279,7 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
             from: Data(#"{"id":"member-b","username":"Member B","email":"member-b@example.com","isGuest":false}"#.utf8)
         )
 
-        let rejectedForWrongAccount = await report(.plusPurchaseVerified, "member-a")
+        let rejectedForWrongAccount = await report(.plusPurchaseVerified(.freeSample), "member-a")
         XCTAssertFalse(rejectedForWrongAccount)
         XCTAssertNil(recorder.payload, "A verified event must not be attributed to a different signed-in account.")
 
@@ -262,9 +287,9 @@ private final class GrowthRequestRecorder: @unchecked Sendable {
             Player.self,
             from: Data(#"{"id":"member-a","username":"Member A","email":"member-a@example.com","isGuest":false}"#.utf8)
         )
-        let deliveredAfterAuthentication = await report(.plusPurchaseVerified, "member-a")
+        let deliveredAfterAuthentication = await report(.plusPurchaseVerified(.freeSample), "member-a")
         XCTAssertTrue(deliveredAfterAuthentication)
-        XCTAssertEqual(recorder.payload, ["eventType": "plus_purchase_verified"])
+        XCTAssertEqual(recorder.payload, ["eventType": "plus_purchase_verified", "source": "free_sample"])
         XCTAssertEqual(capturedAuthorization, "Bearer member-token")
     }
 

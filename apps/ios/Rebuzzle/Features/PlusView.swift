@@ -2,6 +2,7 @@ import SwiftUI
 import RebuzzleCore
 
 struct PlusView: View {
+    let source: PlusOfferSource
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -70,7 +71,7 @@ struct PlusView: View {
         .task {
             await model.purchases.load()
             await model.retryJournalSyncIfNeeded()
-            if !model.purchases.hasPlus { model.recordGrowthEvent(.plusOfferViewed) }
+            if !model.purchases.hasPlus { model.recordGrowthEvent(.plusOfferViewed(source)) }
         }
     }
 
@@ -110,7 +111,7 @@ struct PlusView: View {
                     Text(product.displayPrice).font(Theme.font(32, weight: .medium, relativeTo: .largeTitle)).monospacedDigit()
                     Text("One-time purchase. No subscription.").font(Theme.font(14)).foregroundStyle(Theme.secondary)
                 }
-                Button { Task { await model.purchases.purchase() } } label: {
+                Button { Task { await model.purchases.purchase(source: source) } } label: {
                     HStack(spacing: 12) {
                         Text("Unlock Plus · \(product.displayPrice)")
                         if model.purchases.busy { ProgressView().tint(Theme.canvas) }

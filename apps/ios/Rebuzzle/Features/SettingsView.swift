@@ -45,7 +45,7 @@ struct SettingsView: View {
                 NavigationLink("Daily reminder", value: RebuzzleRoute.reminder)
             }
             Section {
-                NavigationLink("Rebuzzle Plus", value: RebuzzleRoute.plus)
+                NavigationLink("Rebuzzle Plus", value: RebuzzleRoute.plus(source: .settings))
                 Button("Restore purchases") { Task { await model.purchases.restore() } }.disabled(model.purchases.busy)
                 if let message = model.purchases.message { Text(message).font(.footnote).foregroundStyle(Theme.secondary) }
             } header: { Text("A little more Rebuzzle") }

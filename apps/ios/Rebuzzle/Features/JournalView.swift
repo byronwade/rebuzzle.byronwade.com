@@ -24,7 +24,7 @@ struct JournalView: View {
                         Text("Study completed puzzles again, reveal the answer when you’re ready, and keep a note. Unlock your journal with Plus.")
                             .font(Theme.font(15)).foregroundStyle(Theme.secondary)
                     }
-                    NavigationLink(value: RebuzzleRoute.plus) {
+                    NavigationLink(value: RebuzzleRoute.plus(source: .journal)) {
                         Text("Explore Rebuzzle Plus").padding(.horizontal, 16).padding(.vertical, 8)
                     }.buttonStyle(CommitStyle())
                     Text("Completed results are already saved locally, ready when you unlock Plus.")
