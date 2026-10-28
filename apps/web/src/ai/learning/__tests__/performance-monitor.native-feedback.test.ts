@@ -39,6 +39,21 @@ function nativeRating(userId: string, rating: Rating, daysAgo = 0) {
   };
 }
 
+function aggregateNativeRatings(ratings: Array<ReturnType<typeof nativeRating>>) {
+  const newestByAccount = new Map<string, ReturnType<typeof nativeRating>>();
+  for (const entry of [...ratings].sort(
+    (a, b) => b.occurredAt.getTime() - a.occurredAt.getTime()
+  )) {
+    if (!newestByAccount.has(entry.userId)) newestByAccount.set(entry.userId, entry);
+  }
+
+  const counts = new Map<Rating, number>();
+  for (const entry of newestByAccount.values()) {
+    counts.set(entry.rating, (counts.get(entry.rating) ?? 0) + 1);
+  }
+  return [...counts].map(([_id, players]) => ({ _id, players }));
+}
+
 function webEasyVotes(count: number) {
   return Array.from({ length: count }, () => ({ metrics: { tooEasy: true } }));
 }
@@ -50,7 +65,13 @@ function configureCollections(input: {
 }) {
   const attempts = cursorFor(healthyBehaviorFinals());
   const web = cursorFor(input.webVotes ?? []);
-  const native = cursorFor(input.nativeRatings ?? [], input.nativeQueryFails);
+  const native = {
+    aggregate: jest.fn().mockReturnValue({
+      toArray: input.nativeQueryFails
+        ? jest.fn().mockRejectedValue(new Error("database unavailable"))
+        : jest.fn().mockResolvedValue(aggregateNativeRatings(input.nativeRatings ?? [])),
+    }),
+  };
   const collections: Record<string, unknown> = {
     puzzleAttempts: attempts,
     aiFeedback: web,
@@ -58,7 +79,7 @@ function configureCollections(input: {
   };
 
   jest.mocked(getCollection).mockImplementation((name: string) => collections[name] as never);
-  return { nativeCursor: native.cursor };
+  return { nativeAggregate: native.aggregate };
 }
 
 describe("native daily difficulty calibration", () => {
@@ -86,7 +107,7 @@ describe("native daily difficulty calibration", () => {
   });
 
   it("uses each account's newest native rating", async () => {
-    configureCollections({
+    const { nativeAggregate } = configureCollections({
       nativeRatings: [
         nativeRating("player-1", "too_easy"),
         nativeRating("player-2", "too_easy"),
@@ -106,6 +127,14 @@ describe("native daily difficulty calibration", () => {
 
     expect(result.difficultyDelta).toBe(0);
     expect(result.notes.join(" ")).toMatch(/tough but fair/i);
+    expect(result.notes.join(" ")).not.toMatch(/player-/);
+
+    const pipeline = nativeAggregate.mock.calls[0]?.[0] as Array<Record<string, unknown>>;
+    expect(pipeline[1]).toEqual({ $sort: { occurredAt: -1 } });
+    expect(pipeline[2]).toEqual({
+      $group: { _id: "$userId", rating: { $first: "$rating" } },
+    });
+    expect(pipeline[3]).toEqual({ $group: { _id: "$rating", players: { $sum: 1 } } });
   });
 
   it("keeps web votes when native feedback is unavailable", async () => {

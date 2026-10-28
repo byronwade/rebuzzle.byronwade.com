@@ -42,10 +42,10 @@
 - Produces: the existing `measureWindowPerformance(input?: { lookbackDays?: number; minFinals?: number }): Promise<WindowPerformance>` with native aggregate notes blended into its existing difficulty delta.
 
 - [x] **Step 1: Add failing tests**
-  - In `difficulty-perception.test.ts`, add `keeps_tough_but_fair_votes_in_the_challenge_band`: five `toughButFair` votes produce delta `0` and a challenge-preserving note. Add `excludes_unclear_votes_from_difficulty_math`: three `unclear` votes produce delta `0` and a clarity note.
-  - In `performance-monitor.native-feedback.test.ts`, add `requires_ten_distinct_native_accounts`: with eight behavioral finals in the healthy challenge band, nine distinct `too_easy` accounts produce delta `0`, while ten produce a positive delta.
-  - Add `uses_each_accounts_newest_native_rating`: four accounts answer `too_easy`, three answer `just_right`, and three answer `tough_but_fair`; one of those three has an older `too_easy` then newer `tough_but_fair` response. The ten-account aggregate produces delta `0`; counting both responses would incorrectly raise difficulty.
-  - Add `keeps_web_votes_when_native_feedback_is_unavailable`: with the native collection query rejected and five web `tooEasy` votes, the returned difficulty delta stays positive.
+  - In `difficulty-perception.test.ts`, add `keeps tough but fair votes in the challenge band`: five `toughButFair` votes produce delta `0` and a challenge-preserving note. Add `excludes unclear votes from difficulty math`: three `unclear` votes produce delta `0` and a clarity note.
+  - In `performance-monitor.native-feedback.test.ts`, add `requires ten distinct native accounts`: with eight behavioral finals in the healthy challenge band, nine distinct `too_easy` accounts produce delta `0`, while ten produce a positive delta.
+  - Add `uses each account's newest native rating`: four accounts answer `too_easy`, three answer `just_right`, and three answer `tough_but_fair`; one of those three has an older `too_easy` then newer `tough_but_fair` response. The ten-account aggregate produces delta `0`; counting both responses would incorrectly raise difficulty. Assert the Mongo pipeline sorts newest-first before grouping by account, then groups by rating, and the returned notes contain no account IDs.
+  - Add `keeps web votes when native feedback is unavailable`: with the native collection aggregation rejected and five web `tooEasy` votes, the returned difficulty delta stays positive.
 - [x] **Step 2: Run the focused tests and confirm the expected failures**
 
   Run from `apps/web`: `pnpm test -- --runInBand src/ai/learning/__tests__/difficulty-perception.test.ts src/ai/learning/__tests__/performance-monitor.native-feedback.test.ts`
@@ -53,7 +53,7 @@
   Expected: the new assertions fail because the aggregate and loader do not yet use native ratings.
 - [x] **Step 3: Implement the aggregate mapping and native loader**
   - Extend `aggregatePerceptionDelta` inputs with optional `toughButFair` and `unclear` counts. Include `toughButFair` in the calibrated sample; exclude `unclear` from the difficulty denominator. Add a challenge note for `toughButFair` ratings and a clarity note when `unclear >= 3`.
-  - In `loadPerceptionVotes`, query recent native quality events by `occurredAt`, sort newest first, project only `userId` and `rating`, and keep the first event per account. Merge the aggregate only when there are at least 10 distinct accounts.
+  - In `loadPerceptionVotes`, aggregate recent native quality events in MongoDB: match the lookback window and known ratings, sort newest first, group by account using the first rating, then count accounts by rating. Only the bounded rating counts cross into the app process; no raw account ID leaves MongoDB. Merge the aggregate only when there are at least 10 distinct accounts.
   - Forward challenge and clarity notes to generation even when the numeric difficulty delta is `0`; keep ordinary balanced-vote notes behind the existing non-zero-delta behavior.
   - Catch native query errors separately so web feedback is still returned. Do not include account identifiers in returned values or notes.
 - [x] **Step 4: Run the focused tests and confirm they pass**

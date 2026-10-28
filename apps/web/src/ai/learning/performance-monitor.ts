@@ -50,9 +50,9 @@ type NativePerceptionVotes = {
   nativePlayers: number;
 };
 
-type NativeDifficultyRating = {
-  userId?: string;
-  rating?: NativeGrowthQualityRating;
+type NativeDifficultyRatingCount = {
+  _id: NativeGrowthQualityRating;
+  players: number;
 };
 
 const MIN_NATIVE_PERCEPTION_ACCOUNTS = 10;
@@ -109,52 +109,32 @@ async function loadNativePerceptionVotes(cutoff: Date): Promise<NativePerception
     nativePlayers: 0,
   };
   try {
-    const docs = (await getCollection("nativeGrowthEvents")
-      .find({
-        eventType: "daily_quality_feedback",
-        occurredAt: { $gte: cutoff },
-      })
-      .project({ userId: 1, rating: 1 })
-      .sort({ occurredAt: -1 })
-      .limit(5000)
-      .toArray()) as NativeDifficultyRating[];
+    const ratingCounts = (await getCollection("nativeGrowthEvents")
+      .aggregate<NativeDifficultyRatingCount>([
+        {
+          $match: {
+            eventType: "daily_quality_feedback",
+            occurredAt: { $gte: cutoff },
+            userId: { $type: "string", $ne: "" },
+            rating: { $in: ["too_easy", "just_right", "tough_but_fair", "unclear"] },
+          },
+        },
+        { $sort: { occurredAt: -1 } },
+        { $group: { _id: "$userId", rating: { $first: "$rating" } } },
+        { $group: { _id: "$rating", players: { $sum: 1 } } },
+      ])
+      .toArray()) as NativeDifficultyRatingCount[];
 
-    const latestRatingByAccount = new Map<string, NativeGrowthQualityRating>();
-    for (const doc of docs) {
-      if (!doc.userId || latestRatingByAccount.has(doc.userId) || !doc.rating) continue;
-      latestRatingByAccount.set(doc.userId, doc.rating);
-    }
+    const nativePlayers = ratingCounts.reduce((sum, row) => sum + row.players, 0);
+    if (nativePlayers < MIN_NATIVE_PERCEPTION_ACCOUNTS) return empty;
 
-    if (latestRatingByAccount.size < MIN_NATIVE_PERCEPTION_ACCOUNTS) return empty;
-
-    let tooEasy = 0;
-    let justRight = 0;
-    let toughButFair = 0;
-    let unclear = 0;
-    for (const rating of latestRatingByAccount.values()) {
-      switch (rating) {
-        case "too_easy":
-          tooEasy += 1;
-          break;
-        case "just_right":
-          justRight += 1;
-          break;
-        case "tough_but_fair":
-          toughButFair += 1;
-          break;
-        case "unclear":
-          unclear += 1;
-          break;
-        default:
-          continue;
-      }
-    }
+    const playersByRating = new Map(ratingCounts.map(({ _id, players }) => [_id, players]));
     return {
-      tooEasy,
-      justRight,
-      toughButFair,
-      unclear,
-      nativePlayers: latestRatingByAccount.size,
+      tooEasy: playersByRating.get("too_easy") ?? 0,
+      justRight: playersByRating.get("just_right") ?? 0,
+      toughButFair: playersByRating.get("tough_but_fair") ?? 0,
+      unclear: playersByRating.get("unclear") ?? 0,
+      nativePlayers,
     };
   } catch {
     return empty;
