@@ -123,7 +123,8 @@ export async function POST(request: Request) {
     const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
     const hasPlus = mode === "practice" ? await hasPlusEntitlement(request) : false;
-    const freeSample = mode === "practice" && !hasPlus ? await findFreeArchiveSample(localDateKey) : null;
+    const freeSample =
+      mode === "practice" && !hasPlus ? await findFreeArchiveSample(localDateKey) : null;
     const isFreeSample = freeSample?.id === puzzleId;
     if (mode === "practice" && !isFreeSample && !hasPlus) {
       return json(

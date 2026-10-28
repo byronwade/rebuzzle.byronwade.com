@@ -3,19 +3,15 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
-import {
-  formatGatewayAuthError,
-  isGatewayAuthError,
-  probeGatewayAuth,
-} from "@/ai/client";
+import { formatGatewayAuthError, isGatewayAuthError, probeGatewayAuth } from "@/ai/client";
 import { resolveAdaptiveDifficultyForDate } from "@/ai/learning";
 import { assertDailyChallenge } from "@/ai/puzzle-agent/daily-challenge";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { generateMasterPuzzle } from "@/ai/services/master-puzzle-orchestrator";
 import type { Puzzle } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
-import { createMongoDailyPuzzleCandidateRepository } from "@/lib/game/daily-puzzle-candidate-repository";
 import { getUtcPuzzleDate } from "@/lib/game/daily-lock";
+import { createMongoDailyPuzzleCandidateRepository } from "@/lib/game/daily-puzzle-candidate-repository";
 import { createDailyPuzzleCandidateQueue } from "@/lib/game/queue-daily-puzzle-candidate";
 import { logger } from "@/lib/logger";
 
@@ -52,7 +48,7 @@ export async function archiveTodaysPuzzle(): Promise<{
             "metadata.retiredReason": "regenerate",
             "metadata.retiredDateKey": dateKey,
           },
-        },
+        }
       );
     }
 
@@ -111,9 +107,7 @@ export async function regenerateTodaysPuzzle(puzzleType?: string): Promise<{
 
     const dateKey = getUtcPuzzleDate();
     const typeToUse = puzzleType || process.env.DEFAULT_PUZZLE_TYPE || "rebus";
-    const difficultyPlan = await resolveAdaptiveDifficultyForDate(
-      new Date(`${dateKey}T00:00:00Z`),
-    );
+    const difficultyPlan = await resolveAdaptiveDifficultyForDate(new Date(`${dateKey}T00:00:00Z`));
 
     const result = await generateMasterPuzzle({
       targetDifficulty: difficultyPlan.target,
@@ -125,8 +119,7 @@ export async function regenerateTodaysPuzzle(puzzleType?: string): Promise<{
     });
 
     const puzzleDisplay =
-      result.puzzle.visual?.unicodeFallback?.trim() ||
-      result.puzzle.rebusPuzzle;
+      result.puzzle.visual?.unicodeFallback?.trim() || result.puzzle.rebusPuzzle;
     const visual = result.puzzle.visual;
     const metadataExtra = {
       regeneratedAt: new Date().toISOString(),
@@ -139,10 +132,7 @@ export async function regenerateTodaysPuzzle(puzzleType?: string): Promise<{
       difficultyScore: result.puzzle.difficulty,
       fingerprint: result.metadata.fingerprint,
       calibratedDifficulty: result.metadata.calibratedDifficulty,
-      generationMethod:
-        result.metadata.engine === "apex"
-          ? "apex-tournament"
-          : "eve-tool-agent",
+      generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
       engine: result.metadata.engine ?? "eve",
       answerSeed: result.metadata.answerSeed,
       answerSeedCuePlan: result.metadata.answerSeedCuePlan,
@@ -165,7 +155,7 @@ export async function regenerateTodaysPuzzle(puzzleType?: string): Promise<{
     });
     const candidateQueue = createDailyPuzzleCandidateQueue(
       createMongoDailyPuzzleCandidateRepository(),
-      puzzlePlaytestService,
+      puzzlePlaytestService
     );
     const candidate = await candidateQueue.enqueue({
       generationKey: dateKey,
@@ -186,8 +176,7 @@ export async function regenerateTodaysPuzzle(puzzleType?: string): Promise<{
 
     return {
       success: true,
-      message:
-        "Puzzle queued for blind human playtesting; today's published puzzle stays live.",
+      message: "Puzzle queued for blind human playtesting; today's published puzzle stays live.",
       candidate: {
         id: candidate.id,
         status: candidate.status,

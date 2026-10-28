@@ -45,7 +45,9 @@ it("lists only notes for the authenticated owner and requested journal page", as
   const find = jest.fn().mockReturnValue({ toArray });
   mockGetCollection.mockReturnValue({ find } as never);
 
-  await expect(journalNoteOps().listForUserPage("user-1", ["puzzle-1", "puzzle-2"])).resolves.toEqual(rows);
+  await expect(
+    journalNoteOps().listForUserPage("user-1", ["puzzle-1", "puzzle-2"])
+  ).resolves.toEqual(rows);
 
   expect(mockGetCollection).toHaveBeenCalledWith("journalNotes");
   expect(find).toHaveBeenCalledWith({

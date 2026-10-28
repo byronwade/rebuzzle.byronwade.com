@@ -64,7 +64,7 @@ describe("daily puzzle candidate repository", () => {
       repository.claimReadyForDate({
         id: candidate.id,
         dateString: "2026-10-30",
-      }),
+      })
     ).resolves.toEqual(assigned);
     expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
       { id: candidate.id, status: "ready", assignedDate: { $exists: false } },
@@ -76,7 +76,7 @@ describe("daily puzzle candidate repository", () => {
         },
         $inc: { statusVersion: 1 },
       },
-      { returnDocument: "after" },
+      { returnDocument: "after" }
     );
   });
 
@@ -110,7 +110,7 @@ describe("daily puzzle candidate repository", () => {
         expectedStatusVersion: 0,
         updatedAt: new Date("2026-10-28T00:00:00Z"),
         humanEvidence,
-      }),
+      })
     ).resolves.toMatchObject({ status: "ready", humanEvidence });
     expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
       { id: candidate.id, status: "reviewing", statusVersion: 0 },
@@ -118,7 +118,7 @@ describe("daily puzzle candidate repository", () => {
         $set: { status: "ready", humanEvidence, updatedAt: expect.any(Date) },
         $inc: { statusVersion: 1 },
       },
-      { returnDocument: "after" },
+      { returnDocument: "after" }
     );
   });
 
@@ -135,7 +135,7 @@ describe("daily puzzle candidate repository", () => {
       repository.claimReadyForDate({
         id: "candidate-2",
         dateString: "2026-10-30",
-      }),
+      })
     ).resolves.toEqual(assigned);
     expect(mockCollection.findOne).toHaveBeenCalledWith({
       assignedDate: "2026-10-30",
@@ -156,7 +156,7 @@ describe("daily puzzle candidate repository", () => {
         dateString: "2026-10-30",
         puzzleId: "puzzle-1",
         updatedAt: new Date("2026-10-30T00:00:00Z"),
-      }),
+      })
     ).resolves.toMatchObject({
       status: "published",
       publishedPuzzleId: "puzzle-1",
@@ -171,7 +171,7 @@ describe("daily puzzle candidate repository", () => {
         },
         $inc: { statusVersion: 1 },
       },
-      { returnDocument: "after" },
+      { returnDocument: "after" }
     );
   });
 
@@ -199,7 +199,7 @@ describe("daily puzzle candidate repository", () => {
         $inc: { statusVersion: 1 },
         $unset: { assignedDate: "" },
       },
-      { returnDocument: "after" },
+      { returnDocument: "after" }
     );
   });
 });

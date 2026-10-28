@@ -10,9 +10,7 @@ const visual = {
   styleId: "ink-pictogram-v1" as const,
   layout: "row" as const,
   unicodeFallback: "T E E F",
-  layers: [
-    { kind: "text" as const, content: "TEEF", emphasis: "normal" as const },
-  ],
+  layers: [{ kind: "text" as const, content: "TEEF", emphasis: "normal" as const }],
 };
 
 const payload: DailyPuzzleCandidate["payload"] = {
@@ -46,9 +44,7 @@ function memoryRepository() {
     | "markPlaytestSubmissionFailed"
   > = {
     async insert(candidate) {
-      const existing = rows.find(
-        (row) => row.generationKey === candidate.generationKey,
-      );
+      const existing = rows.find((row) => row.generationKey === candidate.generationKey);
       if (existing) return existing;
       rows.push(candidate);
       return candidate;
@@ -63,7 +59,7 @@ function memoryRepository() {
       return rows.filter(
         (row) =>
           (!input.statuses?.length || input.statuses.includes(row.status)) &&
-          (!input.withoutPlaytestSubmission || !row.playtestSubmittedAt),
+          (!input.withoutPlaytestSubmission || !row.playtestSubmittedAt)
       );
     },
     async markPlaytestSubmitted({ id, submittedAt }) {
@@ -95,11 +91,7 @@ describe("queueing daily puzzles for human playtesting", () => {
   beforeEach(() => {
     memory = memoryRepository();
     submitCandidate = jest.fn().mockResolvedValue(undefined);
-    queue = createDailyPuzzleCandidateQueue(
-      memory.repository,
-      { submitCandidate },
-      () => now,
-    );
+    queue = createDailyPuzzleCandidateQueue(memory.repository, { submitCandidate }, () => now);
   });
 
   it("stores the complete puzzle privately and submits its exact board to blind review", async () => {
@@ -139,13 +131,11 @@ describe("queueing daily puzzles for human playtesting", () => {
   });
 
   it("retains a failed submission for a bounded retry instead of treating it as reviewed", async () => {
-    submitCandidate.mockRejectedValueOnce(
-      new Error("playtest service unavailable"),
-    );
+    submitCandidate.mockRejectedValueOnce(new Error("playtest service unavailable"));
 
-    await expect(
-      queue.enqueue({ generationKey: "2026-10-29", payload }),
-    ).rejects.toThrow("playtest service unavailable");
+    await expect(queue.enqueue({ generationKey: "2026-10-29", payload })).rejects.toThrow(
+      "playtest service unavailable"
+    );
     expect(memory.rows[0]).toMatchObject({
       status: "reviewing",
       playtestSubmissionError: "playtest service unavailable",
@@ -166,7 +156,7 @@ describe("queueing daily puzzles for human playtesting", () => {
       queue.enqueue({
         generationKey: "2026-10-29",
         payload: { ...payload, visual: undefined },
-      }),
+      })
     ).rejects.toThrow("validated visual board");
     expect(memory.rows).toHaveLength(0);
     expect(submitCandidate).not.toHaveBeenCalled();

@@ -1,24 +1,16 @@
-import type {
-  DailyPuzzleCandidate,
-  DailyPuzzleCandidateHumanEvidence,
-} from "@/db/models";
 import {
   humanSolveFloorEvidence,
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
+import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "../daily-puzzle-candidate-repository";
 import {
-  publishReviewedDailyPuzzle,
   type DailyCandidatePublisherReviewService,
+  publishReviewedDailyPuzzle,
 } from "../publish-reviewed-daily-puzzle";
 
-const PROFILE_IDS = [
-  "compact-320",
-  "mobile-375",
-  "mobile-375-medium",
-  "desktop-768",
-] as const;
+const PROFILE_IDS = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"] as const;
 const payload: DailyPuzzleCandidate["payload"] = {
   puzzleDisplay: "T E E F",
   puzzleType: "rebus",
@@ -40,7 +32,7 @@ const payload: DailyPuzzleCandidate["payload"] = {
 
 function makeCandidate(
   status: DailyPuzzleCandidate["status"] = "reviewing",
-  assignedDate?: string,
+  assignedDate?: string
 ): DailyPuzzleCandidate {
   return {
     id: "candidate-1",
@@ -57,7 +49,7 @@ function makeCandidate(
 }
 
 function admission(
-  overrides: Partial<PuzzlePlaytestCandidateAdmission> = {},
+  overrides: Partial<PuzzlePlaytestCandidateAdmission> = {}
 ): PuzzlePlaytestCandidateAdmission {
   return {
     puzzleId: "candidate-1",
@@ -117,7 +109,7 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
       return rows.filter(
         (row) =>
           (!input.statuses?.length || input.statuses.includes(row.status)) &&
-          (!input.withoutPlaytestSubmission || !row.playtestSubmittedAt),
+          (!input.withoutPlaytestSubmission || !row.playtestSubmittedAt)
       );
     },
     async markPlaytestSubmitted() {
@@ -131,7 +123,7 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
         (candidate) =>
           candidate.id === id &&
           candidate.status === "reviewing" &&
-          candidate.statusVersion === expectedStatusVersion,
+          candidate.statusVersion === expectedStatusVersion
       );
       if (!row) return null;
       Object.assign(row, {
@@ -145,9 +137,7 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
     async claimReadyForDate({ id, dateString }) {
       const assigned = rows.find((row) => row.assignedDate === dateString);
       if (assigned) return assigned;
-      const row = rows.find(
-        (candidate) => candidate.id === id && candidate.status === "ready",
-      );
+      const row = rows.find((candidate) => candidate.id === id && candidate.status === "ready");
       if (!row) return null;
       Object.assign(row, {
         status: "assigned",
@@ -173,7 +163,7 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
         (candidate) =>
           candidate.id === id &&
           candidate.status === "assigned" &&
-          candidate.assignedDate === dateString,
+          candidate.assignedDate === dateString
       );
       if (!row) return null;
       Object.assign(row, {
@@ -190,9 +180,7 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
 
 describe("publishing human-reviewed daily puzzles", () => {
   const dateString = "2026-10-28";
-  const persist = jest
-    .fn()
-    .mockResolvedValue({ id: "daily-puzzle-1", alreadyExisted: false });
+  const persist = jest.fn().mockResolvedValue({ id: "daily-puzzle-1", alreadyExisted: false });
   let reviewService: jest.Mocked<DailyCandidatePublisherReviewService>;
 
   beforeEach(() => {
@@ -210,7 +198,7 @@ describe("publishing human-reviewed daily puzzles", () => {
         eligible: false,
         qualifiedDecisions: 4,
         reasons: ["candidate is incomplete"],
-      }),
+      })
     );
 
     const result = await publishReviewedDailyPuzzle({
@@ -250,7 +238,7 @@ describe("publishing human-reviewed daily puzzles", () => {
           qualifiedDecisions: 20,
           solveRateLowerBound: admission().solveEvidence.lower,
         }),
-      }),
+      })
     );
     expect(rows[0]).toMatchObject({
       status: "published",
@@ -283,9 +271,7 @@ describe("publishing human-reviewed daily puzzles", () => {
     ready.humanEvidence = storedEvidence();
     const pending = makeCandidate();
     const { repository } = memoryRepository([pending, ready]);
-    reviewService.getCandidateAdmission.mockRejectedValueOnce(
-      new Error("playtest store offline"),
-    );
+    reviewService.getCandidateAdmission.mockRejectedValueOnce(new Error("playtest store offline"));
 
     const result = await publishReviewedDailyPuzzle({
       dateString,
@@ -321,9 +307,7 @@ describe("publishing human-reviewed daily puzzles", () => {
 
   it("skips duplicate-answer candidates and frees the daily assignment", async () => {
     const { repository, rows } = memoryRepository([makeCandidate()]);
-    persist.mockRejectedValueOnce(
-      new Error("Refusing to persist duplicate answer"),
-    );
+    persist.mockRejectedValueOnce(new Error("Refusing to persist duplicate answer"));
 
     const result = await publishReviewedDailyPuzzle({
       dateString,
@@ -342,9 +326,7 @@ describe("publishing human-reviewed daily puzzles", () => {
 
   it("fails closed when playtest evidence cannot be loaded", async () => {
     const { repository } = memoryRepository([makeCandidate()]);
-    reviewService.getCandidateAdmission.mockRejectedValueOnce(
-      new Error("playtest store offline"),
-    );
+    reviewService.getCandidateAdmission.mockRejectedValueOnce(new Error("playtest store offline"));
 
     await expect(
       publishReviewedDailyPuzzle({
@@ -352,7 +334,7 @@ describe("publishing human-reviewed daily puzzles", () => {
         repository,
         reviewService,
         persist,
-      }),
+      })
     ).rejects.toThrow("playtest store offline");
     expect(persist).not.toHaveBeenCalled();
   });

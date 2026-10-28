@@ -2,37 +2,25 @@ import {
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
-import type {
-  DailyPuzzleCandidate,
-  DailyPuzzleCandidateHumanEvidence,
-} from "@/db/models";
-import type { PersistDailyPuzzleInput } from "./persist-daily-puzzle";
+import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "./daily-puzzle-candidate-repository";
+import type { PersistDailyPuzzleInput } from "./persist-daily-puzzle";
 
 const DAILY_CANDIDATE_REVIEW_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
 
 export type DailyCandidatePublisherReviewService = {
-  getCandidateAdmission(
-    puzzleId: string,
-    now?: Date,
-  ): Promise<PuzzlePlaytestCandidateAdmission>;
+  getCandidateAdmission(puzzleId: string, now?: Date): Promise<PuzzlePlaytestCandidateAdmission>;
 };
 
 type PersistDailyPuzzleResult = { id: string; alreadyExisted: boolean };
-type PersistCandidate = (
-  input: PersistDailyPuzzleInput,
-) => Promise<PersistDailyPuzzleResult>;
+type PersistCandidate = (input: PersistDailyPuzzleInput) => Promise<PersistDailyPuzzleResult>;
 
 function evidenceForCandidate(
   admission: PuzzlePlaytestCandidateAdmission,
-  admittedAt: Date,
+  admittedAt: Date
 ): DailyPuzzleCandidateHumanEvidence | null {
   const solveEvidence = admission.solveEvidence;
-  if (
-    !solveEvidence ||
-    admission.contractVersion !== PUZZLE_PLAYTEST_CONTRACT_VERSION
-  )
-    return null;
+  if (!solveEvidence || admission.contractVersion !== PUZZLE_PLAYTEST_CONTRACT_VERSION) return null;
   return {
     contractVersion: admission.contractVersion,
     qualifiedDecisions: admission.qualifiedDecisions,
@@ -47,13 +35,11 @@ function evidenceForCandidate(
   };
 }
 
-function hasRequiredCoverage(
-  admission: PuzzlePlaytestCandidateAdmission,
-): boolean {
+function hasRequiredCoverage(admission: PuzzlePlaytestCandidateAdmission): boolean {
   return (
     admission.profileCoverage.length > 0 &&
     admission.profileCoverage.every(
-      (profile) => profile.decisions >= admission.requiredReviewersPerProfile,
+      (profile) => profile.decisions >= admission.requiredReviewersPerProfile
     ) &&
     admission.qualifiedDecisions >=
       admission.profileCoverage.length * admission.requiredReviewersPerProfile
@@ -76,14 +62,9 @@ export function createReviewedDailyPuzzlePublisher(input: {
 }) {
   const now = input.now ?? (() => new Date());
 
-  async function publishAssignedCandidate(
-    candidate: DailyPuzzleCandidate,
-    dateString: string,
-  ) {
+  async function publishAssignedCandidate(candidate: DailyPuzzleCandidate, dateString: string) {
     if (!candidate.humanEvidence) {
-      throw new Error(
-        "Assigned daily candidate is missing its human admission evidence",
-      );
+      throw new Error("Assigned daily candidate is missing its human admission evidence");
     }
     const evidence = candidate.humanEvidence;
     const payload = candidate.payload;
@@ -147,11 +128,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
         id: candidate.id,
         dateString,
       });
-      if (
-        !claimed ||
-        claimed.status !== "assigned" ||
-        claimed.assignedDate !== dateString
-      ) {
+      if (!claimed || claimed.status !== "assigned" || claimed.assignedDate !== dateString) {
         continue;
       }
       const published = await publishAssignedCandidate(claimed, dateString);
@@ -162,18 +139,12 @@ export function createReviewedDailyPuzzlePublisher(input: {
 
   return {
     async publishForDate(dateString: string) {
-      const existingAssignment =
-        await input.repository.findAssignmentForDate(dateString);
+      const existingAssignment = await input.repository.findAssignmentForDate(dateString);
       if (existingAssignment?.status === "assigned") {
-        const resumed = await publishAssignedCandidate(
-          existingAssignment,
-          dateString,
-        );
+        const resumed = await publishAssignedCandidate(existingAssignment, dateString);
         if (resumed) return resumed;
       } else if (existingAssignment?.status === "published") {
-        throw new Error(
-          "Published daily candidate has no matching public puzzle row",
-        );
+        throw new Error("Published daily candidate has no matching public puzzle row");
       }
 
       const previouslyAdmitted = await publishReadyCandidate(dateString);
@@ -184,32 +155,25 @@ export function createReviewedDailyPuzzlePublisher(input: {
         limit: 100,
       });
       for (const candidate of reviewingCandidates) {
-        if (
-          now().getTime() - candidate.createdAt.getTime() >
-          DAILY_CANDIDATE_REVIEW_EXPIRY_MS
-        ) {
+        if (now().getTime() - candidate.createdAt.getTime() > DAILY_CANDIDATE_REVIEW_EXPIRY_MS) {
           await input.repository.skip({
             id: candidate.id,
-            reason:
-              "Candidate expired after 60 days without completing blind review",
+            reason: "Candidate expired after 60 days without completing blind review",
             updatedAt: now(),
           });
           continue;
         }
         if (!candidate.playtestSubmittedAt) continue;
-        const admission = await input.reviewService.getCandidateAdmission(
-          candidate.id,
-          now(),
-        );
+        const admission = await input.reviewService.getCandidateAdmission(candidate.id, now());
         const evidence = evidenceForCandidate(admission, now());
         const eligible = Boolean(
           admission.eligible &&
-          admission.candidateStatus === "complete" &&
-          hasRequiredCoverage(admission) &&
-          admission.solveEvidence?.passes &&
-          admission.ambiguityReports <= 1 &&
-          admission.visualFailureReports === 0 &&
-          evidence,
+            admission.candidateStatus === "complete" &&
+            hasRequiredCoverage(admission) &&
+            admission.solveEvidence?.passes &&
+            admission.ambiguityReports <= 1 &&
+            admission.visualFailureReports === 0 &&
+            evidence
         );
 
         if (eligible && evidence) {
@@ -222,9 +186,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
         } else if (admission.candidateStatus === "complete") {
           await input.repository.skip({
             id: candidate.id,
-            reason:
-              admission.reasons.join("; ") ||
-              "Candidate failed daily admission",
+            reason: admission.reasons.join("; ") || "Candidate failed daily admission",
             updatedAt: now(),
           });
         }
@@ -242,7 +204,5 @@ export async function publishReviewedDailyPuzzle(input: {
   persist: PersistCandidate;
   now?: () => Date;
 }) {
-  return createReviewedDailyPuzzlePublisher(input).publishForDate(
-    input.dateString,
-  );
+  return createReviewedDailyPuzzlePublisher(input).publishForDate(input.dateString);
 }

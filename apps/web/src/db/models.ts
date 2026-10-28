@@ -547,12 +547,7 @@ export interface InAppNotification {
   _id?: string;
   id: string;
   userId: string;
-  type:
-    | "puzzle_ready"
-    | "streak_milestone"
-    | "achievement"
-    | "general"
-    | "ugc_featured";
+  type: "puzzle_ready" | "streak_milestone" | "achievement" | "general" | "ugc_featured";
   title: string;
   message: string;
   link?: string;
@@ -563,7 +558,11 @@ export interface InAppNotification {
 
 /** Status of a player-authored rebus in Studio. */
 export type UserPuzzleSubmissionStatus =
-  "draft" | "pending_grade" | "rejected" | "approved" | "featured";
+  | "draft"
+  | "pending_grade"
+  | "rejected"
+  | "approved"
+  | "featured";
 
 /**
  * Player-authored rebus draft / submission.
@@ -716,10 +715,8 @@ export interface NewPuzzle {
   rebusPuzzle?: string;
 }
 
-export interface NewPuzzleAttempt extends Pick<
-  PuzzleAttempt,
-  "similarity" | "reaction" | "wordResults"
-> {
+export interface NewPuzzleAttempt
+  extends Pick<PuzzleAttempt, "similarity" | "reaction" | "wordResults"> {
   id: string;
   userId: string;
   puzzleId: string;
@@ -829,12 +826,7 @@ export interface NewEmailSubscription {
 export interface NewInAppNotification {
   id: string;
   userId: string;
-  type:
-    | "puzzle_ready"
-    | "streak_milestone"
-    | "achievement"
-    | "general"
-    | "ugc_featured";
+  type: "puzzle_ready" | "streak_milestone" | "achievement" | "general" | "ugc_featured";
   title: string;
   message: string;
   link?: string;
@@ -909,10 +901,8 @@ export interface NewAnalyticsEvent {
   };
 }
 
-export type NativeGrowthEventSource =
-  "app" | "notification" | "widget" | "shortcut" | "share";
-export type NativeGrowthQualityRating =
-  "too_easy" | "just_right" | "tough_but_fair" | "unclear";
+export type NativeGrowthEventSource = "app" | "notification" | "widget" | "shortcut" | "share";
+export type NativeGrowthQualityRating = "too_easy" | "just_right" | "tough_but_fair" | "unclear";
 
 type NativeGrowthEventBase = {
   _id?: string;
@@ -1136,13 +1126,7 @@ export interface AIError {
 
   // Error identification
   errorCode: string; // 'QUOTA_EXCEEDED', 'MODEL_NOT_FOUND', 'VALIDATION_FAILED', etc.
-  errorType:
-    | "provider"
-    | "validation"
-    | "quality"
-    | "generation"
-    | "timeout"
-    | "unknown";
+  errorType: "provider" | "validation" | "quality" | "generation" | "timeout" | "unknown";
   severity: "critical" | "major" | "minor" | "warning";
 
   // Context
@@ -1166,12 +1150,7 @@ export interface AIError {
   // Resolution
   resolved: boolean;
   resolution?: {
-    action:
-      | "retry_succeeded"
-      | "fallback_succeeded"
-      | "manual_fix"
-      | "ignored"
-      | "config_changed";
+    action: "retry_succeeded" | "fallback_succeeded" | "manual_fix" | "ignored" | "config_changed";
     resolvedAt?: Date;
     notes?: string;
   };
@@ -1196,11 +1175,7 @@ export interface AIFeedback {
   userId: string;
 
   // Feedback type
-  feedbackType:
-    | "puzzle_quality"
-    | "hint_helpfulness"
-    | "difficulty_accuracy"
-    | "answer_validation";
+  feedbackType: "puzzle_quality" | "hint_helpfulness" | "difficulty_accuracy" | "answer_validation";
 
   // Ratings
   rating: number; // 1-5 stars
@@ -1307,8 +1282,7 @@ export interface IconRecognitionReview {
   createdAt: Date;
 }
 
-export type GeneratedPictogramStatus =
-  "pending" | "approved" | "rejected" | "quarantined";
+export type GeneratedPictogramStatus = "pending" | "approved" | "rejected" | "quarantined";
 
 export interface GeneratedPictogramAuditEvent {
   id: string;
@@ -1382,7 +1356,11 @@ export type PuzzlePlaytestFailureReason =
   | "other";
 
 export type DailyPuzzleCandidateStatus =
-  "reviewing" | "ready" | "assigned" | "published" | "rejected";
+  | "reviewing"
+  | "ready"
+  | "assigned"
+  | "published"
+  | "rejected";
 
 export interface DailyPuzzleCandidateHumanEvidence {
   contractVersion: string;

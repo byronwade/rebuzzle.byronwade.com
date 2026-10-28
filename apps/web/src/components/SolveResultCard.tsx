@@ -273,7 +273,8 @@ export function SolveResultCard({
           ) : null}
           {lateSolve ? (
             <p className="mt-1 font-medium text-xs text-subtle">
-              The scored round ended after three guesses. This solve still counts toward your streak.
+              The scored round ended after three guesses. This solve still counts toward your
+              streak.
             </p>
           ) : null}
         </div>

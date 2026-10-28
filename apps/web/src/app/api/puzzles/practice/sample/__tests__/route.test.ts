@@ -93,9 +93,12 @@ it("requires an authenticated Rebuzzle player", async () => {
 });
 
 it("rate-limits sample requests before querying the puzzle", async () => {
-  jest.mocked(rateLimit).mockImplementationOnce(
-    () => async () => ({ success: false, limit: 20, remaining: 0, retryAfter: 45 })
-  );
+  jest.mocked(rateLimit).mockImplementationOnce(() => async () => ({
+    success: false,
+    limit: 20,
+    remaining: 0,
+    retryAfter: 45,
+  }));
 
   const response = await GET(sampleRequest());
 

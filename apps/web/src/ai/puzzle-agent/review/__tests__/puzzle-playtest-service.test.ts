@@ -1,7 +1,4 @@
-import type {
-  PuzzlePlaytestCandidate,
-  PuzzlePlaytestReview,
-} from "@/db/models";
+import type { PuzzlePlaytestCandidate, PuzzlePlaytestReview } from "@/db/models";
 import { buildPuzzleSolveBenchmarkCorpus } from "../../benchmark/puzzle-corpus";
 import type { PuzzleBoardRecognitionProfileId } from "../../visual/presentation";
 import {
@@ -25,15 +22,9 @@ const REPRESENTATIVE_TECHNIQUES = [
   "idiom_as_picture",
   "size_or_case_semantics",
 ] as const;
-const PROFILE_IDS = [
-  "compact-320",
-  "mobile-375",
-  "mobile-375-medium",
-  "desktop-768",
-] as const;
+const PROFILE_IDS = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"] as const;
 
-type CandidateFailure =
-  "multiple-answers" | "unreadable-layout" | "missing-cue";
+type CandidateFailure = "multiple-answers" | "unreadable-layout" | "missing-cue";
 
 function inMemoryRepository() {
   const store = {
@@ -42,17 +33,14 @@ function inMemoryRepository() {
   };
   const repository: PuzzlePlaytestRepository = {
     async insertCandidate(candidate) {
-      if (store.candidates.some((row) => row.puzzleId === candidate.puzzleId))
-        return false;
+      if (store.candidates.some((row) => row.puzzleId === candidate.puzzleId)) return false;
       store.candidates.push(candidate);
       return true;
     },
     async findCandidateByPuzzleId(input) {
       return (
         store.candidates.find(
-          (row) =>
-            row.contractVersion === input.contractVersion &&
-            row.puzzleId === input.puzzleId,
+          (row) => row.contractVersion === input.contractVersion && row.puzzleId === input.puzzleId
         ) ?? null
       );
     },
@@ -65,8 +53,7 @@ function inMemoryRepository() {
           (row) =>
             row.contractVersion === input.contractVersion &&
             (!input.statuses?.length || input.statuses.includes(row.status)) &&
-            (!input.evidenceRoles?.length ||
-              input.evidenceRoles.includes(row.evidenceRole)),
+            (!input.evidenceRoles?.length || input.evidenceRoles.includes(row.evidenceRole))
         )
         .slice(0, input.limit ?? 200);
     },
@@ -78,18 +65,14 @@ function inMemoryRepository() {
             ? input.candidateIds.includes(row.candidateId) ||
               input.reviewerIds.includes(row.reviewerId)
             : (!input.reviewerId || row.reviewerId === input.reviewerId) &&
-              (!input.reviewerIds?.length ||
-                input.reviewerIds.includes(row.reviewerId)) &&
-              (!input.candidateIds?.length ||
-                input.candidateIds.includes(row.candidateId))),
+              (!input.reviewerIds?.length || input.reviewerIds.includes(row.reviewerId)) &&
+              (!input.candidateIds?.length || input.candidateIds.includes(row.candidateId)))
       );
     },
     async insertReview(review) {
       if (
         store.reviews.some(
-          (row) =>
-            row.candidateId === review.candidateId &&
-            row.reviewerId === review.reviewerId,
+          (row) => row.candidateId === review.candidateId && row.reviewerId === review.reviewerId
         )
       ) {
         return false;
@@ -102,7 +85,7 @@ function inMemoryRepository() {
         (candidate) =>
           candidate.id === input.id &&
           candidate.status === "open" &&
-          candidate.statusVersion === input.expectedStatusVersion,
+          candidate.statusVersion === input.expectedStatusVersion
       );
       if (!row) return null;
       row.status = "complete";
@@ -118,7 +101,7 @@ const renderedProfiles: string[] = [];
 const renderedVisuals: PuzzlePlaytestCandidate["visual"][] = [];
 const renderer = async (
   visual: PuzzlePlaytestCandidate["visual"],
-  profileId: PuzzleBoardRecognitionProfileId,
+  profileId: PuzzleBoardRecognitionProfileId
 ) => {
   renderedProfiles.push(profileId);
   renderedVisuals.push(visual);
@@ -137,7 +120,7 @@ function candidateInput(puzzleId = "puzzle-1") {
 }
 
 async function ensureControls(
-  service: ReturnType<typeof createPuzzlePlaytestService>,
+  service: ReturnType<typeof createPuzzlePlaytestService>
 ): Promise<void> {
   await service.getReport("control-seed");
 }
@@ -145,13 +128,12 @@ async function ensureControls(
 function seedReviewerControls(
   store: ReturnType<typeof inMemoryRepository>["store"],
   reviewerId: string,
-  correctControls = 4,
+  correctControls = 4
 ): void {
   const controls = store.candidates
     .filter((candidate) => candidate.evidenceRole === "control")
     .slice(0, 4);
-  if (controls.length !== 4)
-    throw new Error("Expected four seeded reviewer controls");
+  if (controls.length !== 4) throw new Error("Expected four seeded reviewer controls");
   controls.forEach((candidate, index) => {
     const correct = index < correctControls;
     store.reviews.push({
@@ -175,7 +157,7 @@ function seedReviewerControls(
 
 function seedQualifiedReviewers(
   store: ReturnType<typeof inMemoryRepository>["store"],
-  reviewerIds: Iterable<string>,
+  reviewerIds: Iterable<string>
 ): void {
   for (const reviewerId of reviewerIds) seedReviewerControls(store, reviewerId);
 }
@@ -187,7 +169,7 @@ function seedCandidateEvidence(
     correctCount?: number;
     failures?: CandidateFailure[];
     qualified?: boolean;
-  } = {},
+  } = {}
 ): void {
   candidate.status = "complete";
   candidate.statusVersion += 1;
@@ -195,11 +177,7 @@ function seedCandidateEvidence(
   for (const profileId of PROFILE_IDS) {
     for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
       const reviewerId = `admission-${profileId}-${reviewerIndex}`;
-      seedReviewerControls(
-        store,
-        reviewerId,
-        options.qualified === false ? 2 : 4,
-      );
+      seedReviewerControls(store, reviewerId, options.qualified === false ? 2 : 4);
       const failureReason = options.failures?.[index];
       const correct = index < (options.correctCount ?? 20) && !failureReason;
       store.reviews.push({
@@ -224,7 +202,7 @@ function seedCandidateEvidence(
 }
 
 function lastRenderedCandidate(
-  store: ReturnType<typeof inMemoryRepository>["store"],
+  store: ReturnType<typeof inMemoryRepository>["store"]
 ): PuzzlePlaytestCandidate {
   const visual = renderedVisuals.at(-1);
   const candidate = store.candidates.find((row) => row.visual === visual);
@@ -280,7 +258,7 @@ describe("blind human generated-puzzle playtesting", () => {
     await ensureControls(service);
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 3 }, (_, index) => `reviewer-${index}`),
+      Array.from({ length: 3 }, (_, index) => `reviewer-${index}`)
     );
 
     for (let index = 0; index < 3; index++) {
@@ -295,12 +273,8 @@ describe("blind human generated-puzzle playtesting", () => {
       });
     }
 
-    const generatedReviews = store.reviews.filter(
-      (review) => review.candidateId === candidate.id,
-    );
-    expect(
-      new Set(generatedReviews.map((review) => review.profileId)).size,
-    ).toBe(3);
+    const generatedReviews = store.reviews.filter((review) => review.candidateId === candidate.id);
+    expect(new Set(generatedReviews.map((review) => review.profileId)).size).toBe(3);
     expect(generatedReviews).toHaveLength(3);
     expect((await service.getNext("reviewer-0")).specimen).toBeNull();
   });
@@ -370,16 +344,14 @@ describe("blind human generated-puzzle playtesting", () => {
         reviewerId: "reviewer-1",
         fixtureId: next.specimen!.fixtureId,
         gaveUp: true,
-      }),
+      })
     ).rejects.toThrow("Choose why");
   });
 
   it("does not count reviews of completed candidates as progress on the remaining open queue", async () => {
     const { repository, store } = inMemoryRepository();
     const service = createPuzzlePlaytestService(repository, renderer);
-    const completed = await service.submitCandidate(
-      candidateInput("completed-puzzle"),
-    );
+    const completed = await service.submitCandidate(candidateInput("completed-puzzle"));
     await service.submitCandidate(candidateInput("open-puzzle"));
     await ensureControls(service);
     seedReviewerControls(store, "reviewer-1");
@@ -425,7 +397,7 @@ describe("blind human generated-puzzle playtesting", () => {
 
     await service.submitReview(response);
     await expect(service.submitReview(response)).rejects.toThrow(
-      "already been playtested by this reviewer",
+      "already been playtested by this reviewer"
     );
   });
 
@@ -485,8 +457,7 @@ describe("blind human generated-puzzle playtesting", () => {
     for (let index = 0; index < 7; index++) {
       const next = await service.getNext("failed-reviewer");
       const candidate = lastRenderedCandidate(store);
-      const controlIsCorrect =
-        candidate.evidenceRole === "control" && seenControls === 0;
+      const controlIsCorrect = candidate.evidenceRole === "control" && seenControls === 0;
       if (candidate.evidenceRole === "control") seenControls += 1;
       await service.submitReview({
         reviewerId: "failed-reviewer",
@@ -504,7 +475,7 @@ describe("blind human generated-puzzle playtesting", () => {
     expect(
       store.candidates
         .filter((candidate) => candidate.evidenceRole === "generated")
-        .every((candidate) => candidate.status === "open"),
+        .every((candidate) => candidate.status === "open")
     ).toBe(true);
     const report = await service.getReport("failed-reviewer");
     expect(report.reviewerCount).toBe(0);
@@ -516,9 +487,7 @@ describe("blind human generated-puzzle playtesting", () => {
       qualifiedGeneratedDecisions: 0,
       unscoredGeneratedDecisions: 3,
     });
-    expect(report.releaseFailures.join(" ")).toContain(
-      "Failed-control reviewer rate",
-    );
+    expect(report.releaseFailures.join(" ")).toContain("Failed-control reviewer rate");
   });
 
   it("completes a candidate only after five reviewers cover every profile", async () => {
@@ -528,7 +497,7 @@ describe("blind human generated-puzzle playtesting", () => {
     await ensureControls(service);
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 20 }, (_, index) => `reviewer-${index}`),
+      Array.from({ length: 20 }, (_, index) => `reviewer-${index}`)
     );
 
     for (let index = 0; index < 19; index++) {
@@ -560,11 +529,11 @@ describe("blind human generated-puzzle playtesting", () => {
           store.reviews.filter(
             (review) =>
               review.candidateId ===
-                store.candidates.find((row) => row.evidenceRole === "generated")
-                  ?.id && review.profileId === profileId,
+                store.candidates.find((row) => row.evidenceRole === "generated")?.id &&
+              review.profileId === profileId
           ).length,
-        ]),
-      ),
+        ])
+      )
     ).toEqual({
       "compact-320": 5,
       "mobile-375": 5,
@@ -579,9 +548,7 @@ describe("blind human generated-puzzle playtesting", () => {
     await service.submitCandidate(candidateInput());
     await ensureControls(service);
     seedReviewerControls(store, "reviewer-1");
-    expect((await service.getReport("reviewer-1")).visibleCandidates).toEqual(
-      [],
-    );
+    expect((await service.getReport("reviewer-1")).visibleCandidates).toEqual([]);
 
     const next = await service.getNext("reviewer-1");
     await service.submitReview({
@@ -594,9 +561,7 @@ describe("blind human generated-puzzle playtesting", () => {
     const report = await service.getReport("reviewer-1");
     expect(report.visibleCandidates[0]?.answer).toBe("sunflower");
     expect(report.visibleCandidates[0]?.decisions).toBe(1);
-    expect((await service.getReport("reviewer-2")).visibleCandidates).toEqual(
-      [],
-    );
+    expect((await service.getReport("reviewer-2")).visibleCandidates).toEqual([]);
   });
 
   it("refuses to call sparse perfect evidence release-ready", async () => {
@@ -717,9 +682,7 @@ describe("blind human generated-puzzle playtesting", () => {
       visualFailureReports: 0,
     });
     expect(admission.profileCoverage).toEqual(
-      expect.arrayContaining(
-        PROFILE_IDS.map((profileId) => ({ profileId, decisions: 5 })),
-      ),
+      expect.arrayContaining(PROFILE_IDS.map((profileId) => ({ profileId, decisions: 5 })))
     );
     expect(JSON.stringify(admission)).not.toContain(candidate.answer);
   });
@@ -739,10 +702,7 @@ describe("blind human generated-puzzle playtesting", () => {
         answer: "sunflower",
         answerKey: "sunflower",
         visual,
-        techniqueId:
-          REPRESENTATIVE_TECHNIQUES[
-            candidateIndex % REPRESENTATIVE_TECHNIQUES.length
-          ],
+        techniqueId: REPRESENTATIVE_TECHNIQUES[candidateIndex % REPRESENTATIVE_TECHNIQUES.length],
         difficultyScore: [5, 6, 7, 8][candidateIndex % 4]!,
         automatedEstimatedSolveRate: 1,
         status: "complete",
@@ -773,7 +733,7 @@ describe("blind human generated-puzzle playtesting", () => {
     }
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 50 }, (_, index) => `reviewer-${index}`),
+      Array.from({ length: 50 }, (_, index) => `reviewer-${index}`)
     );
 
     const report = await service.getReport("outside-reviewer");
@@ -781,18 +741,14 @@ describe("blind human generated-puzzle playtesting", () => {
     expect(report.readinessVersion).toBe(PUZZLE_PLAYTEST_READINESS_VERSION);
     expect(report.reviewerCount).toBe(50);
     expect(report.reviewerCoverage.maximumDecisionShare).toBe(0.02);
-    expect(
-      report.difficultyTierScores.map((score) => score.candidates),
-    ).toEqual([25, 25, 25, 25]);
+    expect(report.difficultyTierScores.map((score) => score.candidates)).toEqual([25, 25, 25, 25]);
     expect(report.techniqueScores).toHaveLength(10);
     expect(report.candidateFloorPassRate).toBe(1);
     expect(report.statisticalEvidence).toMatchObject({
       method: "one-sided-wilson-score",
       confidenceLevel: 0.95,
     });
-    expect(report.statisticalEvidence.candidateFloorPass.lower).toBeGreaterThan(
-      0.97,
-    );
+    expect(report.statisticalEvidence.candidateFloorPass.lower).toBeGreaterThan(0.97);
     expect(report.statisticalEvidence.visualFailure.upper).toBeLessThan(0.02);
     expect(report.clusteredEvidence).toMatchObject({
       method: "pigeonhole-bootstrap",
@@ -810,10 +766,10 @@ describe("blind human generated-puzzle playtesting", () => {
       solveCalibrationAbsoluteBiasUpperBound: 0,
     });
     expect(report.conservativeEvidence.visualFailureUpperBound).toBe(
-      report.statisticalEvidence.visualFailure.upper,
+      report.statisticalEvidence.visualFailure.upper
     );
     expect(report.conservativeEvidence.candidateFloorPassLowerBound).toBe(
-      report.statisticalEvidence.candidateFloorPass.lower,
+      report.statisticalEvidence.candidateFloorPass.lower
     );
     expect(report.releaseReady).toBe(true);
     expect(report.marketLeadingReady).toBe(true);
@@ -825,7 +781,7 @@ describe("blind human generated-puzzle playtesting", () => {
     expect(controlContaminated.releaseReady).toBe(true);
     expect(controlContaminated.marketLeadingReady).toBe(false);
     expect(controlContaminated.marketLeadingFailures.join(" ")).toContain(
-      "Failed-control reviewer rate",
+      "Failed-control reviewer rate"
     );
   });
 
@@ -874,20 +830,14 @@ describe("blind human generated-puzzle playtesting", () => {
     }
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 50 }, (_, index) => `reviewer-${index}`),
+      Array.from({ length: 50 }, (_, index) => `reviewer-${index}`)
     );
 
     const report = await service.getReport("outside-reviewer");
     expect(report.marketLeadingReady).toBe(false);
-    expect(report.marketLeadingFailures.join(" ")).toContain(
-      "Difficulty-tier coverage incomplete",
-    );
-    expect(report.marketLeadingFailures.join(" ")).toContain(
-      "Technique breadth 1/10",
-    );
-    expect(report.marketLeadingFailures.join(" ")).toContain(
-      "Technique concentration",
-    );
+    expect(report.marketLeadingFailures.join(" ")).toContain("Difficulty-tier coverage incomplete");
+    expect(report.marketLeadingFailures.join(" ")).toContain("Technique breadth 1/10");
+    expect(report.marketLeadingFailures.join(" ")).toContain("Technique concentration");
   });
 
   it("rejects concentrated reviewers even when puzzle strata are representative", async () => {
@@ -905,10 +855,7 @@ describe("blind human generated-puzzle playtesting", () => {
         answer: "sunflower",
         answerKey: "sunflower",
         visual,
-        techniqueId:
-          REPRESENTATIVE_TECHNIQUES[
-            candidateIndex % REPRESENTATIVE_TECHNIQUES.length
-          ],
+        techniqueId: REPRESENTATIVE_TECHNIQUES[candidateIndex % REPRESENTATIVE_TECHNIQUES.length],
         difficultyScore: [5, 6, 7, 8][candidateIndex % 4]!,
         automatedEstimatedSolveRate: 1,
         status: "complete",
@@ -939,19 +886,15 @@ describe("blind human generated-puzzle playtesting", () => {
     }
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 15 }, (_, index) => `reviewer-${index}`),
+      Array.from({ length: 15 }, (_, index) => `reviewer-${index}`)
     );
 
     const report = await service.getReport("outside-reviewer");
     expect(report.reviewerCount).toBe(15);
     expect(report.reviewerCoverage.maximumDecisionShare).toBeCloseTo(1 / 15);
     expect(report.marketLeadingReady).toBe(false);
-    expect(report.marketLeadingFailures.join(" ")).toContain(
-      "Independent reviewer breadth 15/50",
-    );
-    expect(report.marketLeadingFailures.join(" ")).toContain(
-      "One-reviewer decision share",
-    );
+    expect(report.marketLeadingFailures.join(" ")).toContain("Independent reviewer breadth 15/50");
+    expect(report.marketLeadingFailures.join(" ")).toContain("One-reviewer decision share");
   });
 
   it("rejects unclassified techniques from an otherwise representative sample", async () => {
@@ -972,9 +915,7 @@ describe("blind human generated-puzzle playtesting", () => {
         techniqueId:
           candidateIndex === 0
             ? "invented-technique"
-            : REPRESENTATIVE_TECHNIQUES[
-                candidateIndex % REPRESENTATIVE_TECHNIQUES.length
-              ],
+            : REPRESENTATIVE_TECHNIQUES[candidateIndex % REPRESENTATIVE_TECHNIQUES.length],
         difficultyScore: [5, 6, 7, 8][candidateIndex % 4]!,
         automatedEstimatedSolveRate: 1,
         status: "complete",
@@ -1004,13 +945,11 @@ describe("blind human generated-puzzle playtesting", () => {
     }
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 50 }, (_, index) => `reviewer-${index}`),
+      Array.from({ length: 50 }, (_, index) => `reviewer-${index}`)
     );
 
     const report = await service.getReport("outside-reviewer");
     expect(report.marketLeadingReady).toBe(false);
-    expect(report.marketLeadingFailures.join(" ")).toContain(
-      "Named-technique coverage 99/100",
-    );
+    expect(report.marketLeadingFailures.join(" ")).toContain("Named-technique coverage 99/100");
   });
 });

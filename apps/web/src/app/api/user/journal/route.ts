@@ -9,10 +9,10 @@ import {
 } from "@/db/operations";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getDailyProgressBackfillStatus } from "@/lib/daily-progress-backfill-status";
+import { toPublicVisual } from "@/lib/game/public-visual";
 import { buildCacheControl } from "@/lib/http/cache-headers";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { hasPlusEntitlement } from "@/lib/storekit/plus-entitlement";
-import { toPublicVisual } from "@/lib/game/public-visual";
 
 const DEFAULT_PAGE_LIMIT = 100;
 const MAX_PAGE_LIMIT = 100;

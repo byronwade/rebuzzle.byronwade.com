@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import type { DailyProgress } from "@/db/models";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import {
+  type DailyProgressBackfillStatus,
+  getDailyProgressBackfillStatus,
+} from "@/lib/daily-progress-backfill-status";
 import { addCalendarDays, getLocalPuzzleDate, isValidIanaTimeZone } from "@/lib/game/daily-lock";
 import { buildCacheControl } from "@/lib/http/cache-headers";
-import {
-  getDailyProgressBackfillStatus,
-  type DailyProgressBackfillStatus,
-} from "@/lib/daily-progress-backfill-status";
 import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
 export { getDailyProgressBackfillStatus };
+
 type JourneyEntry = {
   puzzleDate: string;
   puzzleId: string;

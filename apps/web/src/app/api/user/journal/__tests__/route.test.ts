@@ -11,8 +11,9 @@ jest.mock("@/lib/middleware/rate-limit", () => ({
   getUserKey: (key: string) => `rate-limit:user:${key}`,
 }));
 jest.mock("@/lib/storekit/plus-entitlement", () => ({
-  hasPlusEntitlement: jest.fn(async (request: Request) =>
-    request.headers.get("X-Rebuzzle-StoreKit-Transaction") === "valid-test-proof"
+  hasPlusEntitlement: jest.fn(
+    async (request: Request) =>
+      request.headers.get("X-Rebuzzle-StoreKit-Transaction") === "valid-test-proof"
   ),
 }));
 
@@ -80,11 +81,16 @@ const notes = dbOps.journalNoteOps as unknown as { listForUserPage: jest.Mock };
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.mocked(getAuthenticatedUser).mockResolvedValue({ userId: "self", isGuestToken: false } as never);
+  jest
+    .mocked(getAuthenticatedUser)
+    .mockResolvedValue({ userId: "self", isGuestToken: false } as never);
   jest.mocked(hasPlusEntitlement).mockResolvedValue(true);
-  jest.mocked(rateLimit).mockReturnValue(
-    (async () => ({ success: true, limit: 30, remaining: 29, reset: 0 })) as never
-  );
+  jest.mocked(rateLimit).mockReturnValue((async () => ({
+    success: true,
+    limit: 30,
+    remaining: 29,
+    reset: 0,
+  })) as never);
   backfills.findState.mockResolvedValue(state);
   attempts.countMaterializableFinalOfficialDailyAttempts.mockResolvedValue(1);
   progress.countValidForUser.mockResolvedValue(1);
@@ -103,7 +109,9 @@ beforeEach(() => {
 
 it("joins this account's completion and note to the published puzzle", async () => {
   const GET = getJournalGET(await loadJournalRoute());
-  const response = await GET(request("https://rebuzzle.test/api/user/journal?limit=100&userId=victim"));
+  const response = await GET(
+    request("https://rebuzzle.test/api/user/journal?limit=100&userId=victim")
+  );
   const body = await response.json();
 
   expect(response.status).toBe(200);
@@ -145,7 +153,9 @@ it("requires authentication before querying the journal", async () => {
 });
 
 it("keeps guest journals on-device", async () => {
-  jest.mocked(getAuthenticatedUser).mockResolvedValueOnce({ userId: "guest", isGuestToken: true } as never);
+  jest
+    .mocked(getAuthenticatedUser)
+    .mockResolvedValueOnce({ userId: "guest", isGuestToken: true } as never);
   const response = await getJournalGET(await loadJournalRoute())(request());
 
   expect(response.status).toBe(403);
@@ -194,7 +204,8 @@ it.each([
   ["missing legacy rows", "in_progress"],
   ["failed", "failed"],
 ] as const)("reports %s history honestly", async (caseName, expected) => {
-  if (caseName === "scanning") backfills.findState.mockResolvedValue({ ...state, status: "scanning" });
+  if (caseName === "scanning")
+    backfills.findState.mockResolvedValue({ ...state, status: "scanning" });
   if (caseName === "missing legacy rows") progress.countValidForUser.mockResolvedValue(0);
   if (caseName === "failed") backfills.findState.mockResolvedValue({ ...state, status: "failed" });
 
@@ -204,9 +215,12 @@ it.each([
 });
 
 it("returns 429 before reading user history when rate-limited", async () => {
-  jest.mocked(rateLimit).mockReturnValueOnce(
-    (async () => ({ success: false, limit: 30, remaining: 0, reset: 1 })) as never
-  );
+  jest.mocked(rateLimit).mockReturnValueOnce((async () => ({
+    success: false,
+    limit: 30,
+    remaining: 0,
+    reset: 1,
+  })) as never);
   const response = await getJournalGET(await loadJournalRoute())(request());
 
   expect(response.status).toBe(429);

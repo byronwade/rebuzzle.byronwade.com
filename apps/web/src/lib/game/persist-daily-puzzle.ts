@@ -2,14 +2,8 @@
  * Persist a daily puzzle with a real UUID so /api/puzzles/guess can resolve it.
  */
 
-import {
-  isAnswerRegistered,
-  normalizeAnswerKey,
-} from "@/ai/learning/answer-registry";
-import {
-  assertDailyChallenge,
-  DAILY_CHALLENGE_POLICY,
-} from "@/ai/puzzle-agent/daily-challenge";
+import { isAnswerRegistered, normalizeAnswerKey } from "@/ai/learning/answer-registry";
+import { assertDailyChallenge, DAILY_CHALLENGE_POLICY } from "@/ai/puzzle-agent/daily-challenge";
 import { PUZZLE_PLAYTEST_CONTRACT_VERSION } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "@/ai/puzzle-agent/visual/presentation";
 import { db } from "@/db";
@@ -33,24 +27,18 @@ export type DailyHumanPlaytestAdmission = {
   admittedAt: string;
 };
 
-function isValidHumanAdmission(
-  value: unknown,
-): value is DailyHumanPlaytestAdmission {
+function isValidHumanAdmission(value: unknown): value is DailyHumanPlaytestAdmission {
   if (!value || typeof value !== "object") return false;
   const admission = value as Partial<DailyHumanPlaytestAdmission>;
   const requiredProfiles = new Set<string>(
-    PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => profile.id),
+    PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => profile.id)
   );
   const coverage = admission.profileCoverage;
   const validCoverage =
     Array.isArray(coverage) &&
     coverage.length === requiredProfiles.size &&
-    new Set(coverage.map((profile) => profile.profileId)).size ===
-      requiredProfiles.size &&
-    coverage.every(
-      (profile) =>
-        requiredProfiles.has(profile.profileId) && profile.decisions >= 5,
-    );
+    new Set(coverage.map((profile) => profile.profileId)).size === requiredProfiles.size &&
+    coverage.every((profile) => requiredProfiles.has(profile.profileId) && profile.decisions >= 5);
   return (
     admission.policyVersion === "human-reviewed-daily-v1" &&
     typeof admission.candidateId === "string" &&
@@ -96,9 +84,7 @@ export type PersistDailyPuzzleInput = {
  * Upsert-ish: if today's puzzle already exists, return it.
  * Otherwise insert with UTC-midnight publishedAt and a real UUID.
  */
-export async function persistDailyPuzzle(
-  input: PersistDailyPuzzleInput,
-): Promise<{
+export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promise<{
   id: string;
   alreadyExisted: boolean;
 }> {
@@ -119,16 +105,14 @@ export async function persistDailyPuzzle(
     input.puzzleType === "rebus" &&
     !isValidHumanAdmission(input.humanPlaytestAdmission)
   ) {
-    throw new Error(
-      "Human playtest admission is required to publish an AI-generated daily rebus",
-    );
+    throw new Error("Human playtest admission is required to publish an AI-generated daily rebus");
   }
 
   // Never persist a duplicate answer — archive (retired) puzzles still count
   const answerCheck = await isAnswerRegistered(input.answer);
   if (answerCheck.taken) {
     throw new Error(
-      `Refusing to persist duplicate answer (matches puzzle ${answerCheck.puzzleId}). Generate a unique answer.`,
+      `Refusing to persist duplicate answer (matches puzzle ${answerCheck.puzzleId}). Generate a unique answer.`
     );
   }
 
@@ -173,24 +157,17 @@ export async function persistDailyPuzzle(
         // Intentionally omit keyword (= answer) from metadata
       },
       rebusPuzzle:
-        input.rebusPuzzle ??
-        (input.puzzleType === "rebus" ? input.puzzleDisplay : undefined),
+        input.rebusPuzzle ?? (input.puzzleType === "rebus" ? input.puzzleDisplay : undefined),
     });
   } catch (error) {
     const duplicateKey =
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === 11_000;
+      error && typeof error === "object" && "code" in error && error.code === 11_000;
     if (duplicateKey) {
       const concurrent = await db.puzzleOps.findByDate(input.dateString);
       if (concurrent) return { id: concurrent.id, alreadyExisted: true };
-      throw new Error(
-        "Concurrent publication used this answer before insertion completed",
-        {
-          cause: error,
-        },
-      );
+      throw new Error("Concurrent publication used this answer before insertion completed", {
+        cause: error,
+      });
     }
     throw error;
   }

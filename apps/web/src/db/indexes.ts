@@ -269,10 +269,7 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
   // Delivery state works for both repository-backed and legacy Mongo posts.
   {
     collection: "blogEmailDeliveries",
-    indexes: [
-      { spec: { slug: 1 }, options: { unique: true } },
-      { spec: { sentAt: -1 } },
-    ],
+    indexes: [{ spec: { slug: 1 }, options: { unique: true } }, { spec: { sentAt: -1 } }],
   },
 
   // Achievements collection
@@ -732,7 +729,7 @@ export function indexKeySignature(
     unique?: boolean;
     sparse?: boolean;
     partialFilterExpression?: unknown;
-  } = {},
+  } = {}
 ): string {
   const keys = Object.entries(spec as Record<string, unknown>)
     .map(([key, value]) => `${key}:${String(value)}`)
@@ -768,7 +765,7 @@ export function isBenignIndexConflict(error: unknown): boolean {
  */
 async function createCollectionIndexes(
   db: Db,
-  definition: IndexDefinition,
+  definition: IndexDefinition
 ): Promise<{
   collection: string;
   created: number;
@@ -788,9 +785,7 @@ async function createCollectionIndexes(
     existingSignatures = new Set(
       existing
         .filter((idx) => idx.name !== "_id_")
-        .map((idx) =>
-          indexKeySignature(idx.key as Record<string, unknown>, idx),
-        ),
+        .map((idx) => indexKeySignature(idx.key as Record<string, unknown>, idx))
     );
   } catch {
     // Collection may not exist yet — createIndex will create it
@@ -818,8 +813,7 @@ async function createCollectionIndexes(
         existingSignatures.add(desiredSignature);
         continue;
       }
-      const failureText =
-        error instanceof Error ? error.message : String(error);
+      const failureText = error instanceof Error ? error.message : String(error);
       failures.push(`${JSON.stringify(indexDef.spec)}: ${failureText}`);
     }
   }
@@ -865,21 +859,17 @@ export async function setupDatabaseIndexes(): Promise<{
     totalErrors += result.failures.length;
 
     if (result.failures.length > 0) {
-      console.warn(
-        `[DB Indexes] ${result.collection}: ${result.failures.length} errors`,
-      );
+      console.warn(`[DB Indexes] ${result.collection}: ${result.failures.length} errors`);
       for (const error of result.failures) {
         console.warn(`  - ${error}`);
       }
     } else if (result.created > 0) {
-      console.log(
-        `[DB Indexes] ${result.collection}: ${result.created} indexes created`,
-      );
+      console.log(`[DB Indexes] ${result.collection}: ${result.created} indexes created`);
     }
   }
 
   console.log(
-    `[DB Indexes] Complete: ${totalCreated} created, ${totalSkipped} already present, ${totalErrors} errors`,
+    `[DB Indexes] Complete: ${totalCreated} created, ${totalSkipped} already present, ${totalErrors} errors`
   );
 
   return {
@@ -898,10 +888,7 @@ export async function listAllIndexes(): Promise<
   Map<string, Array<{ name: string; key: Record<string, number> }>>
 > {
   const db = getDatabase();
-  const indexMap = new Map<
-    string,
-    Array<{ name: string; key: Record<string, number> }>
-  >();
+  const indexMap = new Map<string, Array<{ name: string; key: Record<string, number> }>>();
 
   // Get all collection names
   const collections = await db.listCollections().toArray();
@@ -915,7 +902,7 @@ export async function listAllIndexes(): Promise<
       indexes.map((idx) => ({
         name: idx.name || "unknown",
         key: idx.key as Record<string, number>,
-      })),
+      }))
     );
   }
 
@@ -952,14 +939,12 @@ export async function dropAllCustomIndexes(): Promise<{
           await collection.dropIndex(index.name!);
           dropped++;
         } catch (error) {
-          const failureText =
-            error instanceof Error ? error.message : String(error);
+          const failureText = error instanceof Error ? error.message : String(error);
           failures.push(`${collInfo.name}.${index.name}: ${failureText}`);
         }
       }
     } catch (error) {
-      const failureText =
-        error instanceof Error ? error.message : String(error);
+      const failureText = error instanceof Error ? error.message : String(error);
       failures.push(`${collInfo.name}: ${failureText}`);
     }
   }

@@ -1,8 +1,7 @@
 jest.mock("next/cache", () => ({ revalidateTag: jest.fn() }));
 jest.mock("@/ai/learning/answer-registry", () => ({
   isAnswerRegistered: jest.fn(),
-  normalizeAnswerKey: (answer: string) =>
-    answer.toLowerCase().replace(/[^a-z0-9]/g, ""),
+  normalizeAnswerKey: (answer: string) => answer.toLowerCase().replace(/[^a-z0-9]/g, ""),
 }));
 jest.mock("@/db", () => ({
   db: {
@@ -22,10 +21,7 @@ jest.mock("@/ai/puzzle-agent/review/puzzle-playtest-server", () => ({
 import { isAnswerRegistered } from "@/ai/learning/answer-registry";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { db } from "@/db";
-import {
-  type PersistDailyPuzzleInput,
-  persistDailyPuzzle,
-} from "../persist-daily-puzzle";
+import { type PersistDailyPuzzleInput, persistDailyPuzzle } from "../persist-daily-puzzle";
 
 const input: PersistDailyPuzzleInput = {
   dateString: "2026-08-01",
@@ -35,11 +31,7 @@ const input: PersistDailyPuzzleInput = {
   difficulty: 7,
   category: "phrases_and_idioms",
   explanation: "Two copies of FEET read toward the left: two left feet.",
-  hints: [
-    "Read in a different direction",
-    "Count what you find",
-    "Which way do both feet read?",
-  ],
+  hints: ["Read in a different direction", "Count what you find", "Which way do both feet read?"],
   metadataExtra: {
     reasoningEvidenceSource: "curated",
     reasoningEvidence: {
@@ -79,9 +71,7 @@ const input: PersistDailyPuzzleInput = {
 const findByDate = jest.mocked(db.puzzleOps.findByDate);
 const create = jest.mocked(db.puzzleOps.create);
 const answerRegistered = jest.mocked(isAnswerRegistered);
-const submitPlaytestCandidate = jest.mocked(
-  puzzlePlaytestService.submitCandidate,
-);
+const submitPlaytestCandidate = jest.mocked(puzzlePlaytestService.submitCandidate);
 
 const humanPlaytestAdmission = {
   policyVersion: "human-reviewed-daily-v1" as const,
@@ -134,16 +124,14 @@ describe("daily puzzle publication locks", () => {
             { kind: "text", content: "TRUCK", emphasis: "normal" },
           ],
         },
-      }),
+      })
     ).rejects.toThrow("Daily challenge");
     expect(create).not.toHaveBeenCalled();
   });
 
   it("keeps an already published easy puzzle stable under the new policy", async () => {
     findByDate.mockResolvedValue({ id: "already-playing" } as never);
-    await expect(
-      persistDailyPuzzle({ ...input, difficulty: 4 }),
-    ).resolves.toEqual({
+    await expect(persistDailyPuzzle({ ...input, difficulty: 4 })).resolves.toEqual({
       id: "already-playing",
       alreadyExisted: true,
     });
@@ -156,9 +144,7 @@ describe("daily puzzle publication locks", () => {
       puzzleId: "archived-puzzle",
     });
 
-    await expect(persistDailyPuzzle(input)).rejects.toThrow(
-      "Refusing to persist duplicate answer",
-    );
+    await expect(persistDailyPuzzle(input)).rejects.toThrow("Refusing to persist duplicate answer");
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -203,13 +189,13 @@ describe("daily puzzle publication locks", () => {
     create.mockRejectedValue({ code: 11_000 });
 
     await expect(persistDailyPuzzle(input)).rejects.toThrow(
-      "Concurrent publication used this answer",
+      "Concurrent publication used this answer"
     );
   });
 
   it("refuses to publish an AI-generated rebus without candidate-level human admission", async () => {
     await expect(
-      persistDailyPuzzle({ ...input, aiGenerated: true, visual: input.visual }),
+      persistDailyPuzzle({ ...input, aiGenerated: true, visual: input.visual })
     ).rejects.toThrow("Human playtest admission is required");
 
     expect(create).not.toHaveBeenCalled();
@@ -225,7 +211,7 @@ describe("daily puzzle publication locks", () => {
     });
 
     expect(create.mock.calls[0]?.[0]?.metadata?.humanPlaytestAdmission).toEqual(
-      humanPlaytestAdmission,
+      humanPlaytestAdmission
     );
     expect(submitPlaytestCandidate).not.toHaveBeenCalled();
   });

@@ -56,7 +56,8 @@ export async function GET(request: Request) {
     const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
     const puzzle = await findFreeArchiveSample(localDateKey);
-    if (!puzzle) return json({ success: false, error: "A sample puzzle is not available yet." }, 404);
+    if (!puzzle)
+      return json({ success: false, error: "A sample puzzle is not available yet." }, 404);
 
     return json(toPublicArchivePuzzle(puzzle));
   } catch (error) {

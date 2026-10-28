@@ -111,10 +111,7 @@ it("allows practice Eve feedback after today's daily is complete", async () => {
 });
 
 it("allows answer-blind Eve feedback for the exact free sample without Plus proof", async () => {
-  const response = await request(
-    { ...baseBody, puzzleId: "free-sample", mode: "practice" },
-    false
-  );
+  const response = await request({ ...baseBody, puzzleId: "free-sample", mode: "practice" }, false);
 
   expect(response.status).toBe(200);
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");

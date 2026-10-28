@@ -8,8 +8,9 @@ jest.mock("@/lib/middleware/rate-limit", () => ({
   getUserKey: (key: string) => `rate-limit:user:${key}`,
 }));
 jest.mock("@/lib/storekit/plus-entitlement", () => ({
-  hasPlusEntitlement: jest.fn(async (request: Request) =>
-    request.headers.get("X-Rebuzzle-StoreKit-Transaction") === "valid-test-proof"
+  hasPlusEntitlement: jest.fn(
+    async (request: Request) =>
+      request.headers.get("X-Rebuzzle-StoreKit-Transaction") === "valid-test-proof"
   ),
 }));
 
@@ -66,11 +67,16 @@ const savedNote = (note: string, revision: number) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.mocked(getAuthenticatedUser).mockResolvedValue({ userId: "self", isGuestToken: false } as never);
+  jest
+    .mocked(getAuthenticatedUser)
+    .mockResolvedValue({ userId: "self", isGuestToken: false } as never);
   jest.mocked(hasPlusEntitlement).mockResolvedValue(true);
-  jest.mocked(rateLimit).mockReturnValue(
-    (async () => ({ success: true, limit: 30, remaining: 29, reset: 0 })) as never
-  );
+  jest.mocked(rateLimit).mockReturnValue((async () => ({
+    success: true,
+    limit: 30,
+    remaining: 29,
+    reset: 0,
+  })) as never);
   progress.findForUserPuzzle.mockResolvedValue({ userId: "self", puzzleId: "puzzle-2026-10-25" });
   notes.compareAndSet.mockResolvedValue(savedNote("The repeated shape was the turn.", 1));
   notes.findForUser.mockResolvedValue(null);
@@ -103,15 +109,23 @@ it("writes only the authenticated account's completed puzzle note", async () => 
 
 it("requires an authenticated registered account and Plus proof before database reads", async () => {
   jest.mocked(getAuthenticatedUser).mockResolvedValueOnce(null);
-  expect((await getJournalPUT(await loadJournalNoteRoute())(noteRequest(validBody()))).status).toBe(401);
+  expect((await getJournalPUT(await loadJournalNoteRoute())(noteRequest(validBody()))).status).toBe(
+    401
+  );
   expect(progress.findForUserPuzzle).not.toHaveBeenCalled();
 
-  jest.mocked(getAuthenticatedUser).mockResolvedValueOnce({ userId: "guest", isGuestToken: true } as never);
-  expect((await getJournalPUT(await loadJournalNoteRoute())(noteRequest(validBody()))).status).toBe(403);
+  jest
+    .mocked(getAuthenticatedUser)
+    .mockResolvedValueOnce({ userId: "guest", isGuestToken: true } as never);
+  expect((await getJournalPUT(await loadJournalNoteRoute())(noteRequest(validBody()))).status).toBe(
+    403
+  );
   expect(progress.findForUserPuzzle).not.toHaveBeenCalled();
 
   jest.mocked(hasPlusEntitlement).mockResolvedValueOnce(false);
-  expect((await getJournalPUT(await loadJournalNoteRoute())(noteRequest(validBody()))).status).toBe(403);
+  expect((await getJournalPUT(await loadJournalNoteRoute())(noteRequest(validBody()))).status).toBe(
+    403
+  );
   expect(progress.findForUserPuzzle).not.toHaveBeenCalled();
 });
 
@@ -172,7 +186,10 @@ it("rejects a request body larger than 64 KB", async () => {
   const response = await getJournalPUT(await loadJournalNoteRoute())(
     new Request("https://rebuzzle.test/api/user/journal/note", {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Rebuzzle-StoreKit-Transaction": "valid-test-proof" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Rebuzzle-StoreKit-Transaction": "valid-test-proof",
+      },
       body: `{"puzzleId":"puzzle-2026-10-25","note":"${"x".repeat(66_000)}","expectedRevision":0}`,
     })
   );

@@ -120,7 +120,10 @@ type GameAction =
     }
   | { type: "SET_IS_SUBMITTING"; payload: boolean }
   | { type: "ADD_GUESS_HISTORY"; payload: GuessAttempt }
-  | { type: "SET_DAILY_PLAY_STATE"; payload: { phase?: string; scoreLocked?: boolean; playMode?: string } }
+  | {
+      type: "SET_DAILY_PLAY_STATE";
+      payload: { phase?: string; scoreLocked?: boolean; playMode?: string };
+    }
   | { type: "RESTORE_SESSION"; payload: Partial<GameState> }
   | { type: "REVEAL_HINT" };
 
@@ -427,7 +430,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           text: attempt.guess,
           attemptNumber: attempt.attemptNumber,
           tier: attempt.reaction?.tier ?? (attempt.correct ? "correct" : "cold"),
-          line: attempt.reaction?.line ?? (attempt.correct ? "You found the connection." : "Take another look at the clues."),
+          line:
+            attempt.reaction?.line ??
+            (attempt.correct ? "You found the connection." : "Take another look at the clues."),
           wordResults: (attempt.wordResults ?? []).map((word) => ({
             word: word.word,
             correct: word.correct,
@@ -435,10 +440,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           })),
         }));
         setTurns(restoredTurns);
-        turnSeq.current = attempts.reduce((largest, attempt) => Math.max(largest, attempt.attemptNumber), 0);
+        turnSeq.current = attempts.reduce(
+          (largest, attempt) => Math.max(largest, attempt.attemptNumber),
+          0
+        );
         setExpiredReview(session.expiredReview ?? null);
-        setRevealedAnswer(session.gameOver ? session.answer ?? null : null);
-        setRevealedExplanation(session.gameOver ? session.explanation ?? null : null);
+        setRevealedAnswer(session.gameOver ? (session.answer ?? null) : null);
+        setRevealedExplanation(session.gameOver ? (session.explanation ?? null) : null);
         dispatch({
           type: "RESTORE_SESSION",
           payload: {
@@ -632,10 +640,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     const serverScore = opts?.serverScore;
 
     // Prefer authoritative server points; fall back to local estimate for UX only
-    let score =
-      opts?.scoreLocked
-        ? 0
-        : typeof serverScore === "number" && serverScore > 0
+    let score = opts?.scoreLocked
+      ? 0
+      : typeof serverScore === "number" && serverScore > 0
         ? serverScore
         : success
           ? calculateGamePoints(
@@ -1187,7 +1194,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         error?: string;
       };
       if (!response.ok || !result.success || result.puzzleId !== gameData.id) {
-        throw new Error(result.error || "Couldn’t reveal this puzzle yet. Refresh progress and try again.");
+        throw new Error(
+          result.error || "Couldn’t reveal this puzzle yet. Refresh progress and try again."
+        );
       }
 
       const serverAttempts = result.attempts ?? [];
@@ -1471,7 +1480,11 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       resultsHref={resultsHref}
       answer={revealedAnswer}
       revealed={gameState.phase === "revealed"}
-      lateSolve={gameState.wasSuccessful && gameState.scoreLocked && gameState.finalAttempts > gameSettings.maxAttempts}
+      lateSolve={
+        gameState.wasSuccessful &&
+        gameState.scoreLocked &&
+        gameState.finalAttempts > gameSettings.maxAttempts
+      }
       nextPlayTime={gameState.nextPlayTime}
       nearMiss={hadNearMiss}
       isLucky={isLuckySolve}
@@ -1597,13 +1610,18 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                           }}
                         />
                       ) : null}
-                      {expiredReview && dismissedExpiredReviewId !== expiredReview.puzzleId && !keyboardOpen ? (
+                      {expiredReview &&
+                      dismissedExpiredReviewId !== expiredReview.puzzleId &&
+                      !keyboardOpen ? (
                         <aside className="mt-3 rounded-xl border border-border/70 bg-card/70 px-3.5 py-3">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="font-medium text-foreground text-sm">Yesterday’s unfinished puzzle</p>
+                              <p className="font-medium text-foreground text-sm">
+                                Yesterday’s unfinished puzzle
+                              </p>
                               <p className="mt-1 text-muted-foreground text-xs leading-relaxed">
-                                Today’s puzzle is ready. Review yesterday’s connection whenever you like.
+                                Today’s puzzle is ready. Review yesterday’s connection whenever you
+                                like.
                               </p>
                             </div>
                             <button
@@ -1620,7 +1638,10 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                           </div>
                           {showExpiredReview ? (
                             <div className="mt-3 border-t border-border/70 pt-3">
-                              <p className="font-semibold text-foreground text-base" data-testid="expiredReviewAnswer">
+                              <p
+                                className="font-semibold text-foreground text-base"
+                                data-testid="expiredReviewAnswer"
+                              >
                                 {expiredReview.answer}
                               </p>
                               {expiredReview.explanation ? (
@@ -1721,8 +1742,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                           data-testid="scoreLockedCard"
                           role="status"
                         >
-                          <p className="font-medium text-foreground text-sm" data-testid="scoreLockedMessage">
-                            Your three scored guesses are saved. Take as long as you need to find the connection.
+                          <p
+                            className="font-medium text-foreground text-sm"
+                            data-testid="scoreLockedMessage"
+                          >
+                            Your three scored guesses are saved. Take as long as you need to find
+                            the connection.
                           </p>
                           {awaitingScoreLockDecision ? (
                             <div className="mt-2 flex gap-2">
@@ -1747,7 +1772,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                             </div>
                           ) : (
                             <div className="mt-1.5 flex items-center justify-between gap-2">
-                              <p className="text-muted-foreground text-xs">Score locked · puzzle still open</p>
+                              <p className="text-muted-foreground text-xs">
+                                Score locked · puzzle still open
+                              </p>
                               <button
                                 className="min-h-11 px-2 font-medium text-brand text-xs underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 data-testid="revealAnswer"

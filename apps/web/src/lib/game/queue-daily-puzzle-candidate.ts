@@ -28,15 +28,12 @@ type QueueRepository = Pick<
 function isDateKey(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  return (
-    Number.isFinite(parsed.valueOf()) &&
-    parsed.toISOString().slice(0, 10) === value
-  );
+  return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 function metadataString(
   metadata: Record<string, unknown> | undefined,
-  key: string,
+  key: string
 ): string | undefined {
   const value = metadata?.[key];
   return typeof value === "string" ? value : undefined;
@@ -46,11 +43,10 @@ async function submitForPlaytest(
   candidate: DailyPuzzleCandidate,
   repository: QueueRepository,
   playtest: DailyPuzzleCandidatePlaytestSubmitter,
-  now: () => Date,
+  now: () => Date
 ): Promise<DailyPuzzleCandidate> {
   const visual = candidate.payload.visual;
-  if (!visual)
-    throw new Error("Daily candidate requires a validated visual board");
+  if (!visual) throw new Error("Daily candidate requires a validated visual board");
   const metadata = candidate.payload.metadataExtra;
   try {
     await playtest.submitCandidate({
@@ -62,9 +58,7 @@ async function submitForPlaytest(
       difficultyLevel: metadataString(metadata, "difficultyLevel"),
       generationMethod: metadataString(metadata, "generationMethod"),
       automatedEstimatedSolveRate:
-        typeof metadata?.estimatedSolveRate === "number"
-          ? metadata.estimatedSolveRate
-          : undefined,
+        typeof metadata?.estimatedSolveRate === "number" ? metadata.estimatedSolveRate : undefined,
     });
   } catch (error) {
     try {
@@ -96,7 +90,7 @@ async function submitForPlaytest(
 export function createDailyPuzzleCandidateQueue(
   repository: QueueRepository,
   playtest: DailyPuzzleCandidatePlaytestSubmitter,
-  now: () => Date = () => new Date(),
+  now: () => Date = () => new Date()
 ) {
   return {
     async enqueue(input: {
@@ -123,13 +117,12 @@ export function createDailyPuzzleCandidateQueue(
           updatedAt: now(),
         }));
 
-      if (candidate.status !== "reviewing" || candidate.playtestSubmittedAt)
-        return candidate;
+      if (candidate.status !== "reviewing" || candidate.playtestSubmittedAt) return candidate;
       return submitForPlaytest(candidate, repository, playtest, now);
     },
 
     async retryPending(
-      limit = 20,
+      limit = 20
     ): Promise<{ attempted: number; submitted: number; failed: number }> {
       const pending = await repository.list({
         statuses: ["reviewing"],

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       {
         status: access.status,
         headers: { "Cache-Control": buildCacheControl({ private: true }) },
-      },
+      }
     );
   }
   const authUser = access.user;
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
       lock,
       gateway: getGatewayAuthDiagnostics(),
     },
-    { headers: { "Cache-Control": buildCacheControl({ private: true }) } },
+    { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
   );
 }
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         {
           status: access.status,
           headers: { "Cache-Control": buildCacheControl({ private: true }) },
-        },
+        }
       );
     }
     const authUser = access.user;
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         {
           status: 400,
           headers: { "Cache-Control": buildCacheControl({ private: true }) },
-        },
+        }
       );
     }
 
@@ -86,10 +86,7 @@ export async function POST(request: Request) {
     const userId = authUser.userId;
 
     if (action === "clear-attempts") {
-      const deleted = await db.puzzleAttemptOps.clearAttemptsForDate(
-        userId,
-        puzzleDate,
-      );
+      const deleted = await db.puzzleAttemptOps.clearAttemptsForDate(userId, puzzleDate);
       return NextResponse.json(
         {
           success: true,
@@ -97,7 +94,7 @@ export async function POST(request: Request) {
           deleted,
           message: `Cleared ${deleted} attempt(s) for ${puzzleDate}`,
         },
-        { headers: { "Cache-Control": buildCacheControl({ private: true }) } },
+        { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -109,7 +106,7 @@ export async function POST(request: Request) {
           {
             status: 404,
             headers: { "Cache-Control": buildCacheControl({ private: true }) },
-          },
+          }
         );
       }
 
@@ -137,12 +134,10 @@ export async function POST(request: Request) {
         {
           success: true,
           action,
-          message: isWin
-            ? "Locked as WIN for today"
-            : "Locked as LOSS for today",
+          message: isWin ? "Locked as WIN for today" : "Locked as LOSS for today",
           puzzleId: puzzle.id,
         },
-        { headers: { "Cache-Control": buildCacheControl({ private: true }) } },
+        { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -159,7 +154,7 @@ export async function POST(request: Request) {
           {
             status: 503,
             headers: { "Cache-Control": buildCacheControl({ private: true }) },
-          },
+          }
         );
       }
 
@@ -174,7 +169,7 @@ export async function POST(request: Request) {
           {
             status: 500,
             headers: { "Cache-Control": buildCacheControl({ private: true }) },
-          },
+          }
         );
       }
 
@@ -186,7 +181,7 @@ export async function POST(request: Request) {
           candidate: result.candidate,
           gateway: authProbe.diagnostics,
         },
-        { headers: { "Cache-Control": buildCacheControl({ private: true }) } },
+        { headers: { "Cache-Control": buildCacheControl({ private: true }) } }
       );
     }
 
@@ -195,7 +190,7 @@ export async function POST(request: Request) {
       {
         status: 400,
         headers: { "Cache-Control": buildCacheControl({ private: true }) },
-      },
+      }
     );
   } catch (error) {
     console.error("[dev/session]", error);
@@ -207,7 +202,7 @@ export async function POST(request: Request) {
       {
         status: 500,
         headers: { "Cache-Control": buildCacheControl({ private: true }) },
-      },
+      }
     );
   }
 }

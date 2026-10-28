@@ -10,10 +10,7 @@ export async function GET(request: Request) {
   try {
     const admin = await verifyAdminAccess(request);
     if (!admin) {
-      return NextResponse.json(
-        { success: false, error: "Admin access required" },
-        { status: 403 },
-      );
+      return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -35,17 +32,14 @@ export async function GET(request: Request) {
           error: `Invalid puzzle type: "${puzzleType}"`,
           availableTypes: listPuzzleTypes(),
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     const result = await regenerateTodaysPuzzle(puzzleType || undefined);
 
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.message },
-        { status: 500 },
-      );
+      return NextResponse.json({ success: false, error: result.message }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -60,7 +54,7 @@ export async function GET(request: Request) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

@@ -13,12 +13,8 @@ function candidates() {
 export type DailyPuzzleCandidateRepository = {
   insert(candidate: DailyPuzzleCandidate): Promise<DailyPuzzleCandidate>;
   findById(id: string): Promise<DailyPuzzleCandidate | null>;
-  findByGenerationKey(
-    generationKey: string,
-  ): Promise<DailyPuzzleCandidate | null>;
-  findAssignmentForDate(
-    dateString: string,
-  ): Promise<DailyPuzzleCandidate | null>;
+  findByGenerationKey(generationKey: string): Promise<DailyPuzzleCandidate | null>;
+  findAssignmentForDate(dateString: string): Promise<DailyPuzzleCandidate | null>;
   list(input?: {
     statuses?: DailyPuzzleCandidateStatus[];
     withoutPlaytestSubmission?: boolean;
@@ -57,12 +53,7 @@ export type DailyPuzzleCandidateRepository = {
 };
 
 const duplicateKey = (error: unknown) =>
-  Boolean(
-    error &&
-    typeof error === "object" &&
-    "code" in error &&
-    error.code === 11000,
-  );
+  Boolean(error && typeof error === "object" && "code" in error && error.code === 11000);
 
 export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidateRepository {
   return {
@@ -77,12 +68,9 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
             generationKey: candidate.generationKey,
           })) ?? (await candidates().findOne({ id: candidate.id }));
         if (existing) return existing;
-        throw new Error(
-          "Daily candidate insert collided without a matching generation record",
-          {
-            cause: error,
-          },
-        );
+        throw new Error("Daily candidate insert collided without a matching generation record", {
+          cause: error,
+        });
       }
     },
 
@@ -101,9 +89,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
     async list(input = {}) {
       const filter: Filter<DailyPuzzleCandidate> = {
         ...(input.statuses?.length ? { status: { $in: input.statuses } } : {}),
-        ...(input.withoutPlaytestSubmission
-          ? { playtestSubmittedAt: { $exists: false } }
-          : {}),
+        ...(input.withoutPlaytestSubmission ? { playtestSubmittedAt: { $exists: false } } : {}),
       };
       return candidates()
         .find(filter)
@@ -122,7 +108,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
           },
           $unset: { playtestSubmissionError: "" },
         },
-        { returnDocument: "after" },
+        { returnDocument: "after" }
       );
     },
 
@@ -135,7 +121,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
             updatedAt: input.updatedAt,
           },
         },
-        { returnDocument: "after" },
+        { returnDocument: "after" }
       );
     },
 
@@ -154,7 +140,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
           },
           $inc: { statusVersion: 1 },
         },
-        { returnDocument: "after" },
+        { returnDocument: "after" }
       );
     },
 
@@ -170,7 +156,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
             },
             $inc: { statusVersion: 1 },
           },
-          { returnDocument: "after" },
+          { returnDocument: "after" }
         );
         if (claimed) return claimed;
       } catch (error) {
@@ -191,7 +177,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
           $inc: { statusVersion: 1 },
           $unset: { assignedDate: "" },
         },
-        { returnDocument: "after" },
+        { returnDocument: "after" }
       );
     },
 
@@ -206,7 +192,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
           },
           $inc: { statusVersion: 1 },
         },
-        { returnDocument: "after" },
+        { returnDocument: "after" }
       );
     },
   };
