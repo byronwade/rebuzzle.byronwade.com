@@ -290,6 +290,17 @@ enum GrowthEvent: Sendable {
     func fetchArchiveSample() async throws -> Puzzle {
         try await request("/api/puzzles/practice/sample")
     }
+    func fetchDailySolveDistribution(puzzleID: String) async throws -> DailySolveDistribution {
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("api/puzzles/solve-distribution"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [URLQueryItem(name: "puzzleId", value: puzzleID)]
+        guard let url = components?.url else {
+            throw APIError(status: 0, message: "The solving mix could not be opened. Please try again.")
+        }
+        return try await request(url.absoluteString)
+    }
     func submitPracticeGuess(puzzleID: String, guess: String, attemptNumber: Int, roundToken: String?) async throws -> PracticeGuessResponse {
         var body: [String: Any] = ["puzzleId": puzzleID, "guess": guess, "attemptNumber": attemptNumber]
         if let roundToken { body["roundToken"] = roundToken }

@@ -68,15 +68,15 @@
 - `DailySolveDistribution` is `Codable`, `Equatable`, and `Sendable`, and mirrors the Task 1 response fields.
 - `APIClient.fetchDailySolveDistribution(puzzleID: String) async throws -> DailySolveDistribution` URL-encodes the puzzle ID and calls the Task 1 route.
 
-- [ ] **Step 1: Write failing Core decode/bucket tests** for available and unavailable payloads and the player's 1/2/3/4+ bucket.
-- [ ] **Step 2: Run** `swift test --package-path apps/ios/Core --filter DailySolveDistributionTests` and confirm the missing type fails as expected.
-- [ ] **Step 3: Implement** the Core response type and bucket selection helper.
-- [ ] **Step 4: Run the focused Core tests** and confirm they pass.
-- [ ] **Step 5: Write failing APIClient tests** for encoded puzzle IDs, response decoding, and server errors.
-- [ ] **Step 6: Run** `xcodebuild test -project apps/ios/Rebuzzle.xcodeproj -scheme Rebuzzle -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:RebuzzleTests/DailySolveDistributionAPITests` and confirm the missing API method fails as expected.
-- [ ] **Step 7: Implement** `fetchDailySolveDistribution(puzzleID:)` through the existing request client.
-- [ ] **Step 8: Run the focused APIClient test** and confirm it passes.
-- [ ] **Step 9: Commit** as `feat: add native daily solve distribution client`.
+- [x] **Step 1: Write failing Core decode/bucket tests** for available and unavailable payloads and the player's 1/2/3/4+ bucket.
+- [x] **Step 2: Run** `swift test --package-path apps/ios/Core --filter DailySolveDistributionTests` and confirm the missing type fails as expected.
+- [x] **Step 3: Implement** the Core response type and bucket selection helper.
+- [x] **Step 4: Run the focused Core tests** and confirm they pass.
+- [x] **Step 5: Write failing APIClient tests** for encoded puzzle IDs, response decoding, and server errors.
+- [x] **Step 6: Run** `xcodebuild test -project apps/ios/Rebuzzle.xcodeproj -scheme Rebuzzle -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.3.1' -parallel-testing-enabled NO -only-testing:RebuzzleTests/DailySolveDistributionAPITests` and confirm the missing API method fails as expected.
+- [x] **Step 7: Implement** `fetchDailySolveDistribution(puzzleID:)` through the existing request client.
+- [x] **Step 8: Run the focused APIClient test** and confirm it passes.
+- [x] **Step 9: Commit** as `feat: add native daily solve distribution client`.
 
 ### Task 3: Track the optional view in the existing native funnel
 
