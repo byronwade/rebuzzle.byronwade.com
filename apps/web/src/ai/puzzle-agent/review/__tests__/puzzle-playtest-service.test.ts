@@ -24,6 +24,8 @@ const REPRESENTATIVE_TECHNIQUES = [
 ] as const;
 const PROFILE_IDS = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"] as const;
 
+type CandidateFailure = "multiple-answers" | "unreadable-layout" | "missing-cue";
+
 function inMemoryRepository() {
   const store = {
     candidates: [] as PuzzlePlaytestCandidate[],
@@ -59,8 +61,12 @@ function inMemoryRepository() {
       return store.reviews.filter(
         (row) =>
           row.contractVersion === input.contractVersion &&
-          (!input.reviewerId || row.reviewerId === input.reviewerId) &&
-          (!input.candidateIds?.length || input.candidateIds.includes(row.candidateId))
+          (input.candidateIds?.length && input.reviewerIds?.length
+            ? input.candidateIds.includes(row.candidateId) ||
+              input.reviewerIds.includes(row.reviewerId)
+            : (!input.reviewerId || row.reviewerId === input.reviewerId) &&
+              (!input.reviewerIds?.length || input.reviewerIds.includes(row.reviewerId)) &&
+              (!input.candidateIds?.length || input.candidateIds.includes(row.candidateId)))
       );
     },
     async insertReview(review) {
@@ -154,6 +160,41 @@ function seedQualifiedReviewers(
   reviewerIds: Iterable<string>
 ): void {
   for (const reviewerId of reviewerIds) seedReviewerControls(store, reviewerId);
+}
+
+function seedCandidateEvidence(
+  store: ReturnType<typeof inMemoryRepository>["store"],
+  candidate: PuzzlePlaytestCandidate,
+  options: { correctCount?: number; failures?: CandidateFailure[]; qualified?: boolean } = {}
+): void {
+  candidate.status = "complete";
+  candidate.statusVersion += 1;
+  let index = 0;
+  for (const profileId of PROFILE_IDS) {
+    for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
+      const reviewerId = `admission-${profileId}-${reviewerIndex}`;
+      seedReviewerControls(store, reviewerId, options.qualified === false ? 2 : 4);
+      const failureReason = options.failures?.[index];
+      const correct = index < (options.correctCount ?? 20) && !failureReason;
+      store.reviews.push({
+        id: `generated:${reviewerId}`,
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        candidateId: candidate.id,
+        fixtureId: `generated-fixture:${reviewerId}`,
+        profileId,
+        reviewerId,
+        rawGuess: correct ? candidate.answer : "unrelated answer",
+        normalizedGuess: correct ? candidate.answerKey : "unrelatedanswer",
+        correct,
+        gaveUp: !correct,
+        failureReason,
+        confidence: 4,
+        elapsedMs: 20_000,
+        createdAt: new Date(index),
+      });
+      index++;
+    }
+  }
 }
 
 function lastRenderedCandidate(
@@ -541,6 +582,100 @@ describe("blind human generated-puzzle playtesting", () => {
     const supportedPass = humanSolveFloorEvidence(13, 15, 5);
     expect(supportedPass.lower).toBeGreaterThan(0.65);
     expect(supportedPass.passes).toBe(true);
+  });
+
+  it("does not admit an incomplete candidate", async () => {
+    const { repository } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    await service.submitCandidate(candidateInput());
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.reasons.join(" ")).toContain("complete");
+  });
+
+  it("does not count generated decisions from unqualified reviewers", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, { qualified: false });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.reasons.join(" ")).toContain("qualified");
+    expect(admission.qualifiedDecisions).toBe(0);
+  });
+
+  it("rejects a completed candidate whose solve evidence misses its difficulty floor", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, { correctCount: 10 });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.solveEvidence.passes).toBe(false);
+    expect(admission.reasons.join(" ")).toContain("solve floor");
+  });
+
+  it("rejects a candidate with multiple-answer reports above the allowed count", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, {
+      correctCount: 20,
+      failures: ["multiple-answers", "multiple-answers"],
+    });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.ambiguityReports).toBe(2);
+    expect(admission.reasons.join(" ")).toContain("Multiple-answer");
+  });
+
+  it("rejects any candidate with an explicit visual failure", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, {
+      correctCount: 20,
+      failures: ["unreadable-layout"],
+    });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.visualFailureReports).toBe(1);
+    expect(admission.reasons.join(" ")).toContain("visual");
+  });
+
+  it("admits a complete, fair candidate with qualified coverage on every profile", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate);
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission).toMatchObject({
+      eligible: true,
+      qualifiedDecisions: 20,
+      ambiguityReports: 0,
+      visualFailureReports: 0,
+    });
+    expect(admission.profileCoverage).toEqual(
+      expect.arrayContaining(PROFILE_IDS.map((profileId) => ({ profileId, decisions: 5 })))
+    );
+    expect(JSON.stringify(admission)).not.toContain(candidate.answer);
   });
 
   it("computes market-leading status only from 100 fully covered generated puzzles", async () => {

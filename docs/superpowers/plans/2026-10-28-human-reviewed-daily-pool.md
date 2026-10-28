@@ -23,7 +23,7 @@
 
 - [ ] Add a read-only candidate result keyed by puzzle ID that loads the existing candidate, controls, and reviews.
 - [ ] Count only qualified reviewers and require the existing complete status/profile coverage.
-- [ ] Reuse `humanSolveFloorEvidence`; reject above one multiple-answer report and reject any explicit visual failure.
+- [ ] Reuse `humanSolveFloorEvidence`; require five qualified reviews on each of the current four profiles (20 total), reject above one multiple-answer report, and reject any explicit visual failure.
 - [ ] Return compact eligibility and reasons without making candidate answers available through the player-facing playtest API.
 - [ ] Test incomplete, unqualified, floor-failing, ambiguous, visually failing, and eligible candidates.
 

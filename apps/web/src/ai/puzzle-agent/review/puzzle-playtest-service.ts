@@ -88,6 +88,23 @@ export type PuzzlePlaytestProfileScore = {
   medianSolveMs: number | null;
 };
 
+export type PuzzlePlaytestCandidateAdmission = {
+  puzzleId: string;
+  candidateStatus?: PuzzlePlaytestCandidate["status"];
+  eligible: boolean;
+  requiredReviewersPerProfile: number;
+  profileCoverage: Array<{
+    profileId: PuzzleBoardRecognitionProfileId;
+    decisions: number;
+  }>;
+  qualifiedDecisions: number;
+  solveEvidence?: ReturnType<typeof humanSolveFloorEvidence>;
+  ambiguityReports: number;
+  visualFailureReports: number;
+  reasons: string[];
+  generatedAt: string;
+};
+
 export type PuzzlePlaytestCandidateReport = {
   candidateId: string;
   puzzleId: string;
@@ -206,6 +223,7 @@ export type PuzzlePlaytestRepository = {
   listReviews(input: {
     contractVersion: string;
     reviewerId?: string;
+    reviewerIds?: string[];
     candidateIds?: string[];
   }): Promise<PuzzlePlaytestReview[]>;
   insertReview(review: PuzzlePlaytestReview): Promise<boolean>;
@@ -802,6 +820,124 @@ export function createPuzzlePlaytestService(
         await evaluateCandidate(match.candidate);
       }
       return (await getNextAssignment(reviewerId)).progress;
+    },
+
+    async getCandidateAdmission(
+      puzzleIdInput: string,
+      now = new Date()
+    ): Promise<PuzzlePlaytestCandidateAdmission> {
+      const puzzleId = puzzleIdInput.trim().slice(0, 100);
+      const emptyProfileCoverage = PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => ({
+        profileId: profile.id,
+        decisions: 0,
+      }));
+      if (!puzzleId) {
+        return {
+          puzzleId: "",
+          eligible: false,
+          requiredReviewersPerProfile: PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE,
+          profileCoverage: emptyProfileCoverage,
+          qualifiedDecisions: 0,
+          ambiguityReports: 0,
+          visualFailureReports: 0,
+          reasons: ["Puzzle candidate identity is required"],
+          generatedAt: now.toISOString(),
+        };
+      }
+
+      const candidate = await repository.findCandidateByPuzzleId({
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        puzzleId,
+      });
+      if (!candidate) {
+        return {
+          puzzleId,
+          eligible: false,
+          requiredReviewersPerProfile: PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE,
+          profileCoverage: emptyProfileCoverage,
+          qualifiedDecisions: 0,
+          ambiguityReports: 0,
+          visualFailureReports: 0,
+          reasons: ["No current-contract human playtest candidate exists"],
+          generatedAt: now.toISOString(),
+        };
+      }
+
+      const candidateReviews = uniqueReviews(
+        await repository.listReviews({
+          contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+          candidateIds: [candidate.id],
+        })
+      );
+      const reviewerIds = [...new Set(candidateReviews.map((review) => review.reviewerId))];
+      const [controlCandidates, reviewerEvidence] = await Promise.all([
+        repository.listCandidates({
+          contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+          evidenceRoles: ["control"],
+          limit: 100,
+        }),
+        reviewerIds.length
+          ? repository.listReviews({
+              contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+              candidateIds: [candidate.id],
+              reviewerIds,
+            })
+          : Promise.resolve(candidateReviews),
+      ]);
+      const controlIds = new Set(controlCandidates.map((row) => row.id));
+      const qualifications = reviewerQualificationMap(uniqueReviews(reviewerEvidence), controlIds);
+      const qualifiedReviews = candidateReviews.filter(
+        (review) => qualifications.get(review.reviewerId)?.status === "qualified"
+      );
+      const profileCoverage = PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => ({
+        profileId: profile.id,
+        decisions: qualifiedReviews.filter((review) => review.profileId === profile.id).length,
+      }));
+      const correct = qualifiedReviews.filter((review) => review.correct).length;
+      const solveEvidence = humanSolveFloorEvidence(
+        correct,
+        qualifiedReviews.length,
+        candidate.difficultyScore
+      );
+      const ambiguityReports = qualifiedReviews.filter(
+        (review) => review.failureReason === "multiple-answers"
+      ).length;
+      const visualFailureReports = qualifiedReviews.filter(isVisualFailure).length;
+      const reasons: string[] = [];
+
+      if (candidate.status !== "complete") reasons.push("Candidate does not have complete profile coverage");
+      for (const profile of profileCoverage) {
+        if (profile.decisions < PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE) {
+          reasons.push(
+            `${profile.profileId} has ${profile.decisions}/${PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE} qualified reviews`
+          );
+        }
+      }
+      if (!solveEvidence.passes) {
+        reasons.push(
+          `Human solve evidence does not clear the ${Math.round(solveEvidence.expectedFloor * 100)}% difficulty-adjusted solve floor`
+        );
+      }
+      if (ambiguityReports > 1) {
+        reasons.push(`Multiple-answer reports exceed the one-report candidate limit`);
+      }
+      if (visualFailureReports > 0) {
+        reasons.push("Human reviewers reported a visual playability failure");
+      }
+
+      return {
+        puzzleId,
+        candidateStatus: candidate.status,
+        eligible: reasons.length === 0,
+        requiredReviewersPerProfile: PUZZLE_PLAYTEST_REQUIRED_REVIEWERS_PER_PROFILE,
+        profileCoverage,
+        qualifiedDecisions: qualifiedReviews.length,
+        solveEvidence,
+        ambiguityReports,
+        visualFailureReports,
+        reasons,
+        generatedAt: now.toISOString(),
+      };
     },
 
     async getReport(

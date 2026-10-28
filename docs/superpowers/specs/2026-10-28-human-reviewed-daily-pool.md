@@ -11,7 +11,7 @@ The daily game remains available when the review pool is empty: publish an eligi
 - Public daily requests publish only an admitted candidate, an eligible community puzzle, or a curated reserve.
 - AI generation runs ahead of release and creates an unassigned candidate. The candidate is not a published puzzle, archive entry, or daily-date assignment.
 - The existing blind playtest shows only the rendered board and opaque fixture ID. It continues to qualify reviewers with control puzzles and collect one decision per reviewer per responsive profile.
-- A generated candidate is eligible only after the current contract marks it complete, its qualified decisions pass the existing difficulty-adjusted one-sided Wilson solve floor, it has at most one multiple-answer report, and it has no reported visual failure (unrecognizable artwork, unreadable layout, or missing cue).
+- The current contract has four responsive profiles and requires five qualified reviewers on each, for 20 decisions per candidate. A generated candidate is eligible only after the contract marks it complete, its qualified decisions pass the existing difficulty-adjusted one-sided Wilson solve floor, it has at most one multiple-answer report, and it has no reported visual failure (unrecognizable artwork, unreadable layout, or missing cue).
 - If no candidate passes, the date uses the existing community/curated reserve flow. Already published dates remain immutable.
 - A candidate's full puzzle payload and visual are stored separately from the public `puzzles` collection until release. Review evidence is bound to the candidate ID and visual snapshot.
 
