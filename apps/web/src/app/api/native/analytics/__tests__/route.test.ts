@@ -82,6 +82,45 @@ it("rejectsExtraFieldsAndInvalidSource", async () => {
   expect(nativeGrowthEventOps.recordOnce).not.toHaveBeenCalled();
 });
 
+it.each(["archive", "settings", "journey_insights", "journal", "free_sample"] as const)(
+  "accepts Plus offer source %s for views and purchase starts",
+  async (source) => {
+    const viewed = await post({ eventType: "plus_offer_viewed", source });
+    expect(viewed.status).toBe(200);
+    expect(nativeGrowthEventOps.recordOnce).toHaveBeenLastCalledWith({
+      userId: "server-account",
+      eventType: "plus_offer_viewed",
+      dayKey: "2026-10-26",
+      occurredAt: new Date("2026-10-27T06:30:00.000Z"),
+      source,
+    });
+
+    const started = await post({ eventType: "plus_purchase_started", source });
+    expect(started.status).toBe(200);
+    expect(nativeGrowthEventOps.recordOnce).toHaveBeenLastCalledWith({
+      userId: "server-account",
+      eventType: "plus_purchase_started",
+      dayKey: "2026-10-26",
+      occurredAt: new Date("2026-10-27T06:30:00.000Z"),
+      source,
+    });
+  }
+);
+
+it("rejects unknown Plus sources and sources on restore or unrelated events", async () => {
+  const invalidBodies = [
+    { eventType: "plus_offer_viewed", source: "email" },
+    { eventType: "plus_purchase_started", source: "email" },
+    { eventType: "plus_restore_completed", source: "archive" },
+    { eventType: "reminder_enabled", source: "archive" },
+    { eventType: "daily_share_started", source: "archive" },
+    { eventType: "daily_opened", source: "archive" },
+  ];
+
+  for (const body of invalidBodies) expect((await post(body)).status).toBe(400);
+  expect(nativeGrowthEventOps.recordOnce).not.toHaveBeenCalled();
+});
+
 it("derivesIdentityDayAndTimeFromServer", async () => {
   const response = await post({ eventType: "daily_opened", source: "widget" });
 

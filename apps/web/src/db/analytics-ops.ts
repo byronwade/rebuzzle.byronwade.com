@@ -121,7 +121,9 @@ export const nativeGrowthEventOps = {
         userId: event.userId,
         eventType: event.eventType,
         dayKey: event.dayKey,
-        ...(event.eventType === "daily_opened" ? { source: event.source } : {}),
+        ...(event.eventType === "daily_opened" || ("source" in event && event.source)
+          ? { source: event.source }
+          : {}),
       },
       { $setOnInsert: event },
       { upsert: true }

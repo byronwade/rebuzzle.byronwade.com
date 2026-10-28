@@ -3,6 +3,7 @@ import { nativeGrowthEventOps } from "@/db/analytics-ops";
 import type {
   NativeGrowthEvent,
   NativeGrowthEventSource,
+  NativeGrowthPlusOfferSource,
   NativeGrowthQualityRating,
 } from "@/db/models";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
@@ -22,6 +23,13 @@ const sources = new Set<NativeGrowthEventSource>([
   "shortcut",
   "share",
 ]);
+const plusOfferSources = new Set<NativeGrowthPlusOfferSource>([
+  "archive",
+  "settings",
+  "journey_insights",
+  "journal",
+  "free_sample",
+]);
 const qualityRatings = new Set<NativeGrowthQualityRating>([
   "too_easy",
   "just_right",
@@ -29,15 +37,18 @@ const qualityRatings = new Set<NativeGrowthQualityRating>([
   "unclear",
 ]);
 const purchaseFunnelEvents = new Set([
+  "plus_restore_completed",
+  "plus_restore_empty",
+  "plus_restore_failed",
+]);
+const plusSourceEvents = new Set([
+  "plus_offer_viewed",
   "plus_purchase_started",
   "plus_purchase_verified",
   "plus_purchase_pending",
   "plus_purchase_cancelled",
   "plus_purchase_unverified",
   "plus_purchase_failed",
-  "plus_restore_completed",
-  "plus_restore_empty",
-  "plus_restore_failed",
 ]);
 const failure = (error: string, status: number) =>
   NextResponse.json(
@@ -88,8 +99,15 @@ export async function POST(request: Request) {
   ) {
     // Valid client event.
   } else if (
-    (eventType === "plus_offer_viewed" ||
-      eventType === "reminder_enabled" ||
+    plusSourceEvents.has(eventType) &&
+    (hasExactKeys(body, ["eventType"]) ||
+      (hasExactKeys(body, ["eventType", "source"]) &&
+        typeof body.source === "string" &&
+        plusOfferSources.has(body.source as NativeGrowthPlusOfferSource)))
+  ) {
+    // Valid Plus event with an optional closed offer source; source-free legacy events stay valid.
+  } else if (
+    (eventType === "reminder_enabled" ||
       eventType === "daily_solve_pulse_viewed") &&
     hasExactKeys(body, ["eventType"])
   ) {
@@ -145,6 +163,9 @@ export async function POST(request: Request) {
         ...eventBase,
         eventType: eventType as NativeGrowthEvent["eventType"],
         ...(eventType === "daily_opened" ? { source: body.source as NativeGrowthEventSource } : {}),
+        ...(plusSourceEvents.has(eventType) && typeof body.source === "string"
+          ? { source: body.source as NativeGrowthPlusOfferSource }
+          : {}),
       } as NativeGrowthEvent;
       await nativeGrowthEventOps.recordOnce(event);
     }

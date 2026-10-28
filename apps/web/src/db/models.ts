@@ -902,6 +902,12 @@ export interface NewAnalyticsEvent {
 }
 
 export type NativeGrowthEventSource = "app" | "notification" | "widget" | "shortcut" | "share";
+export type NativeGrowthPlusOfferSource =
+  | "archive"
+  | "settings"
+  | "journey_insights"
+  | "journal"
+  | "free_sample";
 export type NativeGrowthQualityRating = "too_easy" | "just_right" | "tough_but_fair" | "unclear";
 
 type NativeGrowthEventBase = {
@@ -930,8 +936,10 @@ export type NativeGrowthEvent =
       eventType: "daily_session_restored";
     })
   | (NativeGrowthEventBase & {
-      eventType: "plus_offer_viewed" | "reminder_enabled";
+      eventType: "plus_offer_viewed";
+      source?: NativeGrowthPlusOfferSource;
     })
+  | (NativeGrowthEventBase & { eventType: "reminder_enabled" })
   | (NativeGrowthEventBase & {
       eventType:
         | "plus_purchase_started"
@@ -939,10 +947,11 @@ export type NativeGrowthEvent =
         | "plus_purchase_pending"
         | "plus_purchase_cancelled"
         | "plus_purchase_unverified"
-        | "plus_purchase_failed"
-        | "plus_restore_completed"
-        | "plus_restore_empty"
-        | "plus_restore_failed";
+        | "plus_purchase_failed";
+      source?: NativeGrowthPlusOfferSource;
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "plus_restore_completed" | "plus_restore_empty" | "plus_restore_failed";
     })
   | (NativeGrowthEventBase & {
       eventType: "daily_share_started" | "daily_share_completed";

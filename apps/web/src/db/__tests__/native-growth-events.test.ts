@@ -127,6 +127,37 @@ describe("nativeGrowthEventOps.recordOnce", () => {
     expect(documents.get("account-1:daily_opened:2026-10-27:widget")).toEqual(event);
     expect(JSON.stringify([...documents.values()])).not.toContain("puzzleId");
   });
+
+  it("partitions Plus offer idempotency by source and keeps legacy events source-free", async () => {
+    const filters: Record<string, unknown>[] = [];
+    const collection = {
+      namespace: "rebuzzle.nativeGrowthEvents.plusSourceIdempotency",
+      createIndex: jest.fn(async () => "index"),
+      updateOne: jest.fn(async (filter: Record<string, unknown>) => {
+        filters.push(filter);
+        return { acknowledged: true };
+      }),
+    };
+    mockGetCollection.mockReturnValue(collection as never);
+
+    const base = {
+      userId: "account-1",
+      eventType: "plus_offer_viewed" as const,
+      dayKey: "2026-10-27",
+      occurredAt: new Date("2026-10-27T12:00:00.000Z"),
+    };
+    await nativeGrowthEventOps.recordOnce({ ...base, source: "archive" } as never);
+    await nativeGrowthEventOps.recordOnce({ ...base, source: "archive" } as never);
+    await nativeGrowthEventOps.recordOnce({ ...base, source: "settings" } as never);
+    await nativeGrowthEventOps.recordOnce(base);
+
+    expect(filters).toEqual([
+      { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27", source: "archive" },
+      { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27", source: "archive" },
+      { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27", source: "settings" },
+      { userId: "account-1", eventType: "plus_offer_viewed", dayKey: "2026-10-27" },
+    ]);
+  });
 });
 
 describe("nativeGrowthEventOps.recordDailyQualityFeedback", () => {
