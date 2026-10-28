@@ -38,6 +38,12 @@ import RebuzzleCore
     func removeDailyThought(account: String, puzzle: String) throws {
         try remove(key: "daily-thought:\(account):\(puzzle)")
     }
+    func saveLastDailyPuzzle(_ puzzle: String, account: String) throws {
+        try save(puzzle, key: "last-daily-puzzle:\(account)")
+    }
+    func lastDailyPuzzle(account: String) -> String? {
+        try? load(String.self, key: "last-daily-puzzle:\(account)")
+    }
     func remove(key: String) throws {
         let location = url(key)
         if FileManager.default.fileExists(atPath: location.path) { try FileManager.default.removeItem(at: location) }

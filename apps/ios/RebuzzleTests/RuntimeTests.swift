@@ -37,6 +37,9 @@ final class RuntimeTests: XCTestCase {
         XCTAssertEqual(storage.dailyThought(account: "alice", puzzle: "tomorrow"), "")
         try storage.removeDailyThought(account: "alice", puzzle: "today")
         XCTAssertEqual(storage.dailyThought(account: "alice", puzzle: "today"), "")
+        try storage.saveLastDailyPuzzle("today", account: "alice")
+        XCTAssertEqual(storage.lastDailyPuzzle(account: "alice"), "today")
+        XCTAssertNil(storage.lastDailyPuzzle(account: "bob"))
     }
 
     func testInMemoryCredentialStorePersistsOnlyWithinItsFixtureInstance() throws {
@@ -400,9 +403,12 @@ private final class CompletionRefreshState: @unchecked Sendable {
 private final class NudgeRuntimeState: @unchecked Sendable {
     private let lock = NSLock()
     private var acceptedGuess: Bool
+    private var memberBLoggedIn = false
+    private let puzzleID: String
 
-    init(acceptedGuess: Bool = false) {
+    init(acceptedGuess: Bool = false, puzzleID: String = "puzzle-a") {
         self.acceptedGuess = acceptedGuess
+        self.puzzleID = puzzleID
     }
 
     func acceptGuess() {
@@ -411,12 +417,24 @@ private final class NudgeRuntimeState: @unchecked Sendable {
         acceptedGuess = true
     }
 
+    func markMemberBLogin() {
+        lock.lock()
+        defer { lock.unlock() }
+        memberBLoggedIn = true
+    }
+
+    var shouldFailRestoredSession: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return memberBLoggedIn
+    }
+
     var sessionPayload: String {
         lock.lock()
         defer { lock.unlock() }
         let attempts = acceptedGuess ? #"[{"guess":"wrong answer","correct":false,"attemptNumber":1}]"# : "[]"
         let attemptsLeft = acceptedGuess ? 2 : 3
-        return #"{"success":true,"puzzleId":"puzzle-a","puzzleDate":"2099-01-01","attempts":\#(attempts),"hintsUsed":0,"attemptsLeft":\#(attemptsLeft),"maxAttempts":3,"gameOver":false}"#
+        return #"{"success":true,"puzzleId":"\#(puzzleID)","puzzleDate":"2099-01-01","attempts":\#(attempts),"hintsUsed":0,"attemptsLeft":\#(attemptsLeft),"maxAttempts":3,"gameOver":false}"#
     }
 }
 
@@ -424,23 +442,28 @@ private final class NudgeRuntimeState: @unchecked Sendable {
     root: URL,
     credentials: CredentialStore,
     state: NudgeRuntimeState,
-    nextPuzzleTime: String = "2099-01-02T00:00:00Z"
+    nextPuzzleTime: String = "2099-01-02T00:00:00Z",
+    puzzleID: String = "puzzle-a"
 ) -> AppModel {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [StubProtocol.self]
     StubProtocol.responder = { request in
         switch request.url!.path {
         case "/api/puzzle/today":
-            return (200, #"{"success":true,"puzzle":{"id":"puzzle-a","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["First hint.","Second hint.","Third hint."]},"puzzleDate":"2099-01-01","nextPuzzleTime":"\#(nextPuzzleTime)"}"#)
+            return (200, #"{"success":true,"puzzle":{"id":"\#(puzzleID)","puzzle":"x","puzzleType":"rebus","difficulty":5,"hints":["First hint.","Second hint.","Third hint."]},"puzzleDate":"2099-01-01","nextPuzzleTime":"\#(nextPuzzleTime)"}"#)
         case "/api/auth/session":
             return (200, #"{"authenticated":true,"user":{"id":"member-a","username":"Member","email":"member@example.com","isGuest":false}}"#)
+        case "/api/auth/login":
+            state.markMemberBLogin()
+            return (200, #"{"success":true,"token":"member-b-token","user":{"id":"member-b","username":"Member B","email":"member-b@example.com","isGuest":false}}"#)
         case "/api/puzzle/session":
+            if state.shouldFailRestoredSession { return (503, #"{"error":"restore unavailable"}"#) }
             return (200, state.sessionPayload)
         case "/api/puzzles/guess":
             state.acceptGuess()
             return (200, #"{"success":true,"correct":false,"attemptsLeft":2,"maxAttempts":3,"gameOver":false,"attemptNumber":1,"phase":"scored"}"#)
         case "/api/puzzles/reveal":
-            return (200, #"{"success":true,"puzzleId":"puzzle-a","puzzleDate":"2099-01-01","phase":"scored","scoreLocked":false,"correct":false,"wasSuccessful":false,"gameOver":true,"attempts":[],"attemptsLeft":3,"maxAttempts":3,"answer":"sunshine","explanation":"sun plus shine","pointsEarned":0}"#)
+            return (200, #"{"success":true,"puzzleId":"\#(puzzleID)","puzzleDate":"2099-01-01","phase":"scored","scoreLocked":false,"correct":false,"wasSuccessful":false,"gameOver":true,"attempts":[],"attemptsLeft":3,"maxAttempts":3,"answer":"sunshine","explanation":"sun plus shine","pointsEarned":0}"#)
         default:
             return (200, #"{"success":true,"stats":{}}"#)
         }
@@ -821,15 +844,19 @@ extension RuntimeTests {
         let store = LocalStore(root: root)
         try store.saveDraft("private", account: "alice", puzzle: "today")
         try store.saveDailyThought("private thought", account: "alice", puzzle: "today")
+        try store.saveLastDailyPuzzle("today", account: "alice")
         try store.save(2, key: "hints:alice:today")
         try store.saveDraft("keep", account: "bob", puzzle: "today")
         try store.saveDailyThought("keep thought", account: "bob", puzzle: "today")
+        try store.saveLastDailyPuzzle("today", account: "bob")
         try store.removeAccount("alice")
         XCTAssertEqual(store.draft(account: "alice", puzzle: "today"), "")
         XCTAssertEqual(store.dailyThought(account: "alice", puzzle: "today"), "")
+        XCTAssertNil(store.lastDailyPuzzle(account: "alice"))
         XCTAssertNil(try store.load(Int.self, key: "hints:alice:today"))
         XCTAssertEqual(store.draft(account: "bob", puzzle: "today"), "keep")
         XCTAssertEqual(store.dailyThought(account: "bob", puzzle: "today"), "keep thought")
+        XCTAssertEqual(store.lastDailyPuzzle(account: "bob"), "today")
     }
     func testSVGDisallowsScriptsAndRemoteImages() {
         let source = #"<svg viewBox="0 0 10 10"><script>alert(1)</script><image href="https://tracker.invalid/x"/><path d="M0 0 L10 10" stroke="currentColor"/></svg>"#
@@ -1185,6 +1212,71 @@ extension RuntimeTests {
         XCTAssertEqual(model.dailyThought, "")
         XCTAssertEqual(store.dailyThought(account: "member-a", puzzle: "puzzle-a"), "")
         XCTAssertFalse(model.canSaveDailyThought)
+    }
+
+    @MainActor func testRelaunchAcrossPuzzleRolloverClearsThePreviousAccountThought() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let store = LocalStore(root: root)
+        try store.saveDailyThought("Previous puzzle hunch", account: "member-a", puzzle: "puzzle-a")
+        try store.saveLastDailyPuzzle("puzzle-a", account: "member-a")
+        let model = makeNudgeTestModel(
+            root: root,
+            credentials: secure,
+            state: NudgeRuntimeState(puzzleID: "puzzle-b"),
+            puzzleID: "puzzle-b"
+        )
+
+        await model.load()
+
+        XCTAssertEqual(model.daily?.puzzle.id, "puzzle-b")
+        XCTAssertTrue(model.canSaveDailyThought)
+        XCTAssertEqual(model.dailyThought, "")
+        XCTAssertEqual(store.dailyThought(account: "member-a", puzzle: "puzzle-a"), "")
+        XCTAssertEqual(store.lastDailyPuzzle(account: "member-a"), "puzzle-b")
+    }
+
+    @MainActor func testFailedAccountSwitchCannotLetOldExpiryRemoveNewAccountThought() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let secure = CredentialStore(service: "test." + UUID().uuidString)
+        try secure.write("member-token", key: "token")
+        try secure.write("member", key: "identity-kind")
+        defer {
+            try? secure.write(nil, key: "token")
+            try? secure.write(nil, key: "device")
+            try? secure.write(nil, key: "identity-kind")
+        }
+        let store = LocalStore(root: root)
+        try store.saveDailyThought("Member B’s saved thought", account: "member-b", puzzle: "puzzle-a")
+        let expiry = ISO8601DateFormatter().string(from: Date().addingTimeInterval(5))
+        let state = NudgeRuntimeState()
+        let model = makeNudgeTestModel(
+            root: root,
+            credentials: secure,
+            state: state,
+            nextPuzzleTime: expiry
+        )
+
+        await model.load()
+        XCTAssertEqual(model.player?.id, "member-a")
+        model.saveDailyThought("Member A’s thought")
+
+        let signedIn = await model.signIn(email: "member-b@example.com", password: "password")
+
+        XCTAssertFalse(signedIn)
+        XCTAssertEqual(model.player?.id, "member-b")
+        XCTAssertEqual(model.dailyThought, "")
+        try await Task.sleep(for: .seconds(6))
+        XCTAssertEqual(store.dailyThought(account: "member-b", puzzle: "puzzle-a"), "Member B’s saved thought")
     }
 
     @MainActor func testLegacyHintCountRestoresAfterCurrentGuesses() async throws {

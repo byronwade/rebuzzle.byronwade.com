@@ -26,7 +26,7 @@ enum JournalSyncStatus: Equatable {
         return expiry > Date()
     }
     var canSaveDailyThought: Bool {
-        guard sessionReady, player != nil, let daily, let game, !game.gameOver,
+        guard dailyThoughtAvailable, sessionReady, player != nil, let daily, let game, !game.gameOver,
               let expiry = DailyReturnTiming.deadline(daily.nextPuzzleTime) else { return false }
         return expiry > Date()
     }
@@ -54,6 +54,7 @@ enum JournalSyncStatus: Equatable {
     var journeySyncing = false
     var draft = ""
     var dailyThought = ""
+    private(set) var dailyThoughtAvailable = false
     var busy = false
     var submitting = false
     var error: String?
@@ -135,12 +136,13 @@ enum JournalSyncStatus: Equatable {
             if daily?.puzzle.id != response.puzzle.id {
                 clearDailyThought(for: daily)
                 eve.reset()
-                game = nil; sessionReady = false; draft = ""; dailyThought = ""; hintsShown = 0; nudgeReveals = []; started = Date()
+                game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; started = Date()
                 completedStreakRefreshState = .idle
             }
             daily = response
             try? storage.save(response, key: "daily-cache")
             try await authenticate()
+            synchronizeDailyThoughtPuzzle(for: response.puzzle.id)
             purchases.retryPendingPurchaseAttribution()
             if !journalWritable { try loadJournal() }
             try await restore()
@@ -167,7 +169,7 @@ enum JournalSyncStatus: Equatable {
                     if player?.id != user.id {
                         generation += 1
                         dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
-                        eve.reset(); game = nil; sessionReady = false; draft = ""; dailyThought = ""; hintsShown = 0; nudgeReveals = []; stats = nil
+                        eve.reset(); game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; stats = nil
                         completedStreakRefreshState = .idle
                     }
                     player = user
@@ -195,7 +197,7 @@ enum JournalSyncStatus: Equatable {
         if player?.id != user.id {
             generation += 1
             dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
-            eve.reset(); game = nil; sessionReady = false; draft = ""; dailyThought = ""; hintsShown = 0; nudgeReveals = []; stats = nil
+            eve.reset(); game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; stats = nil
             completedStreakRefreshState = .idle
         }
         api.token = token; player = user
@@ -450,22 +452,37 @@ enum JournalSyncStatus: Equatable {
     private func restoreDailyThought() {
         dailyThoughtExpiryTask?.cancel()
         dailyThoughtExpiryTask = nil
+        dailyThoughtAvailable = false
         guard let player, let daily, game?.gameOver == false,
               let expiry = DailyReturnTiming.deadline(daily.nextPuzzleTime), expiry > Date() else {
             clearDailyThought()
             return
         }
         dailyThought = storage.dailyThought(account: player.id, puzzle: daily.puzzle.id)
+        dailyThoughtAvailable = true
+        let accountID = player.id
+        let puzzleID = daily.puzzle.id
         let delay = expiry.timeIntervalSinceNow
         dailyThoughtExpiryTask = Task { @MainActor [weak self] in
             do { try await Task.sleep(for: .seconds(delay)) }
             catch { return }
-            self?.clearDailyThought()
+            guard let self, self.player?.id == accountID, self.daily?.puzzle.id == puzzleID else { return }
+            self.clearDailyThought(for: self.daily)
         }
+    }
+    private func synchronizeDailyThoughtPuzzle(for puzzleID: String) {
+        guard let player else { return }
+        if let previousPuzzleID = storage.lastDailyPuzzle(account: player.id), previousPuzzleID != puzzleID {
+            do { try storage.removeDailyThought(account: player.id, puzzle: previousPuzzleID) }
+            catch { storageError = "Your previous puzzle thought could not be cleared on this device." }
+        }
+        do { try storage.saveLastDailyPuzzle(puzzleID, account: player.id) }
+        catch { storageError = "Your current puzzle could not be saved on this device." }
     }
     private func clearDailyThought(for puzzle: DailyResponse? = nil) {
         dailyThoughtExpiryTask?.cancel()
         dailyThoughtExpiryTask = nil
+        dailyThoughtAvailable = false
         let targetDaily = puzzle ?? daily
         guard let player, let targetDaily else { dailyThought = ""; return }
         dailyThought = ""
@@ -637,9 +654,14 @@ enum JournalSyncStatus: Equatable {
             guard let token = auth.token, let user = auth.user else { throw APIError(status: 401, message: "Sign-in could not be completed.") }
             try credentials.write(token, key: "token")
             try credentials.write("member", key: "identity-kind")
+            if player?.id != user.id {
+                dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
+                dailyThought = ""; dailyThoughtAvailable = false
+            }
             eve.reset()
             generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; hintsShown = 0; nudgeReveals = []; sessionReady = false
             completedStreakRefreshState = .idle
+            if let puzzleID = daily?.puzzle.id { synchronizeDailyThoughtPuzzle(for: puzzleID) }
             loadJourneyCache(for: user.id)
             journal = Journal(); journalWritable = false
             try loadJournal()
@@ -710,6 +732,6 @@ enum JournalSyncStatus: Equatable {
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
         completedStreakRefreshState = .idle
         journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; journeySyncError = nil; journeySyncing = false
-        draft = ""; dailyThought = ""; journal = Journal(); journalSyncCheckpoint = JournalSyncCheckpoint(); journalSyncStatus = .onDevice; journalHistoryComplete = true; journalWritable = false; hintsShown = 0; nudgeReveals = []; sessionReady = false; error = nil
+        draft = ""; dailyThought = ""; dailyThoughtAvailable = false; journal = Journal(); journalSyncCheckpoint = JournalSyncCheckpoint(); journalSyncStatus = .onDevice; journalHistoryComplete = true; journalWritable = false; hintsShown = 0; nudgeReveals = []; sessionReady = false; error = nil
     }
 }

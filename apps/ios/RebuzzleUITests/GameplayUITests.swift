@@ -126,6 +126,25 @@ import StoreKitTest
         capture("Daily thought — accessibility text size")
     }
 
+    func testDailyThoughtSheetClosesAndClearsAtPuzzleExpiry() {
+        launchFixture(extraArguments: ["--ui-daily-thought-expiry"])
+        let saveThought = app.buttons["saveDailyThought"]
+        for _ in 0..<5 where !saveThought.isHittable { app.swipeDown() }
+        XCTAssertTrue(saveThought.waitForExistence(timeout: 5))
+        saveThought.tap()
+
+        let editor = app.textViews["dailyThoughtEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("A thought that expires with today’s puzzle")
+        let thoughtSheet = app.navigationBars["Save a thought"]
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: thoughtSheet)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 18), .completed)
+        XCTAssertFalse(app.textViews["dailyThoughtEditor"].exists)
+        XCTAssertFalse(saveThought.exists)
+        capture("Daily thought — cleared and closed at puzzle expiry")
+    }
+
     func testDismissKeyboardPreservesUnsubmittedAnswer() {
         verifyKeyboardDismissal()
     }

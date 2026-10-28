@@ -285,6 +285,9 @@ struct TodayView: View {
             showingExpiredReviewFor = nil
             dismissedExpiredReviewID = nil
         }
+        .onChange(of: model.canSaveDailyThought) { _, canSave in
+            if !canSave { dailyThoughtEditor = false }
+        }
         .task(id: model.daily?.puzzle.id) {
             guard model.daily != nil, !hasSeenFirstSessionQuickStart, !help else { return }
             quickStartUsesIntro = true
@@ -615,6 +618,15 @@ private struct DailyThoughtSheet: View {
                 }
             }
             .onAppear { thought = model.dailyThought }
+            .onChange(of: model.dailyThought) { _, updated in
+                if thought != updated { thought = updated }
+            }
+            .onChange(of: model.canSaveDailyThought) { _, canSave in
+                guard !canSave else { return }
+                thought = ""
+                editorFocused = false
+                dismiss()
+            }
             .onChange(of: thought) { _, updated in
                 let bounded = String(updated.prefix(600))
                 if bounded != updated { thought = bounded }

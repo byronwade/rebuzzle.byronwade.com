@@ -58,7 +58,9 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
 
 private final class FixtureServer: @unchecked Sendable {
     private let lock = NSLock()
-    private let nextPuzzleTime = ISO8601DateFormatter().string(from: Date().addingTimeInterval(86_400))
+    private let nextPuzzleTime = ISO8601DateFormatter().string(from: Date().addingTimeInterval(
+        ProcessInfo.processInfo.arguments.contains("--ui-daily-thought-expiry") ? 12 : 86_400
+    ))
     private let expiredNextPuzzleTime = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-1))
     private let expiredResetFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-reset-manual")
     private let scoreLockedFixture = ProcessInfo.processInfo.arguments.contains("--ui-score-locked")
