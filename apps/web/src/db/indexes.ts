@@ -650,8 +650,14 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
           name: "daily_candidate_assigned_date_unique",
         },
       },
-      { spec: { status: 1, playtestSubmittedAt: 1, createdAt: 1 } },
-      { spec: { status: 1, createdAt: 1 } },
+      {
+        spec: { status: 1, playtestSubmittedAt: 1, createdAt: 1 },
+        options: { name: "daily_candidate_review_queue" },
+      },
+      {
+        spec: { status: 1, createdAt: 1 },
+        options: { name: "daily_candidate_status_created" },
+      },
     ],
   },
   {

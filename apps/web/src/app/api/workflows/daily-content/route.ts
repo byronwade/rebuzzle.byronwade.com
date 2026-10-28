@@ -14,7 +14,7 @@ export const maxDuration = 300;
  *
  * Midnight (via cron):
  * 1. Eve generates today's puzzle → Mongo `puzzles`
- * 2. Eve pre-generates tomorrow's puzzle → blind playtest queue
+ * 2. Eve pre-generates tomorrow's candidate → private blind playtest queue
  * 3. Eve generates yesterday's blog → draft GitHub pull request
  */
 function authorizeWorkflow(request: Request): boolean {
@@ -92,19 +92,18 @@ export async function POST(request: Request) {
     }
 
     const nextDate = nextUtcDateKey();
-    let nextPuzzle: {
+    let nextCandidate: {
       success: boolean;
       date: string;
-      cached?: boolean;
-      fallback?: boolean;
-      aiGenerated?: boolean;
-      puzzleId?: string;
+      candidateId?: string;
+      candidateStatus?: string;
+      queuedForHumanReview?: boolean;
       error?: string;
       errorCode?: string;
       skipped?: string;
     };
     if (aiBudgetExhausted) {
-      nextPuzzle = {
+      nextCandidate = {
         success: false,
         date: nextDate,
         error: "AI Gateway budget exhausted",
@@ -113,19 +112,19 @@ export async function POST(request: Request) {
       };
     } else {
       try {
-        logger.info("Pre-generating next-day puzzle for blind playtesting", { nextDate });
+        logger.info("Pre-generating next-day candidate for blind playtesting", { nextDate });
         const result = await getTodaysPuzzle("rebus", nextDate, {
           allowAiGenerate: true,
+          queueForPlaytest: true,
           failOnAiError: true,
         });
-        nextPuzzle = {
+        nextCandidate = {
           success: result.success,
           date: nextDate,
-          cached: "cached" in result ? result.cached : undefined,
-          fallback: "fallback" in result ? result.fallback : undefined,
-          aiGenerated: "aiGenerated" in result ? result.aiGenerated : undefined,
-          puzzleId:
-            result.success && result.puzzle ? (result.puzzle as { id?: string }).id : undefined,
+          candidateId: result.success ? result.candidateId : undefined,
+          candidateStatus: result.success ? result.candidateStatus : undefined,
+          queuedForHumanReview: result.success ? result.queuedForHumanReview : undefined,
+          skipped: result.success ? result.candidateQueueSkipped : undefined,
           error:
             !result.success && "error" in result && typeof result.error === "string"
               ? result.error
@@ -134,13 +133,13 @@ export async function POST(request: Request) {
       } catch (error) {
         const parsed = parseAIError(error);
         aiBudgetExhausted = isHardAIBudgetError(parsed);
-        nextPuzzle = {
+        nextCandidate = {
           success: false,
           date: nextDate,
           error: parsed.message || "Next-day generation failed",
           errorCode: aiBudgetExhausted ? parsed.code : undefined,
         };
-        logger.error("Next-day puzzle pre-generation failed", parsed, { nextDate });
+        logger.error("Next-day candidate pre-generation failed", parsed, { nextDate });
       }
     }
 
@@ -162,7 +161,7 @@ export async function POST(request: Request) {
     }
 
     const maintenanceFailed =
-      body.puzzlesOnly === true && (!puzzleResult.success || !nextPuzzle.success);
+      body.puzzlesOnly === true && (!puzzleResult.success || !nextCandidate.success);
     return NextResponse.json(
       {
         success: !maintenanceFailed,
@@ -176,7 +175,7 @@ export async function POST(request: Request) {
               ? (puzzleResult.puzzle as { id?: string }).id
               : undefined,
         },
-        nextPuzzle,
+        nextCandidate,
         blog: blogResult,
         completedAt: new Date().toISOString(),
       },

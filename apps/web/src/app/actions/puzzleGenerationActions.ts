@@ -192,6 +192,18 @@ function queuedCandidateResult(
   };
 }
 
+function skippedCandidateQueueResult(dateString: string) {
+  return {
+    puzzle: "",
+    puzzleType: "rebus",
+    date: dateString,
+    aiGenerated: false,
+    fromDatabase: false,
+    queuedForHumanReview: false,
+    candidateQueueSkipped: "puzzle_already_published",
+  };
+}
+
 /**
  * Get or generate today's puzzle
  *
@@ -227,6 +239,13 @@ async function getOrGenerateDailyPuzzle(
   try {
     const cached = await getCachedDailyPuzzleFromDb(dateString);
     if (cached) {
+      if (queueForPlaytest) {
+        logger.info("Skipping candidate queue because this date is already published", {
+          dateString,
+          puzzleId: cached.id,
+        });
+        return skippedCandidateQueueResult(dateString);
+      }
       return cached;
     }
   } catch (dbError) {
@@ -243,6 +262,13 @@ async function getOrGenerateDailyPuzzle(
   try {
     const raceCheck = await db.puzzleOps.findByDate(dateString);
     if (raceCheck) {
+      if (queueForPlaytest) {
+        logger.info("Skipping candidate queue because this date was just published", {
+          dateString,
+          puzzleId: raceCheck.id,
+        });
+        return skippedCandidateQueueResult(dateString);
+      }
       // The cached miss is stale; serve the row we just read instead of generating.
       revalidateDailyPuzzle(dateString);
       return formatPuzzleFromDb(raceCheck, dateString);

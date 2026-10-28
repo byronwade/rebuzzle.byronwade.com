@@ -39,9 +39,9 @@ describe("daily content workflow", () => {
     });
     getTodaysPuzzle.mockResolvedValue({
       success: true,
-      cached: false,
-      aiGenerated: true,
-      puzzle: { id: "next-puzzle" },
+      queuedForHumanReview: true,
+      candidateId: "candidate-next",
+      candidateStatus: "reviewing",
     });
     findOne.mockResolvedValue(null);
   });
@@ -56,7 +56,7 @@ describe("daily content workflow", () => {
     expect(nextUtcDateKey(new Date("2026-12-31T23:59:59.000Z"))).toBe("2027-01-01");
   });
 
-  it("pre-generates tomorrow with fail-closed AI settings", async () => {
+  it("queues tomorrow's candidate for blind review without publishing a puzzle", async () => {
     const response = await POST(
       new Request("https://rebuzzle.test/api/workflows/daily-content", {
         method: "POST",
@@ -72,15 +72,43 @@ describe("daily content workflow", () => {
     expect(response.status).toBe(200);
     expect(getTodaysPuzzle).toHaveBeenCalledWith("rebus", "2026-08-03", {
       allowAiGenerate: true,
+      queueForPlaytest: true,
       failOnAiError: true,
     });
-    expect(data.nextPuzzle).toEqual({
+    expect(data.nextCandidate).toEqual({
       success: true,
       date: "2026-08-03",
-      cached: false,
-      aiGenerated: true,
-      puzzleId: "next-puzzle",
+      candidateId: "candidate-next",
+      candidateStatus: "reviewing",
+      queuedForHumanReview: true,
     });
+    expect(data.nextCandidate).not.toHaveProperty("puzzleId");
+  });
+
+  it("reports a queue policy skip without exposing it as a published puzzle", async () => {
+    getTodaysPuzzle.mockResolvedValue({
+      success: true,
+      candidateQueueSkipped: "generation_circuit_open",
+    });
+
+    const response = await POST(
+      new Request("https://rebuzzle.test/api/workflows/daily-content", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-cron-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ triggeredBy: "test" }),
+      })
+    );
+    const data = await response.json();
+
+    expect(data.nextCandidate).toEqual({
+      success: true,
+      date: "2026-08-03",
+      skipped: "generation_circuit_open",
+    });
+    expect(data.nextCandidate).not.toHaveProperty("puzzleId");
   });
 
   it("skips blog creation for a puzzle-only maintenance request", async () => {
@@ -95,7 +123,7 @@ describe("daily content workflow", () => {
     const data = await response.json();
     expect(response.status).toBe(200);
     expect(data.puzzle.success).toBe(true);
-    expect(data.nextPuzzle.success).toBe(true);
+    expect(data.nextCandidate.success).toBe(true);
     expect(data.blog).toEqual({ success: false, skipped: "puzzles_only" });
     expect(findOne).not.toHaveBeenCalled();
     expect(proposeBlogForPuzzle).not.toHaveBeenCalled();
@@ -132,7 +160,7 @@ describe("daily content workflow", () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.nextPuzzle).toEqual({
+    expect(data.nextCandidate).toEqual({
       success: false,
       date: "2026-08-03",
       error: "gateway unavailable",
@@ -164,7 +192,7 @@ describe("daily content workflow", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.nextPuzzle).toEqual({
+    expect(data.nextCandidate).toEqual({
       success: false,
       date: "2026-08-03",
       error: "AI Gateway budget exhausted. Increase the project Gateway budget before retrying.",
@@ -203,7 +231,7 @@ describe("daily content workflow", () => {
     expect(getTodaysPuzzle).not.toHaveBeenCalled();
     expect(findOne).not.toHaveBeenCalled();
     expect(proposeBlogForPuzzle).not.toHaveBeenCalled();
-    expect(data.nextPuzzle).toMatchObject({
+    expect(data.nextCandidate).toMatchObject({
       success: false,
       errorCode: "AI_BUDGET_EXCEEDED",
       skipped: "ai_budget_exceeded",

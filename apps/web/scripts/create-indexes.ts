@@ -31,6 +31,29 @@ const indexDefinitions: IndexDefinition[] = [
     ],
   },
   {
+    collection: "dailyPuzzleCandidates",
+    indexes: [
+      { keys: { id: 1 }, options: { unique: true, name: "daily_candidate_id_unique" } },
+      {
+        keys: { generationKey: 1 },
+        options: { unique: true, name: "daily_candidate_generation_key_unique" },
+      },
+      {
+        keys: { assignedDate: 1 },
+        options: {
+          unique: true,
+          sparse: true,
+          name: "daily_candidate_assigned_date_unique",
+        },
+      },
+      {
+        keys: { status: 1, playtestSubmittedAt: 1, createdAt: 1 },
+        options: { name: "daily_candidate_review_queue" },
+      },
+      { keys: { status: 1, createdAt: 1 }, options: { name: "daily_candidate_status_created" } },
+    ],
+  },
+  {
     collection: "puzzles",
     indexes: [
       { keys: { id: 1 }, options: { unique: true, name: "puzzles_id_unique" } },
