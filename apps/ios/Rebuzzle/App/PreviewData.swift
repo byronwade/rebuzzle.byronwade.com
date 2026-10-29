@@ -67,7 +67,7 @@ private final class FixtureServer: @unchecked Sendable {
     private let lateSolveFixture = ProcessInfo.processInfo.arguments.contains("--ui-late-solve")
     private let expiredReviewFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-review")
     private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
-    private let weeklyTrailFixture = ProcessInfo.processInfo.arguments.contains("--ui-journey-two-days")
+    private let weeklyTrailFixture = ProcessInfo.processInfo.arguments.contains("--ui-journey-days-2")
     private var dailyRequestCount = 0
     private var quipRequestCount = 0
     private var solveDistributionRequestCount = 0

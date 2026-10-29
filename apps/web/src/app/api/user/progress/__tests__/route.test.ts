@@ -290,8 +290,11 @@ it("counts extended terminal rows and rejects over-limit attempts without extend
   ).toBe(true);
 });
 
-it("awards one bonus for a qualifying prior week and deduplicates dates at the week boundary", async () => {
+it("awards one bonus for each qualifying prior week and deduplicates dates at the week boundary", async () => {
   const dates = [
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-11",
     "2026-10-12",
     "2026-10-13",
     "2026-10-18",
@@ -315,8 +318,8 @@ it("awards one bonus for a qualifying prior week and deduplicates dates at the w
   const body = await response.json();
 
   expect(body.summary).toMatchObject({
-    totalXP: 175,
-    finishes: 5,
+    totalXP: 300,
+    finishes: 8,
     completedThisWeek: 2,
   });
   expect(body.weeklyTrailReward).toEqual({
@@ -324,7 +327,7 @@ it("awards one bonus for a qualifying prior week and deduplicates dates at the w
     bonusXP: 50,
     earned: false,
   });
-  expect(body.recentEntries).toHaveLength(5);
+  expect(body.recentEntries).toHaveLength(8);
 });
 
 it("marks legacy history as not started when final attempts are missing projections", async () => {

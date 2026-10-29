@@ -131,7 +131,7 @@ Launch with `--ui-journey-days-2`, verify the 2/3 offer says “Finish 3 puzzle 
 
 - [ ] **Step 2: Build the app and run the focused UI test to confirm the reward assertion fails**
 
-Run: `xcodebuild -project apps/ios/Rebuzzle.xcodeproj -scheme Rebuzzle -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath /tmp/RebuzzleDerivedData -only-testing:RebuzzleUITests/GameplayUITests/testWeeklyTrailRewardIsEarnedOnTheThirdFinishedDay test`
+Run: `xcodebuild -project apps/ios/Rebuzzle.xcodeproj -scheme Rebuzzle -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath /tmp/RebuzzleDerivedData -only-testing:RebuzzleUITests/GameplayUITests/testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle test`
 
 Expected: the fixture and app launch; the reward offer/assertion fails before implementation.
 
@@ -141,7 +141,7 @@ In `ProgressScreen.swift`, show the 50 XP offer before completion and the earned
 
 - [ ] **Step 4: Run the focused UI test**
 
-Use the same `xcodebuild ... -only-testing:RebuzzleUITests/GameplayUITests/testWeeklyTrailRewardIsEarnedOnTheThirdFinishedDay test` command.
+Use the same `xcodebuild ... -only-testing:RebuzzleUITests/GameplayUITests/testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle test` command.
 
 Expected: the test passes and the Journey card shows the same server-derived XP as the summary.
 

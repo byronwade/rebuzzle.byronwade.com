@@ -1150,7 +1150,7 @@ import StoreKitTest
     }
 
     func testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle() {
-        launchFixture(extraArguments: ["--ui-journey-two-days"])
+        launchFixture(extraArguments: ["--ui-journey-days-2"])
         selectTab("Journey")
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("50 XP"))
