@@ -21,7 +21,11 @@ type JourneyEntry = {
   hintCount: number | null;
   completedAt: Date;
   timeZone: string | null;
+  playMode?: "extended";
 };
+
+const WEEKLY_TRAIL_GOAL_DAYS = 3;
+const WEEKLY_TRAIL_BONUS_XP = 50;
 
 const privateHeaders = { "Cache-Control": buildCacheControl({ private: true }) };
 
@@ -44,10 +48,14 @@ function normalizeEntry(row: unknown): JourneyEntry | null {
   const value = row as Partial<DailyProgress>;
   const outcome = value.outcome;
   if (outcome !== "solved" && outcome !== "failed") return null;
+  const playMode = value.playMode;
+  if (playMode !== undefined && playMode !== "extended") return null;
   const validAttempts =
-    outcome === "solved"
-      ? Number.isInteger(value.attempts) && value.attempts! >= 1 && value.attempts! <= 3
-      : value.attempts === 3;
+    playMode === "extended"
+      ? Number.isInteger(value.attempts) && value.attempts! >= 1
+      : outcome === "solved"
+        ? Number.isInteger(value.attempts) && value.attempts! >= 1 && value.attempts! <= 3
+        : value.attempts === 3;
   if (
     !isPuzzleDate(value.puzzleDate) ||
     typeof value.puzzleId !== "string" ||
@@ -70,6 +78,7 @@ function normalizeEntry(row: unknown): JourneyEntry | null {
     hintCount,
     completedAt: value.completedAt,
     timeZone,
+    ...(playMode === "extended" ? { playMode } : {}),
   };
 }
 
@@ -78,16 +87,29 @@ function summarize(entries: JourneyEntry[], weekStart: string, asOf: string) {
   const solves = entries.filter((entry) => entry.outcome === "solved");
   const firstGuessSolves = solves.filter((entry) => entry.attempts === 1).length;
   const unassistedSolves = solves.filter((entry) => entry.hintCount === 0).length;
-  const totalXP = entries.reduce((total, entry) => {
-    const solved = entry.outcome === "solved";
-    return (
-      total +
-      25 +
-      (solved ? 75 : 0) +
-      (solved && entry.attempts === 1 ? 25 : 0) +
-      (solved && entry.hintCount === 0 ? 25 : 0)
-    );
-  }, 0);
+  const earnedWeeklyTrailBonuses = new Set<string>();
+  const completedDatesByWeek = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    const start = weekBounds(entry.puzzleDate).start;
+    const dates = completedDatesByWeek.get(start) ?? new Set<string>();
+    dates.add(entry.puzzleDate);
+    completedDatesByWeek.set(start, dates);
+  }
+  for (const [start, dates] of completedDatesByWeek) {
+    if (dates.size >= WEEKLY_TRAIL_GOAL_DAYS) earnedWeeklyTrailBonuses.add(start);
+  }
+  const totalXP =
+    entries.reduce((total, entry) => {
+      const solved = entry.outcome === "solved";
+      return (
+        total +
+        25 +
+        (solved ? 75 : 0) +
+        (solved && entry.attempts === 1 ? 25 : 0) +
+        (solved && entry.hintCount === 0 ? 25 : 0)
+      );
+    }, 0) +
+    earnedWeeklyTrailBonuses.size * WEEKLY_TRAIL_BONUS_XP;
   const completedThisWeek = entries.filter(
     (entry) => entry.puzzleDate >= weekStart && entry.puzzleDate <= asOf
   ).length;
@@ -195,6 +217,7 @@ export async function GET(request: Request) {
           currentWeekStart,
           currentWeekEnd,
           summary: null,
+          weeklyTrailReward: null,
           recentEntries: [],
           backfill: { status: backfillStatus },
         },
@@ -226,6 +249,11 @@ export async function GET(request: Request) {
         currentWeekStart,
         currentWeekEnd,
         summary: summarize(allEntries, currentWeekStart, asOfPuzzleDate),
+        weeklyTrailReward: {
+          weekStart: currentWeekStart,
+          bonusXP: WEEKLY_TRAIL_BONUS_XP,
+          earned: currentWeekEntries.length >= WEEKLY_TRAIL_GOAL_DAYS,
+        },
         recentEntries: recentEntries.map(toResponseEntry),
         backfill: { status: "complete" },
       },

@@ -67,6 +67,7 @@ private final class FixtureServer: @unchecked Sendable {
     private let lateSolveFixture = ProcessInfo.processInfo.arguments.contains("--ui-late-solve")
     private let expiredReviewFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-review")
     private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
+    private let weeklyTrailFixture = ProcessInfo.processInfo.arguments.contains("--ui-journey-two-days")
     private var dailyRequestCount = 0
     private var quipRequestCount = 0
     private var solveDistributionRequestCount = 0
@@ -320,7 +321,10 @@ private final class FixtureServer: @unchecked Sendable {
         let solved = game.wasSuccessful == true
         let firstGuessSolve = solved && game.attempts.count == 1
         let unassistedSolve = solved && game.hintsUsed == 0
-        let xp = completed ? 25 + (solved ? 75 : 0) + (firstGuessSolve ? 25 : 0) + (unassistedSolve ? 25 : 0) : 0
+        let priorFinishes = weeklyTrailFixture ? 2 : 0
+        let completedThisWeek = priorFinishes + (completed ? 1 : 0)
+        let weeklyRewardEarned = completedThisWeek >= 3
+        let xp = priorFinishes * 25 + (completed ? 25 + (solved ? 75 : 0) + (firstGuessSolve ? 25 : 0) + (unassistedSolve ? 25 : 0) : 0) + (weeklyRewardEarned ? 50 : 0)
         var badges: [String] = []
         if completed { badges.append("first-finish") }
         if firstGuessSolve { badges.append("first-guess-solve") }
@@ -329,15 +333,20 @@ private final class FixtureServer: @unchecked Sendable {
             "asOfPuzzleDate": game.puzzleDate,
             "currentWeekStart": formatter.string(from: week.start),
             "currentWeekEnd": formatter.string(from: week.end.addingTimeInterval(-24 * 60 * 60)),
+            "weeklyTrailReward": [
+                "weekStart": formatter.string(from: week.start),
+                "bonusXP": 50,
+                "earned": weeklyRewardEarned
+            ],
             "summary": [
                 "totalXP": xp,
                 "level": xp / 300 + 1,
                 "xpIntoLevel": xp % 300,
-                "finishes": completed ? 1 : 0,
+                "finishes": priorFinishes + (completed ? 1 : 0),
                 "solves": solved ? 1 : 0,
                 "firstGuessSolves": firstGuessSolve ? 1 : 0,
                 "unassistedSolves": unassistedSolve ? 1 : 0,
-                "completedThisWeek": completed ? 1 : 0,
+                "completedThisWeek": completedThisWeek,
                 "badges": badges
             ],
             "recentEntries": [],

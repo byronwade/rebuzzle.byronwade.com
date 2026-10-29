@@ -5,6 +5,10 @@ public enum JourneyProgressOutcome: String, Codable, Equatable, Sendable {
     case failed
 }
 
+public enum JourneyProgressPlayMode: String, Codable, Equatable, Sendable {
+    case extended
+}
+
 public enum JourneyProgressBackfillStatus: String, Codable, Equatable, Sendable {
     case notStarted = "not_started"
     case inProgress = "in_progress"
@@ -16,6 +20,28 @@ public struct JourneyProgressBackfill: Codable, Equatable, Sendable {
     public let status: JourneyProgressBackfillStatus
 }
 
+public struct JourneyWeeklyTrailReward: Codable, Equatable, Sendable {
+    public let weekStart: String
+    public let bonusXP: Int
+    public let earned: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case weekStart
+        case bonusXP
+        case earned
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        weekStart = try container.decode(String.self, forKey: .weekStart)
+        bonusXP = try container.decode(Int.self, forKey: .bonusXP)
+        earned = try container.decode(Bool.self, forKey: .earned)
+        guard validPuzzleDate(weekStart), bonusXP == 50 else {
+            throw invalidPayload(decoder, "Invalid weekly trail reward")
+        }
+    }
+}
+
 public struct JourneyProgressEntry: Codable, Equatable, Sendable {
     public let puzzleDate: String
     public let puzzleId: String
@@ -24,6 +50,7 @@ public struct JourneyProgressEntry: Codable, Equatable, Sendable {
     public let hintCount: Int?
     public let completedAt: String
     public let timeZone: String?
+    public let playMode: JourneyProgressPlayMode?
 
     private enum CodingKeys: String, CodingKey {
         case puzzleDate
@@ -33,6 +60,7 @@ public struct JourneyProgressEntry: Codable, Equatable, Sendable {
         case hintCount
         case completedAt
         case timeZone
+        case playMode
     }
 
     public init(from decoder: Decoder) throws {
@@ -57,13 +85,18 @@ public struct JourneyProgressEntry: Codable, Equatable, Sendable {
             )
         }
         timeZone = try container.decodeIfPresent(String.self, forKey: .timeZone)
+        playMode = try container.decodeIfPresent(JourneyProgressPlayMode.self, forKey: .playMode)
 
         let validAttemptCount: Bool
-        switch outcome {
-        case .solved:
-            validAttemptCount = (1...3).contains(attempts)
-        case .failed:
-            validAttemptCount = attempts == 3
+        if playMode == .extended {
+            validAttemptCount = attempts >= 1
+        } else {
+            switch outcome {
+            case .solved:
+                validAttemptCount = (1...3).contains(attempts)
+            case .failed:
+                validAttemptCount = attempts == 3
+            }
         }
         guard validPuzzleDate(puzzleDate), !puzzleId.isEmpty, validAttemptCount,
               hintCount.map({ $0 >= 0 }) ?? true,
@@ -127,6 +160,7 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
     public let asOfPuzzleDate: String
     public let currentWeekStart: String
     public let currentWeekEnd: String
+    public let weeklyTrailReward: JourneyWeeklyTrailReward?
     public let summary: JourneyProgressSummary?
     public let recentEntries: [JourneyProgressEntry]
     public let backfill: JourneyProgressBackfill
@@ -135,6 +169,7 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
         case asOfPuzzleDate
         case currentWeekStart
         case currentWeekEnd
+        case weeklyTrailReward
         case summary
         case recentEntries
         case backfill
@@ -145,6 +180,7 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
         asOfPuzzleDate = try container.decode(String.self, forKey: .asOfPuzzleDate)
         currentWeekStart = try container.decode(String.self, forKey: .currentWeekStart)
         currentWeekEnd = try container.decode(String.self, forKey: .currentWeekEnd)
+        weeklyTrailReward = try container.decodeIfPresent(JourneyWeeklyTrailReward.self, forKey: .weeklyTrailReward)
         guard container.contains(.summary) else {
             throw DecodingError.keyNotFound(
                 CodingKeys.summary,
@@ -165,6 +201,13 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
               weekCalendar.dateComponents([.day], from: start, to: end).day == 6,
               asOf >= start, asOf <= end else {
             throw invalidPayload(decoder, "Invalid server-provided Journey week bounds")
+        }
+        if let weeklyTrailReward {
+            guard weeklyTrailReward.weekStart == currentWeekStart,
+                  backfill.status == .complete,
+                  weeklyTrailReward.earned == ((summary?.completedThisWeek ?? 0) >= 3) else {
+                throw invalidPayload(decoder, "Weekly trail reward must match the current week and summary")
+            }
         }
 
         if backfill.status == .complete {

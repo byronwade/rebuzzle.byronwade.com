@@ -81,7 +81,7 @@ struct ProgressViewScreen: View {
                  : "Journey progress syncs with your account. With Plus, your journal notes sync across devices and remain available offline.")
                 .font(Theme.font(12)).foregroundStyle(Theme.secondary)
             DisclosureGroup("How do I earn XP?") {
-                Text("Finish a puzzle: 25 XP. Solve it: +75. Solve on your first guess: +25. Solve without hints: +25. Each level takes 300 XP. Revealing the answer still counts toward your weekly challenge.")
+                Text("Finish a puzzle: 25 XP. Solve it: +75. Solve on your first guess: +25. Solve without hints: +25. Finish on three different puzzle days in a Monday–Sunday week: +50 XP. Each level takes 300 XP. Revealing the answer still counts toward your weekly challenge.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary).padding(.top, 8)
             }.font(Theme.font(14)).tint(Theme.ink)
         }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable {
@@ -136,8 +136,17 @@ struct ProgressViewScreen: View {
             }
             Text(progress.weeklyDays >= 3 ? "Three days.\nLook at you." : "A little further\nevery day.")
                 .font(Theme.display(30)).tracking(-0.8).fixedSize(horizontal: false, vertical: true)
-            Text("Finish a puzzle on three days this week.")
-                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+            if let reward = model.journeySnapshot?.weeklyTrailReward {
+                Text(reward.earned
+                     ? "+\(reward.bonusXP) XP earned this week"
+                     : "Finish 3 puzzle days this week to earn +\(reward.bonusXP) XP.")
+                    .font(Theme.font(14, weight: .semibold))
+                    .foregroundStyle(reward.earned ? Theme.reward : Theme.secondary)
+                    .accessibilityIdentifier("weeklyTrailReward")
+            } else {
+                Text("Finish a puzzle on three days this week.")
+                    .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+            }
             HStack(spacing: 0) {
                 ForEach(0..<3) { day in
                     let completed = day < progress.weeklyDays
@@ -157,7 +166,8 @@ struct ProgressViewScreen: View {
                     }
                 }
             }.accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(min(progress.weeklyDays, 3)) of 3 days completed this week")
+                .accessibilityIdentifier("weeklyTrailProgress")
+                .accessibilityLabel(weeklyTrailAccessibilityLabel(progress))
             if model.game?.gameOver != true {
                 Button { model.selectedTab = .play } label: { Label("Play today’s puzzle", systemImage: "arrow.right") }
                     .buttonStyle(CommitStyle())
@@ -167,6 +177,11 @@ struct ProgressViewScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }.padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+    }
+    private func weeklyTrailAccessibilityLabel(_ progress: JourneyProgress) -> String {
+        let days = "\(min(progress.weeklyDays, 3)) of 3 days completed this week"
+        guard let reward = model.journeySnapshot?.weeklyTrailReward else { return days }
+        return days + ", \(reward.bonusXP) XP reward \(reward.earned ? "earned" : "available")"
     }
     private func badgeCollection(_ progress: JourneyProgress) -> some View {
         VStack(alignment: .leading, spacing: 16) {

@@ -1149,6 +1149,29 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
     }
 
+    func testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle() {
+        launchFixture(extraArguments: ["--ui-journey-two-days"])
+        selectTab("Journey")
+        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("50 XP"))
+        XCTAssertTrue(app.staticTexts["Finish 3 puzzle days this week to earn +50 XP."].exists)
+
+        selectTab("Play")
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        let journey = app.buttons["viewJourney"]
+        for _ in 0..<12 where !journey.isHittable { app.swipeUp() }
+        journey.tap()
+
+        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("250 XP"))
+        XCTAssertTrue(app.staticTexts["+50 XP earned this week"].exists)
+        let trail = app.descendants(matching: .any)["weeklyTrailProgress"].firstMatch
+        XCTAssertTrue(trail.exists)
+        XCTAssertTrue(trail.label.contains("3 of 3 days"))
+        XCTAssertTrue(trail.label.contains("50 XP reward earned"))
+    }
+
     func testTabNavigation() {
         launchFixture()
         for (tab, heading) in [("Journey", "Curious mind"), ("You", "Appearance")] {

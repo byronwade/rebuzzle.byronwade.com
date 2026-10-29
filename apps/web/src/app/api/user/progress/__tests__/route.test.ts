@@ -109,6 +109,7 @@ it("returns server-computed account progress and ignores a supplied userId", asy
     asOfPuzzleDate: "2026-10-25",
     currentWeekStart: "2026-10-19",
     currentWeekEnd: "2026-10-25",
+    weeklyTrailReward: { weekStart: "2026-10-19", bonusXP: 50, earned: false },
     summary: {
       totalXP: 175,
       level: 1,
@@ -178,6 +179,11 @@ it("treats a new account with no final daily attempts as complete", async () => 
 
   expect(response.status).toBe(200);
   expect(body.backfill.status).toBe("complete");
+  expect(body.weeklyTrailReward).toEqual({
+    weekStart: "2026-10-19",
+    bonusXP: 50,
+    earned: false,
+  });
   expect(body.summary).toEqual({
     totalXP: 0,
     level: 1,
@@ -218,7 +224,107 @@ it("withholds partial totals while the user's backfill is running", async () => 
 
   expect(body.backfill.status).toBe("in_progress");
   expect(body.summary).toBeNull();
+  expect(body.weeklyTrailReward).toBeNull();
   expect(body.recentEntries).toEqual([]);
+});
+
+it("counts extended terminal rows and rejects over-limit attempts without extended mode", async () => {
+  const extendedRows = [
+    progressRow({
+      puzzleDate: "2026-10-20",
+      puzzleId: "puzzle-2026-10-20",
+      outcome: "solved",
+      attempts: 4,
+      playMode: "extended",
+    }),
+    progressRow({
+      puzzleDate: "2026-10-21",
+      puzzleId: "puzzle-2026-10-21",
+      outcome: "failed",
+      attempts: 4,
+      playMode: "extended",
+      hintCount: null,
+    }),
+    progressRow({
+      puzzleDate: "2026-10-22",
+      puzzleId: "puzzle-2026-10-22",
+      outcome: "solved",
+      attempts: 4,
+      playMode: "extended",
+    }),
+    progressRow({
+      puzzleDate: "2026-10-23",
+      puzzleId: "puzzle-2026-10-23",
+      outcome: "solved",
+      attempts: 4,
+    }),
+  ];
+  jest
+    .mocked(db.puzzleAttemptOps.countMaterializableFinalOfficialDailyAttempts)
+    .mockResolvedValue(3);
+  jest.mocked(db.dailyProgressOps.listForUser).mockResolvedValue(extendedRows as never);
+
+  const response = await GET(request());
+  const body = await response.json();
+
+  expect(response.status).toBe(200);
+  expect(body.backfill.status).toBe("complete");
+  expect(body.summary).toMatchObject({
+    totalXP: 325,
+    finishes: 3,
+    solves: 2,
+    completedThisWeek: 3,
+  });
+  expect(body.weeklyTrailReward).toEqual({
+    weekStart: "2026-10-19",
+    bonusXP: 50,
+    earned: true,
+  });
+  expect(body.recentEntries.map((entry: { puzzleDate: string }) => entry.puzzleDate)).toEqual([
+    "2026-10-22",
+    "2026-10-21",
+    "2026-10-20",
+  ]);
+  expect(
+    body.recentEntries.every((entry: { playMode?: string }) => entry.playMode === "extended")
+  ).toBe(true);
+});
+
+it("awards one bonus for a qualifying prior week and deduplicates dates at the week boundary", async () => {
+  const dates = [
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-12",
+  ];
+  jest.mocked(db.dailyProgressOps.listForUser).mockResolvedValue(
+    dates.map((date) =>
+      progressRow({
+        puzzleDate: date,
+        puzzleId: `puzzle-${date}`,
+        outcome: "failed",
+        attempts: 3,
+        hintCount: null,
+      })
+    ) as never
+  );
+
+  const response = await GET(request());
+  const body = await response.json();
+
+  expect(body.summary).toMatchObject({
+    totalXP: 175,
+    finishes: 5,
+    completedThisWeek: 2,
+  });
+  expect(body.weeklyTrailReward).toEqual({
+    weekStart: "2026-10-19",
+    bonusXP: 50,
+    earned: false,
+  });
+  expect(body.recentEntries).toHaveLength(5);
 });
 
 it("marks legacy history as not started when final attempts are missing projections", async () => {
