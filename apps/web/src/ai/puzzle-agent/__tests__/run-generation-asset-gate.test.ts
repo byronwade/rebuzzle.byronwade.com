@@ -73,6 +73,7 @@ jest.mock("../tools", () => ({
   puzzleAgentTools: {
     get_puzzle_type_spec: { execute: jest.fn() },
     list_recent_answers: { execute: (...args: unknown[]) => listRecentAnswersExecute(...args) },
+    get_generation_brief: { execute: jest.fn() },
     list_pictogram_catalog: { execute: jest.fn() },
   },
 }));
@@ -259,8 +260,10 @@ describe("runPuzzleAgentGeneration asset gate", () => {
       }).catch(() => undefined);
 
       const options = agentOptions();
-      expect(Object.keys(options.tools)).not.toContain("list_recent_answers");
-      expect(options.activeTools).not.toContain("list_recent_answers");
+      for (const tool of ["list_recent_answers", "get_generation_brief"]) {
+        expect(Object.keys(options.tools)).not.toContain(tool);
+        expect(options.activeTools).not.toContain(tool);
+      }
       expect(options.instructions).not.toContain("Use list_recent_answers");
       const [, call] = generate.mock.calls.at(-1) as [unknown, { prompt: string }];
       expect(call.prompt).not.toContain("+ list_recent_answers +");
@@ -275,8 +278,10 @@ describe("runPuzzleAgentGeneration asset gate", () => {
       }).catch(() => undefined);
 
       const options = agentOptions();
-      expect(Object.keys(options.tools)).toContain("list_recent_answers");
-      expect(options.activeTools).toContain("list_recent_answers");
+      for (const tool of ["list_recent_answers", "get_generation_brief"]) {
+        expect(Object.keys(options.tools)).toContain(tool);
+        expect(options.activeTools).toContain(tool);
+      }
     });
   });
 });

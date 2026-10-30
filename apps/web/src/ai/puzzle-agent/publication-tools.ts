@@ -25,7 +25,12 @@ export const PUBLICATION_AGENT_TOOLS = [
  * untrusted creator text in the loop, so these must never be reachable there;
  * novelty is still enforced host-side by `checkUniqueness` after the draft.
  */
-export const OFFICIAL_ANSWER_READING_TOOLS = ["list_recent_answers"] as const;
+export const OFFICIAL_ANSWER_READING_TOOLS = [
+  "list_recent_answers",
+  // Its brief carries diversity memory (recent/banned answers), answer Elo keys
+  // and phrase-bank suggestions, i.e. official and upcoming answers.
+  "get_generation_brief",
+] as const;
 
 /** Who started the generation run. */
 export type PuzzleAgentToolSurface = "publication" | "studio";
