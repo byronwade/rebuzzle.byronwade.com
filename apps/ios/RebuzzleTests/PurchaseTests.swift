@@ -12,6 +12,7 @@ final class PurchaseTests: XCTestCase {
         let session = try SKTestSession(contentsOf: url)
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions() }
         let store = isolatedPurchaseStore()
         await store.load()
@@ -45,6 +46,7 @@ extension PurchaseTests {
         session.disableDialogs = true
         session.askToBuyEnabled = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var events = [[String: String]]()
@@ -81,6 +83,7 @@ extension PurchaseTests {
         session.disableDialogs = true
         session.askToBuyEnabled = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         let suiteName = "rebuzzle.purchase-tests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
@@ -145,6 +148,7 @@ extension PurchaseTests {
         session.disableDialogs = true
         session.askToBuyEnabled = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         let suiteName = "rebuzzle.purchase-tests.legacy-ask-to-buy.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
@@ -207,6 +211,7 @@ extension PurchaseTests {
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var attempts = 0

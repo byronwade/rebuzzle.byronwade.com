@@ -17,6 +17,7 @@ final class DirectPurchaseTests: XCTestCase {
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var events = [[String: String]]()
@@ -41,6 +42,7 @@ final class DirectPurchaseTests: XCTestCase {
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var events = [[String: String]]()
@@ -76,6 +78,7 @@ final class DirectPurchaseTests: XCTestCase {
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var events = [[String: String]]()
@@ -99,6 +102,7 @@ final class DirectPurchaseTests: XCTestCase {
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         try await session.setSimulatedError(.generic(.networkError(URLError(.notConnectedToInternet))), forAPI: .loadProducts)
@@ -125,6 +129,7 @@ final class DirectPurchaseTests: XCTestCase {
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         await store.load()
@@ -139,32 +144,18 @@ final class DirectPurchaseTests: XCTestCase {
 }
 
 extension DirectPurchaseTests {
-    @MainActor private func restoreSession() throws -> SKTestSession {
+    @MainActor private func restoreSession() async throws -> SKTestSession {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Rebuzzle", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: url)
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
+        try await waitForPlusEntitlement(present: false)
         return session
     }
 
-    /// Polls StoreKit directly so a test precondition cannot be confused with app behavior.
-    @MainActor private func waitForVerifiedPlusEntitlement(timeout: Duration = .seconds(10)) async throws {
-        let deadline = ContinuousClock.now + timeout
-        while ContinuousClock.now < deadline {
-            for await result in Transaction.currentEntitlements {
-                if case .verified(let entitlement) = result,
-                   entitlement.productID == PurchaseStore.plusID, entitlement.revocationDate == nil {
-                    return
-                }
-            }
-            try await Task.sleep(for: .milliseconds(100))
-        }
-        XCTFail("StoreKit Test never published the Plus purchase as a current entitlement.")
-    }
-
     @MainActor func testExplicitRestoreRecoversVerifiedOwnership() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
         let store = isolatedPurchaseStore()
@@ -178,7 +169,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testFreshStoreDiscoversExistingOwnershipWithoutWaitingForDailyLoad() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let transaction = try await session.buyProduct(identifier: PurchaseStore.plusID)
         await transaction.finish()
@@ -193,7 +184,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testProductReloadPreservesExplicitRestoreOutcome() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
         let store = isolatedPurchaseStore()
@@ -208,7 +199,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testStoreFailureAfterRestoreRemainsVisible() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
         let store = isolatedPurchaseStore()
@@ -220,7 +211,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testExplicitRestoreClearsEarlierStoreLoadFailure() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
         let store = isolatedPurchaseStore()
@@ -235,7 +226,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testRevocationClearsOwnershipConfirmation() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let transaction = try await session.buyProduct(identifier: PurchaseStore.plusID)
         let store = isolatedPurchaseStore()
@@ -252,7 +243,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testExplicitRestoreWithoutOwnershipDoesNotGrantPlus() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var events = [[String: String]]()
@@ -265,7 +256,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testRestoreFailureReleasesBusyAndCanRecover() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore(monitorsStoreKit: false)
         XCTAssertFalse(store.hasPlus, "A failed-restore test must begin without StoreKit ownership.")
@@ -282,7 +273,7 @@ extension DirectPurchaseTests {
         await transaction.finish()
         // Without the StoreKit monitor, nothing waits for the local test server to
         // publish the new purchase. Establish ownership before testing recovery.
-        try await waitForVerifiedPlusEntitlement()
+        try await waitForPlusEntitlement(present: true)
         await store.restore()
         XCTAssertTrue(store.hasPlus)
         XCTAssertFalse(store.busy)
@@ -294,7 +285,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testRestoreNetworkFailurePreservesVerifiedAccess() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
         let store = isolatedPurchaseStore()
@@ -308,7 +299,7 @@ extension DirectPurchaseTests {
     }
 
     @MainActor func testUnverifiedPurchaseAndRestoreNeverGrantPlus() async throws {
-        let session = try restoreSession()
+        let session = try await restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var events = [[String: String]]()
