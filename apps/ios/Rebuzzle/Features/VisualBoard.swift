@@ -32,7 +32,8 @@ struct VisualLayerView: View {
             if layer.kind == "pictogram" {
                 switch PictogramContent.resolve(svg: layer.svg, fallback: layer.emojiFallback ?? "Picture clue unavailable") {
                 case .svg(let source):
-                    SVGVectorView(source: source).frame(minHeight: 90).accessibilityLabel(layer.emojiFallback ?? "Picture clue")
+                    PictogramVectorView(source: source, fallback: layer.emojiFallback)
+                        .frame(minHeight: 90).accessibilityLabel(layer.emojiFallback ?? "Picture clue")
                 case .fallback(let text):
                     Text(text).font(Theme.font(34, weight: .medium, relativeTo: .title))
                 }
@@ -60,10 +61,31 @@ struct VisualLayerView: View {
         return url
     }
 }
+/// WebKit paints asynchronously, so a bare web view leaves the clue blank until it
+/// finishes. Show the emoji fallback immediately and fade the vector in once painted.
+struct PictogramVectorView: View {
+    let source: String
+    let fallback: String?
+    @State private var painted = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        ZStack {
+            if !painted, let fallback {
+                Text(fallback).font(.system(size: 44)).accessibilityHidden(true)
+            }
+            SVGVectorView(source: source) {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { painted = true }
+            }
+            .opacity(painted ? 1 : 0)
+        }
+    }
+}
+
 // WebKit is used only as an inert SVG decoder, never for app navigation or gameplay.
 // XML is reconstructed from a geometry-only allowlist before reaching the renderer.
 struct SVGVectorView: UIViewRepresentable {
     let source: String
+    var onPainted: () -> Void = {}
     @Environment(\.colorScheme) private var scheme
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -72,18 +94,24 @@ struct SVGVectorView: UIViewRepresentable {
         let view = WKWebView(frame: .zero, configuration: config)
         view.isOpaque = false; view.backgroundColor = .clear
         view.scrollView.isScrollEnabled = false; view.isUserInteractionEnabled = false
+        view.navigationDelegate = context.coordinator
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {
         let safe = SVGGeometry.sanitize(source)
         let color = scheme == .dark ? "#f7f4ed" : "#202020"
         let key = safe + color
+        context.coordinator.onPainted = onPainted
         guard context.coordinator.last != key else { return }
         context.coordinator.last = key
         view.loadHTMLString("<html lang='en'><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\"><style>html,body{margin:0;width:100%;height:100%;background:transparent;color:\(color)}svg{display:block;width:100%;height:100%;color:inherit}</style></head><body>\(safe)</body></html>", baseURL: nil)
     }
     func makeCoordinator() -> Coordinator { Coordinator() }
-    final class Coordinator { var last = "" }
+    @MainActor final class Coordinator: NSObject, WKNavigationDelegate {
+        var last = ""
+        var onPainted: () -> Void = {}
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { onPainted() }
+    }
 }
 enum PictogramContent: Equatable {
     case svg(String)
