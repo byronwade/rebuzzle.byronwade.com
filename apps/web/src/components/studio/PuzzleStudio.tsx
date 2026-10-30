@@ -19,7 +19,7 @@ import {
   type LiveCheckStatus,
 } from "@/components/studio/EveReviewPanel";
 import { StudioArtboard } from "@/components/studio/StudioArtboard";
-import { StudioPuzzleGenerator } from "@/components/studio/StudioPuzzleGenerator";
+import { StudioPuzzleGenerator } from "@/components/studio/studio-puzzle-generator-client";
 import { Button } from "@/components/ui/button";
 import { labelFromSlug } from "@/lib/typography";
 import { EVE_REVIEW_CHECKS, EVE_REVIEW_PHASES } from "@/lib/ugc/eve-review-manifest";

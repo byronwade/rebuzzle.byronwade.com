@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { StudioPuzzleGenerator } from "../StudioPuzzleGenerator";
+import { StudioPuzzleGenerator } from "../studio-puzzle-generator-client";
 
 describe("StudioPuzzleGenerator initial form", () => {
   it("shows the brief, optional answer, difficulty, shared credits, and stable action", () => {

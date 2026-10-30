@@ -4,7 +4,7 @@ import {
   DailyPuzzleQualityTable,
   DailySolvePulseMetric,
   PlusOfferSourceBreakdown,
-} from "../NativeGrowthCard";
+} from "../native-growth-card-client";
 
 describe("PlusOfferSourceBreakdown", () => {
   it("shows account counts, hides small counts, and labels every offer surface", () => {
