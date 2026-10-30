@@ -1,4 +1,16 @@
 import SwiftUI
+import RebuzzleCore
+
+/// Board header naming the difficulty tier; the hardest tier is drawn in the reward colour.
+struct DifficultyBadge: View {
+    let difficulty: Int
+    var body: some View {
+        Text(DifficultyTier.badge(difficulty: difficulty))
+            .font(Theme.font(11, weight: .semibold)).monospacedDigit().tracking(0.4)
+            .foregroundStyle(difficulty >= 8 ? Theme.reward : Theme.secondary)
+            .accessibilityLabel(DifficultyTier.accessibilityLabel(difficulty: difficulty))
+    }
+}
 
 /// A short burst of confetti for the moment a puzzle clicks. Purely decorative:
 /// never intercepts touches, hidden from VoiceOver, and skipped with Reduce Motion.

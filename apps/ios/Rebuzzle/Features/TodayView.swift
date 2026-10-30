@@ -52,10 +52,7 @@ struct TodayView: View {
                             Text(daily.puzzle.typeName)
                                 .font(Theme.font(13, weight: .semibold))
                             if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
-                            Text(DifficultyTier.badge(difficulty: daily.puzzle.difficulty))
-                                .font(Theme.font(11, weight: .semibold)).monospacedDigit().tracking(0.4)
-                                .foregroundStyle(daily.puzzle.difficulty >= 8 ? Theme.reward : Theme.secondary)
-                                .accessibilityLabel(DifficultyTier.accessibilityLabel(difficulty: daily.puzzle.difficulty))
+                            DifficultyBadge(difficulty: daily.puzzle.difficulty)
                                 .accessibilityIdentifier("dailyDifficultyTier")
                             Button {
                                 dismissAnswerKeyboard()
@@ -299,11 +296,7 @@ struct TodayView: View {
             quickStartUsesIntro = true
             help = true
         }
-        .onChange(of: model.game?.attempts.count) { old, new in
-            guard let old, let new, new > old, model.game?.attempts.last?.correct == false,
-                  model.game?.gameOver != true, !reduceMotion else { return }
-            withAnimation(.linear(duration: 0.4)) { wrongGuessShakes += 1 }
-        }
+        .onChange(of: model.game?.attempts.count, shakeAfterWrongGuess)
         .sensoryFeedback(.success, trigger: model.game?.wasSuccessful == true) { _, new in new && haptics }
         .sensoryFeedback(.selection, trigger: hintFeedback) { _, _ in haptics }
         .sensoryFeedback(.impact(weight: .light), trigger: model.game?.attempts.count) { old, new in
@@ -311,6 +304,11 @@ struct TodayView: View {
             return haptics && new > old && model.game?.attempts.last?.correct == false
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
+    }
+    private func shakeAfterWrongGuess(from old: Int?, to new: Int?) {
+        guard let old, let new, new > old, !reduceMotion, let game = model.game,
+              game.gameOver != true, game.attempts.last?.correct == false else { return }
+        withAnimation(.linear(duration: 0.4)) { wrongGuessShakes += 1 }
     }
     private func submitAnswer() {
         dismissAnswerKeyboard()
@@ -720,6 +718,11 @@ struct ResultView: View {
     @Binding var shareRequest: DailyResultShareRequest?
     @State private var renderedShareSummary: DailyShareSummary?
     @State private var renderedSharePNG: Data?
+    private func celebrateFirstSolve(of game: GameSession) {
+        guard game.wasSuccessful == true, celebratedPuzzleID != game.puzzleId else { return }
+        celebratedPuzzleID = game.puzzleId
+        celebrating = true
+    }
     var body: some View {
         if let game = model.game {
             let continuationGuessCount = max(0, game.attempts.count - game.maxAttempts)
@@ -765,11 +768,7 @@ struct ResultView: View {
                 .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
                 .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
                 .overlay(alignment: .top) { CelebrationBurst(isActive: celebrating) }
-                .onAppear {
-                    guard game.wasSuccessful == true, celebratedPuzzleID != game.puzzleId else { return }
-                    celebratedPuzzleID = game.puzzleId
-                    celebrating = true
-                }
+                .onAppear { celebrateFirstSolve(of: game) }
                 if let summary = game.dailyShareSummary {
                     dailyShareAction(summary)
                 } else {
