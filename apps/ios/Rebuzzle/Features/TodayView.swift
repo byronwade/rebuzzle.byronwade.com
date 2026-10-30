@@ -122,17 +122,7 @@ struct TodayView: View {
                         }
                         if !awaitingScoreLockDecision {
                             VStack(alignment: .leading, spacing: 12) {
-                                TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
-                                    .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
-                                    .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
-                                    // The padded box reads as the field, so a tap anywhere in it should focus.
-                                    .contentShape(RoundedRectangle(cornerRadius: 10))
-                                    .simultaneousGesture(TapGesture().onEnded { answerFocused = true })
-                                    .accessibilityLabel("Your answer")
-                                    .accessibilityIdentifier("answerField")
-                                    .onSubmit { submitAnswer() }
-                                    .onChange(of: model.draft) { _, _ in model.saveDraft() }
-                                    .modifier(WrongGuessShake(shakes: wrongGuessShakes))
+                                answerField
                                 if let error = model.error { Notice(message: error) }
                                 if model.needsReconciliation || !model.sessionReady {
                                     Button { Task { await model.load() } } label: {
@@ -296,7 +286,6 @@ struct TodayView: View {
             quickStartUsesIntro = true
             help = true
         }
-        .onChange(of: model.game?.attempts.count, shakeAfterWrongGuess)
         .sensoryFeedback(.success, trigger: model.game?.wasSuccessful == true) { _, new in new && haptics }
         .sensoryFeedback(.selection, trigger: hintFeedback) { _, _ in haptics }
         .sensoryFeedback(.impact(weight: .light), trigger: model.game?.attempts.count) { old, new in
@@ -304,6 +293,22 @@ struct TodayView: View {
             return haptics && new > old && model.game?.attempts.last?.correct == false
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
+    }
+    /// Kept out of `body`, which is already near the type checker's time budget.
+    private var answerField: some View {
+        @Bindable var model = model
+        return TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
+            .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
+            .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
+            // The padded box reads as the field, so a tap anywhere in it should focus.
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+            .simultaneousGesture(TapGesture().onEnded { answerFocused = true })
+            .accessibilityLabel("Your answer")
+            .accessibilityIdentifier("answerField")
+            .onSubmit { submitAnswer() }
+            .onChange(of: model.draft) { _, _ in model.saveDraft() }
+            .modifier(WrongGuessShake(shakes: wrongGuessShakes))
+            .onChange(of: model.game?.attempts.count, shakeAfterWrongGuess)
     }
     private func shakeAfterWrongGuess(from old: Int?, to new: Int?) {
         guard let old, let new, new > old, !reduceMotion, let game = model.game,
