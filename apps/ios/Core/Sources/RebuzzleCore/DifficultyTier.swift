@@ -1,24 +1,24 @@
-/// A named difficulty band so a hard day feels like an event rather than a number.
+/// Named difficulty band, mirroring the web's canonical DIFFICULTY_LEVELS
+/// (apps/web/src/ai/puzzle-agent/difficulty-levels.ts) so players and the
+/// puzzle generator share one vocabulary on every platform.
 public enum DifficultyTier: String, Sendable, CaseIterable {
-    case warmUp = "Warm-up"
-    case tricky = "Tricky"
-    case devious = "Devious"
-    case fiendish = "Fiendish"
-    case diabolical = "Diabolical"
+    case hard = "Hard"
+    case difficult = "Difficult"
+    case evil = "Evil"
+    case impossible = "Impossible"
 
     public init(difficulty: Int) {
         switch difficulty {
-        case ..<4: self = .warmUp
-        case 4...5: self = .tricky
-        case 6...7: self = .devious
-        case 8...9: self = .fiendish
-        default: self = .diabolical
+        case ..<6: self = .hard
+        case 6: self = .difficult
+        case 7: self = .evil
+        default: self = .impossible
         }
     }
 
     public var name: String { rawValue }
 
-    /// Compact board header, e.g. "DEVIOUS · 7/10".
+    /// Compact board header, e.g. "EVIL · 7/10".
     public static func badge(difficulty: Int) -> String {
         "\(DifficultyTier(difficulty: difficulty).name.uppercased()) · \(difficulty)/10"
     }
