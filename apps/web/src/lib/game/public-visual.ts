@@ -28,24 +28,60 @@ export function toPublicVisual(value: unknown) {
     ];
   });
   const candidate = visual.canonicalBoard;
-  const selected =
-    candidate && typeof candidate === "object"
-      ? Object.fromEntries(
-          ["version", "pngDataUrl", "sha256", "width", "height", "sourceFingerprint"].map((key) => [
-            key,
-            (candidate as Record<string, unknown>)[key],
-          ])
-        )
-      : candidate;
-  const parsed = CanonicalBoardSchema.safeParse(selected);
+  const parsed = parsePublicCanonicalBoard(candidate);
   return {
-    ...(candidate !== undefined
-      ? { canonicalBoard: parsed.success ? parsed.data : { version: 0 } }
-      : {}),
+    ...(candidate !== undefined ? { canonicalBoard: parsed ?? { version: 0 } } : {}),
     styleId: visual.styleId,
     mode: visual.mode,
     layout: visual.layout,
     unicodeFallback: visual.unicodeFallback,
     layers,
   };
+}
+
+const CANONICAL_FIELDS = [
+  "version",
+  "pngDataUrl",
+  "sha256",
+  "width",
+  "height",
+  "sourceFingerprint",
+];
+const RASTER_FIELDS = ["pngDataUrl", "sha256", "width", "height"];
+const PHONE_PROFILES = ["compact-320", "mobile-375", "mobile-375-medium"];
+
+function pick(source: Record<string, unknown>, keys: readonly string[]) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]])
+  );
+}
+
+/**
+ * Keeps the reviewed phone compositions (without them phones scale the desktop
+ * raster down), but a malformed variant only drops the variants, never the board.
+ */
+function parsePublicCanonicalBoard(candidate: unknown) {
+  if (!candidate || typeof candidate !== "object") {
+    const parsed = CanonicalBoardSchema.safeParse(candidate);
+    return parsed.success ? parsed.data : undefined;
+  }
+  const board = candidate as Record<string, unknown>;
+  const base = pick(board, CANONICAL_FIELDS);
+  const variants =
+    board.profileVariants && typeof board.profileVariants === "object"
+      ? Object.fromEntries(
+          PHONE_PROFILES.flatMap((id) => {
+            const raster = (board.profileVariants as Record<string, unknown>)[id];
+            return raster && typeof raster === "object"
+              ? [[id, pick(raster as Record<string, unknown>, RASTER_FIELDS)]]
+              : [];
+          })
+        )
+      : {};
+  if (Object.keys(variants).length) {
+    const withVariants = CanonicalBoardSchema.safeParse({ ...base, profileVariants: variants });
+    if (withVariants.success) return withVariants.data;
+  }
+  const parsed = CanonicalBoardSchema.safeParse(base);
+  return parsed.success ? parsed.data : undefined;
 }

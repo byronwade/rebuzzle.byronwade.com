@@ -60,4 +60,32 @@ final class CanonicalBoardTests: XCTestCase {
             XCTAssertNil(board.pngData)
         }
     }
+
+    private func raster(_ overrides: [String: Any] = [:]) -> [String: Any] {
+        var value: [String: Any] = ["pngDataUrl": "data:image/png;base64," + png.base64EncodedString(), "sha256": SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined(), "width": 1, "height": 1]
+        value.merge(overrides) { _, new in new }
+        return value
+    }
+
+    func testPhoneWidthsUseTheReviewedMobileRasterAndTabletsTheDesktopOne() throws {
+        let board = try XCTUnwrap(visual(artifact(["profileVariants": ["mobile-375": raster(), "compact-320": raster()]])).canonicalBoard)
+        XCTAssertEqual(board.rasters.map(\.profileID), ["desktop-768", "mobile-375", "compact-320"])
+        XCTAssertEqual(board.raster(forBoardWidth: 327)?.profileID, "mobile-375")
+        XCTAssertEqual(board.raster(forBoardWidth: 240)?.profileID, "compact-320")
+        XCTAssertEqual(board.raster(forBoardWidth: 700)?.profileID, "desktop-768")
+        XCTAssertEqual(board.raster(forBoardWidth: 0)?.profileID, "mobile-375", "Before layout, assume a phone")
+    }
+
+    func testInvalidVariantIsDroppedWithoutLosingTheReviewedDesktopBoard() throws {
+        let board = try XCTUnwrap(visual(artifact(["profileVariants": ["mobile-375": raster(["sha256": String(repeating: "0", count: 64)])]])).canonicalBoard)
+        XCTAssertEqual(board.pngData, png)
+        XCTAssertEqual(board.rasters.map(\.profileID), ["desktop-768"])
+        XCTAssertEqual(board.raster(forBoardWidth: 327)?.profileID, "desktop-768")
+    }
+
+    func testVerifiedVariantsSurviveLocalCaching() throws {
+        let source = try visual(artifact(["profileVariants": ["mobile-375": raster()]]))
+        let restored = try JSONDecoder().decode(PuzzleVisual.self, from: JSONEncoder().encode(source))
+        XCTAssertEqual(restored.canonicalBoard?.raster(forBoardWidth: 327)?.profileID, "mobile-375")
+    }
 }
