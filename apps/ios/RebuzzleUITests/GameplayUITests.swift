@@ -361,8 +361,18 @@ import StoreKitTest
         XCTAssertEqual(field.value as? String, "sun")
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
         XCTAssertTrue(field.isHittable, "The answer field must remain reachable after dismissing the keyboard.")
+        print("DIAG before-refocus frame=\(field.frame) hittable=\(field.isHittable)")
         field.tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let firstTap = app.keyboards.firstMatch.waitForExistence(timeout: 5)
+        print("DIAG refocus-first-tap keyboard=\(firstTap)")
+        if !firstTap {
+            print("DIAG HIERARCHY-BEGIN\n\(app.debugDescription)\nDIAG HIERARCHY-END")
+            field.tap()
+            print("DIAG refocus-second-tap keyboard=\(app.keyboards.firstMatch.waitForExistence(timeout: 5))")
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            print("DIAG refocus-coordinate-tap keyboard=\(app.keyboards.firstMatch.waitForExistence(timeout: 5))")
+        }
+        XCTAssertTrue(firstTap)
         field.typeText("shine")
         let submitFromKeyboard = app.buttons["checkAnswerFromKeyboard"]
         XCTAssertTrue(submitFromKeyboard.waitForExistence(timeout: 5))
