@@ -23,16 +23,22 @@ struct CelebrationBurst: View {
     private static let pieces: [ConfettiPiece] = (0..<42).map(ConfettiPiece.init(seed:))
 
     var body: some View {
-        TimelineView(.animation(paused: startedAt == nil)) { timeline in
-            Canvas { context, size in
-                guard let startedAt else { return }
-                let elapsed = timeline.date.timeIntervalSince(startedAt)
-                guard elapsed >= 0, elapsed < Self.duration else { return }
-                for piece in Self.pieces {
-                    piece.draw(in: &context, size: size, elapsed: elapsed, duration: Self.duration)
+        ZStack {
+            // Only exists while a burst plays, so no animation timeline stays alive on a
+            // screen that has been navigated away from (that would keep the app from idling).
+            if let startedAt {
+                TimelineView(.animation) { timeline in
+                    Canvas { context, size in
+                        let elapsed = timeline.date.timeIntervalSince(startedAt)
+                        guard elapsed >= 0, elapsed < Self.duration else { return }
+                        for piece in Self.pieces {
+                            piece.draw(in: &context, size: size, elapsed: elapsed, duration: Self.duration)
+                        }
+                    }
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onAppear { startIfNeeded() }
@@ -42,6 +48,7 @@ struct CelebrationBurst: View {
             try? await Task.sleep(for: .seconds(Self.duration))
             startedAt = nil
         }
+        .onDisappear { startedAt = nil }
     }
 
     private func startIfNeeded() {
