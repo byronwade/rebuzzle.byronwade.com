@@ -1,16 +1,23 @@
 "use client";
 
 import Image from "next/image";
-import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
-import { defaultPositionForIndex, hasLayerPosition } from "@/ai/puzzle-agent/visual/layer-position";
-import { planPlayerLockedRows } from "@/ai/puzzle-agent/visual/layout-plan";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import {
+  type CanonicalBoard,
+  canonicalBoardForProfile,
+  validateCanonicalBoard,
+} from "@/ai/puzzle-agent/visual/canonical-contract";
+import { estimateTextFontScale, layoutPuzzleBoard } from "@/ai/puzzle-agent/visual/layout-plan";
+import {
+  getLargePlayerLayout,
+  getPuzzleBoardRecognitionProfile,
   PUZZLE_BOARD_CHROME,
   PUZZLE_BOARD_SIZE_SPECS,
+  PUZZLE_BOARD_SVG_FONT_FAMILY,
+  type PuzzleBoardRecognitionProfileId,
   type PuzzleBoardSize,
   puzzleBoardFontSize,
   puzzleBoardLetterSpacingEm,
-  puzzleBoardOperatorWidth,
   puzzleBoardTextWeight,
 } from "@/ai/puzzle-agent/visual/presentation";
 import { sanitizePictogramSvg } from "@/ai/puzzle-agent/visual/sanitize-svg";
@@ -19,32 +26,101 @@ import type { PuzzleVisual, PuzzleVisualLayer } from "@/lib/gameSettings";
 import { resolvePuzzleSurface } from "@/lib/puzzle-surface";
 import { cn } from "@/lib/utils";
 
-/**
- * Free-layout boards are placed in Studio at roughly this width. Pieces keep
- * their pixel size above it and shrink with the board below it, so pieces
- * placed close together don't overlap on phones.
- */
-const FREE_LAYOUT_REFERENCE_WIDTH = 600;
-
-const useIsomorphicLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutEffect;
-
-function useFreeLayoutScale() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-  useIsomorphicLayoutEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-    const update = () => {
-      const width = node.clientWidth;
-      if (width > 0) setScale(Math.min(1, width / FREE_LAYOUT_REFERENCE_WIDTH));
+/** Never reveal unchecked pixels or silently substitute a different clue layout. */
+function CanonicalBoardImage({
+  board,
+  label,
+  className,
+  profileIds,
+  responsive,
+  containerRef,
+}: {
+  board: CanonicalBoard;
+  label: string;
+  className?: string;
+  profileIds: readonly PuzzleBoardRecognitionProfileId[];
+  responsive: boolean;
+  containerRef: (node: HTMLDivElement | null) => void;
+}) {
+  const profileSignature = profileIds.join(",");
+  const [verified, setVerified] = useState<{
+    board: CanonicalBoard;
+    profileSignature: string;
+  } | null>(null);
+  const [failed, setFailed] = useState<{ board: CanonicalBoard; profileSignature: string } | null>(
+    null
+  );
+  useEffect(() => {
+    let active = true;
+    Promise.all(
+      profileIds.map((profileId) =>
+        validateCanonicalBoard(canonicalBoardForProfile(board, profileId))
+      )
+    ).then(
+      () => active && setVerified({ board, profileSignature }),
+      () => active && setFailed({ board, profileSignature })
+    );
+    return () => {
+      active = false;
     };
-    update();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-  return { ref, scale };
+  }, [board, profileSignature, profileIds]);
+  if (failed?.board === board && failed.profileSignature === profileSignature)
+    return (
+      <div ref={containerRef} className="w-full max-w-full" role="alert" style={{ width: "100%" }}>
+        This puzzle image could not be verified. Please reload to try again.
+      </div>
+    );
+  if (verified?.board !== board || verified.profileSignature !== profileSignature)
+    return (
+      <div ref={containerRef} className="w-full max-w-full" role="status" style={{ width: "100%" }}>
+        Loading puzzle image…
+      </div>
+    );
+  return (
+    <div
+      ref={containerRef}
+      className={cn("puzzle-visual-board w-full max-w-full", className)}
+      data-layout-lock="canonical-v1"
+      data-responsive-profile={responsive ? "large" : undefined}
+      role="img"
+      aria-label={label}
+      style={
+        responsive ? { containerType: "inline-size", containerName: "rb-puzzle-board" } : undefined
+      }
+    >
+      {profileIds.map((profileId) => {
+        const profile = getPuzzleBoardRecognitionProfile(profileId);
+        const profileClass =
+          profileIds.length === 1
+            ? "puzzle-board-profile-single"
+            : profileId === "mobile-375"
+              ? "puzzle-board-profile-mobile"
+              : profileId === "desktop-768"
+                ? "puzzle-board-profile-desktop"
+                : "puzzle-board-profile-single";
+        const selected = canonicalBoardForProfile(board, profileId);
+        return (
+          <div
+            className={profileClass}
+            data-board-profile={profileId}
+            key={profileId}
+            style={{ width: "100%", maxWidth: profile.viewportWidth, marginInline: "auto" }}
+          >
+            {/* biome-ignore lint/performance/noImgElement: Exact reviewed PNG bytes must bypass image optimization. */}
+            <img
+              src={selected.pngDataUrl}
+              width={selected.width}
+              height={selected.height}
+              alt=""
+              aria-hidden="true"
+              className="block max-w-full"
+              style={{ width: "100%", height: "auto", objectFit: "contain" }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 interface PuzzleVisualBoardProps {
@@ -57,16 +133,31 @@ interface PuzzleVisualBoardProps {
   compact?: boolean;
 }
 
-function textLayerStyle(emphasis: string | undefined, baseFontSize: number): CSSProperties {
-  const fontSize = puzzleBoardFontSize(emphasis, baseFontSize);
+const PLAYER_PROFILE_IDS: Record<PuzzleBoardSize, readonly PuzzleBoardRecognitionProfileId[]> = {
+  small: ["compact-320"],
+  medium: ["mobile-375-medium"],
+  large: ["mobile-375", "desktop-768"],
+};
+function textLayerStyle(
+  emphasis: string | undefined,
+  baseFontSize: number,
+  tileSize: number,
+  fitScale: number
+): CSSProperties {
+  const fontSize = puzzleBoardFontSize(emphasis, baseFontSize) * fitScale;
   const fontWeight = puzzleBoardTextWeight(emphasis);
   const letterSpacing = `${puzzleBoardLetterSpacingEm(emphasis)}em`;
   const style: CSSProperties = {
-    fontSize,
+    fontSize: `${fontSize / tileSize}em`,
     fontWeight,
+    fontFamily: PUZZLE_BOARD_SVG_FONT_FAMILY,
     letterSpacing,
     color: "var(--rb-ink)",
-    lineHeight: emphasis === "stacked" ? 0.95 : 1.05,
+    lineHeight: emphasis === "stacked" ? 1.04 : 1.05,
+    maxWidth: "100%",
+    maxHeight: "100%",
+    minWidth: 0,
+    overflow: "hidden",
   };
   if (emphasis === "tiny") {
     style.textTransform = "uppercase";
@@ -81,11 +172,9 @@ function textLayerStyle(emphasis: string | undefined, baseFontSize: number): CSS
 
 function PictogramTile({
   layer,
-  sizePx,
   index,
 }: {
   layer: Extract<PuzzleVisualLayer, { kind: "pictogram" }>;
-  sizePx: number;
   index: number;
 }) {
   const safeSvg = layer.svg ? sanitizePictogramSvg(layer.svg) : null;
@@ -95,8 +184,8 @@ function PictogramTile({
       <span
         className="rb-enter puzzle-pictogram inline-flex shrink-0 items-center justify-center"
         style={{
-          width: sizePx,
-          height: sizePx,
+          width: "100%",
+          height: "100%",
           animationDelay: `${Math.min(index, 6) * 45}ms`,
         }}
         role="img"
@@ -112,9 +201,9 @@ function PictogramTile({
     <span
       className="puzzle-pictogram-fallback inline-flex shrink-0 items-center justify-center leading-none"
       style={{
-        width: sizePx,
-        height: sizePx,
-        fontSize: sizePx * PUZZLE_BOARD_CHROME.fallbackGlyphFactor,
+        width: "100%",
+        height: "100%",
+        fontSize: `${PUZZLE_BOARD_CHROME.fallbackGlyphFactor}em`,
         fontWeight: puzzleBoardTextWeight("normal"),
         color: "var(--rb-ink)",
         background: "var(--rb-canvas)",
@@ -134,10 +223,14 @@ function PictogramTile({
 function TextTile({
   layer,
   baseFontSize,
+  tileSize,
+  fitScale,
   index,
 }: {
   layer: Extract<PuzzleVisualLayer, { kind: "text" }>;
   baseFontSize: number;
+  tileSize: number;
+  fitScale: number;
   index: number;
 }) {
   const stacked = layer.emphasis === "stacked";
@@ -146,11 +239,13 @@ function TextTile({
   return (
     <span
       className={cn(
-        "puzzle-text-layer rb-enter inline-block font-sans",
+        "puzzle-text-layer rb-enter inline-block",
         stacked && "whitespace-pre text-center"
       )}
       style={{
-        ...textLayerStyle(layer.emphasis, baseFontSize),
+        ...textLayerStyle(layer.emphasis, baseFontSize, tileSize, fitScale),
+        whiteSpace: stacked ? "pre" : "nowrap",
+        textAlign: "center",
         animationDelay: `${Math.min(index, 6) * 45}ms`,
       }}
     >
@@ -170,12 +265,13 @@ function OperatorTile({
 }) {
   return (
     <span
-      className="inline-flex items-center justify-center font-sans"
+      className="inline-flex items-center justify-center"
       style={{
-        width: puzzleBoardOperatorWidth(tile),
-        height: tile,
-        fontSize: baseFontSize,
+        width: "100%",
+        height: "100%",
+        fontSize: `${baseFontSize / tile}em`,
         fontWeight: puzzleBoardTextWeight("operator"),
+        fontFamily: PUZZLE_BOARD_SVG_FONT_FAMILY,
         letterSpacing: `${puzzleBoardLetterSpacingEm("operator")}em`,
         color: "var(--rb-mist)",
       }}
@@ -202,8 +298,8 @@ function ImageTile({
   if (!safe) return null;
 
   const tileStyle = {
-    width: sizePx,
-    height: sizePx,
+    width: "100%",
+    height: "100%",
     animationDelay: `${Math.min(index, 6) * 45}ms`,
   } as CSSProperties;
 
@@ -240,17 +336,27 @@ function LayerView({
   layer,
   index,
   size,
+  availableWidth,
 }: {
   layer: PuzzleVisualLayer;
   index: number;
   size: PuzzleBoardSize;
+  availableWidth: number;
 }) {
   const dims = PUZZLE_BOARD_SIZE_SPECS[size];
   if (layer.kind === "pictogram") {
-    return <PictogramTile layer={layer} sizePx={dims.tile} index={index} />;
+    return <PictogramTile layer={layer} index={index} />;
   }
   if (layer.kind === "text") {
-    return <TextTile layer={layer} baseFontSize={dims.fontSize} index={index} />;
+    return (
+      <TextTile
+        layer={layer}
+        baseFontSize={dims.fontSize}
+        tileSize={dims.tile}
+        fitScale={estimateTextFontScale(layer, availableWidth, size)}
+        index={index}
+      />
+    );
   }
   if (layer.kind === "operator") {
     return <OperatorTile layer={layer} tile={dims.tile} baseFontSize={dims.fontSize} />;
@@ -260,6 +366,8 @@ function LayerView({
   }
   return null;
 }
+
+export { LayerView as PuzzleVisualLayerView };
 
 /**
  * Renders a generative Rebuzzle board (Ink Pictograms, text devices, operators, images).
@@ -273,22 +381,83 @@ export function PuzzleVisualBoard({
   compact = false,
 }: PuzzleVisualBoardProps) {
   const resolvedSize = compact ? "small" : size;
-  const dims = PUZZLE_BOARD_SIZE_SPECS[resolvedSize];
+  const [boardElement, setBoardElement] = useState<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number | undefined>();
+  const containerRef = useCallback((node: HTMLDivElement | null) => setBoardElement(node), []);
+  useEffect(() => {
+    if (resolvedSize !== "large" || !boardElement) return;
+    const updateWidth = () => {
+      const measured = Math.round(boardElement.getBoundingClientRect().width);
+      if (measured > 0)
+        setContainerWidth((previous) => (previous === measured ? previous : measured));
+    };
+    updateWidth();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(boardElement);
+    return () => observer.disconnect();
+  }, [boardElement, resolvedSize]);
   const layers = visual.layers ?? [];
-  const hasRenderable = layers.some((l) => {
-    if (l.kind === "pictogram") return Boolean(l.svg || l.emojiFallback);
-    if (l.kind === "image") return Boolean(l.src);
+  const hasRenderable = layers.some((layer) => {
+    if (layer.kind === "pictogram") return Boolean(layer.svg || layer.emojiFallback);
+    if (layer.kind === "image") return Boolean(layer.src);
     return true;
   });
 
   const surface = resolvePuzzleSurface(visual);
-  const freeLayout = useFreeLayoutScale();
+  const largeLayout =
+    resolvedSize === "large" && containerWidth !== undefined
+      ? getLargePlayerLayout(containerWidth)
+      : undefined;
+  const renderSize = largeLayout?.size ?? resolvedSize;
+  const dims = PUZZLE_BOARD_SIZE_SPECS[renderSize];
+  const profileIds = largeLayout
+    ? PLAYER_PROFILE_IDS[largeLayout.size]
+    : PLAYER_PROFILE_IDS[resolvedSize];
+  const dynamicLayoutOptions = largeLayout
+    ? {
+        size: largeLayout.size,
+        viewportWidth: largeLayout.viewportWidth,
+        padding: largeLayout.padding,
+      }
+    : undefined;
+  const hasCanonicalProfiles = (board: CanonicalBoard) =>
+    profileIds.every(
+      (profileId) => profileId === "desktop-768" || Boolean(board.profileVariants?.[profileId])
+    );
+  const canonicalUsable =
+    visual.canonicalBoard !== undefined &&
+    (!largeLayout || largeLayout.useCanonicalProfile) &&
+    hasCanonicalProfiles(visual.canonicalBoard);
 
-  if (!hasRenderable || visual.mode === "unicode") {
+  if (canonicalUsable && visual.canonicalBoard) {
+    return (
+      <CanonicalBoardImage
+        board={visual.canonicalBoard}
+        label={fallback || visual.unicodeFallback}
+        className={className}
+        profileIds={profileIds}
+        responsive={resolvedSize === "large" && profileIds.length > 1}
+        containerRef={containerRef}
+      />
+    );
+  }
+
+  if (
+    !hasRenderable ||
+    visual.mode === "unicode" ||
+    (largeLayout !== undefined && !largeLayout.isSupportedWidth)
+  ) {
     return (
       <div
-        className={cn("text-center font-sans whitespace-pre-wrap break-words", className)}
+        ref={containerRef}
+        className={cn(
+          "w-full min-w-0 max-w-full text-center font-sans whitespace-pre-wrap break-words",
+          className
+        )}
         style={{
+          width: "100%",
+          minWidth: 0,
           color: surface.ink,
           fontSize: dims.fontSize,
           fontWeight: puzzleBoardTextWeight("normal"),
@@ -301,12 +470,6 @@ export function PuzzleVisualBoard({
     );
   }
 
-  // Locked row membership matches server recognition profiles — no flex-wrap reflow.
-  const rowIndexes =
-    visual.layout === "overlay" || visual.layout === "free"
-      ? [layers.map((_, index) => index)]
-      : planPlayerLockedRows(visual, resolvedSize);
-
   const boardStyle = {
     "--rb-ink": surface.ink,
     "--rb-canvas": surface.canvas,
@@ -314,164 +477,117 @@ export function PuzzleVisualBoard({
     "--rb-accent": INK_PICTOGRAM_PALETTE.accent,
     "--rb-strike": INK_PICTOGRAM_PALETTE.strike,
     color: surface.ink,
-    gap: dims.gap,
-    rowGap: dims.gap,
   } as CSSProperties;
-
-  if (visual.layout === "free") {
-    return (
-      <div
-        ref={freeLayout.ref}
-        className={cn("puzzle-visual-board relative w-full max-w-full", className)}
-        data-layout-lock="free"
-        data-surface={surface.mode}
-        style={{
-          ...boardStyle,
-          aspectRatio: "16 / 10",
-          minHeight: Math.max(dims.tile * 2.2 * freeLayout.scale, 120),
-        }}
-        role="img"
-        aria-label={fallback || visual.unicodeFallback}
-      >
-        {layers.map((layer, index) => {
-          const position = hasLayerPosition(layer)
-            ? { x: layer.x, y: layer.y }
-            : defaultPositionForIndex(index);
-          return (
-            <div
-              key={`free-${index}`}
-              className="absolute"
-              style={{
-                left: `${position.x}%`,
-                top: `${position.y}%`,
-                transform:
-                  freeLayout.scale < 1
-                    ? `translate(-50%, -50%) scale(${freeLayout.scale})`
-                    : "translate(-50%, -50%)",
-                zIndex: index + 1,
-              }}
-            >
-              <LayerView layer={layer} index={index} size={resolvedSize} />
-            </div>
-          );
-        })}
-        {visual.caption ? (
-          <p
-            className="rb-enter absolute top-full mt-2 w-full text-center font-sans"
-            style={{
-              color: "var(--rb-mist)",
-              fontSize: Math.max(
-                PUZZLE_BOARD_CHROME.captionMinSize,
-                Math.round(dims.fontSize * PUZZLE_BOARD_CHROME.captionSizeFactor)
-              ),
-              fontWeight: puzzleBoardTextWeight("normal"),
-            }}
-          >
-            {visual.caption}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (visual.layout === "overlay") {
-    return (
-      <div
-        className={cn(
-          "puzzle-visual-board relative flex w-full max-w-full items-center justify-center",
-          className
-        )}
-        data-layout-lock="overlay"
-        data-surface={surface.mode}
-        style={boardStyle}
-        role="img"
-        aria-label={fallback || visual.unicodeFallback}
-      >
-        {layers.map((layer, index) => {
-          const offset = (index - (layers.length - 1) / 2) * Math.max(5, dims.gap * 0.75);
-          return (
-            <div
-              key={`overlay-${index}`}
-              className="absolute"
-              style={{ transform: `translate(${offset}px, ${offset}px)` }}
-            >
-              <LayerView layer={layer} index={index} size={resolvedSize} />
-            </div>
-          );
-        })}
-        {/* Spacer so relative box has intrinsic size */}
-        <div className="invisible flex" style={{ gap: dims.gap }} aria-hidden>
-          {layers.map((layer, index) => (
-            <LayerView key={`spacer-${index}`} layer={layer} index={index} size={resolvedSize} />
-          ))}
-        </div>
-        {visual.caption ? (
-          <p
-            className="rb-enter absolute top-full mt-2 w-full text-center font-sans"
-            style={{
-              color: "var(--rb-mist)",
-              fontSize: Math.max(
-                PUZZLE_BOARD_CHROME.captionMinSize,
-                Math.round(dims.fontSize * PUZZLE_BOARD_CHROME.captionSizeFactor)
-              ),
-              fontWeight: puzzleBoardTextWeight("normal"),
-            }}
-          >
-            {visual.caption}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
+  const layoutLock =
+    visual.layout === "free"
+      ? "free"
+      : visual.layout === "overlay"
+        ? "overlay"
+        : "viewport-invariant";
 
   return (
     <div
-      className={cn("puzzle-visual-board flex w-full max-w-full flex-col items-center", className)}
-      data-layout-lock="viewport-invariant"
+      className={cn("puzzle-visual-board w-full max-w-full", className)}
+      data-layout-lock={layoutLock}
+      ref={containerRef}
+      data-responsive-profile={resolvedSize === "large" && !largeLayout ? "large" : undefined}
       data-surface={surface.mode}
-      style={boardStyle}
+      style={{
+        ...boardStyle,
+        ...(resolvedSize === "large" && !largeLayout
+          ? { containerType: "inline-size", containerName: "rb-puzzle-board" }
+          : {}),
+      }}
       role="img"
       aria-label={fallback || visual.unicodeFallback}
     >
-      {rowIndexes.map((indexes, rowIndex) => (
-        <div
-          key={`row-${rowIndex}`}
-          className="flex flex-nowrap items-center justify-center"
-          style={{ gap: dims.gap }}
-          data-layout-row={rowIndex}
-        >
-          {indexes.map((index) => {
-            const layer = layers[index]!;
-            return (
-              <LayerView
-                key={`${layer.kind}-${index}-${
-                  "concept" in layer && layer.concept ? layer.concept : ""
-                }${"content" in layer && layer.content ? layer.content : ""}${
-                  "symbol" in layer && layer.symbol ? layer.symbol : ""
-                }`}
-                layer={layer}
-                index={index}
-                size={resolvedSize}
-              />
-            );
-          })}
-        </div>
-      ))}
-      {visual.caption ? (
-        <p
-          className="rb-enter mt-2 text-center font-sans"
-          style={{
-            color: "var(--rb-mist)",
-            fontSize: Math.max(
-              PUZZLE_BOARD_CHROME.captionMinSize,
-              Math.round(dims.fontSize * PUZZLE_BOARD_CHROME.captionSizeFactor)
-            ),
-            fontWeight: puzzleBoardTextWeight("normal"),
-          }}
-        >
-          {visual.caption}
-        </p>
-      ) : null}
+      {profileIds.map((profileId) => {
+        const profile = getPuzzleBoardRecognitionProfile(profileId);
+        const plan = layoutPuzzleBoard(visual, profileId, dynamicLayoutOptions);
+        const padding = dynamicLayoutOptions?.padding ?? profile.padding;
+        const availableWidth = plan.width - padding * 2;
+        const profileClass =
+          profileIds.length === 1
+            ? "puzzle-board-profile-single"
+            : profileId === "mobile-375"
+              ? "puzzle-board-profile-mobile"
+              : profileId === "desktop-768"
+                ? "puzzle-board-profile-desktop"
+                : "puzzle-board-profile-single";
+
+        return (
+          <div
+            className={profileClass}
+            data-board-profile={profileId}
+            key={profileId}
+            style={{ width: "100%", maxWidth: plan.width, marginInline: "auto" }}
+          >
+            <div
+              className="relative w-full max-w-full"
+              data-layout-lock={visual.layout === "free" ? "free" : visual.layout}
+              data-surface={surface.mode}
+              data-board-canvas={[plan.width, plan.height].join(",")}
+              style={{
+                aspectRatio: `${plan.width} / ${plan.height}`,
+                containerType: "inline-size",
+              }}
+            >
+              {layers.map((layer, index) => {
+                const position = plan.positions[index];
+                if (!position) return null;
+                return (
+                  <div
+                    key={`layer-${index}`}
+                    className="absolute flex items-center justify-center"
+                    data-board-layer-index={index}
+                    data-board-bounds={[
+                      position.x,
+                      position.y,
+                      position.width,
+                      position.height,
+                    ].join(",")}
+                    style={{
+                      left: `${(position.x / plan.width) * 100}%`,
+                      top: `${(position.y / plan.height) * 100}%`,
+                      width: `${(position.width / plan.width) * 100}%`,
+                      height: `${(position.height / plan.height) * 100}%`,
+                      zIndex: index + 1,
+                      fontSize: `${(dims.tile / plan.width) * 100}cqw`,
+                    }}
+                  >
+                    <LayerView
+                      layer={layer}
+                      index={index}
+                      size={renderSize}
+                      availableWidth={availableWidth}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {visual.caption ? (
+              <p
+                className="rb-enter mt-2 w-full text-center"
+                style={{
+                  color: "var(--rb-mist)",
+                  fontSize: `${
+                    (Math.max(
+                      PUZZLE_BOARD_CHROME.captionMinSize,
+                      Math.round(dims.fontSize * PUZZLE_BOARD_CHROME.captionSizeFactor)
+                    ) /
+                      plan.width) *
+                    100
+                  }cqw`,
+                  fontWeight: puzzleBoardTextWeight("normal"),
+                  fontFamily: PUZZLE_BOARD_SVG_FONT_FAMILY,
+                }}
+              >
+                {visual.caption}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

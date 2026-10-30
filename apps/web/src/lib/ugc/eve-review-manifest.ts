@@ -81,12 +81,12 @@ export const EVE_REVIEW_PHASES: ReviewPhaseDef[] = [
   {
     id: "player_sim",
     label: "Player simulation",
-    summary: "Optional vision spend — would a stranger solve this fairly?",
+    summary: "Required screenshot evidence — would a stranger solve this fairly?",
   },
   {
     id: "verdict",
     label: "Verdict",
-    summary: "Ship, revise, or reject — with a clear list of blockers.",
+    summary: "Ship, pending, revise, or reject — with a clear list of blockers.",
   },
 ];
 

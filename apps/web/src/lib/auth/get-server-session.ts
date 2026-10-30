@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { resolveGuestStatus } from "@/lib/auth/guest-status";
 import { AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME } from "@/lib/cookies";
 import { verifyToken } from "@/lib/jwt";
 
@@ -37,7 +38,7 @@ export async function getServerSession(): Promise<ServerSession> {
     }
 
     const email = payload.email || "";
-    const isGuest = email.endsWith("@guest.rebuzzle.local");
+    const isGuest = resolveGuestStatus(payload.isGuest, email);
 
     return {
       authenticated: true,

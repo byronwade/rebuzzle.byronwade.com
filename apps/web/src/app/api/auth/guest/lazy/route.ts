@@ -22,6 +22,7 @@ import {
 } from "@/lib/services/guest-identification";
 
 const GUEST_TOKEN_COOKIE = "rebuzzle_guest_token";
+const GUEST_EMAIL_SUFFIX = "@guest.rebuzzle.local";
 
 export async function POST(request: Request) {
   try {
@@ -46,8 +47,25 @@ export async function POST(request: Request) {
       if (payload?.userId && !(await isSessionRevoked(payload.userId, payload.iat))) {
         const existingUser = await userOps.findById(payload.userId);
         if (existingUser) {
+          const legacyGuestToken =
+            payload.isGuest === undefined &&
+            typeof payload.email === "string" &&
+            payload.email.endsWith(GUEST_EMAIL_SUFFIX);
+          const isGuestToken = payload.isGuest === true || legacyGuestToken;
+          if (isGuestToken && !existingUser.isGuest) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "This guest account was upgraded. Sign in to continue.",
+              },
+              { status: 409 }
+            );
+          }
+
           const isGuest = Boolean(
-            existingUser.isGuest || existingUser.email?.endsWith("@guest.rebuzzle.local")
+            existingUser.isGuest ||
+              payload.isGuest === true ||
+              (payload.isGuest === undefined && existingUser.email?.endsWith(GUEST_EMAIL_SUFFIX))
           );
           return NextResponse.json({
             success: true,
@@ -106,6 +124,7 @@ export async function POST(request: Request) {
       userId: guestUser.id,
       username: guestUser.username,
       email: guestUser.email,
+      isGuest: true,
     });
 
     // Build response

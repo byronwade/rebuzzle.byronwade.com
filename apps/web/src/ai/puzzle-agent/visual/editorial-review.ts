@@ -3,9 +3,11 @@ import { generateAIObjectFromImage } from "../../client";
 import { AI_CONFIG } from "../../config";
 import type { PuzzleVisual } from "./composition";
 import { EDITORIAL_FAILURE_KINDS, type EditorialReviewAttempt } from "./editorial-consensus";
+import { ReasoningEvidenceSchema } from "./reasoning-evidence";
 import { renderPuzzleVisualProfiles } from "./render-board";
 
 const EditorialReviewSchema = z.object({
+  reasoningEvidence: ReasoningEvidenceSchema.nullable(),
   verdict: z.enum(["publish", "reject"]),
   confidence: z.number().min(0).max(1),
   cueCoverage: z.number().min(0).max(1),
@@ -42,6 +44,7 @@ The intended answer is supplied only so you can verify cue coverage, detect answ
 Do not approve a board merely because you now know its answer. Every word or idea in the answer must be visibly and fairly encoded.
 Standard rebus mechanisms are legitimate: a pictured object may supply a homophone, visible text may supply part of the answer, and size/position/operators may encode relationships.
 Do not reject a homophone merely because the pictured noun has a different spelling. Do not call a partial answer word an answer leak; answerVisibleVerbatim is true only when the complete intended answer is visibly written as one contiguous phrase.
+Separately assess layered reasoning: return reasoningEvidence only if at least two DISTINCT inference operations are visibly necessary AND interact to derive the intended answer; otherwise return null. Record each operation's visible observation and inference, mark necessary honestly, and set interacting honestly. Use canonical kinds such as reversal, count, homophone, containment, position, size, negation, comparison, letter-repair, classification. Ordinary reading, identifying an object, joining literal words, simple arithmetic, restating the answer, or decorative details are NOT extra inference operations. A single spatial relation is not two steps. finalInterpretation must be the intended answer; calibration must be editorial-unplaytested and version editorial-reasoning-v1. This assessment is independent editorial judgment, never a measured solve time. A board may be fair for community play while its reasoningEvidence is null.
 Reject wrong objects, genuinely missing answer ideas, the complete answer printed verbatim, stronger alternate readings, broken responsive layout, overlap, clipping, or unreadable content.`,
           prompt: [
             `Intended answer: ${input.answer}`,
@@ -51,6 +54,7 @@ Reject wrong objects, genuinely missing answer ideas, the complete answer printe
         });
         return {
           ...review,
+          reasoningEvidence: review.reasoningEvidence ?? undefined,
           strongestAlternate: review.strongestAlternate ?? undefined,
           model: modelId,
           profileId: rendered.profileId,

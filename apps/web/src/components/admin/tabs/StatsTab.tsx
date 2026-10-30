@@ -18,6 +18,7 @@ import { PieChart } from "@/components/admin/charts/PieChart";
 import { TimeSeriesChart } from "@/components/admin/charts/TimeSeriesChart";
 import { DateRangePicker, type DateRangePreset } from "@/components/admin/DateRangePicker";
 import { MetricCard } from "@/components/admin/MetricCard";
+import { NativeGrowthCard } from "@/components/admin/tabs/native-growth-card-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -217,6 +218,8 @@ export function StatsTab({
           value={stats.overview.totalEmailSubscriptions}
         />
       </div>
+
+      <NativeGrowthCard />
 
       {/* User Engagement Metrics */}
       {stats.userEngagement && (

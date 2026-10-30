@@ -161,10 +161,9 @@ export const ensureConnection = async (): Promise<void> => {
 export const getDatabase = (): Db => {
   if (!globalForDb.db) {
     const client = getConnection();
-    // Prefer URI path DB; otherwise use MONGODB_DB / "rebuzzle"
-    // (Atlas marketplace URIs often omit a database path and would default to "test")
-    const uriHasDbPath = /mongodb(?:\+srv)?:\/\/[^/]+\/[^/?]+/.test(getDatabaseUrl());
-    globalForDb.db = uriHasDbPath ? client.db() : client.db(getMongoDatabaseName());
+    // An explicit MONGODB_DB lets Preview isolate data even when the shared
+    // Mongo URI includes a database path. Otherwise keep URI-path behavior.
+    globalForDb.db = client.db(getMongoDatabaseName(getDatabaseUrl()));
 
     // Kick connect once; Mongo operations await the same topology handshake.
     if (!globalForDb.connectionPromise) {

@@ -26,3 +26,11 @@ describe("icon features", () => {
     expect(conceptMatchesSeen("bus", "business")).toBe(false);
   });
 });
+
+it("does not count a catalog confusion as a successful object reading", () => {
+  expect(conceptMatchesSeen("citrus", "lemon")).toBe(false);
+  expect(conceptMatchesSeen("citrus", "orange")).toBe(false);
+  expect(conceptMatchesSeen("cat", "kitten")).toBe(false);
+  expect(conceptMatchesSeen("bicycle", "bike")).toBe(true);
+  expect(conceptMatchesSeen("lemon", "lemon")).toBe(true);
+});

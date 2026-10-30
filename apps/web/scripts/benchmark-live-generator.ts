@@ -3,6 +3,11 @@ import { setServers } from "node:dns";
 import path from "node:path";
 import { config } from "dotenv";
 import type { LiveGeneratorCanaryObservation } from "../src/ai/puzzle-agent/benchmark/generator-canary";
+import {
+  assertPilotDailyAdmission,
+  parseLivePilotTarget,
+  safeDiagnosticError,
+} from "../src/ai/puzzle-agent/benchmark/live-options";
 import type { PuzzleVisual } from "../src/ai/puzzle-agent/visual/composition";
 
 function numberArg(name: string, fallback: number): number {
@@ -23,7 +28,10 @@ function answerKey(value: string): string {
 }
 
 function safeError(error: unknown): string {
-  return (error instanceof Error ? error.message : String(error)).replace(/[\r\n]+/g, " ").slice(0, 800);
+  return safeDiagnosticError(error, [
+    process.env.AI_GATEWAY_API_KEY ?? "",
+    process.env.VERCEL_OIDC_TOKEN ?? "",
+  ]);
 }
 
 type RejectedPuzzle = {
@@ -43,6 +51,7 @@ function rejectedPuzzle(error: unknown): RejectedPuzzle | null {
 }
 
 async function main(): Promise<void> {
+  const pilot = parseLivePilotTarget(process.argv);
   const explicitEnvFile = process.argv.some((argument) => argument.startsWith("--env-file="));
   config({
     path: stringArg("env-file", ".env.local"),
@@ -51,6 +60,9 @@ async function main(): Promise<void> {
     // explicitly selected Vercel environment file.
     override: explicitEnvFile,
   });
+  // Set after dotenv override and before loading generation code: Apex records
+  // tournament candidates by default, while diagnostics must remain read-only.
+  process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY = "1";
   if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
     throw new Error(
       "Live generator canary requires AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN"
@@ -74,12 +86,13 @@ async function main(): Promise<void> {
     .filter(Boolean);
   if (benchmarkDnsServers?.length) setServers(benchmarkDnsServers);
 
-  const [{ generateMasterPuzzle }, { renderPuzzleVisualProfiles }, benchmark, difficulty] =
+  const [{ generateMasterPuzzle }, { renderPuzzleVisualProfiles }, benchmark, difficulty, daily] =
     await Promise.all([
       import("../src/ai/services/master-puzzle-orchestrator"),
       import("../src/ai/puzzle-agent/visual/render-board"),
       import("../src/ai/puzzle-agent/benchmark/generator-canary"),
       import("../src/ai/puzzle-agent/difficulty-levels"),
+      import("../src/ai/puzzle-agent/daily-challenge"),
     ]);
   const attempts = numberArg("attempts", benchmark.LIVE_GENERATOR_CANARY_MIN_ATTEMPTS);
   const candidates = Math.max(1, Math.min(5, numberArg("candidates", 2)));
@@ -92,14 +105,20 @@ async function main(): Promise<void> {
   );
   await mkdir(outputDirectory, { recursive: true });
   const observations: LiveGeneratorCanaryObservation[] = [];
+  const dailyAdmissions: Array<{ id: string; admitted: boolean; blockers: string[] }> = [];
 
   for (let index = 0; index < attempts; index += 1) {
-    const tier = difficulty.DIFFICULTY_LEVELS[index % difficulty.DIFFICULTY_LEVELS.length]!;
+    const targetDifficulty =
+      pilot.mode === "daily-pilot"
+        ? pilot.targets[index % pilot.targets.length]!
+        : difficulty.DIFFICULTY_LEVELS[index % difficulty.DIFFICULTY_LEVELS.length]!.target;
+    const tier = difficulty.getDifficultyLevelForScore(targetDifficulty);
     const id = `attempt-${String(index + 1).padStart(2, "0")}-${tier.tier}`;
     const started = Date.now();
+    let generated: Awaited<ReturnType<typeof generateMasterPuzzle>> | undefined;
     try {
-      const result = await generateMasterPuzzle({
-        targetDifficulty: tier.target,
+      generated = await generateMasterPuzzle({
+        targetDifficulty,
         puzzleType: "rebus",
         requireNovelty: true,
         qualityThreshold: 74,
@@ -108,11 +127,27 @@ async function main(): Promise<void> {
         useLearningFeedback: true,
         preferredTechniques: preferredTechnique ? [preferredTechnique] : undefined,
       });
+      const result = generated;
+      const blockers = daily.dailyChallengeBlockers({
+        difficulty: result.puzzle.difficulty,
+        answer: result.puzzle.answer,
+        visual: result.puzzle.visual,
+        reasoningEvidence: result.metadata.reasoningEvidence,
+        reasoningEvidenceSource: "independent-editorial",
+      });
+      const dailyAdmission = { id, admitted: blockers.length === 0, blockers };
+      dailyAdmissions.push(dailyAdmission);
+      assertPilotDailyAdmission(pilot.mode, dailyAdmission);
       const rendered = await renderPuzzleVisualProfiles(result.puzzle.visual);
       await Promise.all(
         rendered.map((profile) =>
           writeFile(path.join(outputDirectory, `${id}-${profile.profileId}.png`), profile.pixels)
         )
+      );
+      await writeFile(
+        path.join(outputDirectory, `${id}-accepted.json`),
+        `${JSON.stringify({ result, dailyAdmission }, null, 2)}\n`,
+        "utf8"
       );
       const assets = result.puzzle.visual.layers.flatMap((layer) =>
         layer.kind === "pictogram" ? [layer.source ?? "unproven"] : []
@@ -123,7 +158,7 @@ async function main(): Promise<void> {
       const boardDeclaredCueCount = benchmark.countDeclaredBoardCues(result.puzzle.visual);
       observations.push({
         id,
-        targetDifficulty: tier.target,
+        targetDifficulty,
         tierLabel: tier.label,
         status: "accepted",
         durationMs: Date.now() - started,
@@ -156,7 +191,17 @@ async function main(): Promise<void> {
       });
       console.log(`[live-canary] ${index + 1}/${attempts} ${id}: accepted`);
     } catch (error) {
-      const candidate = rejectedPuzzle(error);
+      const candidate = generated?.puzzle ?? rejectedPuzzle(error);
+      if (generated && !dailyAdmissions.some((admission) => admission.id === id)) {
+        const blockers = daily.dailyChallengeBlockers({
+          difficulty: generated.puzzle.difficulty,
+          answer: generated.puzzle.answer,
+          visual: generated.puzzle.visual,
+          reasoningEvidence: generated.metadata.reasoningEvidence,
+          reasoningEvidenceSource: "independent-editorial",
+        });
+        dailyAdmissions.push({ id, admitted: blockers.length === 0, blockers });
+      }
       let rejectedRenderedProfileCount = 0;
       if (candidate) {
         try {
@@ -170,18 +215,18 @@ async function main(): Promise<void> {
               )
             )
           );
-          await writeFile(
-            path.join(outputDirectory, `${id}-rejected.json`),
-            `${JSON.stringify(candidate, null, 2)}\n`,
-            "utf8"
-          );
         } catch {
           rejectedRenderedProfileCount = 0;
         }
       }
+      await writeFile(
+        path.join(outputDirectory, `${id}-rejected.json`),
+        `${JSON.stringify({ error: safeError(error), result: generated, candidate, dailyAdmission: dailyAdmissions.find((admission) => admission.id === id) }, null, 2)}\n`,
+        "utf8"
+      );
       observations.push({
         id,
-        targetDifficulty: tier.target,
+        targetDifficulty,
         tierLabel: tier.label,
         status: "rejected",
         durationMs: Date.now() - started,
@@ -208,19 +253,29 @@ async function main(): Promise<void> {
   }
 
   const report = benchmark.scoreLiveGeneratorCanary(observations, { archiveMode });
+  const promotionApplicable =
+    pilot.mode === "tier-canary" && attempts >= benchmark.LIVE_GENERATOR_CANARY_MIN_ATTEMPTS;
   const artifact = {
     generatedAt: new Date().toISOString(),
+    mode: pilot.mode,
+    targetDifficulties: pilot.mode === "daily-pilot" ? pilot.targets : undefined,
+    promotionApplicable,
+    interpretation:
+      !promotionApplicable
+        ? "Diagnostic run only. Small or daily-target runs do not establish quality uplift or promotion readiness."
+        : "Four-tier live canary; promotion requires all existing gates.",
     candidatesPerAttempt: candidates,
     report,
     observations,
+    dailyAdmissions,
   };
   const reportPath = path.join(outputDirectory, "report.json");
   await writeFile(reportPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
   console.log(
-    `[live-canary] promotion=${report.promotion.passed} accepted=${report.accepted}/${report.attempted} evidence=${(report.evidenceCompleteRate * 100).toFixed(1)}% assets=${(report.approvedAssetRate * 100).toFixed(1)}%`
+    `[live-canary] ${pilot.mode === "daily-pilot" ? "diagnostic daily pilot" : `promotion=${report.promotion.passed}`} accepted=${report.accepted}/${report.attempted} evidence=${(report.evidenceCompleteRate * 100).toFixed(1)}% assets=${(report.approvedAssetRate * 100).toFixed(1)}%`
   );
   console.log(`[live-canary] report: ${reportPath}`);
-  if (!report.promotion.passed) {
+  if (pilot.mode === "tier-canary" && !report.promotion.passed) {
     report.promotion.failures.forEach((failure) => console.error(`[live-canary] ${failure}`));
     process.exitCode = 1;
   }

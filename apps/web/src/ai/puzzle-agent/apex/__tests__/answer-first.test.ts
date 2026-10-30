@@ -251,3 +251,58 @@ it("finds a full assignment for every feasible three-slot compatibility graph", 
     result.forEach((entry, slot) => expect(entry.techniqueAffinity).toContain(techniques[slot]));
   }
 });
+
+describe("recent quality failure preferences", () => {
+  const entries: PhraseBankEntry[] = [
+    {
+      answer: "history repeating itself",
+      category: "meta",
+      difficultyHint: 8,
+      techniqueAffinity: ["triple_layer_composition", "recursive_visual_pun"],
+    },
+    {
+      answer: "growing concern",
+      category: "typography",
+      difficultyHint: 7,
+      techniqueAffinity: ["triple_layer_composition"],
+    },
+  ];
+  const preferences = {
+    recentFailedPairs: new Set(["historyrepeatingitself:triple_layer_composition"]),
+  };
+
+  it("prefers a fresh compatible pair over a failed closer difficulty match", () => {
+    expect(
+      selectAnswerFirstSeed({
+        entries,
+        techniqueId: "triple_layer_composition",
+        targetDifficulty: 8,
+        ...preferences,
+      })?.answer
+    ).toBe("growing concern");
+    expect(
+      selectAnswerFirstSeeds({
+        entries,
+        techniqueIds: ["triple_layer_composition"],
+        count: 1,
+        targetDifficulty: 8,
+        ...preferences,
+      }).map((p) => p.answer)
+    ).toEqual(["growing concern"]);
+  });
+
+  it("keeps failed pairs eligible when fresh alternatives are exhausted and never revives used answers", () => {
+    expect(
+      selectAnswerFirstSeed({
+        entries,
+        techniqueId: "triple_layer_composition",
+        usedAnswerKeys: ["growing concern"],
+        ...preferences,
+      })?.answer
+    ).toBe("history repeating itself");
+    expect(
+      selectAnswerFirstSeed({ entries, techniqueId: "recursive_visual_pun", ...preferences })
+        ?.answer
+    ).toBe("history repeating itself");
+  });
+});

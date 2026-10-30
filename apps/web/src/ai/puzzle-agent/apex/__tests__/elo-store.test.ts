@@ -1,6 +1,26 @@
-import { applyEloMatch, expectedEloScore, planPlaytestEloMatches } from "../elo-store";
+jest.mock("@/db/mongodb", () => ({ getCollection: jest.fn() }));
+
+import { getCollection } from "@/db/mongodb";
+import {
+  applyEloMatch,
+  expectedEloScore,
+  planPlaytestEloMatches,
+  recordPairwiseEloMatch,
+} from "../elo-store";
+
+afterEach(() => {
+  delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
+  jest.clearAllMocks();
+});
 
 describe("pairwise Elo store math", () => {
+  it("does not read or write rating records during diagnostic generation", async () => {
+    process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY = "1";
+    await expect(
+      recordPairwiseEloMatch({ winnerKey: "hard", loserKey: "easy", kind: "answer" })
+    ).resolves.toBeNull();
+    expect(getCollection).not.toHaveBeenCalled();
+  });
   it("gives equal ratings 50/50 expected score", () => {
     expect(expectedEloScore(1500, 1500)).toBeCloseTo(0.5, 5);
   });

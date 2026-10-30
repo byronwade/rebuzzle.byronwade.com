@@ -136,6 +136,9 @@ export async function buildGenerationBrief(input: CurriculumInput): Promise<Gene
 
   const briefSummary = [
     `Tier ${level.label} (${level.min}–${level.max}), budget ${level.componentBudget.min}–${level.componentBudget.max}.`,
+    input.targetDifficulty >= 7
+      ? "Craft a daily worth returning to with a fresh perspective: at least two necessary, interacting inferences supported by visible clues, followed by a satisfying reinterpretation. Use a recognizable answer. Direct picture-name addition, obscure trivia, arbitrary letter changes and decorative extra steps do not qualify. Hints should progressively expose the mechanism without spoiling the answer immediately. Hours across a day is an editorial ambition, never a guaranteed solve time."
+      : null,
     `Prefer techniques: ${preferredTechniques.slice(0, 4).join(", ")}.`,
     avoidTechniques.length
       ? `Avoid overused/too-easy techniques: ${avoidTechniques.slice(0, 4).join(", ")}.`

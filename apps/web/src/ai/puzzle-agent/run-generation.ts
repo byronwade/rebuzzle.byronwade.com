@@ -7,7 +7,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Output, stepCountIs, ToolLoopAgent } from "ai";
+import { Output, stepCountIs, ToolLoopAgent, type ToolSet } from "ai";
 import {
   assertGatewayAuthConfigured,
   ensureGatewayKey,
@@ -24,6 +24,11 @@ import {
 } from "./apex/answer-seed-cues";
 import { toPlayabilityEvidence } from "./apex/blind-solve-consensus";
 import { preflightComposeAnswerSeedCuePlan } from "./apex/cue-plan-preflight";
+import {
+  composeMechanismPlan,
+  generateMechanismPlan,
+  type MechanismPlan,
+} from "./apex/mechanism-plan";
 import { evaluateNearMissStress } from "./apex/near-miss-stress";
 import {
   applyPlayerSimHeuristics,
@@ -38,7 +43,11 @@ import {
   mergeInventAssetsOntoPreflight,
 } from "./authoritative-draft";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
-import { PUBLICATION_AGENT_TOOLS } from "./publication-tools";
+import {
+  activeToolsForSurface,
+  OFFICIAL_ANSWER_READING_TOOLS,
+  type PuzzleAgentToolSurface,
+} from "./publication-tools";
 import { evaluatePublishGates, normalizeAnswerKey } from "./quality";
 import {
   normalizePuzzleAgentDraft,
@@ -62,6 +71,10 @@ export { EFFICIENCY_AGENT_TOOLS, PUBLICATION_AGENT_TOOLS } from "./publication-t
 
 export interface PuzzleGenerationParams {
   targetDifficulty: number;
+  /** Apex opts into one bounded mechanism design before the authoritative lock. */
+  mechanismPlanning?: boolean;
+  /** Previous board for the existing one-critique repair budget. */
+  mechanismPreviousVisual?: import("./visual/composition").PuzzleVisual;
   category?: string;
   theme?: string;
   requireNovelty?: boolean;
@@ -80,7 +93,7 @@ export interface PuzzleGenerationParams {
   phraseSeeds?: string[];
   /** Apex answer-first contract; when present the model must preserve this answer. */
   answerSeed?: string;
-  /** Host-owned visual ingredients that the composed board must contain. */
+  /** Exact legacy ingredients; optional seed inspiration for approved mechanism design. */
   answerSeedCuePlan?: readonly AnswerSeedVisualCue[];
   /** Corroborated web-research brief about the answer (meaning, wordings, origin). */
   answerResearch?: string;
@@ -100,19 +113,28 @@ export interface PuzzleGenerationParams {
   repairMode?: "critique-locked";
   /** Keep a repair pass from silently multiplying spend through model fallbacks. */
   modelChainLimit?: number;
+  /**
+   * `studio` runs carry untrusted creator text, so tools that read official
+   * answers are removed from the loop. Defaults to the official publication path.
+   */
+  toolSurface?: PuzzleAgentToolSurface;
 }
 
 export class PuzzleCandidateRejectedError extends Error {
   readonly puzzle: PuzzleAgentResult["puzzle"];
 
-  constructor(message: string, puzzle: PuzzleAgentResult["puzzle"]) {
+  constructor(
+    message: string,
+    puzzle: PuzzleAgentResult["puzzle"],
+    readonly qualityFeedbackEligible = false
+  ) {
     super(message);
     this.name = "PuzzleCandidateRejectedError";
     this.puzzle = puzzle;
   }
 }
 
-function loadInstructions(): string {
+function loadInstructions(surface: PuzzleAgentToolSurface = "publication"): string {
   const fallback = `You are Rebuzzle's puzzle architect. Use tools to inspect type specs, avoid recent answers, validate, check uniqueness, calibrate difficulty, and score quality. Return one publishable puzzle.`;
 
   let instructions = fallback;
@@ -139,7 +161,9 @@ function loadInstructions(): string {
     "- Call list_pictogram_catalog before composing and use its exact reviewed concept IDs.",
     "- When an answer-seed cue contract is present: inspect_answer_seed_cues (or use the host preflight layers) before compose.",
     "- Never call generate_pictogram in publication generation; fresh art belongs in the review lab.",
-    "- Use list_recent_answers techniqueId values to choose the least-recently-used allowed technique; never default blindly to the first technique.",
+    surface === "studio"
+      ? "- Choose the allowed technique that best fits the creator brief; never default blindly to the first technique."
+      : "- Use list_recent_answers techniqueId values to choose the least-recently-used allowed technique; never default blindly to the first technique.",
     "- Prefer ≥1 pictogram SVG; styled text (large/strike/stacked) is OK when typography is the joke.",
     "- Pictogram concepts must be concrete drawable nouns a stranger can sketch (key, umbrella, lighthouse).",
     "- Icons must be instantly recognizable — if compose reports clarity/recognition failure, redraw or change the noun.",
@@ -159,6 +183,7 @@ function buildUserMessage(
   preflight?: {
     unicodeFallback: string;
     layerSummary: string;
+    approvedMechanism?: boolean;
   }
 ): string {
   const puzzleType = params.puzzleType ?? "rebus";
@@ -196,7 +221,7 @@ function buildUserMessage(
           "Do not substitute a different answer; if the seed cannot be composed fairly, let the host reject this attempt.",
         ].join("\n")
       : null,
-    params.answerSeedCuePlan?.length
+    params.answerSeedCuePlan?.length && !preflight?.approvedMechanism
       ? [
           `MANDATORY ANSWER-SEED CUE CONTRACT: place every ingredient below in the authoritative board: ${formatAnswerSeedCuePlan(params.answerSeedCuePlan)}.`,
           "Catalog cues are exact reviewed pictogram concepts; do not replace them with a vaguely related icon.",
@@ -206,7 +231,9 @@ function buildUserMessage(
     params.answerResearch ?? null,
     preflight
       ? [
-          "HOST CUE-PLAN PREFLIGHT (already composed, zero invent): reuse these exact ingredients.",
+          preflight.approvedMechanism
+            ? "HOST APPROVED MECHANISM (AI-designed and host-validated): preserve this exact board."
+            : "HOST CUE-PLAN PREFLIGHT (already composed, zero invent): reuse these exact ingredients.",
           `Preflight unicodeFallback: ${preflight.unicodeFallback}`,
           `Preflight layers: ${preflight.layerSummary}`,
           "Call compose_puzzle_visual with the same concepts/text/operators and the same layout.",
@@ -222,10 +249,14 @@ function buildUserMessage(
     params.briefSummary ? `Curriculum brief: ${params.briefSummary}` : null,
     params.revisionInstructions?.length
       ? [
-          params.repairMode === "critique-locked"
-            ? "CRITIQUE-LOCKED REPAIR: keep the exact answer, cue plan, layout, and layer order. Improve asset fills/recognition only — do not restructure the board."
-            : "Bounded repair pass: address every critique instruction below with a new, cleaner board.",
-          "Do not invent a replacement answer or swap catalog cues; use the locked cue plan and preserve a fair hint ladder.",
+          preflight?.approvedMechanism
+            ? "APPROVED MECHANISM REPAIR: the host has already revised and approved the new board. Preserve its answer, layout, layers, explanation, and hints exactly."
+            : params.repairMode === "critique-locked"
+              ? "CRITIQUE-LOCKED REPAIR: keep the exact answer, cue plan, layout, and layer order. Improve asset fills/recognition only — do not restructure the board."
+              : "Bounded repair pass: address every critique instruction below with a new, cleaner board.",
+          preflight?.approvedMechanism
+            ? "Original seed cues were inspiration only. The newly approved mechanism is now authoritative."
+            : "Do not invent a replacement answer or swap catalog cues; use the locked cue plan and preserve a fair hint ladder.",
           `Critique instructions: ${params.revisionInstructions.slice(0, 4).join("; ")}`,
         ].join("\n")
       : null,
@@ -233,18 +264,27 @@ function buildUserMessage(
     params.requireNovelty !== false
       ? "Novelty is required — avoid recent answers and similar visuals."
       : null,
+    params.toolSurface === "studio"
+      ? "Recent official answers are not available in this run (list_recent_answers is disabled); the host checks duplicates after you return."
+      : null,
     `Quality gates: overall >= ${qualityThreshold}, funScore >= ${minFun}, publishable=true, unique, solvable, in-band, composed visual.`,
     priorFailure ? `Previous attempt failed: ${priorFailure}. Fix that specific issue.` : null,
     "Workflow:",
-    params.answerSeedCuePlan?.length
-      ? "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_pictogram_catalog + inspect_answer_seed_cues"
-      : "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_recent_answers + list_pictogram_catalog",
-    params.answerSeedCuePlan?.length
-      ? "2) compose_puzzle_visual using the host cue-plan layers (or preflight_compose_cue_plan), then craft_hint_ladder"
-      : "2) propose_concept_seeds + list_technique_library, then pick one catalog-compatible direction",
+    preflight?.approvedMechanism
+      ? "1) The approved board, technique, explanation, and hints are already authored. Inspect the target brief if needed; preserve the approved mechanism."
+      : params.answerSeedCuePlan?.length
+        ? "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_pictogram_catalog + inspect_answer_seed_cues"
+        : params.toolSurface === "studio"
+          ? "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_pictogram_catalog"
+          : "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_recent_answers + list_pictogram_catalog",
+    preflight?.approvedMechanism
+      ? "2) Reuse the host approved board exactly. Do not run preflight_compose_cue_plan or regenerate its layout. Call craft_hint_ladder with all three approved hints as existingHints to validate them."
+      : params.answerSeedCuePlan?.length
+        ? "2) compose_puzzle_visual using the host cue-plan layers (or preflight_compose_cue_plan), then author three progressive hints and validate them with craft_hint_ladder existingHints"
+        : "2) propose_concept_seeds + list_technique_library, then pick one catalog-compatible direction",
     params.answerSeedCuePlan?.length
       ? "3) Return the strict puzzle draft with difficultyLevel + techniqueId + visual; the host owns all scoring and retries"
-      : "3) compose_puzzle_visual + craft_hint_ladder",
+      : "3) compose_puzzle_visual; author three progressive hints, then validate them with craft_hint_ladder existingHints",
     params.answerSeedCuePlan?.length
       ? null
       : "4) Return the strict puzzle draft with difficultyLevel + techniqueId + visual; the host owns all scoring and retries",
@@ -291,8 +331,44 @@ export async function runPuzzleAgentGeneration(
 
   // Cheap host preflight: prove cue plan composes before any invent spend.
   let hostPreflightComposition: CapturedPuzzleComposition | null = null;
-  let hostPreflightPrompt: { unicodeFallback: string; layerSummary: string } | undefined;
-  if (params.answerSeed && params.answerSeedCuePlan?.length) {
+  let hostPreflightPrompt:
+    | { unicodeFallback: string; layerSummary: string; approvedMechanism?: boolean }
+    | undefined;
+  let approvedMechanism: MechanismPlan | undefined;
+  if (
+    params.mechanismPlanning &&
+    params.targetDifficulty >= 7 &&
+    params.answerSeed &&
+    params.answerSeedCuePlan?.length
+  ) {
+    // Outside the agent retry loops: exactly one design call per candidate/repair.
+    const context = {
+      answer: params.answerSeed,
+      targetDifficulty: params.targetDifficulty,
+      cues: params.answerSeedCuePlan,
+      preferredTechniques: params.preferredTechniques,
+      revisionInstructions: params.revisionInstructions,
+      previousVisual: params.mechanismPreviousVisual,
+      answerResearch: params.answerResearch,
+    };
+    approvedMechanism = await generateMechanismPlan(context);
+    const composition = await composeMechanismPlan(approvedMechanism, context);
+    hostPreflightComposition = { answer: params.answerSeed, visual: composition.visual };
+    hostPreflightPrompt = {
+      unicodeFallback: composition.visual.unicodeFallback,
+      layerSummary: JSON.stringify({
+        layout: composition.visual.layout,
+        layers: approvedMechanism.layers,
+        deductions: approvedMechanism.deductions,
+        temptingInterpretation: approvedMechanism.temptingInterpretation,
+        correction: approvedMechanism.correction,
+        hints: approvedMechanism.hints,
+        explanation: approvedMechanism.explanation,
+        techniqueId: approvedMechanism.techniqueId,
+      }),
+      approvedMechanism: true,
+    };
+  } else if (params.answerSeed && params.answerSeedCuePlan?.length) {
     const preflight = await preflightComposeAnswerSeedCuePlan({
       answer: params.answerSeed,
       targetDifficulty: params.targetDifficulty,
@@ -351,6 +427,17 @@ export async function runPuzzleAgentGeneration(
     new Set([AI_CONFIG.puzzleAgent.model, ...getGatewayModelChain("creative")])
   ).slice(0, modelChainLimit);
 
+  // Studio runs never receive tools that can read official answers; host-side
+  // checkUniqueness still rejects duplicates after the draft is returned.
+  const agentTools: ToolSet =
+    params.toolSurface === "studio"
+      ? Object.fromEntries(
+          Object.entries(puzzleAgentTools).filter(
+            ([name]) => !(OFFICIAL_ANSWER_READING_TOOLS as readonly string[]).includes(name)
+          )
+        )
+      : puzzleAgentTools;
+
   let lastError: Error | null = null;
   let lastCandidateError: PuzzleCandidateRejectedError | null = null;
   let priorFailure: string | undefined;
@@ -363,9 +450,9 @@ export async function runPuzzleAgentGeneration(
       try {
         const agent = new ToolLoopAgent({
           model: getAiGateway()(modelId),
-          instructions: loadInstructions(),
-          tools: puzzleAgentTools,
-          activeTools: [...PUBLICATION_AGENT_TOOLS],
+          instructions: loadInstructions(params.toolSurface),
+          tools: agentTools,
+          activeTools: activeToolsForSurface(params.toolSurface),
           temperature: AI_CONFIG.generation.temperature.creative,
           maxOutputTokens: AI_CONFIG.generation.maxTokens.blog,
           maxRetries: 0,
@@ -414,7 +501,7 @@ export async function runPuzzleAgentGeneration(
         }
 
         const output = normalizePuzzleAgentDraft(rawOutput);
-        // Answer-seed runs: host rule-graph preflight owns layout/layer structure.
+        // Answer-seed runs: the approved mechanism (or legacy preflight) owns structure.
         // Invent may only contribute asset fills on matching layers.
         const capturedComposition = hostPreflightComposition
           ? mergeInventAssetsOntoPreflight(hostPreflightComposition, inventComposition)
@@ -422,7 +509,17 @@ export async function runPuzzleAgentGeneration(
         if (!capturedComposition) {
           throw new Error("compose_puzzle_visual did not return a valid authoritative board");
         }
-        const puzzle = applyAuthoritativeComposition(output.puzzle, capturedComposition);
+        const puzzle = applyAuthoritativeComposition(
+          approvedMechanism
+            ? {
+                ...output.puzzle,
+                techniqueId: approvedMechanism.techniqueId,
+                explanation: approvedMechanism.explanation,
+                hints: [...approvedMechanism.hints],
+              }
+            : output.puzzle,
+          capturedComposition
+        );
 
         if (
           params.answerSeed &&
@@ -455,10 +552,13 @@ export async function runPuzzleAgentGeneration(
           }
         }
 
-        const missingSeedCues = missingAnswerSeedCues({
-          visual: puzzle.visual,
-          cues: params.answerSeedCuePlan,
-        });
+        // Approved plans own their clue vocabulary; legacy cue contracts remain exact.
+        const missingSeedCues = approvedMechanism
+          ? []
+          : missingAnswerSeedCues({
+              visual: puzzle.visual,
+              cues: params.answerSeedCuePlan,
+            });
         if (missingSeedCues.length) {
           priorFailure = `Answer-first visual cue contract failed: ${missingSeedCues.join("; ")}`;
           lastCandidateError = new PuzzleCandidateRejectedError(priorFailure, puzzle);
@@ -606,7 +706,11 @@ export async function runPuzzleAgentGeneration(
 
         if (!gate.ok) {
           priorFailure = gate.reason;
-          lastCandidateError = new PuzzleCandidateRejectedError(gate.reason, puzzle);
+          lastCandidateError = new PuzzleCandidateRejectedError(
+            gate.reason,
+            puzzle,
+            gate.qualityFeedbackEligible === true
+          );
           lastError = lastCandidateError;
           if (generatorTrace) {
             console.warn("[Puzzle Agent] candidate rejected", {
@@ -796,6 +900,7 @@ export async function runPuzzleAgentGeneration(
               `${difficultyLevel} puzzle via Eve ToolLoopAgent + AI Gateway (${modelId}) in ${Date.now() - start}ms`,
             estimatedSolveRate: sim.estimatedSolveRate,
             playabilityEvidence: toPlayabilityEvidence(sim),
+            reasoningEvidence: sim.reasoningEvidence,
           },
           status: "success",
           recommendations: output.recommendations,

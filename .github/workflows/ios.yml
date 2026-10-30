@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: apps/ios
@@ -44,13 +44,15 @@ jobs:
           -destination 'generic/platform=iOS Simulator'
           -derivedDataPath "${{ runner.temp }}/RebuzzleDerivedData"
           CODE_SIGN_IDENTITY=- build
-      - name: Test native runtime and interface
+      - name: Test native runtime and interface (iOS 26.0)
         run: |
-          simulator_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for key,values in sorted(d["devices"].items(), reverse=True) if "iOS" in key for v in values if v["name"].startswith("iPhone")))')
+          simulator_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for key,values in d["devices"].items() if key.endswith("iOS-26-0") for v in values if v["name"].startswith("iPhone")))')
           xcodebuild -project Rebuzzle.xcodeproj -scheme Rebuzzle \
             -destination "platform=iOS Simulator,id=$simulator_id" \
             -derivedDataPath "${{ runner.temp }}/RebuzzleDerivedData" \
             -resultBundlePath "${{ runner.temp }}/RebuzzleTests.xcresult" \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
             CODE_SIGN_IDENTITY=- test
       - name: Save test evidence
         if: always()

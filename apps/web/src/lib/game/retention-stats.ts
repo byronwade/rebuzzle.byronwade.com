@@ -83,7 +83,11 @@ export function bumpGuessDistribution(
 ): GuessDistribution {
   const next = normalizeGuessDistribution(current);
   if (!won) return next;
-  const slot = Math.min(Math.max(1, Math.floor(attempts)), maxAttempts) - 1;
+  const attempt = Math.max(1, Math.floor(attempts));
+  // Extended-daily continuation solves land after the scored round. They keep completion
+  // and streak credit, but are not first/second/third-guess solves.
+  if (attempt > maxAttempts) return next;
+  const slot = attempt - 1;
   if (slot >= 0 && slot < GUESS_DISTRIBUTION_SLOTS) {
     next[slot] = (next[slot] ?? 0) + 1;
   }

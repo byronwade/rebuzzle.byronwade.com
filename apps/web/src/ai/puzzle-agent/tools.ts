@@ -35,6 +35,8 @@ import {
 import { PuzzleVisualSchema, VisualLayerSchema } from "./visual/composition";
 import {
   CURATED_PICTOGRAM_CATALOG_VERSION,
+  CURATED_PICTOGRAM_READING_POLICY_VERSION,
+  getCuratedPictogramReadingPolicy,
   listCuratedPictogramIds,
 } from "./visual/curated-pictograms";
 
@@ -126,11 +128,13 @@ export const puzzleAgentTools: ToolSet = {
 
   list_pictogram_catalog: tool({
     description:
-      "List exact, reviewed pictogram concept IDs that are immediately eligible for publication. Use these exact nouns in compose_puzzle_visual.",
+      "List exact, reviewed pictogram concept IDs that are immediately eligible for publication. Use approved readings in compose_puzzle_visual; search aliases and common confusions are not approved readings.",
     inputSchema: z.object({}),
     execute: async () => ({
       version: CURATED_PICTOGRAM_CATALOG_VERSION,
       concepts: listCuratedPictogramIds(),
+      readingPolicyVersion: CURATED_PICTOGRAM_READING_POLICY_VERSION,
+      readings: listCuratedPictogramIds().map(getCuratedPictogramReadingPolicy),
       rule: "Publication compositions must use these exact concept IDs or an existing approved-cache asset.",
     }),
   }),
@@ -254,13 +258,13 @@ export const puzzleAgentTools: ToolSet = {
 
   craft_hint_ladder: tool({
     description:
-      "Build a progressive hint ladder styled for the difficulty tier (vague → specific).",
+      "Validate three authored progressive hints. Supply all three in existingHints: direct attention, explain the relationship, then scaffold the decisive deduction. Preserve approved mechanism hints; revise returned issues.",
     inputSchema: z.object({
       answer: z.string(),
       explanation: z.string(),
       rebusPuzzle: z.string(),
       targetDifficulty: z.number(),
-      existingHints: z.array(z.string()).optional(),
+      existingHints: z.array(z.string()).length(3),
     }),
     execute: async (input) => craftHintLadder(input),
   }),
@@ -323,6 +327,7 @@ export const puzzleAgentTools: ToolSet = {
       tierLabel: z.enum(["Hard", "Difficult", "Evil", "Impossible"]),
       unicodeFallback: z.string().optional(),
       pictogramConcepts: z.array(z.string()).optional(),
+      visual: PuzzleVisualSchema.optional(),
     }),
     execute: async (input) => critiqueCandidate(input),
   }),

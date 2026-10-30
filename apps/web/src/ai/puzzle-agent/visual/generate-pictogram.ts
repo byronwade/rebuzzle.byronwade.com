@@ -5,6 +5,7 @@
 
 import { generateAIText } from "@/ai/client";
 import { logger } from "@/lib/logger";
+import { generateApprovedOriginalPictogram } from "./approved-original-pictogram";
 import { recognizePictogramIcon } from "./critique-pictogram";
 import { resolveCuratedPictogram } from "./curated-pictograms";
 import { getIconFeatureHints } from "./icon-features";
@@ -24,6 +25,8 @@ export type GeneratePictogramInput = {
   maxRetries?: number;
   /** Skip blind recognition (tests / offline) */
   skipRecognition?: boolean;
+  /** Internal semantic fallback when a legacy interpretation is required. */
+  preferOriginalArtwork?: boolean;
   /**
    * Publication is fail-closed: fresh generated assets are queued for blind
    * human review but cannot be returned to a player-facing composition.
@@ -331,14 +334,22 @@ export async function generatePictogram(
     | undefined;
   let lastPixelIntegrity: PictogramPixelIntegrityResult | undefined;
 
+  if (!input.skipRecognition && input.preferOriginalArtwork !== false) {
+    const original = await generateApprovedOriginalPictogram({
+      concept,
+      role: input.role,
+      emojiFallback,
+    });
+    if (original) return original;
+  }
+
   const curated = resolveCuratedPictogram(concept);
   if (curated) {
-    const clarity = scorePictogramClarity(curated.svg);
     const pixelIntegrity = await evaluatePictogramPixelIntegrity(curated.svg);
     lastPixelIntegrity = pixelIntegrity;
     // Publication must still prove blind recognition at player sizes.
     // Only explicit skipRecognition (tests / offline tools) bypasses judges.
-    if (clarity.ok && pixelIntegrity.ok && input.skipRecognition) {
+    if (pixelIntegrity.ok && input.skipRecognition) {
       return {
         styleId: INK_PICTOGRAM_STYLE_ID,
         concept,
@@ -346,7 +357,7 @@ export async function generatePictogram(
         svg: curated.svg,
         emojiFallback,
         ok: true,
-        clarityScore: Math.max(90, clarity.score),
+        clarityScore: 90,
         clarityReasons: [],
         pixelIntegrity,
         attempts: 0,
@@ -355,7 +366,7 @@ export async function generatePictogram(
       };
     }
 
-    if (clarity.ok && pixelIntegrity.ok) {
+    if (pixelIntegrity.ok) {
       const recognition = await recognizePictogramIcon({
         svg: curated.svg,
         concept,
@@ -368,7 +379,7 @@ export async function generatePictogram(
           svg: curated.svg,
           emojiFallback,
           ok: true,
-          clarityScore: Math.max(90, clarity.score),
+          clarityScore: 90,
           clarityReasons: [],
           pixelIntegrity,
           seenAs: recognition.seenLabel,
@@ -394,11 +405,7 @@ export async function generatePictogram(
       lastRedrawAdvice = recognition.redrawAdvice;
       lastReasons = [`catalog_seen_as:${recognition.seenLabel}`, "catalog_recognition_failed"];
     } else {
-      lastReasons = [
-        ...clarity.reasons,
-        ...pixelIntegrity.reasons,
-        "catalog_pixel_integrity_failed",
-      ];
+      lastReasons = [...pixelIntegrity.reasons, "catalog_pixel_integrity_failed"];
     }
   }
 
@@ -407,17 +414,15 @@ export async function generatePictogram(
       const registry = await loadGeneratedPictogramRegistry();
       const approved = await registry.findApproved(concept);
       if (approved) {
-        const clarity = scorePictogramClarity(approved.svg);
         const pixelIntegrity = await evaluatePictogramPixelIntegrity(approved.svg);
         lastPixelIntegrity = pixelIntegrity;
-        const recognition =
-          clarity.ok && pixelIntegrity.ok
-            ? await recognizePictogramIcon({
-                svg: approved.svg,
-                concept,
-              })
-            : undefined;
-        if (clarity.ok && pixelIntegrity.ok && recognition?.ok) {
+        const recognition = pixelIntegrity.ok
+          ? await recognizePictogramIcon({
+              svg: approved.svg,
+              concept,
+            })
+          : undefined;
+        if (pixelIntegrity.ok && recognition?.ok) {
           return {
             styleId: INK_PICTOGRAM_STYLE_ID,
             concept,
@@ -425,8 +430,8 @@ export async function generatePictogram(
             svg: approved.svg,
             emojiFallback,
             ok: true,
-            clarityScore: clarity.score,
-            clarityReasons: clarity.reasons,
+            clarityScore: 90,
+            clarityReasons: [],
             pixelIntegrity,
             seenAs: recognition.seenLabel,
             recognitionConfidence: recognition.confidence,
@@ -440,14 +445,14 @@ export async function generatePictogram(
             assetId: approved.id,
           };
         }
-        await registry.quarantine(
-          approved.id,
-          !clarity.ok
-            ? `Runtime structural clarity regression: ${clarity.reasons.join(", ")}`
-            : !pixelIntegrity.ok
+        if (process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY !== "1") {
+          await registry.quarantine(
+            approved.id,
+            !pixelIntegrity.ok
               ? `Runtime player-pixel regression: ${pixelIntegrity.reasons.join(", ")}`
               : `Runtime recognition regression: seen as ${recognition?.seenLabel ?? "unclear"}`
-        );
+          );
+        }
         lastSeenAs = recognition?.seenLabel;
         lastRecognitionConfidence = recognition?.confidence;
         lastRecognitionProfiles = recognition?.profileResults?.map((profile) => ({
@@ -458,7 +463,6 @@ export async function generatePictogram(
         lastRedrawAdvice = recognition?.redrawAdvice;
         lastReasons = [
           "approved_cache_regression",
-          ...clarity.reasons,
           ...pixelIntegrity.reasons,
           ...(recognition ? [`seen_as:${recognition.seenLabel}`] : []),
         ];

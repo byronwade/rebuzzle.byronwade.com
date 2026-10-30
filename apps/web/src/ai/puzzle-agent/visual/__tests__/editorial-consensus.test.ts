@@ -4,7 +4,7 @@ import {
   summarizeEditorialReviewAttempts,
 } from "../editorial-consensus";
 
-const PROFILES = ["compact-320", "mobile-375", "desktop-768"] as const;
+const PROFILES = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"] as const;
 
 function acceptedAttempts(): EditorialReviewAttempt[] {
   return PROFILES.flatMap((profileId) =>
@@ -30,7 +30,7 @@ describe("answer-aware screenshot editorial consensus", () => {
       minConfidence: 0.68,
     });
     expect(summary.ok).toBe(true);
-    expect(summary.acceptedProfiles).toBe(3);
+    expect(summary.acceptedProfiles).toBe(4);
     expect(
       editorialReviewPublishBlockers({
         editorialProfileCount: summary.profileCount,
@@ -63,7 +63,7 @@ describe("answer-aware screenshot editorial consensus", () => {
     });
 
     expect(summary.ok).toBe(true);
-    expect(summary.acceptedProfiles).toBe(3);
+    expect(summary.acceptedProfiles).toBe(4);
     expect(summary.failureKinds).toEqual([]);
     expect(summary.reasons).toEqual([]);
   });
@@ -85,7 +85,7 @@ describe("answer-aware screenshot editorial consensus", () => {
       minConfidence: 0.68,
     });
     expect(summary.ok).toBe(false);
-    expect(summary.acceptedProfiles).toBe(2);
+    expect(summary.acceptedProfiles).toBe(3);
     expect(summary.failureKinds).toEqual(["ambiguous"]);
     const blockers = editorialReviewPublishBlockers({
       editorialProfileCount: summary.profileCount,
@@ -129,5 +129,54 @@ describe("answer-aware screenshot editorial consensus", () => {
     expect(summary.ok).toBe(false);
     expect(summary.acceptedProfiles).toBe(0);
     expect(summary.reasons.every((reason) => reason.includes("not enough independent"))).toBe(true);
+  });
+});
+
+describe("independent layered reasoning evidence", () => {
+  const evidence = {
+    version: "editorial-reasoning-v1" as const,
+    operations: [
+      {
+        kind: "reversal",
+        observation: "TEEF reads leftward",
+        inference: "left feet",
+        necessary: true,
+      },
+      { kind: "count", observation: "Two copies", inference: "two feet", necessary: true },
+    ],
+    interacting: true,
+    finalInterpretation: "two left feet",
+    calibration: "editorial-unplaytested" as const,
+  };
+  function summarize(overrides: Record<string, unknown> = {}, dropProfile = false) {
+    const attempts = acceptedAttempts().map((attempt) => ({
+      ...attempt,
+      reasoningEvidence:
+        dropProfile && attempt.profileId === PROFILES[0]
+          ? undefined
+          : { ...evidence, ...overrides },
+    }));
+    const input = {
+      attempts,
+      answer: "two left feet",
+      expectedProfileIds: PROFILES,
+      requiredVotes: 2,
+      minConfidence: 0.68,
+    };
+    return summarizeEditorialReviewAttempts(input);
+  }
+  it("retains affirmative reasoning only with independent votes at every profile", () => {
+    expect(summarize()).toEqual(expect.objectContaining({ reasoningEvidence: evidence }));
+  });
+  it.each([
+    { interacting: false },
+    { finalInterpretation: "a different answer" },
+    { operations: [evidence.operations[0], { ...evidence.operations[1], necessary: false }] },
+    { operations: [evidence.operations[0], evidence.operations[0]] },
+  ])("does not promote unsupported complexity %j", (overrides) => {
+    expect(summarize(overrides)).not.toHaveProperty("reasoningEvidence", expect.anything());
+  });
+  it("fails closed when even one presentation lacks reasoning quorum", () => {
+    expect(summarize({}, true)).not.toHaveProperty("reasoningEvidence", expect.anything());
   });
 });

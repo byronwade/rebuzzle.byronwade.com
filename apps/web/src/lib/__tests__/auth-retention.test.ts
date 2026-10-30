@@ -99,6 +99,22 @@ describe("calculateNewStats retention contracts", () => {
     expect(daily.stats.streak).toBe(1);
   });
 
+  it("keeps an expired daily loss on the day the player actually played", () => {
+    const priorDayLoss = calculateNewStats(
+      baseStats({ lastPlayDate: new Date("2026-10-23T12:00:00.000Z") }),
+      { won: false, attempts: 3, affectsStreak: true, timeZone: "UTC" },
+      new Date("2026-10-24T12:03:00.000Z")
+    );
+    const nextDayWin = calculateNewStats(
+      priorDayLoss.stats,
+      { won: true, attempts: 1, affectsStreak: true, timeZone: "UTC" },
+      new Date("2026-10-25T12:00:00.000Z")
+    );
+
+    expect(priorDayLoss.stats.lastPlayDate).toEqual(new Date("2026-10-24T12:03:00.000Z"));
+    expect(nextDayWin.stats.streak).toBe(6);
+  });
+
   it("increments streak, distribution, lucky count, and play calendar on win", () => {
     const { stats, streakFrozen, pointsEarned } = calculateNewStats(
       baseStats(),

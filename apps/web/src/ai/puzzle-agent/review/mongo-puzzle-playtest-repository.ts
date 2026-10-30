@@ -47,8 +47,18 @@ export function createMongoPuzzlePlaytestRepository(): PuzzlePlaytestRepository 
     async listReviews(input) {
       const filter: Filter<PuzzlePlaytestReview> = {
         contractVersion: input.contractVersion,
-        ...(input.reviewerId ? { reviewerId: input.reviewerId } : {}),
-        ...(input.candidateIds?.length ? { candidateId: { $in: input.candidateIds } } : {}),
+        ...(input.candidateIds?.length && input.reviewerIds?.length
+          ? {
+              $or: [
+                { candidateId: { $in: input.candidateIds } },
+                { reviewerId: { $in: input.reviewerIds } },
+              ],
+            }
+          : {
+              ...(input.reviewerId ? { reviewerId: input.reviewerId } : {}),
+              ...(input.reviewerIds?.length ? { reviewerId: { $in: input.reviewerIds } } : {}),
+              ...(input.candidateIds?.length ? { candidateId: { $in: input.candidateIds } } : {}),
+            }),
       };
       return reviews().find(filter).sort({ createdAt: 1, id: 1 }).toArray();
     },
@@ -65,7 +75,11 @@ export function createMongoPuzzlePlaytestRepository(): PuzzlePlaytestRepository 
 
     async completeCandidate(input) {
       return candidates().findOneAndUpdate(
-        { id: input.id, status: "open", statusVersion: input.expectedStatusVersion },
+        {
+          id: input.id,
+          status: "open",
+          statusVersion: input.expectedStatusVersion,
+        },
         {
           $set: { status: "complete", updatedAt: input.updatedAt },
           $inc: { statusVersion: 1 },

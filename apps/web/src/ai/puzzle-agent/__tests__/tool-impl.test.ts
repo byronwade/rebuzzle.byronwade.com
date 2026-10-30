@@ -13,8 +13,46 @@ jest.mock("../visual/generate-pictogram", () => ({
 }));
 
 import { calculateDifficultyProfile } from "../../services/difficulty-profile";
-import { stressTestSolvability } from "../tool-impl";
+import { craftHintLadder, stressTestSolvability } from "../tool-impl";
 import { INK_PICTOGRAM_STYLE_ID } from "../visual/style";
+
+describe("craftHintLadder", () => {
+  const base = {
+    answer: "bell bottom",
+    explanation: "A small BELL sits at the bottom of the board, making the phrase bell bottom.",
+    rebusPuzzle: "BELL",
+    targetDifficulty: 7,
+  };
+
+  it("keeps all three distinct authored stages exactly as supplied", () => {
+    const hints = [
+      "Look at where the bell sits on the board.",
+      "The bell's low position contributes one part of the phrase.",
+      "Read the pictured object, then name its position.",
+    ];
+    const result = craftHintLadder({ ...base, existingHints: hints });
+    expect(result.hints).toEqual(hints);
+    expect(result.issues).toEqual([]);
+  });
+
+  it("rejects repeated and answer-revealing authored hints without padding", () => {
+    const hints = ["Look at the low bell.", "Look at the low bell!", "The answer is bell bottom."];
+    const result = craftHintLadder({ ...base, existingHints: hints });
+    expect(result.hints).toEqual(hints);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/duplicate/i),
+        expect.stringMatching(/full answer/i),
+      ])
+    );
+  });
+
+  it("requires authored hints instead of inventing generic answer clues", () => {
+    const result = craftHintLadder(base);
+    expect(result.hints).toEqual([]);
+    expect(result.issues).toEqual(expect.arrayContaining([expect.stringMatching(/authored/i)]));
+  });
+});
 
 describe("calculateDifficultyProfile", () => {
   it("derives the legacy weighted fields from a modern agent candidate", () => {

@@ -1,5 +1,6 @@
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 import type { UserPuzzleSubmission } from "@/db/models";
+import { withStudioEvidence } from "@/test/studio-evidence";
 
 const updateOne = jest.fn(async () => ({ acknowledged: true }));
 const findOne = jest.fn(async () => null);
@@ -24,10 +25,10 @@ jest.mock("@/lib/logger", () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-import { markSubmissionGraded } from "../submissions";
+import { ensureCommunityPuzzle, markSubmissionGraded } from "../submissions";
 
 function baseSubmission(overrides: Partial<UserPuzzleSubmission> = {}): UserPuzzleSubmission {
-  return {
+  return withStudioEvidence({
     id: "sub-1",
     slug: "sunflower-sub-1",
     userId: "user-1",
@@ -50,7 +51,7 @@ function baseSubmission(overrides: Partial<UserPuzzleSubmission> = {}): UserPuzz
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     ...overrides,
-  };
+  });
 }
 
 describe("markSubmissionGraded", () => {
@@ -141,5 +142,113 @@ describe("markSubmissionGraded", () => {
     const payload = last[1].$set;
     expect(payload.status).toBe("draft");
     expect(payload.grade?.ok).toBe(false);
+  });
+});
+
+it("does not insert a puzzle without complete matching evidence", async () => {
+  insertOne.mockClear();
+  const submission = baseSubmission();
+  submission.answer = "edited answer";
+  await expect(
+    markSubmissionGraded({
+      submission,
+      ok: true,
+      score: 90,
+      funScore: 90,
+      issues: [],
+      visual: submission.visual,
+      rebusPuzzle: submission.rebusPuzzle,
+      answerKey: "editedanswer",
+    })
+  ).rejects.toThrow(/matching publication evidence/);
+  expect(insertOne).not.toHaveBeenCalled();
+});
+
+describe("community publication asset approval", () => {
+  beforeEach(() => {
+    updateOne.mockClear();
+    insertOne.mockClear();
+  });
+  it.each([undefined, "existing-board"])(
+    "rejects unapproved artwork before writing a puzzle (%s)",
+    async (puzzleId) => {
+      const submission = baseSubmission({
+        puzzleId,
+        visual: {
+          styleId: INK_PICTOGRAM_STYLE_ID,
+          mode: "composed",
+          layout: "row",
+          unicodeFallback: "clock",
+          layers: [
+            {
+              kind: "pictogram",
+              concept: "clock",
+              emojiFallback: "clock",
+              source: "generated",
+              svg: '<svg viewBox="0 0 64 64"></svg>',
+            },
+          ],
+        },
+      });
+      await expect(ensureCommunityPuzzle(submission)).rejects.toThrow(/approved/);
+      expect(insertOne).not.toHaveBeenCalled();
+      expect(updateOne).not.toHaveBeenCalled();
+    }
+  );
+  it("requires matching review evidence even when called directly", async () => {
+    const submission = baseSubmission();
+    submission.eveReview = undefined;
+    await expect(ensureCommunityPuzzle(submission)).rejects.toThrow(/evidence/);
+    expect(insertOne).not.toHaveBeenCalled();
+    expect(updateOne).not.toHaveBeenCalled();
+  });
+});
+
+describe("community publication reasoning evidence", () => {
+  const reasoningEvidence = {
+    version: "editorial-reasoning-v1" as const,
+    operations: [
+      { kind: "letter-fragment", observation: "SU", inference: "sun", necessary: true },
+      { kind: "compound", observation: "FL", inference: "flower", necessary: true },
+    ],
+    interacting: true,
+    finalInterpretation: "sunflower",
+    calibration: "editorial-unplaytested" as const,
+  };
+
+  beforeEach(() => {
+    updateOne.mockClear();
+    insertOne.mockClear();
+  });
+
+  it("carries the reviewers' reasoning evidence onto the community puzzle", async () => {
+    const submission = baseSubmission();
+    submission.eveReview!.evidence!.reasoningEvidence = reasoningEvidence;
+
+    await ensureCommunityPuzzle(submission);
+
+    const doc = (insertOne.mock.calls[0] as unknown as [{ metadata: Record<string, unknown> }])[0];
+    expect(doc.metadata).toMatchObject({
+      reasoningEvidence,
+      reasoningEvidenceSource: "independent-editorial",
+    });
+  });
+
+  it("does not label a board without reviewer evidence as independently reviewed", async () => {
+    await ensureCommunityPuzzle(baseSubmission());
+
+    const doc = (insertOne.mock.calls[0] as unknown as [{ metadata: Record<string, unknown> }])[0];
+    expect(doc.metadata.reasoningEvidence).toBeUndefined();
+    expect(doc.metadata.reasoningEvidenceSource).toBeUndefined();
+  });
+
+  it("clears stale evidence when refreshing an existing board without it", async () => {
+    await ensureCommunityPuzzle(baseSubmission({ puzzleId: "existing-board" }));
+
+    const update = (updateOne.mock.calls[0] as unknown as [unknown, Record<string, unknown>])[1];
+    expect(update.$unset).toEqual({
+      "metadata.reasoningEvidence": "",
+      "metadata.reasoningEvidenceSource": "",
+    });
   });
 });

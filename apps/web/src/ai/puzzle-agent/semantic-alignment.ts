@@ -1,6 +1,11 @@
 import type { PuzzleVisual, VisualLayer } from "./visual/composition";
-import { getCuratedPictogramAliases } from "./visual/curated-pictograms";
+import {
+  getCuratedPictogramAliases,
+  getCuratedPictogramReadingPolicy,
+} from "./visual/curated-pictograms";
 import { lookupIconFeatures } from "./visual/icon-features";
+import { listOriginalPictogramCandidates } from "./visual/original-pictograms";
+import { sanitizePictogramSvg } from "./visual/sanitize-svg";
 
 /**
  * Cheap, deterministic semantic checks for a composed board.
@@ -10,7 +15,7 @@ import { lookupIconFeatures } from "./visual/icon-features";
  * the declared answer. Keeping this gate deterministic means a bad board is
  * rejected before novelty, calibration, or model judges spend budget on it.
  */
-export const SEMANTIC_ALIGNMENT_VERSION = "semantic-alignment-v1";
+export const SEMANTIC_ALIGNMENT_VERSION = "semantic-alignment-v4";
 
 export type SemanticAlignmentInput = {
   answer: string;
@@ -140,6 +145,35 @@ function cueBaseVariants(layer: VisualLayer): string[] {
   if (layer.kind === "image") return layer.concept ? [layer.concept] : [];
 
   if (layer.kind !== "pictogram") return [];
+
+  // Structural reading identity only: publication separately checks live approval.
+  if (layer.assetId?.startsWith("rebuzzle-ink:")) {
+    const original = listOriginalPictogramCandidates().find(
+      (asset) => asset.assetId === layer.assetId
+    );
+    if (
+      layer.source !== "approved-cache" ||
+      !original ||
+      sanitizePictogramSvg(original.svg) !== layer.svg ||
+      !original.approvedReadings.includes(layer.concept.trim().toLowerCase())
+    )
+      return [];
+    return [...original.approvedReadings];
+  }
+
+  const hasCatalogIdentity = layer.assetId?.startsWith("lucide:");
+  const catalogIdentity = hasCatalogIdentity
+    ? getCuratedPictogramReadingPolicy(layer.assetId!)
+    : !layer.assetId
+      ? getCuratedPictogramReadingPolicy(layer.concept)
+      : null;
+  if (hasCatalogIdentity && !catalogIdentity) return [];
+  if (catalogIdentity) {
+    return [
+      ...catalogIdentity.approvedReadings,
+      ...(REBUS_CUE_ALIASES[compact(catalogIdentity.canonicalConcept)] ?? []),
+    ];
+  }
 
   const concept = layer.concept.trim();
   const canonical = compact(concept);

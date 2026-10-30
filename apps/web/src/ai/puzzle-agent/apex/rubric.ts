@@ -30,7 +30,8 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
   let fairness = 70;
   if (sim) {
     fairness = sim.hintUnlockOrderLooksFair ? 78 : 45;
-    fairness += Math.round((sim.estimatedSolveRate - 0.35) * 40);
+    // Difficulty has its own ELO signal; keep fairness grounded in clarity,
+    // hint order, and competing-answer evidence instead of solve likelihood.
     fairness += Math.round(((sim.blindMeanReciprocalRank ?? 0) - 0.75) * 20);
     fairness -= Math.round(Math.max(0, (sim.blindStrongestWrongConfidence ?? 0) - 0.5) * 20);
     fairness -= (sim.unfairReasons?.length ?? 0) * 10;
@@ -68,6 +69,9 @@ export function scoreRubric(candidate: ApexCandidate): RubricScores {
       })
     ) {
       return [90];
+    }
+    if (layer.source === "approved-cache") {
+      return layer.assetId && visual.ok ? [90] : [];
     }
     return [scorePictogramClarity(layer.svg).score];
   });
@@ -139,6 +143,7 @@ export function tournamentScore(candidate: ApexCandidate, minRubric: number): nu
   let score = rubric;
   if (candidate.critique?.verdict === "ship") score += 6;
   if (candidate.playerSim?.hintUnlockOrderLooksFair) score += 3;
+  // Small reachability preference; difficulty itself is ranked through ELO.
   if ((candidate.playerSim?.estimatedSolveRate ?? 0) > 0.2) score += 2;
   score += Math.min(5, (candidate.funScore - 65) / 5);
   if ((candidate.critique?.creativityScore ?? 0) >= 70) score += 4;

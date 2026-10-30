@@ -2,10 +2,13 @@
  * Mongo helpers for Studio submissions + community puzzle promotion.
  */
 
+import { verifyPublicationAssets } from "@/ai/puzzle-agent/visual/publication-assets";
+import { ReasoningEvidenceSchema } from "@/ai/puzzle-agent/visual/reasoning-evidence";
 import type { NewPuzzle, Puzzle, PuzzleVisual, UserPuzzleSubmission } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { toLegacyDifficultyLabel } from "@/lib/game/published-puzzle";
 import { logger } from "@/lib/logger";
+import { hasCompletePublicationEvidence } from "./review-evidence";
 import { communityPuzzlePath, profilePathForUsername, slugifyHandle } from "./slug";
 
 export function submissionsCollection() {
@@ -115,6 +118,7 @@ export function publicTitle(title: string | undefined, answer: string): string |
 
 export async function upsertDraftSubmission(input: {
   id?: string;
+  expectedUpdatedAt?: Date;
   userId: string;
   username: string;
   title?: string;
@@ -133,8 +137,20 @@ export async function upsertDraftSubmission(input: {
   if (existing && existing.userId !== input.userId) {
     throw new Error("Not allowed to edit this draft");
   }
-  if (existing && (existing.status === "featured" || existing.status === "approved")) {
+  if (
+    existing &&
+    (existing.status === "featured" ||
+      existing.status === "approved" ||
+      (existing.status === "pending_grade" && existing.grade?.ok))
+  ) {
     throw new Error("Approved puzzles are locked — duplicate to revise");
+  }
+
+  if (
+    input.expectedUpdatedAt &&
+    existing?.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()
+  ) {
+    throw new Error("Draft changed during review — review the current draft again");
   }
 
   // Titles and slugs are public on playable puzzles, so neither may spell
@@ -157,13 +173,25 @@ export async function upsertDraftSubmission(input: {
     visual: input.visual,
     rebusPuzzle: input.rebusPuzzle,
     puzzleId: existing?.puzzleId,
-    grade: existing?.grade,
-    eveReview: existing?.eveReview,
+
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
 
-  await submissionsCollection().updateOne({ id }, { $set: doc }, { upsert: true });
+  const saved = await submissionsCollection().updateOne(
+    existing
+      ? {
+          id,
+          userId: input.userId,
+          updatedAt: existing.updatedAt,
+          status: { $nin: ["approved", "featured"] },
+        }
+      : { id },
+    { $set: doc, $unset: { grade: "", eveReview: "" } },
+    { upsert: !existing }
+  );
+  if (existing && saved.matchedCount === 0)
+    throw new Error("Draft changed while saving — reload and retry");
   return doc;
 }
 
@@ -189,6 +217,7 @@ export async function attachEveReviewSnapshot(input: {
   submissionId: string;
   userId: string;
   eveReview: NonNullable<UserPuzzleSubmission["eveReview"]>;
+  expectedUpdatedAt?: Date;
   grade?: UserPuzzleSubmission["grade"];
   visual?: PuzzleVisual;
   rebusPuzzle?: string;
@@ -196,10 +225,16 @@ export async function attachEveReviewSnapshot(input: {
 }): Promise<UserPuzzleSubmission | null> {
   const existing = await findSubmissionById(input.submissionId);
   if (!existing || existing.userId !== input.userId) return null;
-  if (existing.status === "approved" || existing.status === "featured") {
+  if (
+    existing.status === "approved" ||
+    existing.status === "featured" ||
+    (existing.status === "pending_grade" && existing.grade?.ok)
+  ) {
     throw new Error("Approved puzzles are locked — duplicate to revise");
   }
 
+  if (input.expectedUpdatedAt && existing.updatedAt.getTime() !== input.expectedUpdatedAt.getTime())
+    throw new Error("Draft changed during review");
   const now = new Date();
   const next: UserPuzzleSubmission = {
     ...existing,
@@ -210,14 +245,37 @@ export async function attachEveReviewSnapshot(input: {
     answerKey: input.answerKey ?? existing.answerKey,
     updatedAt: now,
   };
-  await submissionsCollection().updateOne({ id: next.id }, { $set: next });
+  if (next.eveReview?.ok && !hasCompletePublicationEvidence(next))
+    throw new Error("Complete matching publication evidence is required");
+  const saved = await submissionsCollection().updateOne(
+    { id: next.id, updatedAt: existing.updatedAt, status: { $nin: ["approved", "featured"] } },
+    { $set: next }
+  );
+  if (saved.matchedCount === 0) throw new Error("Draft changed during review");
   return next;
 }
 
 /** Create / refresh the community Puzzle row for an approved submission. */
 export async function ensureCommunityPuzzle(submission: UserPuzzleSubmission): Promise<string> {
+  if (!hasCompletePublicationEvidence(submission)) {
+    throw new Error("Complete matching publication evidence is required");
+  }
+  // Review fingerprints bind the board, but cannot record a later asset quarantine.
+  const assets = await verifyPublicationAssets(submission.visual);
+  if (!assets.ok) throw new Error(assets.reason);
+
   const puzzles = getCollection<Puzzle>("puzzles");
   const now = new Date();
+  // Only the server-side editorial reviewers' trace qualifies a board for the daily slot.
+  const reviewedReasoning = ReasoningEvidenceSchema.safeParse(
+    submission.eveReview?.evidence?.reasoningEvidence
+  );
+  const reasoningMetadata = reviewedReasoning.success
+    ? {
+        reasoningEvidence: reviewedReasoning.data,
+        reasoningEvidenceSource: "independent-editorial" as const,
+      }
+    : {};
   const attribution = {
     userId: submission.userId,
     username: submission.username,
@@ -245,7 +303,19 @@ export async function ensureCommunityPuzzle(submission: UserPuzzleSubmission): P
           "metadata.ugcSubmissionId": submission.id,
           "metadata.source": "user",
           "metadata.createdByUserId": submission.userId,
+          ...(reviewedReasoning.success
+            ? {
+                "metadata.reasoningEvidence": reviewedReasoning.data,
+                "metadata.reasoningEvidenceSource": "independent-editorial",
+              }
+            : {}),
         },
+        // A revised board must not keep evidence reviewed against an earlier version.
+        ...(reviewedReasoning.success
+          ? {}
+          : {
+              $unset: { "metadata.reasoningEvidence": "", "metadata.reasoningEvidenceSource": "" },
+            }),
       }
     );
     return submission.puzzleId;
@@ -288,6 +358,7 @@ export async function ensureCommunityPuzzle(submission: UserPuzzleSubmission): P
       attribution,
       qualityScore: submission.grade?.score,
       funScore: submission.grade?.funScore,
+      ...reasoningMetadata,
     },
   };
 
@@ -326,6 +397,9 @@ export async function markSubmissionGraded(input: {
   const eveReview = input.eveReview ?? input.submission.eveReview;
 
   if (input.ok) {
+    if (!hasCompletePublicationEvidence({ ...input.submission, visual: input.visual, eveReview })) {
+      throw new Error("Complete matching publication evidence is required");
+    }
     // Stage as pending_grade first so the unique answerKey index holds the phrase
     // while we create the community puzzle — never approve without puzzleId.
     const staging: UserPuzzleSubmission = {
@@ -339,7 +413,16 @@ export async function markSubmissionGraded(input: {
       submittedAt: input.submission.submittedAt ?? now,
       updatedAt: now,
     };
-    await submissionsCollection().updateOne({ id: staging.id }, { $set: staging });
+    const staged = await submissionsCollection().updateOne(
+      {
+        id: staging.id,
+        updatedAt: input.submission.updatedAt,
+        status: { $nin: ["approved", "featured"] },
+      },
+      { $set: staging }
+    );
+    if (staged.matchedCount === 0)
+      throw new Error("Draft changed during publication — review again");
 
     let puzzleId: string;
     try {
@@ -394,6 +477,14 @@ export async function markSubmissionGraded(input: {
     submittedAt: input.submission.submittedAt ?? now,
     updatedAt: now,
   };
-  await submissionsCollection().updateOne({ id: next.id }, { $set: next });
+  const saved = await submissionsCollection().updateOne(
+    {
+      id: next.id,
+      updatedAt: input.submission.updatedAt,
+      status: { $nin: ["approved", "featured"] },
+    },
+    { $set: next }
+  );
+  if (saved.matchedCount === 0) throw new Error("Draft changed during review");
   return next;
 }

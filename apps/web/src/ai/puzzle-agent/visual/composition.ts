@@ -1,5 +1,9 @@
 import { z } from "zod";
+import { CanonicalBoardSchema } from "./canonical-contract";
 import { INK_PICTOGRAM_STYLE_ID } from "./style";
+
+/** Covers the largest legal 12-layer stack of 40-character stacked text at 72px. */
+export const MAX_FREE_CANVAS_HEIGHT = 20_160;
 
 /** Free-canvas center as % of artboard (0–100). Optional on row/stack layouts. */
 const layerPositionSchema = {
@@ -73,9 +77,12 @@ export const VisualLayerSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const PuzzleVisualSchema = z.object({
+  canonicalBoard: CanonicalBoardSchema.optional(),
   styleId: z.literal(INK_PICTOGRAM_STYLE_ID).default(INK_PICTOGRAM_STYLE_ID),
   mode: z.enum(["composed", "unicode", "hybrid"]).default("composed"),
   layout: z.enum(["row", "stack", "grid", "overlay", "free"]).default("row"),
+  /** Optional persisted height for free layouts expanded from tall locked boards. */
+  freeCanvasHeight: z.number().int().min(200).max(MAX_FREE_CANVAS_HEIGHT).optional(),
   layers: z.array(VisualLayerSchema).min(1).max(12),
   /** Plain-text / emoji share string — always required */
   unicodeFallback: z.string().min(1).max(200),

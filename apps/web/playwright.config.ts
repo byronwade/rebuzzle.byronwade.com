@@ -40,6 +40,7 @@ export default defineConfig({
           MONGODB_URI: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/rebuzzle-e2e",
           // Satisfy startup env validation; specs never call real AI providers
           GOOGLE_AI_API_KEY: process.env.GOOGLE_AI_API_KEY || "playwright-test-google-key",
+          REBUZZLE_E2E: "true",
         },
       },
 });

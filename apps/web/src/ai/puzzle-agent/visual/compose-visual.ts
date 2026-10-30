@@ -6,6 +6,7 @@
 import { defaultLayoutForTechnique } from "../apex/rule-graph";
 import { getDifficultyLevelForScore } from "../difficulty-levels";
 import { computeFunScore, displayLeaksAnswer, isKnownTechniqueId } from "../quality";
+import { evaluateSemanticAlignment } from "../semantic-alignment";
 import { getTechniques } from "../technique-library";
 import {
   buildUnicodeFallback,
@@ -30,6 +31,8 @@ export type ComposePuzzleVisualInput = {
   renderImages?: boolean;
   /** Internal review tooling may display newly generated, unapproved assets. */
   assetUsage?: GeneratePictogramInput["usage"];
+  /** Internal retry preserves established readings when an original changes the clue. */
+  preferOriginalArtwork?: boolean;
 };
 
 export type ComposePuzzleVisualResult = {
@@ -78,6 +81,7 @@ export async function composePuzzleVisual(
         emojiFallback: layer.emojiFallback,
         maxRetries: 2,
         usage: input.assetUsage ?? "publication",
+        preferOriginalArtwork: input.preferOriginalArtwork,
       });
       if (pic.ok && pic.svg) {
         filledLayers.push({
@@ -109,7 +113,7 @@ export async function composePuzzleVisual(
         });
         issues.push(
           pic.error === "approved_asset_required"
-            ? `Pictogram "${layer.concept}" is not in the approved catalog — choose an exact concept from list_pictogram_catalog`
+            ? `Pictogram "${layer.concept}" has no approved recognizable asset at player size — choose another reviewed concept or repair the asset`
             : `Pictogram "${layer.concept}" failed clarity/generation — use a more concrete noun or redraw`
         );
         tips.push(`Pictogram fallback used for "${layer.concept}" — unicode emoji only`);
@@ -161,11 +165,15 @@ export async function composePuzzleVisual(
     input.unicodeFallback?.trim() || buildUnicodeFallback(filledLayers) || "◆";
   const layout = input.layout ?? defaultLayoutForTechnique(input.techniqueId);
 
+  // Native typography is rendered artwork too; it does not need a decorative icon.
+  const hasNativeText =
+    filledLayers.some((layer) => layer.kind === "text") &&
+    filledLayers.every((layer) => layer.kind === "text" || layer.kind === "operator");
   const parsed = PuzzleVisualSchema.safeParse({
     styleId: INK_PICTOGRAM_STYLE_ID,
     mode: filledLayers.some((l) => l.kind === "image" && l.src)
       ? "hybrid"
-      : filledLayers.some((l) => l.kind === "pictogram" && l.svg)
+      : hasNativeText || filledLayers.some((l) => l.kind === "pictogram" && l.svg)
         ? "composed"
         : "unicode",
     layout,
@@ -194,6 +202,32 @@ export async function composePuzzleVisual(
 
   if (!parsed.success) {
     issues.push(`Visual schema issues: ${parsed.error.issues[0]?.message ?? "invalid"}`);
+  }
+
+  if (
+    issues.length === 0 &&
+    input.preferOriginalArtwork !== false &&
+    visual.layers.some(
+      (layer) => layer.kind === "pictogram" && layer.assetId?.startsWith("rebuzzle-ink:")
+    ) &&
+    !evaluateSemanticAlignment({ answer: input.answer, techniqueId: input.techniqueId, visual }).ok
+  ) {
+    // Resolve before review/rendering, never swap assets in an approved board.
+    // Reuse already-rendered image layers and bound this retry to one legacy pass.
+    const legacy = await composePuzzleVisual({
+      ...input,
+      layers: visual.layers,
+      preferOriginalArtwork: false,
+    });
+    if (
+      evaluateSemanticAlignment({
+        answer: input.answer,
+        techniqueId: input.techniqueId,
+        visual: legacy.visual,
+      }).ok
+    ) {
+      return legacy;
+    }
   }
 
   const totalParts = countVisualParts(visual);

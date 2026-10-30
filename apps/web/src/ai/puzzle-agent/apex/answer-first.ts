@@ -1,4 +1,5 @@
 import { normalizeAnswerKey } from "../quality";
+import { seedTechniqueKey } from "./seed-failure-memory";
 import type { PhraseBankEntry } from "./types";
 
 export const ANSWER_FIRST_SEED_UNAVAILABLE_CODE = "APEX_ANSWER_FIRST_SEED_UNAVAILABLE" as const;
@@ -32,6 +33,7 @@ export function selectAnswerFirstSeed(input: {
   usedAnswerKeys?: Iterable<string>;
   requireVisualCuePlan?: boolean;
   targetDifficulty?: number;
+  recentFailedPairs?: ReadonlySet<string>;
 }): PhraseBankEntry | undefined {
   const used = new Set(
     Array.from(input.usedAnswerKeys ?? [], (answer) => normalizeAnswerKey(answer)).filter(Boolean)
@@ -57,6 +59,11 @@ export function selectAnswerFirstSeed(input: {
         Math.abs(b.difficultyHint - input.targetDifficulty!)
     );
   }
+  compatible.sort(
+    (a, b) =>
+      Number(input.recentFailedPairs?.has(seedTechniqueKey(a.answer, input.techniqueId)) ?? false) -
+      Number(input.recentFailedPairs?.has(seedTechniqueKey(b.answer, input.techniqueId)) ?? false)
+  );
   return compatible[0];
 }
 
@@ -72,6 +79,7 @@ export function selectAnswerFirstSeeds(input: {
   usedAnswerKeys?: Iterable<string>;
   requireVisualCuePlan?: boolean;
   targetDifficulty?: number;
+  recentFailedPairs?: ReadonlySet<string>;
 }): PhraseBankEntry[] {
   if (!Number.isSafeInteger(input.count) || input.count <= 0 || !input.techniqueIds.length)
     return [];
@@ -123,6 +131,11 @@ export function selectAnswerFirstSeeds(input: {
           Math.abs(b.difficultyHint - input.targetDifficulty!)
       );
     }
+    compatible.sort(
+      (a, b) =>
+        Number(input.recentFailedPairs?.has(seedTechniqueKey(a.answer, technique)) ?? false) -
+        Number(input.recentFailedPairs?.has(seedTechniqueKey(b.answer, technique)) ?? false)
+    );
     const unique = new Map<string, PhraseBankEntry>();
     for (const entry of compatible) {
       const key = answerFirstSeedKey(entry)!;

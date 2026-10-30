@@ -1,4 +1,6 @@
 import { distinctJudgeResults } from "../quality-contract";
+import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "./presentation";
+import { type ReasoningEvidence, ReasoningEvidenceSchema } from "./reasoning-evidence";
 
 export const EDITORIAL_FAILURE_KINDS = [
   "wrong_object",
@@ -19,13 +21,16 @@ export type EditorialReviewAttempt = {
   cueCoverage: number;
   answerVisibleVerbatim: boolean;
   failureKinds: EditorialFailureKind[];
+  reasoningEvidence?: ReasoningEvidence;
   strongestAlternate?: string;
   reason: string;
 };
 
 export type EditorialReviewSummary = {
+  reasoningEvidence?: ReasoningEvidence;
   ok: boolean;
   profileCount: number;
+  profileResults: { profileId: string; judgeCount: number }[];
   acceptedProfiles: number;
   rejectedProfiles: string[];
   missingProfiles: string[];
@@ -41,7 +46,7 @@ export function editorialReviewPublishBlockers(
     editorialFailureKinds?: string[];
     editorialReasons?: string[];
   },
-  expectedProfileCount = 3
+  expectedProfileCount = PUZZLE_BOARD_RECOGNITION_PROFILES.length
 ): string[] {
   const blockers: string[] = [];
   if ((evidence.editorialProfileCount ?? 0) < expectedProfileCount) {
@@ -90,6 +95,7 @@ export function editorialAttemptsToObservation(input: {
 
 /** Require a confident independent majority at every production presentation. */
 export function summarizeEditorialReviewAttempts(input: {
+  answer?: string;
   attempts: EditorialReviewAttempt[];
   expectedProfileIds: readonly string[];
   requiredVotes: number;
@@ -143,12 +149,49 @@ export function summarizeEditorialReviewAttempts(input: {
     ? attempts.reduce((sum, attempt) => sum + attempt.confidence, 0) / attempts.length
     : 0;
 
+  // Fairness acceptance does not imply complexity. Only retain positive evidence
+  // when independent confident reviewers support it at every rendered profile.
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const qualified = attempts.flatMap((attempt) => {
+    const parsed = ReasoningEvidenceSchema.safeParse(attempt.reasoningEvidence);
+    if (
+      !input.answer ||
+      attempt.verdict !== "publish" ||
+      attempt.confidence < input.minConfidence ||
+      !parsed.success
+    )
+      return [];
+    const evidence = parsed.data;
+    if (
+      !evidence.interacting ||
+      evidence.operations.some((operation) => !operation.necessary) ||
+      new Set(evidence.operations.map((operation) => operation.kind.trim().toLowerCase())).size <
+        2 ||
+      normalize(evidence.finalInterpretation) !== normalize(input.answer)
+    )
+      return [];
+    return [{ profileId: attempt.profileId, evidence }];
+  });
+  const reasoningQuorum =
+    input.expectedProfileIds.length > 0 &&
+    missingProfiles.length === 0 &&
+    rejectedProfiles.length === 0 &&
+    input.expectedProfileIds.every(
+      (profileId) =>
+        qualified.filter((attempt) => attempt.profileId === profileId).length >= input.requiredVotes
+    );
+
   return {
+    ...(reasoningQuorum && qualified[0] ? { reasoningEvidence: qualified[0].evidence } : {}),
     ok:
       missingProfiles.length === 0 &&
       acceptedProfiles === input.expectedProfileIds.length &&
       rejectedProfiles.length === 0,
     profileCount: testedProfiles.size,
+    profileResults: input.expectedProfileIds.map((profileId) => ({
+      profileId,
+      judgeCount: attempts.filter((attempt) => attempt.profileId === profileId).length,
+    })),
     acceptedProfiles,
     rejectedProfiles,
     missingProfiles,

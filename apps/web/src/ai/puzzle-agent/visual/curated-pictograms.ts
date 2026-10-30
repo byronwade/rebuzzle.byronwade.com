@@ -172,9 +172,13 @@ import { INK_PICTOGRAM_PALETTE } from "./style";
 
 export const CURATED_PICTOGRAM_CATALOG_VERSION = "lucide-v2";
 
+export const CURATED_PICTOGRAM_READING_POLICY_VERSION = "readings-v1";
+
 type CuratedPictogramEntry = {
   id: string;
-  aliases: string[];
+  approvedReadings: string[];
+  searchAliases?: string[];
+  commonConfusions?: string[];
   icon: IconNode;
 };
 
@@ -201,134 +205,176 @@ function serializeIconNode(node: IconNode | IconNodeChild, overrides?: IconAttri
 }
 
 const CATALOG: CuratedPictogramEntry[] = [
-  { id: "alarm-clock", aliases: ["alarm clock", "alarm"], icon: AlarmClock },
-  { id: "anchor", aliases: ["anchor"], icon: Anchor },
-  { id: "apple", aliases: ["apple", "fruit"], icon: Apple },
-  { id: "arrow-down", aliases: ["arrow down", "down arrow"], icon: ArrowDown },
-  { id: "arrow-left", aliases: ["arrow left", "left arrow"], icon: ArrowLeft },
-  { id: "arrow-right", aliases: ["arrow right", "right arrow"], icon: ArrowRight },
-  { id: "arrow-up", aliases: ["arrow up", "up arrow"], icon: ArrowUp },
-  { id: "axe", aliases: ["axe", "hatchet"], icon: Axe },
-  { id: "baby", aliases: ["baby", "infant"], icon: Baby },
-  { id: "backpack", aliases: ["backpack", "rucksack"], icon: Backpack },
-  { id: "banana", aliases: ["banana"], icon: Banana },
-  { id: "battery", aliases: ["battery"], icon: BatteryFull },
-  { id: "bean", aliases: ["bean"], icon: Bean },
-  { id: "bed", aliases: ["bed"], icon: Bed },
-  { id: "beer", aliases: ["beer", "mug"], icon: Beer },
-  { id: "bell", aliases: ["bell"], icon: Bell },
-  { id: "bicycle", aliases: ["bicycle", "bike"], icon: Bike },
-  { id: "binoculars", aliases: ["binoculars"], icon: Binoculars },
-  { id: "bird", aliases: ["bird"], icon: Bird },
-  { id: "bomb", aliases: ["bomb"], icon: Bomb },
-  { id: "bone", aliases: ["bone"], icon: Bone },
-  { id: "book", aliases: ["book", "open book"], icon: BookOpen },
-  { id: "bot", aliases: ["bot", "robot"], icon: Bot },
-  { id: "box", aliases: ["box", "crate"], icon: Box },
-  { id: "brain", aliases: ["brain"], icon: Brain },
-  { id: "brick-wall", aliases: ["brick wall", "bricks", "wall"], icon: BrickWall },
-  { id: "briefcase", aliases: ["briefcase"], icon: Briefcase },
-  { id: "brush", aliases: ["brush", "paintbrush"], icon: Brush },
-  { id: "bug", aliases: ["bug", "insect"], icon: Bug },
-  { id: "bus", aliases: ["bus"], icon: Bus },
-  { id: "cake", aliases: ["cake", "cake slice"], icon: CakeSlice },
-  { id: "calendar", aliases: ["calendar", "date"], icon: Calendar },
-  { id: "camera", aliases: ["camera"], icon: Camera },
-  { id: "candy", aliases: ["candy", "sweet"], icon: Candy },
-  { id: "car", aliases: ["car", "automobile", "auto", "sedan"], icon: Car },
-  { id: "castle", aliases: ["castle"], icon: Castle },
-  { id: "cat", aliases: ["cat", "kitten"], icon: Cat },
-  { id: "cherry", aliases: ["cherry", "cherries"], icon: Cherry },
-  { id: "citrus", aliases: ["citrus", "orange", "lemon"], icon: Citrus },
-  { id: "clock", aliases: ["clock", "timepiece"], icon: Clock },
-  { id: "cloud", aliases: ["cloud"], icon: Cloud },
-  { id: "clover", aliases: ["clover", "shamrock"], icon: Clover },
-  { id: "coffee", aliases: ["coffee", "coffee cup"], icon: Coffee },
-  { id: "coins", aliases: ["coins", "change"], icon: Coins },
-  { id: "compass", aliases: ["compass"], icon: Compass },
-  { id: "cookie", aliases: ["cookie", "biscuit"], icon: Cookie },
-  { id: "cooking-pot", aliases: ["cooking pot", "pot"], icon: CookingPot },
-  { id: "crown", aliases: ["crown"], icon: Crown },
-  { id: "dice", aliases: ["dice", "die"], icon: Dice5 },
-  { id: "diamond", aliases: ["diamond", "gem", "gemstone"], icon: Gem },
-  { id: "dog", aliases: ["dog", "puppy"], icon: Dog },
-  { id: "door", aliases: ["door", "open door"], icon: DoorOpen },
-  { id: "drum", aliases: ["drum"], icon: Drum },
-  { id: "drumstick", aliases: ["drumstick", "chicken leg"], icon: Drumstick },
-  { id: "dumbbell", aliases: ["dumbbell", "weights"], icon: Dumbbell },
-  { id: "ear", aliases: ["ear"], icon: Ear },
-  { id: "egg", aliases: ["egg"], icon: Egg },
-  { id: "envelope", aliases: ["envelope", "mail", "letter"], icon: Mail },
-  { id: "eye", aliases: ["eye", "eyeball"], icon: Eye },
-  { id: "feather", aliases: ["feather"], icon: Feather },
-  { id: "ferris-wheel", aliases: ["ferris wheel"], icon: FerrisWheel },
-  { id: "fire", aliases: ["fire", "flame"], icon: Flame },
-  { id: "fish", aliases: ["fish"], icon: Fish },
-  { id: "flower", aliases: ["flower", "blossom"], icon: Flower2 },
-  { id: "footprints", aliases: ["footprints", "footsteps"], icon: Footprints },
-  { id: "gear", aliases: ["gear", "cog"], icon: Settings },
-  { id: "ghost", aliases: ["ghost"], icon: Ghost },
-  { id: "gift", aliases: ["gift", "present"], icon: Gift },
-  { id: "glasses", aliases: ["glasses", "eyeglasses", "spectacles"], icon: Glasses },
-  { id: "globe", aliases: ["globe", "world", "earth"], icon: Globe },
+  { id: "alarm-clock", approvedReadings: ["alarm clock", "alarm"], icon: AlarmClock },
+  { id: "anchor", approvedReadings: ["anchor"], icon: Anchor },
+  { id: "apple", approvedReadings: ["apple", "fruit"], icon: Apple },
+  { id: "arrow-down", approvedReadings: ["arrow down", "down arrow"], icon: ArrowDown },
+  { id: "arrow-left", approvedReadings: ["arrow left", "left arrow"], icon: ArrowLeft },
+  { id: "arrow-right", approvedReadings: ["arrow right", "right arrow"], icon: ArrowRight },
+  { id: "arrow-up", approvedReadings: ["arrow up", "up arrow"], icon: ArrowUp },
+  { id: "axe", approvedReadings: ["axe", "hatchet"], icon: Axe },
+  { id: "baby", approvedReadings: ["baby", "infant"], icon: Baby },
+  { id: "backpack", approvedReadings: ["backpack", "rucksack"], icon: Backpack },
+  { id: "banana", approvedReadings: ["banana"], icon: Banana },
+  { id: "battery", approvedReadings: ["battery"], icon: BatteryFull },
+  { id: "bean", approvedReadings: ["bean"], icon: Bean },
+  { id: "bed", approvedReadings: ["bed"], icon: Bed },
+  { id: "beer", approvedReadings: ["beer", "mug"], icon: Beer },
+  { id: "bell", approvedReadings: ["bell"], icon: Bell },
+  { id: "bicycle", approvedReadings: ["bicycle", "bike"], icon: Bike },
+  { id: "binoculars", approvedReadings: ["binoculars"], icon: Binoculars },
+  { id: "bird", approvedReadings: ["bird"], icon: Bird },
+  { id: "bomb", approvedReadings: ["bomb"], icon: Bomb },
+  { id: "bone", approvedReadings: ["bone"], icon: Bone },
+  { id: "book", approvedReadings: ["book", "open book"], icon: BookOpen },
+  { id: "bot", approvedReadings: ["bot", "robot"], icon: Bot },
+  { id: "box", approvedReadings: ["box", "crate"], icon: Box },
+  { id: "brain", approvedReadings: ["brain"], icon: Brain },
+  { id: "brick-wall", approvedReadings: ["brick wall", "bricks", "wall"], icon: BrickWall },
+  { id: "briefcase", approvedReadings: ["briefcase"], icon: Briefcase },
+  { id: "brush", approvedReadings: ["brush", "paintbrush"], icon: Brush },
+  { id: "bug", approvedReadings: ["bug", "insect"], icon: Bug },
+  { id: "bus", approvedReadings: ["bus"], icon: Bus },
+  { id: "cake", approvedReadings: ["cake", "cake slice"], icon: CakeSlice },
+  { id: "calendar", approvedReadings: ["calendar", "date"], icon: Calendar },
+  { id: "camera", approvedReadings: ["camera"], icon: Camera },
+  { id: "candy", approvedReadings: ["candy", "sweet"], icon: Candy },
+  {
+    id: "car",
+    approvedReadings: ["car", "automobile", "auto"],
+    searchAliases: ["car", "automobile", "auto", "sedan"],
+    commonConfusions: ["sedan"],
+    icon: Car,
+  },
+  { id: "castle", approvedReadings: ["castle"], icon: Castle },
+  {
+    id: "cat",
+    approvedReadings: ["cat"],
+    searchAliases: ["cat", "kitten"],
+    commonConfusions: ["kitten"],
+    icon: Cat,
+  },
+  { id: "cherry", approvedReadings: ["cherry", "cherries"], icon: Cherry },
+  {
+    id: "citrus",
+    approvedReadings: ["citrus"],
+    searchAliases: ["citrus", "orange", "lemon"],
+    commonConfusions: ["orange", "lemon"],
+    icon: Citrus,
+  },
+  { id: "clock", approvedReadings: ["clock", "timepiece"], icon: Clock },
+  { id: "cloud", approvedReadings: ["cloud"], icon: Cloud },
+  {
+    id: "clover",
+    approvedReadings: ["clover"],
+    searchAliases: ["clover", "shamrock"],
+    commonConfusions: ["shamrock"],
+    icon: Clover,
+  },
+  { id: "coffee", approvedReadings: ["coffee", "coffee cup"], icon: Coffee },
+  { id: "coins", approvedReadings: ["coins", "change"], icon: Coins },
+  { id: "compass", approvedReadings: ["compass"], icon: Compass },
+  { id: "cookie", approvedReadings: ["cookie", "biscuit"], icon: Cookie },
+  { id: "cooking-pot", approvedReadings: ["cooking pot", "pot"], icon: CookingPot },
+  { id: "crown", approvedReadings: ["crown"], icon: Crown },
+  { id: "dice", approvedReadings: ["dice", "die"], icon: Dice5 },
+  { id: "diamond", approvedReadings: ["diamond", "gem", "gemstone"], icon: Gem },
+  {
+    id: "dog",
+    approvedReadings: ["dog"],
+    searchAliases: ["dog", "puppy"],
+    commonConfusions: ["puppy"],
+    icon: Dog,
+  },
+  { id: "door", approvedReadings: ["door", "open door"], icon: DoorOpen },
+  { id: "drum", approvedReadings: ["drum"], icon: Drum },
+  { id: "drumstick", approvedReadings: ["drumstick", "chicken leg"], icon: Drumstick },
+  { id: "dumbbell", approvedReadings: ["dumbbell", "weights"], icon: Dumbbell },
+  { id: "ear", approvedReadings: ["ear"], icon: Ear },
+  { id: "egg", approvedReadings: ["egg"], icon: Egg },
+  { id: "envelope", approvedReadings: ["envelope", "mail", "letter"], icon: Mail },
+  { id: "eye", approvedReadings: ["eye", "eyeball"], icon: Eye },
+  { id: "feather", approvedReadings: ["feather"], icon: Feather },
+  { id: "ferris-wheel", approvedReadings: ["ferris wheel"], icon: FerrisWheel },
+  { id: "fire", approvedReadings: ["fire", "flame"], icon: Flame },
+  { id: "fish", approvedReadings: ["fish"], icon: Fish },
+  { id: "flower", approvedReadings: ["flower", "blossom"], icon: Flower2 },
+  { id: "footprints", approvedReadings: ["footprints", "footsteps"], icon: Footprints },
+  { id: "gear", approvedReadings: ["gear", "cog"], icon: Settings },
+  { id: "ghost", approvedReadings: ["ghost"], icon: Ghost },
+  { id: "gift", approvedReadings: ["gift", "present"], icon: Gift },
+  { id: "glasses", approvedReadings: ["glasses", "eyeglasses", "spectacles"], icon: Glasses },
+  { id: "globe", approvedReadings: ["globe", "world", "earth"], icon: Globe },
   {
     id: "graduation-cap",
-    aliases: ["graduation cap", "mortarboard"],
+    approvedReadings: ["graduation cap", "mortarboard"],
     icon: GraduationCap,
   },
-  { id: "guitar", aliases: ["guitar"], icon: Guitar },
-  { id: "hand", aliases: ["hand", "palm"], icon: Hand },
-  { id: "hammer", aliases: ["hammer"], icon: Hammer },
-  { id: "hard-hat", aliases: ["hard hat", "construction helmet"], icon: HardHat },
-  { id: "headphones", aliases: ["headphones", "headset"], icon: Headphones },
-  { id: "heart", aliases: ["heart"], icon: Heart },
-  { id: "hourglass", aliases: ["hourglass", "sandglass"], icon: Hourglass },
-  { id: "house", aliases: ["house", "home"], icon: House },
-  { id: "ice-cream", aliases: ["ice cream", "ice cream bowl"], icon: IceCreamBowl },
-  { id: "key", aliases: ["key"], icon: Key },
-  { id: "keyboard", aliases: ["keyboard"], icon: Keyboard },
-  { id: "lamp", aliases: ["lamp"], icon: Lamp },
-  { id: "leaf", aliases: ["leaf"], icon: Leaf },
-  { id: "lightbulb", aliases: ["lightbulb", "light bulb", "bulb"], icon: Lightbulb },
-  { id: "lock", aliases: ["lock", "padlock"], icon: Lock },
-  { id: "lollipop", aliases: ["lollipop", "sucker"], icon: Lollipop },
-  { id: "magnet", aliases: ["magnet"], icon: Magnet },
-  { id: "map", aliases: ["map"], icon: MapIcon },
-  { id: "medal", aliases: ["medal"], icon: Medal },
-  { id: "megaphone", aliases: ["megaphone", "loudspeaker"], icon: Megaphone },
-  { id: "mic", aliases: ["mic", "microphone"], icon: Mic },
-  { id: "microscope", aliases: ["microscope"], icon: Microscope },
-  { id: "milk", aliases: ["milk", "milk carton"], icon: Milk },
-  { id: "money", aliases: ["money", "dollar", "coin"], icon: CircleDollarSign },
-  { id: "moon", aliases: ["moon", "crescent"], icon: Moon },
-  { id: "mountain", aliases: ["mountain", "peak"], icon: Mountain },
+  { id: "guitar", approvedReadings: ["guitar"], icon: Guitar },
+  { id: "hand", approvedReadings: ["hand", "palm"], icon: Hand },
+  { id: "hammer", approvedReadings: ["hammer"], icon: Hammer },
+  { id: "hard-hat", approvedReadings: ["hard hat", "construction helmet"], icon: HardHat },
+  {
+    id: "headphones",
+    approvedReadings: ["headphones"],
+    searchAliases: ["headphones", "headset"],
+    commonConfusions: ["headset"],
+    icon: Headphones,
+  },
+  { id: "heart", approvedReadings: ["heart"], icon: Heart },
+  { id: "hourglass", approvedReadings: ["hourglass", "sandglass"], icon: Hourglass },
+  { id: "house", approvedReadings: ["house", "home"], icon: House },
+  { id: "ice-cream", approvedReadings: ["ice cream", "ice cream bowl"], icon: IceCreamBowl },
+  { id: "key", approvedReadings: ["key"], icon: Key },
+  { id: "keyboard", approvedReadings: ["keyboard"], icon: Keyboard },
+  { id: "lamp", approvedReadings: ["lamp"], icon: Lamp },
+  { id: "leaf", approvedReadings: ["leaf"], icon: Leaf },
+  { id: "lightbulb", approvedReadings: ["lightbulb", "light bulb", "bulb"], icon: Lightbulb },
+  { id: "lock", approvedReadings: ["lock", "padlock"], icon: Lock },
+  { id: "lollipop", approvedReadings: ["lollipop", "sucker"], icon: Lollipop },
+  { id: "magnet", approvedReadings: ["magnet"], icon: Magnet },
+  { id: "map", approvedReadings: ["map"], icon: MapIcon },
+  { id: "medal", approvedReadings: ["medal"], icon: Medal },
+  { id: "megaphone", approvedReadings: ["megaphone", "loudspeaker"], icon: Megaphone },
+  { id: "mic", approvedReadings: ["mic", "microphone"], icon: Mic },
+  { id: "microscope", approvedReadings: ["microscope"], icon: Microscope },
+  { id: "milk", approvedReadings: ["milk", "milk carton"], icon: Milk },
+  { id: "money", approvedReadings: ["money", "dollar", "coin"], icon: CircleDollarSign },
+  { id: "moon", approvedReadings: ["moon", "crescent"], icon: Moon },
+  { id: "mountain", approvedReadings: ["mountain", "peak"], icon: Mountain },
   {
     id: "computer-mouse",
-    aliases: ["computer mouse", "mouse device"],
+    approvedReadings: ["computer mouse", "mouse device"],
     icon: Mouse,
   },
-  { id: "music", aliases: ["music", "musical note"], icon: Music2 },
-  { id: "newspaper", aliases: ["newspaper", "news"], icon: Newspaper },
-  { id: "nut", aliases: ["nut", "acorn"], icon: Nut },
-  { id: "orbit", aliases: ["orbit", "planet"], icon: Orbit },
-  { id: "package", aliases: ["package", "parcel", "shipment"], icon: Package },
-  { id: "paint-palette", aliases: ["paint palette", "palette"], icon: Palette },
-  { id: "paw-print", aliases: ["paw print", "paw"], icon: PawPrint },
-  { id: "pencil", aliases: ["pencil"], icon: Pencil },
-  { id: "phone", aliases: ["phone", "smartphone", "mobile phone"], icon: Smartphone },
-  { id: "piano", aliases: ["piano", "keyboard instrument"], icon: Piano },
-  { id: "piggy-bank", aliases: ["piggy bank"], icon: PiggyBank },
-  { id: "pill", aliases: ["pill", "medicine"], icon: Pill },
-  { id: "pin", aliases: ["pin", "pushpin"], icon: Pin },
-  { id: "pizza", aliases: ["pizza", "pizza slice"], icon: Pizza },
-  { id: "plane", aliases: ["plane", "airplane", "jet"], icon: Plane },
-  { id: "popcorn", aliases: ["popcorn"], icon: Popcorn },
-  { id: "puzzle", aliases: ["puzzle", "jigsaw"], icon: Puzzle },
-  { id: "rabbit", aliases: ["rabbit", "bunny"], icon: Rabbit },
-  { id: "radio", aliases: ["radio", "boombox"], icon: BoomBox },
+  { id: "music", approvedReadings: ["music", "musical note"], icon: Music2 },
+  { id: "newspaper", approvedReadings: ["newspaper", "news"], icon: Newspaper },
+  { id: "nut", approvedReadings: ["nut", "acorn"], icon: Nut },
+  {
+    id: "orbit",
+    approvedReadings: ["orbit"],
+    searchAliases: ["orbit", "planet"],
+    commonConfusions: ["planet"],
+    icon: Orbit,
+  },
+  { id: "package", approvedReadings: ["package", "parcel", "shipment"], icon: Package },
+  { id: "paint-palette", approvedReadings: ["paint palette", "palette"], icon: Palette },
+  { id: "paw-print", approvedReadings: ["paw print", "paw"], icon: PawPrint },
+  { id: "pencil", approvedReadings: ["pencil"], icon: Pencil },
+  { id: "phone", approvedReadings: ["phone", "smartphone", "mobile phone"], icon: Smartphone },
+  { id: "piano", approvedReadings: ["piano", "keyboard instrument"], icon: Piano },
+  { id: "piggy-bank", approvedReadings: ["piggy bank"], icon: PiggyBank },
+  { id: "pill", approvedReadings: ["pill", "medicine"], icon: Pill },
+  { id: "pin", approvedReadings: ["pin", "pushpin"], icon: Pin },
+  { id: "pizza", approvedReadings: ["pizza", "pizza slice"], icon: Pizza },
+  { id: "plane", approvedReadings: ["plane", "airplane", "jet"], icon: Plane },
+  { id: "popcorn", approvedReadings: ["popcorn"], icon: Popcorn },
+  { id: "puzzle", approvedReadings: ["puzzle", "jigsaw"], icon: Puzzle },
+  { id: "rabbit", approvedReadings: ["rabbit", "bunny"], icon: Rabbit },
+  { id: "radio", approvedReadings: ["radio", "boombox"], icon: BoomBox },
   {
     id: "rain",
-    aliases: [
+    approvedReadings: [
       "rain",
       "rain cloud",
       "cloud with rain",
@@ -337,54 +383,54 @@ const CATALOG: CuratedPictogramEntry[] = [
     ],
     icon: CloudRain,
   },
-  { id: "rainbow", aliases: ["rainbow"], icon: Rainbow },
-  { id: "rat", aliases: ["rat", "rodent"], icon: Rat },
-  { id: "ribbon", aliases: ["ribbon"], icon: Ribbon },
-  { id: "rocket", aliases: ["rocket"], icon: Rocket },
-  { id: "scale", aliases: ["scale", "balance"], icon: Scale },
-  { id: "scissors", aliases: ["scissors"], icon: Scissors },
-  { id: "shell", aliases: ["shell", "seashell"], icon: Shell },
-  { id: "shield", aliases: ["shield"], icon: Shield },
-  { id: "shirt", aliases: ["shirt", "t-shirt"], icon: Shirt },
-  { id: "shopping-bag", aliases: ["shopping bag", "bag"], icon: ShoppingBag },
-  { id: "ship-wheel", aliases: ["ship wheel", "steering wheel"], icon: ShipWheel },
-  { id: "shovel", aliases: ["shovel"], icon: Shovel },
-  { id: "skull", aliases: ["skull"], icon: Skull },
-  { id: "smile", aliases: ["smile", "smiley", "happy face"], icon: Smile },
-  { id: "snail", aliases: ["snail"], icon: Snail },
-  { id: "snowflake", aliases: ["snowflake", "snow"], icon: Snowflake },
-  { id: "soda", aliases: ["soda", "soft drink", "drink cup"], icon: CupSoda },
-  { id: "sofa", aliases: ["sofa", "couch"], icon: Sofa },
-  { id: "sprout", aliases: ["sprout", "seedling"], icon: Sprout },
-  { id: "squirrel", aliases: ["squirrel"], icon: Squirrel },
-  { id: "star", aliases: ["star"], icon: Star },
-  { id: "stethoscope", aliases: ["stethoscope"], icon: Stethoscope },
-  { id: "sun", aliases: ["sun", "sunshine"], icon: Sun },
-  { id: "sword", aliases: ["sword"], icon: Sword },
-  { id: "target", aliases: ["target", "bullseye"], icon: Target },
-  { id: "tent", aliases: ["tent"], icon: Tent },
-  { id: "thermometer", aliases: ["thermometer", "temperature"], icon: Thermometer },
-  { id: "ticket", aliases: ["ticket"], icon: Ticket },
-  { id: "tractor", aliases: ["tractor"], icon: Tractor },
-  { id: "traffic-cone", aliases: ["traffic cone", "cone"], icon: TrafficCone },
-  { id: "train", aliases: ["train", "locomotive"], icon: TrainFront },
-  { id: "tree", aliases: ["tree"], icon: TreeDeciduous },
-  { id: "trash", aliases: ["trash", "garbage", "trash can"], icon: Trash2 },
-  { id: "truck", aliases: ["truck"], icon: Truck },
-  { id: "trophy", aliases: ["trophy"], icon: Trophy },
-  { id: "television", aliases: ["television", "tv"], icon: Tv },
-  { id: "umbrella", aliases: ["umbrella"], icon: Umbrella },
-  { id: "wallet", aliases: ["wallet"], icon: Wallet },
-  { id: "wand", aliases: ["wand", "magic wand"], icon: WandSparkles },
-  { id: "water", aliases: ["water", "droplets", "drops"], icon: Droplets },
-  { id: "watch", aliases: ["watch", "wristwatch"], icon: Watch },
-  { id: "waves", aliases: ["waves", "wave", "ocean"], icon: Waves },
-  { id: "wheat", aliases: ["wheat", "grain"], icon: Wheat },
-  { id: "wine-glass", aliases: ["wine glass", "wine"], icon: Wine },
-  { id: "worm", aliases: ["worm"], icon: Worm },
-  { id: "wrench", aliases: ["wrench", "spanner"], icon: Wrench },
-  { id: "lightning", aliases: ["lightning", "lightning bolt"], icon: Zap },
-  { id: "boat", aliases: ["boat", "sailboat"], icon: Sailboat },
+  { id: "rainbow", approvedReadings: ["rainbow"], icon: Rainbow },
+  { id: "rat", approvedReadings: ["rat", "rodent"], icon: Rat },
+  { id: "ribbon", approvedReadings: ["ribbon"], icon: Ribbon },
+  { id: "rocket", approvedReadings: ["rocket"], icon: Rocket },
+  { id: "scale", approvedReadings: ["scale", "balance"], icon: Scale },
+  { id: "scissors", approvedReadings: ["scissors"], icon: Scissors },
+  { id: "shell", approvedReadings: ["shell", "seashell"], icon: Shell },
+  { id: "shield", approvedReadings: ["shield"], icon: Shield },
+  { id: "shirt", approvedReadings: ["shirt", "t-shirt"], icon: Shirt },
+  { id: "shopping-bag", approvedReadings: ["shopping bag", "bag"], icon: ShoppingBag },
+  { id: "ship-wheel", approvedReadings: ["ship wheel", "steering wheel"], icon: ShipWheel },
+  { id: "shovel", approvedReadings: ["shovel"], icon: Shovel },
+  { id: "skull", approvedReadings: ["skull"], icon: Skull },
+  { id: "smile", approvedReadings: ["smile", "smiley", "happy face"], icon: Smile },
+  { id: "snail", approvedReadings: ["snail"], icon: Snail },
+  { id: "snowflake", approvedReadings: ["snowflake", "snow"], icon: Snowflake },
+  { id: "soda", approvedReadings: ["soda", "soft drink", "drink cup"], icon: CupSoda },
+  { id: "sofa", approvedReadings: ["sofa", "couch"], icon: Sofa },
+  { id: "sprout", approvedReadings: ["sprout", "seedling"], icon: Sprout },
+  { id: "squirrel", approvedReadings: ["squirrel"], icon: Squirrel },
+  { id: "star", approvedReadings: ["star"], icon: Star },
+  { id: "stethoscope", approvedReadings: ["stethoscope"], icon: Stethoscope },
+  { id: "sun", approvedReadings: ["sun", "sunshine"], icon: Sun },
+  { id: "sword", approvedReadings: ["sword"], icon: Sword },
+  { id: "target", approvedReadings: ["target", "bullseye"], icon: Target },
+  { id: "tent", approvedReadings: ["tent"], icon: Tent },
+  { id: "thermometer", approvedReadings: ["thermometer", "temperature"], icon: Thermometer },
+  { id: "ticket", approvedReadings: ["ticket"], icon: Ticket },
+  { id: "tractor", approvedReadings: ["tractor"], icon: Tractor },
+  { id: "traffic-cone", approvedReadings: ["traffic cone", "cone"], icon: TrafficCone },
+  { id: "train", approvedReadings: ["train", "locomotive"], icon: TrainFront },
+  { id: "tree", approvedReadings: ["tree"], icon: TreeDeciduous },
+  { id: "trash", approvedReadings: ["trash", "garbage", "trash can"], icon: Trash2 },
+  { id: "truck", approvedReadings: ["truck"], icon: Truck },
+  { id: "trophy", approvedReadings: ["trophy"], icon: Trophy },
+  { id: "television", approvedReadings: ["television", "tv"], icon: Tv },
+  { id: "umbrella", approvedReadings: ["umbrella"], icon: Umbrella },
+  { id: "wallet", approvedReadings: ["wallet"], icon: Wallet },
+  { id: "wand", approvedReadings: ["wand", "magic wand"], icon: WandSparkles },
+  { id: "water", approvedReadings: ["water", "droplets", "drops"], icon: Droplets },
+  { id: "watch", approvedReadings: ["watch", "wristwatch"], icon: Watch },
+  { id: "waves", approvedReadings: ["waves", "wave", "ocean"], icon: Waves },
+  { id: "wheat", approvedReadings: ["wheat", "grain"], icon: Wheat },
+  { id: "wine-glass", approvedReadings: ["wine glass", "wine"], icon: Wine },
+  { id: "worm", approvedReadings: ["worm"], icon: Worm },
+  { id: "wrench", approvedReadings: ["wrench", "spanner"], icon: Wrench },
+  { id: "lightning", approvedReadings: ["lightning", "lightning bolt"], icon: Zap },
+  { id: "boat", approvedReadings: ["boat", "sailboat"], icon: Sailboat },
 ];
 
 /**
@@ -437,7 +483,7 @@ export function resolveCuratedPictogram(
 ): CuratedPictogram | null {
   const normalized = normalizeConcept(concept);
   const entry = CATALOG.find((candidate) =>
-    candidate.aliases.some((alias) => normalizeConcept(alias) === normalized)
+    candidate.approvedReadings.some((alias) => normalizeConcept(alias) === normalized)
   );
   if (!entry || (!options.includeQuarantined && QUARANTINED_IDS.has(entry.id))) return null;
   if (options.includeQuarantined && QUARANTINED_IDS.has(entry.id)) {
@@ -445,6 +491,17 @@ export function resolveCuratedPictogram(
     if (replacement) return replacement;
   }
 
+  return serializeCuratedEntry(entry);
+}
+
+/** Resolve an exact released identity; never follow a newer concept default. */
+export function resolveCuratedPictogramByAssetId(assetId: string): CuratedPictogram | null {
+  const entry = CATALOG.find((candidate) => assetId === `lucide:${candidate.id}:v2`);
+  if (!entry || QUARANTINED_IDS.has(entry.id)) return null;
+  return serializeCuratedEntry(entry);
+}
+
+function serializeCuratedEntry(entry: CuratedPictogramEntry): CuratedPictogram | null {
   const raw = serializeIconNode(entry.icon, {
     width: 64,
     height: 64,
@@ -469,14 +526,46 @@ export function listCuratedPictogramIds(options: { includeQuarantined?: boolean 
   );
 }
 
-/** Share the catalog's reviewed synonym ontology with blind-label matching. */
-export function getCuratedPictogramAliases(concept: string): string[] {
-  const normalized = normalizeConcept(concept);
-  return (
-    CATALOG.find((candidate) =>
-      candidate.aliases.some((alias) => normalizeConcept(alias) === normalized)
-    )?.aliases ?? []
+export type CuratedPictogramReadingPolicy = {
+  assetId: string;
+  canonicalConcept: string;
+  searchAliases: string[];
+  approvedReadings: string[];
+  commonConfusions: string[];
+};
+
+/** Discovery only: finding a search term does not authorize that puzzle reading. */
+export function getCuratedPictogramReadingPolicy(
+  conceptOrAssetId: string
+): CuratedPictogramReadingPolicy | null {
+  const normalized = normalizeConcept(conceptOrAssetId);
+  const entry = CATALOG.find((candidate) =>
+    conceptOrAssetId.startsWith("lucide:")
+      ? conceptOrAssetId === `lucide:${candidate.id}:v2`
+      : [candidate.id, ...(candidate.searchAliases ?? candidate.approvedReadings)].some(
+          (alias) => normalizeConcept(alias) === normalized
+        )
   );
+  if (!entry) return null;
+  return {
+    assetId: `lucide:${entry.id}:v2`,
+    canonicalConcept: entry.id,
+    searchAliases: [...(entry.searchAliases ?? entry.approvedReadings)],
+    approvedReadings: [...entry.approvedReadings],
+    commonConfusions: [...(entry.commonConfusions ?? [])],
+  };
+}
+
+/** Compatibility accessor: only supported readings, never discovery aliases. */
+export function getCuratedPictogramAliases(concept: string): string[] {
+  const policy = getCuratedPictogramReadingPolicy(concept);
+  if (
+    !policy?.approvedReadings.some(
+      (reading) => normalizeConcept(reading) === normalizeConcept(concept)
+    )
+  )
+    return [];
+  return policy.approvedReadings;
 }
 
 /** Prevent an agent from spoofing catalog provenance to bypass generated-SVG gates. */
@@ -486,6 +575,21 @@ export function isAuthenticCuratedPictogram(input: {
   svg?: string;
 }): boolean {
   if (!input.assetId || !input.svg) return false;
-  const curated = resolveCuratedPictogram(input.concept);
-  return Boolean(curated && curated.assetId === input.assetId && curated.svg === input.svg);
+  const curated = resolveCuratedPictogramByAssetId(input.assetId);
+  return Boolean(
+    curated &&
+      isApprovedCuratedPictogramReading(input.assetId, input.concept) &&
+      curated.svg === input.svg
+  );
+}
+
+/** A reading belongs to an eligible exact identity, not its discovery aliases. */
+export function isApprovedCuratedPictogramReading(assetId: string, concept: string): boolean {
+  if (!resolveCuratedPictogramByAssetId(assetId)) return false;
+  const policy = getCuratedPictogramReadingPolicy(assetId);
+  return Boolean(
+    policy?.approvedReadings.some(
+      (reading) => normalizeConcept(reading) === normalizeConcept(concept)
+    )
+  );
 }

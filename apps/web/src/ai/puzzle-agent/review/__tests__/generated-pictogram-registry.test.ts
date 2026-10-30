@@ -281,6 +281,25 @@ describe("human-governed generated pictogram registry", () => {
     expect(store.candidates[0]?.auditHistory.at(-1)?.actor).toBe("runtime-gate");
   });
 
+  it("rejects a tampered approved asset without mutating the registry in diagnostic mode", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+    await registry.submitCandidate(automatedInput());
+    await completeReviewer(registry, "reviewer-1", "lighthouse");
+    await completeReviewer(registry, "reviewer-2", "lighthouse");
+    await completeReviewer(registry, "reviewer-3", "lighthouse");
+    store.candidates[0]!.svg = `${store.candidates[0]!.svg}<!--tampered-->`;
+    const historyLength = store.candidates[0]!.auditHistory.length;
+    process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY = "1";
+    try {
+      await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+      expect(store.candidates[0]?.status).toBe("approved");
+      expect(store.candidates[0]?.auditHistory).toHaveLength(historyLength);
+    } finally {
+      delete process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY;
+    }
+  });
+
   it("quarantines a hash-valid approved asset whose player raster regresses", async () => {
     const store = memoryRepository();
     const registry = createGeneratedPictogramRegistry(store.repository);
@@ -295,6 +314,49 @@ describe("human-governed generated pictogram registry", () => {
     expect(store.candidates[0]?.status).toBe("quarantined");
     expect(store.candidates[0]?.auditHistory.at(-1)?.reason).toContain("integrity validation");
   });
+
+  it("rejects replacement artwork even when its stored hash is updated", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+    await registry.submitCandidate(automatedInput());
+    await completeReviewer(registry, "reviewer-1", "lighthouse");
+    await completeReviewer(registry, "reviewer-2", "lighthouse");
+    await completeReviewer(registry, "reviewer-3", "lighthouse");
+    const simpleSvg = resolveCuratedPictogram("heart")!.svg;
+    store.candidates[0]!.svg = simpleSvg;
+    store.candidates[0]!.assetSha256 = createHash("sha256").update(simpleSvg).digest("hex");
+
+    await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+    expect(store.candidates[0]?.status).toBe("quarantined");
+  });
+
+  it("refuses an approval flag without the underlying human decisions", async () => {
+    const store = memoryRepository();
+    const registry = createGeneratedPictogramRegistry(store.repository);
+    await registry.submitCandidate(automatedInput());
+    store.candidates[0]!.status = "approved";
+    await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+    expect(store.candidates[0]?.status).toBe("quarantined");
+  });
+
+  it.each(["missing", "wrong fixture", "wrong answer", "duplicate reviewer"])(
+    "refuses approval when human evidence is %s",
+    async (damage) => {
+      const store = memoryRepository();
+      const registry = createGeneratedPictogramRegistry(store.repository);
+      await registry.submitCandidate(automatedInput());
+      for (const reviewer of ["one", "two", "three"]) {
+        await completeReviewer(registry, reviewer, "lighthouse");
+      }
+      if (damage === "missing") store.reviews.pop();
+      if (damage === "wrong fixture") store.reviews[0]!.fixtureId = "stale-fixture";
+      if (damage === "wrong answer") store.reviews[0]!.rawGuess = "tower";
+      if (damage === "duplicate reviewer")
+        store.reviews[0]!.reviewerId = store.reviews[2]!.reviewerId;
+      await expect(registry.findApproved("lighthouse")).resolves.toBeNull();
+      expect(store.candidates[0]?.status).toBe("quarantined");
+    }
+  );
 
   it("ignores stale registry versions", async () => {
     const store = memoryRepository();

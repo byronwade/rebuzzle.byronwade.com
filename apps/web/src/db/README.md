@@ -1,5 +1,9 @@
 # Database Layer
 
+## Journey progress backfill
+
+Before releasing account-backed Journey history, run `pnpm --filter @rebuzzle/web db:backfill-daily-progress` after the database indexes are available. The command scans accounts in bounded batches, stores a per-account checkpoint in `dailyProgressBackfills`, and can be rerun after interruption. It only projects persisted final daily attempts; archive rows and malformed dates are skipped, and absent historical hint/time-zone metadata remains unknown.
+
 This directory contains the entire database layer for Rebuzzle, built with **Drizzle ORM** for maximum performance and type safety.
 
 ## 📁 Structure

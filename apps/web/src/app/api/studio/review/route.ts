@@ -1,3 +1,9 @@
+import {
+  CANONICAL_BOARD_HEIGHT_LIMIT_MESSAGE,
+  MAX_CANONICAL_BOARD_HEIGHT,
+} from "@/ai/puzzle-agent/visual/canonical-contract";
+import { MAX_FREE_CANVAS_HEIGHT } from "@/ai/puzzle-agent/visual/composition";
+import { layoutPuzzleBoard } from "@/ai/puzzle-agent/visual/layout-plan";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import {
@@ -8,7 +14,11 @@ import {
   runEveStudioReview,
 } from "@/lib/ugc/eve-review";
 import { requireStudioUser } from "@/lib/ugc/require-studio-user";
-import { attachEveReviewSnapshot, upsertDraftSubmission } from "@/lib/ugc/submissions";
+import {
+  attachEveReviewSnapshot,
+  findSubmissionById,
+  upsertDraftSubmission,
+} from "@/lib/ugc/submissions";
 
 const reviewLimit = rateLimit({
   windowMs: 60 * 1000,
@@ -26,6 +36,7 @@ type Body = {
   techniqueId?: string;
   difficulty?: number;
   layout?: "row" | "stack" | "grid" | "overlay" | "free";
+  freeCanvasHeight?: number;
   layers?: unknown[];
   caption?: string;
   /** Opt into expensive vision player-sim when env allows */
@@ -56,6 +67,7 @@ function parseBody(body: Body) {
     layers,
     visual: {
       layout: body.layout,
+      ...(body.freeCanvasHeight !== undefined ? { freeCanvasHeight: body.freeCanvasHeight } : {}),
       layers: layers as EveReviewInput["visual"]["layers"],
       caption: typeof body.caption === "string" ? body.caption : undefined,
     },
@@ -68,6 +80,7 @@ async function persistReview(input: {
   userId: string;
   username: string;
   draftId?: string;
+  expectedUpdatedAt?: Date;
   title?: string;
   answer: string;
   explanation: string;
@@ -78,6 +91,7 @@ async function persistReview(input: {
 }) {
   const draft = await upsertDraftSubmission({
     id: input.draftId,
+    expectedUpdatedAt: input.expectedUpdatedAt,
     userId: input.userId,
     username: input.username,
     title: input.title,
@@ -100,10 +114,12 @@ async function persistReview(input: {
     warnings: input.review.warnings,
     checkedAt: input.review.checkedAt,
     spend: input.review.spend,
+    evidence: input.review.evidence,
   };
 
   const saved = await attachEveReviewSnapshot({
     submissionId: draft.id,
+    expectedUpdatedAt: draft.updatedAt,
     userId: input.userId,
     eveReview,
     grade: {
@@ -152,11 +168,23 @@ export async function POST(request: Request) {
   }
 
   const parsed = parseBody(body);
+  if (
+    body.freeCanvasHeight !== undefined &&
+    (body.layout !== "free" ||
+      !Number.isInteger(body.freeCanvasHeight) ||
+      body.freeCanvasHeight < 200 ||
+      body.freeCanvasHeight > MAX_FREE_CANVAS_HEIGHT)
+  ) {
+    return Response.json({ error: "Invalid free-canvas height" }, { status: 400 });
+  }
   if (!parsed.answer || !parsed.techniqueId || parsed.layers.length === 0) {
     return Response.json(
       { error: "Add at least one board piece, an answer, and a technique." },
       { status: 400 }
     );
+  }
+  if (layoutPuzzleBoard(parsed.visual, "desktop-768").height > MAX_CANONICAL_BOARD_HEIGHT) {
+    return Response.json({ error: CANONICAL_BOARD_HEIGHT_LIMIT_MESSAGE }, { status: 400 });
   }
 
   const input: EveReviewInput = {
@@ -171,6 +199,10 @@ export async function POST(request: Request) {
     excludeSubmissionId: parsed.id,
   };
 
+  const existingDraft = parsed.id ? await findSubmissionById(parsed.id) : null;
+  if (parsed.id && (!existingDraft || existingDraft.userId !== gate.user.userId))
+    return Response.json({ error: "Draft not found" }, { status: 404 });
+
   if (body.sync) {
     const result = await runEveStudioReview(input);
     let submissionId = parsed.id;
@@ -179,6 +211,7 @@ export async function POST(request: Request) {
         userId: gate.user.userId,
         username: gate.user.username,
         draftId: parsed.id,
+        expectedUpdatedAt: existingDraft?.updatedAt,
         title: parsed.title,
         answer: parsed.answer,
         explanation: parsed.explanation,
@@ -210,6 +243,7 @@ export async function POST(request: Request) {
             userId: gate.user.userId,
             username: gate.user.username,
             draftId: parsed.id,
+            expectedUpdatedAt: existingDraft?.updatedAt,
             title: parsed.title,
             answer: parsed.answer,
             explanation: parsed.explanation,

@@ -38,4 +38,28 @@ describe("difficulty perception", () => {
     });
     expect(thin.delta).toBe(0);
   });
+
+  it("keeps tough but fair votes in the challenge band", () => {
+    const result = aggregatePerceptionDelta({
+      tooEasy: 0,
+      justRight: 0,
+      tooHard: 0,
+      toughButFair: 5,
+    });
+
+    expect(result.delta).toBe(0);
+    expect(result.notes.join(" ")).toMatch(/tough but fair/i);
+  });
+
+  it("excludes unclear votes from difficulty math", () => {
+    const result = aggregatePerceptionDelta({
+      tooEasy: 0,
+      justRight: 0,
+      tooHard: 0,
+      unclear: 3,
+    });
+
+    expect(result.delta).toBe(0);
+    expect(result.notes.join(" ")).toMatch(/clarity|unclear/i);
+  });
 });

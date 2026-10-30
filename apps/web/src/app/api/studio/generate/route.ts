@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { generateImageTile } from "@/ai/puzzle-agent/visual/generate-image-tile";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { requireStudioUser } from "@/lib/ugc/require-studio-user";
-import { consumeStudioAiGeneration, getStudioAiQuota } from "@/lib/ugc/studio-ai-quota";
+import {
+  consumeStudioAiGeneration,
+  getStudioAiQuota,
+  refundStudioAiGeneration,
+} from "@/lib/ugc/studio-ai-quota";
 import { STUDIO_AI_GENERATION_LIMIT } from "@/lib/ugc/studio-marks";
 
 type GenerateBody = {
@@ -26,7 +30,7 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST /api/studio/generate — spend one of three lifetime AI image generations.
+ * POST /api/studio/generate — reserve one shared Studio AI generation credit.
  * Returns an image layer payload ready to place on the Studio artboard.
  */
 export async function POST(request: Request) {
@@ -58,42 +62,46 @@ export async function POST(request: Request) {
     (body.prompt ?? "").trim().slice(0, 400) ||
     `Simple recognizable ${concept} for a rebus puzzle tile`;
 
-  const before = await getStudioAiQuota(auth.userId);
-  if (before.remaining <= 0) {
+  const quota = await consumeStudioAiGeneration(auth.userId);
+  if (!quota) {
+    const currentQuota = await getStudioAiQuota(auth.userId);
     return NextResponse.json(
       {
         error: `AI generator limit reached (${STUDIO_AI_GENERATION_LIMIT} per account).`,
-        ...before,
+        ...currentQuota,
       },
       { status: 403 }
     );
   }
 
-  const generated = await generateImageTile({
-    concept,
-    prompt,
-    alt: concept,
-  });
-
-  if (!generated.ok || !generated.src) {
+  let generated: Awaited<ReturnType<typeof generateImageTile>>;
+  try {
+    generated = await generateImageTile({
+      concept,
+      prompt,
+      alt: concept,
+    });
+  } catch {
+    await refundStudioAiGeneration(auth.userId);
+    const currentQuota = await getStudioAiQuota(auth.userId);
     return NextResponse.json(
       {
         error: "Could not generate that image — try a simpler subject.",
-        detail: generated.error,
-        ...before,
+        ...currentQuota,
       },
       { status: 502 }
     );
   }
 
-  const quota = await consumeStudioAiGeneration(auth.userId);
-  if (!quota) {
+  if (!generated.ok || !generated.src) {
+    await refundStudioAiGeneration(auth.userId);
+    const currentQuota = await getStudioAiQuota(auth.userId);
     return NextResponse.json(
       {
-        error: `AI generator limit reached (${STUDIO_AI_GENERATION_LIMIT} per account).`,
-        ...(await getStudioAiQuota(auth.userId)),
+        error: "Could not generate that image — try a simpler subject.",
+        ...currentQuota,
       },
-      { status: 403 }
+      { status: 502 }
     );
   }
 

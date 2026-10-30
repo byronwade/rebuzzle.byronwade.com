@@ -68,6 +68,7 @@ __pycache__/
 
 # Native build products and local code index
 .codegraph/
+.worktrees/
 apps/ios/Core/.build/
 apps/ios/**/xcuserdata/
 !apps/ios/Release/

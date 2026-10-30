@@ -10,10 +10,12 @@ import {
   listMaterialSymbolCandidateIds,
   MATERIAL_SYMBOL_CANDIDATE_SOURCE,
 } from "../visual/material-symbol-candidates";
+import { listOriginalPictogramCandidates } from "../visual/original-pictograms";
 import { PLAYER_ICON_GATE_SIZES } from "../visual/presentation";
+import { sanitizePictogramSvg } from "../visual/sanitize-svg";
 
 /** v3 aligns blind naming specimens to live player tile sizes (44px + 72px). */
-export const HUMAN_ICON_RECOGNITION_CONTRACT_VERSION = "human-icon-recognition-v3";
+export const HUMAN_ICON_RECOGNITION_CONTRACT_VERSION = "human-icon-recognition-v4";
 export const ICON_RECOGNITION_SIZES = PLAYER_ICON_GATE_SIZES;
 export const ICON_RECOGNITION_MIN_REVIEWERS = 3;
 export const ICON_RECOGNITION_CANDIDATE_MIN_REVIEWERS = 5;
@@ -24,7 +26,7 @@ export const ICON_RECOGNITION_CANDIDATE_SPECIMEN_FLOOR = 0.8;
 export const ICON_RECOGNITION_CONTROL_SCREEN_ACCURACY = 0.85;
 export const ICON_RECOGNITION_CONTROL_GATE_ACCURACY = 0.95;
 
-export const ICON_RECOGNITION_PANEL_IDS = ["publication", "candidates"] as const;
+export const ICON_RECOGNITION_PANEL_IDS = ["publication", "candidates", "originals"] as const;
 export type IconRecognitionPanelId = (typeof ICON_RECOGNITION_PANEL_IDS)[number];
 
 const CANDIDATE_CONTROL_CONCEPT_IDS = [
@@ -130,7 +132,16 @@ export type IconRecognitionCalibrationReport = {
   specimenAccuracyFloor: number;
   weakFixtures: IconRecognitionFixtureScore[];
   weakControls: IconRecognitionFixtureScore[];
+  qualificationEvidenceIds: string[];
   promotionEligibleConceptIds: string[];
+  /** Recognition evidence only; a separate audited promotion is still required. */
+  promotionEligibleAssets: Array<{
+    assetId: string;
+    assetSha256: string;
+    styleId: string;
+    readingPolicyVersion: string;
+    evidenceIds: string[];
+  }>;
   blockedCandidateConceptIds: string[];
   releaseReady: boolean;
   marketLeadingReady: boolean;
@@ -176,7 +187,34 @@ function stableHash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function originalSvg(svg: string): string {
+  const sanitized = sanitizePictogramSvg(svg);
+  if (!sanitized) throw new Error("Original artwork SVG is invalid");
+  return sanitized;
+}
+
 function panelConfig(panelId: IconRecognitionPanelId): IconRecognitionPanelConfig {
+  if (panelId === "originals") {
+    const originals = listOriginalPictogramCandidates();
+    const manifest = originals.map((asset) => ({
+      assetId: asset.assetId,
+      svg: originalSvg(asset.svg),
+      styleId: asset.styleId,
+      readingPolicyVersion: asset.readingPolicyVersion,
+      readings: asset.approvedReadings,
+    }));
+    const candidateConceptIds = new Set(originals.map((asset) => asset.concept));
+    const controlConceptIds = new Set(["bicycle", "car", "crown"]);
+    return {
+      id: panelId,
+      catalogVersion: `${CURATED_PICTOGRAM_CATALOG_VERSION}+originals-${stableHash(JSON.stringify(manifest))}`,
+      conceptIds: [...candidateConceptIds, ...controlConceptIds],
+      candidateConceptIds,
+      controlConceptIds,
+      minReviewers: ICON_RECOGNITION_CANDIDATE_MIN_REVIEWERS,
+      specimenFloor: ICON_RECOGNITION_CANDIDATE_SPECIMEN_FLOOR,
+    };
+  }
   if (panelId === "candidates") {
     const candidateConceptIds = new Set(listMaterialSymbolCandidateIds());
     const controlConceptIds = new Set<string>(CANDIDATE_CONTROL_CONCEPT_IDS);
@@ -202,7 +240,11 @@ function panelConfig(panelId: IconRecognitionPanelId): IconRecognitionPanelConfi
 }
 
 export function normalizeIconRecognitionPanelId(value: unknown): IconRecognitionPanelId {
-  return value === "candidates" ? "candidates" : "publication";
+  return value === "originals"
+    ? "originals"
+    : value === "candidates"
+      ? "candidates"
+      : "publication";
 }
 
 export function normalizeIconNamingGuess(value: string): string {
@@ -249,7 +291,13 @@ export function buildIconRecognitionFixtures(
   const config = panelConfig(panelIdInput);
   return config.conceptIds.flatMap((conceptId) => {
     const isCandidate = config.candidateConceptIds.has(conceptId);
-    const asset = resolveCuratedPictogram(conceptId, { includeQuarantined: isCandidate });
+    const original =
+      config.id === "originals" && isCandidate
+        ? listOriginalPictogramCandidates().find((asset) => asset.concept === conceptId)
+        : undefined;
+    const asset = original
+      ? { ...original, svg: originalSvg(original.svg) }
+      : resolveCuratedPictogram(conceptId, { includeQuarantined: isCandidate });
     if (!asset) throw new Error(`Catalog asset did not resolve: ${conceptId}`);
     return ICON_RECOGNITION_SIZES.map((sizePx) => ({
       fixtureId: stableHash(
@@ -267,6 +315,20 @@ export function buildIconRecognitionFixtures(
           : "publication",
     }));
   });
+}
+
+function resolveFixtureGuess(fixture: IconRecognitionFixture, guess: string): string | undefined {
+  if (fixture.panelId !== "originals" || fixture.role !== "candidate") {
+    return resolveIconNamingGuess(guess);
+  }
+  const original = listOriginalPictogramCandidates().find(
+    (asset) => asset.assetId === fixture.assetId
+  );
+  return original?.approvedReadings.some(
+    (reading) => normalizeIconNamingGuess(reading) === normalizeIconNamingGuess(guess)
+  )
+    ? fixture.conceptId
+    : undefined;
 }
 
 function progressFor(total: number, completed: number): IconRecognitionProgress {
@@ -299,16 +361,33 @@ export function scoreIconRecognitionCalibration(input: {
   const fixtures = input.fixtures ?? buildIconRecognitionFixtures(panelId);
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.fixtureId));
   const seenDecisions = new Set<string>();
-  const submittedReviews = input.reviews.filter((review) => {
-    const decisionKey = `${review.fixtureId}\u0000${review.reviewerId}`;
-    const eligible =
-      review.contractVersion === HUMAN_ICON_RECOGNITION_CONTRACT_VERSION &&
-      review.catalogVersion === config.catalogVersion &&
-      fixtureIds.has(review.fixtureId) &&
-      !seenDecisions.has(decisionKey);
-    if (eligible) seenDecisions.add(decisionKey);
-    return eligible;
-  });
+  const submittedReviews = input.reviews
+    .filter((review) => {
+      const decisionKey = `${review.fixtureId}\u0000${review.reviewerId}`;
+      const eligible =
+        review.contractVersion === HUMAN_ICON_RECOGNITION_CONTRACT_VERSION &&
+        review.catalogVersion === config.catalogVersion &&
+        fixtureIds.has(review.fixtureId) &&
+        !seenDecisions.has(decisionKey);
+      const fixture = fixtures.find((row) => row.fixtureId === review.fixtureId);
+      const exactOriginalEvidence =
+        panelId !== "originals" ||
+        (fixture &&
+          review.assetId === fixture.assetId &&
+          review.conceptId === fixture.conceptId &&
+          review.sizePx === fixture.sizePx &&
+          review.reviewerId.trim().length > 0);
+      if (eligible && exactOriginalEvidence) seenDecisions.add(decisionKey);
+      return eligible && exactOriginalEvidence;
+    })
+    .map((review) => {
+      if (panelId !== "originals") return review;
+      const fixture = fixtures.find((row) => row.fixtureId === review.fixtureId)!;
+      const matchedConceptId = review.uncertain
+        ? undefined
+        : resolveFixtureGuess(fixture, review.rawGuess);
+      return { ...review, matchedConceptId, correct: matchedConceptId === fixture.conceptId };
+    });
   const minReviewers = Math.max(1, Math.floor(input.minReviewersPerFixture ?? config.minReviewers));
   const controlFixtures = fixtures.filter((fixture) => fixture.role === "control");
   const controlFixtureIds = new Set(controlFixtures.map((fixture) => fixture.fixtureId));
@@ -462,7 +541,7 @@ export function scoreIconRecognitionCalibration(input: {
         left.conceptId.localeCompare(right.conceptId)
     );
   const promotionEligibleConceptIds =
-    panelId === "candidates" && controlGatePassed
+    panelId !== "publication" && controlGatePassed
       ? conceptScores
           .flatMap((score) =>
             score.role === "candidate" &&
@@ -485,12 +564,14 @@ export function scoreIconRecognitionCalibration(input: {
     .sort();
   const confusionCounts = new Map<string, IconRecognitionConfusion>();
   for (const review of targetReviews) {
-    if (review.correct || !review.matchedConceptId) continue;
-    const key = `${review.conceptId}\u0000${review.matchedConceptId}`;
+    if (review.correct || review.uncertain) continue;
+    const guessedConcept = review.matchedConceptId ?? normalizeIconNamingGuess(review.rawGuess);
+    if (!guessedConcept) continue;
+    const key = `${review.conceptId}\u0000${guessedConcept}`;
     const current = confusionCounts.get(key);
     confusionCounts.set(key, {
       intendedConcept: review.conceptId,
-      guessedConcept: review.matchedConceptId,
+      guessedConcept,
       count: (current?.count ?? 0) + 1,
     });
   }
@@ -519,7 +600,24 @@ export function scoreIconRecognitionCalibration(input: {
     specimenAccuracyFloor: config.specimenFloor,
     weakFixtures,
     weakControls,
+    qualificationEvidenceIds:
+      panelId === "originals" ? reviews.map((review) => review.id).sort() : [],
     promotionEligibleConceptIds,
+    promotionEligibleAssets:
+      panelId === "originals"
+        ? listOriginalPictogramCandidates()
+            .filter((asset) => promotionEligibleSet.has(asset.concept))
+            .map((asset) => ({
+              assetId: asset.assetId,
+              assetSha256: stableHash(originalSvg(asset.svg)),
+              styleId: asset.styleId,
+              readingPolicyVersion: asset.readingPolicyVersion,
+              evidenceIds: reviews
+                .filter((review) => review.assetId === asset.assetId)
+                .map((review) => review.id)
+                .sort(),
+            }))
+        : [],
     blockedCandidateConceptIds,
     releaseReady,
     marketLeadingReady,
@@ -620,7 +718,7 @@ export function createIconRecognitionService(repository: IconRecognitionReposito
       const rawGuess = (input.guess ?? "").trim().slice(0, 100);
       const uncertain = input.uncertain === true || !rawGuess;
       const normalizedGuess = normalizeIconNamingGuess(rawGuess);
-      const matchedConceptId = uncertain ? undefined : resolveIconNamingGuess(rawGuess);
+      const matchedConceptId = uncertain ? undefined : resolveFixtureGuess(fixture, rawGuess);
       const inserted = await repository.insertDecision({
         id: randomUUID(),
         contractVersion: HUMAN_ICON_RECOGNITION_CONTRACT_VERSION,

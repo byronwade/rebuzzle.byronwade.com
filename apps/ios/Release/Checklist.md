@@ -1,6 +1,6 @@
 # Release gates
 
-Status: release preparation only. No box below asserts a completed external action. Record evidence (commit/build, device/OS, date, outcome, log or screenshot) beside each checked item. Source and simulator validation do not establish distribution readiness.
+Status: public release preparation; later dated evidence records completed beta uploads and backend deployments. Historical unchecked preparation items must be reconciled with those receipts. Record evidence (commit/build, device/OS, date, outcome, log or screenshot) beside each checked item. Source and simulator validation do not establish distribution readiness.
 
 ## Local candidate
 
@@ -13,20 +13,41 @@ Status: release preparation only. No box below asserts a completed external acti
 ## Backend — outstanding deployment gate
 
 - [ ] Deploy reviewed native API changes; production deployment has not been performed by preparing these files.
+- [ ] After deployment, configure production and sandbox App Store Server Notifications V2 to `https://rebuzzle.byronwade.com/api/storekit/notifications`; send a Test notification and verify its signed notification receipt before enabling Plus archive in production.
+- [ ] Keep production API sandbox-entitlement rejection enabled. For TestFlight Plus testing, configure a separate publicly reachable beta API with `VERCEL_ENV` set outside `production` and `STOREKIT_ALLOW_SANDBOX_TRANSACTIONS=true`; Vercel Preview currently requires SSO and cannot serve the iOS app. From `apps/ios`, archive the TestFlight build with the beta origin (replace the reserved example host with the deployed public origin):
+
+  ```sh
+  xcodebuild -project Rebuzzle.xcodeproj -scheme Rebuzzle \
+    -configuration Release -destination 'generic/platform=iOS' \
+    REBUZZLE_API_BASE_URL=https://beta-api.example \
+    -archivePath /tmp/Rebuzzle-Beta.xcarchive archive
+  ```
+
+  The default build setting remains `https://rebuzzle.byronwade.com` for App Store builds. Before upload, inspect `/tmp/Rebuzzle-Beta.xcarchive/Products/Applications/Rebuzzle.app/Info.plist` and confirm `RebuzzleAPIBaseURL` matches the deployed beta origin. Never enable sandbox transactions in Vercel Production.
+- [ ] On a signed device, verify StoreKit transaction JWS reaches the archive/practice API, non-Plus and revoked transactions receive 403, a three-wrong-guess signed round is required to reveal, and a refund notification immediately removes server access.
 - [ ] Verify `/api/puzzle/today` includes supported sanitized visual data and correct local puzzle date/next release time.
 - [ ] Verify Bearer guest/session/login/logout/stats flows and `/api/puzzle/session` reconciliation against live production.
 - [ ] Test wrong guess, solve, exhaustion, duplicate-submit protection, timeout after server acceptance, foreground resume, expired credentials, midnight and timezone travel. Confirm server lock/points remain authoritative and no answer leaks before completion.
 - [ ] Verify `/api/user/account` DELETE for guest and registered test users, wrong-password rejection, removal of associated data, stale-token rejection and local account-data cleanup. MongoDB transactions must work in production.
 - [ ] Check privacy, terms, feedback, signup and password recovery links on device; publish reconciled privacy policy.
 
-## Apple account and purchases — outstanding external gates
+## Universal Links — outstanding configuration gate
+
+- [ ] In Apple Developer → Certificates, Identifiers & Profiles → Identifiers, open `com.byronwade.rebuzzle` and copy its **App ID Prefix**. Do not assume it matches the Team ID.
+- [ ] In the Vercel project `wades-web-dev/rebuzzle`, set `APPLE_APP_ID_PREFIX` to that prefix in the Production environment and redeploy. The AASA route intentionally returns HTTP 503 until this value is present.
+- [ ] Request `https://rebuzzle.byronwade.com/.well-known/apple-app-site-association` and confirm HTTP 200, JSON content type, and an `appID` equal to `<App ID Prefix>.com.byronwade.rebuzzle`; the response must not redirect.
+- [ ] Enable Associated Domains for the app identifier, ensure the signed provisioning profile includes `applinks:rebuzzle.byronwade.com`, then install the signed TestFlight build on a physical iPhone. Open the exact `https://rebuzzle.byronwade.com/?source=share` link from Messages and verify it opens Rebuzzle and lands on today’s puzzle. Repeat with the app closed and already open.
+
+## Apple account and purchases — external gates
+
+October 26 read-only Connect check: Paid Apps Agreement and Free Apps Agreement Active; banking and US tax form Active; Digital Services Act Active. No financial details are retained here and no agreements/settings were changed. Signing/upload evidence is recorded in `docs/product/workshop-evidence-release.md`; the broad account/signing checklist item below remains open until its remaining checks are reconciled.
 
 - [ ] Confirm developer membership, app identifier, signing team, distribution certificates/profiles, App Store Connect record, paid-app agreement, tax and banking setup.
-- [ ] Create `com.byronwade.rebuzzle.plus` as a non-consumable; configure localized name/description and price (initial US proposal $9.99), availability and review screenshot. Do not assume the local `.storekit` file creates a store product.
+- [x] App Store Connect inspected October 26: non-consumable `com.byronwade.rebuzzle.plus` (Apple ID 6827099582), US $9.99, all countries/regions selected, English name/description and review screenshot present. Status Prepare for Submission; first product must accompany the app version. This is configuration evidence, not production purchase availability.
 - [x] Local StoreKit tests cover direct purchase success, cancellation, pending approval, failure/recovery, missing product, relaunch entitlement and refund revocation. Store-load recovery clears stale error copy. See Verification.md.
-- [ ] Exercise unverified transaction and explicit Restore purchases flows; unverified purchases must not grant access. Local evidence does not replace sandbox-device validation.
-- [ ] On a signed physical device with StoreKit fixture disabled, test real sandbox product discovery, localized price, purchase and restore. Test entitlement recovery on a second device: journal data must not be implied to sync.
-- [ ] Test revocation removes paid access while preserving notes and export. Verify Apple-account/Rebuzzle-account switching does not expose another Rebuzzle account's journal.
+- [x] Local unverified-transaction and explicit Restore purchases service flows: 34 hosted tests passed on October 26, source e017f35. Real StoreKitTest invalid-signature, owned/empty restore, network recovery and preservation of verified access are covered. Physical-device sandbox validation remains open below.
+- [ ] On signed physical devices with the StoreKit fixture disabled, test real sandbox product discovery, localized price, purchase and restore. Verify Plus journal sync between two devices signed into the same Rebuzzle account, offline edits, account switching, conflict resolution, and entitlement recovery.
+- [ ] Test revocation removes paid sync access while preserving notes locally and remotely until account deletion. Verify Apple-account/Rebuzzle-account switching does not expose another Rebuzzle account's journal.
 - [ ] Verify local reminders enabled/disabled/denied, chosen time, completed-day suppression, timezone changes and app relaunch on device.
 
 ## Submit
@@ -38,3 +59,7 @@ Status: release preparation only. No box below asserts a completed external acti
 - [ ] Enter store listing, device screenshots, review contact and review notes; provide private review-account credentials if needed for registered-account testing.
 - [ ] Submit first non-consumable with app version; resolve Connect validation and review requirements. Configure release timing deliberately.
 - [ ] After approval/release, verify store installation, production purchase visibility, first-session success and support availability. Monitor real failures and retention; do not infer commercial success from fixture tests.
+
+## App-level EU status follow-up — October 26
+
+App Information identifies this app as non-trader, despite the account-level DSA status showing Active. No classification was changed. The developer must assess the app’s trader status before public EU release; TestFlight does not itself require trader publication. If trader status is selected, Apple requires verified contact information and a compliance certification. See [Apple’s DSA guidance](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements).

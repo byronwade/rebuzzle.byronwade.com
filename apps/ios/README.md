@@ -55,4 +55,4 @@ Copy the validated archive from `/tmp` to your durable release archive location 
 - [Privacy disclosure inventory](Release/Privacy.md)
 - [Release gates and evidence checklist](Release/Checklist.md)
 
-The journal and notes are stored on this device, separated by Rebuzzle account. Plus restoration restores entitlement, not journal data. Core daily gameplay, normal hints, sharing, reminders and basic progress are free; Plus never buys extra guesses. No journal cloud sync, retrospective web history import, or guaranteed revenue/retention is promised.
+The journal is stored on this device and remains available offline. With a registered Rebuzzle account and current Plus access, notes sync to that account across devices; guests keep notes locally until upgrading their guest account with Plus. Restoring Plus restores entitlement, after which the same Rebuzzle account can sync its notes again. Core daily gameplay, normal hints, sharing, reminders and basic progress are free; Plus never buys extra guesses.

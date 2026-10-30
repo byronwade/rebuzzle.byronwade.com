@@ -16,8 +16,21 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.byronwade.rebuzzle.play</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>rebuzzle</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>RebuzzleAPIBaseURL</key>
+	<string>$(REBUZZLE_API_BASE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Inter.ttf</string>

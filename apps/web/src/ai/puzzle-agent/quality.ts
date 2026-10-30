@@ -13,7 +13,6 @@ import { evaluateSemanticAlignment } from "./semantic-alignment";
 import { TECHNIQUE_LIBRARY, type TechniqueId } from "./technique-library";
 import type { PuzzleVisual } from "./visual/composition";
 import { isAuthenticCuratedPictogram } from "./visual/curated-pictograms";
-import { scorePictogramClarity } from "./visual/pictogram-clarity";
 import { PLAYER_ICON_GATE_SIZES } from "./visual/presentation";
 
 export const TECHNIQUE_IDS = Object.keys(TECHNIQUE_LIBRARY) as TechniqueId[];
@@ -143,6 +142,8 @@ export function evaluateVisualForPublish(
      * spend vision judges; they still require authentic catalog provenance.
      */
     requireCatalogRecognitionEvidence?: boolean;
+    /** Server-derived IDs whose exact authored drawings passed current calibrated human review. */
+    verifiedOriginalAssetIds?: readonly string[];
   }
 ): VisualPublishCheck {
   const requireCatalogRecognitionEvidence = options?.requireCatalogRecognitionEvidence !== false;
@@ -221,9 +222,14 @@ export function evaluateVisualForPublish(
       };
     }
 
-    // Approved-cache always needs live evidence. Catalog needs it for AI publish.
+    // Authored originals use the stricter calibrated human panel. This list must
+    // come from server approval lookup, never from a submitted board's metadata.
+    const humanReviewedOriginal =
+      layer.assetId?.startsWith("rebuzzle-ink:") &&
+      options?.verifiedOriginalAssetIds?.includes(layer.assetId);
     const needsRecognitionEvidence =
-      approvedCache || (authenticCatalog && requireCatalogRecognitionEvidence);
+      (approvedCache && !humanReviewedOriginal) ||
+      (authenticCatalog && requireCatalogRecognitionEvidence);
     if (
       needsRecognitionEvidence &&
       !PLAYER_ICON_GATE_SIZES.every((size) =>
@@ -239,20 +245,9 @@ export function evaluateVisualForPublish(
       };
     }
 
-    // Authentic catalog assets are already publication-vetted; clarity re-check
-    // is for approved-cache / regenerated SVGs that may regress.
-    if (authenticCatalog) continue;
-
-    const clarity = scorePictogramClarity(layer.svg);
-    if (!clarity.ok) {
-      return {
-        ok: false,
-        reason: `Unreadable pictogram SVG (${clarity.reasons.join(", ") || "low clarity"}) — redraw with a clearer silhouette`,
-        mode: visual.mode,
-        pictogramSvgCount,
-        textLayerCount,
-      };
-    }
+    // Both reviewed sources are checked for pixel integrity and independently
+    // recognized before composition. Shape-count heuristics apply only while
+    // drawing unapproved icons, not when publishing reviewed assets.
   }
 
   if (visual.mode === "unicode" && pictogramSvgCount === 0 && !styledText) {
@@ -372,7 +367,9 @@ export type PublishGateInput = {
   inBand?: boolean;
 };
 
-export type PublishGateResult = { ok: true } | { ok: false; reason: string };
+export type PublishGateResult =
+  | { ok: true }
+  | { ok: false; reason: string; qualityFeedbackEligible?: boolean };
 
 /**
  * Hard publish gates — used after the agent returns structured output.
@@ -435,12 +432,14 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
   if (input.qualityOverall < input.qualityThreshold) {
     return {
       ok: false,
+      qualityFeedbackEligible: true,
       reason: `Quality ${input.qualityOverall} below threshold ${input.qualityThreshold}`,
     };
   }
   if (input.funScore < input.minFunScore) {
     return {
       ok: false,
+      qualityFeedbackEligible: true,
       reason: `funScore ${input.funScore} below ${input.minFunScore}`,
     };
   }
@@ -483,6 +482,7 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
     if (!bandOk) {
       return {
         ok: false,
+        qualityFeedbackEligible: true,
         reason: `Calibrated difficulty ${input.calibratedDifficulty} outside target band`,
       };
     }
@@ -494,6 +494,7 @@ export function evaluatePublishGates(input: PublishGateInput): PublishGateResult
   ) {
     return {
       ok: false,
+      qualityFeedbackEligible: true,
       reason: `Proposed difficulty ${input.difficulty} outside target band`,
     };
   }

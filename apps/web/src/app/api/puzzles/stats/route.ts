@@ -6,8 +6,10 @@
 
 import { NextResponse } from "next/server";
 import { ensureConnection, getCollection } from "@/db/mongodb";
+import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { buildCacheControl } from "@/lib/http/cache-headers";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
@@ -48,7 +50,13 @@ export async function GET(request: Request) {
     await ensureConnection();
     const attemptsCollection = getCollection("puzzleAttempts");
 
-    const timeZone = await resolveRequestTimeZone();
+    const [user, requestTimeZone] = await Promise.all([
+      request.headers.has("authorization") || request.headers.has("cookie")
+        ? getAuthenticatedUser(request)
+        : Promise.resolve(null),
+      resolveRequestTimeZone(),
+    ]);
+    const timeZone = await resolveStableJourneyTimeZone(user?.userId ?? null, requestTimeZone);
     const dateKey = getLocalPuzzleDate(new Date(), timeZone);
     const today = new Date(`${dateKey}T00:00:00.000Z`);
     const tomorrow = new Date(`${dateKey}T23:59:59.999Z`);
@@ -119,12 +127,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json(stats, {
       headers: {
-        "Cache-Control": buildCacheControl({
-          public: true,
-          maxAge: 30,
-          sMaxAge: 60,
-          staleWhileRevalidate: 120,
-        }),
+        // The daily date can vary by account's saved reset zone.
+        "Cache-Control": buildCacheControl({ private: true }),
       },
     });
   } catch (error) {

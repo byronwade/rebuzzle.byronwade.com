@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  type StudioPuzzleDraft,
+  toStudioEditorValues,
+} from "@/ai/puzzle-agent/studio-draft-contract";
 import type { PuzzleVisual, VisualLayer } from "@/ai/puzzle-agent/visual/composition";
 import { defaultPositionForIndex, snapPosition } from "@/ai/puzzle-agent/visual/layer-position";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
@@ -15,6 +19,7 @@ import {
   type LiveCheckStatus,
 } from "@/components/studio/EveReviewPanel";
 import { StudioArtboard } from "@/components/studio/StudioArtboard";
+import { StudioPuzzleGenerator } from "@/components/studio/studio-puzzle-generator-client";
 import { Button } from "@/components/ui/button";
 import { labelFromSlug } from "@/lib/typography";
 import { EVE_REVIEW_CHECKS, EVE_REVIEW_PHASES } from "@/lib/ugc/eve-review-manifest";
@@ -27,7 +32,14 @@ import {
 } from "@/lib/ugc/studio-templates";
 import { cn } from "@/lib/utils";
 
-type CatalogPictogram = { id: string; concept: string; svg: string };
+type CatalogPictogram = {
+  id: string;
+  concept: string;
+  svg: string;
+  searchAliases?: string[];
+  approvedReadings?: string[];
+  commonConfusions?: string[];
+};
 type TechniqueOption = { id: string; name: string; summary: string };
 type AiQuota = { used: number; limit: number; remaining: number };
 
@@ -41,7 +53,7 @@ type GradeSnapshot = {
 type StudioEveReviewSnapshot = {
   reviewId: string;
   ok: boolean;
-  verdict: "ship" | "revise" | "reject";
+  verdict: "ship" | "revise" | "reject" | "pending";
   summary: string;
   blockers: string[];
   warnings: string[];
@@ -67,21 +79,25 @@ type StudioSubmission = {
 };
 
 function studioContentFingerprint(input: {
+  title: string;
   answer: string;
   explanation: string;
   hints: string[];
   techniqueId: string;
   difficulty: number;
   layout: PuzzleVisual["layout"];
+  freeCanvasHeight?: number;
   layers: VisualLayer[];
 }) {
   return JSON.stringify({
+    title: input.title.trim(),
     answer: input.answer.trim(),
     explanation: input.explanation.trim(),
     hints: input.hints.map((h) => h.trim()),
     techniqueId: input.techniqueId,
     difficulty: input.difficulty,
     layout: input.layout,
+    freeCanvasHeight: input.layout === "free" ? input.freeCanvasHeight : undefined,
     layers: input.layers,
   });
 }
@@ -127,11 +143,16 @@ function layerLabel(layer: VisualLayer): string {
   return layer.concept || layer.alt || "image";
 }
 
-function buildPreview(layout: PuzzleVisual["layout"], layers: VisualLayer[]): PuzzleVisual {
+function buildPreview(
+  layout: PuzzleVisual["layout"],
+  layers: VisualLayer[],
+  freeCanvasHeight?: number
+): PuzzleVisual {
   return {
     styleId: INK_PICTOGRAM_STYLE_ID,
     mode: "composed",
     layout,
+    ...(layout === "free" && freeCanvasHeight ? { freeCanvasHeight } : {}),
     layers,
     unicodeFallback:
       layers
@@ -249,7 +270,7 @@ function applyReviewEvent(
     const review = event.review as
       | {
           ok?: boolean;
-          verdict?: "ship" | "revise" | "reject";
+          verdict?: "ship" | "revise" | "reject" | "pending";
           summary?: string;
           blockers?: string[];
           warnings?: string[];
@@ -330,10 +351,12 @@ export function PuzzleStudio() {
   const [techniqueId, setTechniqueId] = useState("simple_compound");
   const [difficulty, setDifficulty] = useState(5);
   const [layout, setLayout] = useState<PuzzleVisual["layout"]>("free");
+  const [freeCanvasHeight, setFreeCanvasHeight] = useState<number | undefined>();
   const [layers, setLayers] = useState<VisualLayer[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [catalogQuery, setCatalogQuery] = useState("");
   const [catalogTab, setCatalogTab] = useState<"icons" | "marks" | "ai">("icons");
+  const [aiMode, setAiMode] = useState<"image" | "puzzle">("image");
   const [marks, setMarks] = useState<StudioMark[]>([]);
   const [aiQuota, setAiQuota] = useState<AiQuota>({
     used: 0,
@@ -351,13 +374,16 @@ export function PuzzleStudio() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [deepReview, setDeepReview] = useState(false);
+  const [reviewedVisual, setReviewedVisual] = useState<PuzzleVisual | null>(null);
   const [shipFingerprint, setShipFingerprint] = useState<string | null>(null);
   const [eveReview, setEveReview] = useState<EveReviewLiveState>(() =>
     hydrateEveReviewFromSnapshot(null)
   );
 
-  const preview = useMemo(() => buildPreview(layout, layers), [layout, layers]);
+  const preview = useMemo(
+    () => buildPreview(layout, layers, freeCanvasHeight),
+    [layout, layers, freeCanvasHeight]
+  );
   const selected = layers[selectedIndex];
   const canDetails = layers.some(
     (l) => l.kind === "pictogram" || l.kind === "text" || l.kind === "image"
@@ -384,16 +410,24 @@ export function PuzzleStudio() {
   const currentFingerprint = useMemo(
     () =>
       studioContentFingerprint({
+        title,
         answer,
         explanation,
         hints,
         techniqueId,
         difficulty,
         layout,
+        freeCanvasHeight,
         layers,
       }),
-    [answer, explanation, hints, techniqueId, difficulty, layout, layers]
+    [title, answer, explanation, hints, techniqueId, difficulty, layout, freeCanvasHeight, layers]
   );
+  useEffect(() => {
+    setGrade(null);
+    setReviewedVisual(null);
+    setShipFingerprint(null);
+    setEveReview(hydrateEveReviewFromSnapshot(null));
+  }, [currentFingerprint, title]);
   const eveShipReady = eveReview.verdict === "ship" && shipFingerprint === currentFingerprint;
   const canSubmitPublish = canPublish && eveShipReady;
 
@@ -439,6 +473,7 @@ export function PuzzleStudio() {
       (p) =>
         p.concept.includes(q) ||
         p.id.includes(q) ||
+        p.searchAliases?.some((alias) => alias.toLowerCase().includes(q)) ||
         labelFromSlug(p.concept).toLowerCase().includes(q)
     );
   }, [catalogQuery, pictograms]);
@@ -458,6 +493,7 @@ export function PuzzleStudio() {
     setTechniqueId("simple_compound");
     setDifficulty(5);
     setLayout("free");
+    setFreeCanvasHeight(undefined);
     setLayers([]);
     setSelectedIndex(0);
     setCatalogTab("icons");
@@ -468,7 +504,7 @@ export function PuzzleStudio() {
     setError(null);
     setEveReview(hydrateEveReviewFromSnapshot(null));
     setShipFingerprint(null);
-    setDeepReview(false);
+    setReviewedVisual(null);
     setStep("board");
   }
 
@@ -482,8 +518,9 @@ export function PuzzleStudio() {
       techniqueId,
       difficulty,
       layout,
+      ...(layout === "free" && freeCanvasHeight ? { freeCanvasHeight } : {}),
       layers,
-      deepReview,
+
       persist: true,
     };
   }
@@ -492,6 +529,8 @@ export function PuzzleStudio() {
     setError(null);
     setStatusMessage(null);
     setReviewing(true);
+    setReviewedVisual(null);
+    setShipFingerprint(null);
     setEveReview((prev) => ({
       ...emptyEveReviewState(
         prev.phases.length
@@ -551,17 +590,27 @@ export function PuzzleStudio() {
           if (event.type === "persisted" && typeof event.submissionId === "string") {
             setDraftId(event.submissionId);
           }
+          if (event.type === "error") {
+            setReviewedVisual(null);
+            setShipFingerprint(null);
+            throw new Error(String(event.error || "Review could not be saved"));
+          }
           if (event.type === "done") {
-            const review = event.review as { verdict?: string } | undefined;
-            if (review?.verdict === "ship") {
+            const review = event.review as
+              | { verdict?: string; ok?: boolean; reviewedVisual?: PuzzleVisual }
+              | undefined;
+            if (review?.ok && review.verdict === "ship" && review.reviewedVisual?.canonicalBoard) {
+              setReviewedVisual(review.reviewedVisual);
               setShipFingerprint(
                 studioContentFingerprint({
+                  title,
                   answer,
                   explanation,
                   hints,
                   techniqueId,
                   difficulty,
                   layout,
+                  freeCanvasHeight,
                   layers,
                 })
               );
@@ -697,12 +746,22 @@ export function PuzzleStudio() {
     setLayout("free");
   }
 
-  function moveLayerPosition(index: number, position: { x: number; y: number }) {
+  function moveLayerPosition(
+    index: number,
+    position: { x: number; y: number },
+    positions: { x: number; y: number }[],
+    nextFreeCanvasHeight: number
+  ) {
     const snapped = snapPosition(position);
     setLayers((prev) =>
-      prev.map((layer, i) => (i === index ? { ...layer, x: snapped.x, y: snapped.y } : layer))
+      prev.map((layer, i) => {
+        if (i === index) return { ...layer, x: snapped.x, y: snapped.y };
+        const center = positions?.[i];
+        return center ? { ...layer, x: center.x, y: center.y } : layer;
+      })
     );
     setLayout("free");
+    setFreeCanvasHeight(nextFreeCanvasHeight);
   }
 
   function bringForward(index: number) {
@@ -753,15 +812,15 @@ export function PuzzleStudio() {
         limit?: number;
         remaining?: number;
       };
-      if (!response.ok || !data.layer) {
-        throw new Error(data.error || "AI generation failed");
-      }
       if (
         typeof data.used === "number" &&
         typeof data.limit === "number" &&
         typeof data.remaining === "number"
       ) {
         setAiQuota({ used: data.used, limit: data.limit, remaining: data.remaining });
+      }
+      if (!response.ok || !data.layer) {
+        throw new Error(data.error || "AI generation failed");
       }
       setLayers((prev) => {
         const joined = appendLayer(prev, data.layer!);
@@ -782,6 +841,34 @@ export function PuzzleStudio() {
     }
   }
 
+  function loadGeneratedPuzzleDraft(draft: StudioPuzzleDraft) {
+    const editor = toStudioEditorValues(draft);
+    setDraftId(editor.draftId);
+    setTitle(editor.title);
+    setAnswer(editor.answer);
+    setExplanation(editor.explanation);
+    setHints(editor.hints);
+    setTechniqueId(editor.techniqueId);
+    setDifficulty(editor.difficulty);
+    setLayout(editor.layout);
+    setFreeCanvasHeight(editor.freeCanvasHeight);
+    setLayers(editor.layers);
+    setSelectedIndex(0);
+    setLastAdded(null);
+    setGrade(null);
+    setPublishedSlug(null);
+    setReviewedVisual(null);
+    setShipFingerprint(null);
+    setEveReview(hydrateEveReviewFromSnapshot(null));
+    setCatalogTab("icons");
+    setStep("board");
+    setError(null);
+    setStatusMessage(
+      "Puzzle idea loaded. Edit it, then save a draft or send it through Eve review."
+    );
+    boardRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+  }
+
   function loadSubmission(row: StudioSubmission) {
     const locked = row.status === "approved" || row.status === "featured";
     setDraftId(locked ? undefined : row.id);
@@ -796,24 +883,14 @@ export function PuzzleStudio() {
     setTechniqueId(row.techniqueId);
     setDifficulty(row.difficulty);
     setLayout("free");
+    setFreeCanvasHeight(row.visual.freeCanvasHeight);
     setLayers(
       row.visual.layers.map((layer, index) => withDefaultPosition(layer as VisualLayer, index))
     );
-    setGrade(row.grade ?? null);
-    setEveReview(hydrateEveReviewFromSnapshot(row.eveReview));
-    const fingerprint = studioContentFingerprint({
-      answer: row.answer,
-      explanation: row.explanation ?? "",
-      hints:
-        row.hints && row.hints.length >= 3
-          ? [row.hints[0] ?? "", row.hints[1] ?? "", row.hints[2] ?? ""]
-          : ["", "", ""],
-      techniqueId: row.techniqueId,
-      difficulty: row.difficulty,
-      layout: row.visual.layout,
-      layers: row.visual.layers,
-    });
-    setShipFingerprint(row.eveReview?.verdict === "ship" ? fingerprint : null);
+    setGrade(null);
+    setEveReview(hydrateEveReviewFromSnapshot(null));
+    setReviewedVisual(null);
+    setShipFingerprint(null);
     setPublishedSlug(row.status === "approved" || row.status === "featured" ? row.slug : null);
     setStatusMessage(
       locked
@@ -846,9 +923,9 @@ export function PuzzleStudio() {
             techniqueId,
             difficulty,
             layout,
+            ...(layout === "free" && freeCanvasHeight ? { freeCanvasHeight } : {}),
             layers,
             submit,
-            deepReview,
           }),
         });
         const data = (await response.json()) as {
@@ -856,8 +933,9 @@ export function PuzzleStudio() {
           submission?: StudioSubmission;
           grade?: GradeSnapshot;
           review?: {
+            reviewedVisual?: PuzzleVisual;
             ok?: boolean;
-            verdict?: "ship" | "revise" | "reject";
+            verdict?: "ship" | "revise" | "reject" | "pending";
             summary?: string;
             blockers?: string[];
             warnings?: string[];
@@ -897,8 +975,10 @@ export function PuzzleStudio() {
               ? undefined
               : data.submission.id
           );
-          setLayers(data.submission.visual.layers);
-          setLayout(data.submission.visual.layout);
+          if (!submit) {
+            setLayers(data.submission.visual.layers);
+            setLayout(data.submission.visual.layout);
+          }
           if (data.submission.status === "approved" || data.submission.status === "featured") {
             setPublishedSlug(data.submission.slug);
           }
@@ -909,6 +989,10 @@ export function PuzzleStudio() {
           return;
         }
         if (submit) {
+          if (data.review?.ok && data.review.reviewedVisual?.canonicalBoard) {
+            setReviewedVisual(data.review.reviewedVisual);
+            setShipFingerprint(currentFingerprint);
+          }
           setStatusMessage(
             "You’re in! Eve shipped it — live on your profile and in the daily lottery."
           );
@@ -1244,19 +1328,37 @@ export function PuzzleStudio() {
                 <div className="mt-3 grid max-h-[420px] grid-cols-3 gap-2 overflow-auto pr-1">
                   {filteredCatalog.map((item) => (
                     <button
-                      className="flex flex-col items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground"
+                      className={cn(
+                        "items-center gap-1 rounded-md border border-transparent bg-inset p-2 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground focus-ring",
+                        item.commonConfusions?.length
+                          ? "col-span-3 grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-3 text-left"
+                          : "flex flex-col"
+                      )}
                       key={item.id}
                       onClick={() => addPictogram(item)}
-                      title={`Add ${labelFromSlug(item.concept)}`}
+                      title={`Add ${labelFromSlug(item.concept)}. Reads as: ${(item.approvedReadings ?? [item.concept]).join(", ")}.`}
                       type="button"
                     >
                       <span
-                        className="inline-flex h-9 w-9 items-center justify-center [&_svg]:h-6 [&_svg]:w-6"
+                        className="row-span-2 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#f7f4ee] [&_svg]:h-7 [&_svg]:w-7"
                         dangerouslySetInnerHTML={{ __html: item.svg }}
                       />
-                      <span className="w-full truncate text-center">
+                      <span
+                        className={cn(
+                          "w-full truncate",
+                          item.commonConfusions?.length
+                            ? "text-left font-medium text-foreground"
+                            : "text-center"
+                        )}
+                      >
                         {labelFromSlug(item.concept)}
                       </span>
+                      {Boolean(item.commonConfusions?.length) && (
+                        <span className="text-left text-xs leading-relaxed">
+                          Reads as {(item.approvedReadings ?? [item.concept]).join(", ")}. Not
+                          specific enough for {item.commonConfusions!.join(" or ")}.
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -1303,39 +1405,90 @@ export function PuzzleStudio() {
               ) : null}
 
               {catalogTab === "ai" ? (
-                <div className="mt-3 space-y-3">
-                  <p className="text-muted-foreground text-xs leading-5">
-                    Generate a custom image tile when the catalog doesn’t have what you need.
-                    Lifetime limit: {aiQuota.limit} per account · {aiQuota.remaining} left.
-                  </p>
-                  <label className="block text-sm">
-                    <span className="text-muted-foreground">What should it look like?</span>
-                    <input
-                      className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-base focus-ring transition-[border-color,box-shadow] focus-visible:border-ring md:text-sm"
-                      disabled={aiGenerating || aiQuota.remaining <= 0}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void generateAiImage();
-                        }
-                      }}
-                      placeholder="e.g. rusty key, tiny bee…"
-                      value={aiPrompt}
-                    />
-                  </label>
-                  <Button
-                    className="w-full"
-                    disabled={aiGenerating || aiQuota.remaining <= 0 || aiPrompt.trim().length < 2}
-                    onClick={() => void generateAiImage()}
-                    type="button"
+                <div className="mt-3 space-y-4">
+                  <div
+                    aria-label="AI tool"
+                    className="grid grid-cols-2 gap-1 rounded-md border border-border bg-inset p-1"
+                    role="group"
                   >
-                    {aiGenerating
-                      ? "Generating…"
-                      : aiQuota.remaining <= 0
-                        ? "No generations left"
-                        : `Generate (${aiQuota.remaining} left)`}
-                  </Button>
+                    {(
+                      [
+                        ["image", "Image tile"],
+                        ["puzzle", "Full puzzle"],
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <button
+                        aria-pressed={aiMode === mode}
+                        className={cn(
+                          "min-h-11 rounded-md px-2 text-sm font-medium focus-ring transition-colors motion-reduce:transition-none",
+                          aiMode === mode
+                            ? "bg-card text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        key={mode}
+                        onClick={() => setAiMode(mode)}
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {aiMode === "image" ? (
+                    <div className="space-y-3">
+                      <p className="text-muted-foreground text-sm leading-5">
+                        Make a custom image tile. Image tiles and full-puzzle drafts share{" "}
+                        {aiQuota.limit} AI credits per account. {aiQuota.remaining} left.
+                      </p>
+                      <label className="block text-sm">
+                        <span className="font-medium text-foreground">
+                          What should it look like?
+                        </span>
+                        <input
+                          className="mt-1 min-h-11 w-full rounded-md border border-input bg-inset px-3 py-2 text-base text-foreground shadow-[var(--shadow-field)] focus-ring transition-[border-color,box-shadow] focus-visible:border-ring md:text-sm motion-reduce:transition-none"
+                          disabled={aiGenerating || aiQuota.remaining <= 0}
+                          onChange={(event) => setAiPrompt(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void generateAiImage();
+                            }
+                          }}
+                          placeholder="e.g. rusty key, tiny bee…"
+                          value={aiPrompt}
+                        />
+                      </label>
+                      <Button
+                        aria-busy={aiGenerating}
+                        className="min-h-11 w-full motion-reduce:transition-none motion-reduce:active:scale-100"
+                        disabled={
+                          aiGenerating || aiQuota.remaining <= 0 || aiPrompt.trim().length < 2
+                        }
+                        onClick={() => void generateAiImage()}
+                        size="lg"
+                        type="button"
+                        variant="brand"
+                      >
+                        Generate image tile
+                      </Button>
+                      {aiGenerating ? (
+                        <p
+                          aria-live="polite"
+                          className="text-sm text-muted-foreground"
+                          role="status"
+                        >
+                          Generating your image tile.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div hidden={aiMode !== "puzzle"}>
+                    <StudioPuzzleGenerator
+                      onQuotaChange={setAiQuota}
+                      onUseDraft={loadGeneratedPuzzleDraft}
+                      quota={aiQuota}
+                    />
+                  </div>
                 </div>
               ) : null}
             </aside>
@@ -1475,8 +1628,13 @@ export function PuzzleStudio() {
                 <PuzzleVisualBoard
                   fallback={preview.unicodeFallback}
                   size="medium"
-                  visual={preview}
+                  visual={eveShipReady && reviewedVisual ? reviewedVisual : preview}
                 />
+                {eveShipReady && reviewedVisual ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Frozen board evaluated by Eve
+                  </p>
+                ) : null}
                 <p className="mt-3 text-center font-medium text-sm">{answer || "Your answer"}</p>
               </div>
               <div>
@@ -1486,21 +1644,10 @@ export function PuzzleStudio() {
                   check, fix anything it flags, then publish.
                 </p>
 
-                <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm">
-                  <input
-                    checked={deepReview}
-                    className="mt-1"
-                    onChange={(e) => setDeepReview(e.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>
-                    Deep review
-                    <span className="mt-0.5 block text-muted-foreground text-xs">
-                      Eve also tries to solve it like a player would. Slower, and not always
-                      available.
-                    </span>
-                  </span>
-                </label>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Publishing requires board critique and blind solves of the frozen board at every
+                  supported size. Unavailable checks leave review pending.
+                </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button

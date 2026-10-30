@@ -22,7 +22,9 @@ const REPRESENTATIVE_TECHNIQUES = [
   "idiom_as_picture",
   "size_or_case_semantics",
 ] as const;
-const PROFILE_IDS = ["compact-320", "mobile-375", "desktop-768"] as const;
+const PROFILE_IDS = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"] as const;
+
+type CandidateFailure = "multiple-answers" | "unreadable-layout" | "missing-cue";
 
 function inMemoryRepository() {
   const store = {
@@ -59,8 +61,12 @@ function inMemoryRepository() {
       return store.reviews.filter(
         (row) =>
           row.contractVersion === input.contractVersion &&
-          (!input.reviewerId || row.reviewerId === input.reviewerId) &&
-          (!input.candidateIds?.length || input.candidateIds.includes(row.candidateId))
+          (input.candidateIds?.length && input.reviewerIds?.length
+            ? input.candidateIds.includes(row.candidateId) ||
+              input.reviewerIds.includes(row.reviewerId)
+            : (!input.reviewerId || row.reviewerId === input.reviewerId) &&
+              (!input.reviewerIds?.length || input.reviewerIds.includes(row.reviewerId)) &&
+              (!input.candidateIds?.length || input.candidateIds.includes(row.candidateId)))
       );
     },
     async insertReview(review) {
@@ -154,6 +160,45 @@ function seedQualifiedReviewers(
   reviewerIds: Iterable<string>
 ): void {
   for (const reviewerId of reviewerIds) seedReviewerControls(store, reviewerId);
+}
+
+function seedCandidateEvidence(
+  store: ReturnType<typeof inMemoryRepository>["store"],
+  candidate: PuzzlePlaytestCandidate,
+  options: {
+    correctCount?: number;
+    failures?: CandidateFailure[];
+    qualified?: boolean;
+  } = {}
+): void {
+  candidate.status = "complete";
+  candidate.statusVersion += 1;
+  let index = 0;
+  for (const profileId of PROFILE_IDS) {
+    for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
+      const reviewerId = `admission-${profileId}-${reviewerIndex}`;
+      seedReviewerControls(store, reviewerId, options.qualified === false ? 2 : 4);
+      const failureReason = options.failures?.[index];
+      const correct = index < (options.correctCount ?? 20) && !failureReason;
+      store.reviews.push({
+        id: `generated:${reviewerId}`,
+        contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
+        candidateId: candidate.id,
+        fixtureId: `generated-fixture:${reviewerId}`,
+        profileId,
+        reviewerId,
+        rawGuess: correct ? candidate.answer : "unrelated answer",
+        normalizedGuess: correct ? candidate.answerKey : "unrelatedanswer",
+        correct,
+        gaveUp: !correct,
+        failureReason,
+        confidence: 4,
+        elapsedMs: 20_000,
+        createdAt: new Date(index),
+      });
+      index++;
+    }
+  }
 }
 
 function lastRenderedCandidate(
@@ -329,7 +374,12 @@ describe("blind human generated-puzzle playtesting", () => {
 
     const next = await service.getNext("reviewer-1");
     expect(next.specimen).not.toBeNull();
-    expect(next.progress).toEqual({ completed: 4, available: 5, remaining: 1, complete: false });
+    expect(next.progress).toEqual({
+      completed: 4,
+      available: 5,
+      remaining: 1,
+      complete: false,
+    });
   });
 
   it("records one immutable decision per reviewer and candidate", async () => {
@@ -447,10 +497,10 @@ describe("blind human generated-puzzle playtesting", () => {
     await ensureControls(service);
     seedQualifiedReviewers(
       store,
-      Array.from({ length: 15 }, (_, index) => `reviewer-${index}`)
+      Array.from({ length: 20 }, (_, index) => `reviewer-${index}`)
     );
 
-    for (let index = 0; index < 14; index++) {
+    for (let index = 0; index < 19; index++) {
       const reviewerId = `reviewer-${index}`;
       const next = await service.getNext(reviewerId);
       await service.submitReview({
@@ -463,10 +513,10 @@ describe("blind human generated-puzzle playtesting", () => {
     }
     expect(store.candidates[0]?.status).toBe("open");
 
-    const fifteenth = await service.getNext("reviewer-14");
+    const twentieth = await service.getNext("reviewer-19");
     await service.submitReview({
-      reviewerId: "reviewer-14",
-      fixtureId: fifteenth.specimen!.fixtureId,
+      reviewerId: "reviewer-19",
+      fixtureId: twentieth.specimen!.fixtureId,
       guess: "sunflower",
       confidence: 5,
       elapsedMs: 12_000,
@@ -484,7 +534,12 @@ describe("blind human generated-puzzle playtesting", () => {
           ).length,
         ])
       )
-    ).toEqual({ "compact-320": 5, "mobile-375": 5, "desktop-768": 5 });
+    ).toEqual({
+      "compact-320": 5,
+      "mobile-375": 5,
+      "mobile-375-medium": 5,
+      "desktop-768": 5,
+    });
   });
 
   it("does not reveal a candidate answer until that reviewer has judged it", async () => {
@@ -538,6 +593,100 @@ describe("blind human generated-puzzle playtesting", () => {
     expect(supportedPass.passes).toBe(true);
   });
 
+  it("does not admit an incomplete candidate", async () => {
+    const { repository } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    await service.submitCandidate(candidateInput());
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.reasons.join(" ")).toContain("complete");
+  });
+
+  it("does not count generated decisions from unqualified reviewers", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, { qualified: false });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.reasons.join(" ")).toContain("qualified");
+    expect(admission.qualifiedDecisions).toBe(0);
+  });
+
+  it("rejects a completed candidate whose solve evidence misses its difficulty floor", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, { correctCount: 10 });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.solveEvidence.passes).toBe(false);
+    expect(admission.reasons.join(" ")).toContain("solve floor");
+  });
+
+  it("rejects a candidate with multiple-answer reports above the allowed count", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, {
+      correctCount: 20,
+      failures: ["multiple-answers", "multiple-answers"],
+    });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.ambiguityReports).toBe(2);
+    expect(admission.reasons.join(" ")).toContain("Multiple-answer");
+  });
+
+  it("rejects any candidate with an explicit visual failure", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate, {
+      correctCount: 20,
+      failures: ["unreadable-layout"],
+    });
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission.eligible).toBe(false);
+    expect(admission.visualFailureReports).toBe(1);
+    expect(admission.reasons.join(" ")).toContain("visual");
+  });
+
+  it("admits a complete, fair candidate with qualified coverage on every profile", async () => {
+    const { repository, store } = inMemoryRepository();
+    const service = createPuzzlePlaytestService(repository, renderer);
+    const candidate = await service.submitCandidate(candidateInput());
+    await ensureControls(service);
+    seedCandidateEvidence(store, candidate);
+
+    const admission = await service.getCandidateAdmission("puzzle-1");
+
+    expect(admission).toMatchObject({
+      eligible: true,
+      qualifiedDecisions: 20,
+      ambiguityReports: 0,
+      visualFailureReports: 0,
+    });
+    expect(admission.profileCoverage).toEqual(
+      expect.arrayContaining(PROFILE_IDS.map((profileId) => ({ profileId, decisions: 5 })))
+    );
+    expect(JSON.stringify(admission)).not.toContain(candidate.answer);
+  });
+
   it("computes market-leading status only from 100 fully covered generated puzzles", async () => {
     const { repository, store } = inMemoryRepository();
     const service = createPuzzlePlaytestService(repository, renderer);
@@ -563,7 +712,7 @@ describe("blind human generated-puzzle playtesting", () => {
       });
       for (const [profileIndex, profileId] of PROFILE_IDS.entries()) {
         for (let reviewerIndex = 0; reviewerIndex < 5; reviewerIndex++) {
-          const reviewerId = `reviewer-${(candidateIndex * 15 + profileIndex * 5 + reviewerIndex) % 50}`;
+          const reviewerId = `reviewer-${(candidateIndex * 20 + profileIndex * 5 + reviewerIndex) % 50}`;
           store.reviews.push({
             id: `${candidateId}:${profileId}:${reviewerIndex}`,
             contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
@@ -588,7 +737,7 @@ describe("blind human generated-puzzle playtesting", () => {
     );
 
     const report = await service.getReport("outside-reviewer");
-    expect(report.completedDecisionCount).toBe(1500);
+    expect(report.completedDecisionCount).toBe(2000);
     expect(report.readinessVersion).toBe(PUZZLE_PLAYTEST_READINESS_VERSION);
     expect(report.reviewerCount).toBe(50);
     expect(report.reviewerCoverage.maximumDecisionShare).toBe(0.02);

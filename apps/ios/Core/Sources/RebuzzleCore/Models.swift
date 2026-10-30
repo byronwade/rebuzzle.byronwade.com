@@ -40,6 +40,17 @@ public struct PuzzleVisual: Codable, Sendable, Hashable {
     public let layout: String?
     public let unicodeFallback: String?
     public let layers: [VisualLayer]?
+    public let canonicalBoard: CanonicalBoard?
+    enum CodingKeys: String, CodingKey { case mode, layout, unicodeFallback, layers, canonicalBoard }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        mode = try c.decodeIfPresent(String.self, forKey: .mode)
+        layout = try c.decodeIfPresent(String.self, forKey: .layout)
+        unicodeFallback = try c.decodeIfPresent(String.self, forKey: .unicodeFallback)
+        layers = try c.decodeIfPresent([VisualLayer].self, forKey: .layers)
+        // decodeIfPresent would erase an explicit malformed null artifact.
+        canonicalBoard = c.contains(.canonicalBoard) ? try c.decode(CanonicalBoard.self, forKey: .canonicalBoard) : nil
+    }
 }
 public struct VisualLayer: Codable, Sendable, Hashable {
     public let kind: String
@@ -59,7 +70,7 @@ public struct Player: Codable, Sendable, Identifiable {
     public let username: String
     public let email: String?
     public let isGuest: Bool?
-    public var guest: Bool { isGuest == true || email?.hasSuffix("@guest.rebuzzle.local") == true }
+    public var guest: Bool { isGuest ?? (email?.hasSuffix("@guest.rebuzzle.local") ?? false) }
 }
 public struct AuthResponse: Decodable, Sendable {
     public let success: Bool?
@@ -76,7 +87,7 @@ public struct GuessWordResult: Codable, Sendable {
     public let correct: Bool
     public let similarity: Double?
 }
-public struct GuessResponse: Decodable, Sendable {
+public struct GuessResponse: Codable, Sendable {
     public let success: Bool
     public let correct: Bool
     public let attemptsLeft: Int
@@ -90,6 +101,40 @@ public struct GuessResponse: Decodable, Sendable {
     public let wordResults: [GuessWordResult]?
     public let pointsEarned: Int?
     public let streak: Int?
+    public let phase: String?
+    public let scoreLocked: Bool?
+    public let playMode: String?
+}
+
+public struct RevealResponse: Decodable, Sendable {
+    public let success: Bool
+    public let puzzleId: String
+    public let puzzleDate: String
+    public let phase: String
+    public let scoreLocked: Bool
+    public let correct: Bool
+    public let wasSuccessful: Bool
+    public let gameOver: Bool
+    public let attempts: [Guess]
+    public let attemptsLeft: Int
+    public let maxAttempts: Int
+    public let answer: String?
+    public let explanation: String?
+    public let pointsEarned: Int?
+}
+
+public struct ExpiredDailyReview: Codable, Sendable {
+    public let puzzleId: String
+    public let puzzleDate: String
+    public let answer: String
+    public let explanation: String
+
+    public init(puzzleId: String, puzzleDate: String, answer: String, explanation: String) {
+        self.puzzleId = puzzleId
+        self.puzzleDate = puzzleDate
+        self.answer = answer
+        self.explanation = explanation
+    }
 }
 public struct StatsResponse: Decodable, Sendable {
     public let success: Bool

@@ -236,3 +236,15 @@ describe("rule-graph composer", () => {
     expect(result.layers).toHaveLength(1);
   });
 });
+
+it("preserves an approved requested word separately from its artwork identity", () => {
+  const result = composeRuleGraph({
+    techniqueId: "simple_compound",
+    answer: "bike rack",
+    cues: [
+      { kind: "catalog", concept: "bike", role: "word-part" },
+      { kind: "text", content: "RACK", role: "word-part" },
+    ],
+  });
+  expect(result.layers[0]).toMatchObject({ concept: "bike", assetId: "lucide:bicycle:v2" });
+});

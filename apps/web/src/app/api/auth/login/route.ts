@@ -90,6 +90,7 @@ export async function POST(request: Request) {
       userId: user.id,
       username: user.username,
       email: user.email,
+      isGuest: false,
     });
 
     // Create response with user data and token
@@ -100,6 +101,7 @@ export async function POST(request: Request) {
         id: user.id,
         username: user.username,
         email: user.email,
+        isGuest: false,
       },
       token, // For desktop/mobile apps
       success: true,

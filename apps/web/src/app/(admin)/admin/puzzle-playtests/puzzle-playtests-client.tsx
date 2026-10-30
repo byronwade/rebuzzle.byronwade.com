@@ -4,6 +4,7 @@ import { ArchiveRestore, Gamepad2, Loader2, Send, ShieldCheck } from "lucide-rea
 import Image from "next/image";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { PuzzlePlaytestBackfillReport } from "@/ai/puzzle-agent/review/puzzle-playtest-backfill";
+import { getPuzzlePlaytestCampaignProgress } from "@/ai/puzzle-agent/review/puzzle-playtest-campaign";
 import type {
   BlindPuzzlePlaytestSpecimen,
   PuzzlePlaytestProgress,
@@ -205,6 +206,7 @@ function PuzzlePlaytestsPageInner() {
   }
 
   const completion = progress ? (progress.completed / Math.max(1, progress.available)) * 100 : 0;
+  const campaign = report ? getPuzzlePlaytestCampaignProgress(report) : null;
 
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 md:px-6">
@@ -217,9 +219,6 @@ function PuzzlePlaytestsPageInner() {
           Solve only what the rendered board communicates. Every reviewer sees one responsive
           profile per generated puzzle, and the answer remains hidden until that review is final.
         </p>
-        <Button asChild className="mt-3" size="sm" variant="outline">
-          <Link href="/playtest">Open registered-player panel</Link>
-        </Button>
       </div>
 
       {progress && (
@@ -402,115 +401,166 @@ function PuzzlePlaytestsPageInner() {
                 bootstrap, so repeated ratings do not masquerade as independent evidence.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <div className="text-muted-foreground text-xs">Completed puzzles</div>
-                <div className="font-semibold text-xl">{report.completedCandidates}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Solve rate</div>
-                <div className="font-semibold text-xl">{percent(report.overallSolveRate)}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Ambiguity</div>
-                <div className="font-semibold text-xl">{percent(report.ambiguityRate)}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Visual failures</div>
-                <div className="font-semibold text-xl">{percent(report.visualFailureRate)}</div>
-                <div className="text-muted-foreground text-xs">
-                  {percent(report.conservativeEvidence.visualFailureUpperBound)} conservative upper
+            <CardContent className="space-y-5">
+              {campaign && (
+                <section
+                  aria-labelledby="playtest-campaign-title"
+                  className="rounded-lg border bg-muted/30 p-4"
+                >
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <div className="min-w-0">
+                      <h3 id="playtest-campaign-title" className="font-semibold text-sm">
+                        Human calibration sample
+                      </h3>
+                      <p className="mt-1 max-w-2xl text-muted-foreground text-sm">
+                        Track complete boards, qualified decisions, and reviewers before tuning
+                        difficulty from player evidence.
+                      </p>
+                    </div>
+                    <Button asChild className="shrink-0" size="sm" variant="outline">
+                      <Link href="/playtest">Open tester panel</Link>
+                    </Button>
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    {[
+                      { label: "Completed puzzles", ...campaign.completedCandidates },
+                      { label: "Qualified decisions", ...campaign.qualifiedGeneratedDecisions },
+                      { label: "Qualified reviewers", ...campaign.qualifiedReviewers },
+                    ].map(({ label, current, target }) => (
+                      <div className="space-y-2" key={label}>
+                        <div className="flex items-baseline justify-between gap-3 text-sm">
+                          <span className="text-muted-foreground">{label}</span>
+                          <span className="font-semibold tabular-nums">
+                            {current} / {target}
+                          </span>
+                        </div>
+                        <Progress
+                          aria-label={`${label}: ${current} of ${target}`}
+                          value={Math.min(100, (current / target) * 100)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-muted-foreground text-xs">
+                    Coverage is a sample target, not approval. The readiness gates below decide
+                    whether the evidence supports release.
+                  </p>
+                </section>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <div className="text-muted-foreground text-xs">Completed puzzles</div>
+                  <div className="font-semibold text-xl">{report.completedCandidates}</div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Candidate floor pass</div>
-                <div className="font-semibold text-xl">
-                  {percent(report.candidateFloorPassRate)}
+                <div>
+                  <div className="text-muted-foreground text-xs">Solve rate</div>
+                  <div className="font-semibold text-xl">{percent(report.overallSolveRate)}</div>
                 </div>
-                <div className="text-muted-foreground text-xs">
-                  {percent(report.conservativeEvidence.candidateFloorPassLowerBound)} conservative
-                  lower
+                <div>
+                  <div className="text-muted-foreground text-xs">Ambiguity</div>
+                  <div className="font-semibold text-xl">{percent(report.ambiguityRate)}</div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Ambiguity safety bound</div>
-                <div className="font-semibold text-xl">
-                  {percent(report.conservativeEvidence.ambiguityUpperBound)}
+                <div>
+                  <div className="text-muted-foreground text-xs">Visual failures</div>
+                  <div className="font-semibold text-xl">{percent(report.visualFailureRate)}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {percent(report.conservativeEvidence.visualFailureUpperBound)} conservative
+                    upper
+                  </div>
                 </div>
-                <div className="text-muted-foreground text-xs">Conservative 95% upper</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">High-confidence wrong bound</div>
-                <div className="font-semibold text-xl">
-                  {percent(report.conservativeEvidence.highConfidenceWrongUpperBound)}
+                <div>
+                  <div className="text-muted-foreground text-xs">Candidate floor pass</div>
+                  <div className="font-semibold text-xl">
+                    {percent(report.candidateFloorPassRate)}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {percent(report.conservativeEvidence.candidateFloorPassLowerBound)} conservative
+                    lower
+                  </div>
                 </div>
-                <div className="text-muted-foreground text-xs">Conservative 95% upper</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Solve estimate MAE</div>
-                <div className="font-semibold text-xl">
-                  {percent(report.solveCalibrationMeanAbsoluteError)}
+                <div>
+                  <div className="text-muted-foreground text-xs">Ambiguity safety bound</div>
+                  <div className="font-semibold text-xl">
+                    {percent(report.conservativeEvidence.ambiguityUpperBound)}
+                  </div>
+                  <div className="text-muted-foreground text-xs">Conservative 95% upper</div>
                 </div>
-                <div className="text-muted-foreground text-xs">
-                  {percent(report.conservativeEvidence.solveCalibrationMeanAbsoluteErrorUpperBound)}{" "}
-                  cluster upper
+                <div>
+                  <div className="text-muted-foreground text-xs">High-confidence wrong bound</div>
+                  <div className="font-semibold text-xl">
+                    {percent(report.conservativeEvidence.highConfidenceWrongUpperBound)}
+                  </div>
+                  <div className="text-muted-foreground text-xs">Conservative 95% upper</div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Responsive solve gap</div>
-                <div className="font-semibold text-xl">{percent(report.responsiveSolveGap)}</div>
-                <div className="text-muted-foreground text-xs">
-                  {percent(report.conservativeEvidence.responsiveSolveGapUpperBound)} cluster upper
+                <div>
+                  <div className="text-muted-foreground text-xs">Solve estimate MAE</div>
+                  <div className="font-semibold text-xl">
+                    {percent(report.solveCalibrationMeanAbsoluteError)}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {percent(
+                      report.conservativeEvidence.solveCalibrationMeanAbsoluteErrorUpperBound
+                    )}{" "}
+                    cluster upper
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Crossed bootstrap</div>
-                <div className="font-semibold text-xl">
-                  {report.clusteredEvidence.sufficient ? "Ready" : "Insufficient"}
+                <div>
+                  <div className="text-muted-foreground text-xs">Responsive solve gap</div>
+                  <div className="font-semibold text-xl">{percent(report.responsiveSolveGap)}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {percent(report.conservativeEvidence.responsiveSolveGapUpperBound)} cluster
+                    upper
+                  </div>
                 </div>
-                <div className="text-muted-foreground text-xs">
-                  {report.clusteredEvidence.rowClusters} reviewers ×{" "}
-                  {report.clusteredEvidence.columnClusters} puzzles ·{" "}
-                  {report.clusteredEvidence.replicates} resamples
+                <div>
+                  <div className="text-muted-foreground text-xs">Crossed bootstrap</div>
+                  <div className="font-semibold text-xl">
+                    {report.clusteredEvidence.sufficient ? "Ready" : "Insufficient"}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {report.clusteredEvidence.rowClusters} reviewers ×{" "}
+                    {report.clusteredEvidence.columnClusters} puzzles ·{" "}
+                    {report.clusteredEvidence.replicates} resamples
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Independent reviewers</div>
-                <div className="font-semibold text-xl">{report.reviewerCoverage.reviewers}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Largest reviewer share</div>
-                <div className="font-semibold text-xl">
-                  {percent(report.reviewerCoverage.maximumDecisionShare)}
+                <div>
+                  <div className="text-muted-foreground text-xs">Independent reviewers</div>
+                  <div className="font-semibold text-xl">{report.reviewerCoverage.reviewers}</div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Techniques represented</div>
-                <div className="font-semibold text-xl">{report.techniqueScores.length}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Reviewer qualification</div>
-                <div className="font-semibold text-xl">
-                  {percent(report.reviewerQuality.qualificationRate)}
+                <div>
+                  <div className="text-muted-foreground text-xs">Largest reviewer share</div>
+                  <div className="font-semibold text-xl">
+                    {percent(report.reviewerCoverage.maximumDecisionShare)}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Qualified / excluded</div>
-                <div className="font-semibold text-xl">
-                  {report.reviewerQuality.qualifiedReviewers} /{" "}
-                  {report.reviewerQuality.excludedReviewers}
+                <div>
+                  <div className="text-muted-foreground text-xs">Techniques represented</div>
+                  <div className="font-semibold text-xl">{report.techniqueScores.length}</div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Control decisions</div>
-                <div className="font-semibold text-xl">
-                  {report.reviewerQuality.controlDecisions}
+                <div>
+                  <div className="text-muted-foreground text-xs">Reviewer qualification</div>
+                  <div className="font-semibold text-xl">
+                    {percent(report.reviewerQuality.qualificationRate)}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs">Generated decisions held out</div>
-                <div className="font-semibold text-xl">
-                  {report.reviewerQuality.unscoredGeneratedDecisions}
+                <div>
+                  <div className="text-muted-foreground text-xs">Qualified / excluded</div>
+                  <div className="font-semibold text-xl">
+                    {report.reviewerQuality.qualifiedReviewers} /{" "}
+                    {report.reviewerQuality.excludedReviewers}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground text-xs">Control decisions</div>
+                  <div className="font-semibold text-xl">
+                    {report.reviewerQuality.controlDecisions}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground text-xs">Generated decisions held out</div>
+                  <div className="font-semibold text-xl">
+                    {report.reviewerQuality.unscoredGeneratedDecisions}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -529,7 +579,7 @@ function PuzzlePlaytestsPageInner() {
                   Market-leading {report.marketLeadingReady ? "proven" : "not proven"}
                 </Badge>
                 <Badge variant="outline">{report.reviewerCount} reviewers</Badge>
-                <Badge variant="outline">{report.decisionCount} generated decisions</Badge>
+                <Badge variant="outline">{report.decisionCount} total generated reviews</Badge>
                 <Badge variant="outline">{report.controlCandidateCount} blinded controls</Badge>
               </div>
               {!report.releaseReady && (

@@ -1,6 +1,7 @@
 import { evaluateSemanticAlignment } from "../semantic-alignment";
 import type { PuzzleVisual, VisualLayer } from "../visual/composition";
 import { resolveCuratedPictogram } from "../visual/curated-pictograms";
+import { listOriginalPictogramCandidates } from "../visual/original-pictograms";
 
 function pictogram(concept: string): VisualLayer {
   const asset = resolveCuratedPictogram(concept)!;
@@ -114,4 +115,53 @@ describe("evaluateSemanticAlignment", () => {
     expect(plain.ok).toBe(false);
     expect(plain.blockers[0]).toContain("styled text layer");
   });
+});
+
+it("does not let a relabeled citrus asset form a lemon compound", () => {
+  const citrus = pictogram("citrus");
+  const result = evaluateSemanticAlignment({
+    answer: "lemonade",
+    techniqueId: "simple_compound",
+    visual: visual([{ ...citrus, concept: "lemon" } as VisualLayer, text("ADE")]),
+  });
+  expect(result.ok).toBe(false);
+  expect(result.cues.flatMap((cue) => cue.variants)).not.toContain("lemon");
+});
+
+it("does not borrow generic concept aliases for an unapproved original identity", () => {
+  const result = evaluateSemanticAlignment({
+    answer: "clockwork",
+    techniqueId: "simple_compound",
+    visual: visual([
+      { ...pictogram("clock"), assetId: "rebuzzle-ink:clock:v1" } as VisualLayer,
+      text("WORK"),
+    ]),
+  });
+  expect(result.ok).toBe(false);
+  expect(result.cues.flatMap((cue) => cue.variants)).not.toContain("clock");
+});
+
+it("uses exact original readings without borrowing legacy or confusion aliases", () => {
+  const clock = listOriginalPictogramCandidates()[0];
+  const board = visual([
+    {
+      kind: "pictogram",
+      concept: "clock",
+      assetId: clock.assetId,
+      svg: clock.svg,
+      source: "approved-cache",
+      emojiFallback: "clock",
+    },
+    text("WORK"),
+  ]);
+  const result = evaluateSemanticAlignment({
+    answer: "clockwork",
+    techniqueId: "simple_compound",
+    visual: board,
+  });
+  expect(result.ok).toBe(true);
+  const readings = result.cues.flatMap((cue) => cue.variants);
+  expect(readings).toContain("clock");
+  expect(readings).not.toContain("watch");
+  expect(readings).not.toContain("time");
 });

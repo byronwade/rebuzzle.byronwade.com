@@ -23,11 +23,9 @@ Set all required environment variables in your deployment platform:
 NEXT_PUBLIC_APP_URL=https://yourdomain.com
 NODE_ENV=production
 
+# Store the connection string only as a sensitive Vercel project environment variable.
+# Prefer REBUZZLE_MONGODB_URI; use MONGODB_URI only for legacy deployments.
 # Database
-# Prefer the Vercel MongoDB marketplace variable when present:
-REBUZZLE_MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/rebuzzle
-# Or the legacy name:
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/rebuzzle
 MONGODB_DB=rebuzzle
 
 # AI Configuration

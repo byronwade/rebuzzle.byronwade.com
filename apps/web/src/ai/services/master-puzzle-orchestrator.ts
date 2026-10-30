@@ -65,6 +65,7 @@ export interface GeneratedPuzzleResult {
     answerResearch?: PuzzleAgentResult["metadata"]["answerResearch"];
     estimatedSolveRate?: number;
     playabilityEvidence?: PuzzleAgentResult["metadata"]["playabilityEvidence"];
+    reasoningEvidence?: PuzzleAgentResult["metadata"]["reasoningEvidence"];
     simCalibrationBias?: number;
     boardRecognitionConfidence?: number;
     boardRecognitionModels?: string[];
@@ -136,6 +137,7 @@ function toGeneratedResult(
       answerResearch: result.metadata.answerResearch,
       estimatedSolveRate: result.metadata.estimatedSolveRate,
       playabilityEvidence: result.metadata.playabilityEvidence,
+      reasoningEvidence: result.metadata.reasoningEvidence,
       simCalibrationBias: result.metadata.simCalibrationBias,
       boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
       boardRecognitionModels: result.metadata.boardRecognitionModels,
@@ -150,8 +152,10 @@ function toGeneratedResult(
 }
 
 function apexEnabled(params: MasterGenerationParams): boolean {
-  if (params.candidateCount === 1) return false;
-  return AI_CONFIG.puzzleAgent.apex.enabled !== false;
+  if (AI_CONFIG.puzzleAgent.apex.enabled === false) return false;
+  // One candidate is a spend limit, not an opt-out of daily mechanism design.
+  // Keep low-tier single-candidate requests on their existing classic path.
+  return params.targetDifficulty >= 7 || params.candidateCount !== 1;
 }
 
 async function enforceClassicPlayability(result: PuzzleAgentResult): Promise<PuzzleAgentResult> {
@@ -182,6 +186,7 @@ async function enforceClassicPlayability(result: PuzzleAgentResult): Promise<Puz
       ...result.metadata,
       estimatedSolveRate: sim.estimatedSolveRate,
       playabilityEvidence: toPlayabilityEvidence(sim),
+      reasoningEvidence: sim.reasoningEvidence,
     },
   };
 }
@@ -200,7 +205,7 @@ export async function generateMasterPuzzle(
     engine: useApex ? "apex" : "eve",
     difficulty: params.targetDifficulty,
     puzzleType: params.puzzleType ?? "rebus",
-    candidates: useApex ? AI_CONFIG.puzzleAgent.apex.candidateCount : 1,
+    candidates: useApex ? (params.candidateCount ?? AI_CONFIG.puzzleAgent.apex.candidateCount) : 1,
   });
 
   if (useApex) {

@@ -16,6 +16,7 @@ import {
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
 import { buildCacheControl } from "@/lib/http/cache-headers";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { rateLimiters } from "@/lib/middleware/rate-limit";
 import { sendAchievementUnlockedEmail } from "@/lib/notifications/email-service";
 import { resolveRequestTimeZone } from "@/lib/timezone";
@@ -158,7 +159,8 @@ export async function POST(request: NextRequest) {
     // share_first: require today's puzzle to be finished first
     if (achievementId === "share_first") {
       const { puzzleAttemptOps } = await import("@/db/operations");
-      const timeZone = await resolveRequestTimeZone();
+      const requestTimeZone = await resolveRequestTimeZone();
+      const timeZone = await resolveStableJourneyTimeZone(user.id, requestTimeZone);
       const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
       const lock = await puzzleAttemptOps.hasTodayAttempt(user.id, localDateKey);
       if (!lock.hasAttempt) {

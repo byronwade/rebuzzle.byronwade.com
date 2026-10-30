@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import RebuzzleCore
 
 struct APIError: LocalizedError {
@@ -6,13 +7,218 @@ struct APIError: LocalizedError {
     let message: String
     var errorDescription: String? { message }
 }
+
+struct JournalFetchResult: Sendable {
+    let entries: [JournalSyncRemoteEntry]
+    let historyStatus: String
+}
+
+struct JournalNoteWriteResult: Decodable, Sendable {
+    let note: String
+    let revision: Int
+}
+
+private struct JournalPageResponse: Decodable {
+    let entries: [JournalEntryPayload]
+    let nextCursor: String?
+    let historyStatus: String
+}
+
+private struct JournalEntryPayload: Decodable {
+    let puzzleID: String
+    let puzzleDate: String
+    let puzzleType: String
+    let clue: String
+    let answer: String
+    let explanation: String
+    let won: Bool
+    let attempts: Int
+    let hintsUsed: Int?
+    let visual: PuzzleVisual?
+    let hints: [String]
+    let note: String
+    let noteRevision: Int
+
+    enum CodingKeys: String, CodingKey {
+        case puzzleID = "puzzleId"
+        case puzzleDate, puzzleType, clue, answer, explanation, won, attempts, hintsUsed, visual, hints, note, noteRevision
+    }
+
+    var remoteEntry: JournalSyncRemoteEntry {
+        JournalSyncRemoteEntry(
+            entry: JournalEntry(
+                puzzleID: puzzleID,
+                puzzleDate: puzzleDate,
+                puzzleType: puzzleType,
+                clue: clue,
+                answer: answer,
+                explanation: explanation,
+                won: won,
+                attempts: attempts,
+                hintsUsed: hintsUsed,
+                note: note,
+                visual: visual,
+                hints: hints
+            ),
+            noteRevision: noteRevision
+        )
+    }
+}
+
+enum DailyEntrySource: String, Hashable, Sendable {
+    case app, notification, widget, shortcut, share
+}
+
+enum PlusOfferSource: String, Hashable, Sendable {
+    case archive
+    case settings
+    case journeyInsights = "journey_insights"
+    case journal
+    case freeSample = "free_sample"
+}
+
+enum DailyQualityRating: String, CaseIterable, Identifiable, Sendable {
+    case tooEasy = "too_easy"
+    case justRight = "just_right"
+    case toughButFair = "tough_but_fair"
+    case unclear
+
+    var id: String { rawValue }
+}
+
+enum GrowthEvent: Sendable {
+    case dailyOpened(DailyEntrySource)
+    case plusOfferViewed(PlusOfferSource?)
+    case plusPurchaseStarted(PlusOfferSource?)
+    case plusPurchaseVerified(PlusOfferSource?)
+    case plusPurchasePending(PlusOfferSource?)
+    case plusPurchaseCancelled(PlusOfferSource?)
+    case plusPurchaseUnverified(PlusOfferSource?)
+    case plusPurchaseFailed(PlusOfferSource?)
+    case plusRestoreCompleted
+    case plusRestoreEmpty
+    case plusRestoreFailed
+    case reminderEnabled
+    case dailyQualityFeedback(DailyQualityRating, puzzleDate: String)
+    case dailySolvePulseViewed
+    case dailyShareStarted
+    case dailyShareCompleted
+
+    static func dailyShareCompletionEvent(completed: Bool) -> GrowthEvent? {
+        completed ? .dailyShareCompleted : nil
+    }
+
+    var payload: [String: String] {
+        switch self {
+        case .dailyOpened(let source): ["eventType": "daily_opened", "source": source.rawValue]
+        case .plusOfferViewed(let source): Self.plusPayload("plus_offer_viewed", source: source)
+        case .plusPurchaseStarted(let source): Self.plusPayload("plus_purchase_started", source: source)
+        case .plusPurchaseVerified(let source): Self.plusPayload("plus_purchase_verified", source: source)
+        case .plusPurchasePending(let source): Self.plusPayload("plus_purchase_pending", source: source)
+        case .plusPurchaseCancelled(let source): Self.plusPayload("plus_purchase_cancelled", source: source)
+        case .plusPurchaseUnverified(let source): Self.plusPayload("plus_purchase_unverified", source: source)
+        case .plusPurchaseFailed(let source): Self.plusPayload("plus_purchase_failed", source: source)
+        case .plusRestoreCompleted: ["eventType": "plus_restore_completed"]
+        case .plusRestoreEmpty: ["eventType": "plus_restore_empty"]
+        case .plusRestoreFailed: ["eventType": "plus_restore_failed"]
+        case .reminderEnabled: ["eventType": "reminder_enabled"]
+        case .dailyQualityFeedback(let rating, let puzzleDate): [
+            "eventType": "daily_quality_feedback",
+            "rating": rating.rawValue,
+            "puzzleDate": puzzleDate
+        ]
+        case .dailySolvePulseViewed: ["eventType": "daily_solve_pulse_viewed"]
+        case .dailyShareStarted: ["eventType": "daily_share_started"]
+        case .dailyShareCompleted: ["eventType": "daily_share_completed"]
+        }
+    }
+
+    private static func plusPayload(_ eventType: String, source: PlusOfferSource?) -> [String: String] {
+        guard let source else { return ["eventType": eventType] }
+        return ["eventType": eventType, "source": source.rawValue]
+    }
+}
+
 @MainActor final class APIClient {
     var token: String?
+    var plusTransactionJWSProvider: (() -> String?)?
     let baseURL: URL
     private let session: URLSession
     private let deviceID: String
-    init(baseURL: URL = URL(string: "https://rebuzzle.byronwade.com")!, deviceID: String, session: URLSession? = nil) {
-        self.baseURL = baseURL; self.deviceID = deviceID
+    private static let productionBaseURL = URL(string: "https://rebuzzle.byronwade.com")!
+
+    static func resolvedBaseURL(from infoDictionary: [String: Any]) -> URL {
+        guard let configuredURL = infoDictionary["RebuzzleAPIBaseURL"] as? String,
+              configuredURL == configuredURL.trimmingCharacters(in: .whitespacesAndNewlines),
+              let components = URLComponents(string: configuredURL),
+              components.scheme?.lowercased() == "https",
+              let host = components.host, !host.isEmpty,
+              components.user == nil,
+              components.password == nil,
+              components.path.isEmpty || components.path == "/",
+              components.query == nil,
+              components.fragment == nil,
+              let url = components.url,
+              let normalizedHost = url.host,
+              Self.hasValidAuthority(configuredURL, normalizedHost: normalizedHost) else {
+            return productionBaseURL
+        }
+        return url
+    }
+
+    private static func hasValidAuthority(_ origin: String, normalizedHost: String) -> Bool {
+        guard let schemeSeparator = origin.range(of: "://") else { return false }
+        let authority = origin[schemeSeparator.upperBound...].prefix { !"/?#".contains($0) }
+        guard !authority.isEmpty else { return false }
+
+        if authority.first == "[" {
+            guard let closingBracket = authority.firstIndex(of: "]"),
+                  closingBracket > authority.startIndex else { return false }
+            let addressStart = authority.index(after: authority.startIndex)
+            let address = authority[addressStart..<closingBracket]
+            var parsedAddress = in6_addr()
+            guard address.withCString({ inet_pton(AF_INET6, $0, &parsedAddress) }) == 1 else { return false }
+
+            let suffix = authority[authority.index(after: closingBracket)...]
+            if suffix.isEmpty { return true }
+            guard suffix.first == ":" else { return false }
+            return isValidPort(suffix.dropFirst())
+        }
+
+        let authorityParts = authority.split(separator: ":", omittingEmptySubsequences: false)
+        guard authorityParts.count <= 2, isValidDNSHostname(normalizedHost) else { return false }
+        guard authorityParts.count == 2 else { return true }
+        return isValidPort(authorityParts[1])
+    }
+
+    private static func isValidPort<S: StringProtocol>(_ port: S) -> Bool {
+        guard !port.isEmpty,
+              port.utf8.allSatisfy({ (48...57).contains($0) }),
+              let number = Int(String(port)) else { return false }
+        return (1...65_535).contains(number)
+    }
+
+    private static func isValidDNSHostname(_ host: String) -> Bool {
+        var hostname = host
+        if hostname.hasSuffix(".") { hostname.removeLast() }
+        let hostnameBytes = hostname.utf8
+        guard !hostnameBytes.isEmpty, hostnameBytes.count <= 253 else { return false }
+
+        return hostname.split(separator: ".", omittingEmptySubsequences: false).allSatisfy { label in
+            let bytes = Array(label.utf8)
+            guard !bytes.isEmpty,
+                  bytes.count <= 63,
+                  bytes.first != 45,
+                  bytes.last != 45 else { return false }
+            return bytes.allSatisfy {
+                (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45
+            }
+        }
+    }
+
+    init(baseURL: URL? = nil, deviceID: String, session: URLSession? = nil) {
+        self.baseURL = baseURL ?? Self.resolvedBaseURL(from: Bundle.main.infoDictionary ?? [:])
+        self.deviceID = deviceID
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 25
         config.httpCookieStorage = nil
@@ -27,10 +233,16 @@ struct APIError: LocalizedError {
         request.setValue(deviceID, forHTTPHeaderField: "X-Device-Id")
         request.setValue("rebuzzle-tz=\(TimeZone.current.identifier)", forHTTPHeaderField: "Cookie")
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        if path.hasPrefix("/api/puzzles/guess") || path.hasPrefix("/api/puzzle/session") {
+        if path.hasPrefix("/api/puzzles/guess") || path.hasPrefix("/api/puzzles/reveal") || path.hasPrefix("/api/puzzle/session") {
             request.setValue("true", forHTTPHeaderField: "X-Rebuzzle-Daily-Only")
         }
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        request.setValue("1", forHTTPHeaderField: "X-Rebuzzle-Canonical-Board")
+        let isFreeArchiveSample = url.path == "/api/puzzles/practice/sample"
+        if url.path.hasPrefix("/api/user/journal") || url.path == "/api/puzzles/archive" || (url.path.hasPrefix("/api/puzzles/practice/") && !isFreeArchiveSample),
+           let transactionJWS = plusTransactionJWSProvider?() {
+            request.setValue(transactionJWS, forHTTPHeaderField: "X-Rebuzzle-StoreKit-Transaction")
+        }
         if let body { request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError(status: 0, message: "The server did not respond. Try again when you’re connected.") }
@@ -41,6 +253,143 @@ struct APIError: LocalizedError {
         }
         do { return try JSONDecoder().decode(T.self, from: data) }
         catch { throw APIError(status: http.statusCode, message: "Rebuzzle sent an unexpected response. Your progress is safe; please try again.") }
+    }
+    func fetchJourneyProgress() async throws -> JourneyProgressSnapshot {
+        try await request("/api/user/progress")
+    }
+    func fetchJournal() async throws -> JournalFetchResult {
+        var entries: [JournalSyncRemoteEntry] = []
+        var cursor: String?
+        var historyStatus = "complete"
+        var seenCursors = Set<String>()
+
+        repeat {
+            var components = URLComponents(url: baseURL.appendingPathComponent("api/user/journal"), resolvingAgainstBaseURL: false)
+            var queryItems = [URLQueryItem(name: "limit", value: "100")]
+            if let cursor { queryItems.append(URLQueryItem(name: "before", value: cursor)) }
+            components?.queryItems = queryItems
+            guard let url = components?.url else {
+                throw APIError(status: 0, message: "Your journal could not be opened. Please try again.")
+            }
+            let page: JournalPageResponse = try await request(url.absoluteString)
+            entries.append(contentsOf: page.entries.map(\.remoteEntry))
+            historyStatus = page.historyStatus
+            guard let nextCursor = page.nextCursor, !nextCursor.isEmpty else { break }
+            guard seenCursors.insert(nextCursor).inserted else {
+                throw APIError(status: 0, message: "Your journal history could not be read completely. Please try again.")
+            }
+            cursor = nextCursor
+        } while true
+
+        return JournalFetchResult(entries: entries, historyStatus: historyStatus)
+    }
+    func saveJournalNote(_ write: JournalSyncNoteWrite) async throws -> JournalNoteWriteResult {
+        try await request(
+            "/api/user/journal/note",
+            method: "PUT",
+            body: [
+                "puzzleId": write.puzzleID,
+                "note": write.note,
+                "expectedRevision": write.expectedRevision,
+            ]
+        )
+    }
+    func fetchArchive(cursor: String? = nil, limit: Int = 20) async throws -> PuzzleArchivePage {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/puzzles/archive"), resolvingAgainstBaseURL: false)
+        var queryItems = [URLQueryItem(name: "limit", value: String(min(50, max(1, limit))))]
+        if let cursor, !cursor.isEmpty { queryItems.append(URLQueryItem(name: "cursor", value: cursor)) }
+        components?.queryItems = queryItems
+        guard let url = components?.url else { throw APIError(status: 0, message: "The archive could not be opened. Please try again.") }
+        return try await request(url.absoluteString)
+    }
+    func fetchArchiveSample() async throws -> Puzzle {
+        try await request("/api/puzzles/practice/sample")
+    }
+    func fetchDailySolveDistribution(puzzleID: String) async throws -> DailySolveDistribution {
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("api/puzzles/solve-distribution"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [URLQueryItem(name: "puzzleId", value: puzzleID)]
+        guard let url = components?.url else {
+            throw APIError(status: 0, message: "The solving mix could not be opened. Please try again.")
+        }
+        return try await request(url.absoluteString)
+    }
+    func submitPracticeGuess(puzzleID: String, guess: String, attemptNumber: Int, roundToken: String?) async throws -> PracticeGuessResponse {
+        var body: [String: Any] = ["puzzleId": puzzleID, "guess": guess, "attemptNumber": attemptNumber]
+        if let roundToken { body["roundToken"] = roundToken }
+        return try await request(
+            "/api/puzzles/practice/guess",
+            method: "POST",
+            body: body,
+            headers: ["X-Rebuzzle-Daily-Only": "false"]
+        )
+    }
+    func revealPracticeSolution(puzzleID: String, roundToken: String) async throws -> PracticeRevealResponse {
+        try await request(
+            "/api/puzzles/practice/reveal",
+            method: "POST",
+            body: ["puzzleId": puzzleID, "roundToken": roundToken],
+            headers: ["X-Rebuzzle-Daily-Only": "false"]
+        )
+    }
+    /// Growth reporting never changes puzzle or purchase access; callers may retry when needed.
+    @discardableResult func report(_ event: GrowthEvent) async -> Bool {
+        do {
+            var headers: [String: String] = [:]
+            if case .plusPurchaseVerified(_) = event,
+               let transactionJWS = plusTransactionJWSProvider?() {
+                headers["X-Rebuzzle-StoreKit-Transaction"] = transactionJWS
+            }
+            let _: SuccessResponse = try await request(
+                "/api/native/analytics",
+                method: "POST",
+                body: event.payload,
+                headers: headers
+            )
+            return true
+        } catch {
+            // The server intentionally receives no retry queue or puzzle data.
+            return false
+        }
+    }
+    /// Eve is optional commentary; scoring remains exclusively in the guess endpoint.
+    func streamQuip(puzzleID: String, guess: Guess, scope: EveReplyScope = .daily, onUpdate: @escaping @MainActor (String) -> Void) async throws {
+        guard let tier = guess.reaction?.tier else { return }
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/puzzles/quip"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 4.5
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("text/plain", forHTTPHeaderField: "Accept")
+        request.setValue(deviceID, forHTTPHeaderField: "X-Device-Id")
+        request.setValue("rebuzzle-tz=\(TimeZone.current.identifier)", forHTTPHeaderField: "Cookie")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if scope == .practice, let transactionJWS = plusTransactionJWSProvider?() {
+            request.setValue(transactionJWS, forHTTPHeaderField: "X-Rebuzzle-StoreKit-Transaction")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["puzzleId": puzzleID, "guess": guess.guess, "tier": tier, "mode": scope.rawValue])
+        let (bytes, response) = try await session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        var pending = Data()
+        var text = ""
+        var count = 0
+        for try await byte in bytes {
+            try Task.checkCancellation()
+            count += 1
+            guard count <= 2048 else { break }
+            pending.append(byte)
+            // Decode only complete UTF-8 scalars so split emoji and punctuation survive.
+            if let scalar = String(data: pending, encoding: .utf8) {
+                text += scalar
+                pending.removeAll(keepingCapacity: true)
+                onUpdate(text)
+            } else if pending.count > 4 {
+                throw URLError(.cannotDecodeContentData)
+            }
+        }
     }
     private struct ErrorBody: Decodable { let error: String? }
 }

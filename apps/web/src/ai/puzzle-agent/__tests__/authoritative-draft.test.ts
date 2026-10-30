@@ -148,3 +148,28 @@ describe("answer-seed structure lock", () => {
     expect(merged).toEqual(preflightBoard);
   });
 });
+
+it("detects coordinate drift after a mechanism is approved", () => {
+  const approved = {
+    ...preflightBoard.visual,
+    layout: "free" as const,
+    layers: preflightBoard.visual.layers.map((layer, index) => ({
+      ...layer,
+      x: 25 + index * 20,
+      y: 50,
+    })),
+  };
+  const drifted = {
+    ...approved,
+    layers: approved.layers.map((layer, index) => ({ ...layer, x: index === 0 ? 75 : layer.x })),
+  };
+  expect(answerSeedStructureIssues(approved, drifted)).toEqual(
+    expect.arrayContaining([expect.stringMatching(/position/i)])
+  );
+  expect(
+    mergeInventAssetsOntoPreflight(
+      { answer: "keyboard", visual: approved },
+      { answer: "keyboard", visual: drifted }
+    ).visual
+  ).toEqual(approved);
+});

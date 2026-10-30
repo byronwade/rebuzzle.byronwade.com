@@ -73,9 +73,11 @@ export function missingAnswerSeedCues(input: {
   return cues.flatMap((cue) => {
     if (cue.kind === "catalog") {
       const expected = resolveCuratedPictogram(cue.concept)?.canonicalConcept;
-      const present = pictogramLayers.some(
-        (layer) => resolveCuratedPictogram(layer.concept)?.canonicalConcept === expected
-      );
+      const present =
+        Boolean(expected) &&
+        pictogramLayers.some(
+          (layer) => resolveCuratedPictogram(layer.concept)?.canonicalConcept === expected
+        );
       return present ? [] : [`Missing catalog cue ${cue.concept}`];
     }
 

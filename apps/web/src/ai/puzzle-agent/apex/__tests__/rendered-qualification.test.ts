@@ -15,6 +15,7 @@ jest.mock("../near-miss-stress", () => ({
 }));
 
 import { INK_PICTOGRAM_EXAMPLE_KEY } from "../../visual/style";
+import { selectQualifiedFinalist } from "../finalist-selection";
 import { qualifyRenderedCandidate } from "../rendered-qualification";
 import type { ApexCandidate } from "../types";
 
@@ -116,5 +117,70 @@ describe("rendered finalist qualification", () => {
     });
     expect(result.publishable).toBe(false);
     expect(result.rejectReasons.join(" ")).toMatch(/Near-miss stress failed/i);
+  });
+  it("evaluates the runner-up when the top daily finalist lacks reasoning evidence", async () => {
+    recognizePuzzleBoard.mockResolvedValue({
+      ok: true,
+      perceptions: [],
+      conceptVotes: {},
+      textVotes: {},
+      operatorVotes: {},
+      profileResults: [],
+    });
+    const sim = {
+      firstWrongParses: [],
+      likelySolvePath: "A visible interpretation",
+      hintUnlockOrderLooksFair: true,
+      unfairReasons: [],
+      estimatedSolveRate: 0.5,
+      confidence: 0.9,
+    };
+    simulatePlayerSolve.mockResolvedValueOnce(sim).mockResolvedValueOnce({
+      ...sim,
+      reasoningEvidence: {
+        version: "editorial-reasoning-v1",
+        interacting: true,
+        calibration: "editorial-unplaytested",
+        finalInterpretation: "two left feet",
+        operations: [
+          {
+            kind: "reversal",
+            observation: "TEEF reads leftward",
+            inference: "left feet",
+            necessary: true,
+          },
+          { kind: "count", observation: "Two copies", inference: "two", necessary: true },
+        ],
+      },
+    });
+    const dailyCandidate = (id: string, qualityOverall: number): ApexCandidate => ({
+      ...candidate(),
+      id,
+      qualityOverall,
+      answer: "two left feet",
+      difficulty: 7,
+      visual: {
+        mode: "composed",
+        layout: "row",
+        unicodeFallback: "TEEF TEEF",
+        layers: [
+          { kind: "text", content: "TEEF", emphasis: "normal" },
+          { kind: "text", content: "TEEF", emphasis: "normal" },
+        ],
+      },
+    });
+    const evaluated: string[] = [];
+    const result = await selectQualifiedFinalist({
+      candidates: [dailyCandidate("top", 99), dailyCandidate("runner-up", 80)],
+      minRubricOverall: 0,
+      canStartEvaluation: () => true,
+      evaluate: async (value) => {
+        evaluated.push(value.id);
+        return qualifyRenderedCandidate(value);
+      },
+    });
+    expect(result.winner?.id).toBe("runner-up");
+    expect(evaluated).toEqual(["top", "runner-up"]);
+    expect(result.failures.join(" ")).toContain("reviewed evidence");
   });
 });

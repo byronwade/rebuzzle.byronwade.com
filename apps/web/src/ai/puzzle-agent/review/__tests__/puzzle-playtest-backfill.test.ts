@@ -9,6 +9,7 @@ function eligiblePuzzle(id = "puzzle-1"): Puzzle {
   const boardProfiles = [
     ["compact-320", 320, 44],
     ["mobile-375", 375, 72],
+    ["mobile-375-medium", 375, 52],
     ["desktop-768", 768, 72],
   ].map(([profileId, viewportWidth, tileSize]) => ({
     profileId: String(profileId),
@@ -21,15 +22,17 @@ function eligiblePuzzle(id = "puzzle-1"): Puzzle {
     operatorVotes: { "+": 2 },
     wrappedRows: 1,
   }));
-  const profiles = ["compact-320", "mobile-375", "desktop-768"].map((profileId) => ({
-    profileId,
-    judgeCount: 2,
-    targetFoundBy: 2,
-    topTargetFoundBy: 2,
-    dominantTargetFoundBy: 2,
-    meanReciprocalRank: 1,
-    strongestWrongConfidence: 0.1,
-  }));
+  const profiles = ["compact-320", "mobile-375", "mobile-375-medium", "desktop-768"].map(
+    (profileId) => ({
+      profileId,
+      judgeCount: 2,
+      targetFoundBy: 2,
+      topTargetFoundBy: 2,
+      dominantTargetFoundBy: 2,
+      meanReciprocalRank: 1,
+      strongestWrongConfidence: 0.1,
+    })
+  );
   return {
     id,
     puzzle: "SUN + FLOWER",
@@ -79,10 +82,10 @@ function eligiblePuzzle(id = "puzzle-1"): Puzzle {
       },
       playabilityEvidence: {
         blind: {
-          profileCount: 3,
-          profilesWithTarget: 3,
-          profilesWithTopTarget: 3,
-          profilesWithDominantTarget: 3,
+          profileCount: 4,
+          profilesWithTarget: 4,
+          profilesWithTopTarget: 4,
+          profilesWithDominantTarget: 4,
           topTargetFoundBy: 6,
           dominantTargetFoundBy: 6,
           meanReciprocalRank: 1,
@@ -91,8 +94,8 @@ function eligiblePuzzle(id = "puzzle-1"): Puzzle {
           profiles,
         },
         editorial: {
-          profileCount: 3,
-          acceptedProfiles: 3,
+          profileCount: 4,
+          acceptedProfiles: 4,
           confidence: 0.95,
           failureKinds: [],
         },

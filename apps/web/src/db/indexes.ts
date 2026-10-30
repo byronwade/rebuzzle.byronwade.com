@@ -93,11 +93,19 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         spec: { "metadata.aiGenerated": 1, puzzleType: 1, publishedAt: -1 },
         options: {
           name: "generated_rebus_playtest_backfill",
-          partialFilterExpression: { "metadata.aiGenerated": true, visual: { $exists: true } },
+          partialFilterExpression: {
+            "metadata.aiGenerated": true,
+            visual: { $exists: true },
+          },
         },
       },
       // Speeds UTC-day lookups used by findByDate
       { spec: { active: 1, publishedAt: 1 } },
+      // Selects one stable oldest published daily for the free archive sample
+      {
+        spec: { active: 1, publishedAt: 1, id: 1 },
+        options: { name: "puzzle_free_archive_sample" },
+      },
       // Archive-wide answer lookups (app enforces uniqueness; sparse for legacy rows)
       {
         spec: { "metadata.answerKey": 1 },
@@ -110,7 +118,9 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         options: {
           unique: true,
           name: "answer_key_archive_v1_unique",
-          partialFilterExpression: { "metadata.uniquenessContract": "archive-v1" },
+          partialFilterExpression: {
+            "metadata.uniquenessContract": "archive-v1",
+          },
         },
       },
       {
@@ -118,14 +128,19 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         options: {
           unique: true,
           name: "daily_publication_archive_v1_unique",
-          partialFilterExpression: { "metadata.uniquenessContract": "archive-v1" },
+          partialFilterExpression: {
+            "metadata.uniquenessContract": "archive-v1",
+          },
         },
       },
       // Fingerprint lookups for uniqueness tooling
       { spec: { "metadata.fingerprint": 1 }, options: { sparse: true } },
       // Structural novelty ledger: searchable archive composition dimensions
       {
-        spec: { "metadata.noveltyEvidence.mechanismFamilyKey": 1, createdAt: -1 },
+        spec: {
+          "metadata.noveltyEvidence.mechanismFamilyKey": 1,
+          createdAt: -1,
+        },
         options: { sparse: true, name: "novelty_mechanism_family_created" },
       },
       {
@@ -137,7 +152,10 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         options: { sparse: true, name: "novelty_topology_created" },
       },
       {
-        spec: { "metadata.noveltyEvidence.cueCombinationKey": 1, createdAt: -1 },
+        spec: {
+          "metadata.noveltyEvidence.cueCombinationKey": 1,
+          createdAt: -1,
+        },
         options: { sparse: true, name: "novelty_cue_combination_created" },
       },
     ],
@@ -157,7 +175,12 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       { spec: { puzzleId: 1, isCorrect: 1 } },
       // Time-based analytics
       { spec: { attemptedAt: -1 } },
-      // Daily final-attempt lock: one completed/abandoned play per user per UTC day
+      // Recent official daily puzzle quality aggregates
+      {
+        spec: { puzzleDate: 1 },
+        options: { name: "puzzleAttempts_puzzleDate_1" },
+      },
+      // Daily final-attempt lock: one completed/abandoned play per user per accepted local date
       {
         spec: { userId: 1, puzzleDate: 1 },
         options: {
@@ -168,6 +191,28 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       },
       // Count today's guesses quickly
       { spec: { userId: 1, puzzleDate: 1, attemptedAt: 1 } },
+    ],
+  },
+
+  // One immutable Journey projection per account and accepted local puzzle date.
+  {
+    collection: "dailyProgress",
+    indexes: [
+      {
+        spec: { userId: 1, puzzleDate: 1 },
+        options: { unique: true, name: "userId_1_puzzleDate_1" },
+      },
+    ],
+  },
+
+  // One revisioned private note per account and completed daily puzzle.
+  {
+    collection: "journalNotes",
+    indexes: [
+      {
+        spec: { userId: 1, puzzleId: 1 },
+        options: { unique: true, name: "userId_1_puzzleId_1" },
+      },
     ],
   },
 
@@ -197,7 +242,13 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       // Published date for listing/archive
       { spec: { publishedAt: -1 } },
       // Archive navigation
-      { spec: { "archiveDate.year": 1, "archiveDate.month": 1, "archiveDate.day": 1 } },
+      {
+        spec: {
+          "archiveDate.year": 1,
+          "archiveDate.month": 1,
+          "archiveDate.day": 1,
+        },
+      },
       // Author posts
       { spec: { authorId: 1, publishedAt: -1 } },
       // Puzzle type filtering
@@ -273,7 +324,10 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       // Unread notifications
       { spec: { userId: 1, read: 1, createdAt: -1 } },
       // TTL for auto-cleanup (30 days)
-      { spec: { createdAt: 1 }, options: { expireAfterSeconds: 30 * 24 * 60 * 60 } },
+      {
+        spec: { createdAt: 1 },
+        options: { expireAfterSeconds: 30 * 24 * 60 * 60 },
+      },
     ],
   },
 
@@ -292,7 +346,43 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       // Time-based analytics
       { spec: { timestamp: -1 } },
       // TTL for auto-cleanup (90 days)
-      { spec: { timestamp: 1 }, options: { expireAfterSeconds: 90 * 24 * 60 * 60 } },
+      {
+        spec: { timestamp: 1 },
+        options: { expireAfterSeconds: 90 * 24 * 60 * 60 },
+      },
+    ],
+  },
+
+  // Privacy-bounded native funnel events (unique once per account/event/local day).
+  {
+    collection: "nativeGrowthEvents",
+    indexes: [
+      {
+        spec: { userId: 1, eventType: 1, dayKey: 1, source: 1 },
+        options: {
+          unique: true,
+          name: "userId_eventType_dayKey_source_unique",
+        },
+      },
+      {
+        spec: { occurredAt: 1 },
+        options: {
+          expireAfterSeconds: 90 * 24 * 60 * 60,
+          name: "nativeGrowthEvents_ttl_90d",
+        },
+      },
+      { spec: { eventType: 1, occurredAt: -1 } },
+    ],
+  },
+
+  // Opaque one-time nonces for replay-resistant Plus practice rounds.
+  {
+    collection: "practiceRoundTokens",
+    indexes: [
+      {
+        spec: { expiresAt: 1 },
+        options: { expireAfterSeconds: 0, name: "practiceRoundTokens_ttl" },
+      },
     ],
   },
 
@@ -307,7 +397,10 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       // Active sessions
       { spec: { startTime: -1 } },
       // TTL for auto-cleanup (30 days)
-      { spec: { createdAt: 1 }, options: { expireAfterSeconds: 30 * 24 * 60 * 60 } },
+      {
+        spec: { createdAt: 1 },
+        options: { expireAfterSeconds: 30 * 24 * 60 * 60 },
+      },
     ],
   },
 
@@ -332,7 +425,10 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
       // Time-based queries
       { spec: { timestamp: -1 } },
       // TTL for auto-cleanup (180 days)
-      { spec: { createdAt: 1 }, options: { expireAfterSeconds: 180 * 24 * 60 * 60 } },
+      {
+        spec: { createdAt: 1 },
+        options: { expireAfterSeconds: 180 * 24 * 60 * 60 },
+      },
     ],
   },
 
@@ -443,11 +539,30 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     indexes: [
       { spec: { id: 1 }, options: { unique: true } },
       {
-        spec: { contractVersion: 1, catalogVersion: 1, fixtureId: 1, reviewerId: 1 },
+        spec: {
+          contractVersion: 1,
+          catalogVersion: 1,
+          fixtureId: 1,
+          reviewerId: 1,
+        },
         options: { unique: true, name: "icon_fixture_reviewer_unique" },
       },
-      { spec: { contractVersion: 1, catalogVersion: 1, fixtureId: 1, createdAt: -1 } },
-      { spec: { reviewerId: 1, contractVersion: 1, catalogVersion: 1, createdAt: -1 } },
+      {
+        spec: {
+          contractVersion: 1,
+          catalogVersion: 1,
+          fixtureId: 1,
+          createdAt: -1,
+        },
+      },
+      {
+        spec: {
+          reviewerId: 1,
+          contractVersion: 1,
+          catalogVersion: 1,
+          createdAt: -1,
+        },
+      },
       { spec: { conceptId: 1, sizePx: 1, correct: 1 } },
       { spec: { matchedConceptId: 1, correct: 1 }, options: { sparse: true } },
     ],
@@ -511,12 +626,46 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
 
   // Blind human playtesting of actual AI-generated puzzle boards
   {
+    collection: "dailyPuzzleCandidates",
+    indexes: [
+      {
+        spec: { id: 1 },
+        options: { unique: true, name: "daily_candidate_id_unique" },
+      },
+      {
+        spec: { generationKey: 1 },
+        options: {
+          unique: true,
+          name: "daily_candidate_generation_key_unique",
+        },
+      },
+      {
+        spec: { assignedDate: 1 },
+        options: {
+          unique: true,
+          sparse: true,
+          name: "daily_candidate_assigned_date_unique",
+        },
+      },
+      {
+        spec: { status: 1, playtestSubmittedAt: 1, createdAt: 1 },
+        options: { name: "daily_candidate_review_queue" },
+      },
+      {
+        spec: { status: 1, createdAt: 1 },
+        options: { name: "daily_candidate_status_created" },
+      },
+    ],
+  },
+  {
     collection: "puzzlePlaytestCandidates",
     indexes: [
       { spec: { id: 1 }, options: { unique: true } },
       { spec: { contractVersion: 1, puzzleId: 1 }, options: { unique: true } },
       { spec: { contractVersion: 1, status: 1, createdAt: 1 } },
-      { spec: { contractVersion: 1, evidenceRole: 1, status: 1, createdAt: 1 } },
+      {
+        spec: { contractVersion: 1, evidenceRole: 1, status: 1, createdAt: 1 },
+      },
       { spec: { techniqueId: 1, difficultyScore: 1, status: 1 } },
     ],
   },
@@ -528,7 +677,14 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         spec: { contractVersion: 1, candidateId: 1, reviewerId: 1 },
         options: { unique: true, name: "one_profile_per_candidate_reviewer" },
       },
-      { spec: { contractVersion: 1, candidateId: 1, profileId: 1, createdAt: 1 } },
+      {
+        spec: {
+          contractVersion: 1,
+          candidateId: 1,
+          profileId: 1,
+          createdAt: 1,
+        },
+      },
       { spec: { contractVersion: 1, reviewerId: 1, createdAt: 1 } },
       { spec: { failureReason: 1, correct: 1 }, options: { sparse: true } },
     ],
@@ -569,7 +725,11 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
  */
 export function indexKeySignature(
   spec: IndexSpecification | Record<string, unknown>,
-  options: { unique?: boolean; sparse?: boolean; partialFilterExpression?: unknown } = {}
+  options: {
+    unique?: boolean;
+    sparse?: boolean;
+    partialFilterExpression?: unknown;
+  } = {}
 ): string {
   const keys = Object.entries(spec as Record<string, unknown>)
     .map(([key, value]) => `${key}:${String(value)}`)
@@ -606,7 +766,12 @@ export function isBenignIndexConflict(error: unknown): boolean {
 async function createCollectionIndexes(
   db: Db,
   definition: IndexDefinition
-): Promise<{ collection: string; created: number; skipped: number; failures: string[] }> {
+): Promise<{
+  collection: string;
+  created: number;
+  skipped: number;
+  failures: string[];
+}> {
   const collection = db.collection(definition.collection);
   const failures: string[] = [];
   let created = 0;

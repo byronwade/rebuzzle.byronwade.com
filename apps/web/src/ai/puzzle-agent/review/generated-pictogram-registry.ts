@@ -326,11 +326,41 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
       });
       if (!candidate) return null;
       const pixelIntegrity = await evaluatePictogramPixelIntegrity(candidate.svg);
+      const reviews = await repository.listCandidateReviews({
+        registryVersion: GENERATED_PICTOGRAM_REGISTRY_VERSION,
+        candidateId: candidate.id,
+      });
+      // Approval belongs to the content-addressed asset and the actual blind
+      // decisions, not a mutable status flag or cached summary counts.
+      const decisions = uniqueReviews(reviews);
+      const evidenceValid =
+        decisions.length === reviews.length &&
+        decisions.every(
+          (review) =>
+            review.registryVersion === GENERATED_PICTOGRAM_REGISTRY_VERSION &&
+            review.candidateId === candidate.id &&
+            GENERATED_PICTOGRAM_REVIEW_SIZES.some((size) => size === review.sizePx) &&
+            review.fixtureId ===
+              fixtureId(candidate.id, review.sizePx as GeneratedPictogramReviewSize) &&
+            review.reviewerId.trim().length > 0 &&
+            !review.uncertain &&
+            review.correct &&
+            matchesGeneratedPictogramConcept(review.rawGuess, candidate.conceptLabel)
+        ) &&
+        GENERATED_PICTOGRAM_REVIEW_SIZES.every(
+          (size) =>
+            sizeEvidence(decisions, size).correct >= GENERATED_PICTOGRAM_REQUIRED_REVIEWERS_PER_SIZE
+        );
       const valid =
         candidate.status === "approved" &&
+        candidate.registryVersion === GENERATED_PICTOGRAM_REGISTRY_VERSION &&
+        candidate.styleId === INK_PICTOGRAM_STYLE_ID &&
+        candidate.conceptKey === conceptKey &&
+        normalizeGeneratedPictogramConcept(candidate.conceptLabel) === conceptKey &&
+        candidate.id === `generated-pictogram:${candidate.assetSha256.slice(0, 32)}` &&
         candidate.assetSha256 === sha256(candidate.svg) &&
         sanitizePictogramSvg(candidate.svg) === candidate.svg &&
-        scorePictogramClarity(candidate.svg).ok &&
+        evidenceValid &&
         pixelIntegrity.ok;
       if (valid) return candidate;
       await this.quarantine(candidate.id, "Approved registry asset failed integrity validation");
@@ -338,6 +368,7 @@ export function createGeneratedPictogramRegistry(repository: GeneratedPictogramR
     },
 
     async quarantine(id: string, reason: string): Promise<void> {
+      if (process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY === "1") return;
       const candidate = await repository.findCandidateById(id);
       if (candidate?.status !== "approved") return;
       const now = new Date();

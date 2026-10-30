@@ -63,6 +63,12 @@ export async function POST(request: Request) {
     if (!isValidEmail(email)) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
+    if (email.endsWith("@guest.rebuzzle.local")) {
+      return NextResponse.json(
+        { error: "Choose an email address outside the guest domain" },
+        { status: 400 }
+      );
+    }
 
     // Check if user already exists (excluding guest accounts)
     const existingUser = await db.userOps.findByEmail(email);
@@ -246,6 +252,7 @@ export async function POST(request: Request) {
       userId,
       username,
       email,
+      isGuest: false,
     });
 
     // Create response with cookies
@@ -255,6 +262,7 @@ export async function POST(request: Request) {
         id: userId,
         username,
         email,
+        isGuest: false,
       },
       message: convertedFromGuest
         ? "Account created! Your game progress has been saved."

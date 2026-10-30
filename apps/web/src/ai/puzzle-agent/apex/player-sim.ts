@@ -186,6 +186,7 @@ export async function simulatePlayerSolve(input: {
     const blind = summarizeBlindSolveAttempts({ answer: input.answer, attempts });
     const editorial = summarizeEditorialReviewAttempts({
       attempts: editorialAttempts,
+      answer: input.answer,
       expectedProfileIds: PUZZLE_BOARD_RECOGNITION_PROFILES.map((profile) => profile.id),
       requiredVotes: AI_CONFIG.visualRecognition.requiredVotes,
       minConfidence: AI_CONFIG.visualRecognition.minConfidence,
@@ -249,10 +250,12 @@ export async function simulatePlayerSolve(input: {
       blindRequiredVotes: blind.requiredVotes,
       blindProfileResults: blind.profileResults,
       editorialProfileCount: editorial.profileCount,
+      editorialProfileResults: editorial.profileResults,
       editorialAcceptedProfiles: editorial.acceptedProfiles,
       editorialConfidence: editorial.confidence,
       editorialFailureKinds: editorial.failureKinds,
       editorialReasons: editorial.reasons,
+      reasoningEvidence: editorial.reasoningEvidence,
       hintedAttempted,
       hintedTopTargetFoundBy,
       hintedEstimatedSolveRate,
@@ -282,6 +285,7 @@ export async function simulatePlayerSolve(input: {
       blindRequiredVotes: AI_CONFIG.visualRecognition.requiredVotes,
       blindProfileResults: [],
       editorialProfileCount: 0,
+      editorialProfileResults: [],
       editorialAcceptedProfiles: 0,
       editorialConfidence: 0,
       editorialFailureKinds: [],
@@ -320,13 +324,7 @@ export function applyPlayerSimHeuristics(
       hintUnlockOrderLooksFair = false;
     }
   });
-  if (input.tierLabel === "Impossible" && sim.estimatedSolveRate > 0.7) {
-    return {
-      ...sim,
-      estimatedSolveRate: Math.min(sim.estimatedSolveRate, 0.55),
-      hintUnlockOrderLooksFair,
-      unfairReasons,
-    };
-  }
+  // Keep the blind solver's estimate intact: it feeds tournament difficulty
+  // ranking, so tier labels must not make a puzzle appear harder than it read.
   return { ...sim, hintUnlockOrderLooksFair, unfairReasons };
 }

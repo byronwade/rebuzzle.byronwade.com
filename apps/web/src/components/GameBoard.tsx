@@ -12,11 +12,17 @@ import {
 } from "@/lib/analytics";
 import { fireConfetti } from "@/lib/confetti";
 import { fail } from "@/lib/fail";
-import { getLocalPuzzleDate, getNextLocalMidnight } from "@/lib/game/daily-lock";
+import {
+  getLocalPuzzleDate,
+  getNextLocalMidnight,
+  isValidIanaTimeZone,
+} from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
+import { classifyGuessResponse } from "@/lib/game/guess-response-outcome";
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
-import { parseBeatMeChallenge } from "@/lib/game/share-challenge";
+import { parseBeatMeChallenge, shouldReportShareArrival } from "@/lib/game/share-challenge";
+import { createSubmissionTracker } from "@/lib/game/submission-tracker";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
@@ -99,6 +105,9 @@ interface GameState {
   startTime: number;
   hintsUsed: number;
   currentHintIndex: number;
+  phase: string;
+  scoreLocked: boolean;
+  playMode: string;
 }
 
 type GameAction =
@@ -117,6 +126,11 @@ type GameAction =
     }
   | { type: "SET_IS_SUBMITTING"; payload: boolean }
   | { type: "ADD_GUESS_HISTORY"; payload: GuessAttempt }
+  | {
+      type: "SET_DAILY_PLAY_STATE";
+      payload: { phase?: string; scoreLocked?: boolean; playMode?: string };
+    }
+  | { type: "RESTORE_SESSION"; payload: Partial<GameState> }
   | { type: "REVEAL_HINT" };
 
 const gameReducer = (state: GameState, action: GameAction): GameState => {
@@ -143,6 +157,15 @@ const gameReducer = (state: GameState, action: GameAction): GameState => {
         ...state,
         guessHistory: [...state.guessHistory, action.payload],
       };
+    case "SET_DAILY_PLAY_STATE":
+      return {
+        ...state,
+        phase: action.payload.phase ?? state.phase,
+        scoreLocked: action.payload.scoreLocked ?? state.scoreLocked,
+        playMode: action.payload.playMode ?? state.playMode,
+      };
+    case "RESTORE_SESSION":
+      return { ...state, ...action.payload, isSubmitting: false };
     case "REVEAL_HINT":
       return {
         ...state,
@@ -169,6 +192,9 @@ const createInitialGameState = (): GameState => ({
   startTime: Date.now(),
   hintsUsed: 0,
   currentHintIndex: 0,
+  phase: "scored",
+  scoreLocked: false,
+  playMode: "extended",
 });
 
 const emptySubscribe = () => () => {};
@@ -208,12 +234,28 @@ export default function GameBoard({ gameData }: GameBoardProps) {
    */
   const [turns, setTurns] = useState<ThreadTurn[]>([]);
   const turnSeq = useRef(0);
+  const submissions = useRef(createSubmissionTracker());
+  /** Account journey zone from the session restore; the server resets dailies on it. */
+  const journeyTimeZone = useRef<string | undefined>(undefined);
+  const nextDailyReset = () => getNextLocalMidnight(new Date(), journeyTimeZone.current);
   const hasThread = turns.length > 0;
   /** Mobile: expand the docked puzzle after the first guess; desktop stays hero-sized. */
   const isNarrowViewport = useIsNarrowViewport();
   const [stageExpanded, setStageExpanded] = useState(false);
   /** Answer revealed after a loss (and stored for revisit). */
   const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
+  const [revealedExplanation, setRevealedExplanation] = useState<string | null>(null);
+  const [expiredReview, setExpiredReview] = useState<{
+    puzzleId: string;
+    puzzleDate: string;
+    answer: string;
+    explanation: string;
+  } | null>(null);
+  const [showExpiredReview, setShowExpiredReview] = useState(false);
+  const [dismissedExpiredReviewId, setDismissedExpiredReviewId] = useState<string | null>(null);
+  const [continuedScoreLock, setContinuedScoreLock] = useState(false);
+  const [sessionRestored, setSessionRestored] = useState(false);
+  const [sessionRestoreSucceeded, setSessionRestoreSucceeded] = useState(false);
   /** Brushed a close miss — fuels share copy + Zeigarnik. */
   const [hadNearMiss, setHadNearMiss] = useState(false);
   /** Variable-reward lucky solve (client roll when server points absent). */
@@ -227,6 +269,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [paceLabel, setPaceLabel] = useState<string | null>(null);
   const [previousBestSeconds, setPreviousBestSeconds] = useState<number | null>(null);
   const consecutiveColdRef = useRef(0);
+  const shareArrivalReportedRef = useRef(false);
   const isReturner = useSyncExternalStore(emptySubscribe, isReturningUser, () => false);
   const isComeback = useSyncExternalStore(emptySubscribe, isComebackVisit, () => false);
   /** Celebrate when the locked dock + result card land — not at guess submit. */
@@ -322,6 +365,144 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const guestReady = !authLoading;
   const { startGame, endGame, setGameState: setContextGameState } = useGameContext();
 
+  // Restore today's server-owned attempt history before treating the board as new.
+  useEffect(() => {
+    if (!userId || !gameData.id) return;
+    // A guest's first guess creates the session (and this userId) while it is being
+    // scored; that guess owns the board state, and the new session had nothing to restore.
+    const restoreSnapshot = submissions.current.snapshot();
+    if (restoreSnapshot.busy) {
+      setSessionRestored(true);
+      return;
+    }
+    const controller = new AbortController();
+    setSessionRestored(false);
+    setSessionRestoreSucceeded(false);
+    setTurns([]);
+    setRevealedAnswer(null);
+    setRevealedExplanation(null);
+    setExpiredReview(null);
+    setShowExpiredReview(false);
+    setDismissedExpiredReviewId(null);
+    setContinuedScoreLock(false);
+    turnSeq.current = 0;
+    dispatch({ type: "RESTORE_SESSION", payload: createInitialGameState() });
+
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/puzzle/session?puzzleId=${encodeURIComponent(gameData.id)}`,
+          {
+            credentials: "include",
+            headers: { "X-Rebuzzle-Daily-Only": "true" },
+            signal: controller.signal,
+          }
+        );
+        const session = (await response.json()) as {
+          success?: boolean;
+          puzzleId?: string;
+          attempts?: Array<{
+            guess: string;
+            correct: boolean;
+            attemptNumber: number;
+            reaction?: GuessReaction;
+            similarity?: number;
+            wordResults?: WordResult[];
+          }>;
+          hintsUsed?: number;
+          attemptsLeft?: number;
+          maxAttempts?: number;
+          gameOver?: boolean;
+          wasSuccessful?: boolean;
+          answer?: string;
+          explanation?: string;
+          phase?: string;
+          scoreLocked?: boolean;
+          playMode?: string;
+          timeZone?: string;
+          expiredReview?: {
+            puzzleId: string;
+            puzzleDate: string;
+            answer: string;
+            explanation: string;
+          };
+        };
+        if (!response.ok || session.success !== true || session.puzzleId !== gameData.id) {
+          if (response.status === 409) {
+            toast({
+              title: "Today’s puzzle changed",
+              description: "Refresh the page to open the current daily puzzle.",
+            });
+          }
+          return;
+        }
+        // A guess submitted since this restore began is newer than this snapshot.
+        if (submissions.current.isStale(restoreSnapshot)) return;
+        if (typeof session.timeZone === "string" && isValidIanaTimeZone(session.timeZone)) {
+          journeyTimeZone.current = session.timeZone;
+        }
+        const attempts = Array.isArray(session.attempts) ? session.attempts : [];
+        const guessHistory: GuessAttempt[] = attempts.map((attempt) => ({
+          text: attempt.guess,
+          timestamp: new Date(),
+          wordResults: attempt.wordResults ?? [],
+          attemptNumber: attempt.attemptNumber,
+        }));
+        const restoredTurns: ThreadTurn[] = attempts.map((attempt) => ({
+          id: attempt.attemptNumber,
+          text: attempt.guess,
+          attemptNumber: attempt.attemptNumber,
+          tier: attempt.reaction?.tier ?? (attempt.correct ? "correct" : "cold"),
+          line:
+            attempt.reaction?.line ??
+            (attempt.correct ? "You found the connection." : "Take another look at the clues."),
+          wordResults: (attempt.wordResults ?? []).map((word) => ({
+            word: word.word,
+            correct: word.correct,
+            similarity: word.similarity ?? 0,
+          })),
+        }));
+        setTurns(restoredTurns);
+        turnSeq.current = attempts.reduce(
+          (largest, attempt) => Math.max(largest, attempt.attemptNumber),
+          0
+        );
+        setExpiredReview(session.expiredReview ?? null);
+        setRevealedAnswer(session.gameOver ? (session.answer ?? null) : null);
+        setRevealedExplanation(session.gameOver ? (session.explanation ?? null) : null);
+        dispatch({
+          type: "RESTORE_SESSION",
+          payload: {
+            gameOver: Boolean(session.gameOver),
+            nextPlayTime: session.gameOver ? nextDailyReset() : null,
+            attemptsLeft: session.attemptsLeft ?? gameSettings.maxAttempts,
+            lastSubmittedGuess: attempts.at(-1)?.guess ?? null,
+            finalGuess: attempts.at(-1)?.guess ?? null,
+            wasSuccessful: Boolean(session.wasSuccessful),
+            finalAttempts: attempts.length,
+            finalScore: 0,
+            timeTakenSeconds: 0,
+            guessHistory,
+            hintsUsed: session.hintsUsed ?? 0,
+            currentHintIndex: session.hintsUsed ?? 0,
+            phase: session.phase ?? "scored",
+            scoreLocked: Boolean(session.scoreLocked),
+            playMode: session.playMode ?? "classic",
+          },
+        });
+        setSessionRestoreSucceeded(true);
+      } catch (restoreError) {
+        if (!controller.signal.aborted) {
+          console.error("Could not restore today's puzzle session:", restoreError);
+        }
+      } finally {
+        if (!controller.signal.aborted) setSessionRestored(true);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [gameData.id, userId]);
+
   // Load stats after auth — cookie identity, no userId query param.
   // Defer until idle so cold Mongo isn't shared with the first paint path.
   useEffect(() => {
@@ -405,20 +586,20 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
   // Server already marked today complete (e.g. revisit) — lock the board in place
   useEffect(() => {
-    if (!gameData.isCompleted || gameState.gameOver) return;
+    if (!gameData.isCompleted || gameState.gameOver || !sessionRestored) return;
     dispatch({
       type: "SET_COMPLETION",
       payload: {
         finalGuess: "",
         wasSuccessful: false,
         attempts: gameSettings.maxAttempts,
-        nextPlayTime: getNextLocalMidnight(),
+        nextPlayTime: nextDailyReset(),
         score: 0,
         timeTakenSeconds: 0,
       },
     });
     endGame();
-  }, [gameData.isCompleted, gameState.gameOver, endGame]);
+  }, [gameData.isCompleted, gameState.gameOver, sessionRestored, endGame]);
 
   // Track puzzle start after auth settles — defer so it doesn't contend with TTFB.
   useEffect(() => {
@@ -469,19 +650,22 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     attempts: number,
     opts?: {
       serverScore?: number;
+      scoreLocked?: boolean;
       celebrate?: boolean;
+      revealed?: boolean;
       isLucky?: boolean;
       dailyBonusMultiplier?: number;
     }
   ) => {
-    const tomorrow = getNextLocalMidnight();
+    const tomorrow = nextDailyReset();
     const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
     const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
     const serverScore = opts?.serverScore;
 
     // Prefer authoritative server points; fall back to local estimate for UX only
-    let score =
-      typeof serverScore === "number" && serverScore > 0
+    let score = opts?.scoreLocked
+      ? 0
+      : typeof serverScore === "number" && serverScore > 0
         ? serverScore
         : success
           ? calculateGamePoints(
@@ -533,7 +717,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     if (success && opts?.celebrate) {
       pendingCelebrationRef.current = true;
       markJustSolvedInSession();
-    } else if (!success) {
+    } else if (!success && !opts?.revealed) {
       haptics.error();
     }
   };
@@ -564,6 +748,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   };
 
   const handleGuess = async (guessValue?: string) => {
+    const endSubmission = submissions.current.begin();
+    try {
+      await submitGuess(guessValue);
+    } finally {
+      endSubmission();
+    }
+  };
+
+  const submitGuess = async (guessValue?: string) => {
     const guess = guessValue?.trim() ?? "";
 
     if (gameState.gameOver || !currentEventPuzzle || !guess || gameState.isSubmitting) {
@@ -600,10 +793,14 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       const response = await fetch("/api/puzzles/guess", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Rebuzzle-Daily-Only": "true",
+        },
         body: JSON.stringify({
           puzzleId: gameData.id,
           guess: guessToCheck,
+          playMode: "extended",
           timeSpentSeconds: timeTaken,
           hintsUsed: gameState.hintsUsed,
           consecutiveCold: consecutiveColdRef.current,
@@ -617,6 +814,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         attemptNumber?: number;
         attemptsLeft?: number;
         gameOver?: boolean;
+        phase?: string;
+        scoreLocked?: boolean;
+        playMode?: string;
         locked?: boolean;
         wasSuccessful?: boolean;
         wordResults?: WordResult[];
@@ -634,6 +834,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         streakFrozen?: boolean;
         guessDistribution?: number[];
         recentPlayDates?: string[];
+        reloadDaily?: boolean;
         error?: string;
       };
       if (response.ok || response.status === 409) {
@@ -642,11 +843,25 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         fail(`Guess failed (${response.status})`);
       }
 
+      const outcome = classifyGuessResponse(response.status, result);
+
+      // The player's day rolled over while this board was open: nothing was
+      // recorded, so load today's puzzle instead of rendering a terminal result.
+      if (outcome === "reload-daily") {
+        toast({
+          title: "A new puzzle is ready",
+          description: "Your day rolled over. Loading today's puzzle…",
+        });
+        dispatch({ type: "SET_IS_SUBMITTING", payload: false });
+        window.location.reload();
+        return;
+      }
+
       // Already locked / replay blocked — stay in-thread, don't hard-cut away.
       // A winning or final guess also reports `locked: true` (the day is now
       // closed) but with `success: true`; that must fall through to the
       // celebration path with the real attempt count, streak and points.
-      if (response.status === 409 || (result.locked && result.success !== true)) {
+      if (outcome === "locked") {
         void playInterfaceSound("notification");
         setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts, {
           celebrate: false,
@@ -662,6 +877,18 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       if (!response.ok || !result.success) {
         fail(result.error || "Failed to process guess");
       }
+
+      const scoreLockedAfterGuess =
+        result.scoreLocked ?? (result.phase === "score_locked" || result.phase === "continuing");
+
+      dispatch({
+        type: "SET_DAILY_PLAY_STATE",
+        payload: {
+          phase: result.phase,
+          scoreLocked: scoreLockedAfterGuess,
+          playMode: result.playMode ?? "extended",
+        },
+      });
 
       const wordResults: WordResult[] = result.wordResults || [];
       const attemptNumber =
@@ -754,6 +981,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
         setCompletionState(true, guessToCheck, attempts, {
           serverScore: earnedPoints,
+          scoreLocked: scoreLockedAfterGuess && attemptNumber > gameSettings.maxAttempts,
           celebrate: true,
           isLucky: Boolean(result.isLucky),
           dailyBonusMultiplier:
@@ -854,7 +1082,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         },
       });
 
-      if (result.gameOver || newAttemptsLeft <= 0) {
+      if (result.gameOver || (newAttemptsLeft <= 0 && !scoreLockedAfterGuess)) {
         void playInterfaceSound("failure");
 
         if (typeof result.answer === "string" && result.answer.trim()) {
@@ -978,6 +1206,168 @@ export default function GameBoard({ gameData }: GameBoardProps) {
     dispatch({ type: "SET_IS_SUBMITTING", payload: false });
   };
 
+  const revealDailyAnswer = async () => {
+    if (gameState.gameOver || !gameState.scoreLocked || gameState.isSubmitting) return;
+    dispatch({ type: "SET_IS_SUBMITTING", payload: true });
+    setError(null);
+    try {
+      const response = await fetch("/api/puzzles/reveal", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Rebuzzle-Daily-Only": "true",
+        },
+        body: JSON.stringify({ puzzleId: gameData.id }),
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        puzzleId?: string;
+        phase?: string;
+        scoreLocked?: boolean;
+        correct?: boolean;
+        wasSuccessful?: boolean;
+        gameOver?: boolean;
+        attempts?: Array<{
+          guess: string;
+          correct: boolean;
+          attemptNumber: number;
+          reaction?: GuessReaction;
+          wordResults?: WordResult[];
+        }>;
+        answer?: string;
+        explanation?: string;
+        pointsEarned?: number;
+        error?: string;
+      };
+      if (!response.ok || !result.success || result.puzzleId !== gameData.id) {
+        throw new Error(
+          result.error || "Couldn’t reveal this puzzle yet. Refresh progress and try again."
+        );
+      }
+
+      const serverAttempts = result.attempts ?? [];
+      const attempts = Math.max(serverAttempts.length, gameState.guessHistory.length);
+      const authoritativeHistory =
+        serverAttempts.length >= gameState.guessHistory.length && serverAttempts.length > 0
+          ? serverAttempts.map((attempt) => ({
+              text: attempt.guess,
+              timestamp: new Date(),
+              wordResults: attempt.wordResults ?? [],
+              attemptNumber: attempt.attemptNumber,
+            }))
+          : gameState.guessHistory;
+      const finalGuess = serverAttempts.at(-1)?.guess ?? gameState.guessHistory.at(-1)?.text ?? "";
+      const solved = Boolean(result.wasSuccessful ?? result.correct);
+      if (serverAttempts.length > gameState.guessHistory.length) {
+        const previousTurns = new Map(turns.map((turn) => [turn.attemptNumber, turn]));
+        setTurns(
+          serverAttempts.map((attempt) => {
+            const previous = previousTurns.get(attempt.attemptNumber);
+            return {
+              id: attempt.attemptNumber,
+              text: attempt.guess,
+              attemptNumber: attempt.attemptNumber,
+              tier: attempt.correct ? "correct" : (previous?.tier ?? "cold"),
+              line:
+                attempt.reaction?.line ??
+                previous?.line ??
+                (attempt.correct ? "You found the connection." : "Take another look at the clues."),
+              wordResults: (attempt.wordResults ?? previous?.wordResults)?.map((word) => ({
+                word: word.word,
+                correct: word.correct,
+                similarity: word.similarity ?? 0,
+              })),
+            };
+          })
+        );
+        turnSeq.current = Math.max(
+          turnSeq.current,
+          ...serverAttempts.map((attempt) => attempt.attemptNumber)
+        );
+        dispatch({
+          type: "RESTORE_SESSION",
+          payload: {
+            guessHistory: authoritativeHistory,
+            finalGuess,
+            lastSubmittedGuess: finalGuess,
+            finalAttempts: attempts,
+          },
+        });
+      }
+      setRevealedAnswer(result.answer?.trim() || null);
+      setRevealedExplanation(result.explanation || null);
+      dispatch({
+        type: "SET_DAILY_PLAY_STATE",
+        payload: {
+          phase: result.phase ?? "revealed",
+          scoreLocked: result.scoreLocked ?? true,
+          playMode: "extended",
+        },
+      });
+      setCompletionState(solved, finalGuess, attempts, {
+        serverScore: result.pointsEarned ?? 0,
+        scoreLocked: true,
+        celebrate: solved,
+        revealed: !solved,
+      });
+      recordPlayDay();
+
+      const newStats = { ...userStats, totalGames: userStats.totalGames + 1 };
+      if (solved) {
+        newStats.wins += 1;
+        newStats.streak += 1;
+        newStats.maxStreak = Math.max(newStats.maxStreak, newStats.streak);
+      } else {
+        newStats.noHintStreak = 0;
+      }
+      newStats.lastPlayDate = new Date().toISOString();
+      setUserStats(newStats);
+      publishPlayerStats(newStats);
+      if (!solved) {
+        trackPuzzleAbandon({
+          puzzleId: gameData.id || "unknown",
+          puzzleType,
+          attempts,
+          hintsUsed: gameState.hintsUsed,
+        });
+        trackEvent(analyticsEvents.PUZZLE_ABANDON, {
+          puzzleId: gameData.id,
+          puzzleType,
+          attempts,
+          hintsUsed: gameState.hintsUsed,
+          revealed: true,
+        });
+      }
+      localStorage.setItem(
+        "lastGameSolution:v1",
+        JSON.stringify({
+          answer: result.answer,
+          explanation: result.explanation,
+          puzzleId: gameData.id,
+          puzzleDate: getLocalPuzzleDate(),
+        })
+      );
+      localStorage.setItem(
+        "lastGameCompletion:v1",
+        JSON.stringify({
+          guessHistory: authoritativeHistory,
+          timeTaken: Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000)),
+          usedHints: gameState.hintsUsed,
+          streak: newStats.streak,
+          score: result.pointsEarned ?? 0,
+        })
+      );
+    } catch (revealError) {
+      setError({
+        message: "We couldn’t confirm the reveal. Your guesses are still saved.",
+        details: revealError instanceof Error ? revealError.message : undefined,
+      });
+    } finally {
+      dispatch({ type: "SET_IS_SUBMITTING", payload: false });
+    }
+  };
+
   const resultsHref = !gameState.gameOver
     ? "/game-over"
     : buildGameOverHref({
@@ -1005,26 +1395,43 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   }, [chatLocked, gameState.wasSuccessful]);
 
   // Share deep link → one quiet stage caption, not a banner.
-  const fromChallenge = useSyncExternalStore(
-    emptySubscribe,
-    () => {
-      const { challengerId, fromShare } = parseBeatMeChallenge(window.location.search);
-      return Boolean(fromShare && challengerId && challengerId !== userId);
-    },
-    () => false
-  );
+  const [fromChallenge, setFromChallenge] = useState(false);
 
   useEffect(() => {
-    if (!fromChallenge) return;
+    const { fromShare } = parseBeatMeChallenge(window.location.search);
+    if (!fromShare) return;
+    setFromChallenge(true);
     try {
       const url = new URL(window.location.href);
-      url.searchParams.delete("beat");
-      url.searchParams.delete("from");
+      for (const name of ["beat", "from", "source"]) url.searchParams.delete(name);
       window.history.replaceState({}, "", url.pathname + url.search);
     } catch {
       // ignore
     }
-  }, [fromChallenge]);
+  }, []);
+
+  useEffect(() => {
+    if (
+      !shouldReportShareArrival({
+        fromShare: fromChallenge,
+        userId,
+        authLoading,
+        sessionRestoreSucceeded,
+        alreadyReported: shareArrivalReportedRef.current,
+      })
+    ) {
+      return;
+    }
+    shareArrivalReportedRef.current = true;
+    void fetch("/api/native/analytics", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType: "daily_opened", source: "share" }),
+    }).catch(() => {
+      // Growth reporting is best-effort; it never blocks the daily puzzle.
+    });
+  }, [authLoading, fromChallenge, sessionRestoreSucceeded, userId]);
 
   // Soft lock click when the day closes — ritualizes "come back tomorrow".
   useEffect(() => {
@@ -1119,6 +1526,12 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       maxAttempts={gameSettings.maxAttempts}
       resultsHref={resultsHref}
       answer={revealedAnswer}
+      revealed={gameState.phase === "revealed"}
+      lateSolve={
+        gameState.wasSuccessful &&
+        gameState.scoreLocked &&
+        gameState.finalAttempts > gameSettings.maxAttempts
+      }
       nextPlayTime={gameState.nextPlayTime}
       nearMiss={hadNearMiss}
       isLucky={isLuckySolve}
@@ -1128,6 +1541,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       maxStreak={userStats.maxStreak}
       dayRank={dayRank}
       hintsUsed={gameState.hintsUsed}
+      explanation={revealedExplanation}
       noHintStreak={userStats.noHintStreak}
       puzzleId={gameData.id}
       timeTakenSeconds={gameState.timeTakenSeconds}
@@ -1146,6 +1560,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
 
   const showStageChrome =
     !gameState.gameOver && (!hasThread || Boolean(gameData.hints && gameData.hints.length > 0));
+  const awaitingScoreLockDecision =
+    gameState.scoreLocked && gameState.phase === "score_locked" && !continuedScoreLock;
+  const sessionRestorePending = Boolean(userId) && !sessionRestored;
 
   // Puzzle data is already on the server-rendered board — never blank it for
   // auth/guest warm-up. Guest creation only disables submit (below).
@@ -1240,6 +1657,57 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                           }}
                         />
                       ) : null}
+                      {expiredReview &&
+                      dismissedExpiredReviewId !== expiredReview.puzzleId &&
+                      !keyboardOpen ? (
+                        <aside className="mt-3 rounded-xl border border-border/70 bg-card/70 px-3.5 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium text-foreground text-sm">
+                                Yesterday’s unfinished puzzle
+                              </p>
+                              <p className="mt-1 text-muted-foreground text-xs leading-relaxed">
+                                Today’s puzzle is ready. Review yesterday’s connection whenever you
+                                like.
+                              </p>
+                            </div>
+                            <button
+                              aria-label="Dismiss yesterday’s puzzle review"
+                              className="min-h-11 min-w-11 rounded-lg text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                              onClick={() => {
+                                setDismissedExpiredReviewId(expiredReview.puzzleId);
+                                setShowExpiredReview(false);
+                              }}
+                              type="button"
+                            >
+                              <span aria-hidden>×</span>
+                            </button>
+                          </div>
+                          {showExpiredReview ? (
+                            <div className="mt-3 border-t border-border/70 pt-3">
+                              <p
+                                className="font-semibold text-foreground text-base"
+                                data-testid="expiredReviewAnswer"
+                              >
+                                {expiredReview.answer}
+                              </p>
+                              {expiredReview.explanation ? (
+                                <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
+                                  {expiredReview.explanation}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <button
+                              className="mt-2 min-h-11 font-medium text-brand text-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                              onClick={() => setShowExpiredReview(true)}
+                              type="button"
+                            >
+                              Review yesterday’s answer
+                            </button>
+                          )}
+                        </aside>
+                      ) : null}
                     </section>
 
                     {keyboardOpen && lastTurn ? (
@@ -1314,11 +1782,66 @@ export default function GameBoard({ gameData }: GameBoardProps) {
                     <ChatClosingDock success={gameState.wasSuccessful} />
                   ) : (
                     <div className="play-dock-panel">
+                      {gameState.scoreLocked && !keyboardOpen ? (
+                        <div
+                          aria-live="polite"
+                          className="mb-3 rounded-xl border border-brand/25 bg-card/90 px-3.5 py-3"
+                          data-testid="scoreLockedCard"
+                          role="status"
+                        >
+                          <p
+                            className="font-medium text-foreground text-sm"
+                            data-testid="scoreLockedMessage"
+                          >
+                            Your three scored guesses are saved. Take as long as you need to find
+                            the connection.
+                          </p>
+                          {awaitingScoreLockDecision ? (
+                            <div className="mt-2 flex gap-2">
+                              <Button
+                                className="min-h-11 flex-1"
+                                data-testid="continueSolving"
+                                onClick={() => setContinuedScoreLock(true)}
+                                type="button"
+                              >
+                                Keep solving
+                              </Button>
+                              <Button
+                                className="min-h-11"
+                                data-testid="revealAnswer"
+                                disabled={gameState.isSubmitting}
+                                onClick={() => void revealDailyAnswer()}
+                                type="button"
+                                variant="outline"
+                              >
+                                Reveal
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="mt-1.5 flex items-center justify-between gap-2">
+                              <p className="text-muted-foreground text-xs">
+                                Score locked · puzzle still open
+                              </p>
+                              <button
+                                className="min-h-11 px-2 font-medium text-brand text-xs underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                data-testid="revealAnswer"
+                                onClick={() => void revealDailyAnswer()}
+                                type="button"
+                              >
+                                Reveal answer
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                       <SmartAnswerInput
                         attemptsLeft={gameState.attemptsLeft}
+                        scoreLocked={gameState.scoreLocked}
                         disabled={
                           gameState.gameOver ||
                           gameState.isSubmitting ||
+                          sessionRestorePending ||
+                          awaitingScoreLockDecision ||
                           (!userId && isCreatingGuest)
                         }
                         isSubmitting={gameState.isSubmitting || isCreatingGuest}

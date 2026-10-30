@@ -9,6 +9,7 @@ export async function recordTournamentCandidates(input: {
   candidates: ApexCandidate[];
   winnerId?: string;
 }): Promise<void> {
+  if (process.env.REBUZZLE_DIAGNOSTIC_READ_ONLY === "1") return;
   try {
     const records = input.candidates.map((candidate) =>
       snapshotCandidate(candidate, input.runId, candidate.id === input.winnerId)

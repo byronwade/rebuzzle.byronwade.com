@@ -1,3 +1,4 @@
+import { dailyChallengeBlockers, MIN_DAILY_DIFFICULTY } from "../daily-challenge";
 import { recognizePuzzleBoard } from "../visual/critique-board";
 import { evaluateNearMissStress } from "./near-miss-stress";
 import {
@@ -13,7 +14,8 @@ type SimCalibration = { adjustment: number; sampleSize: number };
 /** Attach the rendered evidence required for publication to one pre-ranked finalist. */
 export async function qualifyRenderedCandidate(
   candidate: ApexCandidate,
-  simCalibration?: SimCalibration
+  simCalibration?: SimCalibration,
+  targetDifficulty = candidate.difficulty
 ): Promise<ApexCandidate> {
   const boardRecognition = await recognizePuzzleBoard(candidate.visual);
   if (!boardRecognition.ok) {
@@ -56,6 +58,17 @@ export async function qualifyRenderedCandidate(
   }
 
   const blockers = [...playerSimPublishBlockers(playerSim)];
+  if (targetDifficulty >= MIN_DAILY_DIFFICULTY) {
+    blockers.push(
+      ...dailyChallengeBlockers({
+        difficulty: candidate.difficulty,
+        answer: candidate.answer,
+        visual: candidate.visual,
+        reasoningEvidence: playerSim.reasoningEvidence,
+        reasoningEvidenceSource: "independent-editorial",
+      })
+    );
+  }
   const nearMissStress = evaluateNearMissStress({
     answer: candidate.answer,
     extraCandidates: playerSim.firstWrongParses,

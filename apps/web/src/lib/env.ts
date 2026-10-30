@@ -78,9 +78,18 @@ export function getDatabaseUrl(): string {
   return mongoUrl.trim();
 }
 
-/** Default MongoDB database name when the URI has no path segment. */
-export function getMongoDatabaseName(): string {
-  return process.env.MONGODB_DB || "rebuzzle";
+/**
+ * Select the MongoDB database. An explicit MONGODB_DB takes precedence so a
+ * preview deployment can safely use a separate database with the same URI.
+ */
+export function getMongoDatabaseName(connectionString?: string): string {
+  const configuredName = process.env.MONGODB_DB?.trim();
+  if (configuredName) return configuredName;
+
+  const databaseFromUri = connectionString?.match(/^mongodb(?:\+srv)?:\/\/[^/]+\/([^/?]+)/i)?.[1];
+  if (databaseFromUri) return decodeURIComponent(databaseFromUri);
+
+  return "rebuzzle";
 }
 
 /**

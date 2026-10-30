@@ -1,28 +1,45 @@
 /**
  * Beat-me deep links for share → return loops.
- * URL shape: /?beat=<userId>&from=share
+ * New links carry only a closed, non-identifying source marker.
  */
 
-export const BEAT_ME_PARAM = "beat";
-export const SHARE_FROM_PARAM = "from";
+export const SHARE_SOURCE_PARAM = "source";
+const LEGACY_SHARE_FROM_PARAM = "from";
 
-export function buildBeatMeUrl(origin: string, userId?: string | null): string {
+export function buildBeatMeUrl(origin: string): string {
   const base = origin.replace(/\/$/, "") || "https://rebuzzle.byronwade.com";
-  if (!userId) return base;
   const url = new URL(base);
-  url.searchParams.set(BEAT_ME_PARAM, userId);
-  url.searchParams.set(SHARE_FROM_PARAM, "share");
+  url.pathname = "/";
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set(SHARE_SOURCE_PARAM, "share");
   return url.toString();
 }
 
 export function parseBeatMeChallenge(search: string | URLSearchParams): {
-  challengerId: string | null;
   fromShare: boolean;
 } {
   const params = typeof search === "string" ? new URLSearchParams(search) : search;
-  const challengerId = params.get(BEAT_ME_PARAM)?.trim() || null;
-  const fromShare = params.get(SHARE_FROM_PARAM) === "share";
-  return { challengerId, fromShare };
+  return {
+    fromShare:
+      params.get(SHARE_SOURCE_PARAM) === "share" || params.get(LEGACY_SHARE_FROM_PARAM) === "share",
+  };
+}
+
+export function shouldReportShareArrival(input: {
+  fromShare: boolean;
+  userId: string | null;
+  authLoading: boolean;
+  sessionRestoreSucceeded: boolean;
+  alreadyReported: boolean;
+}): boolean {
+  return (
+    input.fromShare &&
+    Boolean(input.userId) &&
+    !input.authLoading &&
+    input.sessionRestoreSucceeded &&
+    !input.alreadyReported
+  );
 }
 
 export function beatMeShareLine(streak: number, success: boolean): string {
@@ -39,6 +56,6 @@ export function buildShareSquares(success: boolean, attempts: number, maxAttempt
     : 1;
   const used = Number.isFinite(attempts) ? Math.max(1, Math.min(limit, Math.trunc(attempts))) : 1;
   return success
-    ? "🟥".repeat(used - 1) + "🟩" + "⬜".repeat(limit - used)
-    : "🟥".repeat(used) + "⬜".repeat(limit - used);
+    ? `${"🟥".repeat(used - 1)}🟩${"⬜".repeat(limit - used)}`
+    : `${"🟥".repeat(used)}${"⬜".repeat(limit - used)}`;
 }

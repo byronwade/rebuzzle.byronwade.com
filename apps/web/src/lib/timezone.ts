@@ -10,7 +10,7 @@ export {
 
 /**
  * Resolve the player's IANA time zone for request-time puzzle day math.
- * Preference: cookie → Vercel IP timezone → UTC.
+ * Preference: cookie → explicit client zone → Vercel IP timezone → UTC.
  */
 export async function resolveRequestTimeZone(): Promise<string> {
   try {
@@ -23,6 +23,9 @@ export async function resolveRequestTimeZone(): Promise<string> {
 
   try {
     const headerStore = await headers();
+    const fromExplicitRequest = normalizeTimeZone(headerStore.get("x-rebuzzle-time-zone"));
+    if (fromExplicitRequest) return fromExplicitRequest;
+
     const fromVercel = normalizeTimeZone(headerStore.get("x-vercel-ip-timezone"));
     if (fromVercel) return fromVercel;
   } catch {

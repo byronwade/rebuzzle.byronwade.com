@@ -17,6 +17,8 @@ interface SmartAnswerInputProps {
   isSubmitting?: boolean;
   /** Guesses remaining today; shown under the bar until the player starts typing. */
   attemptsLeft?: number;
+  /** The three scored guesses are final, but the player may keep solving. */
+  scoreLocked?: boolean;
   className?: string;
 }
 
@@ -31,6 +33,7 @@ export function SmartAnswerInput({
   disabled = false,
   isSubmitting = false,
   attemptsLeft,
+  scoreLocked = false,
   className,
 }: SmartAnswerInputProps) {
   const [value, setValue] = useState("");
@@ -188,6 +191,8 @@ export function SmartAnswerInput({
             <span className="font-mono tabular-nums">
               {letterCount} letter{letterCount === 1 ? "" : "s"}
             </span>
+          ) : scoreLocked ? (
+            "Score saved. Keep solving at your own pace."
           ) : attemptsLeft === 1 ? (
             "Last guess. Make it count."
           ) : attemptsLeft !== undefined ? (

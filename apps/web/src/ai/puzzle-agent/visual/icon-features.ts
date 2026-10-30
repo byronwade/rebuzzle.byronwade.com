@@ -12,7 +12,7 @@ export type IconFeatureEntry = {
   view: string;
 };
 
-import { getCuratedPictogramAliases } from "./curated-pictograms";
+import { getCuratedPictogramAliases, getCuratedPictogramReadingPolicy } from "./curated-pictograms";
 
 export const ICON_FEATURES: Record<string, IconFeatureEntry> = {
   bee: {
@@ -369,6 +369,17 @@ export function conceptMatchesSeen(concept: string, seenLabel: string): boolean 
   const intended = normalizeLabel(concept);
   const seen = normalizeLabel(seenLabel);
   if (!intended || !seen) return false;
+  const policy = getCuratedPictogramReadingPolicy(concept);
+  // A search-only name can describe independently generated artwork, but cannot
+  // borrow the catalog's synonyms or feature aliases as recognition evidence.
+  if (policy) {
+    const approved = policy.approvedReadings.some(
+      (reading) => normalizeLabel(reading) === intended
+    );
+    if (!approved) return labelsMatchByTokens(intended, seen);
+    if (policy.commonConfusions.some((label) => labelsMatchByTokens(label, seen))) return false;
+    return policy.approvedReadings.some((reading) => labelsMatchByTokens(reading, seen));
+  }
   if (labelsMatchByTokens(intended, seen)) return true;
 
   const curatedAliases = getCuratedPictogramAliases(concept);

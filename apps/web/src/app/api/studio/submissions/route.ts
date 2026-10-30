@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  CANONICAL_BOARD_HEIGHT_LIMIT_MESSAGE,
+  MAX_CANONICAL_BOARD_HEIGHT,
+} from "@/ai/puzzle-agent/visual/canonical-contract";
+import { MAX_FREE_CANVAS_HEIGHT } from "@/ai/puzzle-agent/visual/composition";
+import { layoutPuzzleBoard } from "@/ai/puzzle-agent/visual/layout-plan";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
 import { publicEveReview, runEveStudioReview } from "@/lib/ugc/eve-review";
@@ -63,6 +69,7 @@ type Body = {
   techniqueId?: string;
   difficulty?: number;
   layout?: "row" | "stack" | "grid" | "overlay" | "free";
+  freeCanvasHeight?: number;
   layers?: unknown[];
   caption?: string;
   submit?: boolean;
@@ -97,6 +104,16 @@ export async function POST(request: Request) {
   const title = typeof body.title === "string" ? body.title.trim() : undefined;
   const draftId = typeof body.id === "string" ? body.id : undefined;
 
+  if (
+    body.freeCanvasHeight !== undefined &&
+    (body.layout !== "free" ||
+      !Number.isInteger(body.freeCanvasHeight) ||
+      body.freeCanvasHeight < 200 ||
+      body.freeCanvasHeight > MAX_FREE_CANVAS_HEIGHT)
+  ) {
+    return NextResponse.json({ error: "Invalid free-canvas height" }, { status: 400 });
+  }
+
   if (!answer || !techniqueId || layers.length === 0) {
     return NextResponse.json(
       { error: "Add at least one board piece, an answer, and a technique." },
@@ -107,13 +124,23 @@ export async function POST(request: Request) {
   try {
     const visualInput = {
       layout: body.layout,
+      ...(body.freeCanvasHeight !== undefined ? { freeCanvasHeight: body.freeCanvasHeight } : {}),
       layers: layers as never,
       caption: typeof body.caption === "string" ? body.caption : undefined,
     };
+    if (
+      body.submit &&
+      layoutPuzzleBoard(visualInput, "desktop-768").height > MAX_CANONICAL_BOARD_HEIGHT
+    ) {
+      return NextResponse.json({ error: CANONICAL_BOARD_HEIGHT_LIMIT_MESSAGE }, { status: 400 });
+    }
 
-    // Publish path: full Eve review (safety → grade → critique → optional sim).
+    // Publish path: full Eve review (safety → grade → critique → required screenshot simulation).
     // Draft saves keep the lighter deterministic grade for fast iteration.
     if (body.submit) {
+      const beforeReview = draftId ? await findSubmissionById(draftId) : null;
+      if (draftId && (!beforeReview || beforeReview.userId !== gate.user.userId))
+        throw new Error("Draft not found");
       const review = await runEveStudioReview({
         title,
         answer,
@@ -128,6 +155,7 @@ export async function POST(request: Request) {
 
       const draft = await upsertDraftSubmission({
         id: draftId,
+        expectedUpdatedAt: beforeReview?.updatedAt,
         userId: gate.user.userId,
         username: gate.user.username,
         title,
@@ -150,6 +178,7 @@ export async function POST(request: Request) {
         warnings: review.warnings,
         checkedAt: review.checkedAt,
         spend: review.spend,
+        evidence: review.evidence,
       };
 
       if (!review.ok) {
@@ -168,7 +197,10 @@ export async function POST(request: Request) {
         });
         return NextResponse.json(
           {
-            error: "Eve review did not ship — fix the blockers and try again.",
+            error:
+              review.verdict === "pending"
+                ? review.summary
+                : "Eve review did not ship — fix the blockers and try again.",
             submission: publicSubmission(held),
             grade: {
               ok: false,
@@ -182,9 +214,8 @@ export async function POST(request: Request) {
         );
       }
 
-      const existing = await findSubmissionById(draft.id);
       const approved = await markSubmissionGraded({
-        submission: existing ?? draft,
+        submission: draft,
         ok: true,
         score: review.grade.score,
         funScore: review.grade.funScore,

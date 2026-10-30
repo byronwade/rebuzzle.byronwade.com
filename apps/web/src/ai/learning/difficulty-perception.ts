@@ -66,14 +66,30 @@ export function aggregatePerceptionDelta(votes: {
   tooEasy: number;
   justRight: number;
   tooHard: number;
+  toughButFair?: number;
+  unclear?: number;
 }): { delta: number; notes: string[] } {
-  const total = votes.tooEasy + votes.justRight + votes.tooHard;
+  const toughButFair = votes.toughButFair ?? 0;
+  const unclear = votes.unclear ?? 0;
+  const total = votes.tooEasy + votes.justRight + votes.tooHard + toughButFair;
+  const notes: string[] = [];
+
+  if (toughButFair >= 3) {
+    notes.push(
+      `${toughButFair} players said recent puzzles were tough but fair — preserve the challenge`
+    );
+  }
+  if (unclear >= 3) {
+    notes.push(
+      `${unclear} players reported unclear puzzles — strengthen clue mapping before changing difficulty`
+    );
+  }
+
   if (total < 5) {
-    return { delta: 0, notes: [`Perception sample too small (${total})`] };
+    return { delta: 0, notes: [`Perception sample too small (${total})`, ...notes] };
   }
   const easyShare = votes.tooEasy / total;
   const hardShare = votes.tooHard / total;
-  const notes: string[] = [];
   let delta = 0;
   if (easyShare >= 0.45) {
     delta = easyShare >= 0.65 ? 2 : 1;

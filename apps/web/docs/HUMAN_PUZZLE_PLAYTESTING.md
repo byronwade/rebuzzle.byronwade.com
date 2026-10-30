@@ -29,10 +29,10 @@ that worker selection, training, and consolidation can materially improve a
 replicated crowdsourcing protocol. Rebuzzle uses objective control items as a
 selection gate, while preserving disaggregated decisions. [Homan et al.
 2026](https://aclanthology.org/2026.findings-eacl.223/) cautions that even 5–10
-ratings per item may be insufficient for reliable significance testing. The 15
-qualified decisions here are therefore a product release heuristic, not a claim
-of statistical significance; a formal comparative study must perform its own
-power and reliability analysis.
+ratings per item may be insufficient for reliable significance testing. The 20
+qualified decisions required for one candidate are therefore a product
+admission heuristic, not a claim of statistical significance; a formal
+comparative study must perform its own power and reliability analysis.
 
 Readiness calculations use `puzzle-playtest-readiness-v3`. Raw rates remain
 visible for diagnosis, but acceptance combines one-sided 95% Wilson score bounds
@@ -77,26 +77,34 @@ Administrative reports and historical backfill remain restricted to
 
 ## Candidate completion
 
-Each generated board is tested at compact 320px, mobile 375px, and desktop
-768px. Five distinct **qualified** reviewers are required on each profile, so a
-completed candidate has at least 15 qualified independent decisions. One person
-can never review two profiles of the same puzzle. Control candidates never
-complete and never contribute to generated candidate, profile, difficulty,
-technique, solve-rate, failure-rate, calibration, or readiness metrics.
+Each generated board is tested on four render profiles: compact 320px, mobile
+375px, medium mobile 375px, and desktop 768px. Five distinct **qualified**
+reviewers are required on each profile, so a completed candidate has at least
+20 qualified independent decisions. One person can never review two profiles
+of the same puzzle. Control candidates never complete and never contribute to
+generated candidate, profile, difficulty, technique, solve-rate, failure-rate,
+calibration, or readiness metrics.
 
-A candidate meets its difficulty-adjusted solve floor only when the one-sided
-95% lower Wilson bound from its 15 decisions clears that floor. For example, a
-raw 10/15 result is 66.7%, but its lower bound does not prove a 65% floor; 13/15
-does. The corpus-level candidate-floor pass rate is then bounded again before a
-release or market-leading claim. This intentionally prevents a chain of
-borderline point estimates from becoming a confident aggregate claim.
+A daily candidate is admitted only when all four profiles have five qualified
+decisions, its one-sided 95% lower Wilson solve bound from those decisions
+clears the difficulty-adjusted floor, it has at most one multiple-answer
+report, and it has no explicit visual-playability failure. This individual
+admission gate controls whether that board may enter the daily archive. It does
+not establish overall product readiness or statistical significance.
+
+The aggregate research gates below are a separate, broader corpus-level check.
+They measure whether the playtest sample spans enough puzzles, reviewers,
+difficulty tiers, and techniques, and whether aggregate safety and quality
+metrics pass. Meeting the per-candidate admission rule does not satisfy the
+30-puzzle release gate; passing that aggregate gate does not replace the
+candidate-level check for a specific daily board.
 
 ## Representative evidence gates
 
 | Evidence | Release | Market-leading |
 | --- | ---: | ---: |
 | Completed generated puzzles | 30 | 100 |
-| Completed decisions | 450 | 1,500 |
+| Completed decisions | 600 | 2,000 |
 | Distinct qualified reviewers | 20 | 50 |
 | Largest one-reviewer share | 7.5% | 3.5% |
 | Maximum failed-control reviewer rate | 20% | 10% |
@@ -115,8 +123,9 @@ bounds. Automated-estimate coverage remains candidate-level Wilson evidence,
 and failed-control reviewers remain reviewer-level Wilson evidence.
 Multiple-answer reports, visual failures, and high-confidence wrong answers use
 the larger of their Wilson and crossed-cluster 95% upper bounds. Responsive
-parity is evaluated as three signed pairwise profile differences; the largest
-absolute endpoint across their crossed-cluster bounds must clear the gate.
+parity is evaluated across all six signed pairwise differences between the four
+render profiles; the largest absolute endpoint across their crossed-cluster
+bounds must clear the gate.
 Automated calibration mean absolute error and absolute bias must clear their
 crossed-cluster upper bounds, not merely their point estimates. If two reviewer
 clusters, two puzzle clusters, or a required metric are missing, cluster

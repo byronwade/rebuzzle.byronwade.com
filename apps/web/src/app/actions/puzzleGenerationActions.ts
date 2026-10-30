@@ -11,11 +11,18 @@ import {
   resolveAdaptiveDifficultyForDate,
 } from "@/ai/learning";
 import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
+import { assertDailyChallenge } from "@/ai/puzzle-agent/daily-challenge";
 import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
+import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { db } from "@/db";
+import type { DailyPuzzleCandidate } from "@/db/models";
 import { formatPuzzleFromDb, getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
 import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
+import { isLocalPuzzleDateLiveSomewhere } from "@/lib/game/daily-lock";
+import { createMongoDailyPuzzleCandidateRepository } from "@/lib/game/daily-puzzle-candidate-repository";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
+import { publishReviewedDailyPuzzle } from "@/lib/game/publish-reviewed-daily-puzzle";
+import { createDailyPuzzleCandidateQueue } from "@/lib/game/queue-daily-puzzle-candidate";
 import { logger } from "@/lib/logger";
 
 /**
@@ -138,6 +145,8 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
         reserveId: reserve.id,
         validation: "catalog-grounded-structural-novelty",
       },
+      ...("reasoningEvidence" in reserve ? { reasoningEvidence: reserve.reasoningEvidence } : {}),
+      reasoningEvidenceSource: "curated",
     },
   });
   if (persisted.alreadyExisted) {
@@ -158,6 +167,32 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
   };
 }
 
+function queuedCandidateResult(candidate: DailyPuzzleCandidate, dateString: string) {
+  return {
+    id: candidate.id,
+    puzzle: "",
+    puzzleType: "rebus",
+    date: dateString,
+    aiGenerated: true,
+    fromDatabase: false,
+    queuedForHumanReview: candidate.status === "reviewing",
+    candidateStatus: candidate.status,
+    candidateQueueSkipped: candidate.status === "rejected" ? "candidate_rejected" : undefined,
+  };
+}
+
+function skippedCandidateQueueResult(dateString: string) {
+  return {
+    puzzle: "",
+    puzzleType: "rebus",
+    date: dateString,
+    aiGenerated: false,
+    fromDatabase: false,
+    queuedForHumanReview: false,
+    candidateQueueSkipped: "puzzle_already_published",
+  };
+}
+
 /**
  * Get or generate today's puzzle
  *
@@ -173,16 +208,32 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
 async function getOrGenerateDailyPuzzle(
   dateString: string,
   puzzleType?: string,
-  options?: { allowAiGenerate?: boolean; failOnAiError?: boolean }
+  options?: {
+    allowAiGenerate?: boolean;
+    failOnAiError?: boolean;
+    queueForPlaytest?: boolean;
+  }
 ) {
-  const allowAiGenerate = options?.allowAiGenerate !== false;
+  const allowAiGenerate = options?.allowAiGenerate === true && options?.queueForPlaytest === true;
   const failOnAiError = options?.failOnAiError === true;
-  logger.info("Getting puzzle for date", { dateString, allowAiGenerate, failOnAiError });
+  const queueForPlaytest = options?.queueForPlaytest === true;
+  logger.info("Getting puzzle for date", {
+    dateString,
+    allowAiGenerate,
+    failOnAiError,
+  });
 
   // STEP 1: Cross-request cached DB read via Cache Components ("use cache")
   try {
     const cached = await getCachedDailyPuzzleFromDb(dateString);
     if (cached) {
+      if (queueForPlaytest) {
+        logger.info("Skipping candidate queue because this date is already published", {
+          dateString,
+          puzzleId: cached.id,
+        });
+        return skippedCandidateQueueResult(dateString);
+      }
       return cached;
     }
   } catch (dbError) {
@@ -199,6 +250,13 @@ async function getOrGenerateDailyPuzzle(
   try {
     const raceCheck = await db.puzzleOps.findByDate(dateString);
     if (raceCheck) {
+      if (queueForPlaytest) {
+        logger.info("Skipping candidate queue because this date was just published", {
+          dateString,
+          puzzleId: raceCheck.id,
+        });
+        return skippedCandidateQueueResult(dateString);
+      }
       // The cached miss is stale; serve the row we just read instead of generating.
       revalidateDailyPuzzle(dateString);
       return formatPuzzleFromDb(raceCheck, dateString);
@@ -210,9 +268,52 @@ async function getOrGenerateDailyPuzzle(
     );
   }
 
-  // Interactive play path: never block TTFB on Eve — persist a validated reserve puzzle.
-  // Cron / regenerate / admin regenerate should call with allowAiGenerate: true.
+  if (queueForPlaytest) {
+    const candidateRepository = createMongoDailyPuzzleCandidateRepository();
+    const candidateQueue = createDailyPuzzleCandidateQueue(
+      candidateRepository,
+      puzzlePlaytestService
+    );
+    const existingCandidate = await candidateRepository.findByGenerationKey(dateString);
+    if (existingCandidate) {
+      const candidate =
+        existingCandidate.status === "reviewing" && !existingCandidate.playtestSubmittedAt
+          ? await candidateQueue.enqueue({
+              generationKey: dateString,
+              payload: existingCandidate.payload,
+            })
+          : existingCandidate;
+      return queuedCandidateResult(candidate, dateString);
+    }
+    await candidateQueue.retryPending(20);
+  }
+
+  // Interactive play path: never block TTFB on Eve. Only publish a reviewed candidate
+  // or use the existing community/curated reserve path.
   if (!allowAiGenerate) {
+    // Callers request their *local* date, which can be a day ahead of or behind UTC.
+    if (isLocalPuzzleDateLiveSomewhere(dateString)) {
+      try {
+        const reviewed = await publishReviewedDailyPuzzle({
+          dateString,
+          repository: createMongoDailyPuzzleCandidateRepository(),
+          reviewService: puzzlePlaytestService,
+          persist: persistDailyPuzzle,
+        });
+        if (reviewed) {
+          logger.info("Published a human-reviewed daily candidate", {
+            dateString,
+            puzzleId: reviewed.id,
+          });
+          return reviewed;
+        }
+      } catch (error) {
+        logger.warn("Reviewed candidate unavailable; using the daily reserve", {
+          dateString,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
     return persistReservePuzzle(dateString, "Play-path reserve (AI deferred to cron)");
   }
 
@@ -276,6 +377,19 @@ async function getOrGenerateDailyPuzzle(
           }
         : null,
     });
+
+    if (queueForPlaytest) {
+      return {
+        id: `blocked:${dateString}`,
+        puzzle: "",
+        puzzleType: "rebus",
+        date: dateString,
+        aiGenerated: false,
+        fromDatabase: false,
+        queuedForHumanReview: false,
+        candidateQueueSkipped: reserveReason,
+      };
+    }
 
     const reserve = await persistReservePuzzle(dateString, reserveReason);
     void recordGenerationAudit({
@@ -378,6 +492,76 @@ async function getOrGenerateDailyPuzzle(
       puzzleDisplay = visual.unicodeFallback;
     }
 
+    const metadataExtra = {
+      qualityScore: result.metadata.qualityMetrics?.scores?.overall,
+      uniquenessScore: result.metadata.uniquenessScore,
+      funScore: result.metadata.qualityMetrics?.scores?.fun,
+      techniqueId: result.puzzle.techniqueId,
+      visualStyleId: visual?.styleId,
+      difficultyLevel: result.puzzle.difficultyLevel,
+      difficultyScore: result.puzzle.difficulty,
+      fingerprint: result.metadata.fingerprint,
+      noveltyEvidence: result.metadata.noveltyEvidence,
+      calibratedDifficulty: result.metadata.calibratedDifficulty,
+      generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
+      engine: result.metadata.engine ?? "eve",
+      answerSeed: result.metadata.answerSeed,
+      answerSeedCuePlan: result.metadata.answerSeedCuePlan,
+      answerResearch: result.metadata.answerResearch,
+      learningBaselineDifficulty: difficultyPlan.baseline,
+      learningDifficultyDelta: difficultyPlan.delta,
+      learningReason: difficultyPlan.reason,
+      selfLearning: true,
+      estimatedSolveRate: result.metadata.estimatedSolveRate,
+      simCalibrationBias: result.metadata.simCalibrationBias,
+      playabilityEvidence: result.metadata.playabilityEvidence,
+      reasoningEvidence: result.metadata.reasoningEvidence,
+      reasoningEvidenceSource: "independent-editorial",
+      boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
+      boardRecognitionModels: result.metadata.boardRecognitionModels,
+      boardConceptVotes: result.metadata.boardConceptVotes,
+      boardTextVotes: result.metadata.boardTextVotes,
+      boardOperatorVotes: result.metadata.boardOperatorVotes,
+      boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
+    };
+
+    if (queueForPlaytest) {
+      assertDailyChallenge({
+        difficulty: result.puzzle.difficulty,
+        answer: result.puzzle.answer,
+        visual,
+        reasoningEvidence: result.metadata.reasoningEvidence,
+        reasoningEvidenceSource: "independent-editorial",
+      });
+      const candidateQueue = createDailyPuzzleCandidateQueue(
+        createMongoDailyPuzzleCandidateRepository(),
+        puzzlePlaytestService
+      );
+      const candidate = await candidateQueue.enqueue({
+        generationKey: dateString,
+        payload: {
+          puzzleDisplay,
+          puzzleType: typeToUse,
+          answer: result.puzzle.answer,
+          difficulty: result.puzzle.difficulty,
+          category: result.puzzle.category || "general",
+          explanation: result.puzzle.explanation,
+          hints: result.puzzle.hints || [],
+          aiGenerated: true,
+          rebusPuzzle: typeToUse === "rebus" ? puzzleDisplay : undefined,
+          visual,
+          metadataExtra,
+        },
+      });
+      logger.info("Queued generated daily puzzle for blind human playtesting", {
+        candidateId: candidate.id,
+        generationKey: dateString,
+        candidateStatus: candidate.status,
+        playtestSubmitted: Boolean(candidate.playtestSubmittedAt),
+      });
+      return queuedCandidateResult(candidate, dateString);
+    }
+
     // Persist first — clients must receive a real DB id for /api/puzzles/guess
     const persisted = await persistDailyPuzzle({
       dateString,
@@ -391,36 +575,7 @@ async function getOrGenerateDailyPuzzle(
       aiGenerated: true,
       rebusPuzzle: typeToUse === "rebus" ? puzzleDisplay : undefined,
       visual,
-      metadataExtra: {
-        qualityScore: result.metadata.qualityMetrics?.scores?.overall,
-        uniquenessScore: result.metadata.uniquenessScore,
-        funScore: result.metadata.qualityMetrics?.scores?.fun,
-        techniqueId: result.puzzle.techniqueId,
-        visualStyleId: visual?.styleId,
-        difficultyLevel: result.puzzle.difficultyLevel,
-        difficultyScore: result.puzzle.difficulty,
-        fingerprint: result.metadata.fingerprint,
-        noveltyEvidence: result.metadata.noveltyEvidence,
-        calibratedDifficulty: result.metadata.calibratedDifficulty,
-        generationMethod: result.metadata.engine === "apex" ? "apex-tournament" : "eve-tool-agent",
-        engine: result.metadata.engine ?? "eve",
-        answerSeed: result.metadata.answerSeed,
-        answerSeedCuePlan: result.metadata.answerSeedCuePlan,
-        answerResearch: result.metadata.answerResearch,
-        learningBaselineDifficulty: difficultyPlan.baseline,
-        learningDifficultyDelta: difficultyPlan.delta,
-        learningReason: difficultyPlan.reason,
-        selfLearning: true,
-        estimatedSolveRate: result.metadata.estimatedSolveRate,
-        simCalibrationBias: result.metadata.simCalibrationBias,
-        playabilityEvidence: result.metadata.playabilityEvidence,
-        boardRecognitionConfidence: result.metadata.boardRecognitionConfidence,
-        boardRecognitionModels: result.metadata.boardRecognitionModels,
-        boardConceptVotes: result.metadata.boardConceptVotes,
-        boardTextVotes: result.metadata.boardTextVotes,
-        boardOperatorVotes: result.metadata.boardOperatorVotes,
-        boardRecognitionProfiles: result.metadata.boardRecognitionProfiles,
-      },
+      metadataExtra,
     });
 
     // Best-effort embedding (non-blocking)
@@ -547,7 +702,11 @@ async function getOrGenerateDailyPuzzle(
 export async function getTodaysPuzzle(
   puzzleType?: string,
   dateString?: string,
-  options?: { allowAiGenerate?: boolean; failOnAiError?: boolean }
+  options?: {
+    allowAiGenerate?: boolean;
+    failOnAiError?: boolean;
+    queueForPlaytest?: boolean;
+  }
 ) {
   try {
     // Use provided date string or get today's date
@@ -562,6 +721,12 @@ export async function getTodaysPuzzle(
       generatedAt: new Date().toISOString(),
       cached: "fromDatabase" in puzzle && puzzle.fromDatabase === true,
       aiGenerated: puzzle.aiGenerated ?? false,
+      queuedForHumanReview:
+        "queuedForHumanReview" in puzzle && puzzle.queuedForHumanReview === true,
+      candidateId: "candidateStatus" in puzzle ? puzzle.id : undefined,
+      candidateStatus: "candidateStatus" in puzzle ? puzzle.candidateStatus : undefined,
+      candidateQueueSkipped:
+        "candidateQueueSkipped" in puzzle ? puzzle.candidateQueueSkipped : undefined,
     };
   } catch (error) {
     logger.error(

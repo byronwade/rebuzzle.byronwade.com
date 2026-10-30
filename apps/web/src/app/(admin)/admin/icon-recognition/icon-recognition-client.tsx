@@ -21,6 +21,8 @@ import { fail } from "@/lib/fail";
 import { safeJsonParse } from "@/lib/utils";
 import { withLoadingFlag } from "@/lib/with-loading-flag";
 
+import { OriginalArtworkControls } from "./original-artwork-controls-client";
+
 type NextResponse = {
   success?: boolean;
   specimen?: BlindIconRecognitionSpecimen | null;
@@ -258,7 +260,7 @@ function IconRecognitionPageInner() {
             production catalog.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
+        <CardContent className="grid gap-3 sm:grid-cols-3">
           <Button
             aria-pressed={panelId === "publication"}
             onClick={() => selectPanel("publication")}
@@ -275,10 +277,20 @@ function IconRecognitionPageInner() {
           >
             Replacement candidates
           </Button>
-          <p className="text-muted-foreground text-xs sm:col-span-2">
+          <Button
+            aria-pressed={panelId === "originals"}
+            onClick={() => selectPanel("originals")}
+            type="button"
+            variant={panelId === "originals" ? "default" : "outline"}
+          >
+            Original artwork candidates
+          </Button>
+          <p className="text-muted-foreground text-xs sm:col-span-3">
             {panelId === "publication"
               ? "Qualifies every icon currently allowed in generated puzzles."
-              : "Blindly mixes quarantined replacements with known controls. Candidate answers count only after a reviewer completes the panel and passes the hidden control screen."}
+              : panelId === "originals"
+                ? "Blindly mixes original Rebuzzle drawings with known controls. Five qualified reviewers must complete the panel. Recognition evidence does not automatically approve artwork for puzzles."
+                : "Blindly mixes quarantined replacements with known controls. Candidate answers count only after a reviewer completes the panel and passes the hidden control screen."}
           </p>
         </CardContent>
       </Card>
@@ -332,7 +344,7 @@ function IconRecognitionPageInner() {
                 disabled={isSubmitting}
                 maxLength={100}
                 onChange={(event) => dispatch({ type: "set-guess", guess: event.target.value })}
-                placeholder="e.g. bicycle"
+                placeholder="Your answer"
                 spellCheck={false}
                 value={guess}
               />
@@ -408,7 +420,7 @@ function IconRecognitionPageInner() {
               </Badge>
               <Badge variant="outline">{report.reviewerCount} reviewers</Badge>
               <Badge variant="outline">{report.decisionCount} decisions</Badge>
-              {report.panelId === "candidates" && (
+              {report.panelId !== "publication" && (
                 <>
                   <Badge variant={report.controlGatePassed ? "default" : "destructive"}>
                     Controls {report.controlGatePassed ? "passed" : "not proven"}
@@ -421,7 +433,8 @@ function IconRecognitionPageInner() {
             </CardContent>
           </Card>
 
-          {report.panelId === "candidates" && (
+          {report.panelId === "originals" && <OriginalArtworkControls />}
+          {report.panelId !== "publication" && (
             <Card>
               <CardHeader>
                 <CardTitle>Candidate promotion evidence</CardTitle>
@@ -452,7 +465,7 @@ function IconRecognitionPageInner() {
                 )}
                 {report.blockedCandidateConceptIds.length > 0 && (
                   <p className="text-muted-foreground text-sm">
-                    Still quarantined: {report.blockedCandidateConceptIds.join(", ")}
+                    Not eligible: {report.blockedCandidateConceptIds.join(", ")}
                   </p>
                 )}
               </CardContent>

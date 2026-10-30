@@ -21,6 +21,8 @@ export interface User {
   isGuest?: boolean; // True for anonymous guest accounts
   guestToken?: string; // Unique token for guest identification
   convertedFromGuestId?: string; // If converted from guest, stores original guest ID
+  /** Stable calendar used for official daily puzzles and Journey week bounds. */
+  journeyTimeZone?: string;
   // Avatar preferences
   avatarColorIndex?: number; // Index into avatar color palette (0-9)
   avatarCustomInitials?: string; // Custom initials (1-2 characters)
@@ -77,6 +79,8 @@ export interface UserStats {
   // Wordle-style retention stats
   guessDistribution?: number[]; // wins by attempt count [1, 2, 3]
   recentPlayDates?: string[]; // UTC YYYY-MM-DD keys, newest first
+  /** Durable deduplication keys for completion stats that can be retried. */
+  appliedStatsEventIds?: string[];
 }
 
 /** Free-canvas center as % of artboard (0–100). */
@@ -122,6 +126,7 @@ export type PuzzleVisualLayer =
     } & LayerPositionFields);
 
 export interface PuzzleVisual {
+  canonicalBoard?: import("@/ai/puzzle-agent/visual/canonical-contract").CanonicalBoard;
   styleId: "ink-pictogram-v1";
   mode: "composed" | "unicode" | "hybrid";
   layout: "row" | "stack" | "grid" | "overlay" | "free";
@@ -167,6 +172,9 @@ export interface Puzzle {
     funScore?: number;
     /** Numeric difficulty 1–10 from generation */
     difficultyScore?: number;
+    reasoningEvidence?: import("@/ai/puzzle-agent/visual/reasoning-evidence").ReasoningEvidence;
+    reasoningEvidenceSource?: "curated" | "independent-editorial";
+    dailyChallengePolicy?: string;
     /** Canonical tier: Hard | Difficult | Evil | Impossible */
     difficultyLevel?: string;
     /** Normalized answer for archive-wide uniqueness */
@@ -303,15 +311,33 @@ export interface PuzzleAttempt {
   attemptedAnswer: string;
   /** Optional server-authored feedback; legacy attempts omit these fields. */
   similarity?: number;
-  reaction?: { tier: "correct" | "close" | "warm" | "cold" | "out"; line: string };
+  reaction?: {
+    tier: "correct" | "close" | "warm" | "cold" | "out";
+    line: string;
+  };
   wordResults?: Array<{ word: string; correct: boolean; similarity: number }>;
 
   isCorrect: boolean;
   attemptedAt: Date;
-  /** Lock key: UTC YYYY-MM-DD for daily, or `archive:{puzzleId}` for replays */
+  /** Accepted local YYYY-MM-DD key for daily, or `archive:{puzzleId}` for replays. */
   puzzleDate?: string;
+  /** IANA zone used to resolve this daily puzzle; absent on historical rows. */
+  puzzleTimeZone?: string;
   /** True when this row finalizes the day (win or out of attempts) */
   isFinal?: boolean;
+  /** Only new daily clients opt into continuation; absent means legacy behavior. */
+  playMode?: "extended";
+  /** Finalization rows are not player guesses and must not appear in guess history. */
+  attemptType?: "guess" | "finalization";
+  /** Attempts after the scored round are still evaluated but do not earn performance points. */
+  isScoredAttempt?: boolean;
+  finalizationReason?: "revealed" | "expired";
+  /**
+   * Set on every row of a finalized extended daily run once its loss stats are
+   * confirmed applied, so expiry recovery stops replaying it. Absent on legacy
+   * rows: recovery replays those once (idempotent) and then marks them.
+   */
+  extendedStatsAccountedAt?: Date;
   // Enhanced tracking for learning system
   timeSpentSeconds?: number; // Time spent before solving/abandoning
   hintsUsed?: number; // Number of hints used
@@ -336,6 +362,59 @@ export interface GameSession {
   score: number;
   completed: boolean;
   hintsUsed: number;
+}
+
+/** Minimal account-backed projection of one finalized official daily puzzle. */
+export interface DailyProgress {
+  _id?: string;
+  userId: string;
+  puzzleDate: string;
+  puzzleId: string;
+  outcome: "solved" | "failed";
+  attempts: number;
+  /** Best-effort client-reported hint count; null means unavailable historically. */
+  hintCount: number | null;
+  /** Timestamp of the persisted terminal attempt, for both wins and losses. */
+  completedAt: Date;
+  /** IANA zone used for the attempt, or null when historical metadata is absent. */
+  timeZone: string | null;
+  /** Extended mode may contain solves after three scored guesses or synthetic finalizations. */
+  playMode?: "extended";
+}
+
+export type NewDailyProgress = Omit<DailyProgress, "_id">;
+
+/** Account-owned note text for a completed official daily puzzle. Empty notes are tombstones. */
+export interface JournalNote {
+  _id?: string;
+  userId: string;
+  puzzleId: string;
+  note: string;
+  revision: number;
+  updatedAt: Date;
+}
+
+/** Per-account checkpoint for the resumable Journey legacy backfill. */
+export interface DailyProgressBackfillState {
+  /** Account ID is also the Mongo `_id`, making the checkpoint unique without another index. */
+  _id: string;
+  userId: string;
+  status: "scanning" | "delta" | "complete";
+  cutoffAt: Date;
+  cursorPuzzleDate?: string;
+  deltaCutoffAt?: Date;
+  deltaCursorAttemptedAt?: Date;
+  deltaCursorAttemptId?: string;
+  /** Requests a full replay when a final attempt could not be projected. */
+  reconciliationRequestedAt?: Date;
+  reconciliationGeneration?: number;
+  /** Generation whose resumable cursor is currently being scanned. */
+  reconciliationStartedGeneration?: number;
+  /** Latest reconciliation generation covered by a completed scan. */
+  reconciliationProcessedGeneration?: number;
+  /** Latest reconciliation request covered by a completed scan. */
+  reconciliationProcessedAt?: Date;
+  updatedAt: Date;
 }
 
 // Blog post FAQ item for structured data
@@ -525,12 +604,19 @@ export interface UserPuzzleSubmission {
   eveReview?: {
     reviewId: string;
     ok: boolean;
-    verdict: "ship" | "revise" | "reject";
+    verdict: "ship" | "revise" | "reject" | "pending";
     summary: string;
     blockers: string[];
     warnings: string[];
     checkedAt: string;
     spend?: { critique: string; playerSim: string };
+    evidence?: {
+      policyVersion: string;
+      fingerprint: string;
+      complete: boolean;
+      profileIds: string[];
+      reasoningEvidence?: import("@/ai/puzzle-agent/visual/reasoning-evidence").ReasoningEvidence;
+    };
   };
   featuredOn?: string;
   featuredNotifiedAt?: string;
@@ -565,6 +651,8 @@ export interface NewUser {
   isGuest?: boolean;
   guestToken?: string;
   convertedFromGuestId?: string;
+  /** Stable calendar used for official daily puzzles and Journey week bounds. */
+  journeyTimeZone?: string;
   // IP-bound guest identification
   ipHash?: string;
   deviceId?: string;
@@ -643,7 +731,13 @@ export interface NewPuzzleAttempt
   isCorrect: boolean;
   attemptedAt: Date;
   puzzleDate?: string;
+  /** IANA zone used to resolve this daily puzzle; absent on historical rows. */
+  puzzleTimeZone?: string;
   isFinal?: boolean;
+  playMode?: "extended";
+  attemptType?: "guess" | "finalization";
+  isScoredAttempt?: boolean;
+  finalizationReason?: "revealed" | "expired";
   // Enhanced tracking for learning system
   timeSpentSeconds?: number;
   hintsUsed?: number;
@@ -813,6 +907,71 @@ export interface NewAnalyticsEvent {
     [key: string]: any;
   };
 }
+
+export type NativeGrowthEventSource = "app" | "notification" | "widget" | "shortcut" | "share";
+export type NativeGrowthPlusOfferSource =
+  | "archive"
+  | "settings"
+  | "journey_insights"
+  | "journal"
+  | "free_sample";
+export type NativeGrowthQualityRating = "too_easy" | "just_right" | "tough_but_fair" | "unclear";
+
+type NativeGrowthEventBase = {
+  _id?: string;
+  userId: string;
+  dayKey: string;
+  occurredAt: Date;
+};
+
+/** Closed-schema, account-linked native funnel events. No freeform metadata is stored. */
+export type NativeGrowthEvent =
+  | (NativeGrowthEventBase & {
+      eventType: "daily_opened";
+      source: NativeGrowthEventSource;
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_finished";
+      outcome: "solved" | "ran_out";
+    })
+  | (NativeGrowthEventBase & {
+      /** Server-authored on the first accepted official daily guess. */
+      eventType: "daily_started";
+    })
+  | (NativeGrowthEventBase & {
+      /** Server-authored on a verified restore of the current official daily. */
+      eventType: "daily_session_restored";
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "plus_offer_viewed";
+      source?: NativeGrowthPlusOfferSource;
+    })
+  | (NativeGrowthEventBase & { eventType: "reminder_enabled" })
+  | (NativeGrowthEventBase & {
+      eventType:
+        | "plus_purchase_started"
+        | "plus_purchase_verified"
+        | "plus_purchase_pending"
+        | "plus_purchase_cancelled"
+        | "plus_purchase_unverified"
+        | "plus_purchase_failed";
+      source?: NativeGrowthPlusOfferSource;
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "plus_restore_completed" | "plus_restore_empty" | "plus_restore_failed";
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_share_started" | "daily_share_completed";
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_quality_feedback";
+      rating: NativeGrowthQualityRating;
+    })
+  | (NativeGrowthEventBase & {
+      eventType: "daily_solve_pulse_viewed";
+    });
+
+export type NativeGrowthEventType = NativeGrowthEvent["eventType"];
 
 export interface NewUserSession {
   id: string;
@@ -1165,7 +1324,11 @@ export interface GeneratedPictogramCandidate {
     clarityScore: number;
     seenAs?: string;
     recognitionConfidence?: number;
-    recognitionProfiles: Array<{ tileSize: number; seenAs: string; confidence: number }>;
+    recognitionProfiles: Array<{
+      tileSize: number;
+      seenAs: string;
+      confidence: number;
+    }>;
   };
   humanEvidence?: {
     requiredReviewersPerSize: number;
@@ -1207,6 +1370,58 @@ export type PuzzlePlaytestFailureReason =
   | "multiple-answers"
   | "too-hard"
   | "other";
+
+export type DailyPuzzleCandidateStatus =
+  | "reviewing"
+  | "ready"
+  | "assigned"
+  | "published"
+  | "rejected";
+
+export interface DailyPuzzleCandidateHumanEvidence {
+  contractVersion: string;
+  qualifiedDecisions: number;
+  profileCoverage: Array<{ profileId: string; decisions: number }>;
+  correct: number;
+  solveRate: number;
+  solveRateLowerBound: number;
+  expectedSolveFloor: number;
+  ambiguityReports: number;
+  visualFailureReports: number;
+  admittedAt: string;
+}
+
+/** Private, unpublished snapshot awaiting qualified human playtesting and a daily date. */
+export interface DailyPuzzleCandidate {
+  _id?: string;
+  id: string;
+  /** Stable generation-date key, used to make scheduled generation retries idempotent. */
+  generationKey: string;
+  policyVersion: "human-reviewed-daily-v1";
+  status: DailyPuzzleCandidateStatus;
+  statusVersion: number;
+  payload: {
+    puzzleDisplay: string;
+    puzzleType: string;
+    answer: string;
+    difficulty: number;
+    category: string;
+    explanation: string;
+    hints: string[];
+    aiGenerated: true;
+    rebusPuzzle?: string;
+    visual?: PuzzleVisual;
+    metadataExtra?: Record<string, unknown>;
+  };
+  playtestSubmittedAt?: Date;
+  playtestSubmissionError?: string;
+  humanEvidence?: DailyPuzzleCandidateHumanEvidence;
+  assignedDate?: string;
+  publishedPuzzleId?: string;
+  rejectionReason?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 /** Immutable snapshot of an AI-generated board sampled for blind human playtesting. */
 export interface PuzzlePlaytestCandidate {

@@ -18,8 +18,12 @@ import { NextResponse } from "next/server";
 import { streamAIText } from "@/ai/client";
 import { db } from "@/db";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { isPublishedPastPuzzle } from "@/lib/game/archive-puzzles";
+import { findFreeArchiveSample } from "@/lib/game/archive-sample";
 import { getLocalPuzzleDate } from "@/lib/game/daily-lock";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { getUserKey, rateLimit } from "@/lib/middleware/rate-limit";
+import { hasPlusEntitlement } from "@/lib/storekit/plus-entitlement";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 
 /** Mid-game tiers only while the day is still open. */
@@ -57,6 +61,12 @@ Hard rules:
 - Do not ask questions. Do not offer help.
 - Keep it clean and appropriate for a general audience.`;
 
+const NO_STORE = { "Cache-Control": "private, no-store" };
+
+function json(body: unknown, status: number) {
+  return NextResponse.json(body, { status, headers: NO_STORE });
+}
+
 const quipRateLimit = rateLimit({
   windowMs: 60 * 1000,
   maxRequests: 20,
@@ -68,15 +78,16 @@ const quipRateLimit = rateLimit({
 });
 
 export async function POST(request: Request) {
+  let mode: unknown = "daily";
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) {
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+      return json({ success: false, error: "Not authenticated" }, 401);
     }
 
     const limit = await quipRateLimit(request);
     if (limit && !limit.success) {
-      return NextResponse.json({ success: false, error: "Slow down" }, { status: 429 });
+      return json({ success: false, error: "Slow down" }, 429);
     }
 
     const userLimiter = rateLimit({
@@ -86,45 +97,60 @@ export async function POST(request: Request) {
     });
     const userLimit = await userLimiter(request);
     if (userLimit && !userLimit.success) {
-      return NextResponse.json({ success: false, error: "Slow down" }, { status: 429 });
+      return json({ success: false, error: "Slow down" }, 429);
     }
 
     const body = (await request.json()) as {
       puzzleId?: string;
       guess?: string;
       tier?: string;
+      mode?: unknown;
     };
 
     const puzzleId = typeof body.puzzleId === "string" ? body.puzzleId.trim() : "";
     const guess = typeof body.guess === "string" ? body.guess.trim().slice(0, 200) : "";
     const tier = isQuipTier(body.tier) ? body.tier : null;
+    mode = body.mode === undefined ? "daily" : body.mode;
 
-    if (!(puzzleId && guess && tier)) {
-      return NextResponse.json(
-        { success: false, error: "puzzleId, guess and a valid reaction tier are required" },
-        { status: 400 }
+    if (!(puzzleId && guess && tier) || (mode !== "daily" && mode !== "practice")) {
+      return json(
+        { success: false, error: "puzzleId, guess, valid reaction tier and mode are required" },
+        400
       );
     }
 
-    // Day already locked — only the closing win/loss riff may still spend credits.
-    const timeZone = await resolveRequestTimeZone();
+    const requestTimeZone = await resolveRequestTimeZone();
+    const timeZone = await resolveStableJourneyTimeZone(user.userId, requestTimeZone);
     const localDateKey = getLocalPuzzleDate(new Date(), timeZone);
-    const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, localDateKey);
-    if (lock.hasAttempt && !isFinalTier(tier)) {
-      return NextResponse.json(
-        { success: false, error: "Puzzle already finished for today" },
-        { status: 409 }
+    const hasPlus = mode === "practice" ? await hasPlusEntitlement(request) : false;
+    const freeSample =
+      mode === "practice" && !hasPlus ? await findFreeArchiveSample(localDateKey) : null;
+    const isFreeSample = freeSample?.id === puzzleId;
+    if (mode === "practice" && !isFreeSample && !hasPlus) {
+      return json(
+        { success: false, error: "Rebuzzle Plus is required for archive practice." },
+        403
       );
+    }
+    if (mode === "daily") {
+      // Day already locked — only the closing win/loss riff may still spend credits.
+      const lock = await db.puzzleAttemptOps.hasTodayAttempt(user.userId, localDateKey);
+      if (lock.hasAttempt && !isFinalTier(tier)) {
+        return json({ success: false, error: "Puzzle already finished for today" }, 409);
+      }
     }
 
     // Only the type is read from the puzzle. The answer stays in the database.
-    const puzzle = await db.puzzleOps.findById(puzzleId);
+    const puzzle = isFreeSample ? freeSample : await db.puzzleOps.findById(puzzleId);
     if (!puzzle) {
-      return NextResponse.json({ success: false, error: "Puzzle not found" }, { status: 404 });
+      return json({ success: false, error: "Puzzle not found" }, 404);
+    }
+    if (mode === "practice" && !isPublishedPastPuzzle(puzzle, localDateKey)) {
+      return json({ success: false, error: "Puzzle not found" }, 404);
     }
 
     const result = await streamAIText({
-      system: SYSTEM,
+      system: mode === "practice" ? SYSTEM.replace("daily puzzle", "puzzle") : SYSTEM,
       prompt: [
         `Puzzle type: ${puzzle.puzzleType || "rebus"}.`,
         `Their guess: "${guess}".`,
@@ -136,10 +162,17 @@ export async function POST(request: Request) {
       maxTokens: 48,
     });
 
-    return result.toTextStreamResponse();
+    const response = result.toTextStreamResponse();
+    const headers = new Headers(response.headers);
+    headers.set("Cache-Control", NO_STORE["Cache-Control"]);
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
   } catch (error) {
     console.error("[quip] Error:", error);
     // The client keeps its deterministic line — nothing to recover here.
-    return NextResponse.json({ success: false, error: "Quip unavailable" }, { status: 503 });
+    return json({ success: false, error: "Quip unavailable" }, 503);
   }
 }

@@ -28,7 +28,7 @@ Rebuzzle brings you one daily puzzle: look closely, make a connection, and find 
 
 Rebuzzle Plus is an optional one-time purchase. Keep a personal journal of puzzles completed in this app, add notes about your discoveries, and explore your guess distribution. Export your journal using the system share sheet.
 
-Your journal and notes stay on this device, separated by Rebuzzle account. Purchase restoration restores Plus access, not journal data. Guest history does not automatically merge when you sign in. Daily puzzles, normal hints, and guesses remain free; buying Plus does not add attempts or playable puzzles.
+With Plus, private journal notes sync to your signed-in Rebuzzle account and stay available on this device for offline use. Restoring a purchase restores Plus access; your journal syncs again when you sign in to the same Rebuzzle account. Guest notes can sync after that guest account is upgraded with Plus; signing in to a different account does not merge notes. Daily puzzles, normal hints, and guesses remain free; buying Plus does not add attempts or playable puzzles.
 
 An internet connection is required to load and check daily puzzles.
 
@@ -38,7 +38,7 @@ An internet connection is required to load and check daily puzzles.
 - Type: non-consumable; no subscription.
 - Display name: Rebuzzle Plus
 - Description: Keep a personal puzzle journal, add notes, and explore your guess distribution.
-- Suggested initial US price: $9.99; configure in App Store Connect. The app displays Apple's localized price.
+- US price: $9.99, verified in App Store Connect on October 26, 2026. The app displays Apple's localized price. Product remains Prepare for Submission; pricing configuration is not evidence of live sale availability.
 - Family Sharing: not enabled in the local fixture; do not advertise unless production configuration and behavior are verified.
 - Attach a real paywall screenshot and submit the product with the first app version.
 
@@ -46,7 +46,7 @@ An internet connection is required to load and check daily puzzles.
 
 Rebuzzle is a daily puzzle game. No account registration or purchase is required for daily gameplay. Open Today to use automatic guest access, enter an answer, and reveal progressive hints. After the permitted guesses or a correct answer, the app reveals the answer and explanation. It offers one scored daily puzzle; relaunching does not reset attempts.
 
-Settings → Rebuzzle Plus opens our optional non-consumable purchase, product ID `com.byronwade.rebuzzle.plus`. Journal offers the same upgrade. Plus unlocks local completed-puzzle journal browsing, notes, and guess-distribution insights. Settings and the Plus screen both provide Restore purchases. No purchase buys additional guesses or hints. The journal is local to this device and Rebuzzle identity; Apple purchase restoration does not restore journal contents.
+Settings → Rebuzzle Plus opens our optional non-consumable purchase, product ID `com.byronwade.rebuzzle.plus`. Journal offers the same upgrade. Plus unlocks completed-puzzle journal browsing, account-synced notes with offline access, and guess-distribution insights. Settings and the Plus screen both provide Restore purchases. No purchase buys additional guesses or hints. Notes sync with the signed-in Rebuzzle account; Apple purchase restoration restores Plus access, and Rebuzzle retrieves that account’s notes when sync resumes.
 
 Settings → Delete account supports guest deletion and authenticated deletion; an authenticated player confirms their password. Account creation and password recovery open our website. Guest progress is not merged into an existing account upon sign-in. Optional reminders use local notifications.
 

@@ -1,6 +1,7 @@
 import sharp from "sharp";
+import { canonicalBoardForProfile, validateCanonicalBoard } from "./canonical-contract";
 import type { PuzzleVisual, VisualLayer } from "./composition";
-import { layoutLayersLocked, planLockedRowIndexes } from "./layout-plan";
+import { estimateTextFontScale, layoutLayersLocked, planLockedRowIndexes } from "./layout-plan";
 import {
   getPuzzleBoardRecognitionProfile,
   PUZZLE_BOARD_CHROME,
@@ -11,6 +12,7 @@ import {
   type PuzzleBoardRecognitionProfileId,
   puzzleBoardCaptionSize,
   puzzleBoardFontSize,
+  puzzleBoardLetterSpacingEm,
   puzzleBoardTextWeight,
 } from "./presentation";
 import { sanitizePictogramSvg } from "./sanitize-svg";
@@ -41,7 +43,8 @@ function escapeXml(value: string): string {
 function renderLayer(
   layer: VisualLayer,
   position: { x: number; y: number; width: number; height: number },
-  profile: PuzzleBoardRecognitionProfile
+  profile: PuzzleBoardRecognitionProfile,
+  layerIndex: number
 ): string {
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
   const fontFamily = PUZZLE_BOARD_SVG_FONT_FAMILY;
@@ -65,21 +68,34 @@ function renderLayer(
     return `<text x="${position.x + position.width / 2}" y="${position.y + position.height * 0.68}" text-anchor="middle" font-family="${fontFamily}" font-size="${size.fontSize}" font-weight="${puzzleBoardTextWeight("operator")}" fill="${INK_PICTOGRAM_PALETTE.mist}">${escapeXml(layer.symbol)}</text>`;
   }
 
-  const fontSize = puzzleBoardFontSize(layer.emphasis, size.fontSize);
+  const fitScale = estimateTextFontScale(
+    layer,
+    profile.viewportWidth - profile.padding * 2,
+    profile.size
+  );
+  const fontSize = puzzleBoardFontSize(layer.emphasis, size.fontSize) * fitScale;
   const weight = puzzleBoardTextWeight(layer.emphasis);
+  const letterSpacing = `${puzzleBoardLetterSpacingEm(layer.emphasis)}em`;
+  const clipId = `board-layer-${layerIndex}-clip`;
+  const clipped = (content: string) =>
+    `<defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><rect x="${position.x}" y="${position.y}" width="${position.width}" height="${position.height}"/></clipPath></defs><g clip-path="url(#${clipId})">${content}</g>`;
   if (layer.emphasis === "stacked") {
-    return layer.content
-      .split("")
-      .map(
-        (character, index) =>
-          `<text x="${position.x + position.width / 2}" y="${position.y + fontSize + index * fontSize * 1.04}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${weight}" fill="${INK_PICTOGRAM_PALETTE.ink}">${escapeXml(character)}</text>`
-      )
-      .join("");
+    return clipped(
+      layer.content
+        .split("")
+        .map(
+          (character, index) =>
+            `<text x="${position.x + position.width / 2}" y="${position.y + fontSize + index * fontSize * 1.04}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${weight}" letter-spacing="${letterSpacing}" fill="${INK_PICTOGRAM_PALETTE.ink}">${escapeXml(character)}</text>`
+        )
+        .join("")
+    );
   }
 
-  const text = `<text x="${position.x + position.width / 2}" y="${position.y + position.height / 2 + fontSize * 0.34}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${weight}" fill="${INK_PICTOGRAM_PALETTE.ink}">${escapeXml(layer.content)}</text>`;
-  if (layer.emphasis !== "strike") return text;
-  return `${text}<line x1="${position.x + 4}" y1="${position.y + position.height / 2}" x2="${position.x + position.width - 4}" y2="${position.y + position.height / 2}" stroke="${INK_PICTOGRAM_PALETTE.strike}" stroke-width="${Math.max(3, size.tile / 18)}" stroke-linecap="round"/>`;
+  const text = `<text x="${position.x + position.width / 2}" y="${position.y + position.height / 2 + fontSize * 0.34}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${weight}" letter-spacing="${letterSpacing}" fill="${INK_PICTOGRAM_PALETTE.ink}">${escapeXml(layer.content)}</text>`;
+  if (layer.emphasis !== "strike") return clipped(text);
+  return clipped(
+    `${text}<line x1="${position.x + 4}" y1="${position.y + position.height / 2}" x2="${position.x + position.width - 4}" y2="${position.y + position.height / 2}" stroke="${INK_PICTOGRAM_PALETTE.strike}" stroke-width="${Math.max(3, size.tile / 18)}" stroke-linecap="round"/>`
+  );
 }
 
 export async function renderPuzzleVisualProfile(
@@ -89,12 +105,36 @@ export async function renderPuzzleVisualProfile(
 ): Promise<RenderedPuzzleBoard> {
   const profile = getPuzzleBoardRecognitionProfile(profileId);
   const size = PUZZLE_BOARD_SIZE_SPECS[profile.size];
+  const hasCanonicalProfile =
+    visual.canonicalBoard !== undefined &&
+    (profileId === "desktop-768" || Boolean(visual.canonicalBoard.profileVariants?.[profileId]));
+  if (visual.canonicalBoard !== undefined && hasCanonicalProfile) {
+    const bytes = await validateCanonicalBoard(
+      canonicalBoardForProfile(visual.canonicalBoard, profileId)
+    );
+    const width = profile.viewportWidth;
+    const { data, info } = await sharp(bytes)
+      .resize({ width })
+      .png()
+      .toBuffer({ resolveWithObject: true });
+    return {
+      profileId,
+      viewportWidth: width,
+      tileSize: size.tile,
+      width: info.width,
+      height: info.height,
+      wrappedRows: rowIndexes.length,
+      rowIndexes,
+      locked: true,
+      pixels: data,
+    };
+  }
   const layout = layoutLayersLocked(visual, profile, rowIndexes);
   const captionHeight = visual.caption ? Math.max(32, size.fontSize) : 0;
   const width = layout.width;
   const height = Math.max(size.tile + profile.padding * 2, layout.height + captionHeight);
   const layers = visual.layers
-    .map((layer, index) => renderLayer(layer, layout.positions[index]!, profile))
+    .map((layer, index) => renderLayer(layer, layout.positions[index]!, profile, index))
     .join("");
   const caption = visual.caption
     ? `<text x="${width / 2}" y="${height - 12}" text-anchor="middle" font-family="${PUZZLE_BOARD_SVG_FONT_FAMILY}" font-size="${puzzleBoardCaptionSize(size.fontSize)}" fill="${INK_PICTOGRAM_PALETTE.mist}">${escapeXml(visual.caption)}</text>`

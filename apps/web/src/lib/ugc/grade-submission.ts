@@ -18,7 +18,7 @@ import {
 import type { PuzzleVisual } from "@/ai/puzzle-agent/visual/composition";
 import { countVisualParts } from "@/ai/puzzle-agent/visual/composition";
 import { isUgcAnswerKeyTaken } from "./submissions";
-import { hydrateStudioVisual } from "./visual-hydrate";
+import { hydrateStudioVisualWithApprovals } from "./visual-hydrate";
 
 export type GradeSubmissionInput = {
   answer: string;
@@ -28,6 +28,7 @@ export type GradeSubmissionInput = {
   difficulty: number;
   visual: {
     layout?: PuzzleVisual["layout"];
+    freeCanvasHeight?: PuzzleVisual["freeCanvasHeight"];
     layers: PuzzleVisual["layers"];
     caption?: string;
   };
@@ -55,7 +56,7 @@ export async function gradeUserPuzzleSubmission(
   const techniqueId = input.techniqueId.trim();
   const difficulty = Math.max(1, Math.min(10, Math.round(input.difficulty)));
 
-  const hydrated = hydrateStudioVisual(input.visual);
+  const hydrated = await hydrateStudioVisualWithApprovals(input.visual);
   issues.push(...hydrated.issues);
   const visual = hydrated.visual;
   const rebusPuzzle = visual.unicodeFallback;
@@ -96,6 +97,7 @@ export async function gradeUserPuzzleSubmission(
 
   const visualCheck = evaluateVisualForPublish(visual, {
     requireCatalogRecognitionEvidence: false,
+    verifiedOriginalAssetIds: hydrated.verifiedOriginalAssetIds,
   });
   if (!visualCheck.ok) {
     issues.push(visualCheck.reason ?? "Visual failed publish check");

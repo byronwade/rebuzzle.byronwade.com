@@ -115,7 +115,7 @@ describe("paired editorial quality benchmark", () => {
     const observations = perfectObservations().filter((entry) => entry.profileId !== "compact-320");
     const candidate = scorePuzzleEditorialBenchmark({ cases: corpus, observations });
     const comparison = comparePuzzleEditorialBenchmarkReports({ candidate, baseline });
-    expect(candidate.coverage).toBeCloseTo(2 / 3);
+    expect(candidate.coverage).toBeCloseTo(3 / 4);
     expect(candidate.automatedGate.passed).toBe(false);
     expect(comparison.passed).toBe(false);
     expect(comparison.failures.join(" ")).toContain("Coverage");

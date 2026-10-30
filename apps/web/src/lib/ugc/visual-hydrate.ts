@@ -7,7 +7,13 @@ import {
   type PuzzleVisual,
   type VisualLayer,
 } from "@/ai/puzzle-agent/visual/composition";
-import { resolveCuratedPictogram } from "@/ai/puzzle-agent/visual/curated-pictograms";
+import {
+  isApprovedCuratedPictogramReading,
+  resolveCuratedPictogram,
+  resolveCuratedPictogramByAssetId,
+} from "@/ai/puzzle-agent/visual/curated-pictograms";
+import { listOriginalPictogramCandidates } from "@/ai/puzzle-agent/visual/original-pictograms";
+import { sanitizePictogramSvg } from "@/ai/puzzle-agent/visual/sanitize-svg";
 import { INK_PICTOGRAM_STYLE_ID } from "@/ai/puzzle-agent/visual/style";
 
 function emojiFallbackFor(concept: string): string {
@@ -20,6 +26,7 @@ function emojiFallbackFor(concept: string): string {
 
 export function hydrateStudioVisual(input: {
   layout?: PuzzleVisual["layout"];
+  freeCanvasHeight?: PuzzleVisual["freeCanvasHeight"];
   layers: VisualLayer[];
   caption?: string;
 }): { visual: PuzzleVisual; issues: string[] } {
@@ -33,9 +40,13 @@ export function hydrateStudioVisual(input: {
       };
     }
     if (layer.kind !== "pictogram") return layer;
-    const curated = resolveCuratedPictogram(layer.concept);
-    if (!curated) {
-      issues.push(`Unknown pictogram concept "${layer.concept}" — pick from the catalog`);
+    const curated = layer.assetId
+      ? resolveCuratedPictogramByAssetId(layer.assetId)
+      : resolveCuratedPictogram(layer.concept);
+    if (!curated || !isApprovedCuratedPictogramReading(curated.assetId, layer.concept)) {
+      issues.push(
+        `Unsupported pictogram reading or asset "${layer.concept}" — pick an approved reading from the catalog`
+      );
       return {
         ...layer,
         emojiFallback: layer.emojiFallback || emojiFallbackFor(layer.concept),
@@ -43,7 +54,7 @@ export function hydrateStudioVisual(input: {
     }
     return {
       kind: "pictogram" as const,
-      concept: curated.canonicalConcept,
+      concept: layer.concept,
       role: layer.role,
       svg: curated.svg,
       assetId: curated.assetId,
@@ -60,10 +71,62 @@ export function hydrateStudioVisual(input: {
       styleId: INK_PICTOGRAM_STYLE_ID,
       mode: "composed",
       layout: input.layout ?? "row",
+      ...(input.freeCanvasHeight !== undefined ? { freeCanvasHeight: input.freeCanvasHeight } : {}),
       layers,
       unicodeFallback,
       caption: input.caption,
     },
     issues,
   };
+}
+
+/** Server grading path. Explicit originals require current audited approval. */
+export async function hydrateStudioVisualWithApprovals(
+  input: Parameters<typeof hydrateStudioVisual>[0]
+): Promise<ReturnType<typeof hydrateStudioVisual> & { verifiedOriginalAssetIds: string[] }> {
+  const result = {
+    ...hydrateStudioVisual({ ...input, layers: [] }),
+    verifiedOriginalAssetIds: [] as string[],
+  };
+  for (const layer of input.layers) {
+    if (layer.kind !== "pictogram" || !layer.assetId?.startsWith("rebuzzle-ink:")) {
+      const hydrated = hydrateStudioVisual({ layers: [layer] });
+      result.visual.layers.push(...hydrated.visual.layers);
+      result.issues.push(...hydrated.issues);
+      continue;
+    }
+    const original = listOriginalPictogramCandidates().find(
+      (asset) => asset.assetId === layer.assetId
+    );
+    const svg = original && sanitizePictogramSvg(original.svg);
+    let approved = false;
+    if (original && svg && original.approvedReadings.includes(layer.concept.trim().toLowerCase())) {
+      try {
+        const { originalArtworkPromotionService } = await import(
+          "@/ai/puzzle-agent/review/original-artwork-promotion-server"
+        );
+        const record = await originalArtworkPromotionService.findEligible(original.assetId);
+        approved = record?.assetId === original.assetId;
+      } catch {
+        // An unavailable review store never grants publication eligibility.
+      }
+    }
+    if (!approved || !original || !svg) {
+      result.issues.push(
+        `Original artwork "${layer.concept}" is unavailable or lacks current approval for this reading`
+      );
+      result.visual.layers.push(layer);
+      continue;
+    }
+    result.verifiedOriginalAssetIds.push(original.assetId);
+    result.visual.layers.push({
+      ...layer,
+      svg,
+      assetId: original.assetId,
+      source: "approved-cache",
+      emojiFallback: layer.emojiFallback || emojiFallbackFor(original.concept),
+    });
+  }
+  result.visual.unicodeFallback = buildUnicodeFallback(result.visual.layers) || "◆";
+  return result;
 }

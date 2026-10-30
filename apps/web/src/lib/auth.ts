@@ -165,7 +165,13 @@ function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultI
     ? getLocalPuzzleDate(new Date(currentStats.lastPlayDate), timeZone)
     : null;
   const { missedDays, isNewDay } = getStreakGap(lastPlayKey, todayKey);
-  const affectsStreak = gameResult.affectsStreak !== false;
+  const countsAsPlayDay = gameResult.affectsStreak !== false;
+  // A retried historical event (e.g. an expired run's loss applied on a later restore)
+  // must not move lastPlayDate backward or recompute the streak from an older day.
+  const predatesLastPlay =
+    currentStats?.lastPlayDate != null &&
+    now.getTime() < new Date(currentStats.lastPlayDate).getTime();
+  const affectsStreak = countsAsPlayDay && !predatesLastPlay;
 
   const priorStreak = currentStats?.streak || 0;
   const priorDaily = currentStats?.dailyChallengeStreak || 0;
@@ -292,7 +298,7 @@ function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultI
       gameResult.won,
       Math.min(3, Math.max(1, maxAttempts))
     ),
-    recentPlayDates: recordRecentPlayDate(currentStats?.recentPlayDates, now, affectsStreak),
+    recentPlayDates: recordRecentPlayDate(currentStats?.recentPlayDates, now, countsAsPlayDay),
     _meta: {
       pointsEarned,
       streakFrozen: protection.streakFrozen,
@@ -331,7 +337,9 @@ export type UpdateUserStatsResult = {
 
 export async function updateUserStats(
   userId: string,
-  gameResult: GameResultInput
+  gameResult: GameResultInput,
+  effectiveAt: Date = new Date(),
+  idempotencyKey?: string
 ): Promise<UpdateUserStatsResult> {
   const empty: UpdateUserStatsResult = {
     ok: false,
@@ -346,18 +354,54 @@ export async function updateUserStats(
   };
   try {
     const currentStats = await db.userStatsOps.findByUserId(userId);
+    if (idempotencyKey && currentStats?.appliedStatsEventIds?.includes(idempotencyKey)) {
+      return {
+        ok: true,
+        pointsEarned: 0,
+        streak: currentStats.streak,
+        maxStreak: currentStats.maxStreak,
+        streakFreezes: currentStats.streakFreezes ?? 0,
+        streakFrozen: false,
+        freezeSource: null,
+        guessDistribution: currentStats.guessDistribution ?? [0, 0, 0],
+        recentPlayDates: currentStats.recentPlayDates ?? [],
+      };
+    }
     const { stats, pointsEarned, streakFrozen, freezeSource } = calculateNewStats(
       currentStats,
-      gameResult
+      gameResult,
+      effectiveAt
     );
 
     if (currentStats) {
-      await db.userStatsOps.updateStats(userId, stats);
+      if (idempotencyKey) {
+        const applied = await db.userStatsOps.updateStatsOnce(userId, idempotencyKey, stats);
+        if (!applied) {
+          const latestStats = await db.userStatsOps.findByUserId(userId);
+          if (!latestStats?.appliedStatsEventIds?.includes(idempotencyKey)) {
+            throw new Error("Stats update was not applied");
+          }
+          return {
+            ok: true,
+            pointsEarned: 0,
+            streak: latestStats.streak,
+            maxStreak: latestStats.maxStreak,
+            streakFreezes: latestStats.streakFreezes ?? 0,
+            streakFrozen: false,
+            freezeSource: null,
+            guessDistribution: latestStats.guessDistribution ?? [0, 0, 0],
+            recentPlayDates: latestStats.recentPlayDates ?? [],
+          };
+        }
+      } else {
+        await db.userStatsOps.updateStats(userId, stats);
+      }
     } else {
       await db.userStatsOps.create({
         id: crypto.randomUUID(),
         userId,
         ...stats,
+        ...(idempotencyKey ? { appliedStatsEventIds: [idempotencyKey] } : {}),
         createdAt: new Date(),
         updatedAt: new Date(),
       });

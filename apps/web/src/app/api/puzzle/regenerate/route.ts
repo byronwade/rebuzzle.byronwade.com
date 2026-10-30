@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { hasPuzzleType, listPuzzleTypes } from "@/ai/config/puzzle-types";
 import { regenerateTodaysPuzzle } from "@/app/actions/regeneratePuzzleActions";
 import { verifyAdminAccess } from "@/lib/admin-auth";
-import { toPublicPuzzle } from "@/lib/game/public-puzzle";
 
 /**
  * Admin-only: regenerate today's puzzle.
@@ -46,9 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       message: result.message,
-      // Never ship the answer even to admin list UIs via this route's default —
-      // admin tools that need it should use the admin puzzles API.
-      puzzle: result.puzzle ? toPublicPuzzle(result.puzzle as Record<string, unknown>) : undefined,
+      candidate: result.candidate,
     });
   } catch (error) {
     console.error("Error regenerating puzzle:", error);
