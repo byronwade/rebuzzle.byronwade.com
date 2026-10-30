@@ -17,6 +17,7 @@ import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import { parseBeatMeChallenge, shouldReportShareArrival } from "@/lib/game/share-challenge";
+import { createSubmissionTracker } from "@/lib/game/submission-tracker";
 import type { GameData } from "@/lib/gameSettings";
 import {
   calculateGamePoints,
@@ -228,6 +229,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
    */
   const [turns, setTurns] = useState<ThreadTurn[]>([]);
   const turnSeq = useRef(0);
+  const submissions = useRef(createSubmissionTracker());
   const hasThread = turns.length > 0;
   /** Mobile: expand the docked puzzle after the first guess; desktop stays hero-sized. */
   const isNarrowViewport = useIsNarrowViewport();
@@ -358,6 +360,13 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   // Restore today's server-owned attempt history before treating the board as new.
   useEffect(() => {
     if (!userId || !gameData.id) return;
+    // A guest's first guess creates the session (and this userId) while it is being
+    // scored; that guess owns the board state, and the new session had nothing to restore.
+    const restoreSnapshot = submissions.current.snapshot();
+    if (restoreSnapshot.busy) {
+      setSessionRestored(true);
+      return;
+    }
     const controller = new AbortController();
     setSessionRestored(false);
     setSessionRestoreSucceeded(false);
@@ -418,6 +427,8 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           }
           return;
         }
+        // A guess submitted since this restore began is newer than this snapshot.
+        if (submissions.current.isStale(restoreSnapshot)) return;
         const attempts = Array.isArray(session.attempts) ? session.attempts : [];
         const guessHistory: GuessAttempt[] = attempts.map((attempt) => ({
           text: attempt.guess,
@@ -725,6 +736,15 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   };
 
   const handleGuess = async (guessValue?: string) => {
+    const endSubmission = submissions.current.begin();
+    try {
+      await submitGuess(guessValue);
+    } finally {
+      endSubmission();
+    }
+  };
+
+  const submitGuess = async (guessValue?: string) => {
     const guess = guessValue?.trim() ?? "";
 
     if (gameState.gameOver || !currentEventPuzzle || !guess || gameState.isSubmitting) {
