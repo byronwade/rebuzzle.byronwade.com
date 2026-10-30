@@ -7,12 +7,24 @@ final class PurchaseTests: XCTestCase {
         PurchaseStore(defaults: UserDefaults(suiteName: "rebuzzle.purchase-tests.\(UUID().uuidString)")!)
     }
 
+    /// StoreKit Test publishes cleared transactions asynchronously, so a purchase from an
+    /// earlier test can stay visible briefly. Wait (through the app's own entitlement path,
+    /// on a separate probe store) for the clean start each test assumes.
+    @MainActor func waitForNoLeftoverPlus() async throws {
+        let probe = isolatedPurchaseStore()
+        for _ in 0..<50 {
+            await probe.refreshEntitlements()
+            if !probe.hasPlus { return }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
     @MainActor func testVerifiedPurchaseGrantsAccessAndRefundRevokesIt() async throws {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Rebuzzle", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: url)
         session.disableDialogs = true
         session.clearTransactions()
-        try await waitForPlusEntitlement(present: false)
+        try await waitForNoLeftoverPlus()
         defer { session.clearTransactions() }
         let store = isolatedPurchaseStore()
         await store.load()
@@ -46,7 +58,7 @@ extension PurchaseTests {
         session.disableDialogs = true
         session.askToBuyEnabled = true
         session.clearTransactions()
-        try await waitForPlusEntitlement(present: false)
+        try await waitForNoLeftoverPlus()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var events = [[String: String]]()
@@ -83,7 +95,6 @@ extension PurchaseTests {
         session.disableDialogs = true
         session.askToBuyEnabled = true
         session.clearTransactions()
-        try await waitForPlusEntitlement(present: false)
         let suiteName = "rebuzzle.purchase-tests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
@@ -148,7 +159,6 @@ extension PurchaseTests {
         session.disableDialogs = true
         session.askToBuyEnabled = true
         session.clearTransactions()
-        try await waitForPlusEntitlement(present: false)
         let suiteName = "rebuzzle.purchase-tests.legacy-ask-to-buy.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
@@ -211,7 +221,7 @@ extension PurchaseTests {
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
-        try await waitForPlusEntitlement(present: false)
+        try await waitForNoLeftoverPlus()
         defer { session.clearTransactions(); session.resetToDefaultState() }
         let store = isolatedPurchaseStore()
         var attempts = 0
