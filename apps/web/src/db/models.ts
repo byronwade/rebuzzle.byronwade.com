@@ -609,6 +609,7 @@ export interface UserPuzzleSubmission {
       fingerprint: string;
       complete: boolean;
       profileIds: string[];
+      reasoningEvidence?: import("@/ai/puzzle-agent/visual/reasoning-evidence").ReasoningEvidence;
     };
   };
   featuredOn?: string;

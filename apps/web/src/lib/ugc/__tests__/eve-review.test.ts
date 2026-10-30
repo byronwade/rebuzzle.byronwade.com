@@ -171,6 +171,22 @@ describe("required board evidence", () => {
       result.grade.visual
     );
   });
+  it("keeps the editorial reviewers' reasoning evidence with complete review evidence", async () => {
+    const reasoningEvidence = {
+      version: "editorial-reasoning-v1" as const,
+      operations: [
+        { kind: "a", observation: "first", inference: "one", necessary: true },
+        { kind: "b", observation: "second", inference: "two", necessary: true },
+      ],
+      interacting: true,
+      finalInterpretation: fairBoard.answer,
+      calibration: "editorial-unplaytested" as const,
+    };
+    jest.mocked(simulatePlayerSolve).mockResolvedValueOnce({ ...fullSim, reasoningEvidence });
+    const result = await runEveStudioReview(fairBoard);
+    expect(result.ok).toBe(true);
+    expect(result.evidence?.reasoningEvidence).toEqual(reasoningEvidence);
+  });
   it.each([{ profiles: [] }, { profiles: fullSim.blindProfileResults.slice(1) }])(
     "keeps incomplete profile results pending",
     async ({ profiles }) => {

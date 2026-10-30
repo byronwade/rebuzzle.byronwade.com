@@ -330,6 +330,7 @@ export async function runEveStudioReview(
 
   let grade: GradeSubmissionResult | null = null;
   let completeEvidence = false;
+  let reasoningEvidence: StudioReviewEvidence["reasoningEvidence"];
   let boardReady = false;
   let critiquePayload: EveReviewResult["critique"];
   const spend: EveReviewResult["spend"] = { critique: "skipped", playerSim: "skipped" };
@@ -675,6 +676,7 @@ export async function runEveStudioReview(
         const complete = completePlayerEvidence(sim, AI_CONFIG.visualRecognition.requiredVotes);
         const blockers = complete ? playerSimPublishBlockers(sim) : [];
         completeEvidence = complete && blockers.length === 0;
+        if (completeEvidence) reasoningEvidence = sim.reasoningEvidence;
         spend.playerSim = complete ? "ran" : "failed";
         await setCheck(
           "player_fairness",
@@ -804,6 +806,7 @@ export async function runEveStudioReview(
           fingerprint: reviewFingerprint({ ...input, visual: grade.visual }),
           complete: true,
           profileIds: PUZZLE_BOARD_RECOGNITION_PROFILES.map((p) => p.id),
+          ...(reasoningEvidence ? { reasoningEvidence } : {}),
         }
       : undefined,
     critique: critiquePayload,

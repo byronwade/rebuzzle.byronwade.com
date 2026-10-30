@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { CURATED_PICTOGRAM_READING_POLICY_VERSION } from "@/ai/puzzle-agent/visual/curated-pictograms";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "@/ai/puzzle-agent/visual/presentation";
+import type { ReasoningEvidence } from "@/ai/puzzle-agent/visual/reasoning-evidence";
 
 export const STUDIO_EVIDENCE_POLICY = `studio-evidence-v2:${CURATED_PICTOGRAM_READING_POLICY_VERSION}`;
 export type StudioReviewEvidence = {
@@ -8,6 +9,8 @@ export type StudioReviewEvidence = {
   fingerprint: string;
   complete: boolean;
   profileIds: string[];
+  /** Editorial screenshot reviewers' operation trace, produced server-side by the player sim. */
+  reasoningEvidence?: ReasoningEvidence;
 };
 
 type ReviewContent = {

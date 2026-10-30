@@ -3,6 +3,7 @@
  */
 
 import { verifyPublicationAssets } from "@/ai/puzzle-agent/visual/publication-assets";
+import { ReasoningEvidenceSchema } from "@/ai/puzzle-agent/visual/reasoning-evidence";
 import type { NewPuzzle, Puzzle, PuzzleVisual, UserPuzzleSubmission } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
 import { toLegacyDifficultyLabel } from "@/lib/game/published-puzzle";
@@ -265,6 +266,16 @@ export async function ensureCommunityPuzzle(submission: UserPuzzleSubmission): P
 
   const puzzles = getCollection<Puzzle>("puzzles");
   const now = new Date();
+  // Only the server-side editorial reviewers' trace qualifies a board for the daily slot.
+  const reviewedReasoning = ReasoningEvidenceSchema.safeParse(
+    submission.eveReview?.evidence?.reasoningEvidence
+  );
+  const reasoningMetadata = reviewedReasoning.success
+    ? {
+        reasoningEvidence: reviewedReasoning.data,
+        reasoningEvidenceSource: "independent-editorial" as const,
+      }
+    : {};
   const attribution = {
     userId: submission.userId,
     username: submission.username,
@@ -292,7 +303,19 @@ export async function ensureCommunityPuzzle(submission: UserPuzzleSubmission): P
           "metadata.ugcSubmissionId": submission.id,
           "metadata.source": "user",
           "metadata.createdByUserId": submission.userId,
+          ...(reviewedReasoning.success
+            ? {
+                "metadata.reasoningEvidence": reviewedReasoning.data,
+                "metadata.reasoningEvidenceSource": "independent-editorial",
+              }
+            : {}),
         },
+        // A revised board must not keep evidence reviewed against an earlier version.
+        ...(reviewedReasoning.success
+          ? {}
+          : {
+              $unset: { "metadata.reasoningEvidence": "", "metadata.reasoningEvidenceSource": "" },
+            }),
       }
     );
     return submission.puzzleId;
@@ -335,6 +358,7 @@ export async function ensureCommunityPuzzle(submission: UserPuzzleSubmission): P
       attribution,
       qualityScore: submission.grade?.score,
       funScore: submission.grade?.funScore,
+      ...reasoningMetadata,
     },
   };
 

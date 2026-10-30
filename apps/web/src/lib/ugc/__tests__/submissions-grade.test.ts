@@ -203,3 +203,52 @@ describe("community publication asset approval", () => {
     expect(updateOne).not.toHaveBeenCalled();
   });
 });
+
+describe("community publication reasoning evidence", () => {
+  const reasoningEvidence = {
+    version: "editorial-reasoning-v1" as const,
+    operations: [
+      { kind: "letter-fragment", observation: "SU", inference: "sun", necessary: true },
+      { kind: "compound", observation: "FL", inference: "flower", necessary: true },
+    ],
+    interacting: true,
+    finalInterpretation: "sunflower",
+    calibration: "editorial-unplaytested" as const,
+  };
+
+  beforeEach(() => {
+    updateOne.mockClear();
+    insertOne.mockClear();
+  });
+
+  it("carries the reviewers' reasoning evidence onto the community puzzle", async () => {
+    const submission = baseSubmission();
+    submission.eveReview!.evidence!.reasoningEvidence = reasoningEvidence;
+
+    await ensureCommunityPuzzle(submission);
+
+    const doc = (insertOne.mock.calls[0] as unknown as [{ metadata: Record<string, unknown> }])[0];
+    expect(doc.metadata).toMatchObject({
+      reasoningEvidence,
+      reasoningEvidenceSource: "independent-editorial",
+    });
+  });
+
+  it("does not label a board without reviewer evidence as independently reviewed", async () => {
+    await ensureCommunityPuzzle(baseSubmission());
+
+    const doc = (insertOne.mock.calls[0] as unknown as [{ metadata: Record<string, unknown> }])[0];
+    expect(doc.metadata.reasoningEvidence).toBeUndefined();
+    expect(doc.metadata.reasoningEvidenceSource).toBeUndefined();
+  });
+
+  it("clears stale evidence when refreshing an existing board without it", async () => {
+    await ensureCommunityPuzzle(baseSubmission({ puzzleId: "existing-board" }));
+
+    const update = (updateOne.mock.calls[0] as unknown as [unknown, Record<string, unknown>])[1];
+    expect(update.$unset).toEqual({
+      "metadata.reasoningEvidence": "",
+      "metadata.reasoningEvidenceSource": "",
+    });
+  });
+});
