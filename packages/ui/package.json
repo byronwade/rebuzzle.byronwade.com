@@ -32,7 +32,7 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.58.0",
+    "lucide-react": "^1.62.0",
     "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {
