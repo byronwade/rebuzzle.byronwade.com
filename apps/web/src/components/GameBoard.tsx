@@ -18,6 +18,7 @@ import {
   isValidIanaTimeZone,
 } from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
+import { classifyGuessResponse } from "@/lib/game/guess-response-outcome";
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
 import { parseBeatMeChallenge, shouldReportShareArrival } from "@/lib/game/share-challenge";
@@ -833,6 +834,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         streakFrozen?: boolean;
         guessDistribution?: number[];
         recentPlayDates?: string[];
+        reloadDaily?: boolean;
         error?: string;
       };
       if (response.ok || response.status === 409) {
@@ -841,11 +843,25 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         fail(`Guess failed (${response.status})`);
       }
 
+      const outcome = classifyGuessResponse(response.status, result);
+
+      // The player's day rolled over while this board was open: nothing was
+      // recorded, so load today's puzzle instead of rendering a terminal result.
+      if (outcome === "reload-daily") {
+        toast({
+          title: "A new puzzle is ready",
+          description: "Your day rolled over. Loading today's puzzle…",
+        });
+        dispatch({ type: "SET_IS_SUBMITTING", payload: false });
+        window.location.reload();
+        return;
+      }
+
       // Already locked / replay blocked — stay in-thread, don't hard-cut away.
       // A winning or final guess also reports `locked: true` (the day is now
       // closed) but with `success: true`; that must fall through to the
       // celebration path with the real attempt count, streak and points.
-      if (response.status === 409 || (result.locked && result.success !== true)) {
+      if (outcome === "locked") {
         void playInterfaceSound("notification");
         setCompletionState(Boolean(result.wasSuccessful), guessToCheck, gameSettings.maxAttempts, {
           celebrate: false,
