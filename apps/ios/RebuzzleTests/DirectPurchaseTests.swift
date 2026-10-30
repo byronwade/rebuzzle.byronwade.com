@@ -1,4 +1,5 @@
 import XCTest
+import StoreKit
 import StoreKitTest
 @testable import Rebuzzle
 
@@ -147,6 +148,21 @@ extension DirectPurchaseTests {
         return session
     }
 
+    /// Polls StoreKit directly so a test precondition cannot be confused with app behavior.
+    @MainActor private func waitForVerifiedPlusEntitlement(timeout: Duration = .seconds(10)) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            for await result in Transaction.currentEntitlements {
+                if case .verified(let entitlement) = result,
+                   entitlement.productID == PurchaseStore.plusID, entitlement.revocationDate == nil {
+                    return
+                }
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTFail("StoreKit Test never published the Plus purchase as a current entitlement.")
+    }
+
     @MainActor func testExplicitRestoreRecoversVerifiedOwnership() async throws {
         let session = try restoreSession()
         defer { session.clearTransactions(); session.resetToDefaultState() }
@@ -262,7 +278,11 @@ extension DirectPurchaseTests {
         XCTAssertEqual(store.message, "Could not restore purchases. Please try again.")
         session.resetToDefaultState()
         session.disableDialogs = true
-        _ = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        let transaction = try await session.buyProduct(identifier: PurchaseStore.plusID)
+        await transaction.finish()
+        // Without the StoreKit monitor, nothing waits for the local test server to
+        // publish the new purchase. Establish ownership before testing recovery.
+        try await waitForVerifiedPlusEntitlement()
         await store.restore()
         XCTAssertTrue(store.hasPlus)
         XCTAssertFalse(store.busy)
