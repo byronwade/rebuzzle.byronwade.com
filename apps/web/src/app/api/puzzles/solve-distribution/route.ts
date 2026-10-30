@@ -59,6 +59,9 @@ export async function GET(request: Request) {
         {
           $match: {
             puzzleId,
+            // Archive replays (lock key `archive:{id}`) are not original daily solves:
+            // keep them out of both the mix and the availability threshold.
+            puzzleDate: { $not: /^archive:/ },
             isCorrect: true,
             isFinal: true,
             attemptType: { $ne: "finalization" },

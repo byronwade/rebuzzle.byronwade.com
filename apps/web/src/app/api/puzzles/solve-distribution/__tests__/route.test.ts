@@ -138,6 +138,22 @@ it("deduplicates by server-owned player ID and groups continuations into four pl
   ]);
 });
 
+it("excludes archive replays from the daily mix and the availability threshold", async () => {
+  setAggregateCounts({ oneGuess: 20, twoGuesses: 0, threeGuesses: 0, fourPlus: 0 });
+
+  await GET(makeRequest());
+  const pipeline = attemptsAggregate.mock.calls[0]?.[0] as Array<{
+    $match?: { puzzleDate?: unknown };
+  }>;
+  const firstMatch = pipeline[0]?.$match;
+  const groupIndex = pipeline.findIndex((stage) => "$group" in stage);
+
+  // The filter must apply before per-player grouping so a one-guess replay cannot
+  // replace the original daily result or count an archive-only solver.
+  expect(groupIndex).toBeGreaterThan(0);
+  expect(firstMatch?.puzzleDate).toEqual({ $not: /^archive:/ });
+});
+
 it("returns rate limit failures without touching puzzle data", async () => {
   jest.mocked(rateLimiters.public).mockResolvedValue({ success: false } as never);
 
