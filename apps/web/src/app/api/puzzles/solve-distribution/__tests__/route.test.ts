@@ -54,7 +54,7 @@ it("rejects malformed puzzle IDs before querying the database", async () => {
 
 it.each([
   ["unknown", null],
-  ["unpublished", { ...officialPuzzle, publishedAt: new Date("2026-10-29T00:00:00.000Z") }],
+  ["unpublished", { ...officialPuzzle, publishedAt: new Date("2026-10-30T00:00:00.000Z") }],
   ["community", { ...officialPuzzle, metadata: { source: "user", communityPlayable: true } }],
 ])("fails closed for %s puzzles", async (_name, puzzle) => {
   puzzleFindOne.mockResolvedValue(puzzle);
@@ -64,6 +64,20 @@ it.each([
   expect(response.status).toBe(404);
   expect(attemptsAggregate).not.toHaveBeenCalled();
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+});
+
+it("serves a daily that is already live east of UTC before its UTC publication key", async () => {
+  // 12:00 UTC Oct 28 is already Oct 29 in Auckland, where that daily is playable.
+  puzzleFindOne.mockResolvedValue({
+    ...officialPuzzle,
+    id: "2026-10-29",
+    publishedAt: new Date("2026-10-29T00:00:00.000Z"),
+  });
+
+  const response = await GET(makeRequest("2026-10-29"));
+
+  expect(response.status).toBe(200);
+  expect(attemptsAggregate).toHaveBeenCalled();
 });
 
 it("withholds the distribution when fewer than 20 unique players solved it", async () => {

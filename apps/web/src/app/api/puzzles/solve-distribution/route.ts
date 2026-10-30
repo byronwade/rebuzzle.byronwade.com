@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureConnection, getCollection } from "@/db/mongodb";
+import { getUtcPuzzleDate, isLocalPuzzleDateLiveSomewhere } from "@/lib/game/daily-lock";
 import {
   buildDailySolveDistribution,
   type DailySolveCounts,
@@ -40,8 +41,12 @@ export async function GET(request: Request) {
       puzzle?.publishedAt instanceof Date
         ? puzzle.publishedAt
         : new Date(String(puzzle?.publishedAt ?? ""));
+    // publishedAt is the UTC-midnight key of a local-calendar daily: east of UTC it is
+    // already playable before that instant, so accept any date that is live somewhere.
     const isPublished =
-      Number.isFinite(publishedAt.getTime()) && publishedAt.getTime() <= Date.now();
+      Number.isFinite(publishedAt.getTime()) &&
+      (publishedAt.getTime() <= Date.now() ||
+        isLocalPuzzleDateLiveSomewhere(getUtcPuzzleDate(publishedAt), new Date()));
     const isOfficial =
       puzzle?.metadata?.source !== "user" && puzzle?.metadata?.communityPlayable !== true;
     if (puzzle?.active !== true || !isPublished || !isOfficial) {
