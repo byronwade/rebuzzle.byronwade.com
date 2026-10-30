@@ -1220,6 +1220,9 @@ export const puzzleAttemptOps = {
       .find({
         userId,
         playMode: "extended",
+        // Runs whose loss stats are confirmed applied are fully accounted; only
+        // unmarked runs (never finalized, failed stats, or legacy) are retried.
+        extendedStatsAccountedAt: { $exists: false },
         $or: [
           { isFinal: { $ne: true }, attemptType: { $ne: "finalization" } },
           { isFinal: true, attemptType: "finalization" },
@@ -1248,6 +1251,25 @@ export const puzzleAttemptOps = {
         puzzleDate: attempts[0]!.puzzleDate!,
         attempts,
       }));
+  },
+
+  /** Mark every row of a finalized extended run as accounted so expiry recovery skips it. */
+  async markExtendedDailyRunAccounted(
+    userId: string,
+    puzzleId: string,
+    puzzleDate: string,
+    accountedAt = new Date()
+  ): Promise<void> {
+    await getCollection<PuzzleAttempt>("puzzleAttempts").updateMany(
+      {
+        userId,
+        puzzleId,
+        puzzleDate,
+        playMode: "extended",
+        extendedStatsAccountedAt: { $exists: false },
+      },
+      { $set: { extendedStatsAccountedAt: accountedAt } }
+    );
   },
 
   /** Last expired score-locked run for a prior local day, for its optional answer review. */

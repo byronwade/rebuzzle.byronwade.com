@@ -138,8 +138,22 @@ async function applyLossStats(
     );
     if (!result.ok) {
       console.error("[extended daily] Loss stats update was not applied");
+      return;
     }
   } catch (error) {
     console.error("[extended daily] Loss stats update failed:", error);
+    return;
+  }
+
+  // Stats are applied (or were already applied under this idempotency key):
+  // stop expiry recovery from replaying this run on every session restore.
+  try {
+    await db.puzzleAttemptOps.markExtendedDailyRunAccounted(
+      input.userId,
+      input.puzzleId,
+      input.puzzleDate
+    );
+  } catch (error) {
+    console.error("[extended daily] Accounting marker write failed:", error);
   }
 }

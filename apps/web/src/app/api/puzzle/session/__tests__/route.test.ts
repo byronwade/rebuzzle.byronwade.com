@@ -6,6 +6,7 @@ jest.mock("@/db", () => ({
       findExpiredExtendedDailyRuns: jest.fn().mockResolvedValue([]),
       findExpiredExtendedDailyRun: jest.fn().mockResolvedValue(null),
       createAtomicDailyAttempt: jest.fn(),
+      markExtendedDailyRunAccounted: jest.fn(),
     },
     dailyProgressOps: { materializeFromAttempt: jest.fn() },
     dailyProgressBackfillOps: { requestReconciliation: jest.fn() },
@@ -282,6 +283,7 @@ it("retries stats for a persisted expired finalization through its idempotent ev
       attempts: [...priorAttempts, expiredFinal],
     },
   ] as never);
+  jest.mocked(updateUserStats).mockResolvedValue({ ok: false } as never);
 
   const response = await get("today", true);
 
@@ -292,6 +294,55 @@ it("retries stats for a persisted expired finalization through its idempotent ev
     expect.objectContaining({ won: false, affectsStreak: true }),
     priorAttempts[2]!.attemptedAt,
     "extended-daily-finalization:yesterday:2026-10-24"
+  );
+  // Without a confirmed stats update the run stays eligible for the next retry.
+  expect(db.puzzleAttemptOps.markExtendedDailyRunAccounted).not.toHaveBeenCalled();
+});
+it("marks an expired run accounted once its stats update is confirmed", async () => {
+  const priorAttempts = [1, 2, 3].map((attemptNumber) => ({
+    ...row,
+    puzzleId: "yesterday",
+    puzzleDate: "2026-10-24",
+    attemptedAt: new Date(`2026-10-24T12:0${attemptNumber}:00.000Z`),
+    attemptNumber,
+    playMode: "extended",
+    isScoredAttempt: true,
+    maxAttempts: 3,
+    isFinal: false,
+  }));
+  const expiredFinal = {
+    ...row,
+    puzzleId: "yesterday",
+    puzzleDate: "2026-10-24",
+    attemptedAnswer: "",
+    attemptNumber: 4,
+    playMode: "extended",
+    attemptType: "finalization",
+    finalizationReason: "expired",
+    isFinal: true,
+    abandoned: true,
+  };
+  jest
+    .mocked(db.puzzleOps.findById)
+    .mockImplementation(
+      async (id: string) => (id === "yesterday" ? { ...puzzle, id: "yesterday" } : puzzle) as never
+    );
+  jest.mocked(db.puzzleAttemptOps.findExpiredExtendedDailyRuns).mockResolvedValue([
+    {
+      puzzleId: "yesterday",
+      puzzleDate: "2026-10-24",
+      attempts: [...priorAttempts, expiredFinal],
+    },
+  ] as never);
+  jest.mocked(updateUserStats).mockResolvedValue({ ok: true } as never);
+
+  const response = await get("today", true);
+
+  expect(response.status).toBe(200);
+  expect(db.puzzleAttemptOps.markExtendedDailyRunAccounted).toHaveBeenCalledWith(
+    "self",
+    "yesterday",
+    "2026-10-24"
   );
 });
 it("reveals the solution after a persisted final", async () => {

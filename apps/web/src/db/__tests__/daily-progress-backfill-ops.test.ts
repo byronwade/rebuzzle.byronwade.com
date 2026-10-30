@@ -128,6 +128,43 @@ it("returns expired extended runs that already have a finalization row for safe 
   expect(runs[0]?.attempts).toHaveLength(4);
 });
 
+it("skips extended runs whose stats are already accounted during expiry recovery", async () => {
+  const toArray = jest.fn().mockResolvedValue([]);
+  const sort = jest.fn().mockReturnValue({ toArray });
+  const find = jest.fn().mockReturnValue({ sort });
+  mockGetCollection.mockReturnValue({ find } as never);
+
+  await puzzleAttemptOps.findExpiredExtendedDailyRuns("user-1", "2026-10-25");
+
+  expect(find).toHaveBeenCalledWith(
+    expect.objectContaining({ extendedStatsAccountedAt: { $exists: false } })
+  );
+});
+
+it("marks every row of an accounted extended run", async () => {
+  const updateMany = jest.fn().mockResolvedValue({ acknowledged: true });
+  mockGetCollection.mockReturnValue({ updateMany } as never);
+  const accountedAt = new Date("2026-10-26T08:00:00.000Z");
+
+  await puzzleAttemptOps.markExtendedDailyRunAccounted(
+    "user-1",
+    "puzzle-1",
+    "2026-10-24",
+    accountedAt
+  );
+
+  expect(updateMany).toHaveBeenCalledWith(
+    {
+      userId: "user-1",
+      puzzleId: "puzzle-1",
+      puzzleDate: "2026-10-24",
+      playMode: "extended",
+      extendedStatsAccountedAt: { $exists: false },
+    },
+    { $set: { extendedStatsAccountedAt: accountedAt } }
+  );
+});
+
 it("returns the concurrent valid zone when an invalid legacy value changed first", async () => {
   const findOneAndUpdate = jest.fn().mockResolvedValue(null);
   const findOne = jest.fn().mockResolvedValue({ journeyTimeZone: "Europe/Paris" });

@@ -332,6 +332,12 @@ export interface PuzzleAttempt {
   /** Attempts after the scored round are still evaluated but do not earn performance points. */
   isScoredAttempt?: boolean;
   finalizationReason?: "revealed" | "expired";
+  /**
+   * Set on every row of a finalized extended daily run once its loss stats are
+   * confirmed applied, so expiry recovery stops replaying it. Absent on legacy
+   * rows: recovery replays those once (idempotent) and then marks them.
+   */
+  extendedStatsAccountedAt?: Date;
   // Enhanced tracking for learning system
   timeSpentSeconds?: number; // Time spent before solving/abandoning
   hintsUsed?: number; // Number of hints used
