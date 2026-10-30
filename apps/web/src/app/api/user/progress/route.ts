@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import type { DailyProgress } from "@/db/models";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { type ChallengeProgress, evaluateChallenges } from "@/lib/challenges/evaluate";
 import {
   type DailyProgressBackfillStatus,
   getDailyProgressBackfillStatus,
@@ -82,7 +83,12 @@ function normalizeEntry(row: unknown): JourneyEntry | null {
   };
 }
 
-function summarize(entries: JourneyEntry[], weekStart: string, asOf: string) {
+function summarize(
+  entries: JourneyEntry[],
+  weekStart: string,
+  asOf: string,
+  challenges: ChallengeProgress
+) {
   const finishes = entries.length;
   const solves = entries.filter((entry) => entry.outcome === "solved");
   const firstGuessSolves = solves.filter((entry) => entry.attempts === 1).length;
@@ -98,7 +104,7 @@ function summarize(entries: JourneyEntry[], weekStart: string, asOf: string) {
   for (const [start, dates] of completedDatesByWeek) {
     if (dates.size >= WEEKLY_TRAIL_GOAL_DAYS) earnedWeeklyTrailBonuses.add(start);
   }
-  const totalXP =
+  const baseXP =
     entries.reduce((total, entry) => {
       const solved = entry.outcome === "solved";
       return (
@@ -110,6 +116,7 @@ function summarize(entries: JourneyEntry[], weekStart: string, asOf: string) {
       );
     }, 0) +
     earnedWeeklyTrailBonuses.size * WEEKLY_TRAIL_BONUS_XP;
+  const totalXP = baseXP + challenges.challengeXP;
   const completedThisWeek = entries.filter(
     (entry) => entry.puzzleDate >= weekStart && entry.puzzleDate <= asOf
   ).length;
@@ -239,6 +246,7 @@ export async function GET(request: Request) {
     const priorEntries = allEntries
       .filter((entry) => entry.puzzleDate < currentWeekStart)
       .slice(0, 35);
+    const challenges = evaluateChallenges(allEntries);
     const recentEntries = [...currentWeekEntries, ...priorEntries].sort((a, b) =>
       b.puzzleDate.localeCompare(a.puzzleDate)
     );
@@ -248,7 +256,7 @@ export async function GET(request: Request) {
         asOfPuzzleDate,
         currentWeekStart,
         currentWeekEnd,
-        summary: summarize(allEntries, currentWeekStart, asOfPuzzleDate),
+        summary: summarize(allEntries, currentWeekStart, asOfPuzzleDate, challenges),
         weeklyTrailReward: {
           weekStart: currentWeekStart,
           bonusXP: WEEKLY_TRAIL_BONUS_XP,
@@ -256,6 +264,8 @@ export async function GET(request: Request) {
         },
         recentEntries: recentEntries.map(toResponseEntry),
         backfill: { status: "complete" },
+        // Top-level so older native decoders keep validating `summary` strictly.
+        challenges,
       },
       { headers: privateHeaders }
     );
