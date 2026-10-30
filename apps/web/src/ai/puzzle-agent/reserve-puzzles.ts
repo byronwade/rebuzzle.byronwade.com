@@ -18,7 +18,7 @@ import {
 import { resolveCuratedPictogram } from "./visual/curated-pictograms";
 import { INK_PICTOGRAM_STYLE_ID } from "./visual/style";
 
-export const RESERVE_PUZZLE_CORPUS_VERSION = "layered-reserve-v1";
+export const RESERVE_PUZZLE_CORPUS_VERSION = "layered-reserve-v2";
 
 export type ReservePuzzle = {
   id: string;

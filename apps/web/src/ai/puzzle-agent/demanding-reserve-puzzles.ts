@@ -1,72 +1,8 @@
-import { getDifficultyLevelForScore } from "./difficulty-levels";
-import type { ReservePuzzle } from "./reserve-puzzles";
-import type { PuzzleVisual, VisualLayer } from "./visual/composition";
-import type { ReasoningEvidence } from "./visual/reasoning-evidence";
-import { INK_PICTOGRAM_STYLE_ID } from "./visual/style";
+import type { DemandingReservePuzzle } from "./demanding-reserve-board";
+import { board, step, text } from "./demanding-reserve-board";
+import { DEMANDING_RESERVE_SEASON_TWO } from "./demanding-reserve-season-two";
 
-export type ReasoningOperation = ReasoningEvidence["operations"][number];
-export type DemandingReservePuzzle = ReservePuzzle & { reasoningEvidence: ReasoningEvidence };
-
-const text = (
-  content: string,
-  emphasis: "normal" | "small" | "large" | "strike" | "stacked" = "normal"
-): VisualLayer => ({ kind: "text", content, emphasis });
-const step = (
-  kind: ReasoningOperation["kind"],
-  observation: string,
-  inference: string
-): ReasoningOperation => ({ kind, observation, inference, necessary: true });
-
-function board(
-  id: string,
-  answer: string,
-  layout: "row" | "stack",
-  layers: VisualLayer[],
-  operations: ReasoningOperation[],
-  hints: [string, string, string]
-): DemandingReservePuzzle {
-  // Keep line breaks for stack boards. This is a fallback representation, not a
-  // substitute for the composed board's size and strike cues.
-  const unicodeFallback = layers
-    .map((layer) =>
-      layer.kind === "text" ? layer.content : layer.kind === "operator" ? layer.symbol : ""
-    )
-    .join(layout === "stack" ? "\n" : " ");
-  const visual: PuzzleVisual = {
-    styleId: INK_PICTOGRAM_STYLE_ID,
-    mode: "composed",
-    layout,
-    layers,
-    unicodeFallback,
-  };
-  return {
-    id: `demanding:${id}`,
-    answer,
-    rebusPuzzle: unicodeFallback,
-    difficulty: 7,
-    difficultyLevel: getDifficultyLevelForScore(7).label,
-    category: "phrases_and_idioms",
-    techniqueId: operations.some((operation) => operation.kind === "size")
-      ? "size_or_case_semantics"
-      : operations.some(
-            (operation) => operation.kind === "containment" || operation.kind === "position"
-          )
-        ? "spatial_preposition_play"
-        : "multi_layer_phonetic",
-    visual,
-    hints,
-    explanation:
-      operations.map((operation) => `${operation.observation} ${operation.inference}`).join(" ") +
-      ` Together these clues express “${answer}.”`,
-    reasoningEvidence: {
-      version: "editorial-reasoning-v1",
-      operations,
-      interacting: true,
-      finalInterpretation: answer,
-      calibration: "editorial-unplaytested",
-    },
-  };
-}
+export type { DemandingReservePuzzle, ReasoningOperation } from "./demanding-reserve-board";
 
 /**
  * Editorial fallback candidates: no picture-name addition, live model calls,
@@ -74,7 +10,7 @@ function board(
  * These are NOT human-calibrated solve-time claims. Familiarity with classic
  * rebuses will matter; collect blind human playtests before claiming difficulty.
  */
-export const DEMANDING_RESERVE_PUZZLES: DemandingReservePuzzle[] = [
+const DEMANDING_RESERVE_SEASON_ONE: DemandingReservePuzzle[] = [
   board(
     "square-one",
     "back to square one",
@@ -729,4 +665,9 @@ export const DEMANDING_RESERVE_PUZZLES: DemandingReservePuzzle[] = [
       "The phrase describes hesitant or grammatically incomplete use of a language.",
     ]
   ),
+];
+
+export const DEMANDING_RESERVE_PUZZLES: DemandingReservePuzzle[] = [
+  ...DEMANDING_RESERVE_SEASON_ONE,
+  ...DEMANDING_RESERVE_SEASON_TWO,
 ];

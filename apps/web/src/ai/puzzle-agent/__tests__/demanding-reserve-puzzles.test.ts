@@ -1,10 +1,18 @@
 import { buildPuzzleSolveBenchmarkCorpus } from "../benchmark/puzzle-corpus";
 import { DEMANDING_RESERVE_PUZZLES } from "../demanding-reserve-puzzles";
+import { DEMANDING_RESERVE_SEASON_TWO } from "../demanding-reserve-season-two";
 import type { PuzzleNoveltyArchiveEntry } from "../novelty";
 import { normalizeAnswerKey } from "../quality";
 import { selectReservePuzzle } from "../reserve-puzzles";
 import { PuzzleVisualSchema } from "../visual/composition";
 import { ReasoningEvidenceSchema } from "../visual/reasoning-evidence";
+
+const SEASON_TWO_IDS = new Set(DEMANDING_RESERVE_SEASON_TWO.map((puzzle) => puzzle.id));
+const SEASON_ONE_IDS = new Set(
+  DEMANDING_RESERVE_PUZZLES.filter((puzzle) => !SEASON_TWO_IDS.has(puzzle.id)).map(
+    (puzzle) => puzzle.id
+  )
+);
 
 describe("demanding daily reserve", () => {
   it("can supply a month without repeating answers or borrowing evaluator answers", () => {
@@ -49,4 +57,36 @@ it("keeps thirty days of demanding fallback available through the actual novelty
     recentPuzzles.push({ ...selected.puzzle, createdAt: now });
   }
   expect(usedAnswerKeys.size).toBe(30);
+});
+
+it("serves the entire demanding corpus, one unused answer per day, before running dry", async () => {
+  const usedAnswerKeys = new Set<string>();
+  const recentPuzzles: PuzzleNoveltyArchiveEntry[] = [];
+  for (let day = 0; day < DEMANDING_RESERVE_PUZZLES.length; day++) {
+    const now = new Date(Date.UTC(2027, 0, 1 + day, 12));
+    const selected = await selectReservePuzzle({
+      dateString: now.toISOString().slice(0, 10),
+      usedAnswerKeys,
+      recentPuzzles,
+      now: () => now,
+    });
+    const key = normalizeAnswerKey(selected.puzzle.answer);
+    expect(usedAnswerKeys.has(key)).toBe(false);
+    usedAnswerKeys.add(key);
+    recentPuzzles.push({ ...selected.puzzle, createdAt: now });
+  }
+  expect(usedAnswerKeys.size).toBe(DEMANDING_RESERVE_PUZZLES.length);
+  expect(DEMANDING_RESERVE_PUZZLES.length).toBeGreaterThanOrEqual(70);
+});
+
+it("keeps every demanding text line short enough that size cues are not auto-shrunk", () => {
+  for (const puzzle of DEMANDING_RESERVE_PUZZLES) {
+    for (const layer of puzzle.visual.layers) {
+      if (layer.kind !== "text" || layer.emphasis === "stacked") continue;
+      const limit = layer.emphasis === "large" ? 8 : 12;
+      if (!puzzle.id.startsWith("demanding:") || layer.content.length <= limit) continue;
+      // Season one predates this guard; hold every new board to it.
+      expect(SEASON_ONE_IDS.has(puzzle.id)).toBe(true);
+    }
+  }
 });
