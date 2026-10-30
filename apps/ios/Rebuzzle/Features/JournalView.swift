@@ -256,12 +256,25 @@ struct JournalDetail: View {
             }
             if let error = model.storageError { Notice(message: error) }
         }.navigationTitle("Study puzzle").navigationBarTitleDisplayMode(.inline)
-            .onAppear { note = model.journal.entries.first(where: { $0.id == entry.id })?.note ?? entry.note }
+            .onAppear { note = storedNote ?? entry.note }
+            // Every keystroke is written straight to the journal, so a stored note that
+            // differs from the editor can only come from sync. Adopt it rather than
+            // letting the next keystroke write stale text over the newer revision.
+            .onChange(of: storedNote) { _, stored in
+                guard let stored, stored != note else { return }
+                note = stored
+            }
             .onChange(of: note) { _, value in
                 guard answerRevealed, model.player?.id == accountID, model.purchases.hasPlus,
                       let index = model.journal.entries.firstIndex(where: { $0.id == entry.id }) else { return }
-                model.journal.entries[index].note = JournalNoteLimits.truncated(value); model.saveJournal()
+                let truncated = JournalNoteLimits.truncated(value)
+                guard model.journal.entries[index].note != truncated else { return }
+                model.journal.entries[index].note = truncated; model.saveJournal()
             }
+    }
+
+    private var storedNote: String? {
+        model.journal.entries.first(where: { $0.id == entry.id })?.note
     }
 
     private func revealNextHint() {
