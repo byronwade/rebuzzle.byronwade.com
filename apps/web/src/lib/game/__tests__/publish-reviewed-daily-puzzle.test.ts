@@ -146,6 +146,22 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
       });
       return row;
     },
+    async releaseAssignment({ id, dateString, updatedAt }) {
+      const row = rows.find(
+        (candidate) =>
+          candidate.id === id &&
+          candidate.status === "assigned" &&
+          candidate.assignedDate === dateString
+      );
+      if (!row) return null;
+      Object.assign(row, {
+        status: "ready",
+        statusVersion: row.statusVersion + 1,
+        assignedDate: undefined,
+        updatedAt,
+      });
+      return row;
+    },
     async skip({ id, reason, updatedAt }) {
       const row = rows.find((candidate) => candidate.id === id);
       if (!row) return null;
@@ -322,6 +338,30 @@ describe("publishing human-reviewed daily puzzles", () => {
       rejectionReason: expect.stringContaining("duplicate"),
     });
     expect(rows[0]?.assignedDate).toBeUndefined();
+  });
+
+  it("keeps the candidate for later and serves nothing when another puzzle already owns the date", async () => {
+    const ready = makeCandidate("ready");
+    ready.humanEvidence = storedEvidence();
+    const second = { ...makeCandidate("ready"), id: "candidate-2" } as DailyPuzzleCandidate;
+    second.humanEvidence = storedEvidence();
+    const { repository, rows } = memoryRepository([ready, second]);
+    persist.mockResolvedValueOnce({ id: "reserve-puzzle", alreadyExisted: true });
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString,
+      repository,
+      reviewService,
+      persist,
+    });
+
+    // Pairing the reserve's id with this candidate's board would reject every correct guess.
+    expect(result).toBeNull();
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(rows[0]).toMatchObject({ status: "ready" });
+    expect(rows[0]?.assignedDate).toBeUndefined();
+    expect(rows[0]?.publishedPuzzleId).toBeUndefined();
+    expect(rows[1]).toMatchObject({ status: "ready" });
   });
 
   it("fails closed when playtest evidence cannot be loaded", async () => {

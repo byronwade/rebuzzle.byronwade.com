@@ -39,6 +39,12 @@ export type DailyPuzzleCandidateRepository = {
     id: string;
     dateString: string;
   }): Promise<DailyPuzzleCandidate | null>;
+  /** Return an assigned-but-unpublished candidate to the ready pool for a later date. */
+  releaseAssignment(input: {
+    id: string;
+    dateString: string;
+    updatedAt: Date;
+  }): Promise<DailyPuzzleCandidate | null>;
   skip(input: {
     id: string;
     reason: string;
@@ -163,6 +169,18 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
         if (!duplicateKey(error)) throw error;
       }
       return this.findAssignmentForDate(input.dateString);
+    },
+
+    async releaseAssignment(input) {
+      return candidates().findOneAndUpdate(
+        { id: input.id, status: "assigned", assignedDate: input.dateString },
+        {
+          $set: { status: "ready", updatedAt: input.updatedAt },
+          $inc: { statusVersion: 1 },
+          $unset: { assignedDate: "" },
+        },
+        { returnDocument: "after" }
+      );
     },
 
     async skip(input) {

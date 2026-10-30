@@ -46,6 +46,8 @@ function hasRequiredCoverage(admission: PuzzlePlaytestCandidateAdmission): boole
   );
 }
 
+const SUPERSEDED = Symbol("daily-date-already-published");
+
 function isDuplicateAnswer(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return (
@@ -98,6 +100,18 @@ export function createReviewedDailyPuzzlePublisher(input: {
       return null;
     }
 
+    if (persisted.alreadyExisted) {
+      // Another publication (e.g. a concurrent reserve) won this date. Its row, not this
+      // candidate's board, is what guesses validate against, so keep the candidate for
+      // a later date and let the caller serve the persisted puzzle.
+      await input.repository.releaseAssignment({
+        id: candidate.id,
+        dateString,
+        updatedAt: now(),
+      });
+      return SUPERSEDED;
+    }
+
     await input.repository.markPublished({
       id: candidate.id,
       dateString,
@@ -142,12 +156,14 @@ export function createReviewedDailyPuzzlePublisher(input: {
       const existingAssignment = await input.repository.findAssignmentForDate(dateString);
       if (existingAssignment?.status === "assigned") {
         const resumed = await publishAssignedCandidate(existingAssignment, dateString);
+        if (resumed === SUPERSEDED) return null;
         if (resumed) return resumed;
       } else if (existingAssignment?.status === "published") {
         throw new Error("Published daily candidate has no matching public puzzle row");
       }
 
       const previouslyAdmitted = await publishReadyCandidate(dateString);
+      if (previouslyAdmitted === SUPERSEDED) return null;
       if (previouslyAdmitted) return previouslyAdmitted;
 
       const reviewingCandidates = await input.repository.list({
@@ -192,7 +208,8 @@ export function createReviewedDailyPuzzlePublisher(input: {
         }
       }
 
-      return publishReadyCandidate(dateString);
+      const admitted = await publishReadyCandidate(dateString);
+      return admitted === SUPERSEDED ? null : admitted;
     },
   };
 }
