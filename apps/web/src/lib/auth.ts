@@ -165,7 +165,13 @@ function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultI
     ? getLocalPuzzleDate(new Date(currentStats.lastPlayDate), timeZone)
     : null;
   const { missedDays, isNewDay } = getStreakGap(lastPlayKey, todayKey);
-  const affectsStreak = gameResult.affectsStreak !== false;
+  const countsAsPlayDay = gameResult.affectsStreak !== false;
+  // A retried historical event (e.g. an expired run's loss applied on a later restore)
+  // must not move lastPlayDate backward or recompute the streak from an older day.
+  const predatesLastPlay =
+    currentStats?.lastPlayDate != null &&
+    now.getTime() < new Date(currentStats.lastPlayDate).getTime();
+  const affectsStreak = countsAsPlayDay && !predatesLastPlay;
 
   const priorStreak = currentStats?.streak || 0;
   const priorDaily = currentStats?.dailyChallengeStreak || 0;
@@ -292,7 +298,7 @@ function buildStatsPatch(currentStats: UserStats | null, gameResult: GameResultI
       gameResult.won,
       Math.min(3, Math.max(1, maxAttempts))
     ),
-    recentPlayDates: recordRecentPlayDate(currentStats?.recentPlayDates, now, affectsStreak),
+    recentPlayDates: recordRecentPlayDate(currentStats?.recentPlayDates, now, countsAsPlayDay),
     _meta: {
       pointsEarned,
       streakFrozen: protection.streakFrozen,

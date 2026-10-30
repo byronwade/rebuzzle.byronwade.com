@@ -67,3 +67,26 @@ it("retries a finalized loss only once when the atomic event marker already exis
   expect(db.userStatsOps.updateStatsOnce).toHaveBeenCalledTimes(1);
   expect(db.userStatsOps.updateStats).not.toHaveBeenCalled();
 });
+
+it("applies a retried older loss without moving lastPlayDate backward or touching the streak", async () => {
+  // The player already finished a newer daily on Oct 26 before the Oct 24 loss retry.
+  const newer = { ...stats, lastPlayDate: new Date("2026-10-26T12:00:00.000Z") };
+  jest.mocked(db.userStatsOps.findByUserId).mockResolvedValueOnce(newer as never);
+  jest.mocked(db.userStatsOps.updateStatsOnce).mockResolvedValue(true);
+
+  const result = await updateUserStats(
+    "user-1",
+    { won: false, attempts: 3, affectsStreak: true, timeZone: "UTC" },
+    new Date("2026-10-24T12:03:00.000Z"),
+    "extended-daily-finalization:puzzle-1:2026-10-24"
+  );
+
+  const patch = jest.mocked(db.userStatsOps.updateStatsOnce).mock.calls[0]?.[2] as Record<
+    string,
+    unknown
+  >;
+  expect(patch.lastPlayDate).toEqual(newer.lastPlayDate);
+  expect(patch.streak).toBe(4);
+  expect(patch.totalGames).toBe(4);
+  expect(result).toMatchObject({ ok: true, streak: 4, streakFrozen: false });
+});
