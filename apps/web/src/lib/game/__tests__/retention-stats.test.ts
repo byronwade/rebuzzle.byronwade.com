@@ -264,6 +264,9 @@ describe("retention-stats", () => {
       expect(bumpGuessDistribution([1, 2, 3], 2, true)).toEqual([1, 3, 3]);
       expect(bumpGuessDistribution([1, 2, 3], 2, false)).toEqual([1, 2, 3]);
       expect(bumpGuessDistribution(undefined, 1, true)).toEqual([1, 0, 0]);
+      // A continuation solve on guess 4+ must not be recorded as a 3-guess solve.
+      expect(bumpGuessDistribution([1, 2, 3], 4, true, 3)).toEqual([1, 2, 3]);
+      expect(bumpGuessDistribution([1, 2, 3], 3, true, 3)).toEqual([1, 2, 4]);
     });
 
     it("records unique recent UTC play dates newest-first", () => {
