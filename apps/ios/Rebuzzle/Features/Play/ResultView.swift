@@ -27,23 +27,25 @@ struct ResultView: View {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 16) {
                     let lateSolve = game.wasSuccessful == true && game.scoreLocked == true && game.attempts.count > game.maxAttempts
-                    Text(game.wasSuccessful == true ? "Aha!" : "The reveal.")
-                        .font(Theme.display(game.wasSuccessful == true ? 80 : 48)).tracking(-2)
+                    Text(game.wasSuccessful == true ? "SOLVED" : "REVEALED")
+                        .font(Theme.display(game.wasSuccessful == true ? 72 : 52))
                         .foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(game.wasSuccessful == true ? "Solved" : "Answer revealed")
                     Label(game.wasSuccessful == true ? "You found it." : "Here’s the connection.", systemImage: game.wasSuccessful == true ? "checkmark.seal.fill" : "eye")
                         .font(Theme.font(14, weight: .medium)).foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.secondary)
                     Text(game.revealedAnswer ?? "Puzzle complete")
-                        .font(Theme.display(32)).tracking(-0.8).textSelection(.enabled)
+                        .font(Theme.display(34)).textCase(.uppercase).textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
                         ForEach(0..<game.maxAttempts, id: \.self) { index in
                             let guess = game.attempts.first { $0.attemptNumber == index + 1 }
-                            Image(systemName: guess?.correct == true ? "checkmark" : guess != nil ? "minus" : "circle")
-                                .font(.system(size: 16, weight: .semibold))
+                            Image(systemName: guess?.correct == true ? "checkmark" : guess != nil ? "xmark" : "minus")
+                                .font(.system(size: 14, weight: .heavy))
                                 .frame(width: 44, height: 44)
-                                .foregroundStyle(guess?.correct == true ? Theme.panel : Theme.secondary)
-                                .background(guess?.correct == true ? Theme.success : Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
+                                .foregroundStyle(guess?.correct == true ? Theme.canvas : guess != nil ? Theme.error : Theme.muted)
+                                .background(guess?.correct == true ? Theme.success : Theme.field)
+                                .overlay(Rectangle().strokeBorder(guess?.correct == true ? Theme.success : Theme.hairline, lineWidth: 1))
                         }
                     }.accessibilityElement(children: .ignore)
                     .accessibilityLabel(attemptHistoryAccessibilityLabel)
@@ -58,8 +60,8 @@ struct ResultView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-                .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
+                .padding(24).background(Theme.panel)
+                .overlay(Rectangle().strokeBorder(game.wasSuccessful == true ? Theme.goldDeep : Theme.hairline, lineWidth: 1))
                 .overlay(alignment: .top) { CelebrationBurst(isActive: celebrating) }
                 .onAppear { celebrateFirstSolve(of: game) }
                 if let summary = game.dailyShareSummary {

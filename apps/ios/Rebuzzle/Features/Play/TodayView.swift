@@ -24,20 +24,28 @@ struct TodayView: View {
         ScrollViewReader { scroll in
         Page(spacing: 18, bottomSafeAreaClearance: 72) {
             if let daily = model.daily {
-                VStack(alignment: .leading, spacing: 6) {
-                    let masthead = typeSize.isAccessibilitySize
-                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                        : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
-                    masthead {
-                        Text("Make it click.")
-                            .font(Theme.display(42)).tracking(-1.5)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
-                        EveAvatar(celebrating: model.game?.wasSuccessful == true)
-                            .accessibilityLabel("Eve, your AI puzzle author")
+                VStack(alignment: .leading, spacing: 14) {
+                    CareerHeader(compact: true)
+                    HStack(spacing: 10) {
+                        Text("Daily · " + dateLabel)
+                            .font(Theme.label(12)).tracking(1.4).textCase(.uppercase)
+                            .foregroundStyle(Theme.secondary)
+                            .accessibilityLabel("Daily puzzle, " + dateLabel)
+                        Spacer(minLength: 4)
+                        Button {
+                            quickStartUsesIntro = false
+                            help = true
+                        } label: {
+                            Image(systemName: "questionmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .frame(width: 32, height: 32)
+                                .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).foregroundStyle(Theme.secondary)
+                        .accessibilityLabel("How to play")
                     }
-                    Text("Daily puzzle · " + dateLabel)
-                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
                 }
                 .id("dailyHeader")
                 if model.game?.gameOver == true {
@@ -50,7 +58,7 @@ struct TodayView: View {
                             : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
                         stageHeader {
                             Text(daily.puzzle.typeName)
-                                .font(Theme.font(13, weight: .semibold))
+                                .font(Theme.label(12)).tracking(1.2).textCase(.uppercase)
                             if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
                             DifficultyBadge(difficulty: daily.puzzle.difficulty)
                                 .accessibilityIdentifier("dailyDifficultyTier")
@@ -63,16 +71,18 @@ struct TodayView: View {
                                     .frame(minWidth: 44, minHeight: 44)
                                     .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain).foregroundStyle(Theme.accent)
+                            .buttonStyle(.plain).foregroundStyle(Theme.secondary)
                             .accessibilityLabel("Study puzzle")
                             .accessibilityIdentifier("studyPuzzle")
                         }.padding(.horizontal, 16).padding(.vertical, 2)
-                        Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
+                        Rectangle().fill(Theme.hairline).frame(height: 1)
                         // Keep every clue and its internal geometry untouched.
                         PuzzleBoard(puzzle: daily.puzzle).padding(16)
+                            .frame(maxWidth: .infinity, minHeight: typeSize.isAccessibilitySize ? 0 : 300)
                     }
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
+                    .background(Theme.panel)
+                    .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
+                    .overlay(alignment: .topLeading) { BoardCorners() }
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
                         if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty { conversation }
@@ -108,8 +118,8 @@ struct TodayView: View {
                                     }
                                 }
                                 .contentShape(Rectangle())
-                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-                                .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
+                                .background(Theme.panel)
+                                .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
                             }
                             .buttonStyle(.plain).foregroundStyle(Theme.ink)
                             .disabled(!model.sessionReady)
@@ -126,12 +136,13 @@ struct TodayView: View {
                                 if let error = model.error { Notice(message: error) }
                                 if model.needsReconciliation || !model.sessionReady {
                                     Button { Task { await model.load() } } label: {
-                                        HStack { if model.busy { ProgressView().tint(Theme.canvas) }; Text("Refresh progress"); Image(systemName: "arrow.clockwise") }
+                                        HStack { if model.busy { ProgressView().tint(Theme.onGold) }; Text("Refresh progress"); Image(systemName: "arrow.clockwise") }
                                     }.buttonStyle(CommitStyle()).disabled(model.busy)
                                 } else if !answerFocused {
                                     Button { submitAnswer() } label: {
-                                        HStack { Text("Check answer"); if model.submitting { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") } }
-                                    }.buttonStyle(CommitStyle()).disabled(model.submitting || model.busy).accessibilityIdentifier("checkAnswer")
+                                        HStack(spacing: 10) { Text("Lock in"); if model.submitting { ProgressView().tint(Theme.onGold) } else { Image(systemName: "scope") } }
+                                    }.buttonStyle(CommitStyle()).disabled(model.submitting || model.busy)
+                                    .accessibilityLabel("Check answer").accessibilityIdentifier("checkAnswer")
                                 }
                             }
                         }
@@ -185,8 +196,8 @@ struct TodayView: View {
                             }
                             .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
                             .padding(.horizontal, 12)
-                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-                            .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
+                            .background(Theme.panel)
+                            .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
                             .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
                         }
                         .buttonStyle(.plain)
@@ -240,13 +251,8 @@ struct TodayView: View {
         }
         }
         .navigationTitle("Rebuzzle").navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("How to play", systemImage: "questionmark.circle") {
-                    quickStartUsesIntro = false
-                    help = true
-                }
-            }
             ToolbarItemGroup(placement: .keyboard) {
                 Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") {
                     dismissAnswerKeyboard(forceResign: true)
@@ -459,9 +465,9 @@ struct TodayView: View {
     private var dailyThoughtIcon: some View {
         Image(systemName: "pencil.and.list.clipboard")
             .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(Theme.accent)
-            .frame(width: 42, height: 42)
-            .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .foregroundStyle(Theme.gold)
+            .frame(width: 40, height: 40)
+            .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
     }
     private var dailyThoughtSubtitle: String {
         model.dailyThought.isEmpty ? "Leave yourself a clue for later" : "Your thought is saved on this device"
@@ -492,26 +498,27 @@ struct TodayView: View {
                     let correct = submitted && attempts[index].correct
                     let resultColor = correct ? Theme.success : Theme.error
                     ZStack {
-                        Circle().fill(active ? Theme.accent : submitted ? resultColor.opacity(0.13) : Theme.field)
-                        Circle().strokeBorder(active ? Theme.accent : submitted ? resultColor.opacity(0.48) : Theme.secondary.opacity(0.25), lineWidth: 1)
+                        Rectangle().fill(submitted ? resultColor.opacity(0.16) : active ? Theme.gold.opacity(0.14) : Theme.field)
+                            .frame(width: 28, height: 28).rotationEffect(.degrees(45))
+                        Rectangle().strokeBorder(submitted ? resultColor : active ? Theme.gold : Theme.hairline, lineWidth: active ? 2 : 1)
+                            .frame(width: 28, height: 28).rotationEffect(.degrees(45))
                         if submitted {
                             Image(systemName: correct ? "checkmark" : "xmark")
-                                .font(.system(size: 15, weight: .bold))
+                                .font(.system(size: 13, weight: .heavy))
                                 .transition(reduceMotion ? .opacity : .scale(scale: 0.55).combined(with: .opacity))
                         } else {
-                            Text("\(index + 1)").font(Theme.display(18)).monospacedDigit()
+                            Text("\(index + 1)").font(Theme.display(17)).monospacedDigit()
                         }
                     }
-                    .foregroundStyle(submitted ? resultColor : active ? Color.white : Theme.secondary)
-                    .frame(width: 40, height: 40)
-                    .shadow(color: active ? Theme.accent.opacity(0.20) : .clear, radius: 0, x: 0, y: 3)
+                    .foregroundStyle(submitted ? resultColor : active ? Theme.gold : Theme.secondary)
+                    .frame(width: 42, height: 42)
                     .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.64), value: model.game?.attempts.count)
                 }
             }.accessibilityHidden(true)
             if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
             VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 3) {
                 Text(model.game?.scoreLocked == true ? "Take your time" : "Your move")
-                    .font(Theme.font(14, weight: .semibold))
+                    .font(Theme.label(13)).tracking(1.2).textCase(.uppercase)
                 Text(model.game?.scoreLocked == true ? "Your score is saved" : "\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
                     .font(Theme.font(12)).foregroundStyle(Theme.secondary)
             }
@@ -524,10 +531,10 @@ struct TodayView: View {
     private var nudgeButtonCopy: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "sparkles")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.accent)
-                .frame(width: 38, height: 38)
-                .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.radius))
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.gold)
+                .frame(width: 36, height: 36)
+                .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
             VStack(alignment: .leading, spacing: 3) {
                 Text("Ask Eve for a nudge")
                     .font(Theme.font(14, weight: .semibold))
@@ -539,5 +546,24 @@ struct TodayView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+/// Gold corner ticks that frame the puzzle board like a viewfinder.
+private struct BoardCorners: View {
+    var body: some View {
+        GeometryReader { geo in
+            let length: CGFloat = 14
+            Path { path in
+                for (x, y, dx, dy) in [(0.0, 0.0, 1.0, 1.0), (geo.size.width, 0, -1, 1), (0, geo.size.height, 1, -1), (geo.size.width, geo.size.height, -1, -1)] {
+                    path.move(to: CGPoint(x: x, y: y + dy * length))
+                    path.addLine(to: CGPoint(x: x, y: y))
+                    path.addLine(to: CGPoint(x: x + dx * length, y: y))
+                }
+            }
+            .stroke(Theme.gold, lineWidth: 2)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }

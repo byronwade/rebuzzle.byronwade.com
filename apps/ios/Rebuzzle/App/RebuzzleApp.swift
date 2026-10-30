@@ -1,4 +1,5 @@
 import SwiftUI
+import RebuzzleCore
 
 @main struct RebuzzleApp: App {
     init() { NotificationDelegate.shared.install() }
@@ -106,6 +107,20 @@ struct RootView: View {
         .task {
             await model.reminders.refreshAuthorization()
             await model.load()
+            #if DEBUG
+            // Screenshot hook, applied after load so the identity reset doesn't clear it: `--preview-screen career|challenges|you|unlock`.
+            let arguments = ProcessInfo.processInfo.arguments
+            if let index = arguments.firstIndex(of: "--preview-screen"), arguments.indices.contains(index + 1) {
+                switch arguments[index + 1] {
+                case "career": model.selectedTab = .journey
+                case "challenges": model.selectedTab = .journey; journeyPath.append(RebuzzleRoute.challenges)
+                case "you": model.selectedTab = .you
+                case "unlock":
+                    model.pendingUnlocks = [ChallengeUnlock(lineID: "dailies", title: "Daily devotion", tier: 4, maxTier: 5, xp: 200, symbol: "calendar")]
+                default: break
+                }
+            }
+            #endif
             await model.purchases.load()
             await model.retryJournalSyncIfNeeded()
         }

@@ -31,7 +31,8 @@ struct ChallengeUnlockOverlay: View {
                 .rotationEffect(.degrees(shown || reduceMotion ? 0 : -30))
                 .accessibilityHidden(true)
                 VStack(spacing: 8) {
-                    Text(unlock.title.uppercased()).font(Theme.display(36)).multilineTextAlignment(.center)
+                    Text((unlock.maxTier > 1 ? "\(unlock.title) \(ChallengeLine.roman(unlock.tier))" : unlock.title).uppercased())
+                        .font(Theme.display(36)).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                     TierPips(tier: unlock.tier, maxTier: unlock.maxTier, size: 12)
                     Text("+\(unlock.xp) XP").font(Theme.display(28)).foregroundStyle(Theme.gold).padding(.top, 6)
