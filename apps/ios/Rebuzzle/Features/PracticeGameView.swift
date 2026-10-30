@@ -41,7 +41,9 @@ import RebuzzleCore
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 10) {
                     Text(puzzle.typeName).font(Theme.font(13, weight: .semibold))
-                    Text("LEVEL \(puzzle.difficulty) / 10").font(Theme.font(11, weight: .medium)).monospacedDigit().foregroundStyle(Theme.secondary)
+                    Text(DifficultyTier.badge(difficulty: puzzle.difficulty)).font(Theme.font(11, weight: .semibold)).monospacedDigit().tracking(0.4)
+                        .foregroundStyle(puzzle.difficulty >= 8 ? Theme.reward : Theme.secondary)
+                        .accessibilityLabel(DifficultyTier.accessibilityLabel(difficulty: puzzle.difficulty))
                 }
             }
 

@@ -18,6 +18,7 @@ struct TodayView: View {
     @State private var hintFeedback = 0
     @State private var dailyThoughtEditor = false
     @FocusState private var answerFocused: Bool
+    @State private var wrongGuessShakes: CGFloat = 0
     var body: some View {
         @Bindable var model = model
         ScrollViewReader { scroll in
@@ -51,10 +52,11 @@ struct TodayView: View {
                             Text(daily.puzzle.typeName)
                                 .font(Theme.font(13, weight: .semibold))
                             if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
-                            Text("LEVEL \(daily.puzzle.difficulty) / 10")
-                                .font(Theme.font(11, weight: .medium)).monospacedDigit()
-                                .foregroundStyle(Theme.secondary)
-                                .accessibilityLabel("Difficulty \(daily.puzzle.difficulty) out of 10")
+                            Text(DifficultyTier.badge(difficulty: daily.puzzle.difficulty))
+                                .font(Theme.font(11, weight: .semibold)).monospacedDigit().tracking(0.4)
+                                .foregroundStyle(daily.puzzle.difficulty >= 8 ? Theme.reward : Theme.secondary)
+                                .accessibilityLabel(DifficultyTier.accessibilityLabel(difficulty: daily.puzzle.difficulty))
+                                .accessibilityIdentifier("dailyDifficultyTier")
                             Button {
                                 dismissAnswerKeyboard()
                                 study = PuzzleStudy(puzzle: daily.puzzle)
@@ -133,6 +135,7 @@ struct TodayView: View {
                                     .accessibilityIdentifier("answerField")
                                     .onSubmit { submitAnswer() }
                                     .onChange(of: model.draft) { _, _ in model.saveDraft() }
+                                    .modifier(WrongGuessShake(shakes: wrongGuessShakes))
                                 if let error = model.error { Notice(message: error) }
                                 if model.needsReconciliation || !model.sessionReady {
                                     Button { Task { await model.load() } } label: {
@@ -295,6 +298,11 @@ struct TodayView: View {
             guard model.daily != nil, !hasSeenFirstSessionQuickStart, !help else { return }
             quickStartUsesIntro = true
             help = true
+        }
+        .onChange(of: model.game?.attempts.count) { old, new in
+            guard let old, let new, new > old, model.game?.attempts.last?.correct == false,
+                  model.game?.gameOver != true, !reduceMotion else { return }
+            withAnimation(.linear(duration: 0.4)) { wrongGuessShakes += 1 }
         }
         .sensoryFeedback(.success, trigger: model.game?.wasSuccessful == true) { _, new in new && haptics }
         .sensoryFeedback(.selection, trigger: hintFeedback) { _, _ in haptics }
@@ -706,6 +714,9 @@ struct PuzzleBoard: View {
 struct ResultView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Celebrate a solve once per puzzle, not every time the result is reopened.
+    @AppStorage("celebratedDailyPuzzleID") private var celebratedPuzzleID = ""
+    @State private var celebrating = false
     @Binding var shareRequest: DailyResultShareRequest?
     @State private var renderedShareSummary: DailyShareSummary?
     @State private var renderedSharePNG: Data?
@@ -753,6 +764,12 @@ struct ResultView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
                 .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
+                .overlay(alignment: .top) { CelebrationBurst(isActive: celebrating) }
+                .onAppear {
+                    guard game.wasSuccessful == true, celebratedPuzzleID != game.puzzleId else { return }
+                    celebratedPuzzleID = game.puzzleId
+                    celebrating = true
+                }
                 if let summary = game.dailyShareSummary {
                     dailyShareAction(summary)
                 } else {
