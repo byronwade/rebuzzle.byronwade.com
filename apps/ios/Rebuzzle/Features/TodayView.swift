@@ -126,6 +126,9 @@ struct TodayView: View {
                                 TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
                                     .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
                                     .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
+                                    // The padded box reads as the field, so a tap anywhere in it should focus.
+                                    .contentShape(RoundedRectangle(cornerRadius: 10))
+                                    .simultaneousGesture(TapGesture().onEnded { answerFocused = true })
                                     .accessibilityLabel("Your answer")
                                     .accessibilityIdentifier("answerField")
                                     .onSubmit { submitAnswer() }
