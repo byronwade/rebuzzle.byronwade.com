@@ -38,6 +38,22 @@ public struct JournalEntry: Codable, Sendable, Identifiable, Hashable {
         visual = try values.decodeIfPresent(PuzzleVisual.self, forKey: .visual)
         note = try values.decodeIfPresent(String.self, forKey: .note) ?? ""
     }
+
+    /// Fills puzzle details older builds never stored (hints, composed artwork) from
+    /// the account copy, keeping this device's result and note untouched.
+    public func backfillingMissingPuzzleDetails(from remote: JournalEntry) -> JournalEntry {
+        guard remote.puzzleID == puzzleID else { return self }
+        let fillHints = hints.isEmpty && !remote.hints.isEmpty
+        let fillVisual = visual == nil && remote.visual != nil
+        guard fillHints || fillVisual else { return self }
+        return JournalEntry(
+            puzzleID: puzzleID, puzzleDate: puzzleDate, puzzleType: puzzleType,
+            clue: clue, answer: answer, explanation: explanation,
+            won: won, attempts: attempts, hintsUsed: hintsUsed, note: note,
+            visual: fillVisual ? remote.visual : visual,
+            hints: fillHints ? remote.hints : hints
+        )
+    }
 }
 public struct Journal: Codable, Sendable {
     public var version = 1

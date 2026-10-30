@@ -278,3 +278,46 @@ private func remoteEntry(note: String, revision: Int) -> JournalSyncRemoteEntry 
     #expect(boundedFamilies.utf8.count <= JournalNoteLimits.maximumUTF8Bytes)
     #expect(familyEmoji.hasPrefix(boundedFamilies))
 }
+
+@Test func syncBackfillsHintsMissingFromALegacyLocalEntryWithoutTouchingTheNote() {
+    var local = Journal()
+    local.record(journalEntry(note: "Saw it on the second look."))
+    let remote = JournalSyncRemoteEntry(
+        entry: JournalEntry(
+            puzzleID: "puzzle-1", puzzleDate: "2026-10-25", puzzleType: "rebus",
+            clue: "MIND over MATTER", answer: "mind over matter",
+            explanation: "MIND sits above MATTER.", won: true, attempts: 2, hintsUsed: 1,
+            note: "Saw it on the second look.",
+            hints: ["Look at the positions.", "One word is higher."]
+        ),
+        noteRevision: 3
+    )
+
+    let result = JournalSyncReconciler.reconcile(
+        local: local,
+        checkpoint: JournalSyncCheckpoint(),
+        remote: [remote]
+    )
+
+    let entry = result.journal.entries.first
+    #expect(entry?.hints == ["Look at the positions.", "One word is higher."])
+    #expect(entry?.note == "Saw it on the second look.")
+    #expect(result.pendingWrites.isEmpty)
+    #expect(result.conflicts.isEmpty)
+}
+
+@Test func syncKeepsHintsAlreadyStoredOnThisDevice() {
+    let stored = JournalEntry(
+        puzzleID: "puzzle-1", puzzleDate: "2026-10-25", puzzleType: "rebus",
+        clue: "MIND over MATTER", answer: "mind over matter",
+        explanation: "MIND sits above MATTER.", won: true, attempts: 2, hintsUsed: 1,
+        hints: ["Local hint."]
+    )
+    let remote = JournalEntry(
+        puzzleID: "puzzle-1", puzzleDate: "2026-10-25", puzzleType: "rebus",
+        clue: "MIND over MATTER", answer: "mind over matter",
+        explanation: "MIND sits above MATTER.", won: true, attempts: 2, hintsUsed: 1,
+        hints: ["Account hint."]
+    )
+    #expect(stored.backfillingMissingPuzzleDetails(from: remote).hints == ["Local hint."])
+}

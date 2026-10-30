@@ -134,7 +134,10 @@ public enum JournalSyncReconciler {
             let remoteNote = remoteEntry.entry.note
             let remoteRevision = remoteEntry.noteRevision
             let localIndex = journal.entries.firstIndex { $0.puzzleID == puzzleID }
-            if localIndex == nil {
+            if let localIndex {
+                journal.entries[localIndex] = journal.entries[localIndex]
+                    .backfillingMissingPuzzleDetails(from: remoteEntry.entry)
+            } else {
                 journal.record(remoteEntry.entry)
             }
             let resolvedIndex = journal.entries.firstIndex { $0.puzzleID == puzzleID }!
