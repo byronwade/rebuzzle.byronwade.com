@@ -15,6 +15,9 @@ import RebuzzleCore
     @State private var answerDraft = ""
     @State private var busy = false
     @State private var error: String?
+    /// Set when the server no longer recognizes this round's token, e.g. after an accepted guess
+    /// whose response was lost. Practice is unscored, so a fresh round is always safe.
+    @State private var roundOutOfSync = false
     @FocusState private var answerFocused: Bool
 
     init(puzzle: Puzzle, api: APIClient, storage: LocalStore, accountID: String, isFreeSample: Bool = false) {
@@ -77,14 +80,24 @@ import RebuzzleCore
                             .accessibilityIdentifier("practiceAnswerField")
                             .onSubmit { dismissAnswerKeyboard(); Task { await submit() } }
                         if let error { Notice(message: error) }
-                        Button { Task { await submit() } } label: {
-                            HStack {
-                                Text("Check answer")
-                                if busy { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") }
+                        if roundOutOfSync {
+                            Button {
+                                restartRound()
+                            } label: {
+                                Label("Start this round again", systemImage: "arrow.counterclockwise")
                             }
+                            .buttonStyle(CommitStyle()).disabled(busy)
+                            .accessibilityIdentifier("restartOutOfSyncPracticeRound")
+                        } else {
+                            Button { Task { await submit() } } label: {
+                                HStack {
+                                    Text("Check answer")
+                                    if busy { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") }
+                                }
+                            }
+                            .buttonStyle(CommitStyle()).disabled(busy)
+                            .accessibilityIdentifier("checkPracticeAnswer")
                         }
-                        .buttonStyle(CommitStyle()).disabled(busy)
-                        .accessibilityIdentifier("checkPracticeAnswer")
                     }
                     .padding(14).background(Theme.field.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
                 }
@@ -288,7 +301,7 @@ import RebuzzleCore
     }
 
     private func submit() async {
-        guard !busy else { return }
+        guard !busy, !roundOutOfSync else { return }
         var updated = session
         guard let attemptNumber = updated.submit(guess: answerDraft) else {
             error = answerDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -325,6 +338,13 @@ import RebuzzleCore
                 similarity: result.similarity,
                 wordResults: result.wordResults
             ))
+        } catch let apiError as APIError where apiError.status == 409 {
+            // The server already advanced or retired this round's token, so retrying the
+            // same token can never succeed. Offer a fresh round instead of a dead end.
+            updated.cancelPendingSubmission()
+            session = updated
+            roundOutOfSync = true
+            self.error = "This practice round fell out of sync, so your last guess may not have counted. Start it again to keep playing."
         } catch {
             updated.cancelPendingSubmission()
             session = updated
@@ -354,6 +374,7 @@ import RebuzzleCore
         session = updated
         answerDraft = ""
         error = nil
+        roundOutOfSync = false
         practiceEve.reset()
         try? storage.remove(key: practiceEveKey)
         practiceEve.activate(accountID: accountID, puzzleID: puzzle.id, scope: .practice)
