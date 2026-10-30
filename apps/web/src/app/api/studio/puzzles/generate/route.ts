@@ -154,6 +154,8 @@ export async function POST(request: Request) {
         candidateCount: CANDIDATE_COUNT,
         deferRenderedEvaluation: true,
         useLearningFeedback: false,
+        // Creator text is untrusted: never expose official-answer tools to this loop.
+        toolSurface: "studio",
       });
 
       if (result.status !== "success") continue;

@@ -20,6 +20,23 @@ export const PUBLICATION_AGENT_TOOLS = [
   "craft_hint_ladder",
 ] as const;
 
+/**
+ * Tools that read official puzzle answers. A user-initiated (Studio) run puts
+ * untrusted creator text in the loop, so these must never be reachable there;
+ * novelty is still enforced host-side by `checkUniqueness` after the draft.
+ */
+export const OFFICIAL_ANSWER_READING_TOOLS = ["list_recent_answers"] as const;
+
+/** Who started the generation run. */
+export type PuzzleAgentToolSurface = "publication" | "studio";
+
+/** Active ToolLoop tools for a generation surface. */
+export function activeToolsForSurface(surface: PuzzleAgentToolSurface = "publication"): string[] {
+  if (surface === "publication") return [...PUBLICATION_AGENT_TOOLS];
+  const blocked = new Set<string>(OFFICIAL_ANSWER_READING_TOOLS);
+  return PUBLICATION_AGENT_TOOLS.filter((name) => !blocked.has(name));
+}
+
 /** Host-side efficiency tools that must exist in both Eve and in-process surfaces. */
 export const EFFICIENCY_AGENT_TOOLS = [
   "list_pictogram_catalog",

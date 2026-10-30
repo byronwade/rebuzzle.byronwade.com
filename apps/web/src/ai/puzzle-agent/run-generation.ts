@@ -7,7 +7,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Output, stepCountIs, ToolLoopAgent } from "ai";
+import { Output, stepCountIs, ToolLoopAgent, type ToolSet } from "ai";
 import {
   assertGatewayAuthConfigured,
   ensureGatewayKey,
@@ -43,7 +43,11 @@ import {
   mergeInventAssetsOntoPreflight,
 } from "./authoritative-draft";
 import { getDifficultyLevelForScore } from "./difficulty-levels";
-import { PUBLICATION_AGENT_TOOLS } from "./publication-tools";
+import {
+  activeToolsForSurface,
+  OFFICIAL_ANSWER_READING_TOOLS,
+  type PuzzleAgentToolSurface,
+} from "./publication-tools";
 import { evaluatePublishGates, normalizeAnswerKey } from "./quality";
 import {
   normalizePuzzleAgentDraft,
@@ -109,6 +113,11 @@ export interface PuzzleGenerationParams {
   repairMode?: "critique-locked";
   /** Keep a repair pass from silently multiplying spend through model fallbacks. */
   modelChainLimit?: number;
+  /**
+   * `studio` runs carry untrusted creator text, so tools that read official
+   * answers are removed from the loop. Defaults to the official publication path.
+   */
+  toolSurface?: PuzzleAgentToolSurface;
 }
 
 export class PuzzleCandidateRejectedError extends Error {
@@ -125,7 +134,7 @@ export class PuzzleCandidateRejectedError extends Error {
   }
 }
 
-function loadInstructions(): string {
+function loadInstructions(surface: PuzzleAgentToolSurface = "publication"): string {
   const fallback = `You are Rebuzzle's puzzle architect. Use tools to inspect type specs, avoid recent answers, validate, check uniqueness, calibrate difficulty, and score quality. Return one publishable puzzle.`;
 
   let instructions = fallback;
@@ -152,7 +161,9 @@ function loadInstructions(): string {
     "- Call list_pictogram_catalog before composing and use its exact reviewed concept IDs.",
     "- When an answer-seed cue contract is present: inspect_answer_seed_cues (or use the host preflight layers) before compose.",
     "- Never call generate_pictogram in publication generation; fresh art belongs in the review lab.",
-    "- Use list_recent_answers techniqueId values to choose the least-recently-used allowed technique; never default blindly to the first technique.",
+    surface === "studio"
+      ? "- Choose the allowed technique that best fits the creator brief; never default blindly to the first technique."
+      : "- Use list_recent_answers techniqueId values to choose the least-recently-used allowed technique; never default blindly to the first technique.",
     "- Prefer ≥1 pictogram SVG; styled text (large/strike/stacked) is OK when typography is the joke.",
     "- Pictogram concepts must be concrete drawable nouns a stranger can sketch (key, umbrella, lighthouse).",
     "- Icons must be instantly recognizable — if compose reports clarity/recognition failure, redraw or change the noun.",
@@ -253,6 +264,9 @@ function buildUserMessage(
     params.requireNovelty !== false
       ? "Novelty is required — avoid recent answers and similar visuals."
       : null,
+    params.toolSurface === "studio"
+      ? "Recent official answers are not available in this run (list_recent_answers is disabled); the host checks duplicates after you return."
+      : null,
     `Quality gates: overall >= ${qualityThreshold}, funScore >= ${minFun}, publishable=true, unique, solvable, in-band, composed visual.`,
     priorFailure ? `Previous attempt failed: ${priorFailure}. Fix that specific issue.` : null,
     "Workflow:",
@@ -260,7 +274,9 @@ function buildUserMessage(
       ? "1) The approved board, technique, explanation, and hints are already authored. Inspect the target brief if needed; preserve the approved mechanism."
       : params.answerSeedCuePlan?.length
         ? "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_pictogram_catalog + inspect_answer_seed_cues"
-        : "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_recent_answers + list_pictogram_catalog",
+        : params.toolSurface === "studio"
+          ? "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_pictogram_catalog"
+          : "1) In parallel: get_puzzle_type_spec + get_difficulty_brief + list_recent_answers + list_pictogram_catalog",
     preflight?.approvedMechanism
       ? "2) Reuse the host approved board exactly. Do not run preflight_compose_cue_plan or regenerate its layout. Call craft_hint_ladder with all three approved hints as existingHints to validate them."
       : params.answerSeedCuePlan?.length
@@ -411,6 +427,17 @@ export async function runPuzzleAgentGeneration(
     new Set([AI_CONFIG.puzzleAgent.model, ...getGatewayModelChain("creative")])
   ).slice(0, modelChainLimit);
 
+  // Studio runs never receive tools that can read official answers; host-side
+  // checkUniqueness still rejects duplicates after the draft is returned.
+  const agentTools: ToolSet =
+    params.toolSurface === "studio"
+      ? Object.fromEntries(
+          Object.entries(puzzleAgentTools).filter(
+            ([name]) => !(OFFICIAL_ANSWER_READING_TOOLS as readonly string[]).includes(name)
+          )
+        )
+      : puzzleAgentTools;
+
   let lastError: Error | null = null;
   let lastCandidateError: PuzzleCandidateRejectedError | null = null;
   let priorFailure: string | undefined;
@@ -423,9 +450,9 @@ export async function runPuzzleAgentGeneration(
       try {
         const agent = new ToolLoopAgent({
           model: getAiGateway()(modelId),
-          instructions: loadInstructions(),
-          tools: puzzleAgentTools,
-          activeTools: [...PUBLICATION_AGENT_TOOLS],
+          instructions: loadInstructions(params.toolSurface),
+          tools: agentTools,
+          activeTools: activeToolsForSurface(params.toolSurface),
           temperature: AI_CONFIG.generation.temperature.creative,
           maxOutputTokens: AI_CONFIG.generation.maxTokens.blog,
           maxRetries: 0,

@@ -238,6 +238,7 @@ describe("POST /api/studio/puzzles/generate", () => {
         candidateCount: 2,
         maxAttempts: 1,
         deferRenderedEvaluation: true,
+        toolSurface: "studio",
       })
     );
     expect(mockGenerate).toHaveBeenNthCalledWith(
