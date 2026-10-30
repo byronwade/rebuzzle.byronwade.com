@@ -142,8 +142,8 @@ struct ArchiveView: View {
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("archiveFreeSample")
@@ -164,7 +164,7 @@ struct ArchiveView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(Theme.reward.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
+        .background(Theme.reward.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.radius))
 
         VStack(alignment: .leading, spacing: 14) {
             Image(systemName: "sparkles")
@@ -180,7 +180,7 @@ struct ArchiveView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
         .accessibilityIdentifier("archivePlusUpsell")
     }
 
@@ -202,8 +202,8 @@ struct ArchiveView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(puzzle.date ?? "Past daily"), \(puzzle.typeName), difficulty \(puzzle.difficulty) of 10. Unscored practice.")
     }

@@ -125,9 +125,9 @@ struct DailyResultShareCard: View {
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(foreground)
             .frame(width: 42, height: 42)
-            .background(background, in: RoundedRectangle(cornerRadius: 12))
+            .background(background, in: RoundedRectangle(cornerRadius: Theme.radius))
             .overlay {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Theme.radius)
                     .strokeBorder(Theme.secondary.opacity(mark == nil ? 0.22 : 0), lineWidth: 1)
             }
     }

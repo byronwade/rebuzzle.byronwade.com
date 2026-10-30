@@ -33,7 +33,8 @@ public struct ChallengeProgress: Codable, Equatable, Sendable {
             let start = (before[line.id] ?? 0) + 1
             guard line.tier >= start else { return [] }
             return (start...line.tier).map { tier in
-                ChallengeUnlock(lineID: line.id, title: line.displayTitle, tier: tier, xp: line.xp(forTier: tier), symbol: line.symbol)
+                ChallengeUnlock(lineID: line.id, title: line.displayTitle, tier: tier, maxTier: line.maxTier,
+                                xp: line.xp(forTier: tier), symbol: line.symbol)
             }
         }
     }
@@ -134,14 +135,16 @@ public struct ChallengeUnlock: Equatable, Sendable, Identifiable {
     public let lineID: String
     public let title: String
     public let tier: Int
+    public let maxTier: Int
     public let xp: Int
     public let symbol: String
     public var id: String { "\(lineID)-\(tier)" }
 
-    public init(lineID: String, title: String, tier: Int, xp: Int, symbol: String) {
+    public init(lineID: String, title: String, tier: Int, maxTier: Int, xp: Int, symbol: String) {
         self.lineID = lineID
         self.title = title
         self.tier = tier
+        self.maxTier = maxTier
         self.xp = xp
         self.symbol = symbol
     }
@@ -162,6 +165,7 @@ public struct PrestigeRank: Equatable, Sendable {
     public let level: Int
     public let name: String
     public let subTier: String
+    public let subTierNumber: Int
     public let symbol: String
 
     public init(level: Int) {
@@ -169,7 +173,8 @@ public struct PrestigeRank: Equatable, Sendable {
         let rank = Self.ranks[(capped - 1) / 5]
         self.level = level
         name = rank.name
-        subTier = ChallengeLine.roman((capped - 1) % 5 + 1)
+        subTierNumber = (capped - 1) % 5 + 1
+        subTier = ChallengeLine.roman(subTierNumber)
         symbol = rank.symbol
     }
 

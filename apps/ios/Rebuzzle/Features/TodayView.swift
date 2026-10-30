@@ -71,8 +71,8 @@ struct TodayView: View {
                         // Keep every clue and its internal geometry untouched.
                         PuzzleBoard(puzzle: daily.puzzle).padding(16)
                     }
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
                         if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty { conversation }
@@ -108,8 +108,8 @@ struct TodayView: View {
                                     }
                                 }
                                 .contentShape(Rectangle())
-                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 15))
-                                .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
+                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                                .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
                             }
                             .buttonStyle(.plain).foregroundStyle(Theme.ink)
                             .disabled(!model.sessionReady)
@@ -185,9 +185,9 @@ struct TodayView: View {
                             }
                             .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
                             .padding(.horizontal, 12)
-                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
-                            .contentShape(RoundedRectangle(cornerRadius: 16))
+                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
+                            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Save a thought")
@@ -301,7 +301,7 @@ struct TodayView: View {
             .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
             .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
             // The padded box reads as the field, so a tap anywhere in it should focus.
-            .contentShape(RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
             .simultaneousGesture(TapGesture().onEnded { answerFocused = true })
             .accessibilityLabel("Your answer")
             .accessibilityIdentifier("answerField")
@@ -374,8 +374,8 @@ struct TodayView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(Theme.ink)
                     .padding(.horizontal, 12)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.secondary.opacity(0.25), lineWidth: 1))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.25), lineWidth: 1))
                     .disabled(model.submitting || model.busy)
                     .accessibilityIdentifier("revealAnswer")
                 }
@@ -392,8 +392,8 @@ struct TodayView: View {
             }
         }
         .padding(14)
-        .background(Theme.field, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.accent.opacity(0.28), lineWidth: 1))
+        .background(Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.accent.opacity(0.28), lineWidth: 1))
     }
     private func expiredReviewCard(_ review: ExpiredDailyReview) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -433,7 +433,7 @@ struct TodayView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Theme.field, in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
     }
     private var conversation: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -461,7 +461,7 @@ struct TodayView: View {
             .font(.system(size: 17, weight: .semibold))
             .foregroundStyle(Theme.accent)
             .frame(width: 42, height: 42)
-            .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+            .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.radius))
     }
     private var dailyThoughtSubtitle: String {
         model.dailyThought.isEmpty ? "Leave yourself a clue for later" : "Your thought is saved on this device"
@@ -527,7 +527,7 @@ struct TodayView: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.accent)
                 .frame(width: 38, height: 38)
-                .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.radius))
             VStack(alignment: .leading, spacing: 3) {
                 Text("Ask Eve for a nudge")
                     .font(Theme.font(14, weight: .semibold))
@@ -597,8 +597,8 @@ private struct DailyThoughtSheet: View {
                         }
                         .frame(minHeight: 176)
                         .padding(8)
-                        .background(Theme.canvas, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
+                        .background(Theme.canvas, in: RoundedRectangle(cornerRadius: Theme.radius))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
                         Text("Saved on this device for today’s puzzle. It is never sent to Eve, submitted as a guess, or shared.")
                             .font(Theme.font(12))
                             .foregroundStyle(Theme.secondary)
@@ -676,8 +676,8 @@ private struct PuzzleStudyView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 PuzzleBoard(puzzle: puzzle)
                     .padding(16)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
             }
             .navigationTitle("Study puzzle")
             .navigationBarTitleDisplayMode(.inline)
@@ -755,7 +755,7 @@ struct ResultView: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .frame(width: 44, height: 44)
                                 .foregroundStyle(guess?.correct == true ? Theme.panel : Theme.secondary)
-                                .background(guess?.correct == true ? Theme.success : Theme.field, in: RoundedRectangle(cornerRadius: 8))
+                                .background(guess?.correct == true ? Theme.success : Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
                         }
                     }.accessibilityElement(children: .ignore)
                     .accessibilityLabel(attemptHistoryAccessibilityLabel)
@@ -770,8 +770,8 @@ struct ResultView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
-                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
+                .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
                 .overlay(alignment: .top) { CelebrationBurst(isActive: celebrating) }
                 .onAppear { celebrateFirstSolve(of: game) }
                 if let summary = game.dailyShareSummary {
@@ -917,9 +917,9 @@ private struct DailyQualityPulse: View {
                         .foregroundStyle(isSelected ? Theme.canvas : Theme.ink)
                         .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                         .padding(.horizontal, 10)
-                        .background(isSelected ? Theme.ink : Theme.field, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.secondary.opacity(isSelected ? 0.35 : 0.16), lineWidth: 1))
-                        .contentShape(RoundedRectangle(cornerRadius: 12))
+                        .background(isSelected ? Theme.ink : Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(isSelected ? 0.35 : 0.16), lineWidth: 1))
+                        .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(rating.title)
@@ -939,8 +939,8 @@ private struct DailyQualityPulse: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1))
     }
 }
 
@@ -985,7 +985,7 @@ struct HelpView: View {
                         Text("Sun + flower = sunflower").font(Theme.font(16, weight: .medium))
                     }
                     .frame(maxWidth: .infinity).padding(20)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
                     Text("Three scored guesses. Then keep solving until it clicks.")
                         .font(Theme.font(16, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                 } else {
@@ -996,7 +996,7 @@ struct HelpView: View {
                         Text("☀️ + 🌼").font(.system(size: 42)).accessibilityLabel("Sun plus flower")
                         Text("Sun + flower = sunflower").font(Theme.font(16, weight: .medium))
                         Text("That’s the aha. Today’s connection is yours to find.").font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                    }.frame(maxWidth: .infinity).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    }.frame(maxWidth: .infinity).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
                     VStack(alignment: .leading, spacing: 24) {
                         Label("Three scored guesses. Then keep solving.", systemImage: "circle.grid.3x1")
                         Label("Eve reacts to each guess. Hints offer a nudge.", systemImage: "sparkles")
@@ -1059,7 +1059,7 @@ struct GuessTurnView: View {
                     .font(Theme.font(10, weight: .semibold)).tracking(1).foregroundStyle(Theme.secondary)
                 Text(guess.guess).font(Theme.font(17, weight: .medium)).textSelection(.enabled)
                     .padding(.horizontal, 16).padding(.vertical, 12)
-                    .background(Theme.field, in: RoundedRectangle(cornerRadius: 16))
+                    .background(Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
             }.frame(maxWidth: .infinity, alignment: .trailing).padding(.leading, 28)
             HStack(alignment: .top, spacing: 10) {
                 EveAvatar(celebrating: guess.correct).accessibilityHidden(true)
@@ -1109,15 +1109,15 @@ struct GuessTurnView: View {
                                     Label(word.word, systemImage: word.correct ? "checkmark" : near ? "approximate" : "minus")
                                         .font(Theme.font(13, weight: .medium))
                                         .foregroundStyle(word.correct ? Theme.success : Theme.secondary)
-                                        .padding(8).background(Theme.field, in: RoundedRectangle(cornerRadius: 6))
+                                        .padding(8).background(Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
                                         .accessibilityLabel("\(word.word), \(word.correct ? "exact match" : near ? "near match" : "not matched")")
                                 }
                             }
                             Text("✓ Exact match   ≈ Near match").font(Theme.font(11)).foregroundStyle(Theme.secondary)
                         }
                     }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
                 }
             }
         }.accessibilityElement(children: .contain)
@@ -1140,8 +1140,8 @@ private struct EveNudgeTurnView: View {
                         .accessibilityIdentifier("eveNudge-\(number)")
                 }
                 .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
             }
         }
         .accessibilityElement(children: .contain)
@@ -1155,7 +1155,7 @@ struct EveAvatar: View {
             .font(.system(size: 30, weight: .regular))
             .foregroundStyle(celebrating ? Theme.reward : Theme.accent)
             .frame(width: 38, height: 38)
-            .background(celebrating ? Theme.reward.opacity(0.12) : Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+            .background(celebrating ? Theme.reward.opacity(0.12) : Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.radius))
             .rotationEffect(.degrees(celebrating ? -8 : 0))
             .accessibilityLabel("Eve")
     }

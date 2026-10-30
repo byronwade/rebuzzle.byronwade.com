@@ -84,7 +84,7 @@ private func decode(_ data: Data) throws -> ChallengeProgress {
     let after = try decode(progressJSON(lines: [lineJSON()]))
 
     let unlocks = ChallengeProgress.newlyUnlocked(previous: before, current: after)
-    #expect(unlocks == [ChallengeUnlock(lineID: "dailies", title: "Daily devotion", tier: 3, xp: 100, symbol: "calendar")])
+    #expect(unlocks == [ChallengeUnlock(lineID: "dailies", title: "Daily devotion", tier: 3, maxTier: 5, xp: 100, symbol: "calendar")])
     #expect(ChallengeProgress.newlyUnlocked(previous: nil, current: after).isEmpty)
     #expect(ChallengeProgress.newlyUnlocked(previous: after, current: after).isEmpty)
 }

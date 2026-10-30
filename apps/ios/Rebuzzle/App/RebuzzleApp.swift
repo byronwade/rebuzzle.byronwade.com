@@ -19,11 +19,11 @@ import SwiftUI
 }
 private struct ApplicationView: View {
     @State private var model = AppModelFactory.make()
-    @AppStorage("appearance") private var appearance = "system"
     @AppStorage("uiFixtureDailySolvePulseRequestCount") private var solvePulseRequestCount = 0
     var body: some View {
         RootView().environment(model)
-            .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
+            // Prestige is designed dark-first; there is no light variant.
+            .preferredColorScheme(.dark)
             .tint(Theme.accent)
             #if DEBUG
             .overlay {
@@ -51,6 +51,7 @@ enum RebuzzleRoute: Hashable {
     case deleteAccount
     case archive
     case journalEntry(entryID: String, accountID: String?)
+    case challenges
 }
 
 struct RootView: View {
@@ -69,15 +70,21 @@ struct RootView: View {
             }
                 .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
             NavigationStack(path: $journeyPath) {
-                ProgressViewScreen()
+                CareerScreen()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
-                .tabItem { Label("Journey", systemImage: "map") }.tag(AppTab.journey)
+                .tabItem { Label("Career", systemImage: "shield.lefthalf.filled") }.tag(AppTab.journey)
             NavigationStack(path: $youPath) {
                 SettingsView()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
                 .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)
+        }
+        .overlay {
+            if let unlock = model.pendingUnlocks.first {
+                ChallengeUnlockOverlay(unlock: unlock) { model.pendingUnlocks.removeFirst() }
+                    .id(unlock.id)
+            }
         }
         .onOpenURL { returnRouter.open($0) }
         .onChange(of: model.player?.id) {
@@ -153,6 +160,8 @@ struct RootView: View {
             DeleteAccountView()
         case .archive:
             ArchiveView()
+        case .challenges:
+            ChallengesWall()
         case let .journalEntry(entryID, accountID):
             if model.player?.id == accountID,
                let entry = model.journal.entries.first(where: { $0.id == entryID }) {
