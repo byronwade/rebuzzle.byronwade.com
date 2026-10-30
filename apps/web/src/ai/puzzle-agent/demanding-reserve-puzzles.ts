@@ -623,7 +623,7 @@ const DEMANDING_RESERVE_SEASON_ONE: DemandingReservePuzzle[] = [
     "pan-fire",
     "out of the frying pan into the fire",
     "stack",
-    [text("FRYING PAN (YOU)"), text("↓"), text("FRYING PAN ( )   F(YOU)IRE")],
+    [text("FRYING PAN (YOU)"), text("↓"), text("FRYING PAN ( )"), text("F(YOU)IRE")],
     [
       step(
         "position",

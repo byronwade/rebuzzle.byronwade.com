@@ -5,6 +5,8 @@ import type { PuzzleNoveltyArchiveEntry } from "../novelty";
 import { normalizeAnswerKey } from "../quality";
 import { selectReservePuzzle } from "../reserve-puzzles";
 import { PuzzleVisualSchema } from "../visual/composition";
+import { estimateTextFontScale } from "../visual/layout-plan";
+import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "../visual/presentation";
 import { ReasoningEvidenceSchema } from "../visual/reasoning-evidence";
 
 const SEASON_TWO_IDS = new Set(DEMANDING_RESERVE_SEASON_TWO.map((puzzle) => puzzle.id));
@@ -37,6 +39,21 @@ describe("demanding daily reserve", () => {
       ).toBeGreaterThanOrEqual(2);
       expect(normalizeAnswerKey(puzzle.rebusPuzzle)).not.toBe(normalizeAnswerKey(puzzle.answer));
     }
+  });
+
+  it("keeps every text line legible on the narrowest player boards", () => {
+    const tooWide: string[] = [];
+    for (const puzzle of DEMANDING_RESERVE_PUZZLES) {
+      for (const layer of puzzle.visual.layers) {
+        if (layer.kind !== "text") continue;
+        for (const profile of PUZZLE_BOARD_RECOGNITION_PROFILES) {
+          const availableWidth = profile.viewportWidth - profile.padding * 2;
+          const scale = estimateTextFontScale(layer, availableWidth, profile.size);
+          if (scale < 0.6) tooWide.push(`${puzzle.id} ${profile.id}: ${layer.content}`);
+        }
+      }
+    }
+    expect(tooWide).toEqual([]);
   });
 });
 
