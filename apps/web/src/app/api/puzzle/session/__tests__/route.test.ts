@@ -25,6 +25,7 @@ import { db } from "@/db";
 import { nativeGrowthEventOps } from "@/db/analytics-ops";
 import { updateUserStats } from "@/lib/auth";
 import { getAuthenticatedUser } from "@/lib/auth-middleware";
+import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 
 const puzzle = {
   id: "today",
@@ -82,6 +83,16 @@ it("restores guesses without revealing an active solution", async () => {
   expect(body.gameOver).toBe(false);
   expect(body.answer).toBeUndefined();
   expect(db.puzzleAttemptOps.findByUserAndPuzzle).toHaveBeenCalledWith("self", "today");
+});
+it("returns the account journey zone and its reset deadline for the countdown", async () => {
+  // The browser may be elsewhere; the daily resets on the account's journey zone.
+  jest.mocked(resolveStableJourneyTimeZone).mockResolvedValueOnce("America/Los_Angeles");
+
+  const body = await (await get()).json();
+
+  expect(body.timeZone).toBe("America/Los_Angeles");
+  // 12:00 UTC Oct 25 is 05:00 PDT; the next Los Angeles midnight is 07:00 UTC Oct 26.
+  expect(body.nextPuzzleTime).toBe("2026-10-26T07:00:00.000Z");
 });
 it("records a server-owned start when restoring the current official daily", async () => {
   const response = await get();

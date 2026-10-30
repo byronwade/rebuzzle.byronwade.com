@@ -7,6 +7,7 @@ import {
   clampHints,
   getArchiveLockKey,
   getLocalPuzzleDate,
+  getNextLocalMidnight,
   getUtcPuzzleDate,
 } from "@/lib/game/daily-lock";
 import { finalizeExtendedDailyRun } from "@/lib/game/extended-daily-finalization";
@@ -168,6 +169,9 @@ export async function GET(request: Request) {
         success: true,
         puzzleId: puzzle.id,
         puzzleDate: publishedKey ?? localDate,
+        // The account's journey zone decides the daily reset, not the browser's clock.
+        timeZone,
+        nextPuzzleTime: getNextLocalMidnight(restoredAt, timeZone).toISOString(),
         attempts: guessRows.map((row, index) => ({
           guess: row.attemptedAnswer,
           correct: row.isCorrect,

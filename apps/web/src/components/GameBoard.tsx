@@ -12,7 +12,11 @@ import {
 } from "@/lib/analytics";
 import { fireConfetti } from "@/lib/confetti";
 import { fail } from "@/lib/fail";
-import { getLocalPuzzleDate, getNextLocalMidnight } from "@/lib/game/daily-lock";
+import {
+  getLocalPuzzleDate,
+  getNextLocalMidnight,
+  isValidIanaTimeZone,
+} from "@/lib/game/daily-lock";
 import { buildGameOverHref, markJustSolvedInSession } from "@/lib/game/game-over-href";
 import { isComebackVisit, recordPlayDay, shouldPromptGuestSave } from "@/lib/game/play-days";
 import type { GuessReaction, ReactionTier } from "@/lib/game/reactions";
@@ -230,6 +234,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
   const [turns, setTurns] = useState<ThreadTurn[]>([]);
   const turnSeq = useRef(0);
   const submissions = useRef(createSubmissionTracker());
+  /** Account journey zone from the session restore; the server resets dailies on it. */
+  const journeyTimeZone = useRef<string | undefined>(undefined);
+  const nextDailyReset = () => getNextLocalMidnight(new Date(), journeyTimeZone.current);
   const hasThread = turns.length > 0;
   /** Mobile: expand the docked puzzle after the first guess; desktop stays hero-sized. */
   const isNarrowViewport = useIsNarrowViewport();
@@ -411,6 +418,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           phase?: string;
           scoreLocked?: boolean;
           playMode?: string;
+          timeZone?: string;
           expiredReview?: {
             puzzleId: string;
             puzzleDate: string;
@@ -429,6 +437,9 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         }
         // A guess submitted since this restore began is newer than this snapshot.
         if (submissions.current.isStale(restoreSnapshot)) return;
+        if (typeof session.timeZone === "string" && isValidIanaTimeZone(session.timeZone)) {
+          journeyTimeZone.current = session.timeZone;
+        }
         const attempts = Array.isArray(session.attempts) ? session.attempts : [];
         const guessHistory: GuessAttempt[] = attempts.map((attempt) => ({
           text: attempt.guess,
@@ -462,7 +473,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
           type: "RESTORE_SESSION",
           payload: {
             gameOver: Boolean(session.gameOver),
-            nextPlayTime: session.gameOver ? getNextLocalMidnight() : null,
+            nextPlayTime: session.gameOver ? nextDailyReset() : null,
             attemptsLeft: session.attemptsLeft ?? gameSettings.maxAttempts,
             lastSubmittedGuess: attempts.at(-1)?.guess ?? null,
             finalGuess: attempts.at(-1)?.guess ?? null,
@@ -581,7 +592,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
         finalGuess: "",
         wasSuccessful: false,
         attempts: gameSettings.maxAttempts,
-        nextPlayTime: getNextLocalMidnight(),
+        nextPlayTime: nextDailyReset(),
         score: 0,
         timeTakenSeconds: 0,
       },
@@ -645,7 +656,7 @@ export default function GameBoard({ gameData }: GameBoardProps) {
       dailyBonusMultiplier?: number;
     }
   ) => {
-    const tomorrow = getNextLocalMidnight();
+    const tomorrow = nextDailyReset();
     const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - gameState.startTime) / 1000));
     const difficultyLevel = typeof gameData.difficulty === "number" ? gameData.difficulty : 5;
     const serverScore = opts?.serverScore;
