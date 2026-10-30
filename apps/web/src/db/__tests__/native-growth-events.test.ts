@@ -268,6 +268,28 @@ describe("nativeGrowthEventOps.recordDailyQualityFeedback", () => {
 describe("nativeGrowthEventOps.getSummary", () => {
   beforeEach(() => jest.clearAllMocks());
 
+  it("measures the finish ratio only over account-days that also recorded an open", async () => {
+    // Web records finishes for every daily but opens only for share arrivals.
+    const aggregate = jest.fn().mockReturnValue({
+      toArray: async () => [
+        { openDays: [{ count: 8 }], finishDays: [{ count: 12 }], openedFinishDays: [{ count: 3 }] },
+      ],
+    });
+    mockGetCollection.mockReturnValue({ aggregate } as never);
+
+    const summary = await nativeGrowthEventOps.getSummary(
+      new Date("2026-09-27T12:00:00.000Z"),
+      new Date("2026-10-27T12:00:00.000Z")
+    );
+    const facet = (aggregate.mock.calls[0][0] as Array<Record<string, any>>)[1]?.$facet;
+
+    expect(summary.finishedAccountDays).toBe(12);
+    expect(summary.finishOpenRatio).toBe(0.375);
+    expect(facet.openedFinishDays).toContainEqual({
+      $match: { eventTypes: { $all: ["daily_opened", "daily_finished"] } },
+    });
+  });
+
   it("returns only aggregate account-day and account counts for the requested window", async () => {
     const start = new Date("2026-09-27T12:00:00.000Z");
     const end = new Date("2026-10-27T12:00:00.000Z");
@@ -276,6 +298,7 @@ describe("nativeGrowthEventOps.getSummary", () => {
         {
           openDays: [{ count: 8 }],
           finishDays: [{ count: 5 }],
+          openedFinishDays: [{ count: 5 }],
           shareStartedDays: [{ count: 7 }],
           shareCompletedDays: [{ count: 3 }],
           shareJourney: [{ openWithStartDays: 1, openWithFinishDays: 2 }],
@@ -341,6 +364,7 @@ describe("nativeGrowthEventOps.getSummary", () => {
     expect(pipeline[0]).toEqual({ $match: { occurredAt: { $gte: start, $lt: end } } });
     expect(pipeline[1]).toHaveProperty("$facet.openDays");
     expect(pipeline[1]).toHaveProperty("$facet.finishDays");
+    expect(pipeline[1]).toHaveProperty("$facet.openedFinishDays");
     expect(pipeline[1]).toHaveProperty("$facet.shareStartedDays");
     expect(pipeline[1]).toHaveProperty("$facet.shareCompletedDays");
     expect(pipeline[1]).toHaveProperty("$facet.shareJourney");

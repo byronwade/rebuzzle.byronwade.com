@@ -499,6 +499,19 @@ export const nativeGrowthEventOps = {
               { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
               { $count: "count" },
             ],
+            // Web records daily_finished for every completion but daily_opened only for
+            // share arrivals, so the finish ratio must count finishes on opened days only.
+            openedFinishDays: [
+              { $match: { eventType: { $in: ["daily_opened", "daily_finished"] } } },
+              {
+                $group: {
+                  _id: { userId: "$userId", dayKey: "$dayKey" },
+                  eventTypes: { $addToSet: "$eventType" },
+                },
+              },
+              { $match: { eventTypes: { $all: ["daily_opened", "daily_finished"] } } },
+              { $count: "count" },
+            ],
             shareStartedDays: [
               { $match: { eventType: "daily_share_started" } },
               { $group: { _id: { userId: "$userId", dayKey: "$dayKey" } } },
@@ -784,7 +797,7 @@ export const nativeGrowthEventOps = {
       shareCompletedAccountDays: count("shareCompletedDays"),
       shareOpenWithStartDays: shareJourney?.openWithStartDays ?? 0,
       shareOpenWithFinishDays: shareJourney?.openWithFinishDays ?? 0,
-      finishOpenRatio: openedAccountDays > 0 ? finishedAccountDays / openedAccountDays : 0,
+      finishOpenRatio: openedAccountDays > 0 ? count("openedFinishDays") / openedAccountDays : 0,
       entrySources,
       multiDayReturners: count("returners"),
       plusOfferViewers: count("plusViewers"),
