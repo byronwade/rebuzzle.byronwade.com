@@ -48,6 +48,7 @@ jest.mock("@/lib/logger", () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+import { publishReviewedDailyPuzzle } from "@/lib/game/publish-reviewed-daily-puzzle";
 import { getTodaysPuzzle } from "../puzzleGenerationActions";
 
 describe("daily puzzle candidate pre-generation", () => {
@@ -92,5 +93,29 @@ describe("daily puzzle candidate pre-generation", () => {
     expect(result.candidateQueueSkipped).toBe("puzzle_already_published");
     expect(result.candidateId).toBeUndefined();
     expect(mockCreateDailyPuzzleCandidateQueue).not.toHaveBeenCalled();
+  });
+
+  it("publishes a reviewed candidate for a caller whose local date is ahead of UTC", async () => {
+    jest.useFakeTimers({ now: new Date("2026-10-28T12:00:00.000Z") });
+    try {
+      mockGetCachedDailyPuzzleFromDb.mockResolvedValue(null);
+      mockFindByDate.mockResolvedValue(null);
+      jest.mocked(publishReviewedDailyPuzzle).mockResolvedValue({
+        id: "reviewed-puzzle",
+        date: "2026-10-29",
+        aiGenerated: true,
+        fromDatabase: true,
+      } as unknown as Awaited<ReturnType<typeof publishReviewedDailyPuzzle>>);
+
+      // Auckland: already Oct 29 locally while UTC is still Oct 28.
+      const result = await getTodaysPuzzle(undefined, "2026-10-29", { allowAiGenerate: false });
+
+      expect(publishReviewedDailyPuzzle).toHaveBeenCalledWith(
+        expect.objectContaining({ dateString: "2026-10-29" })
+      );
+      expect(result.puzzle).toMatchObject({ id: "reviewed-puzzle" });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

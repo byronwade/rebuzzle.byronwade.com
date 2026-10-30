@@ -18,6 +18,7 @@ import { db } from "@/db";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import { formatPuzzleFromDb, getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
 import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
+import { isLocalPuzzleDateLiveSomewhere } from "@/lib/game/daily-lock";
 import { createMongoDailyPuzzleCandidateRepository } from "@/lib/game/daily-puzzle-candidate-repository";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
 import { publishReviewedDailyPuzzle } from "@/lib/game/publish-reviewed-daily-puzzle";
@@ -290,7 +291,8 @@ async function getOrGenerateDailyPuzzle(
   // Interactive play path: never block TTFB on Eve. Only publish a reviewed candidate
   // or use the existing community/curated reserve path.
   if (!allowAiGenerate) {
-    if (dateString === getTodayDateString()) {
+    // Callers request their *local* date, which can be a day ahead of or behind UTC.
+    if (isLocalPuzzleDateLiveSomewhere(dateString)) {
       try {
         const reviewed = await publishReviewedDailyPuzzle({
           dateString,

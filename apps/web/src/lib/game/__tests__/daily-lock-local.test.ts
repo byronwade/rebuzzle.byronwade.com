@@ -4,6 +4,7 @@ import {
   getNextLocalMidnight,
   getUtcPuzzleDate,
   getZonedMidnightUtc,
+  isLocalPuzzleDateLiveSomewhere,
   isValidIanaTimeZone,
 } from "@/lib/game/daily-lock";
 
@@ -44,5 +45,19 @@ describe("local midnight unlock helpers", () => {
   it("adds calendar days without timezone drift", () => {
     expect(addCalendarDays("2026-08-31", 1)).toBe("2026-09-01");
     expect(addCalendarDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("treats a date as live while it is the local day anywhere on Earth", () => {
+    // 12:00 UTC Oct 28 → Oct 29 in Auckland, Oct 28 in Honolulu.
+    const noonUtc = new Date("2026-10-28T12:00:00.000Z");
+    expect(isLocalPuzzleDateLiveSomewhere("2026-10-28", noonUtc)).toBe(true);
+    expect(isLocalPuzzleDateLiveSomewhere("2026-10-29", noonUtc)).toBe(true);
+    expect(isLocalPuzzleDateLiveSomewhere("2026-10-27", noonUtc)).toBe(false);
+    expect(isLocalPuzzleDateLiveSomewhere("2026-10-30", noonUtc)).toBe(false);
+
+    // 02:00 UTC Oct 29 → still Oct 28 west of UTC.
+    const earlyUtc = new Date("2026-10-29T02:00:00.000Z");
+    expect(isLocalPuzzleDateLiveSomewhere("2026-10-28", earlyUtc)).toBe(true);
+    expect(isLocalPuzzleDateLiveSomewhere("2026-10-27", earlyUtc)).toBe(false);
   });
 });

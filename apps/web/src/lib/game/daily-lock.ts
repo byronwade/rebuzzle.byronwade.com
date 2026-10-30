@@ -59,6 +59,21 @@ export function getLocalPuzzleDate(date: Date = new Date(), timeZone?: string): 
   return `${year}-${month}-${day}`;
 }
 
+// Civil time spans UTC-12 (e.g. Baker Island) to UTC+14 (Line Islands).
+const EARLIEST_CIVIL_OFFSET_MS = -12 * 60 * 60 * 1000;
+const LATEST_CIVIL_OFFSET_MS = 14 * 60 * 60 * 1000;
+
+/**
+ * True when `dateKey` is the current local calendar day in at least one civil
+ * time zone. Daily routes key "today" by the caller's local date, so a puzzle
+ * date can be live up to a day ahead of or behind the UTC date.
+ */
+export function isLocalPuzzleDateLiveSomewhere(dateKey: string, now: Date = new Date()): boolean {
+  const earliest = getUtcPuzzleDate(new Date(now.getTime() + EARLIEST_CIVIL_OFFSET_MS));
+  const latest = getUtcPuzzleDate(new Date(now.getTime() + LATEST_CIVIL_OFFSET_MS));
+  return dateKey >= earliest && dateKey <= latest;
+}
+
 /** Add one civil day to a YYYY-MM-DD key (UTC-safe arithmetic). */
 export function addCalendarDays(dateKey: string, days: number): string {
   const [year, month, day] = dateKey.split("-").map(Number);
