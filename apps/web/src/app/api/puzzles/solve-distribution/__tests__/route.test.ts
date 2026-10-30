@@ -66,6 +66,23 @@ it.each([
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");
 });
 
+it("serves a Studio-lottery puzzle promoted to the daily", async () => {
+  puzzleFindOne.mockResolvedValue({
+    ...officialPuzzle,
+    metadata: {
+      source: "user",
+      communityPlayable: true,
+      dailyPublicationKey: "2026-10-27",
+      generationMethod: "studio-ugc-lottery",
+    },
+  });
+
+  const response = await GET(makeRequest());
+
+  expect(response.status).toBe(200);
+  expect(attemptsAggregate).toHaveBeenCalled();
+});
+
 it("serves a daily that is already live east of UTC before its UTC publication key", async () => {
   // 12:00 UTC Oct 28 is already Oct 29 in Auckland, where that daily is playable.
   puzzleFindOne.mockResolvedValue({

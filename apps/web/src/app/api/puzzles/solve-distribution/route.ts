@@ -33,6 +33,7 @@ export async function GET(request: Request) {
           publishedAt: 1,
           "metadata.source": 1,
           "metadata.communityPlayable": 1,
+          "metadata.dailyPublicationKey": 1,
         },
       }
     );
@@ -47,8 +48,14 @@ export async function GET(request: Request) {
       Number.isFinite(publishedAt.getTime()) &&
       (publishedAt.getTime() <= Date.now() ||
         isLocalPuzzleDateLiveSomewhere(getUtcPuzzleDate(publishedAt), new Date()));
+    // Studio-lottery promotions keep source "user" + communityPlayable but carry a
+    // daily publication key; they are the real daily that day. Community-only
+    // puzzles have no key and stay excluded.
+    const dailyPublicationKey = puzzle?.metadata?.dailyPublicationKey;
+    const isPromotedDaily = typeof dailyPublicationKey === "string" && dailyPublicationKey !== "";
     const isOfficial =
-      puzzle?.metadata?.source !== "user" && puzzle?.metadata?.communityPlayable !== true;
+      isPromotedDaily ||
+      (puzzle?.metadata?.source !== "user" && puzzle?.metadata?.communityPlayable !== true);
     if (puzzle?.active !== true || !isPublished || !isOfficial) {
       return errorResponse(404, "Puzzle not found");
     }
