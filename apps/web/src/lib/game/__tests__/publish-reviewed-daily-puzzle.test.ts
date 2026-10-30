@@ -3,6 +3,7 @@ import {
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
+import type { PublicationAssetCheck } from "@/ai/puzzle-agent/visual/publication-assets";
 import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "../daily-puzzle-candidate-repository";
 import {
@@ -362,6 +363,40 @@ describe("publishing human-reviewed daily puzzles", () => {
     expect(rows[0]?.assignedDate).toBeUndefined();
     expect(rows[0]?.publishedPuzzleId).toBeUndefined();
     expect(rows[1]).toMatchObject({ status: "ready" });
+  });
+
+  it("does not publish a candidate whose artwork lost approval while it waited", async () => {
+    const quarantined = makeCandidate("ready");
+    quarantined.humanEvidence = storedEvidence();
+    const approved = { ...makeCandidate("ready"), id: "candidate-2" } as DailyPuzzleCandidate;
+    approved.humanEvidence = storedEvidence();
+    const { repository, rows } = memoryRepository([quarantined, approved]);
+    const verifyAssets = jest
+      .fn<Promise<PublicationAssetCheck>, [unknown]>()
+      .mockResolvedValueOnce({
+        ok: false,
+        reason: 'Pictogram "clock" does not match its approved registry asset',
+      })
+      .mockResolvedValue({ ok: true });
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString,
+      repository,
+      reviewService,
+      persist,
+      verifyAssets,
+    });
+
+    expect(result).toMatchObject({ id: "daily-puzzle-1" });
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        humanPlaytestAdmission: expect.objectContaining({ candidateId: "candidate-2" }),
+      })
+    );
+    expect(rows[0]).toMatchObject({ status: "ready" });
+    expect(rows[0]?.assignedDate).toBeUndefined();
+    expect(rows[1]).toMatchObject({ status: "published", assignedDate: dateString });
   });
 
   it("fails closed when playtest evidence cannot be loaded", async () => {

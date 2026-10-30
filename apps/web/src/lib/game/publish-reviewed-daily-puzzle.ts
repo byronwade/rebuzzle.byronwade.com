@@ -2,6 +2,10 @@ import {
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
+import {
+  type PublicationAssetCheck,
+  verifyPublicationAssets,
+} from "@/ai/puzzle-agent/visual/publication-assets";
 import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "./daily-puzzle-candidate-repository";
 import type { PersistDailyPuzzleInput } from "./persist-daily-puzzle";
@@ -14,6 +18,9 @@ export type DailyCandidatePublisherReviewService = {
 
 type PersistDailyPuzzleResult = { id: string; alreadyExisted: boolean };
 type PersistCandidate = (input: PersistDailyPuzzleInput) => Promise<PersistDailyPuzzleResult>;
+type VerifyAssets = (
+  visual: NonNullable<DailyPuzzleCandidate["payload"]["visual"]>
+) => Promise<PublicationAssetCheck>;
 
 function evidenceForCandidate(
   admission: PuzzlePlaytestCandidateAdmission,
@@ -60,9 +67,11 @@ export function createReviewedDailyPuzzlePublisher(input: {
   repository: DailyPuzzleCandidateRepository;
   reviewService: DailyCandidatePublisherReviewService;
   persist: PersistCandidate;
+  verifyAssets?: VerifyAssets;
   now?: () => Date;
 }) {
   const now = input.now ?? (() => new Date());
+  const verifyAssets = input.verifyAssets ?? verifyPublicationAssets;
 
   async function publishAssignedCandidate(candidate: DailyPuzzleCandidate, dateString: string) {
     if (!candidate.humanEvidence) {
@@ -70,6 +79,19 @@ export function createReviewedDailyPuzzlePublisher(input: {
     }
     const evidence = candidate.humanEvidence;
     const payload = candidate.payload;
+    // Candidates can wait weeks in review; artwork approved at generation may since have
+    // been quarantined. Recheck now (fail closed) and keep the candidate for a later retry.
+    if (payload.visual) {
+      const assets = await verifyAssets(payload.visual);
+      if (!assets.ok) {
+        await input.repository.releaseAssignment({
+          id: candidate.id,
+          dateString,
+          updatedAt: now(),
+        });
+        return null;
+      }
+    }
     let persisted: PersistDailyPuzzleResult;
     try {
       persisted = await input.persist({
@@ -219,6 +241,7 @@ export async function publishReviewedDailyPuzzle(input: {
   repository: DailyPuzzleCandidateRepository;
   reviewService: DailyCandidatePublisherReviewService;
   persist: PersistCandidate;
+  verifyAssets?: VerifyAssets;
   now?: () => Date;
 }) {
   return createReviewedDailyPuzzlePublisher(input).publishForDate(input.dateString);
