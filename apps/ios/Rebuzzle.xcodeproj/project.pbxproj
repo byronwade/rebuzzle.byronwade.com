@@ -626,6 +626,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Rebuzzle/Rebuzzle.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Rebuzzle/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Rebuzzle;
@@ -863,6 +864,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Rebuzzle/Rebuzzle.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Rebuzzle/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Rebuzzle;

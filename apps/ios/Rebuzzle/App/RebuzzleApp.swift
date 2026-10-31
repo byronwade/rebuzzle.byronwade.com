@@ -83,7 +83,10 @@ struct RootView: View {
         }
         .overlay {
             if let unlock = model.pendingUnlocks.first {
-                ChallengeUnlockOverlay(unlock: unlock) { model.pendingUnlocks.removeFirst() }
+                ChallengeUnlockOverlay(unlock: unlock) {
+                    // A double tap can fire twice before the overlay unmounts; only dismiss this unlock once.
+                    if model.pendingUnlocks.first?.id == unlock.id { model.pendingUnlocks.removeFirst() }
+                }
                     .id(unlock.id)
             }
         }
