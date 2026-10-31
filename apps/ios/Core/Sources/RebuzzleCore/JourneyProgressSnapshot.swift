@@ -164,6 +164,8 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
     public let summary: JourneyProgressSummary?
     public let recentEntries: [JourneyProgressEntry]
     public let backfill: JourneyProgressBackfill
+    /// Absent from servers that predate the challenge ladder.
+    public let challenges: ChallengeProgress?
 
     private enum CodingKeys: String, CodingKey {
         case asOfPuzzleDate
@@ -173,6 +175,7 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
         case summary
         case recentEntries
         case backfill
+        case challenges
     }
 
     public init(from decoder: Decoder) throws {
@@ -190,6 +193,7 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
         summary = try container.decodeIfPresent(JourneyProgressSummary.self, forKey: .summary)
         recentEntries = try container.decode([JourneyProgressEntry].self, forKey: .recentEntries)
         backfill = try container.decode(JourneyProgressBackfill.self, forKey: .backfill)
+        challenges = try container.decodeIfPresent(ChallengeProgress.self, forKey: .challenges)
 
         var weekCalendar = Calendar(identifier: .gregorian)
         weekCalendar.timeZone = TimeZone(secondsFromGMT: 0)!

@@ -1,7 +1,19 @@
 import SwiftUI
+import RebuzzleCore
 
 @main struct RebuzzleApp: App {
-    init() { NotificationDelegate.shared.install() }
+    init() {
+        NotificationDelegate.shared.install()
+        // The "today's puzzle is waiting" dot uses the warm reward tone, not system red.
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+        for item in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
+            item.normal.badgeBackgroundColor = UIColor(Theme.reward)
+            item.selected.badgeBackgroundColor = UIColor(Theme.reward)
+        }
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
     var body: some Scene {
         WindowGroup {
             #if DEBUG
@@ -51,6 +63,7 @@ enum RebuzzleRoute: Hashable {
     case deleteAccount
     case archive
     case journalEntry(entryID: String, accountID: String?)
+    case achievements
 }
 
 struct RootView: View {
@@ -60,6 +73,7 @@ struct RootView: View {
     @State private var journeyPath = NavigationPath()
     @State private var youPath = NavigationPath()
     @State private var returnRouter = ReturnRouter.shared
+    @AppStorage("haptics") private var haptics = true
     var body: some View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
@@ -67,18 +81,37 @@ struct RootView: View {
                 TodayView()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
-                .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
+                .tint(Theme.accent)
+                .tabItem { tabLabel("Play", symbol: "puzzlepiece", tab: .play) }.tag(AppTab.play)
+                // An empty badge renders as a dot: today's puzzle is waiting.
+                .badge(model.daily != nil && !model.completedCurrentPuzzle ? Text("") : nil)
             NavigationStack(path: $journeyPath) {
                 ProgressViewScreen()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
-                .tabItem { Label("Journey", systemImage: "map") }.tag(AppTab.journey)
+                .tint(Theme.accent)
+                .tabItem { tabLabel("Journey", symbol: "map", tab: .journey) }.tag(AppTab.journey)
             NavigationStack(path: $youPath) {
                 SettingsView()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
-                .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)
+                .tint(Theme.accent)
+                .tabItem { tabLabel("You", symbol: "person.crop.circle", tab: .you) }.tag(AppTab.you)
         }
+        .tint(Theme.ink)
+        .minimizingTabBarOnScroll()
+        .sensoryFeedback(.selection, trigger: model.selectedTab) { _, _ in haptics }
+        .overlay(alignment: .top) {
+            if let unlock = model.pendingUnlocks.first {
+                AchievementUnlockBanner(unlock: unlock) {
+                    // The banner can dismiss by tap and by timeout; only remove the one it showed.
+                    if model.pendingUnlocks.first?.id == unlock.id { model.pendingUnlocks.removeFirst() }
+                }
+                .id(unlock.id)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.25), value: model.pendingUnlocks.first?.id)
         .onOpenURL { returnRouter.open($0) }
         .onChange(of: model.player?.id) {
             playPath = NavigationPath()
@@ -101,6 +134,9 @@ struct RootView: View {
             await model.load()
             await model.purchases.load()
             await model.retryJournalSyncIfNeeded()
+            #if DEBUG
+            openPreviewScreen()
+            #endif
         }
         .task(id: model.daily?.nextPuzzleTime) {
             guard !ProcessInfo.processInfo.arguments.contains("--ui-expired-reset-manual") else { return }
@@ -134,6 +170,29 @@ struct RootView: View {
         }
     }
 
+    /// Outline when idle, filled when selected, so every tab reads at the same weight.
+    private func tabLabel(_ title: String, symbol: String, tab: AppTab) -> some View {
+        Label(title, systemImage: model.selectedTab == tab ? "\(symbol).fill" : symbol)
+            .environment(\.symbolVariants, .none)
+    }
+
+    #if DEBUG
+    /// `--preview-screen achievements|unlock` jumps straight to a screen for screenshots.
+    private func openPreviewScreen() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "--preview-screen"), index + 1 < args.count else { return }
+        switch args[index + 1] {
+        case "achievements":
+            model.selectedTab = .journey
+            journeyPath.append(RebuzzleRoute.achievements)
+        case "unlock":
+            model.pendingUnlocks = [ChallengeUnlock(lineID: "dailies", title: "Daily devotion", tier: 4, maxTier: 5, xp: 200, symbol: "calendar")]
+        default:
+            model.selectedTab = .journey
+        }
+    }
+    #endif
+
     @ViewBuilder
     private func destination(for route: RebuzzleRoute) -> some View {
         switch route {
@@ -153,6 +212,8 @@ struct RootView: View {
             DeleteAccountView()
         case .archive:
             ArchiveView()
+        case .achievements:
+            AchievementsView()
         case let .journalEntry(entryID, accountID):
             if model.player?.id == accountID,
                let entry = model.journal.entries.first(where: { $0.id == entryID }) {
@@ -164,6 +225,16 @@ struct RootView: View {
                     description: Text("This entry isn't available for the current Rebuzzle account.")
                 )
             }
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder func minimizingTabBarOnScroll() -> some View {
+        if #available(iOS 26, *) {
+            tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            self
         }
     }
 }

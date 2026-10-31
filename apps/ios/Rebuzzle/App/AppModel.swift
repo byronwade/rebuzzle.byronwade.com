@@ -50,6 +50,8 @@ enum JournalSyncStatus: Equatable {
     var stats: PlayerStats?
     var completedStreakRefreshState: CompletedStreakRefreshState = .idle
     var journeySnapshot: JourneyProgressSnapshot?
+    /// Challenge tiers unlocked since the last progress sync, shown one at a time.
+    var pendingUnlocks: [ChallengeUnlock] = []
     var journeySyncError: String?
     var journeySyncing = false
     var draft = ""
@@ -235,6 +237,7 @@ enum JournalSyncStatus: Equatable {
         journeyRefreshGeneration += 1
         journeyIdentityID = userID
         journeySnapshot = try? storage.load(JourneyProgressSnapshot.self, key: "journey:\(userID)")
+        pendingUnlocks = []
         journeySyncError = nil
         journeySyncing = false
     }
@@ -262,6 +265,9 @@ enum JournalSyncStatus: Equatable {
             let snapshot = try await api.fetchJourneyProgress()
             try? storage.save(snapshot, key: "journey:\(userID)")
             guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return }
+            if let challenges = snapshot.challenges {
+                pendingUnlocks += ChallengeProgress.newlyUnlocked(previous: journeySnapshot?.challenges, current: challenges)
+            }
             journeySnapshot = snapshot
             journeySyncError = nil
             journeySyncing = false
@@ -738,7 +744,7 @@ enum JournalSyncStatus: Equatable {
         eve.reset()
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
         completedStreakRefreshState = .idle
-        journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; journeySyncError = nil; journeySyncing = false
+        journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; pendingUnlocks = []; journeySyncError = nil; journeySyncing = false
         draft = ""; dailyThought = ""; dailyThoughtAvailable = false; journal = Journal(); journalSyncCheckpoint = JournalSyncCheckpoint(); journalSyncStatus = .onDevice; journalHistoryComplete = true; journalWritable = false; hintsShown = 0; nudgeReveals = []; sessionReady = false; error = nil
     }
 }

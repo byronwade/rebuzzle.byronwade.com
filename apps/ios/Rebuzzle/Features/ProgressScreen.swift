@@ -28,6 +28,9 @@ struct ProgressViewScreen: View {
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
                 }.foregroundStyle(Theme.ink).frame(minHeight: 56)
             }.accessibilityIdentifier("openJournal")
+            if let challenges = model.journeySnapshot?.challenges {
+                AchievementsRow(progress: challenges)
+            }
             if let progress, let summary = model.journeySnapshot?.summary {
                 weeklyChallenge(progress)
                 badgeCollection(progress)

@@ -51,6 +51,20 @@ import StoreKitTest
         capture("Canonical board — study")
     }
 
+    func testAchievementsOpenFromJourneyWithTierDetail() {
+        launchFixture(extraArguments: ["--ui-challenges"])
+        selectTab("Journey")
+        let row = app.buttons["openAchievements"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let dailies = app.buttons["achievement-dailies"]
+        XCTAssertTrue(dailies.waitForExistence(timeout: 5))
+        capture("Achievements — list")
+        dailies.tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+        capture("Achievements — detail")
+    }
+
     func testInvalidCanonicalBoardNeverFallsBackToLegacyClue() {
         launchFixture(extraArguments: ["--ui-canonical-invalid"])
         XCTAssertTrue(app.staticTexts["Puzzle image unavailable"].waitForExistence(timeout: 5))
@@ -1223,6 +1237,8 @@ import StoreKitTest
 
     private func selectTab(_ name: String) {
         let tabBarButton = app.tabBars.buttons[name]
+        // iOS 26 minimizes the tab bar after scrolling down; scrolling back up restores every tab.
+        for _ in 0..<3 where !tabBarButton.exists { app.swipeDown() }
         if tabBarButton.exists { tabBarButton.tap() }
         else { app.descendants(matching: .any).matching(identifier: name).firstMatch.tap() }
     }

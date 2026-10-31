@@ -68,6 +68,9 @@ private final class FixtureServer: @unchecked Sendable {
     private let expiredReviewFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-review")
     private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
     private let weeklyTrailFixture = ProcessInfo.processInfo.arguments.contains("--ui-journey-days-2")
+    /// Mid-career challenge ladder for screenshots; finishing today's puzzle crosses Daily devotion IV.
+    private let challengesFixture = ProcessInfo.processInfo.arguments.contains("--preview")
+        || ProcessInfo.processInfo.arguments.contains("--ui-challenges")
     private var dailyRequestCount = 0
     private var quipRequestCount = 0
     private var solveDistributionRequestCount = 0
@@ -351,6 +354,47 @@ private final class FixtureServer: @unchecked Sendable {
             ],
             "recentEntries": [],
             "backfill": ["status": "complete"]
+        ].merging(challengesFixture ? ["challenges": challengesPayload(completed: completed)] : [:]) { current, _ in current }
+    }
+
+    private func challengesPayload(completed: Bool) -> [String: Any] {
+        func line(_ id: String, _ category: String, _ title: String, _ detail: String, _ value: Int, _ thresholds: [Int]) -> [String: Any] {
+            let tier = thresholds.filter { value >= $0 }.count
+            return [
+                "id": id, "category": category, "title": title, "description": detail, "secret": false,
+                "value": value, "thresholds": thresholds, "tier": tier,
+                "unlockedAt": thresholds.indices.map { $0 < tier ? "2026-09-0\($0 + 1)" as Any : NSNull() }
+            ]
+        }
+        func secret(_ id: String) -> [String: Any] {
+            ["id": id, "category": "secrets", "title": NSNull(), "description": NSNull(), "secret": true,
+             "value": NSNull(), "thresholds": [1], "tier": 0, "unlockedAt": [NSNull()]]
+        }
+        let lines: [[String: Any]] = [
+            line("dailies", "devotion", "Daily devotion", "Finish daily puzzles", completed ? 100 : 99, [1, 7, 30, 100, 365]),
+            line("streak", "devotion", "Unbroken", "Finish puzzles on consecutive days", 12, [3, 7, 30, 100, 365]),
+            line("trails", "devotion", "Trailblazer", "Finish 3 days in a Monday–Sunday week", 9, [1, 4, 12, 26, 52]),
+            line("perfect-weeks", "devotion", "Perfect week", "Finish all 7 days of a week", 0, [1, 4, 12, 26, 52]),
+            line("first-guess", "precision", "Mind reader", "Solve on your first guess", 6, [1, 5, 20, 60, 150]),
+            line("unassisted", "precision", "No nudge needed", "Solve without asking Eve for a nudge", 41, [3, 15, 50, 150, 300]),
+            line("solves", "grit", "Puzzle breaker", "Solve daily puzzles", 84, [1, 10, 50, 150, 300]),
+            line("clutch", "grit", "Last word", "Solve on your third and final guess", 4, [1, 5, 15, 40, 100]),
+            line("extended", "grit", "Never quit", "Solve after your three scored guesses", 2, [1, 5, 15, 40, 100]),
+            line("early-bird", "rhythm", "Early bird", "Finish a puzzle before 8 a.m.", 17, [1, 5, 20, 50, 100]),
+            line("night-owl", "rhythm", "Night owl", "Finish a puzzle after 10 p.m.", 0, [1, 5, 20, 50, 100]),
+            secret("new-year"), secret("halloween"), secret("leap-day")
+        ]
+        let tiers = lines.compactMap { $0["tier"] as? Int }.reduce(0, +)
+        return [
+            "tiersUnlocked": tiers, "tiersTotal": 58, "challengeXP": 0,
+            "categories": [
+                ["id": "devotion", "title": "Devotion", "mastered": false],
+                ["id": "precision", "title": "Precision", "mastered": false],
+                ["id": "grit", "title": "Grit", "mastered": false],
+                ["id": "rhythm", "title": "Rhythm", "mastered": false],
+                ["id": "secrets", "title": "Secrets", "mastered": false]
+            ],
+            "lines": lines
         ]
     }
 

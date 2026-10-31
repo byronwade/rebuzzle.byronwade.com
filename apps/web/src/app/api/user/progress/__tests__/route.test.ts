@@ -111,9 +111,10 @@ it("returns server-computed account progress and ignores a supplied userId", asy
     currentWeekEnd: "2026-10-25",
     weeklyTrailReward: { weekStart: "2026-10-19", bonusXP: 50, earned: false },
     summary: {
-      totalXP: 175,
+      // 175 base XP plus three tier-I challenges: dailies, first guess, solves.
+      totalXP: 250,
       level: 1,
-      xpIntoLevel: 175,
+      xpIntoLevel: 250,
       finishes: 2,
       solves: 1,
       firstGuessSolves: 1,
@@ -142,6 +143,7 @@ it("returns server-computed account progress and ignores a supplied userId", asy
       },
     ],
     backfill: { status: "complete" },
+    challenges: expect.objectContaining({ tiersTotal: 58, tiersUnlocked: 3, challengeXP: 75 }),
   });
 });
 
@@ -195,6 +197,7 @@ it("treats a new account with no final daily attempts as complete", async () => 
     completedThisWeek: 0,
     badges: [],
   });
+  expect(body.challenges).toMatchObject({ tiersUnlocked: 0, challengeXP: 0 });
 });
 
 it("keeps the account's puzzle date when another device reports a different zone", async () => {
@@ -226,6 +229,7 @@ it("withholds partial totals while the user's backfill is running", async () => 
   expect(body.summary).toBeNull();
   expect(body.weeklyTrailReward).toBeNull();
   expect(body.recentEntries).toEqual([]);
+  expect(body.challenges).toBeUndefined();
 });
 
 it("counts extended terminal rows and rejects over-limit attempts without extended mode", async () => {
@@ -270,7 +274,8 @@ it("counts extended terminal rows and rejects over-limit attempts without extend
   expect(response.status).toBe(200);
   expect(body.backfill.status).toBe("complete");
   expect(body.summary).toMatchObject({
-    totalXP: 325,
+    // 325 base XP plus tier I of dailies, streak, trails, solves and extended.
+    totalXP: 450,
     finishes: 3,
     solves: 2,
     completedThisWeek: 3,
@@ -318,7 +323,8 @@ it("awards one bonus for each qualifying prior week and deduplicates dates at th
   const body = await response.json();
 
   expect(body.summary).toMatchObject({
-    totalXP: 300,
+    // 300 base XP plus dailies II (75), streak I (25) and trails I (25).
+    totalXP: 425,
     finishes: 8,
     completedThisWeek: 2,
   });
