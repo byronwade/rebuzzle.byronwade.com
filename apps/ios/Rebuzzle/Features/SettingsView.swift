@@ -4,13 +4,20 @@ import RebuzzleCore
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @AppStorage("appearance") private var appearance = "system"
     @AppStorage("haptics") private var haptics = true
     var body: some View {
         Form {
             Section {
-                OperatorCard()
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Theme.canvas)
+                HStack(spacing: 14) {
+                    Image(systemName: "person.crop.circle.fill").font(.system(size: 42)).foregroundStyle(Theme.accent)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(model.player?.guest == false ? (model.player?.username ?? "Curious mind") : "Hello, curious mind.")
+                            .font(Theme.font(20, weight: .medium))
+                        Text(model.journeySnapshot?.summary.map { "Level \($0.level) · Your daily aha club" } ?? "Your daily aha club")
+                            .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    }
+                }.padding(.vertical, 8)
             }
             Section {
                 if let player = model.player {
@@ -33,7 +40,8 @@ struct SettingsView: View {
                      : "Daily puzzles reset using the time zone saved to this account, keeping the puzzle day consistent across devices. With Plus, journal notes sync to this account and remain available offline.")
             }
             Section("Make it yours") {
-                Toggle("Haptic feedback", isOn: $haptics).tint(Theme.gold)
+                Picker("Appearance", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
+                Toggle("Haptic feedback", isOn: $haptics)
                 NavigationLink("Daily reminder", value: RebuzzleRoute.reminder)
             }
             Section {
@@ -58,67 +66,7 @@ struct SettingsView: View {
             }
         }
         .scrollContentBackground(.hidden).background(Theme.canvas).foregroundStyle(Theme.ink)
-        .listRowSeparatorTint(Theme.hairline)
         .navigationTitle("You").navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Theme.canvas, for: .navigationBar)
-    }
-}
-
-/// Profile card: rank emblem, name, and the player's strongest challenges.
-private struct OperatorCard: View {
-    @Environment(AppModel.self) private var model
-    var body: some View {
-        let level = model.journeySnapshot?.summary?.level ?? 1
-        let rank = PrestigeRank(level: level)
-        let challenges = model.journeySnapshot?.challenges
-        let top = (challenges?.lines ?? [])
-            .filter { !$0.secret && $0.tier > 0 }
-            .sorted { ($0.tier, $0.value ?? 0) > ($1.tier, $1.value ?? 0) }
-            .prefix(3)
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 16) {
-                RankEmblem(rank: rank, size: 64)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(model.player.map { $0.guest ? "Guest" : $0.username } ?? "Curious mind")
-                        .font(Theme.display(28)).textCase(.uppercase)
-                        .lineLimit(1).minimumScaleFactor(0.6)
-                    Text("\(rank.title) · Level \(level)")
-                        .font(Theme.label(12)).tracking(1.2).textCase(.uppercase).foregroundStyle(Theme.gold)
-                }
-            }
-            .accessibilityElement(children: .combine)
-            if let summary = model.journeySnapshot?.summary {
-                XPBar(level: summary.level, levelXP: summary.xpIntoLevel, totalXP: summary.totalXP)
-            }
-            if !top.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Eyebrow(text: "Top challenges")
-                        Spacer()
-                        if let challenges {
-                            Text("Mastery \(challenges.masteredCount)/\(challenges.categories.count)")
-                                .font(Theme.label(11)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.secondary)
-                        }
-                    }
-                    ForEach(Array(top)) { line in
-                        HStack(spacing: 10) {
-                            Image(systemName: line.symbol).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold)
-                                .frame(width: 22)
-                            Text("\(line.displayTitle) \(ChallengeLine.roman(line.tier))").font(Theme.font(14, weight: .semibold))
-                            Spacer()
-                            TierPips(tier: line.tier, maxTier: line.maxTier, size: 7)
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(line.displayTitle), tier \(line.tier) of \(line.maxTier)")
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel)
-        .overlay(Rectangle().strokeBorder(Theme.hairline, lineWidth: 1))
-        .overlay(alignment: .top) { Rectangle().fill(Theme.gold).frame(height: 2) }
     }
 }
 struct GuestUpgradeView: View {

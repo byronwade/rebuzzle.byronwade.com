@@ -29,7 +29,7 @@ struct DailySolvePulseCard: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Theme.accent)
                         .frame(width: 44, height: 44)
-                        .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.radius))
+                        .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Today’s solving mix")
                             .font(Theme.font(16, weight: .semibold))
@@ -63,8 +63,8 @@ struct DailySolvePulseCard: View {
                     .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.ink.opacity(0.12), lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.12), lineWidth: 1))
     }
 
     @ViewBuilder

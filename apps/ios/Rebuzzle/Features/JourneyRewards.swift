@@ -1,29 +1,24 @@
 import SwiftUI
 import RebuzzleCore
 
-/// Expanded rank card that leads the Career tab.
 struct JourneyLevelView: View {
     let progress: JourneyProgress
     @Environment(\.dynamicTypeSize) private var typeSize
     var body: some View {
-        let rank = PrestigeRank(level: progress.level)
         VStack(alignment: .leading, spacing: 18) {
-            let layout = typeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
-                : AnyLayout(HStackLayout(alignment: .center, spacing: 18))
-            layout {
-                RankEmblem(rank: rank, size: typeSize.isAccessibilitySize ? 60 : 80)
+            Eyebrow(text: "YOUR SOLVER’S CLUB")
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("\(progress.level)")
+                    .font(Theme.display(typeSize.isAccessibilitySize ? 48 : 72)).monospacedDigit()
+                    .foregroundStyle(Theme.accent).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Level \(progress.level)").font(Theme.label(12)).tracking(1.4).textCase(.uppercase)
-                        .foregroundStyle(Theme.gold)
+                    Text("Level \(progress.level)").font(Theme.font(13, weight: .semibold))
                         .accessibilityIdentifier("journeyLevel")
-                    Text(rank.title.uppercased()).font(Theme.display(typeSize.isAccessibilitySize ? 30 : 38))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel("Rank \(rank.name) \(rank.subTierNumber)")
+                    Text(progress.title).font(Theme.display(26)).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            ProgressRail(fraction: Double(progress.levelXP) / 300, height: 5)
-                .accessibilityHidden(false)
+            ProgressView(value: Double(progress.levelXP), total: 300)
+                .tint(Theme.accent)
                 .accessibilityLabel("Level progress")
                 .accessibilityValue("\(progress.levelXP) of 300 XP")
             ViewThatFits(in: .horizontal) {
@@ -34,17 +29,16 @@ struct JourneyLevelView: View {
                 }
                 VStack(alignment: .leading, spacing: 6) { xpLabel; nextLevelLabel }
             }
-        }
-        .prestigePanel(padding: 20)
+        }.padding(.vertical, 8)
     }
     private var xpLabel: some View {
-        Text("\(progress.totalXP.formatted()) XP earned").font(Theme.label(13)).tracking(1).monospacedDigit()
-            .foregroundStyle(Theme.ink)
+        Text("\(progress.totalXP) XP earned").font(Theme.font(14, weight: .semibold))
             .accessibilityIdentifier("journeyXP")
     }
     private var nextLevelLabel: some View {
         Text("\(300 - progress.levelXP) to level \(progress.level + 1)")
             .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+
     }
 }
 
@@ -62,7 +56,7 @@ struct JourneyRewards: View {
                     ForEach(0..<3) { index in
                         Image(systemName: index < stars ? "star.fill" : "star")
                             .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(index < stars ? Theme.reward : Theme.muted)
+                            .foregroundStyle(index < stars ? Theme.reward : Theme.secondary.opacity(0.5))
                             .scaleEffect(index < stars && !appeared && !reduceMotion ? 0.6 : 1)
                             .rotationEffect(.degrees(index < stars && !appeared && !reduceMotion ? -14 : 0))
                             .animation(
@@ -72,17 +66,16 @@ struct JourneyRewards: View {
                     }
                 }.accessibilityLabel("\(stars) of 3 stars")
                 Spacer()
-                Text("+\(points) XP").font(Theme.display(26)).monospacedDigit()
+                Text("+\(points) XP").font(Theme.font(20, weight: .semibold)).monospacedDigit()
                     .foregroundStyle(Theme.reward).accessibilityIdentifier("earnedXP")
             }
             Text(game.wasSuccessful == true ? (stars == 3 ? "First guess. Nailed it." : "That’s your daily aha.") : "A new connection, even on the tricky days.")
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
             Button { model.selectedTab = .journey } label: {
-                HStack { Text("See your career"); Spacer(); Image(systemName: "arrow.right") }
-                    .font(Theme.label(13)).tracking(1).textCase(.uppercase)
-                    .frame(minHeight: 44).contentShape(Rectangle())
+                HStack { Text("See your Journey"); Spacer(); Image(systemName: "arrow.right") }
+                    .font(Theme.font(14, weight: .medium)).frame(minHeight: 44).contentShape(Rectangle())
             }.foregroundStyle(Theme.ink).accessibilityIdentifier("viewJourney")
-        }.prestigePanel(padding: 20)
+        }.padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
             .onAppear { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { appeared = true } }
     }
 }
@@ -165,10 +158,18 @@ struct DailyStreakCard: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
         .overlay {
-            RoundedRectangle(cornerRadius: Theme.radius)
-                .strokeBorder(isMilestone ? Theme.goldDeep : Theme.hairline, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(Theme.reward.opacity(isMilestone ? 0.48 : 0.24), lineWidth: 1)
+        }
+        .overlay(alignment: .topTrailing) {
+            Circle()
+                .fill(Theme.reward.opacity(0.08))
+                .frame(width: 96, height: 96)
+                .blur(radius: 20)
+                .offset(x: 16, y: -18)
+                .accessibilityHidden(true)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
@@ -194,7 +195,7 @@ struct DailyStreakCard: View {
                             .foregroundStyle(Theme.reward)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .overlay(Rectangle().strokeBorder(Theme.goldDeep, lineWidth: 1))
+                            .background(Theme.reward.opacity(0.12), in: Capsule())
                     }
                 }
                 Text(headline)
@@ -211,12 +212,11 @@ struct DailyStreakCard: View {
 
     private var medallion: some View {
         ZStack {
-            Rectangle().fill(Theme.field)
-                .frame(width: 48, height: 48).rotationEffect(.degrees(45))
-            Rectangle().strokeBorder(Theme.hairline, lineWidth: 3)
-                .frame(width: 48, height: 48).rotationEffect(.degrees(45))
-            Rectangle().trim(from: 0, to: ringProgress).stroke(Theme.gold, lineWidth: 3)
-                .frame(width: 45, height: 45).rotationEffect(.degrees(-45))
+            Circle().stroke(Theme.reward.opacity(0.16), lineWidth: 5)
+            Circle()
+                .trim(from: 0, to: ringProgress)
+                .stroke(Theme.reward, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
             VStack(spacing: -3) {
                 Text(currentCountText)
                     .font(Theme.display(29))
@@ -232,13 +232,11 @@ struct DailyStreakCard: View {
                 }
             }
             .padding(7)
-            if isMilestone {
-                Image(systemName: "sparkle")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Theme.reward)
-                    .offset(x: 27, y: -27)
-                    .accessibilityHidden(true)
-            }
+            Image(systemName: isMilestone ? "sparkle" : "circle.fill")
+                .font(.system(size: isMilestone ? 12 : 5, weight: .bold))
+                .foregroundStyle(Theme.reward)
+                .offset(x: 27, y: -25)
+                .accessibilityHidden(true)
         }
         .frame(width: 68, height: 68)
         .accessibilityHidden(true)
@@ -275,14 +273,16 @@ struct DailyStreakCard: View {
                             .monospacedDigit()
                             .foregroundStyle(Theme.reward)
                     }
-                    ProgressRail(fraction: Double(current) / Double(max(target, 1)))
+                    ProgressView(value: Double(current), total: Double(target))
+                        .tint(Theme.reward)
+                        .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity)
             }
         }
         .padding(.top, 2)
         .overlay(alignment: .top) {
-            Rectangle().fill(Theme.hairline).frame(height: 1)
+            Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
         }
     }
 

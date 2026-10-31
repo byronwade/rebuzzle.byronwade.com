@@ -32,8 +32,8 @@ struct PlusView: View {
                             .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.accent)
                     }
                     .padding(16)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("openFreeArchiveSample")
@@ -93,7 +93,7 @@ struct PlusView: View {
             Text("This is your completed puzzle. Plus lets you revisit your collection and add your own notes.")
                 .font(Theme.font(12)).foregroundStyle(Theme.secondary)
         }.frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var purchase: some View {

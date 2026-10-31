@@ -51,6 +51,20 @@ import StoreKitTest
         capture("Canonical board — study")
     }
 
+    func testAchievementsOpenFromJourneyWithTierDetail() {
+        launchFixture(extraArguments: ["--ui-challenges"])
+        selectTab("Journey")
+        let row = app.buttons["openAchievements"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let dailies = app.buttons["achievement-dailies"]
+        XCTAssertTrue(dailies.waitForExistence(timeout: 5))
+        capture("Achievements — list")
+        dailies.tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+        capture("Achievements — detail")
+    }
+
     func testInvalidCanonicalBoardNeverFallsBackToLegacyClue() {
         launchFixture(extraArguments: ["--ui-canonical-invalid"])
         XCTAssertTrue(app.staticTexts["Puzzle image unavailable"].waitForExistence(timeout: 5))
@@ -644,7 +658,7 @@ import StoreKitTest
         XCTAssertTrue(note.waitForExistence(timeout: 5))
         XCTAssertEqual(note.value as? String, "Light and house made the connection click.")
         capture("Plus — purchased journal and note")
-        selectTab("Career")
+        selectTab("Journey")
         let insights = app.staticTexts["How you find the answer"]
         reveal(insights)
         XCTAssertTrue(insights.exists)
@@ -1048,7 +1062,7 @@ import StoreKitTest
         XCTAssertTrue(journeyStreak.waitForExistence(timeout: 5))
         XCTAssertLessThan(journeyStreak.frame.minY, app.staticTexts["journeyXP"].frame.minY,
                           "The streak should lead the Journey progress summary")
-        let journeyNavigationBar = app.navigationBars["Career"]
+        let journeyNavigationBar = app.navigationBars["Journey"]
         revealTopWithinViewport(journeyStreak, below: journeyNavigationBar)
         XCTAssertTrue(journeyStreak.isHittable)
         XCTAssertTrue(journeyStreak.label.contains("Current streak: 1 day"))
@@ -1108,7 +1122,7 @@ import StoreKitTest
 
     func testRewardJourneyNavigationPreservesCompletedGame() {
         launchFixture()
-        selectTab("Career")
+        selectTab("Journey")
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("0 XP"))
         selectTab("Play")
@@ -1151,7 +1165,7 @@ import StoreKitTest
 
     func testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle() {
         launchFixture(extraArguments: ["--ui-journey-days-2"])
-        selectTab("Career")
+        selectTab("Journey")
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("50 XP"))
         XCTAssertTrue(app.staticTexts["Finish 3 puzzle days this week to earn +50 XP."].exists)

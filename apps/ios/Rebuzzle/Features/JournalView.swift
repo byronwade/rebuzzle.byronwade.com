@@ -128,7 +128,7 @@ struct JournalView: View {
                 .accessibilityIdentifier("retryJournalSync")
             }
         }
-        .padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("journalSyncStatus")
     }
 
@@ -160,7 +160,7 @@ struct JournalView: View {
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
         .accessibilityIdentifier("journalConflict.\(conflict.puzzleID)")
     }
 
@@ -187,7 +187,7 @@ struct JournalDetail: View {
     var body: some View {
         Page {
             Eyebrow(text: entry.puzzleDate)
-            PuzzleBoard(clue: entry.clue, visual: entry.visual).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+            PuzzleBoard(clue: entry.clue, visual: entry.visual).padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
             VStack(alignment: .leading, spacing: 8) {
                 Label("Unscored study", systemImage: "book.closed")
                     .font(Theme.font(14, weight: .medium)).foregroundStyle(Theme.reward)
@@ -212,7 +212,7 @@ struct JournalDetail: View {
                             Text(hint).font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
                                 .accessibilityIdentifier("journalStudyHint.\(index + 1)")
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                        }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                        }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
                     }
                     if revealedHintCount < studyHints.count {
                         Button {
@@ -221,8 +221,8 @@ struct JournalDetail: View {
                             Label("Reveal hint \(revealedHintCount + 1)", systemImage: "lightbulb")
                                 .frame(maxWidth: .infinity, minHeight: 52)
                                 .foregroundStyle(Theme.ink)
-                                .background(Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
-                                .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.24), lineWidth: 1))
+                                .background(Theme.field, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.secondary.opacity(0.24), lineWidth: 1))
                         }.buttonStyle(.plain).accessibilityIdentifier("revealJournalHint")
                     }
                 }

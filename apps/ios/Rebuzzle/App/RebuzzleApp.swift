@@ -20,11 +20,11 @@ import RebuzzleCore
 }
 private struct ApplicationView: View {
     @State private var model = AppModelFactory.make()
+    @AppStorage("appearance") private var appearance = "system"
     @AppStorage("uiFixtureDailySolvePulseRequestCount") private var solvePulseRequestCount = 0
     var body: some View {
         RootView().environment(model)
-            // Prestige is designed dark-first; there is no light variant.
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
             .tint(Theme.accent)
             #if DEBUG
             .overlay {
@@ -52,7 +52,7 @@ enum RebuzzleRoute: Hashable {
     case deleteAccount
     case archive
     case journalEntry(entryID: String, accountID: String?)
-    case challenges
+    case achievements
 }
 
 struct RootView: View {
@@ -71,25 +71,27 @@ struct RootView: View {
             }
                 .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
             NavigationStack(path: $journeyPath) {
-                CareerScreen()
+                ProgressViewScreen()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
-                .tabItem { Label("Career", systemImage: "shield.lefthalf.filled") }.tag(AppTab.journey)
+                .tabItem { Label("Journey", systemImage: "map") }.tag(AppTab.journey)
             NavigationStack(path: $youPath) {
                 SettingsView()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
                 .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)
         }
-        .overlay {
+        .overlay(alignment: .top) {
             if let unlock = model.pendingUnlocks.first {
-                ChallengeUnlockOverlay(unlock: unlock) {
-                    // A double tap can fire twice before the overlay unmounts; only dismiss this unlock once.
+                AchievementUnlockBanner(unlock: unlock) {
+                    // The banner can dismiss by tap and by timeout; only remove the one it showed.
                     if model.pendingUnlocks.first?.id == unlock.id { model.pendingUnlocks.removeFirst() }
                 }
-                    .id(unlock.id)
+                .id(unlock.id)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .animation(.easeOut(duration: 0.25), value: model.pendingUnlocks.first?.id)
         .onOpenURL { returnRouter.open($0) }
         .onChange(of: model.player?.id) {
             playPath = NavigationPath()
@@ -110,22 +112,11 @@ struct RootView: View {
         .task {
             await model.reminders.refreshAuthorization()
             await model.load()
-            #if DEBUG
-            // Screenshot hook, applied after load so the identity reset doesn't clear it: `--preview-screen career|challenges|you|unlock`.
-            let arguments = ProcessInfo.processInfo.arguments
-            if let index = arguments.firstIndex(of: "--preview-screen"), arguments.indices.contains(index + 1) {
-                switch arguments[index + 1] {
-                case "career": model.selectedTab = .journey
-                case "challenges": model.selectedTab = .journey; journeyPath.append(RebuzzleRoute.challenges)
-                case "you": model.selectedTab = .you
-                case "unlock":
-                    model.pendingUnlocks = [ChallengeUnlock(lineID: "dailies", title: "Daily devotion", tier: 4, maxTier: 5, xp: 200, symbol: "calendar")]
-                default: break
-                }
-            }
-            #endif
             await model.purchases.load()
             await model.retryJournalSyncIfNeeded()
+            #if DEBUG
+            openPreviewScreen()
+            #endif
         }
         .task(id: model.daily?.nextPuzzleTime) {
             guard !ProcessInfo.processInfo.arguments.contains("--ui-expired-reset-manual") else { return }
@@ -159,6 +150,23 @@ struct RootView: View {
         }
     }
 
+    #if DEBUG
+    /// `--preview-screen achievements|unlock` jumps straight to a screen for screenshots.
+    private func openPreviewScreen() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "--preview-screen"), index + 1 < args.count else { return }
+        switch args[index + 1] {
+        case "achievements":
+            model.selectedTab = .journey
+            journeyPath.append(RebuzzleRoute.achievements)
+        case "unlock":
+            model.pendingUnlocks = [ChallengeUnlock(lineID: "dailies", title: "Daily devotion", tier: 4, maxTier: 5, xp: 200, symbol: "calendar")]
+        default:
+            model.selectedTab = .journey
+        }
+    }
+    #endif
+
     @ViewBuilder
     private func destination(for route: RebuzzleRoute) -> some View {
         switch route {
@@ -178,8 +186,8 @@ struct RootView: View {
             DeleteAccountView()
         case .archive:
             ArchiveView()
-        case .challenges:
-            ChallengesWall()
+        case .achievements:
+            AchievementsView()
         case let .journalEntry(entryID, accountID):
             if model.player?.id == accountID,
                let entry = model.journal.entries.first(where: { $0.id == entryID }) {

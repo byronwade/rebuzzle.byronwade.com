@@ -25,7 +25,7 @@ struct DailyReturnCard: View {
             }
         }
         .padding(14)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
     }
 
     @ViewBuilder

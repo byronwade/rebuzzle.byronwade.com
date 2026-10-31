@@ -48,8 +48,8 @@ import RebuzzleCore
             VStack(spacing: 0) {
                 PuzzleBoard(puzzle: puzzle).padding(16)
             }
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-            .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: 8) {
                 Label(isFreeSample ? "Sample · unscored" : "Practice · unscored", systemImage: "sparkles")
@@ -60,7 +60,7 @@ import RebuzzleCore
                     .accessibilityIdentifier("practiceUnscoredNote")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16).background(Theme.reward.opacity(0.09), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .padding(16).background(Theme.reward.opacity(0.09), in: RoundedRectangle(cornerRadius: 14))
 
             if session.state == .playing {
                 VStack(alignment: .leading, spacing: 14) {
@@ -77,7 +77,7 @@ import RebuzzleCore
                             .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
                             .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
                             // The padded box reads as the field, so a tap anywhere in it should focus.
-                            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                            .contentShape(RoundedRectangle(cornerRadius: 10))
                             .simultaneousGesture(TapGesture().onEnded { answerFocused = true })
                             .accessibilityLabel("Your answer")
                             .accessibilityIdentifier("practiceAnswerField")
@@ -102,7 +102,7 @@ import RebuzzleCore
                             .accessibilityIdentifier("checkPracticeAnswer")
                         }
                     }
-                    .padding(14).background(Theme.field.opacity(0.55), in: RoundedRectangle(cornerRadius: Theme.radius))
+                    .padding(14).background(Theme.field.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
                 }
             } else {
                 solutionCard
@@ -148,7 +148,7 @@ import RebuzzleCore
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18)
-                .background(Theme.reward.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.radius))
+                .background(Theme.reward.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
                 .onScrollVisibilityChange(threshold: 0.5) { isVisible in
                     recordVisibleFreeSampleOffer(isVisible: isVisible)
                 }
@@ -225,7 +225,7 @@ import RebuzzleCore
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var solutionCard: some View {
@@ -244,8 +244,8 @@ import RebuzzleCore
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
-        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.reward.opacity(0.3), lineWidth: 1))
+        .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.reward.opacity(0.3), lineWidth: 1))
     }
 
     private var hintsSection: some View {
@@ -266,7 +266,7 @@ import RebuzzleCore
                         Text(hint).font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("practiceHint.\(index + 1)")
                             .frame(maxWidth: .infinity, alignment: .leading)
-                    }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.radius))
+                    }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
                 }
                 if session.canRevealHint {
                     Button {
@@ -277,8 +277,8 @@ import RebuzzleCore
                         Label("Reveal hint \(session.revealedHintCount + 1)", systemImage: "lightbulb")
                             .frame(maxWidth: .infinity, minHeight: 52)
                             .foregroundStyle(Theme.ink)
-                            .background(Theme.field, in: RoundedRectangle(cornerRadius: Theme.radius))
-                            .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.secondary.opacity(0.24), lineWidth: 1))
+                            .background(Theme.field, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.secondary.opacity(0.24), lineWidth: 1))
                     }.buttonStyle(.plain).accessibilityIdentifier("revealPracticeHint")
                 }
             }
