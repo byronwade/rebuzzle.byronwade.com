@@ -91,9 +91,14 @@ struct TodayPuzzleCard: View {
             if let daily = model.daily {
                 // Opening before the session restores would race the account reset that empties the Play path.
                 let canOpen = model.game != nil || !model.busy
+                // The daily can load while the session behind it fails; that is not a fresh, unstarted puzzle.
+                let sessionError = model.game == nil && !model.busy ? model.error : nil
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     let status = TodayCardStatus(game: model.game, hintCount: daily.puzzle.hints.count, hintsShown: model.hintsShown)
-                    let line = status.statusLine(nextPuzzle: DailyReturnTiming.deadline(daily.nextPuzzleTime), now: context.date)
+                    let line = canOpen
+                        ? status.statusLine(nextPuzzle: DailyReturnTiming.deadline(daily.nextPuzzleTime), now: context.date)
+                        : "Loading your progress…"
+                    let summary = "Today’s puzzle, \(daily.puzzle.typeName). \(DifficultyTier.accessibilityLabel(difficulty: daily.puzzle.difficulty))."
                     VStack(alignment: .leading, spacing: 14) {
                         NavigationLink(value: RebuzzleRoute.daily) {
                             VStack(alignment: .leading, spacing: 12) {
@@ -104,27 +109,35 @@ struct TodayPuzzleCard: View {
                                 }
                                 // A glance, not the playable board: same clue drawing, shrunk and inert.
                                 BoardPreview(puzzle: daily.puzzle)
-                                Text(line)
-                                    .font(Theme.font(14, weight: .medium))
-                                    .foregroundStyle(status.isFinished ? Theme.reward : Theme.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                if sessionError == nil {
+                                    Text(line)
+                                        .font(Theme.font(14, weight: .medium))
+                                        .foregroundStyle(status.isFinished ? Theme.reward : Theme.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Today’s puzzle, \(daily.puzzle.typeName). \(DifficultyTier.accessibilityLabel(difficulty: daily.puzzle.difficulty)). \(line). \(status.buttonTitle)")
+                        .accessibilityLabel(sessionError != nil ? summary : canOpen ? "\(summary) \(line). \(status.buttonTitle)" : "\(summary) \(line)")
                         .accessibilityIdentifier("homeTodayCard")
-                        NavigationLink(value: RebuzzleRoute.daily) {
-                            HStack {
-                                Text(status.buttonTitle)
-                                if canOpen { Image(systemName: "arrow.right") } else { ProgressView().tint(Theme.canvas) }
+                        if let sessionError {
+                            Notice(message: sessionError)
+                            Button("Try again") { Task { await model.load() } }
+                                .buttonStyle(CommitStyle())
+                                .accessibilityIdentifier("homeTodayRetry")
+                        } else {
+                            NavigationLink(value: RebuzzleRoute.daily) {
+                                HStack {
+                                    if canOpen { Text(status.buttonTitle); Image(systemName: "arrow.right") } else { ProgressView().tint(Theme.canvas) }
+                                }
                             }
+                            .buttonStyle(CommitStyle())
+                            // The card above is the single VoiceOver stop; this is its visual button.
+                            .accessibilityHidden(true)
+                            .accessibilityIdentifier("homeTodayPlay")
                         }
-                        .buttonStyle(CommitStyle())
-                        // The card above is the single VoiceOver stop; this is its visual button.
-                        .accessibilityHidden(true)
-                        .accessibilityIdentifier("homeTodayPlay")
                     }
                     .disabled(!canOpen)
                 }

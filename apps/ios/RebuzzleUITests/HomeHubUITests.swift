@@ -95,6 +95,22 @@ import XCTest
         XCTAssertTrue(app.descendants(matching: .any)["homeStreakChip"].firstMatch.waitForExistence(timeout: 10))
     }
 
+    /// The daily loaded but the session did not: say so and offer a retry, never a fresh "not started" card.
+    func testSessionFailureWithALoadedDailyShowsTheErrorNotAFreshStart() {
+        launch(["--ui-session-unavailable"])
+        let retry = app.buttons["homeTodayRetry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Could not connect to Rebuzzle")).firstMatch.exists)
+        let card = app.buttons["homeTodayCard"]
+        XCTAssertTrue(card.exists, "The daily itself still loaded")
+        XCTAssertFalse(card.label.contains("3 guesses"), card.label)
+        XCTAssertFalse(card.label.contains("Play today’s"), card.label)
+
+        retry.tap()
+        XCTAssertTrue(retry.waitForExistence(timeout: 15), "The fixture keeps failing, so the retry stays")
+        XCTAssertFalse(card.label.contains("3 guesses"), card.label)
+    }
+
     /// Choosing to keep solving is a decision about the puzzle, not the screen, so it survives a trip back to the hub.
     func testKeepSolvingSurvivesReturningToTheHub() {
         launch(["--ui-score-locked"])

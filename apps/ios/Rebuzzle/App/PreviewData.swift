@@ -190,6 +190,7 @@ private final class FixtureServer: @unchecked Sendable {
         case "/api/auth/guest/lazy", "/api/auth/session":
             payload = ["success": true, "authenticated": true, "user": user, "token": "fixture-token"]
         case "/api/puzzle/session":
+            if ProcessInfo.processInfo.arguments.contains("--ui-session-unavailable") { return (503, Data()) }
             return (200, try JSONEncoder().encode(game))
         case "/api/user/stats":
             payload = ["success": true, "stats": ["totalGames": existingInstallFixture || game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0, "maxStreak": game.wasSuccessful == true ? 1 : 0]]
