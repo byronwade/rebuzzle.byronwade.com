@@ -148,3 +148,26 @@ test("ensureTrustedCanonicalBoard fails closed when the source cannot compile", 
     compiler.ensureTrustedCanonicalBoard({ ...visual, mode: "unicode" })
   ).rejects.toThrow();
 });
+
+test("does not trust visuals with unsupported keys or tampered profile variants", async () => {
+  const board = await compiler.compileCanonicalBoard(visual);
+  const extraTop = { ...visual, extra: 1, canonicalBoard: board } as never;
+  await expect(compiler.hasTrustedCanonicalBoard(extraTop)).resolves.toBe(false);
+
+  const extraLayer = {
+    ...visual,
+    layers: [{ ...visual.layers[0]!, extra: 1 }],
+    canonicalBoard: board,
+  } as never;
+  await expect(compiler.hasTrustedCanonicalBoard(extraLayer)).resolves.toBe(false);
+
+  const [id, variant] = Object.entries(board.profileVariants ?? {})[0]!;
+  const tamperedVariant = {
+    ...visual,
+    canonicalBoard: {
+      ...board,
+      profileVariants: { ...board.profileVariants, [id]: { ...variant, sha256: "0".repeat(64) } },
+    },
+  } as never;
+  await expect(compiler.hasTrustedCanonicalBoard(tamperedVariant)).resolves.toBe(false);
+}, 30_000);
