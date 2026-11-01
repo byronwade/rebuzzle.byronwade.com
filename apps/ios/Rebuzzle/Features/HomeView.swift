@@ -89,7 +89,7 @@ struct TodayPuzzleCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             if let daily = model.daily {
-                // Opening before the session restores would race the account reset that empties the Play path.
+                // Hold the card until the session restores, so the daily never opens without the player's progress.
                 let canOpen = model.game != nil || !model.busy
                 // The daily can load while the session behind it fails; that is not a fresh, unstarted puzzle.
                 let sessionError = model.game == nil && !model.busy ? model.error : nil

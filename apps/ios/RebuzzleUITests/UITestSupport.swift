@@ -10,7 +10,7 @@ import XCTest
 ) {
     let card = app.buttons["homeTodayCard"]
     XCTAssertTrue(card.waitForExistence(timeout: 15), "The Play hub should show today's card", file: file, line: line)
-    // The card unlocks once the session restores, after the launch-time account reset of the Play path.
+    // The card unlocks once the launch load restores today's session.
     let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: card)
     XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 15), .completed, "Wait for today's session before opening it", file: file, line: line)
     card.tap()
