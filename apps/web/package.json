@@ -33,6 +33,7 @@
     "db:update-blog-titles": "tsx scripts/update-blog-post-titles.ts",
     "db:create-indexes": "tsx scripts/create-indexes.ts",
     "db:backfill-daily-progress": "tsx scripts/backfill-daily-progress.ts",
+    "db:backfill-canonical-boards": "tsx --conditions=react-server scripts/backfill-canonical-boards.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
