@@ -7,6 +7,7 @@ import { type SelectedReservePuzzle, selectReservePuzzle } from "./reserve-puzzl
 export async function selectMongoReservePuzzle(input: {
   dateString: string;
   now?: Date;
+  excludeIds?: ReadonlySet<string>;
 }): Promise<SelectedReservePuzzle> {
   const now = input.now ?? new Date();
   const since = new Date(now);
@@ -34,5 +35,6 @@ export async function selectMongoReservePuzzle(input: {
     usedAnswerKeys,
     recentPuzzles,
     now: () => now,
+    excludeIds: input.excludeIds,
   });
 }
