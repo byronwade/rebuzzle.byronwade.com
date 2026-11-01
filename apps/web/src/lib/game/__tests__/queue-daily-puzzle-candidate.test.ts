@@ -1,3 +1,7 @@
+import {
+  type CanonicalBoard,
+  validateCanonicalBoard,
+} from "@/ai/puzzle-agent/visual/canonical-contract";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "../daily-puzzle-candidate-repository";
 import {
@@ -30,6 +34,15 @@ const payload: DailyPuzzleCandidate["payload"] = {
     generationMethod: "apex-tournament",
     estimatedSolveRate: 0.42,
   },
+};
+
+const compiledBoard: CanonicalBoard = {
+  version: 1,
+  pngDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+  sha256: "a".repeat(64),
+  width: 1,
+  height: 1,
+  sourceFingerprint: "b".repeat(64),
 };
 
 function memoryRepository() {
@@ -87,11 +100,18 @@ describe("queueing daily puzzles for human playtesting", () => {
     DailyPuzzleCandidatePlaytestSubmitter["submitCandidate"]
   >;
   let queue: ReturnType<typeof createDailyPuzzleCandidateQueue>;
+  let compileBoard: jest.Mock;
 
   beforeEach(() => {
     memory = memoryRepository();
     submitCandidate = jest.fn().mockResolvedValue(undefined);
-    queue = createDailyPuzzleCandidateQueue(memory.repository, { submitCandidate }, () => now);
+    compileBoard = jest.fn().mockResolvedValue(compiledBoard);
+    queue = createDailyPuzzleCandidateQueue(
+      memory.repository,
+      { submitCandidate },
+      () => now,
+      compileBoard
+    );
   });
 
   it("stores the complete puzzle privately and submits its exact board to blind review", async () => {
@@ -110,13 +130,14 @@ describe("queueing daily puzzles for human playtesting", () => {
     expect(submitCandidate).toHaveBeenCalledWith({
       puzzleId: candidate.id,
       answer: payload.answer,
-      visual,
+      visual: { ...visual, canonicalBoard: compiledBoard },
       difficultyScore: 7,
       techniqueId: "reversal-count",
       difficultyLevel: "Hard",
       generationMethod: "apex-tournament",
       automatedEstimatedSolveRate: 0.42,
     });
+    expect(compileBoard).toHaveBeenCalledWith(visual);
   });
 
   it("returns an existing generation-date candidate without creating or re-submitting it", async () => {
@@ -128,6 +149,7 @@ describe("queueing daily puzzles for human playtesting", () => {
     expect(memory.rows).toHaveLength(1);
     expect(submitCandidate).not.toHaveBeenCalled();
     expect(retry.id).toBe(memory.rows[0]?.id);
+    expect(compileBoard).toHaveBeenCalledTimes(1);
   });
 
   it("retains a failed submission for a bounded retry instead of treating it as reviewed", async () => {
@@ -160,5 +182,41 @@ describe("queueing daily puzzles for human playtesting", () => {
     ).rejects.toThrow("validated visual board");
     expect(memory.rows).toHaveLength(0);
     expect(submitCandidate).not.toHaveBeenCalled();
+    expect(compileBoard).not.toHaveBeenCalled();
   });
+
+  it("rejects a candidate whose board cannot compile instead of sending it to playtest", async () => {
+    compileBoard.mockRejectedValueOnce(new Error("Unsupported canonical pictogram"));
+
+    const candidate = await queue.enqueue({ generationKey: "2026-10-29", payload });
+
+    expect(candidate).toMatchObject({
+      status: "rejected",
+      rejectionReason: "canonical-board-failed",
+    });
+    expect(candidate.payload.visual?.canonicalBoard).toBeUndefined();
+    expect(submitCandidate).not.toHaveBeenCalled();
+    await expect(queue.retryPending()).resolves.toEqual({
+      attempted: 0,
+      submitted: 0,
+      failed: 0,
+    });
+  });
+
+  it("compiles the real checked board at queue time by default", async () => {
+    const realQueue = createDailyPuzzleCandidateQueue(
+      memory.repository,
+      { submitCandidate },
+      () => now
+    );
+
+    const candidate = await realQueue.enqueue({ generationKey: "2026-10-30", payload });
+
+    const board = candidate.payload.visual?.canonicalBoard;
+    expect(board).toBeDefined();
+    await expect(validateCanonicalBoard(board)).resolves.toBeTruthy();
+    expect(submitCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ visual: expect.objectContaining({ canonicalBoard: board }) })
+    );
+  }, 30_000);
 });

@@ -1,6 +1,16 @@
 import { randomUUID } from "node:crypto";
+import {
+  CANONICAL_BOARD_FAILED,
+  compileCanonicalBoard,
+} from "@/ai/puzzle-agent/visual/canonical-board";
+import type { CanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-contract";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "./daily-puzzle-candidate-repository";
+
+type CandidateVisual = NonNullable<DailyPuzzleCandidate["payload"]["visual"]>;
+
+/** Compiles the checked board shown to playtesters and players. Throws when it cannot. */
+export type DailyCandidateBoardCompiler = (visual: CandidateVisual) => Promise<CanonicalBoard>;
 
 export type DailyPuzzleCandidatePlaytestSubmitter = {
   submitCandidate(input: {
@@ -90,8 +100,37 @@ async function submitForPlaytest(
 export function createDailyPuzzleCandidateQueue(
   repository: QueueRepository,
   playtest: DailyPuzzleCandidatePlaytestSubmitter,
-  now: () => Date = () => new Date()
+  now: () => Date = () => new Date(),
+  compileBoard: DailyCandidateBoardCompiler = compileCanonicalBoard
 ) {
+  // Compile before insert so playtesters and players see the same pixels. A board that
+  // cannot compile is recorded as rejected; the date then falls back to the reserve path.
+  async function insertWithCanonicalBoard(
+    generationKey: string,
+    payload: DailyPuzzleCandidate["payload"],
+    visual: CandidateVisual
+  ): Promise<DailyPuzzleCandidate> {
+    const canonicalBoard = await compileBoard(visual).catch(() => null);
+    const createdAt = now();
+    const base = {
+      id: randomUUID(),
+      generationKey,
+      policyVersion: "human-reviewed-daily-v1" as const,
+      statusVersion: 0,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    return repository.insert(
+      canonicalBoard
+        ? {
+            ...base,
+            status: "reviewing",
+            payload: { ...payload, visual: { ...visual, canonicalBoard } },
+          }
+        : { ...base, status: "rejected", rejectionReason: CANONICAL_BOARD_FAILED, payload }
+    );
+  }
+
   return {
     async enqueue(input: {
       generationKey: string;
@@ -100,22 +139,14 @@ export function createDailyPuzzleCandidateQueue(
       if (!isDateKey(input.generationKey)) {
         throw new Error("Daily candidate generation key must be a UTC date");
       }
-      if (input.payload.puzzleType !== "rebus" || !input.payload.visual) {
+      const visual = input.payload.visual;
+      if (input.payload.puzzleType !== "rebus" || !visual) {
         throw new Error("Daily candidate requires a validated visual board");
       }
 
       const candidate =
         (await repository.findByGenerationKey(input.generationKey)) ??
-        (await repository.insert({
-          id: randomUUID(),
-          generationKey: input.generationKey,
-          policyVersion: "human-reviewed-daily-v1",
-          status: "reviewing",
-          statusVersion: 0,
-          payload: input.payload,
-          createdAt: now(),
-          updatedAt: now(),
-        }));
+        (await insertWithCanonicalBoard(input.generationKey, input.payload, visual));
 
       if (candidate.status !== "reviewing" || candidate.playtestSubmittedAt) return candidate;
       return submitForPlaytest(candidate, repository, playtest, now);
