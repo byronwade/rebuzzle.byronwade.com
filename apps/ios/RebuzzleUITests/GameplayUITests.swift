@@ -426,7 +426,7 @@ import StoreKitTest
         XCTAssertTrue(earnedXP.exists)
         XCTAssertLessThan(streakCard.frame.minY, earnedXP.frame.minY,
                           "The new streak reward should follow the solve before the XP summary")
-        let resultNavigationBar = app.navigationBars["Rebuzzle"]
+        let resultNavigationBar = app.navigationBars["Today"]
         let resultTabBar = app.tabBars.firstMatch
         XCTAssertGreaterThanOrEqual(streakCard.frame.minY, resultNavigationBar.frame.maxY)
         XCTAssertLessThan(streakCard.frame.minY, resultTabBar.frame.minY,
@@ -549,7 +549,7 @@ import StoreKitTest
 
         app.buttons["uiSimulateShareLink"].tap()
 
-        XCTAssertTrue(app.navigationBars["Rebuzzle"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(app.navigationBars["Journal"].exists)
     }
 
@@ -1056,7 +1056,7 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
         let resultStreak = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
         XCTAssertTrue(resultStreak.waitForExistence(timeout: 5))
-        revealTopWithinViewport(resultStreak, below: app.navigationBars["Rebuzzle"])
+        revealTopWithinViewport(resultStreak, below: app.navigationBars["Today"])
         capture("Today — accessibility XXXL solved")
         let journey = app.buttons["viewJourney"]
         for _ in 0..<10 where !journey.isHittable { app.swipeUp() }

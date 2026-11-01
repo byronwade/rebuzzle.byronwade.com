@@ -24,22 +24,10 @@ struct TodayView: View {
         ScrollViewReader { scroll in
         Page(spacing: 18, bottomSafeAreaClearance: 72) {
             if let daily = model.daily {
-                VStack(alignment: .leading, spacing: 6) {
-                    let masthead = typeSize.isAccessibilitySize
-                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                        : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
-                    masthead {
-                        Text("Make it click.")
-                            .font(Theme.display(42)).tracking(-1.5)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
-                        EveAvatar(celebrating: model.game?.wasSuccessful == true)
-                            .accessibilityLabel("Eve, your AI puzzle author")
-                    }
-                    Text("Daily puzzle · " + dateLabel)
-                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                }
-                .id("dailyHeader")
+                // The hub owns the masthead; this line anchors the scroll back to the top after a finish.
+                Text("Daily puzzle · " + dateLabel)
+                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    .id("dailyHeader")
                 if model.game?.gameOver == true {
                     ResultView(shareRequest: $dailyShareRequest)
                     conversation
@@ -239,7 +227,7 @@ struct TodayView: View {
             }
         }
         }
-        .navigationTitle("Rebuzzle").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Today").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("How to play", systemImage: "questionmark.circle") {
