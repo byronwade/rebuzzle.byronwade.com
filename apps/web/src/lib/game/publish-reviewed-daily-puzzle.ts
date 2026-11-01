@@ -3,10 +3,15 @@ import {
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
 import {
+  CANONICAL_BOARD_FAILED,
+  ensureTrustedCanonicalBoard,
+} from "@/ai/puzzle-agent/visual/canonical-board";
+import {
   type PublicationAssetCheck,
   verifyPublicationAssets,
 } from "@/ai/puzzle-agent/visual/publication-assets";
 import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
+import { logger } from "@/lib/logger";
 import type { DailyPuzzleCandidateRepository } from "./daily-puzzle-candidate-repository";
 import type { PersistDailyPuzzleInput } from "./persist-daily-puzzle";
 
@@ -18,9 +23,10 @@ export type DailyCandidatePublisherReviewService = {
 
 type PersistDailyPuzzleResult = { id: string; alreadyExisted: boolean };
 type PersistCandidate = (input: PersistDailyPuzzleInput) => Promise<PersistDailyPuzzleResult>;
-type VerifyAssets = (
-  visual: NonNullable<DailyPuzzleCandidate["payload"]["visual"]>
-) => Promise<PublicationAssetCheck>;
+type CandidateVisual = NonNullable<DailyPuzzleCandidate["payload"]["visual"]>;
+type VerifyAssets = (visual: CandidateVisual) => Promise<PublicationAssetCheck>;
+/** Returns the visual with a trusted canonical board; throws when none can be compiled. */
+type EnsureCanonicalBoard = (visual: CandidateVisual) => Promise<CandidateVisual>;
 
 function evidenceForCandidate(
   admission: PuzzlePlaytestCandidateAdmission,
@@ -68,10 +74,14 @@ export function createReviewedDailyPuzzlePublisher(input: {
   reviewService: DailyCandidatePublisherReviewService;
   persist: PersistCandidate;
   verifyAssets?: VerifyAssets;
+  ensureCanonicalBoard?: EnsureCanonicalBoard;
   now?: () => Date;
 }) {
   const now = input.now ?? (() => new Date());
   const verifyAssets = input.verifyAssets ?? verifyPublicationAssets;
+  // Annotated: without it the generic default widens `visual` to the schema input type.
+  const ensureCanonicalBoard: EnsureCanonicalBoard =
+    input.ensureCanonicalBoard ?? ensureTrustedCanonicalBoard;
 
   async function publishAssignedCandidate(candidate: DailyPuzzleCandidate, dateString: string) {
     if (!candidate.humanEvidence) {
@@ -81,12 +91,31 @@ export function createReviewedDailyPuzzlePublisher(input: {
     const payload = candidate.payload;
     // Candidates can wait weeks in review; artwork approved at generation may since have
     // been quarantined. Recheck now (fail closed) and keep the candidate for a later retry.
-    if (payload.visual) {
-      const assets = await verifyAssets(payload.visual);
+    let visual = payload.visual;
+    if (visual) {
+      const assets = await verifyAssets(visual);
       if (!assets.ok) {
         await input.repository.releaseAssignment({
           id: candidate.id,
           dateString,
+          updatedAt: now(),
+        });
+        return null;
+      }
+      // Older candidates were queued before boards were compiled; never publish without one.
+      // A board that cannot compile never will, so reject rather than release for retry.
+      try {
+        visual = await ensureCanonicalBoard(visual);
+      } catch (error) {
+        logger.warn("Daily candidate canonical board failed to compile at publish", {
+          generationKey: candidate.generationKey,
+          candidateId: candidate.id,
+          reason: CANONICAL_BOARD_FAILED,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        await input.repository.skip({
+          id: candidate.id,
+          reason: CANONICAL_BOARD_FAILED,
           updatedAt: now(),
         });
         return null;
@@ -96,6 +125,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
     try {
       persisted = await input.persist({
         ...payload,
+        visual,
         dateString,
         humanPlaytestAdmission: {
           policyVersion: candidate.policyVersion,
@@ -143,6 +173,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
 
     return {
       ...payload,
+      visual,
       id: persisted.id,
       puzzle: payload.puzzleDisplay,
       date: dateString,
@@ -242,6 +273,7 @@ export async function publishReviewedDailyPuzzle(input: {
   reviewService: DailyCandidatePublisherReviewService;
   persist: PersistCandidate;
   verifyAssets?: VerifyAssets;
+  ensureCanonicalBoard?: EnsureCanonicalBoard;
   now?: () => Date;
 }) {
   return createReviewedDailyPuzzlePublisher(input).publishForDate(input.dateString);
