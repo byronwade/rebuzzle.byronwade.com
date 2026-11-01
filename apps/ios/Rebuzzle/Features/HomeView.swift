@@ -74,10 +74,11 @@ struct HomeView: View {
     static func dateLabel(_ puzzleDate: String?) -> String {
         let format = Date.FormatStyle.dateTime.weekday(.wide).month(.abbreviated).day()
         guard let puzzleDate else { return Date().formatted(format) }
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.dateFormat = "yyyy-MM-dd"
-        guard let parsed = parser.date(from: puzzleDate) else { return puzzleDate }
+        // Local-calendar components, so the label never shifts a day across time zones.
+        let parts = puzzleDate.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+              let parsed = Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        else { return puzzleDate }
         return parsed.formatted(format)
     }
 }
@@ -102,13 +103,7 @@ struct TodayPuzzleCard: View {
                                     DifficultyBadge(difficulty: daily.puzzle.difficulty)
                                 }
                                 // A glance, not the playable board: same clue drawing, shrunk and inert.
-                                PuzzleBoard(puzzle: daily.puzzle)
-                                    .allowsHitTesting(false)
-                                    .scaleEffect(0.6)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 120)
-                                    .clipped()
-                                    .accessibilityHidden(true)
+                                BoardPreview(puzzle: daily.puzzle)
                                 Text(line)
                                     .font(Theme.font(14, weight: .medium))
                                     .foregroundStyle(status.isFinished ? Theme.reward : Theme.secondary)
@@ -118,8 +113,7 @@ struct TodayPuzzleCard: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Today’s puzzle, \(daily.puzzle.typeName). \(DifficultyTier.accessibilityLabel(difficulty: daily.puzzle.difficulty)). \(line)")
-                        .accessibilityHint(status.buttonTitle)
+                        .accessibilityLabel("Today’s puzzle, \(daily.puzzle.typeName). \(DifficultyTier.accessibilityLabel(difficulty: daily.puzzle.difficulty)). \(line). \(status.buttonTitle)")
                         .accessibilityIdentifier("homeTodayCard")
                         NavigationLink(value: RebuzzleRoute.daily) {
                             HStack {
@@ -128,7 +122,8 @@ struct TodayPuzzleCard: View {
                             }
                         }
                         .buttonStyle(CommitStyle())
-                        .accessibilityLabel(status.buttonTitle)
+                        // The card above is the single VoiceOver stop; this is its visual button.
+                        .accessibilityHidden(true)
                         .accessibilityIdentifier("homeTodayPlay")
                     }
                     .disabled(!canOpen)
@@ -158,7 +153,7 @@ struct ModeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: symbol)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(available ? Theme.accent : Theme.secondary)
                 .frame(width: 36, height: 36)
                 .background((available ? Theme.accent : Theme.secondary).opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
@@ -176,9 +171,30 @@ struct ModeCard: View {
             }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 120, maxHeight: .infinity, alignment: .topLeading)
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.ink.opacity(0.12), lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+/// A reliable 120pt glance at the board: laid out at a fixed natural height, then scaled to fit and clipped.
+private struct BoardPreview: View {
+    let puzzle: Puzzle
+    private let naturalHeight: CGFloat = 220
+    private let previewHeight: CGFloat = 120
+    var body: some View {
+        GeometryReader { proxy in
+            let scale = previewHeight / naturalHeight
+            PuzzleBoard(puzzle: puzzle)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+                .frame(width: proxy.size.width / scale, height: naturalHeight, alignment: .top)
+                .scaleEffect(scale, anchor: .topLeading)
+                .frame(width: proxy.size.width, height: previewHeight, alignment: .topLeading)
+                .clipped()
+        }
+        .frame(height: previewHeight)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
