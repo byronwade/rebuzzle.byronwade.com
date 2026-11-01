@@ -13,6 +13,7 @@ import {
 import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
 import { assertDailyChallenge } from "@/ai/puzzle-agent/daily-challenge";
 import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
+import { selectReserveWithCanonicalBoard } from "@/ai/puzzle-agent/reserve-canonical-board";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { CANONICAL_BOARD_FAILED } from "@/ai/puzzle-agent/visual/canonical-board";
 import { db } from "@/db";
@@ -111,7 +112,16 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
     return formatPuzzleFromDb(alreadyPublished, dateString);
   }
 
-  const selected = await selectMongoReservePuzzle({ dateString });
+  // Reserves ship the same checked board as reviewed dailies; one that cannot compile is skipped.
+  const selected = await selectReserveWithCanonicalBoard({
+    select: (excludeIds) => selectMongoReservePuzzle({ dateString, excludeIds }),
+    onSkip: (skip) =>
+      logger.warn("Reserve board failed to compile; skipping reserve", {
+        dateString,
+        reserveId: skip.reserveId,
+        error: skip.error,
+      }),
+  });
   if (selected.waivedNoveltyLimits?.length) {
     logger.warn("Reserve pick waived weekly novelty quotas", {
       dateString,
