@@ -14,6 +14,7 @@ import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
 import { assertDailyChallenge } from "@/ai/puzzle-agent/daily-challenge";
 import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
+import { CANONICAL_BOARD_FAILED } from "@/ai/puzzle-agent/visual/canonical-board";
 import { db } from "@/db";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import { formatPuzzleFromDb, getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
@@ -276,13 +277,18 @@ async function getOrGenerateDailyPuzzle(
     );
     const existingCandidate = await candidateRepository.findByGenerationKey(dateString);
     if (existingCandidate) {
-      const candidate =
-        existingCandidate.status === "reviewing" && !existingCandidate.playtestSubmittedAt
-          ? await candidateQueue.enqueue({
-              generationKey: dateString,
-              payload: existingCandidate.payload,
-            })
-          : existingCandidate;
+      // enqueue also recompiles a stored board that is missing, untrusted or failed to compile.
+      const retryable =
+        !existingCandidate.playtestSubmittedAt &&
+        (existingCandidate.status === "reviewing" ||
+          (existingCandidate.status === "rejected" &&
+            existingCandidate.rejectionReason === CANONICAL_BOARD_FAILED));
+      const candidate = retryable
+        ? await candidateQueue.enqueue({
+            generationKey: dateString,
+            payload: existingCandidate.payload,
+          })
+        : existingCandidate;
       return queuedCandidateResult(candidate, dateString);
     }
     await candidateQueue.retryPending(20);

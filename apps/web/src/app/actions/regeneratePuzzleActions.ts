@@ -174,6 +174,17 @@ export async function regenerateTodaysPuzzle(puzzleType?: string): Promise<{
       },
     });
 
+    if (candidate.status === "rejected") {
+      return {
+        success: false,
+        message: `Puzzle was not queued: candidate rejected (${candidate.rejectionReason ?? "unknown reason"}); today's published puzzle stays live.`,
+        candidate: {
+          id: candidate.id,
+          status: candidate.status,
+        },
+      };
+    }
+
     return {
       success: true,
       message: "Puzzle queued for blind human playtesting; today's published puzzle stays live.",

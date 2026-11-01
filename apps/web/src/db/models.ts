@@ -1419,6 +1419,8 @@ export interface DailyPuzzleCandidate {
   assignedDate?: string;
   publishedPuzzleId?: string;
   rejectionReason?: string;
+  /** Short diagnostic for the rejection, e.g. why the canonical board failed to compile. */
+  rejectionDetail?: string;
   createdAt: Date;
   updatedAt: Date;
 }

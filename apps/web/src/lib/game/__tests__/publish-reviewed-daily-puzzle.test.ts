@@ -119,6 +119,9 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
     async markPlaytestSubmissionFailed() {
       return null;
     },
+    async recordCanonicalBoard() {
+      return null;
+    },
     async markReady({ id, expectedStatusVersion, updatedAt, humanEvidence }) {
       const row = rows.find(
         (candidate) =>
