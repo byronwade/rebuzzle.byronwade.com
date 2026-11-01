@@ -29,9 +29,14 @@ import StoreKitTest
         app.launch()
         if extraArguments.contains("--ui-today-unavailable") {
             XCTAssertTrue(app.staticTexts["A puzzle worth waiting for"].waitForExistence(timeout: 15))
-        } else if !extraArguments.contains("--ui-expired-reset-manual") &&
-            !extraArguments.contains("--ui-score-locked") &&
-            !extraArguments.contains("--ui-late-solve") {
+        } else if extraArguments.contains("--ui-expired-reset-manual") {
+            openTodaysPuzzle(app, until: app.staticTexts["You found it."])
+        } else if extraArguments.contains("--ui-score-locked") {
+            openTodaysPuzzle(app, until: app.staticTexts["scoreLockedMessage"])
+        } else if extraArguments.contains("--ui-late-solve") {
+            openTodaysPuzzle(app, until: app.staticTexts["lateSolveMessage"])
+        } else {
+            openTodaysPuzzle(app)
             let submit = app.buttons["checkAnswer"]
             XCTAssertTrue(submit.waitForExistence(timeout: 15))
             XCTAssertTrue(waitForEnabled(submit, timeout: 15), "Wait for the restored daily session before interacting with the board.")
@@ -190,6 +195,7 @@ import StoreKitTest
         app = XCUIApplication()
         app.launchArguments = ["--ui-fixture", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
+        openTodaysPuzzle(app)
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 15))
         XCTAssertFalse(app.navigationBars["Your first puzzle"].exists)
 
@@ -233,7 +239,7 @@ import StoreKitTest
         launchFixture(extraArguments: ["--ui-today-unavailable"], freshInstall: true)
 
         XCTAssertTrue(app.buttons["Try again"].isHittable)
-        XCTAssertTrue(app.buttons["How to play"].exists)
+        XCTAssertFalse(app.buttons["homeTodayCard"].exists, "There is nothing to open until today's puzzle loads")
         XCTAssertFalse(app.navigationBars["Your first puzzle"].exists)
     }
 
@@ -547,7 +553,7 @@ import StoreKitTest
         XCTAssertFalse(app.navigationBars["Journal"].exists)
     }
 
-    func testIdentityChangeReturnsToTodayFromPushedJournal() {
+    func testIdentityChangeReturnsToTheHubFromPushedJournal() {
         launchFixture()
         submit("lighthouse")
         let journal = app.buttons["keepConnection"]
@@ -557,7 +563,7 @@ import StoreKitTest
 
         app.buttons["uiSimulateIdentityChange"].tap()
 
-        XCTAssertTrue(app.navigationBars["Rebuzzle"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["homeTodayCard"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(app.navigationBars["Journal"].exists)
     }
 

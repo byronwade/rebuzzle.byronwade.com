@@ -80,7 +80,7 @@ struct RootView: View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
             NavigationStack(path: $playPath) {
-                TodayView()
+                HomeView()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
                 .tint(Theme.accent)
@@ -115,17 +115,24 @@ struct RootView: View {
         }
         .animation(.easeOut(duration: 0.25), value: model.pendingUnlocks.first?.id)
         .onOpenURL { returnRouter.open($0) }
-        .onChange(of: model.player?.id) {
+        .onChange(of: model.player?.id) { old, _ in
+            // The first sign-in at launch is not an account change; resetting then would undo
+            // a `.daily` push from a notification, link or quick tap.
+            guard old != nil else { return }
             playPath = NavigationPath()
             journeyPath = NavigationPath()
             youPath = NavigationPath()
         }
-        .onChange(of: returnRouter.request) { _, request in
+        // `initial` also handles a notification or link that arrived before this view existed.
+        .onChange(of: returnRouter.request, initial: true) { _, request in
             guard let request else { return }
             let source = returnRouter.entrySource
             model.saveDraft()
             model.selectedTab = .play
-            playPath = NavigationPath()
+            // Notifications, links and shortcuts promise today's puzzle, so skip past the hub.
+            var path = NavigationPath()
+            path.append(RebuzzleRoute.daily)
+            playPath = path
             Task { @MainActor in
                 await model.load(entrySource: source)
                 if returnRouter.request == request { returnRouter.request = nil }

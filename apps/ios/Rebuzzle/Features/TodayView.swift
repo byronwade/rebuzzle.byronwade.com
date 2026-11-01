@@ -263,7 +263,8 @@ struct TodayView: View {
         .sheet(isPresented: $help, onDismiss: {
             hasSeenFirstSessionQuickStart = true
             quickStartUsesIntro = false
-        }) {
+        }) { [quickStartUsesIntro] in
+            // Captured so the body tracks it; read only inside this closure, a pushed screen showed stale state.
             HelpView(firstSession: quickStartUsesIntro)
         }
         .sheet(item: $study) { selection in

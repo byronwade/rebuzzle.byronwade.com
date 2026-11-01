@@ -30,6 +30,7 @@
 		6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */; };
 		792439E8303C75D4C1C8E68B /* Celebration.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBC36693865968AB36CE0625 /* Celebration.swift */; };
 		795EA28E446ACA22A9CAA2D2 /* PurchaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B1C0F63409D81A96104531 /* PurchaseStore.swift */; };
+		8BAFB7317EC93A180A213E16 /* HomeHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564BFFF299A99863E0988557 /* HomeHubUITests.swift */; };
 		8CCB749D5D325BFCC69EC63E /* VisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DD9980C84C32503F71017B /* VisualTests.swift */; };
 		8E4F18C24A3AAB1BDBB240AB /* RebuzzleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 61A388442626D26868384B67 /* RebuzzleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9141A57D46AF916172DCB152 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BC0F94C8457AB6612932A2 /* HomeView.swift */; };
@@ -42,6 +43,7 @@
 		AB38228E20708790BE02B519 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8A17876FA80DF4A73F0134 /* APIClient.swift */; };
 		B4935EE7599FD9BDDB47FD32 /* CanonicalBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */; };
 		BC0F558FDC9CF64D04711ACD /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A644188B1C600803AADBDAD /* SettingsView.swift */; };
+		BE13E9D59318EB04409996A2 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1044DCB8C7D82C804B875F /* UITestSupport.swift */; };
 		C2AB0C36CBA54484136565A0 /* ReturnTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008E8374FB9274C42DF329A0 /* ReturnTests.swift */; };
 		CA65ED7D4C1BB7A64798FCCF /* Rebuzzle.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EF86991A32908751C121291 /* Rebuzzle.storekit */; };
 		CC209AC39DA24712E5B0AC28 /* RebuzzleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9406EAD9DA7C76C0F7A95E02 /* RebuzzleApp.swift */; };
@@ -110,6 +112,7 @@
 		1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeGameView.swift; sourceTree = "<group>"; };
 		265BEFC14F6F5011653FD71E /* JourneyRewards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyRewards.swift; sourceTree = "<group>"; };
 		2DA288848438C453BD345991 /* SubmissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionTests.swift; sourceTree = "<group>"; };
+		2E1044DCB8C7D82C804B875F /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
 		344E3325BAE7E6F5430236CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		381326D131EE41A303CC232F /* Rebuzzle.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Rebuzzle.entitlements; sourceTree = "<group>"; };
 		38BC0F94C8457AB6612932A2 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -118,6 +121,7 @@
 		48F1C269FB5408DBE57C73AE /* DailyPuzzleWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPuzzleWidget.swift; sourceTree = "<group>"; };
 		4A8A17876FA80DF4A73F0134 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		51B971313B5E0CD6824192C1 /* CanonicalBoardFixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = CanonicalBoardFixture.json; sourceTree = "<group>"; };
+		564BFFF299A99863E0988557 /* HomeHubUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHubUITests.swift; sourceTree = "<group>"; };
 		5BCFB0E67A92A9F6D61433A4 /* EveReplyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveReplyTests.swift; sourceTree = "<group>"; };
 		5CE425F112F0C6729727D564 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
 		5EF86991A32908751C121291 /* Rebuzzle.storekit */ = {isa = PBXFileReference; path = Rebuzzle.storekit; sourceTree = "<group>"; };
@@ -309,6 +313,8 @@
 			children = (
 				83BA949188FB52AC793EB37F /* DailySolvePulseUITests.swift */,
 				C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */,
+				564BFFF299A99863E0988557 /* HomeHubUITests.swift */,
+				2E1044DCB8C7D82C804B875F /* UITestSupport.swift */,
 			);
 			path = RebuzzleUITests;
 			sourceTree = "<group>";
@@ -491,6 +497,8 @@
 			files = (
 				038CF360A8834FD318B53826 /* DailySolvePulseUITests.swift in Sources */,
 				204460933C36A26B4797190F /* GameplayUITests.swift in Sources */,
+				8BAFB7317EC93A180A213E16 /* HomeHubUITests.swift in Sources */,
+				BE13E9D59318EB04409996A2 /* UITestSupport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
