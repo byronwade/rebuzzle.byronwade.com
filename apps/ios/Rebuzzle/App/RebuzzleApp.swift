@@ -186,11 +186,19 @@ struct RootView: View {
     }
 
     #if DEBUG
-    /// `--preview-screen achievements|unlock` jumps straight to a screen for screenshots.
+    /// `--preview-screen home|daily|achievements|unlock` jumps straight to a screen for screenshots.
     private func openPreviewScreen() {
         let args = ProcessInfo.processInfo.arguments
         guard let index = args.firstIndex(of: "--preview-screen"), index + 1 < args.count else { return }
         switch args[index + 1] {
+        case "home":
+            model.selectedTab = .play
+            playPath = NavigationPath()
+        case "daily":
+            model.selectedTab = .play
+            var path = NavigationPath()
+            path.append(RebuzzleRoute.daily)
+            playPath = path
         case "achievements":
             model.selectedTab = .journey
             journeyPath.append(RebuzzleRoute.achievements)
