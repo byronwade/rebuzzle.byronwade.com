@@ -1879,7 +1879,7 @@ Expected: one commit per task (2–10) after the spec commit, and a clean tree.
 
 1. Merge and deploy.
 2. Run `cd apps/web && pnpm exec tsx --conditions=react-server scripts/backfill-canonical-boards.ts --dry-run` against production env and review `failures`.
-3. Run it again without `--dry-run`. Re-run until `scanned` is 0 (the limit is applied per collection).
+3. Run it again with `--apply` (writes happen only with that flag). Re-run until `scanned` is 0 (the limit is applied per collection).
 4. Cached dailies keep serving the board-less JSON until the `daily-puzzle` cache tag expires (`cacheLife("hours")`). Revalidate today's date after the run if it matters.
 
 ---

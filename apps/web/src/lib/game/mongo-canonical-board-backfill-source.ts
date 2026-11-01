@@ -6,8 +6,11 @@ import type {
   CanonicalBoardBackfillTarget,
 } from "./canonical-board-backfill";
 
-/** Queued = not yet published or rejected. Playtest snapshots are immutable and never touched. */
-const QUEUED_STATUSES: DailyPuzzleCandidate["status"][] = ["reviewing", "ready", "assigned"];
+/**
+ * Queued = not yet published or rejected. Playtest snapshots are immutable and never touched.
+ * Assigned rows are mid-publish; publish compiles a missing board itself, so leave them alone.
+ */
+const QUEUED_STATUSES: DailyPuzzleCandidate["status"][] = ["reviewing", "ready"];
 
 export function createMongoCanonicalBoardBackfillSource(): CanonicalBoardBackfillSource {
   return {
