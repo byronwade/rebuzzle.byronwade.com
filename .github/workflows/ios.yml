@@ -56,7 +56,7 @@ jobs:
             CODE_SIGN_IDENTITY=- test
       - name: Save test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-test-results
           path: ${{ runner.temp }}/RebuzzleTests.xcresult
