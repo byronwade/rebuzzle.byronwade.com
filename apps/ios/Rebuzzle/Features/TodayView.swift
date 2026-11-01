@@ -12,9 +12,7 @@ struct TodayView: View {
     @AppStorage("hasSeenFirstSessionQuickStart") private var hasSeenFirstSessionQuickStart = false
     @State private var study: PuzzleStudy?
     @State private var dailyShareRequest: DailyResultShareRequest?
-    @State private var continuedScoreLockedPuzzleID: String?
     @State private var showingExpiredReviewFor: String?
-    @State private var dismissedExpiredReviewID: String?
     @State private var hintFeedback = 0
     @State private var dailyThoughtEditor = false
     @FocusState private var answerFocused: Bool
@@ -123,7 +121,7 @@ struct TodayView: View {
                                 }
                             }
                         }
-                        if let review = model.game?.expiredReview, dismissedExpiredReviewID != review.puzzleId {
+                        if let review = model.game?.expiredReview, model.dismissedExpiredReviewID != review.puzzleId {
                             expiredReviewCard(review)
                         }
                     }.id("answerSection")
@@ -263,9 +261,7 @@ struct TodayView: View {
         }
         .refreshable { await model.load() }
         .onChange(of: model.daily?.puzzle.id) { _, _ in
-            continuedScoreLockedPuzzleID = nil
             showingExpiredReviewFor = nil
-            dismissedExpiredReviewID = nil
         }
         .onChange(of: model.canSaveDailyThought) { _, canSave in
             if !canSave { dailyThoughtEditor = false }
@@ -323,7 +319,7 @@ struct TodayView: View {
     }
     private var awaitingScoreLockDecision: Bool {
         guard let game = model.game else { return false }
-        return game.scoreLocked == true && game.phase == "score_locked" && continuedScoreLockedPuzzleID != game.puzzleId
+        return game.scoreLocked == true && game.phase == "score_locked" && model.continuedScoreLockedPuzzleID != game.puzzleId
     }
     private var scoreLockCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -342,7 +338,7 @@ struct TodayView: View {
             if awaitingScoreLockDecision {
                 HStack(spacing: 10) {
                     Button {
-                        if let puzzleID = model.game?.puzzleId { continuedScoreLockedPuzzleID = puzzleID }
+                        if let puzzleID = model.game?.puzzleId { model.continuedScoreLockedPuzzleID = puzzleID }
                         dismissAnswerKeyboard()
                     } label: {
                         Label("Keep solving", systemImage: "arrow.right")
@@ -397,7 +393,7 @@ struct TodayView: View {
                 }
                 Spacer(minLength: 0)
                 Button {
-                    dismissedExpiredReviewID = review.puzzleId
+                    model.dismissedExpiredReviewID = review.puzzleId
                     showingExpiredReviewFor = nil
                 } label: {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.secondary)

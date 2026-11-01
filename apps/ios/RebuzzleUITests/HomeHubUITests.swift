@@ -95,6 +95,23 @@ import XCTest
         XCTAssertTrue(app.descendants(matching: .any)["homeStreakChip"].firstMatch.waitForExistence(timeout: 10))
     }
 
+    /// Choosing to keep solving is a decision about the puzzle, not the screen, so it survives a trip back to the hub.
+    func testKeepSolvingSurvivesReturningToTheHub() {
+        launch(["--ui-score-locked"])
+        openTodaysPuzzle(app, until: app.staticTexts["scoreLockedMessage"])
+        let keepSolving = app.buttons["continueSolving"]
+        for _ in 0..<5 where !keepSolving.isHittable { app.swipeUp() }
+        keepSolving.tap()
+        let field = app.descendants(matching: .any)["answerField"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+
+        app.navigationBars["Today"].buttons.firstMatch.tap()
+        openTodaysPuzzle(app, until: app.staticTexts["scoreLockedMessage"])
+
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "Reopening the daily should keep the answer field")
+        XCTAssertFalse(keepSolving.exists, "Keep solving was already chosen for this puzzle")
+    }
+
     func testModeCardsOfferTheArchiveAndHoldRushAndEndlessForLater() {
         launch()
         let rush = app.buttons["homeModeRush"]

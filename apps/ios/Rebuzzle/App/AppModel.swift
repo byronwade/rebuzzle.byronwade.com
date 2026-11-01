@@ -72,6 +72,9 @@ enum JournalSyncStatus: Equatable {
     @ObservationIgnored private var dailyThoughtExpiryTask: Task<Void, Never>?
     @ObservationIgnored private let journalPlusEntitlementProvider: @MainActor () -> Bool
     var hintsShown = 0
+    /// Per-puzzle choices on the daily screen, kept here so popping back to the hub doesn't undo them.
+    var continuedScoreLockedPuzzleID: String?
+    var dismissedExpiredReviewID: String?
     private(set) var nudgeReveals: [DailyNudgeReveal] = []
     let eve: EveReplyStore
     let purchases: PurchaseStore
@@ -139,7 +142,7 @@ enum JournalSyncStatus: Equatable {
                 clearDailyThought(for: daily)
                 eve.reset()
                 game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; started = Date()
-                completedStreakRefreshState = .idle
+                completedStreakRefreshState = .idle; continuedScoreLockedPuzzleID = nil; dismissedExpiredReviewID = nil
             }
             daily = response
             try? storage.save(response, key: "daily-cache")
@@ -172,7 +175,7 @@ enum JournalSyncStatus: Equatable {
                         generation += 1
                         dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
                         eve.reset(); game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; stats = nil
-                        completedStreakRefreshState = .idle
+                        completedStreakRefreshState = .idle; continuedScoreLockedPuzzleID = nil; dismissedExpiredReviewID = nil
                     }
                     player = user
                     loadJourneyCache(for: user.id)
@@ -200,7 +203,7 @@ enum JournalSyncStatus: Equatable {
             generation += 1
             dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
             eve.reset(); game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; stats = nil
-            completedStreakRefreshState = .idle
+            completedStreakRefreshState = .idle; continuedScoreLockedPuzzleID = nil; dismissedExpiredReviewID = nil
         }
         api.token = token; player = user
         loadJourneyCache(for: user.id)
@@ -668,7 +671,7 @@ enum JournalSyncStatus: Equatable {
             dailyThought = ""; dailyThoughtAvailable = false
             eve.reset()
             generation += 1; api.token = token; player = user; game = nil; draft = ""; stats = nil; hintsShown = 0; nudgeReveals = []; sessionReady = false
-            completedStreakRefreshState = .idle
+            completedStreakRefreshState = .idle; continuedScoreLockedPuzzleID = nil; dismissedExpiredReviewID = nil
             if identityChanged { started = Date() }
             loadJourneyCache(for: user.id)
             journal = Journal(); journalWritable = false
@@ -743,7 +746,7 @@ enum JournalSyncStatus: Equatable {
         try credentials.write(nil, key: "token")
         eve.reset()
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
-        completedStreakRefreshState = .idle
+        completedStreakRefreshState = .idle; continuedScoreLockedPuzzleID = nil; dismissedExpiredReviewID = nil
         journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; pendingUnlocks = []; journeySyncError = nil; journeySyncing = false
         draft = ""; dailyThought = ""; dailyThoughtAvailable = false; journal = Journal(); journalSyncCheckpoint = JournalSyncCheckpoint(); journalSyncStatus = .onDevice; journalHistoryComplete = true; journalWritable = false; hintsShown = 0; nudgeReveals = []; sessionReady = false; error = nil
     }
