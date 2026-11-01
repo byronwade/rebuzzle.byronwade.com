@@ -95,6 +95,18 @@ import XCTest
         XCTAssertTrue(app.descendants(matching: .any)["homeStreakChip"].firstMatch.waitForExistence(timeout: 10))
     }
 
+    func testJourneyPlayButtonOpensTodaysPuzzle() {
+        launch()
+        XCTAssertTrue(app.buttons["homeTodayCard"].waitForExistence(timeout: 15))
+        XCTAssertTrue(waitForEnabled(app.buttons["homeTodayCard"], timeout: 15))
+        app.tabBars.buttons["Journey"].tap()
+        let play = app.buttons["Play today’s puzzle"]
+        XCTAssertTrue(play.waitForExistence(timeout: 10))
+        for _ in 0..<6 where !play.isHittable { app.swipeUp() }
+        play.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["answerField"].firstMatch.waitForExistence(timeout: 15), "The Journey button promises the puzzle, not the hub")
+    }
+
     /// The daily loaded but the session did not: say so and offer a retry, never a fresh "not started" card.
     func testSessionFailureWithALoadedDailyShowsTheErrorNotAFreshStart() {
         launch(["--ui-session-unavailable"])
