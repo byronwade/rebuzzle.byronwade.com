@@ -8,7 +8,7 @@ import {
   MAX_CANONICAL_BOARD_HEIGHT,
   validateCanonicalBoard,
 } from "./canonical-contract";
-import { type PuzzleVisual, PuzzleVisualSchema } from "./composition";
+import { type PuzzleVisualInput, PuzzleVisualSchema } from "./composition";
 import { layoutLayersLocked } from "./layout-plan";
 import {
   getPuzzleBoardRecognitionProfile,
@@ -19,7 +19,7 @@ import { sanitizePictogramSvg } from "./sanitize-svg";
 
 const hash = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
 /** Never trusts incoming artifacts. Compile only supported, hydrated source layers. */
-export async function compileCanonicalBoard(input: PuzzleVisual): Promise<CanonicalBoard> {
+export async function compileCanonicalBoard(input: PuzzleVisualInput): Promise<CanonicalBoard> {
   const { canonicalBoard: _untrusted, ...source } = input;
   const visual = PuzzleVisualSchema.parse(source);
   if (
@@ -106,4 +106,38 @@ export async function compileCanonicalBoard(input: PuzzleVisual): Promise<Canoni
     await validateCanonicalBoard(canonicalBoardForProfile(board, profile.id));
   }
   return board;
+}
+
+/** Stable reason recorded when a candidate or reserve cannot produce its checked board. */
+export const CANONICAL_BOARD_FAILED = "canonical-board-failed";
+
+/** Fingerprint of the hydrated source a canonical board must have been compiled from. */
+export function canonicalSourceFingerprint(input: PuzzleVisualInput): string {
+  const { canonicalBoard: _untrusted, ...source } = input;
+  return hash(JSON.stringify(PuzzleVisualSchema.parse(source)));
+}
+
+/** True only for an intact, all-profile board compiled from exactly this source. */
+export async function hasTrustedCanonicalBoard(input: PuzzleVisualInput): Promise<boolean> {
+  const board = input.canonicalBoard;
+  if (!board) return false;
+  try {
+    for (const profile of PUZZLE_BOARD_RECOGNITION_PROFILES) {
+      if (profile.id !== "desktop-768" && !board.profileVariants?.[profile.id]) return false;
+      await validateCanonicalBoard(canonicalBoardForProfile(board, profile.id));
+    }
+    return board.sourceFingerprint === canonicalSourceFingerprint(input);
+  } catch {
+    return false;
+  }
+}
+
+/** Keep a trusted board; otherwise compile a fresh one. Throws when the source cannot compile. */
+export async function ensureTrustedCanonicalBoard<T extends PuzzleVisualInput>(
+  visual: T
+): Promise<T & { canonicalBoard: CanonicalBoard }> {
+  if (await hasTrustedCanonicalBoard(visual)) {
+    return visual as T & { canonicalBoard: CanonicalBoard };
+  }
+  return { ...visual, canonicalBoard: await compileCanonicalBoard(visual) };
 }

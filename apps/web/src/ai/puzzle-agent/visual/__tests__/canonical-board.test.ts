@@ -118,3 +118,33 @@ test("legacy canonical boards without profile rasters use the shared responsive 
     expected.map((profile) => Buffer.from(profile.pixels))
   );
 }, 30_000);
+
+test("trusts an intact board compiled from the same source and recompiles stale ones", async () => {
+  const board = await compiler.compileCanonicalBoard(visual);
+  expect(compiler.canonicalSourceFingerprint(visual)).toBe(board.sourceFingerprint);
+
+  const boarded = { ...visual, canonicalBoard: board };
+  await expect(compiler.hasTrustedCanonicalBoard(boarded)).resolves.toBe(true);
+  await expect(compiler.ensureTrustedCanonicalBoard(boarded)).resolves.toBe(boarded);
+
+  const stale = { ...visual, caption: "Different", canonicalBoard: board };
+  await expect(compiler.hasTrustedCanonicalBoard(stale)).resolves.toBe(false);
+  const refreshed = await compiler.ensureTrustedCanonicalBoard(stale);
+  expect(refreshed.canonicalBoard.sourceFingerprint).toBe(
+    compiler.canonicalSourceFingerprint(stale)
+  );
+  expect(refreshed.canonicalBoard.sha256).not.toBe(board.sha256);
+
+  const legacy = { ...visual, canonicalBoard: { ...board, profileVariants: undefined } };
+  await expect(compiler.hasTrustedCanonicalBoard(legacy)).resolves.toBe(false);
+  const tampered = { ...visual, canonicalBoard: { ...board, sha256: "0".repeat(64) } };
+  await expect(compiler.hasTrustedCanonicalBoard(tampered)).resolves.toBe(false);
+  await expect(compiler.hasTrustedCanonicalBoard(visual)).resolves.toBe(false);
+}, 30_000);
+
+test("ensureTrustedCanonicalBoard fails closed when the source cannot compile", async () => {
+  expect(compiler.CANONICAL_BOARD_FAILED).toBe("canonical-board-failed");
+  await expect(
+    compiler.ensureTrustedCanonicalBoard({ ...visual, mode: "unicode" })
+  ).rejects.toThrow();
+});
