@@ -83,7 +83,7 @@ struct HomeView: View {
     }
 }
 
-/// Today's daily at a glance. The card body and its button both push the daily screen.
+/// Today's daily at a glance. The whole card, button included, pushes the daily screen.
 struct TodayPuzzleCard: View {
     @Environment(AppModel.self) private var model
     var body: some View {
@@ -100,6 +100,7 @@ struct TodayPuzzleCard: View {
                         : "Loading your progress…"
                     let summary = "Today’s puzzle, \(daily.puzzle.typeName). \(DifficultyTier.accessibilityLabel(difficulty: daily.puzzle.difficulty))."
                     VStack(alignment: .leading, spacing: 14) {
+                        // One link for the whole card, so the body and its button can't push the daily twice.
                         NavigationLink(value: RebuzzleRoute.daily) {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -119,7 +120,7 @@ struct TodayPuzzleCard: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(TodayCardLinkStyle(buttonTitle: sessionError == nil ? status.buttonTitle : nil, loading: !canOpen))
                         .accessibilityLabel(sessionError != nil ? summary : canOpen ? "\(summary) \(line). \(status.buttonTitle)" : "\(summary) \(line)")
                         .accessibilityIdentifier("homeTodayCard")
                         if let sessionError {
@@ -127,16 +128,6 @@ struct TodayPuzzleCard: View {
                             Button("Try again") { Task { await model.load() } }
                                 .buttonStyle(CommitStyle())
                                 .accessibilityIdentifier("homeTodayRetry")
-                        } else {
-                            NavigationLink(value: RebuzzleRoute.daily) {
-                                HStack {
-                                    if canOpen { Text(status.buttonTitle); Image(systemName: "arrow.right") } else { ProgressView().tint(Theme.canvas) }
-                                }
-                            }
-                            .buttonStyle(CommitStyle())
-                            // The card above is the single VoiceOver stop; this is its visual button.
-                            .accessibilityHidden(true)
-                            .accessibilityIdentifier("homeTodayPlay")
                         }
                     }
                     .disabled(!canOpen)
@@ -153,6 +144,23 @@ struct TodayPuzzleCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.ink.opacity(0.14), lineWidth: 1))
+    }
+}
+
+/// The card's link: its content, then the visual button that shares its tap and pressed state.
+private struct TodayCardLinkStyle: ButtonStyle {
+    let buttonTitle: String?
+    let loading: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            configuration.label
+            if let buttonTitle {
+                HStack {
+                    if loading { ProgressView().tint(Theme.canvas) } else { Text(buttonTitle); Image(systemName: "arrow.right") }
+                }
+                .modifier(CommitLook(pressed: configuration.isPressed))
+            }
+        }
     }
 }
 

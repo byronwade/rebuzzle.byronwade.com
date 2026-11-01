@@ -95,6 +95,19 @@ import XCTest
         XCTAssertTrue(app.descendants(matching: .any)["homeStreakChip"].firstMatch.waitForExistence(timeout: 10))
     }
 
+    /// The CTA is the card's own button, not a second link: tapping it pushes the daily once.
+    func testCardButtonOpensTodaysPuzzleOnce() {
+        launch()
+        let card = app.buttons["homeTodayCard"]
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        XCTAssertTrue(waitForEnabled(card, timeout: 15))
+        XCTAssertFalse(app.buttons["homeTodayPlay"].exists, "The card is the only button")
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)).tap()
+        XCTAssertTrue(app.descendants(matching: .any)["answerField"].firstMatch.waitForExistence(timeout: 15))
+        app.navigationBars["Today"].buttons.firstMatch.tap()
+        XCTAssertTrue(card.waitForExistence(timeout: 5), "One back tap returns to the hub")
+    }
+
     func testJourneyPlayButtonOpensTodaysPuzzle() {
         launch()
         XCTAssertTrue(app.buttons["homeTodayCard"].waitForExistence(timeout: 15))
