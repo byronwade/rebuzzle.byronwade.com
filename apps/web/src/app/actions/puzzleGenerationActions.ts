@@ -12,7 +12,11 @@ import {
 } from "@/ai/learning";
 import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
 import { assertDailyChallenge } from "@/ai/puzzle-agent/daily-challenge";
-import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
+import {
+  loadMongoReserveArchive,
+  type MongoReserveArchive,
+  selectMongoReservePuzzle,
+} from "@/ai/puzzle-agent/mongo-reserve-puzzles";
 import { selectReserveWithCanonicalBoard } from "@/ai/puzzle-agent/reserve-canonical-board";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { CANONICAL_BOARD_FAILED } from "@/ai/puzzle-agent/visual/canonical-board";
@@ -113,8 +117,13 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
   }
 
   // Reserves ship the same checked board as reviewed dailies; one that cannot compile is skipped.
+  // Load the archive once; a retry after a failed board reuses the same snapshot.
+  let archive: Promise<MongoReserveArchive> | undefined;
   const selected = await selectReserveWithCanonicalBoard({
-    select: (excludeIds) => selectMongoReservePuzzle({ dateString, excludeIds }),
+    select: (excludeIds) => {
+      archive ??= loadMongoReserveArchive();
+      return selectMongoReservePuzzle({ dateString, excludeIds, archive });
+    },
     onSkip: (skip) =>
       logger.warn("Reserve board failed to compile; skipping reserve", {
         dateString,

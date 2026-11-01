@@ -1,6 +1,9 @@
 import { DEMANDING_RESERVE_PUZZLES } from "../demanding-reserve-puzzles";
 import { normalizeAnswerKey } from "../quality";
-import { selectReserveWithCanonicalBoard } from "../reserve-canonical-board";
+import {
+  resetReserveBoardFailureCacheForTests,
+  selectReserveWithCanonicalBoard,
+} from "../reserve-canonical-board";
 import { ReservePuzzleExhaustedError, selectReservePuzzle } from "../reserve-puzzles";
 import type { CanonicalBoard } from "../visual/canonical-contract";
 
@@ -26,6 +29,7 @@ const select = jest.fn((excludeIds: ReadonlySet<string>) =>
 describe("reserve canonical boards", () => {
   beforeEach(() => {
     select.mockClear();
+    resetReserveBoardFailureCacheForTests();
   });
 
   it("attaches the compiled board to the selected reserve", async () => {
@@ -107,5 +111,24 @@ describe("reserve canonical boards", () => {
       })
     ).rejects.toBeInstanceOf(ReservePuzzleExhaustedError);
     expect(compileBoard).toHaveBeenCalledTimes(1);
+  });
+
+  it("remembers a failed reserve so a later request does not compile it again", async () => {
+    const failing = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("Unsupported canonical pictogram"))
+      .mockResolvedValue(board);
+    const firstCall = await selectReserveWithCanonicalBoard({ select, compileBoard: failing });
+    const failedId = firstCall.skippedReserves[0]?.reserveId;
+    expect(failedId).toBeDefined();
+    select.mockClear();
+
+    const compileBoard = jest.fn().mockResolvedValue(board);
+    const secondCall = await selectReserveWithCanonicalBoard({ select, compileBoard });
+
+    expect(secondCall.puzzle.id).not.toBe(failedId);
+    expect(secondCall.skippedReserves).toEqual([]);
+    expect(compileBoard).toHaveBeenCalledTimes(1);
+    expect(select.mock.calls[0]?.[0].has(failedId as string)).toBe(true);
   });
 });

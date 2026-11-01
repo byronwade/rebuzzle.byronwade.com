@@ -19,6 +19,7 @@ jest.mock("@/ai/puzzle-agent/daily-challenge", () => ({
   assertDailyChallenge: jest.fn(),
 }));
 jest.mock("@/ai/puzzle-agent/mongo-reserve-puzzles", () => ({
+  loadMongoReserveArchive: jest.fn(),
   selectMongoReservePuzzle: jest.fn(),
 }));
 jest.mock("@/db", () => ({ db: { puzzleOps: { findByDate: mockFindByDate } } }));
