@@ -235,12 +235,25 @@ import StoreKitTest
         XCTAssertTrue(checkAnswer.isHittable)
     }
 
-    func testFirstSessionQuickStartWaitsForDailyAvailability() {
+    /// The fixture keeps today's puzzle unavailable for the whole run, so this checks the hub's failed state only.
+    /// The quick start lives on the daily screen, which the hub cannot open without a puzzle.
+    func testFirstSessionHubShowsUnavailableNoticeWithoutQuickStart() {
         launchFixture(extraArguments: ["--ui-today-unavailable"], freshInstall: true)
 
-        XCTAssertTrue(app.buttons["Try again"].isHittable)
+        let notice = app.staticTexts["A puzzle worth waiting for"]
+        let tryAgain = app.buttons["Try again"]
+        XCTAssertTrue(notice.exists)
+        XCTAssertTrue(tryAgain.isHittable)
         XCTAssertFalse(app.buttons["homeTodayCard"].exists, "There is nothing to open until today's puzzle loads")
-        XCTAssertFalse(app.navigationBars["Your first puzzle"].exists)
+        XCTAssertFalse(app.navigationBars["Today"].exists, "The Play tab should stay on the hub")
+        XCTAssertFalse(app.navigationBars["Your first puzzle"].waitForExistence(timeout: 2),
+                       "A first-time player should not get the quick start before a puzzle exists")
+
+        tryAgain.tap()
+        XCTAssertTrue(notice.waitForExistence(timeout: 15), "A retry that still fails should keep the notice")
+        XCTAssertTrue(tryAgain.isHittable)
+        XCTAssertFalse(app.buttons["homeTodayCard"].exists)
+        XCTAssertFalse(app.navigationBars["Your first puzzle"].waitForExistence(timeout: 2))
     }
 
     func testEveNudgesBecomeConversationTurnsAndRemainAnswerBlind() {
