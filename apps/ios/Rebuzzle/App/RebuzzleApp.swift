@@ -54,6 +54,8 @@ private struct ApplicationView: View {
 enum AppTab: Hashable { case play, journey, you }
 
 enum RebuzzleRoute: Hashable {
+    /// Today's puzzle, pushed from the Play hub.
+    case daily
     case journal
     case plus(source: PlusOfferSource)
     case reminder
@@ -196,6 +198,8 @@ struct RootView: View {
     @ViewBuilder
     private func destination(for route: RebuzzleRoute) -> some View {
         switch route {
+        case .daily:
+            TodayView()
         case .journal:
             JournalView()
         case let .plus(source):
