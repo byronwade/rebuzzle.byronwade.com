@@ -8,6 +8,7 @@ import {
   type CanonicalBoardBackfillSource,
   type CanonicalBoardBackfillTarget,
   createCanonicalBoardBackfill,
+  parseCanonicalBoardBackfillArgs,
 } from "../canonical-board-backfill";
 
 const composed: PuzzleVisual = {
@@ -182,5 +183,28 @@ describe("canonical board backfill", () => {
     await backfill.run({ dryRun: true, limit: 1_000_000 });
 
     expect(listMissingBoards.mock.calls).toEqual([[500], [1], [5_000]]);
+  });
+});
+
+describe("parseCanonicalBoardBackfillArgs", () => {
+  it("is a dry run unless --apply is passed", () => {
+    expect(parseCanonicalBoardBackfillArgs([])).toEqual({ dryRun: true });
+    expect(parseCanonicalBoardBackfillArgs(["--dry-run"])).toEqual({ dryRun: true });
+    expect(parseCanonicalBoardBackfillArgs(["--apply"])).toEqual({ dryRun: false });
+  });
+
+  it("rejects --apply together with --dry-run", () => {
+    expect(() => parseCanonicalBoardBackfillArgs(["--apply", "--dry-run"])).toThrow(
+      "Pass either --apply or --dry-run, not both"
+    );
+  });
+
+  it("parses --limit and rejects a non-numeric one", () => {
+    expect(parseCanonicalBoardBackfillArgs(["--apply", "--limit=25"])).toEqual({
+      dryRun: false,
+      limit: 25,
+    });
+    expect(() => parseCanonicalBoardBackfillArgs(["--limit=abc"])).toThrow("Invalid limit value");
+    expect(() => parseCanonicalBoardBackfillArgs(["--limit="])).toThrow("Invalid limit value");
   });
 });

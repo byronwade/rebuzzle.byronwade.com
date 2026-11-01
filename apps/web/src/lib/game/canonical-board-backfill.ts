@@ -115,3 +115,24 @@ export function createCanonicalBoardBackfill(
     },
   };
 }
+
+export type CanonicalBoardBackfillArgs = { dryRun: boolean; limit?: number };
+
+/**
+ * CLI flags, following the repo's backfill convention: writes happen only with `--apply`.
+ * No flag, or the explicit alias `--dry-run`, is a dry run; both together is an error.
+ */
+export function parseCanonicalBoardBackfillArgs(
+  argv: readonly string[]
+): CanonicalBoardBackfillArgs {
+  const apply = argv.includes("--apply");
+  if (apply && argv.includes("--dry-run")) {
+    throw new Error("Pass either --apply or --dry-run, not both");
+  }
+  const prefix = "--limit=";
+  const raw = argv.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
+  if (raw === undefined) return { dryRun: !apply };
+  const limit = Number(raw);
+  if (raw === "" || !Number.isFinite(limit)) throw new Error("Invalid limit value");
+  return { dryRun: !apply, limit };
+}
