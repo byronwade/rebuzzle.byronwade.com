@@ -21,6 +21,7 @@ struct TodayView: View {
     @State private var wrongGuessShakes: CGFloat = 0
     @State private var guessHapticEvent: GuessHapticEvent?
     @State private var guessRevealEvent: GuessTurnRevealEvent?
+    @State private var answerSubmissionInFlight = false
     var body: some View {
         @Bindable var model = model
         ScrollViewReader { scroll in
@@ -331,11 +332,14 @@ struct TodayView: View {
         withAnimation(.linear(duration: 0.4)) { wrongGuessShakes += 1 }
     }
     private func submitAnswer() {
+        guard !answerSubmissionInFlight else { return }
+        answerSubmissionInFlight = true
         dismissAnswerKeyboard()
         let puzzleID = model.daily?.puzzle.id
         let puzzleDate = model.daily?.puzzleDate
         let attemptCount = model.game?.attempts.count ?? 0
         Task { @MainActor in
+            defer { answerSubmissionInFlight = false }
             let revealEvent: GuessTurnRevealEvent?
             if let puzzleID, let puzzleDate {
                 revealEvent = GuessTurnRevealEvent(
