@@ -27,7 +27,27 @@ struct DailyWidgetView: View {
     private var accent: Color { Color(red: 0.22, green: 0.38, blue: 0.88) }
     var body: some View {
         Group {
-            if family == .accessoryRectangular {
+            if family == .accessoryInline {
+                HStack(spacing: 5) {
+                    Label("Daily", systemImage: "puzzlepiece.fill")
+                    Text(timerInterval: entry.date...entry.reset, countsDown: true)
+                        .monospacedDigit()
+                }
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            } else if family == .accessoryCircular {
+                VStack(spacing: 2) {
+                    Image(systemName: "puzzlepiece.fill")
+                        .font(.caption2)
+                        .widgetAccentable()
+                    Text(timerInterval: entry.date...entry.reset, countsDown: true)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                }
+            } else if family == .accessoryRectangular {
                 VStack(alignment: .leading, spacing: 3) {
                     Label("Rebuzzle · daily reset", systemImage: "puzzlepiece.fill").font(.caption.weight(.semibold))
                     Text(timerInterval: entry.date...entry.reset, countsDown: true).font(.title2.weight(.semibold)).monospacedDigit()
@@ -56,6 +76,6 @@ struct DailyWidgetView: View {
         StaticConfiguration(kind: "RebuzzleDaily", provider: DailyProvider()) { DailyWidgetView(entry: $0) }
             .configurationDisplayName("Your daily aha")
             .description("Count down to the local midnight reset. Tap to open today’s puzzle.")
-            .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+            .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
     }
 }
