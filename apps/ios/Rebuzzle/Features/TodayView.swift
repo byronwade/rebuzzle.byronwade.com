@@ -823,6 +823,15 @@ struct ResultView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("lateSolveMessage")
                     }
+                    NavigationLink(value: RebuzzleRoute.archive) {
+                        Label("Find another puzzle", systemImage: "arrow.right")
+                            .font(Theme.font(14, weight: .semibold))
+                            .frame(minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.accent)
+                    .accessibilityIdentifier("findAnotherPuzzle")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
