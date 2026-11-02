@@ -316,14 +316,22 @@ struct TodayView: View {
     private func submitAnswer() {
         dismissAnswerKeyboard()
         let puzzleID = model.daily?.puzzle.id
+        let puzzleDate = model.daily?.puzzleDate
         let attemptCount = model.game?.attempts.count ?? 0
         Task { @MainActor in
             await model.submit()
-            guard let puzzleID, model.daily?.puzzle.id == puzzleID,
+            guard let puzzleID, let puzzleDate,
+                  model.daily?.puzzle.id == puzzleID,
+                  model.daily?.puzzleDate == puzzleDate,
                   model.game?.attempts.count == attemptCount + 1,
                   let guess = model.game?.attempts.last,
                   !guess.correct, let tier = guess.reaction?.tier else { return }
-            guessHapticEvent = GuessHapticEvent(attemptNumber: guess.attemptNumber, tier: tier)
+            guessHapticEvent = GuessHapticEvent(
+                puzzleID: puzzleID,
+                puzzleDate: puzzleDate,
+                attemptNumber: guess.attemptNumber,
+                tier: tier
+            )
         }
     }
     private func dismissAnswerKeyboard(forceResign: Bool = false) {
@@ -1133,6 +1141,8 @@ struct GuessTurnView: View {
 }
 
 private struct GuessHapticEvent: Equatable {
+    let puzzleID: String
+    let puzzleDate: String
     let attemptNumber: Int
     let tier: String
 }
