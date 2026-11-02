@@ -54,6 +54,7 @@
 		ED8FF5B3477B1363C51B0574 /* RuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */; };
 		F41ED06415803FF438E58923 /* DailyPuzzleWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F1C269FB5408DBE57C73AE /* DailyPuzzleWidget.swift */; };
 		FAB53A6F032B4E120AB54893 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D63BEA008263AB548D99CB36 /* Theme.swift */; };
+		FCFD9A71E831B50E3548C99F /* DailyPuzzleCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0416FEC9DA31DBEA9C79D /* DailyPuzzleCountdown.swift */; };
 		FFC955A3CB1A30FB514AB254 /* Inter.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B0296681F6B145702B518962 /* Inter.ttf */; };
 /* End PBXBuildFile section */
 
@@ -130,6 +131,7 @@
 		8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalView.swift; sourceTree = "<group>"; };
 		910D2915D2B873A8D5015B48 /* RebuzzleTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RebuzzleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9406EAD9DA7C76C0F7A95E02 /* RebuzzleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RebuzzleApp.swift; sourceTree = "<group>"; };
+		9DE0416FEC9DA31DBEA9C79D /* DailyPuzzleCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPuzzleCountdown.swift; sourceTree = "<group>"; };
 		A7A1F67C65BA8FD5FAB904F8 /* Rebuzzle.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Rebuzzle.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A94703AB1F1CBE45703270A4 /* DailySolveDistributionAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySolveDistributionAPITests.swift; sourceTree = "<group>"; };
 		ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
@@ -283,6 +285,7 @@
 			children = (
 				DCAF7BA641A3CD33255264BC /* ArchiveView.swift */,
 				F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */,
+				9DE0416FEC9DA31DBEA9C79D /* DailyPuzzleCountdown.swift */,
 				129549FD225212AF76197AF5 /* DailyResultShareCard.swift */,
 				003E39205E6D983A152AF798 /* DailyReturnCard.swift */,
 				FB92C87F8FB0074EC6E0CD5D /* DailySolvePulseCard.swift */,
@@ -523,6 +526,7 @@
 				B4935EE7599FD9BDDB47FD32 /* CanonicalBoardView.swift in Sources */,
 				792439E8303C75D4C1C8E68B /* Celebration.swift in Sources */,
 				008EE794056149197CEC05D6 /* CredentialStore.swift in Sources */,
+				FCFD9A71E831B50E3548C99F /* DailyPuzzleCountdown.swift in Sources */,
 				665993D18AE71DA497CAE5EF /* DailyResultShareCard.swift in Sources */,
 				D6CC2EB0E2F84527E662812A /* DailyReturnCard.swift in Sources */,
 				9E6F16F91482297B6FE9658A /* DailySolvePulseCard.swift in Sources */,
