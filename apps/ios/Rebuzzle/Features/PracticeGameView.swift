@@ -2,6 +2,18 @@ import SwiftUI
 import UIKit
 import RebuzzleCore
 
+private struct PracticeTurnRevealEvent: Equatable {
+    let puzzleID: String
+    let roundToken: String?
+    let attemptNumber: Int
+
+    func matches(_ guess: PracticeGuess, session: PracticeSession) -> Bool {
+        puzzleID == session.puzzleId &&
+            roundToken == session.roundToken &&
+            attemptNumber == guess.attemptNumber
+    }
+}
+
 @MainActor struct PracticeGameView: View {
     let puzzle: Puzzle
     private let api: APIClient
@@ -18,6 +30,7 @@ import RebuzzleCore
     /// Set when the server no longer recognizes this round's token, e.g. after an accepted guess
     /// whose response was lost. Practice is unscored, so a fresh round is always safe.
     @State private var roundOutOfSync = false
+    @State private var practiceRevealEvent: PracticeTurnRevealEvent?
     @FocusState private var answerFocused: Bool
 
     init(puzzle: Puzzle, api: APIClient, storage: LocalStore, accountID: String, isFreeSample: Bool = false) {
@@ -71,7 +84,12 @@ import RebuzzleCore
                             .font(Theme.font(13, weight: .medium)).monospacedDigit().foregroundStyle(Theme.secondary)
                             .accessibilityIdentifier("practiceAttemptsRemaining")
                     }
-                    ForEach(session.guesses) { practiceGuessCard($0) }
+                    ForEach(session.guesses) { guess in
+                        practiceGuessCard(guess)
+                            .confirmedGuessReveal(
+                                isNewlyConfirmed: practiceRevealEvent?.matches(guess, session: session) == true
+                            )
+                    }
                     VStack(alignment: .leading, spacing: 12) {
                         TextField("Your answer", text: $answerDraft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
                             .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -325,12 +343,17 @@ import RebuzzleCore
                 roundToken: updated.roundToken
             )
             updated = session
-            guard updated.receive(response: result) else {
+            guard updated.receive(response: result), let confirmedGuess = updated.guesses.last else {
                 updated.cancelPendingSubmission()
                 session = updated
                 error = "That practice response didn’t match this round. Please try again."
                 return
             }
+            practiceRevealEvent = PracticeTurnRevealEvent(
+                puzzleID: updated.puzzleId,
+                roundToken: updated.roundToken,
+                attemptNumber: confirmedGuess.attemptNumber
+            )
             session = updated
             answerDraft = ""
             practiceEve.request(guess: Guess(
@@ -374,6 +397,7 @@ import RebuzzleCore
     private func restartRound() {
         var updated = session
         updated.restartRound()
+        practiceRevealEvent = nil
         session = updated
         answerDraft = ""
         error = nil

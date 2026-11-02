@@ -1107,12 +1107,6 @@ struct GuessTurnView: View {
     let latest: Bool
     let revealsResult: Bool
     let onRetry: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var revealComplete = false
-
-    private var isRevealPending: Bool { revealsResult && !reduceMotion && !revealComplete }
-    private var revealOpacity: Double { isRevealPending ? 0 : 1 }
-    private var revealOffset: CGFloat { isRevealPending ? 12 : 0 }
 
     private var title: String {
         switch guess.reaction?.tier {
@@ -1194,19 +1188,7 @@ struct GuessTurnView: View {
                 }
             }
         }
-        .opacity(revealOpacity)
-        .offset(y: revealOffset)
-        .scaleEffect(isRevealPending ? 0.985 : 1)
-        .onAppear {
-            guard revealsResult, !revealComplete else { return }
-            guard !reduceMotion else {
-                revealComplete = true
-                return
-            }
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.82).delay(0.04)) {
-                revealComplete = true
-            }
-        }
+        .confirmedGuessReveal(isNewlyConfirmed: revealsResult)
         .accessibilityElement(children: .contain)
     }
 }
