@@ -25,6 +25,7 @@ targets:
       - target: RebuzzleWidgets
     settings:
       base:
+        CODE_SIGN_ENTITLEMENTS: Rebuzzle/Rebuzzle.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: com.byronwade.rebuzzle
         REBUZZLE_API_BASE_URL: https://rebuzzle.byronwade.com
         INFOPLIST_KEY_CFBundleDisplayName: Rebuzzle
