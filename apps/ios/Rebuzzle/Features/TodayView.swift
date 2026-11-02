@@ -19,6 +19,7 @@ struct TodayView: View {
     @State private var dailyThoughtEditor = false
     @FocusState private var answerFocused: Bool
     @State private var wrongGuessShakes: CGFloat = 0
+    @State private var guessHapticEvent: GuessHapticEvent?
     var body: some View {
         @Bindable var model = model
         ScrollViewReader { scroll in
@@ -288,10 +289,7 @@ struct TodayView: View {
         }
         .sensoryFeedback(.success, trigger: model.game?.wasSuccessful == true) { _, new in new && haptics }
         .sensoryFeedback(.selection, trigger: hintFeedback) { _, _ in haptics }
-        .sensoryFeedback(.impact(weight: .light), trigger: model.game?.attempts.count) { old, new in
-            guard let old, let new else { return false }
-            return haptics && new > old && model.game?.attempts.last?.correct == false
-        }
+        .modifier(GuessHapticFeedback(event: guessHapticEvent, enabled: haptics))
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
     }
     /// Kept out of `body`, which is already near the type checker's time budget.
@@ -317,7 +315,16 @@ struct TodayView: View {
     }
     private func submitAnswer() {
         dismissAnswerKeyboard()
-        Task { await model.submit() }
+        let puzzleID = model.daily?.puzzle.id
+        let attemptCount = model.game?.attempts.count ?? 0
+        Task { @MainActor in
+            await model.submit()
+            guard let puzzleID, model.daily?.puzzle.id == puzzleID,
+                  model.game?.attempts.count == attemptCount + 1,
+                  let guess = model.game?.attempts.last,
+                  !guess.correct, let tier = guess.reaction?.tier else { return }
+            guessHapticEvent = GuessHapticEvent(attemptNumber: guess.attemptNumber, tier: tier)
+        }
     }
     private func dismissAnswerKeyboard(forceResign: Bool = false) {
         let shouldResign = answerFocused || forceResign
@@ -1071,6 +1078,7 @@ struct GuessTurnView: View {
                         Text(title).font(Theme.display(20))
                             .accessibilityIdentifier(latest ? "guessFeedback" : "guessFeedback-\(guess.id)")
                         if let reaction = guess.reaction {
+                            EveSignalMeter(tier: reaction.tier, attemptNumber: guess.attemptNumber)
                             Text(reaction.line).font(Theme.font(15)).foregroundStyle(Theme.secondary)
                         }
                         if let reply, !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1121,6 +1129,130 @@ struct GuessTurnView: View {
                 }
             }
         }.accessibilityElement(children: .contain)
+    }
+}
+
+private struct GuessHapticEvent: Equatable {
+    let attemptNumber: Int
+    let tier: String
+}
+
+private struct GuessHapticFeedback: ViewModifier {
+    let event: GuessHapticEvent?
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        content.sensoryFeedback(trigger: event) {
+            feedback(for: event)
+        }
+    }
+
+    private func feedback(for event: GuessHapticEvent?) -> SensoryFeedback? {
+        guard enabled, let event else { return nil }
+        switch event.tier {
+        case "cold": return .impact(weight: .light)
+        case "warm": return .impact(weight: .medium)
+        case "close": return .impact(weight: .heavy)
+        default: return nil
+        }
+    }
+}
+
+private enum EveSignal: String {
+    case cold
+    case warm
+    case close
+    case correct
+    case out
+
+    var steps: Int {
+        switch self {
+        case .cold: 1
+        case .warm: 2
+        case .close, .correct: 3
+        case .out: 0
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .cold: "COLD"
+        case .warm: "WARM"
+        case .close: "CLOSE"
+        case .correct: "SOLVED"
+        case .out: "ROUND OVER"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .cold: Theme.accent
+        case .warm: Theme.reward
+        case .close, .correct: Theme.success
+        case .out: Theme.secondary
+        }
+    }
+
+    var accessibilityDescription: String {
+        switch self {
+        case .cold: "Cold signal, one of three steps."
+        case .warm: "Warm signal, two of three steps."
+        case .close: "Close signal, three of three steps."
+        case .correct: "Solved."
+        case .out: "Round over."
+        }
+    }
+}
+
+/// A small visual reading of the same server-authored reaction shown in Eve's chat.
+/// The text label stays visible so the signal never depends on color alone.
+private struct EveSignalMeter: View {
+    let tier: String
+    let attemptNumber: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hasAppeared = false
+
+    var body: some View {
+        if let signal = EveSignal(rawValue: tier) {
+            HStack(spacing: 8) {
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { index in
+                        let isActive = index < signal.steps
+                        Capsule()
+                            .fill(isActive ? signal.color : Theme.field)
+                            .frame(width: 16, height: 5)
+                            .overlay {
+                                Capsule().strokeBorder(
+                                    isActive ? signal.color.opacity(0.18) : Theme.secondary.opacity(0.16),
+                                    lineWidth: 0.75
+                                )
+                            }
+                            .opacity(isActive && !reduceMotion && !hasAppeared ? 0.45 : 1)
+                            .animation(
+                                reduceMotion ? nil : .easeOut(duration: 0.22).delay(Double(index) * 0.06),
+                                value: hasAppeared
+                            )
+                    }
+                }
+                .accessibilityHidden(true)
+
+                Text(signal.title)
+                    .font(Theme.font(10, weight: .bold, relativeTo: .caption))
+                    .tracking(0.8)
+                    .foregroundStyle(signal.color)
+                    .fixedSize()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(signal.color.opacity(0.09), in: Capsule())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Eve’s signal")
+            .accessibilityValue(signal.accessibilityDescription)
+            .accessibilityHint("A visual summary of Eve’s response to this guess.")
+            .accessibilityIdentifier("guessSignal-\(attemptNumber)")
+            .onAppear { hasAppeared = true }
+        }
     }
 }
 
