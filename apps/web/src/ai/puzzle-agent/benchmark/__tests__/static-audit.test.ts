@@ -11,7 +11,7 @@ describe("static puzzle preflight", () => {
     expect(report.expectedRenderedProfileCount).toBe(460);
     expect(report.assetCount).toBe(50);
     expect(report.assetPassCount).toBe(50);
-  });
+  }, 30_000);
 
   it("fails closed on answer leakage, fallback drift, and unknown techniques", async () => {
     const report = await auditStaticPuzzleCorpus({

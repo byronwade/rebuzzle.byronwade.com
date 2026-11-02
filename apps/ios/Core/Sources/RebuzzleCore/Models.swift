@@ -41,7 +41,9 @@ public struct PuzzleVisual: Codable, Sendable, Hashable {
     public let unicodeFallback: String?
     public let layers: [VisualLayer]?
     public let canonicalBoard: CanonicalBoard?
-    enum CodingKeys: String, CodingKey { case mode, layout, unicodeFallback, layers, canonicalBoard }
+    /// Shown under the fallback board only; the canonical PNG already contains it.
+    public let caption: String?
+    enum CodingKeys: String, CodingKey { case mode, layout, unicodeFallback, layers, canonicalBoard, caption }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         mode = try c.decodeIfPresent(String.self, forKey: .mode)
@@ -50,6 +52,8 @@ public struct PuzzleVisual: Codable, Sendable, Hashable {
         layers = try c.decodeIfPresent([VisualLayer].self, forKey: .layers)
         // decodeIfPresent would erase an explicit malformed null artifact.
         canonicalBoard = c.contains(.canonicalBoard) ? try c.decode(CanonicalBoard.self, forKey: .canonicalBoard) : nil
+        // A malformed caption is cosmetic; drop it rather than failing the whole puzzle.
+        caption = try? c.decodeIfPresent(String.self, forKey: .caption)
     }
 }
 public struct VisualLayer: Codable, Sendable, Hashable {

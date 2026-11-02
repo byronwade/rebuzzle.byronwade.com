@@ -935,6 +935,8 @@ export async function selectReservePuzzle(input: {
   recentPuzzles: readonly PuzzleNoveltyArchiveEntry[];
   now?: () => Date;
   corpus?: readonly ReservePuzzle[];
+  /** Reserve ids already rejected this request (for example, their board failed to compile). */
+  excludeIds?: ReadonlySet<string>;
 }): Promise<SelectedReservePuzzle> {
   const corpus = input.corpus ?? DEMANDING_RESERVE_PUZZLES;
   const corpusErrors = validateReservePuzzleCorpus(corpus);
@@ -943,6 +945,7 @@ export async function selectReservePuzzle(input: {
   }
   const available = corpus.filter(
     (puzzle) =>
+      !input.excludeIds?.has(puzzle.id) &&
       !input.usedAnswerKeys.has(normalizeAnswerKey(puzzle.answer)) &&
       dailyChallengeBlockers({
         ...puzzle,

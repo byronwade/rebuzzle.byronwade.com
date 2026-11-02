@@ -96,6 +96,8 @@ export type OperatorLayer = z.infer<typeof OperatorLayerSchema>;
 export type ImageLayer = z.infer<typeof ImageLayerSchema>;
 export type VisualLayer = z.infer<typeof VisualLayerSchema>;
 export type PuzzleVisual = z.infer<typeof PuzzleVisualSchema>;
+/** Pre-parse shape (defaults optional); stored DB visuals satisfy it. */
+export type PuzzleVisualInput = z.input<typeof PuzzleVisualSchema>;
 
 /** Count "parts" for difficulty budgets (pictogram/text/image = 1, operators free). */
 export function countVisualParts(visual: PuzzleVisual): number {

@@ -131,8 +131,11 @@ export async function renderPuzzleVisualProfile(
   }
   const layout = layoutLayersLocked(visual, profile, rowIndexes);
   const captionHeight = visual.caption ? Math.max(32, size.fontSize) : 0;
-  const width = layout.width;
-  const height = Math.max(size.tile + profile.padding * 2, layout.height + captionHeight);
+  // PNG rasters and the canonical contract are integer-sized; never emit a fractional SVG.
+  const width = Math.ceil(layout.width);
+  const height = Math.ceil(
+    Math.max(size.tile + profile.padding * 2, layout.height + captionHeight)
+  );
   const layers = visual.layers
     .map((layer, index) => renderLayer(layer, layout.positions[index]!, profile, index))
     .join("");

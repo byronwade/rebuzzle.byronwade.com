@@ -29,6 +29,23 @@ final class CanonicalBoardTests: XCTestCase {
     func testAbsentFieldKeepsLegacyRendering() throws {
         XCTAssertNil(try visual(nil).canonicalBoard)
     }
+    func testDecodesPuzzleWithCanonicalBoardAndCaption() throws {
+        let visualObject: [String: Any] = [
+            "mode": "composed", "layout": "row", "unicodeFallback": "UP",
+            "layers": [["kind": "text", "content": "UP"]],
+            "caption": "Look above", "canonicalBoard": artifact()
+        ]
+        let object: [String: Any] = ["id": "p1", "puzzleType": "rebus", "difficulty": 7, "hints": [String](), "visual": visualObject]
+        let puzzle = try JSONDecoder().decode(Puzzle.self, from: JSONSerialization.data(withJSONObject: object))
+        let visual = try XCTUnwrap(puzzle.visual)
+        XCTAssertEqual(visual.caption, "Look above")
+        XCTAssertEqual(visual.canonicalBoard?.pngData, png)
+        let restored = try JSONDecoder().decode(PuzzleVisual.self, from: JSONEncoder().encode(visual))
+        XCTAssertEqual(restored.caption, "Look above", "The caption must survive local cache encoding")
+    }
+    func testMissingCaptionDecodesAsNil() throws {
+        XCTAssertNil(try visual(nil).caption)
+    }
     func testMalformedFieldRemainsUnavailableAcrossCacheRoundTrip() throws {
         for malformed: Any in [NSNull(), "bad", 1, [:]] {
             let source = try visual(malformed)

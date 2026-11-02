@@ -202,4 +202,61 @@ describe("daily puzzle candidate repository", () => {
       { returnDocument: "after" }
     );
   });
+
+  it("records a recompiled board only on an unsubmitted reviewing or board-failed row", async () => {
+    mockCollection.findOneAndUpdate.mockResolvedValue(null);
+    const updatedAt = new Date("2026-10-30T00:00:00Z");
+    const guard = {
+      id: candidate.id,
+      statusVersion: 3,
+      playtestSubmittedAt: { $exists: false },
+      $or: [
+        { status: "reviewing" },
+        { status: "rejected", rejectionReason: "canonical-board-failed" },
+      ],
+    };
+
+    await repository.recordCanonicalBoard({
+      id: candidate.id,
+      expectedStatusVersion: 3,
+      updatedAt,
+      canonicalBoard: { version: 1 } as never,
+    });
+    await repository.recordCanonicalBoard({
+      id: candidate.id,
+      expectedStatusVersion: 3,
+      updatedAt,
+      failureDetail: "y".repeat(400),
+    });
+
+    expect(mockCollection.findOneAndUpdate).toHaveBeenNthCalledWith(
+      1,
+      guard,
+      {
+        $set: {
+          status: "reviewing",
+          "payload.visual.canonicalBoard": { version: 1 },
+          updatedAt,
+        },
+        $unset: { rejectionReason: "", rejectionDetail: "" },
+        $inc: { statusVersion: 1 },
+      },
+      { returnDocument: "after" }
+    );
+    expect(mockCollection.findOneAndUpdate).toHaveBeenNthCalledWith(
+      2,
+      guard,
+      {
+        $set: {
+          status: "rejected",
+          rejectionReason: "canonical-board-failed",
+          rejectionDetail: "y".repeat(300),
+          updatedAt,
+        },
+        $unset: { "payload.visual.canonicalBoard": "" },
+        $inc: { statusVersion: 1 },
+      },
+      { returnDocument: "after" }
+    );
+  });
 });

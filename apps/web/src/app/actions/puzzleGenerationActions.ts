@@ -12,8 +12,14 @@ import {
 } from "@/ai/learning";
 import { loadHumanCalibrationGate } from "@/ai/learning/human-calibration-gate";
 import { assertDailyChallenge } from "@/ai/puzzle-agent/daily-challenge";
-import { selectMongoReservePuzzle } from "@/ai/puzzle-agent/mongo-reserve-puzzles";
+import {
+  loadMongoReserveArchive,
+  type MongoReserveArchive,
+  selectMongoReservePuzzle,
+} from "@/ai/puzzle-agent/mongo-reserve-puzzles";
+import { selectReserveWithCanonicalBoard } from "@/ai/puzzle-agent/reserve-canonical-board";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
+import { CANONICAL_BOARD_FAILED } from "@/ai/puzzle-agent/visual/canonical-board";
 import { db } from "@/db";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import { formatPuzzleFromDb, getCachedDailyPuzzleFromDb } from "@/lib/cache/daily-puzzle";
@@ -110,7 +116,21 @@ async function persistReservePuzzle(dateString: string, fallbackReason: string) 
     return formatPuzzleFromDb(alreadyPublished, dateString);
   }
 
-  const selected = await selectMongoReservePuzzle({ dateString });
+  // Reserves ship the same checked board as reviewed dailies; one that cannot compile is skipped.
+  // Load the archive once; a retry after a failed board reuses the same snapshot.
+  let archive: Promise<MongoReserveArchive> | undefined;
+  const selected = await selectReserveWithCanonicalBoard({
+    select: (excludeIds) => {
+      archive ??= loadMongoReserveArchive();
+      return selectMongoReservePuzzle({ dateString, excludeIds, archive });
+    },
+    onSkip: (skip) =>
+      logger.warn("Reserve board failed to compile; skipping reserve", {
+        dateString,
+        reserveId: skip.reserveId,
+        error: skip.error,
+      }),
+  });
   if (selected.waivedNoveltyLimits?.length) {
     logger.warn("Reserve pick waived weekly novelty quotas", {
       dateString,
@@ -276,13 +296,18 @@ async function getOrGenerateDailyPuzzle(
     );
     const existingCandidate = await candidateRepository.findByGenerationKey(dateString);
     if (existingCandidate) {
-      const candidate =
-        existingCandidate.status === "reviewing" && !existingCandidate.playtestSubmittedAt
-          ? await candidateQueue.enqueue({
-              generationKey: dateString,
-              payload: existingCandidate.payload,
-            })
-          : existingCandidate;
+      // enqueue also recompiles a stored board that is missing, untrusted or failed to compile.
+      const retryable =
+        !existingCandidate.playtestSubmittedAt &&
+        (existingCandidate.status === "reviewing" ||
+          (existingCandidate.status === "rejected" &&
+            existingCandidate.rejectionReason === CANONICAL_BOARD_FAILED));
+      const candidate = retryable
+        ? await candidateQueue.enqueue({
+            generationKey: dateString,
+            payload: existingCandidate.payload,
+          })
+        : existingCandidate;
       return queuedCandidateResult(candidate, dateString);
     }
     await candidateQueue.retryPending(20);

@@ -272,3 +272,23 @@ describe("validated reserve puzzle inventory", () => {
     ).rejects.toBeInstanceOf(ReservePuzzleExhaustedError);
   });
 });
+
+describe("reserve exclusions", () => {
+  it("never returns an excluded reserve id", async () => {
+    const baseline = await selectReservePuzzle({
+      dateString: "2026-08-01",
+      usedAnswerKeys: new Set(),
+      recentPuzzles: [],
+      now: () => dateAt(0),
+    });
+    const replacement = await selectReservePuzzle({
+      dateString: "2026-08-01",
+      usedAnswerKeys: new Set(),
+      recentPuzzles: [],
+      now: () => dateAt(0),
+      excludeIds: new Set([baseline.puzzle.id]),
+    });
+
+    expect(replacement.puzzle.id).not.toBe(baseline.puzzle.id);
+  });
+});

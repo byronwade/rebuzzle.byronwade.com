@@ -1,4 +1,6 @@
-import type { Filter } from "mongodb";
+import type { Filter, UpdateFilter } from "mongodb";
+import { CANONICAL_BOARD_FAILED } from "@/ai/puzzle-agent/visual/canonical-board";
+import type { CanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-contract";
 import type {
   DailyPuzzleCandidate,
   DailyPuzzleCandidateHumanEvidence,
@@ -29,6 +31,16 @@ export type DailyPuzzleCandidateRepository = {
     message: string;
     updatedAt: Date;
   }): Promise<DailyPuzzleCandidate | null>;
+  /**
+   * Record a recompiled board (back to `reviewing`) or a compile failure (`rejected` with
+   * CANONICAL_BOARD_FAILED) on an unsubmitted row that is reviewing or board-failed.
+   */
+  recordCanonicalBoard(
+    input: { id: string; expectedStatusVersion: number; updatedAt: Date } & (
+      | { canonicalBoard: CanonicalBoard }
+      | { failureDetail: string }
+    )
+  ): Promise<DailyPuzzleCandidate | null>;
   markReady(input: {
     id: string;
     expectedStatusVersion: number;
@@ -129,6 +141,40 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
         },
         { returnDocument: "after" }
       );
+    },
+
+    async recordCanonicalBoard(input) {
+      const filter: Filter<DailyPuzzleCandidate> = {
+        id: input.id,
+        statusVersion: input.expectedStatusVersion,
+        playtestSubmittedAt: { $exists: false },
+        $or: [
+          { status: "reviewing" },
+          { status: "rejected", rejectionReason: CANONICAL_BOARD_FAILED },
+        ],
+      };
+      const update: UpdateFilter<DailyPuzzleCandidate> =
+        "canonicalBoard" in input
+          ? {
+              $set: {
+                status: "reviewing" as const,
+                "payload.visual.canonicalBoard": input.canonicalBoard,
+                updatedAt: input.updatedAt,
+              },
+              $unset: { rejectionReason: "", rejectionDetail: "" },
+              $inc: { statusVersion: 1 },
+            }
+          : {
+              $set: {
+                status: "rejected" as const,
+                rejectionReason: CANONICAL_BOARD_FAILED,
+                rejectionDetail: input.failureDetail.slice(0, 300),
+                updatedAt: input.updatedAt,
+              },
+              $unset: { "payload.visual.canonicalBoard": "" },
+              $inc: { statusVersion: 1 },
+            };
+      return candidates().findOneAndUpdate(filter, update, { returnDocument: "after" });
     },
 
     async markReady(input) {

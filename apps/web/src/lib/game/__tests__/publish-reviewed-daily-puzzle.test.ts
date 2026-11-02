@@ -3,9 +3,13 @@ import {
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
+import { canonicalSourceFingerprint } from "@/ai/puzzle-agent/visual/canonical-board";
+import { validateCanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-contract";
 import type { PublicationAssetCheck } from "@/ai/puzzle-agent/visual/publication-assets";
 import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
+import { logger } from "@/lib/logger";
 import type { DailyPuzzleCandidateRepository } from "../daily-puzzle-candidate-repository";
+import type { PersistDailyPuzzleInput } from "../persist-daily-puzzle";
 import {
   type DailyCandidatePublisherReviewService,
   publishReviewedDailyPuzzle,
@@ -117,6 +121,9 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
       return null;
     },
     async markPlaytestSubmissionFailed() {
+      return null;
+    },
+    async recordCanonicalBoard() {
       return null;
     },
     async markReady({ id, expectedStatusVersion, updatedAt, humanEvidence }) {
@@ -412,5 +419,49 @@ describe("publishing human-reviewed daily puzzles", () => {
       })
     ).rejects.toThrow("playtest store offline");
     expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("compiles a missing canonical board before publishing an older candidate", async () => {
+    const { repository } = memoryRepository([makeCandidate()]);
+
+    await publishReviewedDailyPuzzle({ dateString, repository, reviewService, persist });
+
+    const published = persist.mock.calls[0]?.[0] as PersistDailyPuzzleInput;
+    const board = published.visual?.canonicalBoard;
+    expect(board).toBeDefined();
+    await expect(validateCanonicalBoard(board)).resolves.toBeTruthy();
+    expect(board?.sourceFingerprint).toBe(canonicalSourceFingerprint(payload.visual!));
+    expect(payload.visual?.canonicalBoard).toBeUndefined();
+  }, 30_000);
+
+  it("rejects a candidate whose board cannot compile instead of publishing it", async () => {
+    const { repository, rows } = memoryRepository([makeCandidate()]);
+    const warn = jest.spyOn(logger, "warn").mockImplementation(() => undefined);
+    const ensureCanonicalBoard = jest
+      .fn()
+      .mockRejectedValue(new Error("Unsupported canonical pictogram"));
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString,
+      repository,
+      reviewService,
+      persist,
+      ensureCanonicalBoard,
+    });
+
+    expect(result).toBeNull();
+    expect(persist).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({
+      status: "rejected",
+      rejectionReason: "canonical-board-failed",
+    });
+    expect(warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        candidateId: "candidate-1",
+        error: "Unsupported canonical pictogram",
+      })
+    );
+    warn.mockRestore();
   });
 });

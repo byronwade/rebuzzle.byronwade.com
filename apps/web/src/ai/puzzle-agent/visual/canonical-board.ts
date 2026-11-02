@@ -8,7 +8,7 @@ import {
   MAX_CANONICAL_BOARD_HEIGHT,
   validateCanonicalBoard,
 } from "./canonical-contract";
-import { type PuzzleVisual, PuzzleVisualSchema } from "./composition";
+import { type PuzzleVisual, type PuzzleVisualInput, PuzzleVisualSchema } from "./composition";
 import { layoutLayersLocked } from "./layout-plan";
 import {
   getPuzzleBoardRecognitionProfile,
@@ -18,16 +18,24 @@ import { renderPuzzleVisualProfile } from "./render-board";
 import { sanitizePictogramSvg } from "./sanitize-svg";
 
 const hash = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
-/** Never trusts incoming artifacts. Compile only supported, hydrated source layers. */
-export async function compileCanonicalBoard(input: PuzzleVisual): Promise<CanonicalBoard> {
-  const { canonicalBoard: _untrusted, ...source } = input;
-  const visual = PuzzleVisualSchema.parse(source);
-  if (
+/** True when the source carries keys the schema would silently strip (top level or per layer). */
+function hasUnsupportedSourceKeys(
+  source: Omit<PuzzleVisualInput, "canonicalBoard">,
+  visual: PuzzleVisual
+): boolean {
+  return (
     Object.keys(source).some((key) => !(key in visual)) ||
     source.layers.some((layer, index) =>
       Object.keys(layer).some((key) => !(key in visual.layers[index]!))
     )
-  )
+  );
+}
+
+/** Never trusts incoming artifacts. Compile only supported, hydrated source layers. */
+export async function compileCanonicalBoard(input: PuzzleVisualInput): Promise<CanonicalBoard> {
+  const { canonicalBoard: _untrusted, ...source } = input;
+  const visual = PuzzleVisualSchema.parse(source);
+  if (hasUnsupportedSourceKeys(source, visual))
     throw new Error("Unsupported canonical source property");
   if (visual.mode === "unicode") throw new Error("Canonical boards require composed layers");
   for (const layer of visual.layers) {
@@ -106,4 +114,43 @@ export async function compileCanonicalBoard(input: PuzzleVisual): Promise<Canoni
     await validateCanonicalBoard(canonicalBoardForProfile(board, profile.id));
   }
   return board;
+}
+
+/** Stable reason recorded when a candidate or reserve cannot produce its checked board. */
+export const CANONICAL_BOARD_FAILED = "canonical-board-failed";
+
+/** Fingerprint of the hydrated source a canonical board must have been compiled from. */
+export function canonicalSourceFingerprint(input: PuzzleVisualInput): string {
+  const { canonicalBoard: _untrusted, ...source } = input;
+  return hash(JSON.stringify(PuzzleVisualSchema.parse(source)));
+}
+
+/**
+ * True only for an intact, all-profile board compiled from exactly this source.
+ * Checks the board is consistent with its source, not who made it; boards are written only by the server.
+ */
+export async function hasTrustedCanonicalBoard(input: PuzzleVisualInput): Promise<boolean> {
+  const board = input.canonicalBoard;
+  if (!board) return false;
+  try {
+    for (const profile of PUZZLE_BOARD_RECOGNITION_PROFILES) {
+      if (profile.id !== "desktop-768" && !board.profileVariants?.[profile.id]) return false;
+      await validateCanonicalBoard(canonicalBoardForProfile(board, profile.id));
+    }
+    const { canonicalBoard: _board, ...source } = input;
+    if (hasUnsupportedSourceKeys(source, PuzzleVisualSchema.parse(source))) return false;
+    return board.sourceFingerprint === canonicalSourceFingerprint(input);
+  } catch {
+    return false;
+  }
+}
+
+/** Keep a trusted board; otherwise compile a fresh one. Throws when the source cannot compile. */
+export async function ensureTrustedCanonicalBoard<T extends PuzzleVisualInput>(
+  visual: T
+): Promise<T & { canonicalBoard: CanonicalBoard }> {
+  if (await hasTrustedCanonicalBoard(visual)) {
+    return visual as T & { canonicalBoard: CanonicalBoard };
+  }
+  return { ...visual, canonicalBoard: await compileCanonicalBoard(visual) };
 }

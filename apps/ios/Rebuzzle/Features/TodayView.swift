@@ -703,7 +703,16 @@ struct PuzzleBoard: View {
             } else {
                 Group {
                     if let visual, visual.mode != "unicode", let layers = visual.layers, !layers.isEmpty {
-                        VisualBoard(visual: visual, layers: layers)
+                        VStack(spacing: 8) {
+                            VisualBoard(visual: visual, layers: layers)
+                            // The canonical PNG already draws the caption; only the fallback needs it.
+                            if let caption = visual.caption, !caption.isEmpty {
+                                Text(caption)
+                                    .font(Theme.font(15, relativeTo: .subheadline))
+                                    .foregroundStyle(Theme.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                        }
                     } else {
                         Text(clue).font(Theme.font(clue.count > 40 ? 26 : 44, weight: .medium, relativeTo: .largeTitle))
                             .multilineTextAlignment(.center).lineSpacing(12).textSelection(.enabled)
