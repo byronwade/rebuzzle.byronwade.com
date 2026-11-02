@@ -20,6 +20,7 @@ struct TodayView: View {
     @FocusState private var answerFocused: Bool
     @State private var wrongGuessShakes: CGFloat = 0
     @State private var guessHapticEvent: GuessHapticEvent?
+    @State private var guessRevealEvent: GuessTurnRevealEvent?
     var body: some View {
         @Bindable var model = model
         ScrollViewReader { scroll in
@@ -335,13 +336,27 @@ struct TodayView: View {
         let puzzleDate = model.daily?.puzzleDate
         let attemptCount = model.game?.attempts.count ?? 0
         Task { @MainActor in
+            let revealEvent: GuessTurnRevealEvent?
+            if let puzzleID, let puzzleDate {
+                revealEvent = GuessTurnRevealEvent(
+                    puzzleID: puzzleID,
+                    puzzleDate: puzzleDate,
+                    attemptNumber: attemptCount + 1
+                )
+                guessRevealEvent = revealEvent
+            } else {
+                revealEvent = nil
+            }
             await model.submit()
             guard let puzzleID, let puzzleDate,
                   model.daily?.puzzle.id == puzzleID,
                   model.daily?.puzzleDate == puzzleDate,
                   model.game?.attempts.count == attemptCount + 1,
-                  let guess = model.game?.attempts.last,
-                  !guess.correct, let tier = guess.reaction?.tier else { return }
+                  let guess = model.game?.attempts.last else {
+                if let revealEvent, guessRevealEvent == revealEvent { guessRevealEvent = nil }
+                return
+            }
+            guard !guess.correct, let tier = guess.reaction?.tier else { return }
             guessHapticEvent = GuessHapticEvent(
                 puzzleID: puzzleID,
                 puzzleDate: puzzleDate,
@@ -476,6 +491,11 @@ struct TodayView: View {
                                   failed: model.eve.failedAttempts.contains(guess.attemptNumber),
                                   canRetry: !model.eve.pendingAttempts.contains(guess.attemptNumber),
                                   latest: guess.id == model.game?.attempts.last?.id,
+                              revealsResult: guessRevealEvent?.matches(
+                                  guess,
+                                  puzzleID: model.daily?.puzzle.id,
+                                  puzzleDate: model.daily?.puzzleDate
+                              ) == true,
                                   onRetry: { _ = model.eve.retry(guess: guess) })
                         .id("turn-\(guess.attemptNumber)")
                 case .nudge(let reveal):
@@ -1072,7 +1092,15 @@ struct GuessTurnView: View {
     let failed: Bool
     let canRetry: Bool
     let latest: Bool
+    let revealsResult: Bool
     let onRetry: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var revealComplete = false
+
+    private var isRevealPending: Bool { revealsResult && !reduceMotion && !revealComplete }
+    private var revealOpacity: Double { isRevealPending ? 0 : 1 }
+    private var revealOffset: CGFloat { isRevealPending ? 12 : 0 }
+
     private var title: String {
         switch guess.reaction?.tier {
         case "correct": "Connection made"
@@ -1152,7 +1180,31 @@ struct GuessTurnView: View {
                         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
                 }
             }
-        }.accessibilityElement(children: .contain)
+        }
+        .opacity(revealOpacity)
+        .offset(y: revealOffset)
+        .scaleEffect(isRevealPending ? 0.985 : 1)
+        .onAppear {
+            guard revealsResult, !revealComplete else { return }
+            guard !reduceMotion else {
+                revealComplete = true
+                return
+            }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.82).delay(0.04)) {
+                revealComplete = true
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct GuessTurnRevealEvent: Equatable {
+    let puzzleID: String
+    let puzzleDate: String
+    let attemptNumber: Int
+
+    func matches(_ guess: Guess, puzzleID: String?, puzzleDate: String?) -> Bool {
+        self.puzzleID == puzzleID && self.puzzleDate == puzzleDate && self.attemptNumber == guess.attemptNumber
     }
 }
 
