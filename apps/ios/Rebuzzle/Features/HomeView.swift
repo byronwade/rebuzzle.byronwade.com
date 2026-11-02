@@ -74,10 +74,12 @@ struct HomeView: View {
     static func dateLabel(_ puzzleDate: String?) -> String {
         let format = Date.FormatStyle.dateTime.weekday(.wide).month(.abbreviated).day()
         guard let puzzleDate else { return Date().formatted(format) }
-        // Local-calendar components, so the label never shifts a day across time zones.
+        // Gregorian components in the local time zone, so the label never shifts a day across time zones.
         let parts = puzzleDate.split(separator: "-").compactMap { Int($0) }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
         guard parts.count == 3,
-              let parsed = Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+              let parsed = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
         else { return puzzleDate }
         return parsed.formatted(format)
     }
@@ -92,7 +94,7 @@ struct TodayPuzzleCard: View {
                 // Hold the card until the session restores, so the daily never opens without the player's progress.
                 let canOpen = model.game != nil || !model.busy
                 // The daily can load while the session behind it fails; that is not a fresh, unstarted puzzle.
-                let sessionError = model.game == nil && !model.busy ? model.error : nil
+                let sessionError = model.game == nil && !model.busy ? (model.error ?? "Refresh progress to continue.") : nil
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     let status = TodayCardStatus(game: model.game, hintCount: daily.puzzle.hints.count, hintsShown: model.hintsShown)
                     let line = canOpen

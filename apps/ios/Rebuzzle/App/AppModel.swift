@@ -745,7 +745,7 @@ enum JournalSyncStatus: Equatable {
         dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
         try credentials.write(nil, key: "token")
         eve.reset()
-        generation += 1; api.token = nil; player = nil; game = nil; stats = nil
+        generation += 1; api.token = nil; player = nil; game = nil; daily = nil; stats = nil
         completedStreakRefreshState = .idle; continuedScoreLockedPuzzleID = nil; dismissedExpiredReviewID = nil
         journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; pendingUnlocks = []; journeySyncError = nil; journeySyncing = false
         draft = ""; dailyThought = ""; dailyThoughtAvailable = false; journal = Journal(); journalSyncCheckpoint = JournalSyncCheckpoint(); journalSyncStatus = .onDevice; journalHistoryComplete = true; journalWritable = false; hintsShown = 0; nudgeReveals = []; sessionReady = false; error = nil
