@@ -26,6 +26,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.byronwade.rebuzzle
+        CODE_SIGN_ENTITLEMENTS: Rebuzzle/Rebuzzle.entitlements
         REBUZZLE_API_BASE_URL: https://rebuzzle.byronwade.com
         INFOPLIST_KEY_CFBundleDisplayName: Rebuzzle
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.word-games

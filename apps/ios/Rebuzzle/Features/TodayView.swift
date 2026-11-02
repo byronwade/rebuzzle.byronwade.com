@@ -278,6 +278,7 @@ struct TodayView: View {
             continuedScoreLockedPuzzleID = nil
             showingExpiredReviewFor = nil
             dismissedExpiredReviewID = nil
+            guessHapticEvent = nil
         }
         .onChange(of: model.canSaveDailyThought) { _, canSave in
             if !canSave { dailyThoughtEditor = false }
@@ -1135,6 +1136,7 @@ struct GuessTurnView: View {
 private struct GuessHapticEvent: Equatable {
     let attemptNumber: Int
     let tier: String
+    private let token = UUID()
 }
 
 private struct GuessHapticFeedback: ViewModifier {
