@@ -15,6 +15,7 @@ private struct PracticeTurnRevealEvent: Equatable {
 }
 
 @MainActor struct PracticeGameView: View {
+    @Environment(\.dismiss) private var dismiss
     let puzzle: Puzzle
     private let api: APIClient
     private let storage: LocalStore
@@ -145,6 +146,17 @@ private struct PracticeTurnRevealEvent: Equatable {
                         .padding(.horizontal, 16).padding(.vertical, 8)
                 }
                 .buttonStyle(CommitStyle()).accessibilityIdentifier("restartPracticeRound")
+            }
+            if session.state != .playing {
+                Button {
+                    dismiss()
+                } label: {
+                    Label(isFreeSample ? "Back to archive" : "Choose another puzzle", systemImage: "square.grid.2x2")
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.ink)
+                .accessibilityIdentifier("chooseAnotherPracticePuzzle")
             }
             if isFreeSample && session.state != .playing {
                 VStack(alignment: .leading, spacing: 12) {
