@@ -84,12 +84,7 @@ private struct PracticeTurnRevealEvent: Equatable {
                             .font(Theme.font(13, weight: .medium)).monospacedDigit().foregroundStyle(Theme.secondary)
                             .accessibilityIdentifier("practiceAttemptsRemaining")
                     }
-                    ForEach(session.guesses) { guess in
-                        practiceGuessCard(guess)
-                            .confirmedGuessReveal(
-                                isNewlyConfirmed: practiceRevealEvent?.matches(guess, session: session) == true
-                            )
-                    }
+                    ForEach(session.guesses) { practiceGuessCard($0) }
                     VStack(alignment: .leading, spacing: 12) {
                         TextField("Your answer", text: $answerDraft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
                             .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -242,8 +237,11 @@ private struct PracticeTurnRevealEvent: Equatable {
                 }
             }
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+    .confirmedGuessReveal(
+        isNewlyConfirmed: practiceRevealEvent?.matches(guess, session: session) == true
+    )
     }
 
     private var solutionCard: some View {
