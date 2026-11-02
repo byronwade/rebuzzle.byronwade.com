@@ -30,15 +30,31 @@ struct TodayView: View {
                         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
                         : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
                     masthead {
-                        Text("Make it click.")
-                            .font(Theme.display(42)).tracking(-1.5)
-                            .fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("TODAY’S PUZZLE")
+                                .font(Theme.font(11, weight: .semibold, relativeTo: .caption))
+                                .tracking(1.1)
+                                .foregroundStyle(Theme.secondary)
+                            Text("Make it click.")
+                                .font(Theme.display(typeSize.isAccessibilitySize ? 38 : 34)).tracking(-1.2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
                         EveAvatar(celebrating: model.game?.wasSuccessful == true)
                             .accessibilityLabel("Eve, your AI puzzle author")
                     }
-                    Text("Daily puzzle · " + dateLabel)
-                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    let dateAndCountdown = typeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                        : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+                    dateAndCountdown {
+                        Text(dateLabel)
+                            .font(Theme.font(13, relativeTo: .subheadline))
+                            .foregroundStyle(Theme.secondary)
+                        if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
+                        if model.game?.gameOver != true {
+                            DailyPuzzleCountdown(style: .compact)
+                        }
+                    }
                 }
                 .id("dailyHeader")
                 if model.game?.gameOver == true {
