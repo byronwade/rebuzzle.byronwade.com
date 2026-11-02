@@ -54,6 +54,8 @@ private struct ApplicationView: View {
 enum AppTab: Hashable { case play, journey, you }
 
 enum RebuzzleRoute: Hashable {
+    /// Today's puzzle, pushed from the Play hub.
+    case daily
     case journal
     case plus(source: PlusOfferSource)
     case reminder
@@ -78,7 +80,7 @@ struct RootView: View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
             NavigationStack(path: $playPath) {
-                TodayView()
+                HomeView()
                     .navigationDestination(for: RebuzzleRoute.self) { destination(for: $0) }
             }
                 .tint(Theme.accent)
@@ -113,17 +115,24 @@ struct RootView: View {
         }
         .animation(.easeOut(duration: 0.25), value: model.pendingUnlocks.first?.id)
         .onOpenURL { returnRouter.open($0) }
-        .onChange(of: model.player?.id) {
+        .onChange(of: model.player?.id) { old, _ in
+            // The first sign-in at launch is not an account change; resetting then would undo
+            // a `.daily` push from a notification, link or quick tap.
+            guard old != nil else { return }
             playPath = NavigationPath()
             journeyPath = NavigationPath()
             youPath = NavigationPath()
         }
-        .onChange(of: returnRouter.request) { _, request in
+        // `initial` also handles a notification or link that arrived before this view existed.
+        .onChange(of: returnRouter.request, initial: true) { _, request in
             guard let request else { return }
             let source = returnRouter.entrySource
             model.saveDraft()
             model.selectedTab = .play
-            playPath = NavigationPath()
+            // Notifications, links and shortcuts promise today's puzzle, so skip past the hub.
+            var path = NavigationPath()
+            path.append(RebuzzleRoute.daily)
+            playPath = path
             Task { @MainActor in
                 await model.load(entrySource: source)
                 if returnRouter.request == request { returnRouter.request = nil }
@@ -177,11 +186,19 @@ struct RootView: View {
     }
 
     #if DEBUG
-    /// `--preview-screen achievements|unlock` jumps straight to a screen for screenshots.
+    /// `--preview-screen home|daily|achievements|unlock` jumps straight to a screen for screenshots.
     private func openPreviewScreen() {
         let args = ProcessInfo.processInfo.arguments
         guard let index = args.firstIndex(of: "--preview-screen"), index + 1 < args.count else { return }
         switch args[index + 1] {
+        case "home":
+            model.selectedTab = .play
+            playPath = NavigationPath()
+        case "daily":
+            model.selectedTab = .play
+            var path = NavigationPath()
+            path.append(RebuzzleRoute.daily)
+            playPath = path
         case "achievements":
             model.selectedTab = .journey
             journeyPath.append(RebuzzleRoute.achievements)
@@ -196,6 +213,8 @@ struct RootView: View {
     @ViewBuilder
     private func destination(for route: RebuzzleRoute) -> some View {
         switch route {
+        case .daily:
+            TodayView()
         case .journal:
             JournalView()
         case let .plus(source):

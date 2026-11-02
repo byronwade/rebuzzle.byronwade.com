@@ -100,9 +100,10 @@ import StoreKitTest
         app.launchArguments = ["--ui-fixture", "--ui-returning-player", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extraArguments
         app.launch()
         if extraArguments.contains("--ui-late-solve") {
-            XCTAssertTrue(app.staticTexts["lateSolveMessage"].waitForExistence(timeout: 15))
+            openTodaysPuzzle(app, until: app.staticTexts["lateSolveMessage"])
             return
         }
+        openTodaysPuzzle(app)
         let submit = app.buttons["checkAnswer"]
         XCTAssertTrue(submit.waitForExistence(timeout: 15))
         XCTAssertTrue(waitForEnabled(submit, timeout: 15))

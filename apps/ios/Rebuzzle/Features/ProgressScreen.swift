@@ -172,7 +172,7 @@ struct ProgressViewScreen: View {
                 .accessibilityIdentifier("weeklyTrailProgress")
                 .accessibilityLabel(weeklyTrailAccessibilityLabel(progress))
             if model.game?.gameOver != true {
-                Button { model.selectedTab = .play } label: { Label("Play today’s puzzle", systemImage: "arrow.right") }
+                Button { ReturnRouter.shared.openPlay() } label: { Label("Play today’s puzzle", systemImage: "arrow.right") }
                     .buttonStyle(CommitStyle())
             } else {
                 Label(progress.weeklyDays >= 3 ? "Trail complete. Every extra day is a bonus." : "Today counts. See you at the next stop.", systemImage: "checkmark.circle")
