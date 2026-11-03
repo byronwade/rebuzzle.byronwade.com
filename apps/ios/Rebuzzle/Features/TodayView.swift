@@ -692,8 +692,8 @@ struct TodayView: View {
                             followUpPending: model.eve.pendingNudgeFollowUpHintIndexes.contains(reveal.hintIndex),
                             followUpFailed: model.eve.failedNudgeFollowUpHintIndexes.contains(reveal.hintIndex),
                             followUpReply: model.eve.nudgeFollowUpReplies[reveal.hintIndex],
-                            canRetryFollowUp: model.game?.gameOver != true && model.eve.canRetryNudgeFollowUp(hintIndex: reveal.hintIndex),
-                            canAskFollowUp: model.game?.gameOver != true && !followUpWasRequested,
+                            canRetryFollowUp: model.game?.gameOver == false && model.eve.canRetryNudgeFollowUp(hintIndex: reveal.hintIndex),
+                            canAskFollowUp: model.game?.gameOver == false && !followUpWasRequested,
                             onAskFollowUp: { model.requestEveNudgeFollowUp(hintIndex: reveal.hintIndex) },
                             onRetryFollowUp: { model.requestEveNudgeFollowUp(hintIndex: reveal.hintIndex, retry: true) }
                         )
