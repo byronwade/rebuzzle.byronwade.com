@@ -49,6 +49,12 @@ public struct JourneyProgress: Sendable {
         25 + (won ? 75 : 0) + (won && attempts == 1 ? 25 : 0) + (won && hintsUsed == 0 ? 25 : 0)
     }
 
+    /// Daily solve stars: three for a first-guess solve, two for a second, and one for later wins.
+    public static func stars(won: Bool, attempts: Int) -> Int {
+        guard won else { return 0 }
+        return min(3, max(1, 4 - max(0, attempts)))
+    }
+
     public init(summary: JourneyProgressSummary) {
         totalXP = summary.totalXP
         level = summary.level

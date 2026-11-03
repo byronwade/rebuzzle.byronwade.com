@@ -8,6 +8,14 @@ struct ProgressViewScreen: View {
         guard let summary = model.journeySnapshot?.summary else { return nil }
         return JourneyProgress(summary: summary)
     }
+    private var activePuzzleDate: String? {
+        guard model.game?.gameOver != true,
+              model.game?.attempts.isEmpty == false || model.hintsShown > 0 else { return nil }
+        return model.daily?.puzzleDate
+    }
+    private var recentResultsAreComplete: Bool {
+        model.player?.guest == true || model.journeySnapshot?.backfill.status == .complete
+    }
 
     var body: some View {
         Page {
@@ -17,6 +25,14 @@ struct ProgressViewScreen: View {
             } else {
                 journeyUnavailable
             }
+            RecentPuzzleStarTrail(
+                serverEntries: model.journeySnapshot?.recentEntries ?? [],
+                localEntries: model.journal.entries,
+                asOfPuzzleDate: model.journeySnapshot?.asOfPuzzleDate,
+                currentPuzzleDate: model.daily?.puzzleDate,
+                activePuzzleDate: activePuzzleDate,
+                historyIsComplete: recentResultsAreComplete
+            )
             NavigationLink(value: RebuzzleRoute.journal) {
                 HStack(spacing: 12) {
                     Image(systemName: "book.closed").font(.system(size: 22)).foregroundStyle(Theme.reward)
@@ -239,5 +255,218 @@ struct ProgressViewScreen: View {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "MMM d"
         return formatter.string(from: date)
+    }
+}
+
+private struct RecentPuzzleStarTrail: View {
+    private enum Outcome {
+        case unknown
+        case noResult
+        case inProgress
+        case failed(attempts: Int)
+        case solved(attempts: Int, stars: Int)
+
+        var hasRecordedProgress: Bool {
+            switch self {
+            case .inProgress, .failed, .solved: true
+            case .unknown, .noResult: false
+            }
+        }
+    }
+
+    private struct Day: Identifiable {
+        let dateKey: String
+        let weekday: String
+        let dayNumber: String
+        let accessibilityLabel: String
+        let outcome: Outcome
+        let isToday: Bool
+        var id: String { dateKey }
+    }
+
+    let serverEntries: [JourneyProgressEntry]
+    let localEntries: [JournalEntry]
+    let asOfPuzzleDate: String?
+    let currentPuzzleDate: String?
+    let activePuzzleDate: String?
+    let historyIsComplete: Bool
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var outcomesByDate: [String: Outcome] {
+        var outcomes: [String: Outcome] = [:]
+        for entry in serverEntries.sorted(by: { $0.completedAt < $1.completedAt }) {
+            switch entry.outcome {
+            case .solved:
+                outcomes[entry.puzzleDate] = .solved(
+                    attempts: entry.attempts,
+                    stars: JourneyProgress.stars(won: true, attempts: entry.attempts)
+                )
+            case .failed:
+                outcomes[entry.puzzleDate] = .failed(attempts: entry.attempts)
+            }
+        }
+        for entry in localEntries {
+            guard outcomes[entry.puzzleDate] == nil else { continue }
+            outcomes[entry.puzzleDate] = entry.won
+                ? .solved(attempts: entry.attempts, stars: JourneyProgress.stars(won: true, attempts: entry.attempts))
+                : .failed(attempts: entry.attempts)
+        }
+        if let activePuzzleDate, outcomes[activePuzzleDate] == nil {
+            outcomes[activePuzzleDate] = .inProgress
+        }
+        return outcomes
+    }
+
+    private var recentDays: [Day] {
+        let recordedDates = serverEntries.map(\.puzzleDate) + localEntries.map(\.puzzleDate)
+        let anchorKey = [asOfPuzzleDate, currentPuzzleDate, recordedDates.max()].compactMap { $0 }.max()
+        guard let anchorKey else { return [] }
+
+        let utc = TimeZone(secondsFromGMT: 0)!
+        let isoFormatter = DateFormatter()
+        isoFormatter.calendar = Calendar(identifier: .gregorian)
+        isoFormatter.timeZone = utc
+        isoFormatter.locale = Locale(identifier: "en_US_POSIX")
+        isoFormatter.dateFormat = "yyyy-MM-dd"
+        guard let anchorDate = isoFormatter.date(from: anchorKey) else { return [] }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = utc
+        let weekdayFormatter = DateFormatter()
+        weekdayFormatter.calendar = calendar
+        weekdayFormatter.locale = .current
+        weekdayFormatter.timeZone = utc
+        weekdayFormatter.dateFormat = "EEE"
+        let dayNumberFormatter = DateFormatter()
+        dayNumberFormatter.calendar = calendar
+        dayNumberFormatter.locale = .current
+        dayNumberFormatter.timeZone = utc
+        dayNumberFormatter.dateFormat = "d"
+        let accessibilityFormatter = DateFormatter()
+        accessibilityFormatter.calendar = calendar
+        accessibilityFormatter.locale = .current
+        accessibilityFormatter.timeZone = utc
+        accessibilityFormatter.dateFormat = "EEEE, MMMM d"
+
+        let outcomes = outcomesByDate
+        return (0..<7).reversed().compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: anchorDate) else { return nil }
+            let dateKey = isoFormatter.string(from: date)
+            let outcome = outcomes[dateKey] ?? (historyIsComplete ? .noResult : .unknown)
+            let isToday = currentPuzzleDate == dateKey
+            let dateDescription = accessibilityFormatter.string(from: date)
+            let resultDescription: String
+            switch outcome {
+            case let .solved(attempts, stars):
+                resultDescription = "Solved in \(attempts) \(attempts == 1 ? "guess" : "guesses"), \(stars) of 3 stars."
+            case let .failed(attempts):
+                resultDescription = "Finished after \(attempts) \(attempts == 1 ? "guess" : "guesses"). No stars earned."
+            case .inProgress:
+                resultDescription = "In progress. No stars yet."
+            case .noResult:
+                resultDescription = "No completed result recorded."
+            case .unknown:
+                resultDescription = "Recent result unavailable while Journey syncs."
+            }
+            let todayPrefix = isToday ? "Today, " : ""
+            return Day(
+                dateKey: dateKey,
+                weekday: weekdayFormatter.string(from: date),
+                dayNumber: dayNumberFormatter.string(from: date),
+                accessibilityLabel: "\(todayPrefix)\(dateDescription). \(resultDescription)",
+                outcome: outcome,
+                isToday: isToday
+            )
+        }
+    }
+
+    var body: some View {
+        let days = recentDays
+        if !days.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "star.fill").foregroundStyle(Theme.reward).accessibilityHidden(true)
+                    Text("Your star trail").font(Theme.font(18, weight: .medium))
+                    Spacer(minLength: 8)
+                    if historyIsComplete {
+                        Text("\(days.filter { $0.outcome.hasRecordedProgress }.count)/7")
+                            .font(Theme.font(13, weight: .semibold)).monospacedDigit()
+                            .foregroundStyle(Theme.secondary)
+                            .accessibilityLabel("\(days.filter { $0.outcome.hasRecordedProgress }.count) of 7 recent dailies with recorded results or an active puzzle")
+                    }
+                }
+                Text(subtitle)
+                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: dynamicTypeSize.isAccessibilitySize ? 4 : 7), spacing: 6) {
+                    ForEach(days) { day in dayCell(day) }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
+            .accessibilityIdentifier("recentPuzzleStarTrail")
+        }
+    }
+
+    private var subtitle: String {
+        if !historyIsComplete { return "Some recent results may not be available yet." }
+        if activePuzzleDate != nil { return "Your current puzzle is underway. Stars appear when you solve it." }
+        if serverEntries.isEmpty && localEntries.isEmpty { return "Finish your first daily to start here." }
+        return "Fewer guesses earn more stars."
+    }
+
+    private func dayCell(_ day: Day) -> some View {
+        VStack(spacing: 6) {
+            Text(day.weekday).font(Theme.font(10, weight: .medium)).foregroundStyle(Theme.secondary)
+            Text(day.dayNumber).font(Theme.font(14, weight: .semibold)).monospacedDigit()
+                .foregroundStyle(day.isToday ? Theme.accent : Theme.ink)
+            outcomeMark(for: day)
+        }
+        .frame(maxWidth: .infinity, minHeight: 74)
+        .padding(.vertical, 6)
+        .background(Theme.field.opacity(day.outcome.hasRecordedProgress ? 1 : 0.58), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(day.isToday ? Theme.accent.opacity(0.7) : Theme.secondary.opacity(0.12), lineWidth: day.isToday ? 1.5 : 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(day.accessibilityLabel)
+        .accessibilityIdentifier("recentPuzzleDay.\(day.dateKey)")
+    }
+
+    @ViewBuilder
+    private func outcomeMark(for day: Day) -> some View {
+        switch day.outcome {
+        case let .solved(_, stars):
+            if dynamicTypeSize.isAccessibilitySize {
+                Text("\(stars)/3")
+                    .font(Theme.font(11, weight: .semibold)).foregroundStyle(Theme.reward)
+                    .accessibilityHidden(true)
+            } else {
+                HStack(spacing: 1) {
+                    ForEach(0..<3, id: \.self) { index in
+                        Image(systemName: index < stars ? "star.fill" : "star")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(index < stars ? Theme.reward : Theme.secondary.opacity(0.3))
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+        case .failed:
+            Image(systemName: "minus.circle.fill")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondary)
+                .accessibilityHidden(true)
+        case .inProgress:
+            Image(systemName: "ellipsis.circle.fill")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+        case .unknown:
+            Image(systemName: "questionmark.circle")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondary.opacity(0.55))
+                .accessibilityHidden(true)
+        case .noResult:
+            Image(systemName: "circle.dashed")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondary.opacity(0.4))
+                .accessibilityHidden(true)
+        }
     }
 }

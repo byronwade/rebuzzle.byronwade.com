@@ -48,7 +48,7 @@ struct JourneyRewards: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
     private var points: Int { JourneyProgress.points(won: game.wasSuccessful == true, attempts: game.attempts.count, hintsUsed: model.hintsShown) }
-    private var stars: Int { game.wasSuccessful == true ? max(1, 4 - game.attempts.count) : 0 }
+    private var stars: Int { JourneyProgress.stars(won: game.wasSuccessful == true, attempts: game.attempts.count) }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
