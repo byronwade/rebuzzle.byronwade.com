@@ -412,25 +412,17 @@ struct TodayView: View {
         let puzzleDate = model.daily?.puzzleDate
         let attemptCount = model.game?.attempts.count ?? 0
         let submittedGuess = model.draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let dailyHasTimeRemaining = model.daily
-            .flatMap { ResultView.date($0.nextPuzzleTime) }
-            .map { $0 > Date() } == true
         let pendingSubmission: PendingGuessSubmission?
         if let puzzleID, let puzzleDate, let accountID = model.player?.id,
            model.sessionReady, !model.submitting, !model.busy, !model.needsReconciliation,
-           model.game?.gameOver == false, dailyHasTimeRemaining,
-           !submittedGuess.isEmpty, submittedGuess.count <= 200 {
-            let submission = PendingGuessSubmission(
+           model.game?.gameOver == false, !submittedGuess.isEmpty, submittedGuess.count <= 200 {
+            pendingSubmission = PendingGuessSubmission(
                 puzzleID: puzzleID,
                 puzzleDate: puzzleDate,
                 accountID: accountID,
                 attemptNumber: attemptCount + 1,
                 guess: submittedGuess
             )
-            pendingSubmission = submission
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
-                pendingGuessSubmission = submission
-            }
         } else {
             pendingSubmission = nil
         }
@@ -454,7 +446,16 @@ struct TodayView: View {
             } else {
                 revealEvent = nil
             }
-            await model.submit()
+            await model.submit(onGuessRequestStarted: {
+                guard let pendingSubmission,
+                      model.daily?.puzzle.id == pendingSubmission.puzzleID,
+                      model.daily?.puzzleDate == pendingSubmission.puzzleDate,
+                      model.player?.id == pendingSubmission.accountID,
+                      model.game?.attempts.count == pendingSubmission.attemptNumber - 1 else { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                    pendingGuessSubmission = pendingSubmission
+                }
+            })
             let isCurrentPuzzle = model.daily?.puzzle.id == puzzleID && model.daily?.puzzleDate == puzzleDate
             if !isCurrentPuzzle || model.game?.gameOver == true || awaitingScoreLockDecision {
                 dismissAnswerKeyboard()

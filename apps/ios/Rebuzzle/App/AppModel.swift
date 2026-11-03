@@ -275,7 +275,7 @@ enum JournalSyncStatus: Equatable {
             journeySyncing = false
         }
     }
-    func submit() async {
+    func submit(onGuessRequestStarted: (() -> Void)? = nil) async {
         guard !submitting, !busy, sessionReady, let daily, let player, game?.gameOver == false else { return }
         guard let expiry = ResultView.date(daily.nextPuzzleTime), expiry > Date() else {
             await load()
@@ -294,6 +294,7 @@ enum JournalSyncStatus: Equatable {
                 error = "Progress refreshed. Review your guesses before checking another answer."
                 return
             }
+            onGuessRequestStarted?()
             let result: GuessResponse = try await api.request("/api/puzzles/guess", method: "POST", body: ["puzzleId": daily.puzzle.id, "guess": guess, "playMode": "extended", "hintsUsed": hintsShown, "consecutiveCold": game?.attempts.reversed().prefix(while: { $0.reaction?.tier == "cold" }).count ?? 0, "timeSpentSeconds": max(0, Int(Date().timeIntervalSince(started)))])
             guard run == generation else { return }
             if result.gameOver {
