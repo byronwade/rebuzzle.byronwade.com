@@ -101,6 +101,7 @@ final class DailyPuzzleLiveActivityCoordinator {
     }
 
     func endAllImmediately() async {
+        generation += 1
         await endImmediately(Activity<DailyPuzzleLiveActivityAttributes>.activities)
     }
 
