@@ -980,6 +980,13 @@ struct ResultView: View {
     @Binding var shareRequest: DailyResultShareRequest?
     @State private var renderedShareSummary: DailyShareSummary?
     @State private var renderedSharePNG: Data?
+    private var matchingDailyPuzzle: Puzzle? {
+        guard let game = model.game,
+              let daily = model.daily,
+              game.puzzleId == daily.puzzle.id,
+              game.puzzleDate == daily.puzzleDate else { return nil }
+        return daily.puzzle
+    }
     private func celebrateFirstSolve(of game: GameSession) {
         guard game.wasSuccessful == true, celebratedPuzzleID != game.puzzleId else { return }
         celebratedPuzzleID = game.puzzleId
@@ -1055,6 +1062,18 @@ struct ResultView: View {
                 .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
                 .overlay(alignment: .top) { CelebrationBurst(isActive: celebrating) }
                 .onAppear { celebrateFirstSolve(of: game) }
+                if game.wasSuccessful == true, let puzzle = matchingDailyPuzzle {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("The puzzle")
+                            .font(Theme.font(15, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        PuzzleBoard(puzzle: puzzle)
+                    }
+                    .padding(16)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
+                    .accessibilityIdentifier("solvedPuzzleReveal")
+                }
                 DailyStreakCard(presentation: model.streakPresentation(for: game), context: .result)
                 if let summary = game.dailyShareSummary {
                     dailyShareAction(summary)
@@ -1119,7 +1138,7 @@ struct ResultView: View {
                         }
                     }
                 }
-                if let puzzle = model.daily?.puzzle {
+                if game.wasSuccessful != true, let puzzle = matchingDailyPuzzle {
                     DisclosureGroup("See the puzzle") {
                         PuzzleBoard(puzzle: puzzle).padding(.top, 12)
                     }.font(Theme.font(14)).tint(Theme.ink)
