@@ -260,6 +260,11 @@ struct DailyStreakCard: View {
         presentation.current.map(String.init) ?? "—"
     }
 
+    private var showsMilestoneFooter: Bool {
+        if case .journey = context { return true }
+        return false
+    }
+
     private var accessibilitySummary: String {
         var parts = ["Daily streak", headline, detail]
         if let current = presentation.current {
@@ -278,7 +283,7 @@ struct DailyStreakCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             header
-            if presentation.current != nil || presentation.best != nil {
+            if showsMilestoneFooter && (presentation.current != nil || presentation.best != nil) {
                 milestoneFooter
             }
         }

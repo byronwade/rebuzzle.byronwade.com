@@ -28,40 +28,41 @@ struct TodayView: View {
         ScrollViewReader { scroll in
         Page(spacing: 18, bottomSafeAreaClearance: 0) {
             if let daily = model.daily {
-                VStack(alignment: .leading, spacing: 6) {
-                    let masthead = typeSize.isAccessibilitySize
-                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                        : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
-                    masthead {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("TODAY’S PUZZLE")
-                                .font(Theme.font(11, weight: .semibold, relativeTo: .caption))
-                                .tracking(1.1)
-                                .foregroundStyle(Theme.secondary)
-                            Text("Make it click.")
-                                .font(Theme.display(typeSize.isAccessibilitySize ? 38 : 34)).tracking(-1.2)
-                                .fixedSize(horizontal: false, vertical: true)
+                if model.game?.gameOver != true {
+                    VStack(alignment: .leading, spacing: 6) {
+                        let masthead = typeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+                        masthead {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("TODAY’S PUZZLE")
+                                    .font(Theme.font(11, weight: .semibold, relativeTo: .caption))
+                                    .tracking(1.1)
+                                    .foregroundStyle(Theme.secondary)
+                                Text("Make it click.")
+                                    .font(Theme.display(typeSize.isAccessibilitySize ? 38 : 34)).tracking(-1.2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                            EveAvatar(celebrating: model.game?.wasSuccessful == true)
+                                .accessibilityLabel("Eve, your AI puzzle author")
                         }
-                        if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
-                        EveAvatar(celebrating: model.game?.wasSuccessful == true)
-                            .accessibilityLabel("Eve, your AI puzzle author")
-                    }
-                    let dateAndCountdown = typeSize.isAccessibilitySize
-                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                        : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
-                    dateAndCountdown {
-                        Text(dateLabel)
-                            .font(Theme.font(13, relativeTo: .subheadline))
-                            .foregroundStyle(Theme.secondary)
-                        if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
-                        if model.game?.gameOver != true {
+                        let dateAndCountdown = typeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                            : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+                        dateAndCountdown {
+                            Text(dateLabel)
+                                .font(Theme.font(13, relativeTo: .subheadline))
+                                .foregroundStyle(Theme.secondary)
+                            if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
                             DailyPuzzleCountdown(style: .compact)
                         }
                     }
+                    .id("dailyHeader")
                 }
-                .id("dailyHeader")
                 if model.game?.gameOver == true {
                     ResultView(shareRequest: $dailyShareRequest)
+                        .id("dailyResult")
                     conversation
                 } else {
                     VStack(spacing: 0) {
@@ -134,6 +135,7 @@ struct TodayView: View {
                             .accessibilityLabel("Ask Eve for a nudge")
                             .accessibilityHint("Reveals the next hint in your conversation")
                             .accessibilityIdentifier("askEveForNudge")
+                            .id("askEveForNudge")
                         }
                         if model.game?.scoreLocked == true {
                             scoreLockCard.id("scoreLockCard")
@@ -216,9 +218,12 @@ struct TodayView: View {
             let isAwaitingScoreLockDecision = awaitingScoreLockDecision
             let destination: String
             if model.game?.gameOver == true {
-                destination = "dailyHeader"
+                destination = "dailyResult"
             } else if isAwaitingScoreLockDecision {
                 destination = "scoreLockCard"
+            } else if let daily = model.daily,
+                      model.hintsShown < daily.puzzle.hints.count {
+                destination = "askEveForNudge"
             } else if let latestGuess = model.game?.attempts.last {
                 destination = "turn-\(latestGuess.attemptNumber)"
             } else {
@@ -246,7 +251,12 @@ struct TodayView: View {
         .onChange(of: model.nudgeReveals.count) { old, new in
             guard new > old else { return }
             guard let latestHintIndex = model.nudgeReveals.map(\.hintIndex).max() else { return }
-            let destination = "eveNudge-\(latestHintIndex + 1)"
+            let destination: String
+            if let daily = model.daily, model.hintsShown < daily.puzzle.hints.count {
+                destination = "askEveForNudge"
+            } else {
+                destination = "eveNudge-\(latestHintIndex + 1)"
+            }
             Task { @MainActor in
                 await Task.yield()
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
@@ -934,17 +944,17 @@ struct ResultView: View {
             let attemptHistoryAccessibilityLabel = hasContinuationGuesses
                 ? "\(game.maxAttempts) scored guesses, \(continuationGuessCount) continuation \(continuationGuessCount == 1 ? "guess" : "guesses"), \(resultOutcome)"
                 : "\(game.attempts.count) of \(game.maxAttempts) guesses, \(resultOutcome)"
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: typeSize.isAccessibilitySize ? 24 : 12) {
+                VStack(alignment: .leading, spacing: typeSize.isAccessibilitySize ? 16 : 12) {
                     let lateSolve = game.wasSuccessful == true && game.scoreLocked == true && game.attempts.count > game.maxAttempts
                     Text(game.wasSuccessful == true ? "Aha!" : "The reveal.")
-                        .font(Theme.display(game.wasSuccessful == true ? 80 : 48)).tracking(-2)
+                        .font(Theme.display(game.wasSuccessful == true ? (typeSize.isAccessibilitySize ? 80 : 64) : 48)).tracking(-2)
                         .foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     Label(game.wasSuccessful == true ? "You found it." : "Here’s the connection.", systemImage: game.wasSuccessful == true ? "checkmark.seal.fill" : "eye")
                         .font(Theme.font(14, weight: .medium)).foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.secondary)
                     Text(game.revealedAnswer ?? "Puzzle complete")
-                        .font(Theme.display(32)).tracking(-0.8).textSelection(.enabled)
+                        .font(Theme.display(typeSize.isAccessibilitySize ? 32 : 30)).tracking(-0.8).textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
                         ForEach(0..<game.maxAttempts, id: \.self) { index in
@@ -974,11 +984,11 @@ struct ResultView: View {
                     .accessibilityIdentifier("findAnotherPuzzle")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
+                .padding(typeSize.isAccessibilitySize ? 24 : 16).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
                 .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
                 .overlay(alignment: .top) { CelebrationBurst(isActive: celebrating) }
                 .onAppear { celebrateFirstSolve(of: game) }
-                JourneyRewards(game: game)
+                DailyStreakCard(presentation: model.streakPresentation(for: game), context: .result)
                 if let summary = game.dailyShareSummary {
                     dailyShareAction(summary)
                 } else {
@@ -992,7 +1002,7 @@ struct ResultView: View {
                 }
                 Text("Same puzzle. Your answer stays a secret.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
                 DailyReturnCard()
-                DailyStreakCard(presentation: model.streakPresentation(for: game), context: .result)
+                JourneyRewards(game: game)
                 DisclosureGroup {
                     VStack(alignment: .leading, spacing: 20) {
                         if let daily = model.daily,

@@ -244,6 +244,7 @@ import StoreKitTest
         XCTAssertLessThan(firstNudge.frame.maxY, askForNudge.frame.minY)
         XCTAssertLessThan(askForNudge.frame.maxY, answerField.frame.minY,
                           "The nudge action should sit between the conversation and the next guess")
+        XCTAssertTrue(askForNudge.isHittable, "The next nudge should remain visible above the pinned answer composer")
         XCTAssertFalse(app.staticTexts["lighthouse"].exists)
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
 
@@ -424,6 +425,9 @@ import StoreKitTest
         XCTAssertEqual(viewPuzzle.label, "View puzzle")
         XCTAssertTrue(viewPuzzle.isHittable, "The puzzle should be one tap away while feedback is on screen")
         XCTAssertTrue(app.buttons["How to play"].isHittable, "Puzzle access should not hide the existing help action")
+        let draft = focusAnswerField()
+        draft.typeText("light")
+        XCTAssertEqual(draft.value as? String, "light")
         viewPuzzle.tap()
 
         XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
@@ -432,6 +436,7 @@ import StoreKitTest
 
         XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 5))
         XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "2 guesses remaining")
+        XCTAssertEqual(app.textFields["answerField"].value as? String, "light")
         XCTAssertTrue(app.buttons["checkAnswer"].exists)
     }
 
@@ -534,6 +539,8 @@ import StoreKitTest
         launchFixture()
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["TODAY’S PUZZLE"].exists,
+                       "The duplicate daily masthead should give the result actions room in the first viewport")
 
         let share = app.buttons["dailyResultShare"]
         XCTAssertTrue(share.waitForExistence(timeout: 5))
@@ -554,7 +561,8 @@ import StoreKitTest
 
         let countdown = app.otherElements["puzzleCountdown"]
         XCTAssertTrue(countdown.waitForExistence(timeout: 5))
-        XCTAssertTrue(countdown.isHittable, "The next-puzzle countdown should be visible on the completed result screen")
+        XCTAssertTrue(countdown.isHittable,
+                      "The next-puzzle countdown should be visible on the completed result screen; frame=\(countdown.frame), app=\(app.frame)")
 
         let reminder = app.buttons["configureReminder"]
         XCTAssertTrue(reminder.isHittable, "Setting an optional reminder should not require scrolling")

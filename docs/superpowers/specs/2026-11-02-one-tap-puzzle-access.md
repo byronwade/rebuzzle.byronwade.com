@@ -38,12 +38,12 @@ No sticky preview, full-screen layout refactor, board rendering change, feedback
 | HIG-005 Navigation | Yes | Action opens the existing puzzle study destination. |
 | HIG-006 Sheets/dismissal | Yes | Reuse the existing close behavior; verify return to active play. |
 | HIG-007 Safe areas/keyboard | Yes | Toolbar stays in system navigation chrome; keyboard behavior unchanged. |
-| HIG-008 System text/Dynamic Type | Yes | Use an SF Symbol with an explicit label; accessibility-size behavior needs verification. |
+| HIG-008 System text/Dynamic Type | Yes | Standard and Accessibility XXXL UI flows confirm the toolbar action and Help remain reachable. |
 | HIG-009 Assistive interaction | Yes | Explicit “View puzzle” label and test identifier; VoiceOver runtime test pending. |
 | HIG-010 Appearance/contrast | Existing tokens | No new color; contrast measurement not performed for this control. |
 | HIG-011 Motion | No change | No custom motion added. |
 | HIG-012 Haptics | No change | No haptic added. |
-| HIG-013 Input/editing | Yes | Ensure opening the puzzle preserves the current answer draft; UI test required. |
+| HIG-013 Input/editing | Yes | Standard and Accessibility XXXL UI flows preserve the exact unsent answer draft after returning from Study. |
 | HIG-014 Permissions/privacy | No change | No new permission or private data use. |
 | HIG-015 Honest states/offline | No change | Existing daily puzzle and study state are reused. |
 | HIG-016 iPad adaptation | Yes | Existing NavigationStack presentation is retained; iPad runtime not tested in this slice. |
@@ -51,9 +51,9 @@ No sticky preview, full-screen layout refactor, board rendering change, feedback
 | HIG-018 Measured performance | Yes | No performance claim; physical-device measurement not performed. |
 | HIG-019 Media/capture | No change | No media or capture change. |
 | HIG-020 Shared contracts | No change | No cross-platform contract change. |
-| HIG-021 Evidence | Yes | Targeted UI test and simulator checks pending; no release-level compliance claim. |
-| HIG-022 Review/maintenance | Yes | Code review and CI status pending. |
+| HIG-021 Evidence | Yes | Toolbar, return-state, and draft-preservation UI tests pass on the iPhone 17 Pro simulator (iOS 26.3.1). Full CI has not been refreshed. |
+| HIG-022 Review/maintenance | Yes | Follow-up code review and refreshed CI pending. |
 
 ## Release evidence still required
 
-Record build/commit and affected screens; run the targeted interaction and accessibility-size UI tests; check VoiceOver order and iPad presentation; include physical-device performance and accessibility evidence before claiming native release readiness. No physical-device evidence is available in this task.
+Record build/commit and affected screens; run the targeted interaction and accessibility-size UI tests; check VoiceOver order and iPad presentation; include physical-device performance and accessibility evidence before claiming native release readiness. The targeted simulator tests pass; no physical-device evidence is available in this task.
