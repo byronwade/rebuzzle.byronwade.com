@@ -300,8 +300,10 @@ enum JournalSyncStatus: Equatable {
             if game?.gameOver == true { clearDailyThought() }
             eve.activate(accountID: player.id, puzzleID: daily.puzzle.id)
             if let confirmed = game?.attempts.last { eve.request(guess: confirmed) }
-            draft = ""
-            try storage.saveDraft("", account: player.id, puzzle: daily.puzzle.id)
+            if game?.gameOver == true || draft.trimmingCharacters(in: .whitespacesAndNewlines) == guess {
+                draft = ""
+                try storage.saveDraft("", account: player.id, puzzle: daily.puzzle.id)
+            }
             recordCompletion()
             if game?.gameOver == true {
                 try? await reminders.schedule(completedToday: true)

@@ -224,18 +224,29 @@ struct TodayView: View {
         }
         .onChange(of: model.game?.attempts.count) { old, new in
             guard let old, let new, new > old else { return }
+            let isAwaitingScoreLockDecision = awaitingScoreLockDecision
             let destination = model.game?.gameOver == true
                 ? "dailyHeader"
-                : model.game?.scoreLocked == true
+                : isAwaitingScoreLockDecision
                     ? "scoreLockCard"
                     : "answerSection"
-            let anchor: UnitPoint = model.game?.gameOver == true || model.game?.scoreLocked == true
+            let anchor: UnitPoint = model.game?.gameOver == true || isAwaitingScoreLockDecision
                 ? .top
                 : .bottom
             Task { @MainActor in
                 await Task.yield()
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
                     scroll.scrollTo(destination, anchor: anchor)
+                }
+            }
+        }
+        .onChange(of: model.error) { _, error in
+            guard error != nil, answerFocused else { return }
+            Task { @MainActor in
+                await Task.yield()
+                guard answerFocused else { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
+                    scroll.scrollTo("answerSection", anchor: .bottom)
                 }
             }
         }
@@ -272,10 +283,20 @@ struct TodayView: View {
                 }
                 .accessibilityIdentifier("dismissAnswerKeyboard")
                 Spacer()
-                Button("Check answer", systemImage: "arrow.right") {
+                Button {
                     submitAnswer()
+                } label: {
+                    if model.submitting {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.mini)
+                            Text("Checking…")
+                        }
+                    } else {
+                        Label("Check answer", systemImage: "arrow.right")
+                    }
                 }
                 .disabled(model.submitting || model.busy || !model.sessionReady || model.needsReconciliation)
+                .accessibilityLabel(model.submitting ? "Checking answer" : "Check answer")
                 .accessibilityIdentifier("checkAnswerFromKeyboard")
             }
         }
@@ -293,9 +314,13 @@ struct TodayView: View {
         }
         .refreshable { await model.load() }
         .onChange(of: model.daily?.puzzle.id) { _, _ in
+            dismissAnswerKeyboard()
             continuedScoreLockedPuzzleID = nil
             showingExpiredReviewFor = nil
             dismissedExpiredReviewID = nil
+        }
+        .onChange(of: model.daily?.puzzleDate) { _, _ in
+            dismissAnswerKeyboard()
         }
         .onChange(of: model.canSaveDailyThought) { _, canSave in
             if !canSave { dailyThoughtEditor = false }
@@ -334,7 +359,6 @@ struct TodayView: View {
     private func submitAnswer() {
         guard !answerSubmissionInFlight else { return }
         answerSubmissionInFlight = true
-        dismissAnswerKeyboard()
         let puzzleID = model.daily?.puzzle.id
         let puzzleDate = model.daily?.puzzleDate
         let attemptCount = model.game?.attempts.count ?? 0
@@ -352,6 +376,10 @@ struct TodayView: View {
                 revealEvent = nil
             }
             await model.submit()
+            let isCurrentPuzzle = model.daily?.puzzle.id == puzzleID && model.daily?.puzzleDate == puzzleDate
+            if !isCurrentPuzzle || model.game?.gameOver == true || awaitingScoreLockDecision {
+                dismissAnswerKeyboard()
+            }
             guard let puzzleID, let puzzleDate,
                   model.daily?.puzzle.id == puzzleID,
                   model.daily?.puzzleDate == puzzleDate,
