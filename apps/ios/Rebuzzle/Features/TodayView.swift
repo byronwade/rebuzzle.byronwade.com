@@ -994,12 +994,30 @@ struct ResultView: View {
             VStack(alignment: .leading, spacing: typeSize.isAccessibilitySize ? 24 : 12) {
                 VStack(alignment: .leading, spacing: typeSize.isAccessibilitySize ? 16 : 12) {
                     let lateSolve = game.wasSuccessful == true && game.scoreLocked == true && game.attempts.count > game.maxAttempts
-                    Text(game.wasSuccessful == true ? "Aha!" : "The reveal.")
-                        .font(Theme.display(game.wasSuccessful == true ? (typeSize.isAccessibilitySize ? 80 : 64) : 48)).tracking(-2)
-                        .foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Label(game.wasSuccessful == true ? "You found it." : "Here’s the connection.", systemImage: game.wasSuccessful == true ? "checkmark.seal.fill" : "eye")
-                        .font(Theme.font(14, weight: .medium)).foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.secondary)
+                    let resultHeroLayout = typeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                        : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+                    resultHeroLayout {
+                        VStack(alignment: .leading, spacing: typeSize.isAccessibilitySize ? 16 : 12) {
+                            Text(game.wasSuccessful == true ? "Aha!" : "The reveal.")
+                                .font(Theme.display(game.wasSuccessful == true ? (typeSize.isAccessibilitySize ? 80 : 64) : 48)).tracking(-2)
+                                .foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Label(game.wasSuccessful == true ? "You found it." : "Here’s the connection.", systemImage: game.wasSuccessful == true ? "checkmark.seal.fill" : "eye")
+                                .font(Theme.font(14, weight: .medium)).foregroundStyle(game.wasSuccessful == true ? Theme.reward : Theme.secondary)
+                        }
+                        if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
+                        EveAvatar(
+                            size: typeSize.isAccessibilitySize ? 52 : 68,
+                            celebrating: game.wasSuccessful == true && celebrating
+                        )
+                        .padding(typeSize.isAccessibilitySize ? 0 : 8)
+                        .background(
+                            (game.wasSuccessful == true ? Theme.reward : Theme.accent).opacity(0.09),
+                            in: Circle()
+                        )
+                        .accessibilityHidden(true)
+                    }
                     Text(game.revealedAnswer ?? "Puzzle complete")
                         .font(Theme.display(typeSize.isAccessibilitySize ? 32 : 30)).tracking(-0.8).textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1787,6 +1805,7 @@ private struct EveNudgeTurnView: View {
 }
 
 struct EveAvatar: View {
+    var size: CGFloat = 38
     var celebrating = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -1794,7 +1813,7 @@ struct EveAvatar: View {
         Image("EveAvatar")
             .resizable()
             .scaledToFit()
-            .frame(width: 38, height: 38)
+            .frame(width: size, height: size)
             .background(celebrating ? Theme.reward.opacity(0.12) : Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
             .scaleEffect(celebrating ? 1.06 : 1)
             .rotationEffect(.degrees(celebrating ? -8 : 0))
