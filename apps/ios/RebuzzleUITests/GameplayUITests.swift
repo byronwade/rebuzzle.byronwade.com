@@ -51,6 +51,17 @@ import StoreKitTest
         capture("Canonical board — study")
     }
 
+    func testDailyPuzzleArenaContainsGuessProgress() {
+        launchFixture()
+        let arena = app.descendants(matching: .any)["dailyPuzzleArena"].firstMatch
+        let progress = app.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+
+        XCTAssertTrue(arena.waitForExistence(timeout: 5))
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertTrue(arena.frame.contains(progress.frame), "The turn meter belongs inside the puzzle arena.")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+    }
+
     func testInvalidCanonicalBoardNeverFallsBackToLegacyClue() {
         launchFixture(extraArguments: ["--ui-canonical-invalid"])
         XCTAssertTrue(app.staticTexts["Puzzle image unavailable"].waitForExistence(timeout: 5))

@@ -12,6 +12,7 @@
 		038CF360A8834FD318B53826 /* DailySolvePulseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BA949188FB52AC793EB37F /* DailySolvePulseUITests.swift */; };
 		0C6B69B973C70656980CC090 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 116205D9538019F049FCA9CD /* Assets.xcassets */; };
 		0EA74FBE313E4E4FAE4D0036 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */; };
+		D0E54AAE2AB4417CAC706B77 /* PuzzleArenaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E54AAE2AB4417CAC706B78 /* PuzzleArenaView.swift */; };
 		0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */; };
 		204460933C36A26B4797190F /* GameplayUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */; };
 		23D5626DE99DB5C8E5F330C8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8ADE7D9D79BE0F1DE6FEC864 /* PrivacyInfo.xcprivacy */; };
@@ -139,6 +140,7 @@
 		A94703AB1F1CBE45703270A4 /* DailySolveDistributionAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySolveDistributionAPITests.swift; sourceTree = "<group>"; };
 		A1A11EED0000000000000002 /* DailyPuzzleLiveActivityCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPuzzleLiveActivityCoordinator.swift; sourceTree = "<group>"; };
 		ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		D0E54AAE2AB4417CAC706B78 /* PuzzleArenaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PuzzleArenaView.swift; sourceTree = "<group>"; };
 		B0296681F6B145702B518962 /* Inter.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter.ttf; sourceTree = "<group>"; };
 		C61864440C1A74407936568F /* ProgressScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressScreen.swift; sourceTree = "<group>"; };
 		C62B307E9DA571BC57ADE91D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
@@ -300,6 +302,7 @@
 				11D915DE26C2DDCDAB6087A8 /* PlusView.swift */,
 				1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */,
 				C61864440C1A74407936568F /* ProgressScreen.swift */,
+				D0E54AAE2AB4417CAC706B78 /* PuzzleArenaView.swift */,
 				7A644188B1C600803AADBDAD /* SettingsView.swift */,
 				ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */,
 				124C2F26141BC60AD508780F /* VisualBoard.swift */,
@@ -553,6 +556,7 @@
 				BC0F558FDC9CF64D04711ACD /* SettingsView.swift in Sources */,
 				FAB53A6F032B4E120AB54893 /* Theme.swift in Sources */,
 				0EA74FBE313E4E4FAE4D0036 /* TodayView.swift in Sources */,
+				D0E54AAE2AB4417CAC706B77 /* PuzzleArenaView.swift in Sources */,
 				259DD512FDEA823516C5CC87 /* VisualBoard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

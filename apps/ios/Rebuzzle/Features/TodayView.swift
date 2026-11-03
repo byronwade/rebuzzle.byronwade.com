@@ -66,36 +66,10 @@ struct TodayView: View {
                         .id("dailyResult")
                     conversation
                 } else {
-                    VStack(spacing: 0) {
-                        let stageHeader = typeSize.isAccessibilitySize
-                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
-                        stageHeader {
-                            Text(daily.puzzle.typeName)
-                                .font(Theme.font(13, weight: .semibold))
-                            if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
-                            DifficultyBadge(difficulty: daily.puzzle.difficulty)
-                                .accessibilityIdentifier("dailyDifficultyTier")
-                            Button {
-                                openStudyPuzzle(daily.puzzle)
-                            } label: {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .frame(minWidth: 44, minHeight: 44)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain).foregroundStyle(Theme.accent)
-                            .accessibilityLabel("Study puzzle")
-                            .accessibilityIdentifier("studyPuzzle")
-                        }.padding(.horizontal, 16).padding(.vertical, 2)
-                        Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
-                        // Keep every clue and its internal geometry untouched.
-                        PuzzleBoard(puzzle: daily.puzzle).padding(16)
+                    PuzzleArenaView(puzzle: daily.puzzle) {
+                        openStudyPuzzle(daily.puzzle)
                     }
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
                     VStack(alignment: .leading, spacing: 14) {
-                        attemptHeader
                         if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty || visiblePendingGuessSubmission != nil { conversation }
                         if model.game?.scoreLocked == true {
                             scoreLockCard.id("scoreLockCard")
@@ -794,53 +768,6 @@ struct TodayView: View {
         }
     }
 
-    private var attemptHeader: some View {
-        let attempts = model.game?.attempts ?? []
-        let maximum = model.game?.maxAttempts ?? 3
-        let remaining = model.game?.attemptsLeft ?? maximum
-        let progressValue = model.game?.scoreLocked == true
-            ? "Your score is saved. Keep solving."
-            : "\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining"
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-            : AnyLayout(HStackLayout(spacing: 12))
-        return layout {
-            HStack(spacing: 8) {
-                ForEach(0..<maximum, id: \.self) { index in
-                    let submitted = index < attempts.count
-                    let active = index == attempts.count
-                    let correct = submitted && attempts[index].correct
-                    let resultColor = correct ? Theme.success : Theme.error
-                    ZStack {
-                        Circle().fill(active ? Theme.accent : submitted ? resultColor.opacity(0.13) : Theme.field)
-                        Circle().strokeBorder(active ? Theme.accent : submitted ? resultColor.opacity(0.48) : Theme.secondary.opacity(0.25), lineWidth: 1)
-                        if submitted {
-                            Image(systemName: correct ? "checkmark" : "xmark")
-                                .font(.system(size: 15, weight: .bold))
-                                .transition(reduceMotion ? .opacity : .scale(scale: 0.55).combined(with: .opacity))
-                        } else {
-                            Text("\(index + 1)").font(Theme.display(18)).monospacedDigit()
-                        }
-                    }
-                    .foregroundStyle(submitted ? resultColor : active ? Color.white : Theme.secondary)
-                    .frame(width: 40, height: 40)
-                    .shadow(color: active ? Theme.accent.opacity(0.20) : .clear, radius: 0, x: 0, y: 3)
-                    .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.64), value: model.game?.attempts.count)
-                }
-            }.accessibilityHidden(true)
-            if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
-            VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 3) {
-                Text(model.game?.scoreLocked == true ? "Take your time" : "Your move")
-                    .font(Theme.font(14, weight: .semibold))
-                Text(model.game?.scoreLocked == true ? "Your score is saved" : "\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
-                    .font(Theme.font(12)).foregroundStyle(Theme.secondary)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("dailyGuessProgress")
-        .accessibilityLabel("Guess progress")
-        .accessibilityValue(progressValue)
-    }
 }
 
 private struct DailyThoughtSheet: View {
