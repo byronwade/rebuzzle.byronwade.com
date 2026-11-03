@@ -71,6 +71,8 @@ Consulted 2026-11-03. Thorbis D-025 defers native behavior to the current Apple 
 ## Verification record
 
 - RED: the score-lock UI test failed at the expected assertion because `continuedSolveStatus` was absent after “Keep solving.”
-- GREEN: focused UI tests passed (2/2) on iPhone 17 Pro, iOS Simulator 26.3.1. They cover the normal score-lock path through late solve and the Accessibility XXXL open-solve composer.
+- GREEN: focused UI tests passed (2/2) on iPhone 17 Pro, iOS Simulator 26.3.1. They cover a normal scored guess, the score-lock path through a wrong continuation guess and late solve, and the Accessibility XXXL open-solve composer.
 - Accessibility XXXL screenshot: `Daily open solve — Accessibility XXXL with keyboard`; the status wraps to three lines, stays above the answer field, and does not clip. The test also confirmed the keyboard and status are hittable.
-- The full iOS suite is still running; its final result has not been recorded. No physical-device behavior is claimed.
+- Build: the iOS Simulator app build completed successfully with `xcodebuild -quiet -project apps/ios/Rebuzzle.xcodeproj -scheme Rebuzzle -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/rebuzzle-score-safe-derived CODE_SIGN_IDENTITY=- build`.
+- Full iOS suite and the separate app unit-test target did not complete. The simulator repeatedly presented an Apple Account sign-in prompt during those broader runs; both runs were stopped without entering credentials. No pass is claimed for either run.
+- No physical-device behavior is claimed.

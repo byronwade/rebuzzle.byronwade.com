@@ -43,5 +43,6 @@
 - [x] Add a secondary-style `HStack` with a decorative clock symbol and status `Text` above the composer row only when the current game is score-locked and its ID equals `continuedScoreLockedPuzzleID`; add `accessibilityIdentifier("continuedSolveStatus")` to the text.
 - [x] Verify the focused UI test passes, including the existing late-solve result assertions.
 - [x] Add a separate Accessibility XXXL UI case and verify status wrapping and keyboard reachability.
-- [ ] Run the iOS UI suite and simulator build; record exact results.
-- [ ] Review the diff, run `git diff --check`, commit, and push to PR #219.
+- [x] Run the simulator build and focused UI cases (2/2 pass); record exact results in the spec.
+- [ ] Complete the full iOS UI suite; the simulator’s recurring Apple Account prompt prevented completion.
+- [x] Review the final diff, run `git diff --check`, commit, and push to PR #219.

@@ -523,6 +523,11 @@ import StoreKitTest
         XCTAssertTrue(continuedStatus.isHittable, "The score-safety cue should stay beside the composer while typing")
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
 
+        submit("sunshine")
+        XCTAssertTrue(app.staticTexts["guessFeedback"].waitForExistence(timeout: 5))
+        XCTAssertTrue(continuedStatus.isHittable, "An unscored miss should not remove the open-solve cue")
+        XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "Your score is saved. Keep solving.")
+
         submit("lighthouse")
         XCTAssertFalse(continuedStatus.exists, "The cue should leave with the composer when the result opens")
         XCTAssertTrue(app.staticTexts["lateSolveMessage"].waitForExistence(timeout: 15))
@@ -542,8 +547,8 @@ import StoreKitTest
 
         let status = app.descendants(matching: .any)["continuedSolveStatus"].firstMatch
         XCTAssertTrue(status.waitForExistence(timeout: 5))
-        XCTAssertTrue(status.isHittable, "The status should remain visible above the keyboard at Accessibility XXXL")
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(status.isHittable, "The status should remain visible above the keyboard at Accessibility XXXL")
         capture("Daily open solve — Accessibility XXXL with keyboard")
     }
 
