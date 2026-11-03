@@ -461,6 +461,7 @@ import StoreKitTest
         submit("sunshine")
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
         XCTAssertEqual(guessProgress.value as? String, "2 guesses remaining")
+        XCTAssertFalse(app.staticTexts["continuedSolveStatus"].exists, "An in-round guess is still scored normally")
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["guessFeedback"].exists)
         XCTAssertTrue(app.staticTexts["A fresh angle might help."].exists)
@@ -503,6 +504,8 @@ import StoreKitTest
     func testScoreLockedDailyOffersContinueWithoutRevealingAnswer() {
         launchFixture(extraArguments: ["--ui-score-locked"])
 
+        let continuedStatus = app.staticTexts["continuedSolveStatus"]
+        XCTAssertFalse(continuedStatus.exists, "The open-solve status should wait until the player continues")
         XCTAssertTrue(app.staticTexts["scoreLockedMessage"].waitForExistence(timeout: 5))
         reveal(app.buttons["continueSolving"])
         XCTAssertTrue(app.buttons["continueSolving"].isHittable)
@@ -512,12 +515,36 @@ import StoreKitTest
 
         app.buttons["continueSolving"].tap()
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 5))
+        XCTAssertTrue(continuedStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(continuedStatus.label, "Score locked · solve at your pace")
+        let field = app.descendants(matching: .any)["answerField"].firstMatch
+        field.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(continuedStatus.isHittable, "The score-safety cue should stay beside the composer while typing")
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
 
         submit("lighthouse")
+        XCTAssertFalse(continuedStatus.exists, "The cue should leave with the composer when the result opens")
         XCTAssertTrue(app.staticTexts["lateSolveMessage"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["You found it."].exists)
         XCTAssertTrue(app.staticTexts["lighthouse"].firstMatch.exists)
+    }
+
+    func testContinuedSolveStatusStaysVisibleAtAccessibilitySize() {
+        launchFixture(extraArguments: [
+            "--ui-score-locked",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+
+        reveal(app.buttons["continueSolving"])
+        app.buttons["continueSolving"].tap()
+
+        let status = app.descendants(matching: .any)["continuedSolveStatus"].firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(status.isHittable, "The status should remain visible above the keyboard at Accessibility XXXL")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        capture("Daily open solve — Accessibility XXXL with keyboard")
     }
 
     func testLateSolveResultExplainsContinuationCount() {

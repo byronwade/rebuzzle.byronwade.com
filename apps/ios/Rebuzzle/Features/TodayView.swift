@@ -309,6 +309,20 @@ struct TodayView: View {
             if typeSize.isAccessibilitySize {
                 askEveComposerButton
             }
+            if let game = model.game,
+               game.scoreLocked == true,
+               continuedScoreLockedPuzzleID == game.puzzleId {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .accessibilityHidden(true)
+                    Text("Score locked · solve at your pace")
+                        .accessibilityIdentifier("continuedSolveStatus")
+                }
+                .font(Theme.font(typeSize.isAccessibilitySize ? 14 : 12, weight: .medium))
+                .foregroundStyle(Theme.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            }
             HStack(spacing: 10) {
                 if !typeSize.isAccessibilitySize {
                     askEveComposerButton
