@@ -1182,7 +1182,7 @@ import StoreKitTest
     }
 
     func testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle() {
-        launchFixture(extraArguments: ["--ui-journey-days-2"])
+        launchFixture(extraArguments: ["--ui-journey-days-2", "--ui-delayed-journey-progress"])
         selectTab("Journey")
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("50 XP"))
@@ -1191,6 +1191,16 @@ import StoreKitTest
         selectTab("Play")
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        let trailStatus = app.descendants(matching: .any)["resultWeeklyTrailStatus"].firstMatch
+        XCTAssertTrue(trailStatus.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["resultWeeklyTrailProgress"].exists)
+        XCTAssertFalse(app.staticTexts["+50 XP earned this week"].exists)
+        let resultTrail = app.descendants(matching: .any)["resultWeeklyTrailProgress"].firstMatch
+        XCTAssertTrue(resultTrail.waitForExistence(timeout: 8))
+        XCTAssertTrue(resultTrail.label.contains("3 of 3 days"))
+        XCTAssertTrue(resultTrail.label.contains("50 XP reward earned"))
+        XCTAssertTrue(app.staticTexts["+50 XP earned this week"].exists)
+
         let journey = app.buttons["viewJourney"]
         for _ in 0..<12 where !journey.isHittable { app.swipeUp() }
         journey.tap()
@@ -1202,6 +1212,31 @@ import StoreKitTest
         XCTAssertTrue(trail.exists)
         XCTAssertTrue(trail.label.contains("3 of 3 days"))
         XCTAssertTrue(trail.label.contains("50 XP reward earned"))
+    }
+
+    func testResultWeeklyTrailOfflineStateAvoidsStaleProgress() {
+        launchFixture(extraArguments: ["--ui-journey-days-2", "--ui-journey-unavailable"])
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+
+        let trailStatus = app.descendants(matching: .any)["resultWeeklyTrailStatus"].firstMatch
+        XCTAssertTrue(trailStatus.waitForExistence(timeout: 5))
+        XCTAssertTrue(trailStatus.label.localizedCaseInsensitiveContains("catch up"))
+        XCTAssertFalse(app.descendants(matching: .any)["resultWeeklyTrailProgress"].exists)
+        XCTAssertFalse(app.staticTexts["+50 XP earned this week"].exists)
+    }
+
+    func testResultWeeklyTrailWithoutRewardDoesNotInventXP() {
+        launchFixture(extraArguments: ["--ui-journey-days-2", "--ui-journey-no-reward"])
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+
+        let trail = app.descendants(matching: .any)["resultWeeklyTrailProgress"].firstMatch
+        XCTAssertTrue(trail.waitForExistence(timeout: 5))
+        XCTAssertTrue(trail.label.contains("3 of 3 days"))
+        XCTAssertTrue(trail.label.contains("weekly reward details unavailable"))
+        XCTAssertTrue(app.staticTexts["Your three-day trail is complete."].exists)
+        XCTAssertFalse(app.staticTexts["+50 XP earned this week"].exists)
     }
 
     func testTabNavigation() {

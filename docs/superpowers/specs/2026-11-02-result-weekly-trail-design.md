@@ -11,7 +11,7 @@ Connect finishing today's puzzle to the next reason to return. The result alread
 - If Journey cannot refresh, say the result is saved and Journey will catch up later; do not show stale counts as current.
 - Once a complete server snapshot includes the exact finished puzzle ID and date, show the 0–3 progress and the optional server-provided weekly reward. The existing “See your Journey” button remains the tap-through.
 - Animate newly confirmed trail markers with a short spring and respect Reduce Motion. VoiceOver gets one concise label for the complete progress and reward state.
-- Signed-in players see the weekly trail. Guest/local play keeps its existing per-puzzle result reward without implying account-synced weekly progress.
+- All players with server-backed Journey progress see the weekly trail. Its counts and XP reward always come from the same fresh server snapshot used by Journey.
 
 ## Data and trust rules
 

@@ -54,6 +54,10 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
                ProcessInfo.processInfo.arguments.contains("--ui-expired-daily") {
                 Thread.sleep(forTimeInterval: 3)
             }
+            if request.url?.path == "/api/user/progress",
+               ProcessInfo.processInfo.arguments.contains("--ui-delayed-journey-progress") {
+                Thread.sleep(forTimeInterval: 3)
+            }
             let (status, data) = try Self.state.respond(to: request)
             let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -202,6 +206,7 @@ private final class FixtureServer: @unchecked Sendable {
         case "/api/user/stats":
             payload = ["success": true, "stats": ["totalGames": existingInstallFixture || game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0, "maxStreak": game.wasSuccessful == true ? 1 : 0]]
         case "/api/user/progress":
+            if ProcessInfo.processInfo.arguments.contains("--ui-journey-unavailable") { return (503, Data()) }
             payload = journeyProgressPayload()
         case "/api/puzzles/quip":
             if ProcessInfo.processInfo.arguments.contains("--ui-quip-unavailable") { return (503, Data()) }
@@ -339,8 +344,25 @@ private final class FixtureServer: @unchecked Sendable {
         var badges: [String] = []
         if completed { badges.append("first-finish") }
         if firstGuessSolve { badges.append("first-guess-solve") }
+        let hasValidTerminalEntry = solved
+            ? game.attempts.count > 0
+            : game.attempts.count >= game.maxAttempts
+        var recentEntries: [[String: Any]] = []
+        if completed && hasValidTerminalEntry {
+            var entry: [String: Any] = [
+                "puzzleDate": game.puzzleDate,
+                "puzzleId": game.puzzleId,
+                "outcome": solved ? "solved" : "failed",
+                "attempts": game.attempts.count,
+                "hintCount": game.hintsUsed,
+                "completedAt": ISO8601DateFormatter().string(from: Date()),
+                "timeZone": "UTC"
+            ]
+            if game.attempts.count > game.maxAttempts { entry["playMode"] = "extended" }
+            recentEntries.append(entry)
+        }
 
-        return [
+        var payload: [String: Any] = [
             "asOfPuzzleDate": game.puzzleDate,
             "currentWeekStart": formatter.string(from: week.start),
             "currentWeekEnd": formatter.string(from: week.end.addingTimeInterval(-24 * 60 * 60)),
@@ -360,9 +382,13 @@ private final class FixtureServer: @unchecked Sendable {
                 "completedThisWeek": completedThisWeek,
                 "badges": badges
             ],
-            "recentEntries": [],
+            "recentEntries": recentEntries,
             "backfill": ["status": "complete"]
         ]
+        if ProcessInfo.processInfo.arguments.contains("--ui-journey-no-reward") {
+            payload.removeValue(forKey: "weeklyTrailReward")
+        }
+        return payload
     }
 
     private func bodyData(_ request: URLRequest) -> Data {

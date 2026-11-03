@@ -15,7 +15,7 @@
 - Server snapshots own weekly progress, XP, and reward state; the result view never awards XP locally.
 - Fresh result progress requires a complete backfill and an exact recent puzzle ID/date match.
 - Stale or unavailable snapshots never claim current progress or an earned reward.
-- Keep guest/local play, existing Journey routing, weekly reward math, and paid access behavior unchanged.
+- Keep existing Journey routing, weekly reward math, and paid access behavior unchanged. The result panel can show the same server-backed Journey progress to guest and member players.
 - Respect Dynamic Type, VoiceOver, and Reduce Motion.
 
 ## Review Focus
@@ -51,21 +51,22 @@
 - Test: `apps/ios/RebuzzleUITests/GameplayUITests.swift`
 
 **Interface:**
-- `JourneyRewards` renders a result trail only when `snapshot.includesResult(forPuzzleID:puzzleDate:)` is true. Otherwise, signed-in players see `resultWeeklyTrailStatus`; no stale count or reward is displayed.
+- `JourneyRewards` renders a result trail only when `snapshot.includesResult(forPuzzleID:puzzleDate:)` is true. Otherwise, players see `resultWeeklyTrailStatus`; no stale count or reward is displayed.
 - The fresh component exposes `resultWeeklyTrailProgress` as a combined accessibility element and uses `weeklyTrailReward` only when the server supplies it.
 
-- [ ] Extend `testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle` to assert the result starts in the update state, does not show a stale earned reward, then shows the current 3/3 trail and +50 XP only after the delayed progress response includes today's entry.
-- [ ] Add a fixture option that delays `/api/user/progress`, and return a valid terminal `recentEntries` row only after the fixture game is complete.
-- [ ] Run the focused UI test and confirm it fails because the result panel has no weekly trail.
-- [ ] Implement the compact progress/status views with the existing theme tokens and Reduce Motion handling.
-- [ ] Re-run the focused UI test and confirm the stale-to-fresh transition passes.
-- [ ] Commit: `Show weekly trail progress after a solve`.
+- [x] Extend `testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle` to assert the result starts in the update state, does not show a stale earned reward, then shows the current 3/3 trail and +50 XP only after the delayed progress response includes today's entry.
+- [x] Add fixture options for a delayed `/api/user/progress` response, an unavailable response, and an omitted optional reward; return a valid terminal `recentEntries` row only after the fixture game is complete.
+- [x] Add offline recovery and missing-reward UI coverage; both avoid stale counts and invented bonus XP.
+- [x] Run the focused UI tests and confirm they fail before the result trail exists and before the missing-reward copy is corrected.
+- [x] Implement the compact progress/status views with the existing theme tokens and Reduce Motion handling.
+- [x] Re-run the focused UI tests; delayed refresh, offline recovery, and the missing-reward state pass.
+- [x] Commit: `Show weekly trail progress after a solve`.
 
 ### Task 3: Verify the focused feature and branch
 
 **Files:** all files in Tasks 1–2.
 
-- [ ] Run `swift test --package-path apps/ios/Core`.
-- [ ] Run the focused native test `GameplayUITests/testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle` on an iPhone simulator.
-- [ ] Run `git diff --check` and review the full diff for stale-reward claims, accessibility, and unintended XP changes.
-- [ ] Commit any required corrections, request a fresh code review, and push the verified branch to PR #219.
+- [x] Run `swift test --package-path apps/ios/Core` (72 tests passed).
+- [x] Run the focused native weekly trail UI tests on an iPhone 17 Pro simulator (3 tests passed).
+- [x] Run `git diff --check` and review the full diff for stale-reward claims, accessibility, and unintended XP changes.
+- [ ] Commit the reviewed change and push the verified branch to PR #219.

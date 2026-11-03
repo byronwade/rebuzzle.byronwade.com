@@ -71,12 +71,138 @@ struct JourneyRewards: View {
             }
             Text(game.wasSuccessful == true ? (stars == 3 ? "First guess. Nailed it." : "That’s your daily aha.") : "A new connection, even on the tricky days.")
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+            Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
+            if let snapshot = model.journeySnapshot,
+               snapshot.includesResult(forPuzzleID: game.puzzleId, puzzleDate: game.puzzleDate),
+               let summary = snapshot.summary {
+                JourneyResultWeeklyTrail(
+                    progress: JourneyProgress(summary: summary),
+                    reward: snapshot.weeklyTrailReward
+                )
+            } else {
+                JourneyResultWeeklyTrailStatus(
+                    isSyncing: model.journeySyncing,
+                    isUnavailable: model.journeySyncError != nil
+                )
+            }
             Button { model.selectedTab = .journey } label: {
                 HStack { Text("See your Journey"); Spacer(); Image(systemName: "arrow.right") }
                     .font(Theme.font(14, weight: .medium)).frame(minHeight: 44).contentShape(Rectangle())
             }.foregroundStyle(Theme.ink).accessibilityIdentifier("viewJourney")
         }.padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
             .onAppear { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { appeared = true } }
+    }
+}
+
+private struct JourneyResultWeeklyTrail: View {
+    let progress: JourneyProgress
+    let reward: JourneyWeeklyTrailReward?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var revealed = false
+
+    private var completedDays: Int { min(progress.weeklyDays, 3) }
+    private var rewardCopy: String {
+        guard let reward else {
+            return completedDays == 3
+                ? "Your three-day trail is complete."
+                : "Solve on three days this week to build your trail."
+        }
+        if reward.earned { return "+\(reward.bonusXP) XP earned this week" }
+        let remainingDays = max(0, 3 - completedDays)
+        let dayWord = remainingDays == 1 ? "day" : "days"
+        return "\(remainingDays) more puzzle \(dayWord) to unlock +\(reward.bonusXP) XP."
+    }
+    private var accessibilitySummary: String {
+        let rewardState: String
+        if let reward {
+            rewardState = "\(reward.bonusXP) XP reward \(reward.earned ? "earned" : "available")"
+        } else {
+            rewardState = "weekly reward details unavailable"
+        }
+        return "\(completedDays) of 3 days completed this week, \(rewardState)"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Eyebrow(text: "WEEKLY TRAIL")
+                Spacer()
+                Text("\(completedDays)/3")
+                    .font(Theme.font(13, weight: .semibold)).monospacedDigit()
+                    .accessibilityHidden(true)
+            }
+            HStack(spacing: 0) {
+                ForEach(0..<3, id: \.self) { day in
+                    let complete = day < completedDays
+                    let current = day == completedDays
+                    Image(systemName: complete ? "checkmark" : current ? "flag.fill" : "flag")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(complete ? Theme.panel : current ? Theme.accent : Theme.secondary)
+                        .frame(width: 36, height: 36)
+                        .background(complete ? Theme.success : Theme.field, in: Circle())
+                        .overlay(Circle().strokeBorder(current ? Theme.accent : .clear, lineWidth: 1.5))
+                        .scaleEffect(complete && !revealed && !reduceMotion ? 0.72 : 1)
+                        .animation(
+                            reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.62).delay(Double(day) * 0.08),
+                            value: revealed
+                        )
+                    if day < 2 {
+                        Rectangle()
+                            .fill(day < completedDays - 1 ? Theme.success : Theme.secondary.opacity(0.24))
+                            .frame(maxWidth: 28).frame(height: 2)
+                    }
+                }
+            }
+            Text(rewardCopy)
+                .font(Theme.font(13, weight: .semibold))
+                .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+        .accessibilityIdentifier("resultWeeklyTrailProgress")
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { revealed = true }
+        }
+    }
+}
+
+private struct JourneyResultWeeklyTrailStatus: View {
+    let isSyncing: Bool
+    let isUnavailable: Bool
+
+    private var detail: String {
+        if isUnavailable { return "Your result is saved. Journey will catch up when you’re back online." }
+        if isSyncing { return "Updating your weekly trail…" }
+        return "Your result is saved. Weekly progress will appear when Journey refreshes."
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isUnavailable ? "icloud.slash" : "clock.arrow.circlepath")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(isUnavailable ? Theme.secondary : Theme.accent)
+                .frame(width: 36, height: 36)
+                .background(Theme.field, in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Eyebrow(text: "WEEKLY TRAIL")
+                Text(detail)
+                    .font(Theme.font(12))
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            if isSyncing {
+                ProgressView().controlSize(.mini).tint(Theme.accent)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.top, 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Weekly trail. \(detail)")
+        .accessibilityIdentifier("resultWeeklyTrailStatus")
     }
 }
 
