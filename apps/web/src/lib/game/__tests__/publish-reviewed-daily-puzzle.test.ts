@@ -3,6 +3,7 @@ import {
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
+import { compileCanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-board";
 import type { PublicationAssetCheck } from "@/ai/puzzle-agent/visual/publication-assets";
 import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "../daily-puzzle-candidate-repository";
@@ -112,6 +113,22 @@ function memoryRepository(seed: DailyPuzzleCandidate[]) {
           (!input.statuses?.length || input.statuses.includes(row.status)) &&
           (!input.withoutPlaytestSubmission || !row.playtestSubmittedAt)
       );
+    },
+    async replacePayloadForReview({ id, expectedStatusVersion, payload: nextPayload, updatedAt }) {
+      const row = rows.find(
+        (candidate) =>
+          candidate.id === id &&
+          candidate.status === "reviewing" &&
+          candidate.statusVersion === expectedStatusVersion &&
+          !candidate.playtestSubmittedAt
+      );
+      if (!row) return null;
+      Object.assign(row, {
+        payload: nextPayload,
+        statusVersion: row.statusVersion + 1,
+        updatedAt,
+      });
+      return row;
     },
     async markPlaytestSubmitted() {
       return null;
@@ -249,6 +266,10 @@ describe("publishing human-reviewed daily puzzles", () => {
       expect.objectContaining({
         dateString,
         answer: payload.answer,
+        visual: {
+          ...payload.visual,
+          canonicalBoard: await compileCanonicalBoard(payload.visual!),
+        },
         humanPlaytestAdmission: expect.objectContaining({
           contractVersion: PUZZLE_PLAYTEST_CONTRACT_VERSION,
           candidateId: "candidate-1",
@@ -257,11 +278,52 @@ describe("publishing human-reviewed daily puzzles", () => {
         }),
       })
     );
+    expect(result).toMatchObject({
+      visual: {
+        ...payload.visual,
+        canonicalBoard: await compileCanonicalBoard(payload.visual!),
+      },
+    });
     expect(rows[0]).toMatchObject({
       status: "published",
       assignedDate: dateString,
     });
   });
+
+  it("rejects a reviewed candidate if its stored canonical artwork no longer matches its source", async () => {
+    const tampered = makeCandidate("ready");
+    tampered.humanEvidence = storedEvidence();
+    tampered.payload = {
+      ...tampered.payload,
+      visual: {
+        ...payload.visual!,
+        canonicalBoard: {
+          version: 1,
+          pngDataUrl: "data:image/png;base64,AAAA",
+          sha256: "0".repeat(64),
+          width: 1,
+          height: 1,
+          sourceFingerprint: "1".repeat(64),
+          profileVariants: {},
+        },
+      },
+    };
+    const { repository, rows } = memoryRepository([tampered]);
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString,
+      repository,
+      reviewService,
+      persist,
+    });
+
+    expect(result).toBeNull();
+    expect(persist).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({
+      status: "rejected",
+      rejectionReason: expect.stringContaining("Canonical"),
+    });
+  }, 30_000);
 
   it("resumes the same assigned candidate after a publish retry without rechecking its review", async () => {
     const assigned = makeCandidate("assigned", dateString);
