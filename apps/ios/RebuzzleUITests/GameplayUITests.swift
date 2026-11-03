@@ -57,11 +57,14 @@ import StoreKitTest
         launchFixture()
         let arena = app.descendants(matching: .any)["dailyPuzzleArena"].firstMatch
         let progress = arena.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+        let turnTitle = arena.staticTexts["dailyTurnTitle"]
 
         XCTAssertTrue(arena.waitForExistence(timeout: 5))
         XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertTrue(turnTitle.waitForExistence(timeout: 5))
         XCTAssertTrue(arena.frame.contains(progress.frame), "The turn meter belongs inside the puzzle arena.")
         XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        XCTAssertEqual(turnTitle.label, "Make your move")
     }
 
     func testDailyPuzzleArenaFitsAccessibilitySize() {
@@ -672,6 +675,7 @@ import StoreKitTest
         submit("sunshine")
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
         XCTAssertEqual(guessProgress.value as? String, "2 guesses remaining")
+        XCTAssertEqual(app.staticTexts["dailyTurnTitle"].label, "Try a new angle")
         XCTAssertFalse(app.staticTexts["continuedSolveStatus"].exists, "An in-round guess is still scored normally")
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["guessFeedback"].exists)
@@ -1307,8 +1311,12 @@ import StoreKitTest
         launchFixture()
         for (index, guess) in ["sunshine", "moonlight", "daybreak"].enumerated() {
             submit(guess)
-            if index < 2 { XCTAssertTrue(app.staticTexts["\(2 - index) \(index == 1 ? "guess" : "guesses") remaining"].waitForExistence(timeout: 5)) }
+            if index < 2 {
+                XCTAssertTrue(app.staticTexts["\(2 - index) \(index == 1 ? "guess" : "guesses") remaining"].waitForExistence(timeout: 5))
+                if index == 1 { XCTAssertEqual(app.staticTexts["dailyTurnTitle"].label, "One last try") }
+            }
         }
+        XCTAssertEqual(app.staticTexts["dailyTurnTitle"].label, "Score banked")
         XCTAssertTrue(app.staticTexts["scoreLockedMessage"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
         reveal(app.buttons["revealAnswer"])

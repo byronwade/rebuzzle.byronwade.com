@@ -80,53 +80,37 @@ struct PuzzleArenaView: View {
 
     private var attemptHeader: some View {
         let attempts = model.game?.attempts ?? []
-        let maximum = model.game?.maxAttempts ?? 3
-        let remaining = model.game?.attemptsLeft ?? maximum
-        let progressValue = model.game?.scoreLocked == true
+        let maximum = max(0, model.game?.maxAttempts ?? 3)
+        let remaining = max(0, model.game?.attemptsLeft ?? maximum)
+        let scoreLocked = model.game?.scoreLocked == true
+        let results: [Bool?] = (0..<maximum).map { index in
+            attempts.indices.contains(index) ? attempts[index].correct : nil
+        }
+        let progressValue = scoreLocked
             ? "Your score is saved. Keep solving."
             : "\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining"
+        let turnTitle = scoreLocked
+            ? "Score banked"
+            : attempts.isEmpty
+                ? "Make your move"
+                : remaining <= 1
+                    ? "One last try"
+                    : "Try a new angle"
         let layout = typeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
             : AnyLayout(HStackLayout(spacing: 12))
 
         return layout {
-            HStack(spacing: 8) {
-                ForEach(0..<maximum, id: \.self) { index in
-                    let submitted = index < attempts.count
-                    let active = index == attempts.count
-                    let correct = submitted && attempts[index].correct
-                    let resultColor = correct ? Theme.success : Theme.error
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(active ? Theme.accent : submitted ? resultColor.opacity(0.13) : Theme.canvas)
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(
-                                active ? Theme.accent : submitted ? resultColor.opacity(0.45) : Theme.secondary.opacity(0.25),
-                                lineWidth: 1
-                            )
-                        if submitted {
-                            Image(systemName: correct ? "checkmark" : "xmark")
-                                .font(.system(size: 15, weight: .bold))
-                                .transition(reduceMotion ? .opacity : .scale(scale: 0.55).combined(with: .opacity))
-                        } else {
-                            Text("\(index + 1)")
-                                .font(Theme.display(18))
-                                .monospacedDigit()
-                        }
-                    }
-                    .foregroundStyle(submitted ? resultColor : active ? Color.white : Theme.secondary)
-                    .frame(width: 44, height: 44)
-                    .shadow(color: active ? Theme.accent.opacity(0.20) : .clear, radius: 0, x: 0, y: 3)
-                    .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.64), value: model.game?.attempts.count)
-                }
-            }
-            .accessibilityHidden(true)
+            attemptTrack(results: results, activeIndex: attempts.count, scoreLocked: scoreLocked)
 
             if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
             VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 3) {
-                Text(model.game?.scoreLocked == true ? "Take your time" : "Your move")
+                Text(turnTitle)
                     .font(Theme.font(14, weight: .semibold, relativeTo: .subheadline))
-                Text(model.game?.scoreLocked == true ? "Your score is saved" : "\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .accessibilityIdentifier("dailyTurnTitle")
+                Text(scoreLocked ? "Keep solving for fun" : "\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
                     .font(Theme.font(12, relativeTo: .caption))
                     .foregroundStyle(Theme.secondary)
             }
@@ -135,5 +119,54 @@ struct PuzzleArenaView: View {
         .accessibilityIdentifier("dailyGuessProgress")
         .accessibilityLabel("Guess progress")
         .accessibilityValue(progressValue)
+    }
+
+    private func attemptTrack(results: [Bool?], activeIndex: Int, scoreLocked: Bool) -> some View {
+        HStack(spacing: 0) {
+            ForEach(results.indices, id: \.self) { index in
+                let submitted = results[index] != nil
+                let correct = results[index] == true
+                let active = !scoreLocked && index == activeIndex
+                let resolvedColor = correct ? Theme.success : Theme.error
+
+                ZStack {
+                    Circle()
+                        .fill(active ? Theme.accent : submitted ? resolvedColor.opacity(0.14) : Theme.canvas)
+                    Circle()
+                        .strokeBorder(
+                            active ? Theme.accent : submitted ? resolvedColor.opacity(0.48) : Theme.secondary.opacity(0.25),
+                            lineWidth: active ? 1.5 : 1
+                        )
+                    if active {
+                        Circle()
+                            .strokeBorder(Theme.accent.opacity(0.25), lineWidth: 3)
+                            .padding(-5)
+                            .transition(reduceMotion ? .opacity : .scale(scale: 0.8).combined(with: .opacity))
+                    }
+                    if submitted {
+                        Image(systemName: correct ? "checkmark" : "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .transition(reduceMotion ? .opacity : .scale(scale: 0.55).combined(with: .opacity))
+                    } else {
+                        Text("\(index + 1)")
+                            .font(Theme.display(16))
+                            .monospacedDigit()
+                    }
+                }
+                .foregroundStyle(submitted ? resolvedColor : active ? Color.white : Theme.secondary)
+                .frame(width: 40, height: 40)
+                .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.64), value: results)
+
+                if index < results.count - 1 {
+                    let connector = results[index].map { $0 ? Theme.success.opacity(0.70) : Theme.error.opacity(0.58) }
+                        ?? Theme.secondary.opacity(0.20)
+                    Capsule()
+                        .fill(connector)
+                        .frame(width: 14, height: 3)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.28), value: results)
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
