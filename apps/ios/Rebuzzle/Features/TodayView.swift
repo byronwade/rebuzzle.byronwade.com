@@ -778,11 +778,7 @@ struct TodayView: View {
     }
     private var nudgeButtonCopy: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.accent)
-                .frame(width: 38, height: 38)
-                .background(Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+            EveAvatar().accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Ask Eve for a nudge")
                     .font(Theme.font(14, weight: .semibold))
@@ -1444,9 +1440,13 @@ struct HelpView: View {
                             }
                             dismissTutorialKeyboard()
                         } label: {
-                            Label("Ask Eve for a nudge", systemImage: "sparkles")
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .contentShape(Rectangle())
+                            HStack(spacing: 10) {
+                                EveAvatar().accessibilityHidden(true)
+                                Text("Ask Eve for a nudge")
+                                    .font(Theme.font(14, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(Theme.accent)
