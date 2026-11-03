@@ -275,14 +275,14 @@ enum JournalSyncStatus: Equatable {
             journeySyncing = false
         }
     }
-    func submit(onGuessRequestStarted: (() -> Void)? = nil) async {
+    func submit(answer draftSnapshot: String? = nil, onGuessRequestStarted: (() -> Void)? = nil) async {
         guard !submitting, !busy, sessionReady, let daily, let player, game?.gameOver == false else { return }
         guard let expiry = ResultView.date(daily.nextPuzzleTime), expiry > Date() else {
             await load()
             error = "A new daily puzzle is ready. Take a look before submitting."
             return
         }
-        let guess = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let guess = (draftSnapshot ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !guess.isEmpty else { error = "Write your answer first, then check it."; return }
         guard guess.count <= 200 else { error = "Keep your answer to 200 characters or fewer."; return }
         submitting = true; error = nil

@@ -446,7 +446,7 @@ struct TodayView: View {
             } else {
                 revealEvent = nil
             }
-            await model.submit(onGuessRequestStarted: {
+            await model.submit(answer: submittedGuess, onGuessRequestStarted: {
                 guard let pendingSubmission,
                       model.daily?.puzzle.id == pendingSubmission.puzzleID,
                       model.daily?.puzzleDate == pendingSubmission.puzzleDate,
