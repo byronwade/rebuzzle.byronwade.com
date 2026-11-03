@@ -18,6 +18,60 @@ enum JournalSyncStatus: Equatable {
     case conflict
 }
 
+private struct JourneyResultKey: Hashable {
+    let puzzleID: String
+    let puzzleDate: String
+}
+
+private struct JourneyBadgeBaseline {
+    let accountID: String
+    let puzzleID: String
+    let puzzleDate: String
+    let summary: JourneyProgressSummary
+    let baselineResultKeys: Set<JourneyResultKey>
+}
+
+private struct JourneyBadgeContribution {
+    let finishes: Int
+    let solves: Int
+    let firstGuessSolves: Int
+    let unassistedSolves: Int
+
+    init(entry: JourneyProgressEntry) {
+        let solved = entry.outcome == .solved
+        finishes = 1
+        solves = solved ? 1 : 0
+        firstGuessSolves = solved && entry.attempts == 1 ? 1 : 0
+        unassistedSolves = solved && entry.hintCount == 0 ? 1 : 0
+    }
+}
+
+private struct PendingJourneyBadgeCheck {
+    let baseline: JourneyBadgeBaseline
+
+    var accountID: String { baseline.accountID }
+    var puzzleID: String { baseline.puzzleID }
+    var puzzleDate: String { baseline.puzzleDate }
+}
+
+struct JourneyBadgeUnlock: Identifiable {
+    let id: UUID
+    let accountID: String
+    let puzzleID: String
+    let puzzleDate: String
+    let badges: [JourneyProgress.Badge]
+
+    var badgeIDs: [String] { badges.map(\.id) }
+
+    init(accountID: String, puzzleID: String, puzzleDate: String, badges: [JourneyProgress.Badge]) {
+        id = UUID()
+        self.accountID = accountID
+        self.puzzleID = puzzleID
+        self.puzzleDate = puzzleDate
+        self.badges = badges
+    }
+}
+
 @MainActor @Observable final class AppModel {
     var selectedTab: AppTab = .play
     var completedCurrentPuzzle: Bool {
@@ -50,6 +104,7 @@ enum JournalSyncStatus: Equatable {
     var stats: PlayerStats?
     var completedStreakRefreshState: CompletedStreakRefreshState = .idle
     var journeySnapshot: JourneyProgressSnapshot?
+    private(set) var journeyBadgeUnlocks: [JourneyBadgeUnlock] = []
     var journeySyncError: String?
     var journeySyncing = false
     var draft = ""
@@ -82,6 +137,7 @@ enum JournalSyncStatus: Equatable {
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var journeyIdentityID: String?
     @ObservationIgnored private var journeyRefreshGeneration = 0
+    @ObservationIgnored private var pendingJourneyBadgeChecks: [PendingJourneyBadgeCheck] = []
     @ObservationIgnored private var pendingEntrySource: DailyEntrySource?
     @ObservationIgnored let api: APIClient
 
@@ -135,6 +191,8 @@ enum JournalSyncStatus: Equatable {
         do {
             let response: DailyResponse = try await api.request("/api/puzzle/today")
             if daily?.puzzle.id != response.puzzle.id {
+                pendingJourneyBadgeChecks.removeAll()
+                journeyBadgeUnlocks.removeAll()
                 await dailyPuzzleLiveActivity.endAllImmediately()
                 clearDailyThought(for: daily)
                 eve.reset()
@@ -237,14 +295,109 @@ enum JournalSyncStatus: Equatable {
     private func loadJourneyCache(for userID: String) {
         guard journeyIdentityID != userID else { return }
         journeyRefreshGeneration += 1
+        pendingJourneyBadgeChecks.removeAll()
+        journeyBadgeUnlocks.removeAll()
         journeyIdentityID = userID
         journeySnapshot = try? storage.load(JourneyProgressSnapshot.self, key: "journey:\(userID)")
         journeySyncError = nil
         journeySyncing = false
     }
-    private func scheduleJourneyRefresh() {
-        guard player != nil else { return }
+    private func scheduleJourneyRefresh(
+        completedGame: GameSession? = nil,
+        baseline: JourneyBadgeBaseline? = nil
+    ) {
+        guard let accountID = player?.id else { return }
+        if let completedGame, let baseline,
+           baseline.accountID == accountID,
+           baseline.puzzleID == completedGame.puzzleId,
+           baseline.puzzleDate == completedGame.puzzleDate {
+            let alreadyPending = pendingJourneyBadgeChecks.contains {
+                $0.accountID == accountID && $0.puzzleID == completedGame.puzzleId && $0.puzzleDate == completedGame.puzzleDate
+            }
+            if !alreadyPending {
+                pendingJourneyBadgeChecks.append(PendingJourneyBadgeCheck(baseline: baseline))
+            }
+        }
         Task { await refreshJourneyProgress() }
+    }
+
+    private func captureJourneyBadgeBaseline(accountID: String, game: GameSession) -> JourneyBadgeBaseline? {
+        guard journeyIdentityID == accountID,
+              let snapshot = journeySnapshot,
+              snapshot.backfill.status == .complete,
+              let summary = snapshot.summary,
+              !snapshot.includesResult(forPuzzleID: game.puzzleId, puzzleDate: game.puzzleDate) else { return nil }
+        return JourneyBadgeBaseline(
+            accountID: accountID,
+            puzzleID: game.puzzleId,
+            puzzleDate: game.puzzleDate,
+            summary: summary,
+            baselineResultKeys: Set(snapshot.recentEntries.map {
+                JourneyResultKey(puzzleID: $0.puzzleId, puzzleDate: $0.puzzleDate)
+            })
+        )
+    }
+
+    func consumeJourneyBadgeUnlock(for game: GameSession) -> JourneyBadgeUnlock? {
+        guard let accountID = player?.id,
+              let index = journeyBadgeUnlocks.firstIndex(where: {
+                  $0.accountID == accountID && $0.puzzleID == game.puzzleId && $0.puzzleDate == game.puzzleDate
+              }) else { return nil }
+        return journeyBadgeUnlocks.remove(at: index)
+    }
+
+    private func resolveJourneyBadgeChecks(with snapshot: JourneyProgressSnapshot, accountID: String) {
+        guard snapshot.backfill.status == .complete, let summary = snapshot.summary else { return }
+        let currentResultKeys = Set(snapshot.recentEntries.map {
+            JourneyResultKey(puzzleID: $0.puzzleId, puzzleDate: $0.puzzleDate)
+        })
+        var unresolved: [PendingJourneyBadgeCheck] = []
+
+        for check in pendingJourneyBadgeChecks where check.accountID == accountID {
+            guard snapshot.includesResult(forPuzzleID: check.puzzleID, puzzleDate: check.puzzleDate) else {
+                unresolved.append(check)
+                continue
+            }
+            let completedResult = JourneyResultKey(puzzleID: check.puzzleID, puzzleDate: check.puzzleDate)
+            let newResultKeys = currentResultKeys.subtracting(check.baseline.baselineResultKeys)
+            guard newResultKeys.count == 1, newResultKeys.contains(completedResult) else { continue }
+
+            let matchingEntries = snapshot.recentEntries.filter {
+                $0.puzzleId == check.puzzleID && $0.puzzleDate == check.puzzleDate
+            }
+            guard matchingEntries.count == 1 else { continue }
+            let contribution = JourneyBadgeContribution(entry: matchingEntries[0])
+
+            // `recentEntries` is bounded, while the server summary includes older rows too. Require
+            // each badge-driving counter to reflect only the matching server entry, or an old delayed
+            // finalization could change badges without adding a visible recent result key.
+            guard counter(summary.finishes, matches: check.baseline.summary.finishes, by: contribution.finishes),
+                  counter(summary.solves, matches: check.baseline.summary.solves, by: contribution.solves),
+                  counter(summary.firstGuessSolves, matches: check.baseline.summary.firstGuessSolves, by: contribution.firstGuessSolves),
+                  counter(summary.unassistedSolves, matches: check.baseline.summary.unassistedSolves, by: contribution.unassistedSolves) else { continue }
+
+            let newlyEarnedIDs = Set(summary.badges).subtracting(check.baseline.summary.badges)
+            let newlyEarnedBadges = JourneyProgress(summary: summary).badges
+                .filter { newlyEarnedIDs.contains($0.id) }
+            guard !newlyEarnedBadges.isEmpty else { continue }
+            let alreadyQueued = journeyBadgeUnlocks.contains {
+                $0.accountID == accountID && $0.puzzleID == check.puzzleID && $0.puzzleDate == check.puzzleDate
+            }
+            if !alreadyQueued {
+                journeyBadgeUnlocks.append(JourneyBadgeUnlock(
+                    accountID: accountID,
+                    puzzleID: check.puzzleID,
+                    puzzleDate: check.puzzleDate,
+                    badges: newlyEarnedBadges
+                ))
+            }
+        }
+
+        pendingJourneyBadgeChecks = unresolved
+    }
+
+    private func counter(_ current: Int, matches baseline: Int, by contribution: Int) -> Bool {
+        current >= baseline && current - baseline == contribution
     }
     func recordGrowthEvent(_ event: GrowthEvent) {
         guard let userID = player?.id, let token = api.token else { return }
@@ -269,6 +422,7 @@ enum JournalSyncStatus: Equatable {
             journeySnapshot = snapshot
             journeySyncError = nil
             journeySyncing = false
+            resolveJourneyBadgeChecks(with: snapshot, accountID: userID)
         } catch {
             guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return }
             journeySyncError = error.localizedDescription
@@ -276,12 +430,13 @@ enum JournalSyncStatus: Equatable {
         }
     }
     func submit(answer draftSnapshot: String? = nil, onGuessRequestStarted: (() -> Void)? = nil) async {
-        guard !submitting, !busy, sessionReady, let daily, let player, game?.gameOver == false else { return }
+        guard !submitting, !busy, sessionReady, let daily, let player, let activeGame = game, !activeGame.gameOver else { return }
         guard let expiry = ResultView.date(daily.nextPuzzleTime), expiry > Date() else {
             await load()
             error = "A new daily puzzle is ready. Take a look before submitting."
             return
         }
+        let badgeBaseline = captureJourneyBadgeBaseline(accountID: player.id, game: activeGame)
         let guess = (draftSnapshot ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !guess.isEmpty else { error = "Write your answer first, then check it."; return }
         guard guess.count <= 200 else { error = "Keep your answer to 200 characters or fewer."; return }
@@ -314,7 +469,9 @@ enum JournalSyncStatus: Equatable {
             if game?.gameOver == true {
                 try? await reminders.schedule(completedToday: true)
                 await refreshPlayerStats(forCompletedPuzzleID: daily.puzzle.id, celebrates: true)
-                scheduleJourneyRefresh()
+                let completedGame = result.gameOver && game?.gameOver == true &&
+                    game?.puzzleId == daily.puzzle.id && game?.puzzleDate == daily.puzzleDate ? game : nil
+                scheduleJourneyRefresh(completedGame: completedGame, baseline: badgeBaseline)
             }
         } catch {
             guard run == generation else { return }
@@ -323,12 +480,13 @@ enum JournalSyncStatus: Equatable {
         }
     }
     func revealAnswer() async {
-        guard !submitting, !busy, sessionReady, let daily, game?.gameOver == false else { return }
+        guard !submitting, !busy, sessionReady, let daily, let activeGame = game, !activeGame.gameOver else { return }
         guard let expiry = ResultView.date(daily.nextPuzzleTime), expiry > Date() else {
             await load()
             error = "A new daily puzzle is ready. Take a look before revealing yesterday’s answer."
             return
         }
+        let badgeBaseline = player.flatMap { captureJourneyBadgeBaseline(accountID: $0.id, game: activeGame) }
         submitting = true
         error = nil
         defer { submitting = false }
@@ -356,7 +514,9 @@ enum JournalSyncStatus: Equatable {
             await syncDailyPuzzleLiveActivity()
             try? await reminders.schedule(completedToday: true)
             await refreshPlayerStats(forCompletedPuzzleID: daily.puzzle.id, celebrates: false)
-            scheduleJourneyRefresh()
+            let completedGame = game?.gameOver == true &&
+                game?.puzzleId == daily.puzzle.id && game?.puzzleDate == daily.puzzleDate ? game : nil
+            scheduleJourneyRefresh(completedGame: completedGame, baseline: badgeBaseline)
         } catch {
             guard run == generation else { return }
             needsReconciliation = true
@@ -770,7 +930,7 @@ enum JournalSyncStatus: Equatable {
         eve.reset()
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
         completedStreakRefreshState = .idle
-        journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; journeySyncError = nil; journeySyncing = false
+        journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; pendingJourneyBadgeChecks.removeAll(); journeyBadgeUnlocks.removeAll(); journeySyncError = nil; journeySyncing = false
         draft = ""; dailyThought = ""; dailyThoughtAvailable = false; journal = Journal(); journalSyncCheckpoint = JournalSyncCheckpoint(); journalSyncStatus = .onDevice; journalHistoryComplete = true; journalWritable = false; hintsShown = 0; nudgeReveals = []; sessionReady = false; error = nil
     }
 }

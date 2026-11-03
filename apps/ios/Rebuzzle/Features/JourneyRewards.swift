@@ -1,5 +1,6 @@
 import SwiftUI
 import RebuzzleCore
+import UIKit
 
 struct JourneyLevelView: View {
     let progress: JourneyProgress
@@ -156,6 +157,7 @@ struct JourneyRewards: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var badgeUnlock: JourneyBadgeUnlock?
     private var points: Int { JourneyProgress.points(won: game.wasSuccessful == true, attempts: game.attempts.count, hintsUsed: model.hintsShown) }
     private var stars: Int { JourneyProgress.stars(won: game.wasSuccessful == true, attempts: game.attempts.count) }
     var body: some View {
@@ -181,6 +183,14 @@ struct JourneyRewards: View {
             Text(game.wasSuccessful == true ? (stars == 3 ? "First guess. Nailed it." : "That’s your daily aha.") : "A new connection, even on the tricky days.")
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
             Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
+            if let badgeUnlock {
+                JourneyBadgeUnlockMoment(badges: badgeUnlock.badges)
+                    .transition(
+                        reduceMotion
+                            ? .identity
+                            : .opacity.combined(with: .scale(scale: 0.96, anchor: .leading))
+                    )
+            }
             if let snapshot = model.journeySnapshot,
                snapshot.includesResult(forPuzzleID: game.puzzleId, puzzleDate: game.puzzleDate),
                let summary = snapshot.summary {
@@ -200,6 +210,72 @@ struct JourneyRewards: View {
             }.foregroundStyle(Theme.ink).accessibilityIdentifier("viewJourney")
         }.padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
             .onAppear { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { appeared = true } }
+            .onAppear(perform: consumeBadgeUnlockIfAvailable)
+            .onChange(of: model.journeyBadgeUnlocks.map(\.id)) { _, _ in consumeBadgeUnlockIfAvailable() }
+            .onChange(of: model.player?.id) { _, _ in badgeUnlock = nil }
+    }
+
+    private func consumeBadgeUnlockIfAvailable() {
+        guard badgeUnlock == nil,
+              let unlock = model.consumeJourneyBadgeUnlock(for: game) else { return }
+        if UIAccessibility.isVoiceOverRunning {
+            let titles = unlock.badges.map(\.title)
+            let announcement: String
+            if titles.count == 1 {
+                announcement = "Badge unlocked: \(titles[0])."
+            } else {
+                announcement = "Badges unlocked: \(titles.joined(separator: ", "))."
+            }
+            UIAccessibility.post(notification: .announcement, argument: announcement)
+        }
+        if reduceMotion {
+            badgeUnlock = unlock
+        } else {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+                badgeUnlock = unlock
+            }
+        }
+    }
+}
+
+private struct JourneyBadgeUnlockMoment: View {
+    let badges: [JourneyProgress.Badge]
+
+    private var accessibilitySummary: String {
+        let heading = badges.count == 1 ? "Badge unlocked." : "Badges unlocked."
+        return heading + " " + badges.map { "\($0.title). \($0.detail)." }.joined(separator: " ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Eyebrow(text: badges.count == 1 ? "BADGE UNLOCKED" : "BADGES UNLOCKED")
+            ForEach(badges) { badge in
+                HStack(alignment: .top, spacing: 11) {
+                    Image(systemName: badge.symbol)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.reward)
+                        .frame(width: 34, height: 34)
+                        .background(Theme.reward.opacity(0.12), in: Circle())
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(badge.title)
+                            .font(Theme.font(15, weight: .semibold, relativeTo: .body))
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(badge.detail)
+                            .font(Theme.font(12, relativeTo: .caption))
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+        .accessibilityIdentifier("journeyBadgeUnlock")
     }
 }
 

@@ -81,6 +81,7 @@ private final class FixtureServer: @unchecked Sendable {
     private let expiredReviewFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-review")
     private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
     private let weeklyTrailFixture = ProcessInfo.processInfo.arguments.contains("--ui-journey-days-2")
+    private let hiddenHistoryDeltaFixture = ProcessInfo.processInfo.arguments.contains("--ui-hidden-history-delta")
     private var dailyRequestCount = 0
     private var quipRequestCount = 0
     private var solveDistributionRequestCount = 0
@@ -338,11 +339,13 @@ private final class FixtureServer: @unchecked Sendable {
         let firstGuessSolve = solved && game.attempts.count == 1
         let unassistedSolve = solved && game.hintsUsed == 0
         let priorFinishes = weeklyTrailFixture ? 2 : 0
+        // Simulate an older finalized run omitted from the bounded recentEntries list.
+        let hiddenHistoryFinish = hiddenHistoryDeltaFixture && completed
         let completedThisWeek = priorFinishes + (completed ? 1 : 0)
         let weeklyRewardEarned = completedThisWeek >= 3
-        let xp = priorFinishes * 25 + (completed ? 25 + (solved ? 75 : 0) + (firstGuessSolve ? 25 : 0) + (unassistedSolve ? 25 : 0) : 0) + (weeklyRewardEarned ? 50 : 0)
+        let xp = priorFinishes * 25 + (hiddenHistoryFinish ? 25 : 0) + (completed ? 25 + (solved ? 75 : 0) + (firstGuessSolve ? 25 : 0) + (unassistedSolve ? 25 : 0) : 0) + (weeklyRewardEarned ? 50 : 0)
         var badges: [String] = []
-        if completed { badges.append("first-finish") }
+        if completed || hiddenHistoryFinish { badges.append("first-finish") }
         if firstGuessSolve { badges.append("first-guess-solve") }
         let hasValidTerminalEntry = solved
             ? game.attempts.count > 0
@@ -375,7 +378,7 @@ private final class FixtureServer: @unchecked Sendable {
                 "totalXP": xp,
                 "level": xp / 300 + 1,
                 "xpIntoLevel": xp % 300,
-                "finishes": priorFinishes + (completed ? 1 : 0),
+                "finishes": priorFinishes + (completed ? 1 : 0) + (hiddenHistoryFinish ? 1 : 0),
                 "solves": solved ? 1 : 0,
                 "firstGuessSolves": firstGuessSolve ? 1 : 0,
                 "unassistedSolves": unassistedSolve ? 1 : 0,
