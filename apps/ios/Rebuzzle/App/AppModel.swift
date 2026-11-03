@@ -74,6 +74,7 @@ enum JournalSyncStatus: Equatable {
     let eve: EveReplyStore
     let purchases: PurchaseStore
     let reminders = ReminderStore()
+    @ObservationIgnored private let dailyPuzzleLiveActivity = DailyPuzzleLiveActivityCoordinator()
     @ObservationIgnored let storage: LocalStore
     @ObservationIgnored let credentials: CredentialStore
     @ObservationIgnored private var started = Date()
@@ -134,6 +135,7 @@ enum JournalSyncStatus: Equatable {
         do {
             let response: DailyResponse = try await api.request("/api/puzzle/today")
             if daily?.puzzle.id != response.puzzle.id {
+                await dailyPuzzleLiveActivity.endAllImmediately()
                 clearDailyThought(for: daily)
                 eve.reset()
                 game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; started = Date()
@@ -167,6 +169,7 @@ enum JournalSyncStatus: Equatable {
                 let response: AuthResponse = try await api.request("/api/auth/session")
                 if response.authenticated == true, let user = response.user {
                     if player?.id != user.id {
+                        await dailyPuzzleLiveActivity.endAllImmediately()
                         generation += 1
                         dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil
                         eve.reset(); game = nil; sessionReady = false; draft = ""; dailyThought = ""; dailyThoughtAvailable = false; hintsShown = 0; nudgeReveals = []; stats = nil
@@ -228,6 +231,7 @@ enum JournalSyncStatus: Equatable {
         needsReconciliation = false; sessionReady = true
         restoreDailyThought()
         recordCompletion()
+        await syncDailyPuzzleLiveActivity()
         scheduleJourneyRefresh()
     }
     private func loadJourneyCache(for userID: String) {
@@ -305,6 +309,7 @@ enum JournalSyncStatus: Equatable {
                 try storage.saveDraft("", account: player.id, puzzle: daily.puzzle.id)
             }
             recordCompletion()
+            await syncDailyPuzzleLiveActivity()
             if game?.gameOver == true {
                 try? await reminders.schedule(completedToday: true)
                 await refreshPlayerStats(forCompletedPuzzleID: daily.puzzle.id, celebrates: true)
@@ -347,6 +352,7 @@ enum JournalSyncStatus: Equatable {
             game?.hintsUsed = hintsShown
             clearDailyThought()
             recordCompletion()
+            await syncDailyPuzzleLiveActivity()
             try? await reminders.schedule(completedToday: true)
             await refreshPlayerStats(forCompletedPuzzleID: daily.puzzle.id, celebrates: false)
             scheduleJourneyRefresh()
@@ -419,6 +425,7 @@ enum JournalSyncStatus: Equatable {
         guard let daily, let player, sessionReady, game?.gameOver == false, hintsShown < daily.puzzle.hints.count else { return }
         nudgeReveals.append(DailyNudgeReveal(hintIndex: hintsShown, afterAttemptCount: game?.attempts.count ?? 0))
         hintsShown += 1
+        Task { @MainActor [weak self] in await self?.syncDailyPuzzleLiveActivity() }
         do { try storage.save(hintsShown, key: "hints:\(player.id):\(daily.puzzle.id)") }
         catch { storageError = "Your hint progress could not be saved on this device." }
         do { try storage.save(nudgeReveals, key: "nudge-turns:\(player.id):\(daily.puzzle.id)") }
@@ -651,6 +658,25 @@ enum JournalSyncStatus: Equatable {
         journal.record(JournalEntry(puzzleID: daily.puzzle.id, puzzleDate: game.puzzleDate, puzzleType: daily.puzzle.puzzleType, clue: daily.puzzle.clue, answer: answer, explanation: game.explanation ?? "", won: game.wasSuccessful == true, attempts: game.attempts.count, hintsUsed: hintsShown, visual: daily.puzzle.visual, hints: daily.puzzle.hints))
         saveJournal()
     }
+    func setDailyPuzzleLiveActivityEnabled(_ enabled: Bool) async {
+        await dailyPuzzleLiveActivity.setEnabled(enabled)
+        await syncDailyPuzzleLiveActivity()
+    }
+    private func syncDailyPuzzleLiveActivity() async {
+        guard sessionReady, let daily, let game else {
+            await dailyPuzzleLiveActivity.endAllImmediately()
+            return
+        }
+        await dailyPuzzleLiveActivity.sync(
+            puzzleID: daily.puzzle.id,
+            puzzleDate: game.puzzleDate,
+            attempts: game.attempts.count,
+            hintsUsed: hintsShown,
+            scoreLocked: game.scoreLocked == true,
+            isFinished: game.gameOver,
+            wasSuccessful: game.wasSuccessful == true
+        )
+    }
     func signIn(email: String, password: String) async -> Bool {
         guard !busy, !submitting else { return false }
         busy = true; accountError = nil; defer { busy = false }
@@ -720,6 +746,7 @@ enum JournalSyncStatus: Equatable {
         defer { busy = false }
         do {
             let _: SuccessResponse = try await api.request("/api/auth/logout", method: "POST")
+            await dailyPuzzleLiveActivity.endAllImmediately()
             try clearIdentity()
         } catch { accountError = "Could not sign out. Check your connection and try again." }
     }
@@ -728,6 +755,7 @@ enum JournalSyncStatus: Equatable {
         busy = true; defer { busy = false }
         do {
             let _: SuccessResponse = try await api.request("/api/user/account", method: "DELETE", body: ["password": password], headers: ["X-Rebuzzle-Confirm": "delete-account"])
+            await dailyPuzzleLiveActivity.endAllImmediately()
             if let id = player?.id { try storage.removeAccount(id) }
             try clearIdentity()
             return true

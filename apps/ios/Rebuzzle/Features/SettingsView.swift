@@ -1,5 +1,6 @@
 import SwiftUI
 import AppIntents
+import ActivityKit
 import RebuzzleCore
 
 struct SettingsView: View {
@@ -171,11 +172,23 @@ struct DeleteAccountView: View {
 struct ReminderView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
+    @AppStorage("dailyPuzzleLiveActivityEnabled") private var liveActivityEnabled = true
+    @State private var liveActivitiesAllowed = ActivityAuthorizationInfo().areActivitiesEnabled
     @State private var time = Date()
     @State private var enabled = false
     @State private var saving = false
     var body: some View {
         Form {
+            Section("Live puzzle") {
+                Toggle("Show active puzzle on Lock Screen", isOn: $liveActivityEnabled)
+                Text("See scored guesses and Eve hints at a glance. Your clue and answer stay in Rebuzzle.")
+                    .font(.footnote).foregroundStyle(Theme.secondary)
+                if !liveActivitiesAllowed {
+                    Text("Live Activities are turned off for Rebuzzle in iPhone Settings.")
+                        .font(.footnote).foregroundStyle(Theme.secondary)
+                    Link("Open Rebuzzle settings", destination: URL(string: UIApplication.openSettingsURLString)!)
+                }
+            }
             Section {
                 Label("Your daily invitation", systemImage: "bell.badge")
                     .font(Theme.font(22, weight: .semibold))
@@ -214,11 +227,20 @@ struct ReminderView: View {
             .navigationTitle("A daily moment").navigationBarTitleDisplayMode(.inline)
             .task {
                 await model.reminders.refreshAuthorization()
+                liveActivitiesAllowed = ActivityAuthorizationInfo().areActivitiesEnabled
                 enabled = model.reminders.enabled
                 time = Calendar.current.date(bySettingHour: model.reminders.hour, minute: model.reminders.minute, second: 0, of: Date()) ?? Date()
             }
             .onChange(of: phase) { _, next in
-                if next == .active { Task { await model.reminders.refreshAuthorization() } }
+                if next == .active {
+                    Task {
+                        await model.reminders.refreshAuthorization()
+                        liveActivitiesAllowed = ActivityAuthorizationInfo().areActivitiesEnabled
+                    }
+                }
+            }
+            .onChange(of: liveActivityEnabled) { _, enabled in
+                Task { await model.setDailyPuzzleLiveActivityEnabled(enabled) }
             }
     }
 }

@@ -66,7 +66,7 @@ private struct JournalEntryPayload: Decodable {
 }
 
 enum DailyEntrySource: String, Hashable, Sendable {
-    case app, notification, widget, shortcut, share
+    case app, notification, widget, shortcut, share, liveActivity
 }
 
 enum PlusOfferSource: String, Hashable, Sendable {
