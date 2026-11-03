@@ -54,46 +54,25 @@ struct WeeklyTrailTodayCard: View {
 
     private var rewardCopy: String {
         if let reward, reward.earned {
-            return "+\(reward.bonusXP) XP earned this week"
+            return "Trail complete · +\(reward.bonusXP) XP"
         }
         guard daysRemaining > 0 else { return "Weekly trail complete" }
         guard let reward else { return "Solve on three days this week" }
         let dayWord = daysRemaining == 1 ? "day" : "days"
-        return "Finish \(daysRemaining) more \(dayWord) for +\(reward.bonusXP) XP"
+        return "\(daysRemaining) more \(dayWord) for +\(reward.bonusXP) XP"
     }
 
     var body: some View {
         Button(action: onOpenJourney) {
-            VStack(alignment: .leading, spacing: 9) {
-                HStack {
-                    Eyebrow(text: "YOUR WEEKLY TRAIL")
-                    Spacer(minLength: 8)
-                    Text("\(completedDays)/3 days")
-                        .font(Theme.font(12, weight: .semibold, relativeTo: .caption))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.ink)
-                }
-
-                let layout = typeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                    : AnyLayout(HStackLayout(spacing: 12))
-                layout {
-                    trailMarkers
-                    Text(rewardCopy)
-                        .font(Theme.font(13, weight: .medium, relativeTo: .subheadline))
-                        .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !typeSize.isAccessibilitySize {
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Theme.secondary)
-                            .accessibilityHidden(true)
-                    }
+            Group {
+                if typeSize.isAccessibilitySize {
+                    accessibilityContent
+                } else {
+                    compactContent
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, typeSize.isAccessibilitySize ? 16 : 12)
+            .padding(.vertical, typeSize.isAccessibilitySize ? 14 : 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.reward.opacity(0.22), lineWidth: 1))
@@ -106,21 +85,65 @@ struct WeeklyTrailTodayCard: View {
         .accessibilityIdentifier("todayWeeklyTrail")
     }
 
-    private var trailMarkers: some View {
+    private var compactContent: some View {
+        HStack(spacing: 10) {
+            trailMarkers(diameter: 20, connectorWidth: 7)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Eyebrow(text: "WEEKLY TRAIL")
+                    Spacer(minLength: 4)
+                    Text("\(completedDays)/3")
+                        .font(Theme.font(12, weight: .semibold, relativeTo: .caption))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.ink)
+                }
+                Text(rewardCopy)
+                    .font(Theme.font(12, weight: .medium, relativeTo: .caption))
+                    .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+            Spacer(minLength: 2)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.secondary)
+                .accessibilityHidden(true)
+        }
+        .frame(minHeight: 48)
+    }
+
+    private var accessibilityContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Eyebrow(text: "WEEKLY TRAIL")
+                Spacer(minLength: 8)
+                Text("\(completedDays) of 3 days")
+                    .font(Theme.font(15, weight: .semibold, relativeTo: .body))
+                    .monospacedDigit()
+            }
+            trailMarkers(diameter: 28, connectorWidth: 14)
+            Text(rewardCopy)
+                .font(Theme.font(15, weight: .medium, relativeTo: .body))
+                .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func trailMarkers(diameter: CGFloat, connectorWidth: CGFloat) -> some View {
         HStack(spacing: 0) {
             ForEach(0..<3, id: \.self) { day in
                 let complete = day < completedDays
                 let current = day == completedDays
                 Image(systemName: complete ? "checkmark" : current ? "flag.fill" : "flag")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: diameter * 0.4, weight: .semibold))
                     .foregroundStyle(complete ? Theme.panel : current ? Theme.accent : Theme.secondary)
-                    .frame(width: 28, height: 28)
+                    .frame(width: diameter, height: diameter)
                     .background(complete ? Theme.success : Theme.field, in: Circle())
                     .overlay(Circle().strokeBorder(current ? Theme.accent : .clear, lineWidth: 1.3))
                 if day < 2 {
                     Rectangle()
                         .fill(day < completedDays - 1 ? Theme.success : Theme.secondary.opacity(0.24))
-                        .frame(width: 16, height: 2)
+                        .frame(width: connectorWidth, height: 2)
                 }
             }
         }

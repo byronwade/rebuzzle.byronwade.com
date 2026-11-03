@@ -97,47 +97,6 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
                         if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty || visiblePendingGuessSubmission != nil { conversation }
-                        if model.game?.gameOver != true, model.hintsShown < daily.puzzle.hints.count {
-                            Button {
-                                let previous = model.hintsShown
-                                model.revealHint()
-                                if model.hintsShown > previous { hintFeedback += 1 }
-                            } label: {
-                                Group {
-                                    if typeSize.isAccessibilitySize {
-                                        VStack(alignment: .leading, spacing: 10) {
-                                            nudgeButtonCopy
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                            Text("\(daily.puzzle.hints.count - model.hintsShown) left")
-                                                .font(Theme.font(12, weight: .medium))
-                                                .foregroundStyle(Theme.secondary)
-                                        }
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(12)
-                                    } else {
-                                        HStack(spacing: 12) {
-                                            nudgeButtonCopy
-                                            Spacer(minLength: 6)
-                                            Text("\(daily.puzzle.hints.count - model.hintsShown) left")
-                                                .font(Theme.font(11, weight: .medium))
-                                                .foregroundStyle(Theme.secondary)
-                                        }
-                                        .frame(minHeight: 56)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 4)
-                                    }
-                                }
-                                .contentShape(Rectangle())
-                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 15))
-                                .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
-                            }
-                            .buttonStyle(.plain).foregroundStyle(Theme.ink)
-                            .disabled(!model.sessionReady || model.submitting || answerSubmissionInFlight)
-                            .accessibilityLabel("Ask Eve for a nudge")
-                            .accessibilityHint("Reveals the next hint in your conversation")
-                            .accessibilityIdentifier("askEveForNudge")
-                            .id("askEveForNudge")
-                        }
                         if model.game?.scoreLocked == true {
                             scoreLockCard.id("scoreLockCard")
                         }
@@ -222,9 +181,6 @@ struct TodayView: View {
                 destination = "dailyResult"
             } else if isAwaitingScoreLockDecision {
                 destination = "scoreLockCard"
-            } else if let daily = model.daily,
-                      model.hintsShown < daily.puzzle.hints.count {
-                destination = "askEveForNudge"
             } else if let latestGuess = model.game?.attempts.last {
                 destination = "turn-\(latestGuess.attemptNumber)"
             } else {
@@ -252,16 +208,10 @@ struct TodayView: View {
         .onChange(of: model.nudgeReveals.count) { old, new in
             guard new > old else { return }
             guard let latestHintIndex = model.nudgeReveals.map(\.hintIndex).max() else { return }
-            let destination: String
-            if let daily = model.daily, model.hintsShown < daily.puzzle.hints.count {
-                destination = "askEveForNudge"
-            } else {
-                destination = "eveNudge-\(latestHintIndex + 1)"
-            }
             Task { @MainActor in
                 await Task.yield()
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
-                    scroll.scrollTo(destination, anchor: .bottom)
+                    scroll.scrollTo("eveNudge-\(latestHintIndex + 1)", anchor: .bottom)
                 }
             }
         }
@@ -356,7 +306,13 @@ struct TodayView: View {
     }
     private var answerComposer: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if typeSize.isAccessibilitySize {
+                askEveComposerButton
+            }
             HStack(spacing: 10) {
+                if !typeSize.isAccessibilitySize {
+                    askEveComposerButton
+                }
                 answerField
                 if model.sessionReady && !model.needsReconciliation {
                     Button { submitAnswer() } label: {
@@ -401,6 +357,61 @@ struct TodayView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
         }
+    }
+    @ViewBuilder private var askEveComposerButton: some View {
+        if let daily = model.daily, model.hintsShown < daily.puzzle.hints.count {
+            let hintsRemaining = daily.puzzle.hints.count - model.hintsShown
+            Button { revealEveHint() } label: {
+                if typeSize.isAccessibilitySize {
+                    HStack(spacing: 10) {
+                        EveAvatar(size: 30).accessibilityHidden(true)
+                        Text("Ask Eve for a nudge")
+                            .font(Theme.font(14, weight: .semibold, relativeTo: .body))
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
+                        Text("\(hintsRemaining) left")
+                            .font(Theme.font(12, weight: .medium, relativeTo: .caption))
+                            .foregroundStyle(Theme.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
+                } else {
+                    ZStack(alignment: .topTrailing) {
+                        VStack(spacing: 0) {
+                            EveAvatar(size: 26).accessibilityHidden(true)
+                            Text("NUDGE")
+                                .font(Theme.font(9, weight: .bold, relativeTo: .caption2))
+                                .tracking(0.2)
+                                .foregroundStyle(Theme.accent)
+                        }
+                        Text("\(hintsRemaining)")
+                            .font(Theme.font(9, weight: .bold, relativeTo: .caption2))
+                            .foregroundStyle(Theme.canvas)
+                            .frame(width: 16, height: 16)
+                            .background(Theme.accent, in: Circle())
+                            .overlay(Circle().strokeBorder(Theme.panel, lineWidth: 1))
+                            .offset(x: 2, y: -2)
+                    }
+                    .frame(width: 52, height: 52)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(!model.sessionReady || model.submitting || answerSubmissionInFlight)
+            .accessibilityLabel("Ask Eve for a nudge")
+            .accessibilityValue("\(hintsRemaining) hints left")
+            .accessibilityHint("Reveals the next hint in your conversation.")
+            .accessibilityIdentifier("askEveForNudge")
+        }
+    }
+    private func revealEveHint() {
+        let previous = model.hintsShown
+        model.revealHint()
+        if model.hintsShown > previous { hintFeedback += 1 }
     }
     /// Kept out of `body`, which is already near the type checker’s time budget.
     private var answerField: some View {
@@ -785,21 +796,6 @@ struct TodayView: View {
         .accessibilityIdentifier("dailyGuessProgress")
         .accessibilityLabel("Guess progress")
         .accessibilityValue(progressValue)
-    }
-    private var nudgeButtonCopy: some View {
-        HStack(alignment: .top, spacing: 12) {
-            EveAvatar().accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Ask Eve for a nudge")
-                    .font(Theme.font(14, weight: .semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("A hint appears in your conversation")
-                    .font(Theme.font(12))
-                    .foregroundStyle(Theme.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 }
 
