@@ -8,6 +8,7 @@ final class DailyPuzzleLiveActivityCoordinator {
     private static let completionDisplayDuration: TimeInterval = 15 * 60
 
     private let defaults: UserDefaults
+    private var generation = 0
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -19,6 +20,7 @@ final class DailyPuzzleLiveActivityCoordinator {
     }
 
     func setEnabled(_ enabled: Bool) async {
+        generation += 1
         defaults.set(enabled, forKey: Self.preferenceKey)
         if !enabled {
             await endAllImmediately()
@@ -34,6 +36,7 @@ final class DailyPuzzleLiveActivityCoordinator {
         isFinished: Bool,
         wasSuccessful: Bool
     ) async {
+        let syncGeneration = generation
         let activities = Activity<DailyPuzzleLiveActivityAttributes>.activities
             .filter { $0.activityState == .active }
 
@@ -67,6 +70,12 @@ final class DailyPuzzleLiveActivityCoordinator {
         for activity in activities where
             activity.attributes.puzzleID != puzzleID || activity.attributes.puzzleDate != puzzleDate {
             await activity.end(nil, dismissalPolicy: .immediate)
+        }
+
+        guard syncGeneration == generation else { return }
+        guard isEnabled, ActivityAuthorizationInfo().areActivitiesEnabled else {
+            await endAllImmediately()
+            return
         }
 
         if isFinished {

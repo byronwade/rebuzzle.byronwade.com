@@ -684,6 +684,7 @@ enum JournalSyncStatus: Equatable {
             let auth: AuthResponse = try await api.request("/api/auth/login", method: "POST", body: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
             guard let token = auth.token, let user = auth.user else { throw APIError(status: 401, message: "Sign-in could not be completed.") }
             let identityChanged = player?.id != user.id
+            if identityChanged { await dailyPuzzleLiveActivity.endAllImmediately() }
             try credentials.write(token, key: "token")
             try credentials.write("member", key: "identity-kind")
             dailyThoughtExpiryTask?.cancel(); dailyThoughtExpiryTask = nil

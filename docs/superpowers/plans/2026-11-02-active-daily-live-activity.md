@@ -34,8 +34,8 @@
 **Files:**
 - Create: `apps/ios/Core/Sources/RebuzzleCore/DailyPuzzleLiveActivityAttributes.swift`
 
-- [ ] Define `DailyPuzzleLiveActivityAttributes` with puzzle ID/date and a Codable, Hashable state containing scored guesses, hints, and a phase (`solving`, `scoreLocked`, `solved`, `revealed`).
-- [ ] Keep all fields spoiler-safe and independent of account identity.
+- [x] Define `DailyPuzzleLiveActivityAttributes` with puzzle ID/date and a Codable, Hashable state containing scored guesses, hints, and a phase (`solving`, `scoreLocked`, `solved`, `revealed`).
+- [x] Keep all fields spoiler-safe and independent of account identity.
 
 ### Task 2: Add ActivityKit lifecycle coordination
 
@@ -43,9 +43,9 @@
 - Create: `apps/ios/Rebuzzle/Services/DailyPuzzleLiveActivityCoordinator.swift`
 - Modify: `apps/ios/Rebuzzle/App/AppModel.swift`
 
-- [ ] Implement one idempotent sync operation that checks the app preference and `ActivityAuthorizationInfo`, updates a matching activity, ends obsolete activities, or requests one for a progressed active puzzle.
-- [ ] Reconcile after `restore`, update after confirmed guesses and hints, and end on solve, reveal, daily change, or opt-out.
-- [ ] Keep ActivityKit failures isolated from puzzle state and network errors.
+- [x] Implement one idempotent sync operation that checks the app preference and `ActivityAuthorizationInfo`, updates a matching activity, ends obsolete activities, or requests one for a progressed active puzzle.
+- [x] Reconcile after `restore`, update after confirmed guesses and hints, and end on solve, reveal, daily change, or opt-out.
+- [x] Keep ActivityKit failures isolated from puzzle state and network errors.
 
 ### Task 3: Render and route the Live Activity
 
@@ -54,9 +54,9 @@
 - Modify: `apps/ios/Rebuzzle/Resources/Info.plist`
 - Modify: `apps/ios/Rebuzzle/Services/APIClient.swift`
 
-- [ ] Add Lock Screen plus compact, minimal, and expanded Dynamic Island presentations using date, guess progress, hint count, and phase only.
-- [ ] Add `NSSupportsLiveActivities` to the app plist and a `.liveActivity` `DailyEntrySource` for the existing deep-link route.
-- [ ] Open `rebuzzle://play?source=liveActivity` directly at Today’s puzzle.
+- [x] Add Lock Screen plus compact, minimal, and expanded Dynamic Island presentations using date, guess progress, hint count, and phase only.
+- [x] Add `NSSupportsLiveActivities` to the app plist and a `.liveActivity` `DailyEntrySource` for the existing deep-link route.
+- [x] Open `rebuzzle://play?source=liveActivity` directly at Today’s puzzle.
 
 ### Task 4: Add player control and verify integration
 
@@ -64,6 +64,6 @@
 - Modify: `apps/ios/Rebuzzle/Features/SettingsView.swift`
 - Modify as required: `apps/ios/Rebuzzle.xcodeproj/project.pbxproj`
 
-- [ ] Add a default-on “Show active puzzle on Lock Screen” control in the existing return/reminder settings; turning it off ends the current activity.
-- [ ] Ensure the Live Activity target includes shared attributes and both widget configurations.
-- [ ] Build the app and WidgetKit extension for an iOS Simulator destination; run `git diff --check` and inspect state-flow/target membership.
+- [x] Add a default-on “Show active puzzle on Lock Screen” control in the existing return/reminder settings; turning it off ends the current activity.
+- [x] Ensure the Live Activity target includes shared attributes and both widget configurations.
+- [x] Build the app and WidgetKit extension for an iOS Simulator destination; run `git diff --check` and inspect state-flow/target membership.

@@ -242,12 +242,15 @@ struct DailyPuzzleLiveActivityWidget: Widget {
             } compactLeading: {
                 Image(systemName: "puzzlepiece.fill")
                     .foregroundStyle(DailyPuzzleActivityStyle.accent)
+                    .accessibilityLabel("Rebuzzle daily puzzle")
             } compactTrailing: {
                 Text("\(context.state.scoredGuessesUsed)/3")
                     .monospacedDigit()
+                    .accessibilityLabel("\(context.state.scoredGuessesUsed) of 3 scored guesses")
             } minimal: {
                 Image(systemName: "puzzlepiece.fill")
                     .foregroundStyle(DailyPuzzleActivityStyle.accent)
+                    .accessibilityLabel("Rebuzzle daily puzzle")
             }
             .widgetURL(DailyPuzzleActivityStyle.destination)
             .keylineTint(DailyPuzzleActivityStyle.accent)
