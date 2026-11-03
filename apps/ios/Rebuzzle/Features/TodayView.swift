@@ -21,6 +21,7 @@ struct TodayView: View {
     @State private var wrongGuessShakes: CGFloat = 0
     @State private var guessHapticEvent: GuessHapticEvent?
     @State private var guessRevealEvent: GuessTurnRevealEvent?
+    @State private var pendingGuessSubmission: PendingGuessSubmission?
     @State private var answerSubmissionInFlight = false
     var body: some View {
         @Bindable var model = model
@@ -94,7 +95,7 @@ struct TodayView: View {
                     .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
                     VStack(alignment: .leading, spacing: 14) {
                         attemptHeader
-                        if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty { conversation }
+                        if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty || visiblePendingGuessSubmission != nil { conversation }
                         if model.game?.gameOver != true, model.hintsShown < daily.puzzle.hints.count {
                             Button {
                                 let previous = model.hintsShown
@@ -130,7 +131,7 @@ struct TodayView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
                             }
                             .buttonStyle(.plain).foregroundStyle(Theme.ink)
-                            .disabled(!model.sessionReady)
+                            .disabled(!model.sessionReady || model.submitting || answerSubmissionInFlight)
                             .accessibilityLabel("Ask Eve for a nudge")
                             .accessibilityHint("Reveals the next hint in your conversation")
                             .accessibilityIdentifier("askEveForNudge")
@@ -234,6 +235,15 @@ struct TodayView: View {
                 }
             }
         }
+        .onChange(of: visiblePendingGuessSubmission?.id) { old, new in
+            guard old != new, let submission = visiblePendingGuessSubmission else { return }
+            Task { @MainActor in
+                await Task.yield()
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
+                    scroll.scrollTo("pending-turn-\(submission.attemptNumber)", anchor: .bottom)
+                }
+            }
+        }
         .onChange(of: model.nudgeReveals.count) { old, new in
             guard new > old else { return }
             guard let latestHintIndex = model.nudgeReveals.map(\.hintIndex).max() else { return }
@@ -301,12 +311,17 @@ struct TodayView: View {
         .refreshable { await model.load() }
         .onChange(of: model.daily?.puzzle.id) { _, _ in
             dismissAnswerKeyboard()
+            pendingGuessSubmission = nil
             continuedScoreLockedPuzzleID = nil
             showingExpiredReviewFor = nil
             dismissedExpiredReviewID = nil
         }
         .onChange(of: model.daily?.puzzleDate) { _, _ in
             dismissAnswerKeyboard()
+            pendingGuessSubmission = nil
+        }
+        .onChange(of: model.player?.id) { _, _ in
+            pendingGuessSubmission = nil
         }
         .onChange(of: model.canSaveDailyThought) { _, canSave in
             if !canSave { dailyThoughtEditor = false }
@@ -368,7 +383,6 @@ struct TodayView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
         }
-        .accessibilityIdentifier("dailyAnswerComposer")
     }
     /// Kept out of `body`, which is already near the type checker’s time budget.
     private var answerField: some View {
@@ -397,8 +411,34 @@ struct TodayView: View {
         let puzzleID = model.daily?.puzzle.id
         let puzzleDate = model.daily?.puzzleDate
         let attemptCount = model.game?.attempts.count ?? 0
+        let submittedGuess = model.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pendingSubmission: PendingGuessSubmission?
+        if let puzzleID, let puzzleDate, let accountID = model.player?.id,
+           model.sessionReady, !model.submitting, !model.busy, !model.needsReconciliation,
+           model.game?.gameOver == false, !submittedGuess.isEmpty, submittedGuess.count <= 200 {
+            let submission = PendingGuessSubmission(
+                puzzleID: puzzleID,
+                puzzleDate: puzzleDate,
+                accountID: accountID,
+                attemptNumber: attemptCount + 1,
+                guess: submittedGuess
+            )
+            pendingSubmission = submission
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                pendingGuessSubmission = submission
+            }
+        } else {
+            pendingSubmission = nil
+        }
         Task { @MainActor in
-            defer { answerSubmissionInFlight = false }
+            defer {
+                answerSubmissionInFlight = false
+                if let pendingSubmission, pendingGuessSubmission == pendingSubmission {
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                        pendingGuessSubmission = nil
+                    }
+                }
+            }
             let revealEvent: GuessTurnRevealEvent?
             if let puzzleID, let puzzleDate {
                 revealEvent = GuessTurnRevealEvent(
@@ -579,7 +619,24 @@ struct TodayView: View {
                     }
                 }
             }
+            if let submission = visiblePendingGuessSubmission {
+                PendingGuessTurnView(submission: submission)
+                    .id("pending-turn-\(submission.attemptNumber)")
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
+            }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: visiblePendingGuessSubmission?.id)
+    }
+    private var visiblePendingGuessSubmission: PendingGuessSubmission? {
+        guard let submission = pendingGuessSubmission,
+              submission.puzzleID == model.daily?.puzzle.id,
+              submission.puzzleDate == model.daily?.puzzleDate,
+              submission.accountID == model.player?.id,
+              model.game?.gameOver != true,
+              model.game?.attempts.contains(where: { $0.attemptNumber == submission.attemptNumber }) != true else {
+            return nil
+        }
+        return submission
     }
     private var dailyThoughtIcon: some View {
         Image(systemName: "pencil.and.list.clipboard")
@@ -1184,6 +1241,41 @@ struct HelpView: View {
 }
 
 /// Conversation uses confirmed guesses and server feedback, never the hidden answer.
+private struct PendingGuessSubmission: Equatable {
+    let puzzleID: String
+    let puzzleDate: String
+    let accountID: String
+    let attemptNumber: Int
+    let guess: String
+
+    var id: String { "\(accountID):\(puzzleID):\(puzzleDate):\(attemptNumber)" }
+}
+
+private struct PendingGuessTurnView: View {
+    let submission: PendingGuessSubmission
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            Text("YOU · GUESS \(submission.attemptNumber)")
+                .font(Theme.font(10, weight: .semibold)).tracking(1).foregroundStyle(Theme.secondary)
+            Text(submission.guess)
+                .font(Theme.font(17, weight: .medium)).textSelection(.enabled)
+                .padding(.horizontal, 16).padding(.vertical, 12)
+                .background(Theme.field, in: RoundedRectangle(cornerRadius: 16))
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.mini)
+                Text("Checking with Eve…").font(Theme.font(12)).foregroundStyle(Theme.secondary)
+            }
+            .padding(.trailing, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.leading, 28)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Guess \(submission.attemptNumber): \(submission.guess). Checking with Eve.")
+        .accessibilityIdentifier("pendingGuessTurn")
+    }
+}
+
 struct GuessTurnView: View {
     let guess: Guess
     let reply: String?

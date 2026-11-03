@@ -46,6 +46,10 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         do {
+            if request.url?.path == "/api/puzzles/guess",
+               ProcessInfo.processInfo.arguments.contains("--ui-delayed-guess") {
+                Thread.sleep(forTimeInterval: 3)
+            }
             let (status, data) = try Self.state.respond(to: request)
             let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)

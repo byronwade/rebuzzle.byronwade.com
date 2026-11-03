@@ -371,6 +371,24 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
     }
 
+    func testSubmittedGuessAppearsInConversationWhileEveChecksIt() {
+        launchFixture(extraArguments: ["--ui-delayed-guess"])
+        let guessProgress = app.descendants(matching: .any)["dailyGuessProgress"]
+        XCTAssertTrue(guessProgress.waitForExistence(timeout: 5))
+
+        submit("sunshine")
+
+        let pendingGuess = app.descendants(matching: .any)["pendingGuessTurn"].firstMatch
+        XCTAssertTrue(pendingGuess.waitForExistence(timeout: 5), "The submitted guess should appear before the server responds.")
+        XCTAssertTrue(pendingGuess.label.contains("Checking with Eve"))
+        XCTAssertEqual(guessProgress.value as? String, "3 guesses remaining", "Pending guesses must not consume a scored turn.")
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists, "Eve's feedback should wait for the confirmed response.")
+
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 8))
+        XCTAssertTrue(pendingGuess.waitForNonExistence(timeout: 5), "The temporary bubble should reconcile into the confirmed guess turn.")
+        XCTAssertEqual(guessProgress.value as? String, "2 guesses remaining")
+    }
+
     func testWrongGuessThenWin() {
         launchFixture()
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable, "The daily game should be ready to play without scrolling")
