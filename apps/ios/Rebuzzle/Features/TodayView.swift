@@ -75,8 +75,7 @@ struct TodayView: View {
                             DifficultyBadge(difficulty: daily.puzzle.difficulty)
                                 .accessibilityIdentifier("dailyDifficultyTier")
                             Button {
-                                dismissAnswerKeyboard()
-                                study = PuzzleStudy(puzzle: daily.puzzle)
+                                openStudyPuzzle(daily.puzzle)
                             } label: {
                                 Image(systemName: "arrow.up.left.and.arrow.down.right")
                                     .font(.system(size: 16, weight: .medium))
@@ -268,6 +267,14 @@ struct TodayView: View {
         .navigationTitle("Rebuzzle").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                if let daily = model.daily {
+                    Button("View puzzle", systemImage: "arrow.up.left.and.arrow.down.right") {
+                        openStudyPuzzle(daily.puzzle)
+                    }
+                    .accessibilityIdentifier("viewPuzzleFromToolbar")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("How to play", systemImage: "questionmark.circle") {
                     quickStartUsesIntro = false
                     help = true
@@ -404,6 +411,10 @@ struct TodayView: View {
         guard let old, let new, new > old, !reduceMotion, let game = model.game,
               game.gameOver != true, game.attempts.last?.correct == false else { return }
         withAnimation(.linear(duration: 0.4)) { wrongGuessShakes += 1 }
+    }
+    private func openStudyPuzzle(_ puzzle: Puzzle) {
+        dismissAnswerKeyboard(forceResign: true)
+        study = PuzzleStudy(puzzle: puzzle)
     }
     private func submitAnswer() {
         guard !answerSubmissionInFlight else { return }

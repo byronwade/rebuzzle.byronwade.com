@@ -403,6 +403,38 @@ import StoreKitTest
         XCTAssertEqual(guessProgress.value as? String, "3 guesses remaining")
     }
 
+    func testPuzzleRemainsOneTapAwayDuringFeedback() {
+        verifyPuzzleRemainsOneTapAwayDuringFeedback()
+    }
+
+    func testAccessiblePuzzleRemainsOneTapAwayDuringFeedback() {
+        verifyPuzzleRemainsOneTapAwayDuringFeedback(extraArguments: [
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+    }
+
+    private func verifyPuzzleRemainsOneTapAwayDuringFeedback(extraArguments: [String] = []) {
+        launchFixture(extraArguments: extraArguments)
+        submit("sunshine")
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 5))
+
+        let viewPuzzle = app.buttons["viewPuzzleFromToolbar"]
+        XCTAssertTrue(viewPuzzle.waitForExistence(timeout: 5))
+        XCTAssertEqual(viewPuzzle.label, "View puzzle")
+        XCTAssertTrue(viewPuzzle.isHittable, "The puzzle should be one tap away while feedback is on screen")
+        XCTAssertTrue(app.buttons["How to play"].isHittable, "Puzzle access should not hide the existing help action")
+        viewPuzzle.tap()
+
+        XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["closeStudyPuzzle"].isHittable)
+        app.buttons["closeStudyPuzzle"].tap()
+
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "2 guesses remaining")
+        XCTAssertTrue(app.buttons["checkAnswer"].exists)
+    }
+
     func testWrongGuessThenWin() {
         launchFixture()
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable, "The daily game should be ready to play without scrolling")
