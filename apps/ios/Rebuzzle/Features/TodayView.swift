@@ -48,6 +48,16 @@ struct TodayView: View {
                                 .accessibilityLabel("Eve, your AI puzzle author")
                         }
                         puzzleDateAndCountdown
+                        if let snapshot = model.journeySnapshot,
+                           snapshot.backfill.status == .complete,
+                           let summary = snapshot.summary {
+                            WeeklyTrailTodayCard(
+                                progress: JourneyProgress(summary: summary),
+                                reward: snapshot.weeklyTrailReward
+                            ) {
+                                model.selectedTab = .journey
+                            }
+                        }
                     }
                     .id("dailyHeader")
                 }

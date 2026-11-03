@@ -42,6 +42,92 @@ struct JourneyLevelView: View {
     }
 }
 
+struct WeeklyTrailTodayCard: View {
+    let progress: JourneyProgress
+    let reward: JourneyWeeklyTrailReward?
+    let onOpenJourney: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    private var completedDays: Int { min(progress.weeklyDays, 3) }
+    private var daysRemaining: Int { max(0, 3 - completedDays) }
+
+    private var rewardCopy: String {
+        if let reward, reward.earned {
+            return "+\(reward.bonusXP) XP earned this week"
+        }
+        guard daysRemaining > 0 else { return "Weekly trail complete" }
+        guard let reward else { return "Solve on three days this week" }
+        let dayWord = daysRemaining == 1 ? "day" : "days"
+        return "Finish \(daysRemaining) more \(dayWord) for +\(reward.bonusXP) XP"
+    }
+
+    var body: some View {
+        Button(action: onOpenJourney) {
+            VStack(alignment: .leading, spacing: 9) {
+                HStack {
+                    Eyebrow(text: "YOUR WEEKLY TRAIL")
+                    Spacer(minLength: 8)
+                    Text("\(completedDays)/3 days")
+                        .font(Theme.font(12, weight: .semibold, relativeTo: .caption))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.ink)
+                }
+
+                let layout = typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                    : AnyLayout(HStackLayout(spacing: 12))
+                layout {
+                    trailMarkers
+                    Text(rewardCopy)
+                        .font(Theme.font(13, weight: .medium, relativeTo: .subheadline))
+                        .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !typeSize.isAccessibilitySize {
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Theme.secondary)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.reward.opacity(0.22), lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Weekly trail, \(completedDays) of 3 days complete. \(rewardCopy).")
+        .accessibilityHint("Opens your Journey progress.")
+        .accessibilityIdentifier("todayWeeklyTrail")
+    }
+
+    private var trailMarkers: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<3, id: \.self) { day in
+                let complete = day < completedDays
+                let current = day == completedDays
+                Image(systemName: complete ? "checkmark" : current ? "flag.fill" : "flag")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(complete ? Theme.panel : current ? Theme.accent : Theme.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(complete ? Theme.success : Theme.field, in: Circle())
+                    .overlay(Circle().strokeBorder(current ? Theme.accent : .clear, lineWidth: 1.3))
+                if day < 2 {
+                    Rectangle()
+                        .fill(day < completedDays - 1 ? Theme.success : Theme.secondary.opacity(0.24))
+                        .frame(width: 16, height: 2)
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 struct JourneyRewards: View {
     let game: GameSession
     @Environment(AppModel.self) private var model
