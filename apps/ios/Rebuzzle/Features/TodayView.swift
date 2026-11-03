@@ -47,16 +47,7 @@ struct TodayView: View {
                             EveAvatar(celebrating: model.game?.wasSuccessful == true)
                                 .accessibilityLabel("Eve, your AI puzzle author")
                         }
-                        let dateAndCountdown = typeSize.isAccessibilitySize
-                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                            : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
-                        dateAndCountdown {
-                            Text(dateLabel)
-                                .font(Theme.font(13, relativeTo: .subheadline))
-                                .foregroundStyle(Theme.secondary)
-                            if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
-                            DailyPuzzleCountdown(style: .compact)
-                        }
+                        puzzleDateAndCountdown
                     }
                     .id("dailyHeader")
                 }
@@ -682,6 +673,62 @@ struct TodayView: View {
         guard let parsed = formatter.date(from: date) else { return date }
         return parsed.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
+    @ViewBuilder
+    private var puzzleDateAndCountdown: some View {
+        let date = Text(dateLabel)
+            .font(Theme.font(13, relativeTo: .subheadline))
+            .foregroundStyle(Theme.secondary)
+
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                date
+                activeStreakBadge
+                DailyPuzzleCountdown(style: .compact)
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    date
+                    Spacer(minLength: 4)
+                    activeStreakBadge
+                    DailyPuzzleCountdown(style: .compact)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        date
+                        Spacer(minLength: 4)
+                        activeStreakBadge
+                    }
+                    DailyPuzzleCountdown(style: .compact)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var activeStreakBadge: some View {
+        if let streak = model.stats?.streak, streak > 0 {
+            HStack(spacing: 5) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.reward)
+                    .accessibilityHidden(true)
+                Text("\(streak)-day streak")
+                    .font(Theme.font(12, weight: .semibold, relativeTo: .caption))
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize()
+            }
+            .padding(.horizontal, 10)
+            .frame(minHeight: 32)
+            .background(Theme.reward.opacity(0.12), in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.reward.opacity(0.24), lineWidth: 1))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(streak) day streak")
+            .accessibilityIdentifier("todayStreakBadge")
+            .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
+        }
+    }
+
     private var attemptHeader: some View {
         let attempts = model.game?.attempts ?? []
         let maximum = model.game?.maxAttempts ?? 3
