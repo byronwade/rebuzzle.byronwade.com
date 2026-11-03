@@ -160,9 +160,15 @@ struct JourneyBadgeUnlock: Identifiable {
         } catch { initialSetupError = error.localizedDescription }
         let client = api ?? APIClient(deviceID: device)
         self.api = client
-        self.eve = EveReplyStore(storage: self.storage) { puzzleID, guess, scope, update in
-            try await client.streamQuip(puzzleID: puzzleID, guess: guess, scope: scope, onUpdate: update)
-        }
+        self.eve = EveReplyStore(
+            storage: self.storage,
+            transport: { puzzleID, guess, scope, update in
+                try await client.streamQuip(puzzleID: puzzleID, guess: guess, scope: scope, onUpdate: update)
+            },
+            nudgeFollowUpTransport: { puzzleID, hintIndex in
+                try await client.fetchEveNudgeReply(puzzleID: puzzleID, hintIndex: hintIndex)
+            }
+        )
         client.plusTransactionJWSProvider = { [weak purchases = self.purchases] in
             purchases?.plusTransactionJWS
         }
@@ -591,6 +597,16 @@ struct JourneyBadgeUnlock: Identifiable {
         catch { storageError = "Your hint progress could not be saved on this device." }
         do { try storage.save(nudgeReveals, key: "nudge-turns:\(player.id):\(daily.puzzle.id)") }
         catch { storageError = "Your hint progress could not be saved on this device." }
+    }
+    func requestEveNudgeFollowUp(hintIndex: Int, retry: Bool = false) {
+        guard !busy, !submitting, sessionReady,
+              let daily, let game, !game.gameOver,
+              daily.puzzle.hints.indices.contains(hintIndex), hintIndex < hintsShown else { return }
+        if retry {
+            _ = eve.retryNudgeFollowUp(hintIndex: hintIndex)
+        } else {
+            _ = eve.requestNudgeFollowUp(hintIndex: hintIndex)
+        }
     }
     func saveDraft() {
         guard let player, let daily else { return }

@@ -67,12 +67,12 @@
 - `EveReplyStore.requestNudgeFollowUp(hintIndex:)` starts the initial request once; `retryNudgeFollowUp(hintIndex:)` permits one retry.
 - `AppModel.requestEveNudgeFollowUp(hintIndex:retry:)` verifies that the hint is revealed and the daily session is active before forwarding the request.
 
-- [ ] **Step 1: Add failing `EveReplyTests`** for initial request, restored reply/request state, retry after failure, one-retry maximum, same-account isolation, puzzle change cancellation, and preservation of the existing guess-reply lifecycle.
-- [ ] **Step 2: Run the focused Eve reply tests and verify they fail** on the missing follow-up behavior.
-- [ ] **Step 3: Implement the API client method and follow-up state in `EveReplyStore`**. Persist requested indexes, retry counts, and successful replies under a daily account/puzzle key; cancel requests on reset; ignore late responses from an old puzzle.
-- [ ] **Step 4: Wire activation/reset and the guarded AppModel action** at existing daily load, puzzle-change, and sign-out boundaries.
-- [ ] **Step 5: Run the focused Eve reply tests** and verify new and existing lifecycle cases pass.
-- [ ] **Step 6: Commit Task 2** as `Persist Eve hint follow-up state`.
+- [x] **Step 1: Add failing `EveReplyTests`** for initial request, restored reply/request state, retry after failure, one-retry maximum, same-account isolation, puzzle change cancellation, and preservation of the existing guess-reply lifecycle.
+- [x] **Step 2: Run the focused Eve reply tests and verify they fail** on the missing follow-up behavior.
+- [x] **Step 3: Implement the API client method and follow-up state in `EveReplyStore`**. Persist requested indexes, retry counts, and successful replies under a daily account/puzzle key; cancel requests on reset; ignore late responses from an old puzzle.
+- [x] **Step 4: Wire activation/reset and the guarded AppModel action** at existing daily load, puzzle-change, and sign-out boundaries.
+- [x] **Step 5: Run the focused Eve reply tests** and verify new and existing lifecycle cases pass.
+- [x] **Step 6: Commit Task 2** as `Persist Eve hint follow-up state`.
 
 ### Task 3: Render the follow-up as a Rebuzzle chat turn
 
