@@ -4,22 +4,25 @@ import Testing
 
 private func snapshotPayload(
     status: String = "complete",
+    asOfPuzzleDate: String = "2026-10-26",
+    currentWeekStart: String = "2026-10-26",
+    currentWeekEnd: String = "2026-11-01",
     summary: String = #"{"totalXP":300,"level":2,"xpIntoLevel":0,"finishes":7,"solves":5,"firstGuessSolves":2,"unassistedSolves":3,"completedThisWeek":3,"badges":["first-finish","first-guess-solve","three-unassisted-solves","seven-finishes"]}"#,
     entries: String = #"[{"puzzleDate":"2026-10-26","puzzleId":"daily-1","outcome":"solved","attempts":1,"hintCount":0,"completedAt":"2026-10-26T12:34:56Z","timeZone":"America/Los_Angeles"}]"#,
     reward: String? = #"{"weekStart":"2026-10-26","bonusXP":50,"earned":true}"#
 ) -> Data {
     let rewardField = reward.map { #""weeklyTrailReward":\#($0),"# } ?? ""
     return Data("""
-    {"asOfPuzzleDate":"2026-10-26","currentWeekStart":"2026-10-26","currentWeekEnd":"2026-11-01",\(rewardField)"summary":\(summary),"recentEntries":\(entries),"backfill":{"status":"\(status)"}}
+    {"asOfPuzzleDate":"\(asOfPuzzleDate)","currentWeekStart":"\(currentWeekStart)","currentWeekEnd":"\(currentWeekEnd)",\(rewardField)"summary":\(summary),"recentEntries":\(entries),"backfill":{"status":"\(status)"}}
     """.utf8)
 }
 
-private func progressEntry(outcome: String, attempts: Int) -> String {
-    "{\"puzzleDate\":\"2026-10-26\",\"puzzleId\":\"daily-1\",\"outcome\":\"\(outcome)\",\"attempts\":\(attempts),\"hintCount\":0,\"completedAt\":\"2026-10-26T12:34:56Z\",\"timeZone\":\"UTC\"}"
+private func progressEntry(outcome: String, attempts: Int, puzzleDate: String = "2026-10-26") -> String {
+    "{\"puzzleDate\":\"\(puzzleDate)\",\"puzzleId\":\"daily-1\",\"outcome\":\"\(outcome)\",\"attempts\":\(attempts),\"hintCount\":0,\"completedAt\":\"2026-10-26T12:34:56Z\",\"timeZone\":\"UTC\"}"
 }
 
-private func progressEntries(outcome: String, attempts: Int) -> String {
-    "[" + progressEntry(outcome: outcome, attempts: attempts) + "]"
+private func progressEntries(outcome: String, attempts: Int, puzzleDate: String = "2026-10-26") -> String {
+    "[" + progressEntry(outcome: outcome, attempts: attempts, puzzleDate: puzzleDate) + "]"
 }
 
 @Test func completeSnapshotDecodesServerOwnedSummaryAndEntries() throws {
@@ -33,6 +36,31 @@ private func progressEntries(outcome: String, attempts: Int) -> String {
     #expect(snapshot.recentEntries.first?.outcome.rawValue == "solved")
     #expect(snapshot.weeklyTrailReward?.bonusXP == 50)
     #expect(snapshot.weeklyTrailReward?.earned == true)
+}
+
+@Test func resultFreshnessRequiresTheExactCompletedPuzzleAndCompleteSnapshot() throws {
+    let fresh = try JSONDecoder().decode(JourneyProgressSnapshot.self, from: snapshotPayload())
+    #expect(fresh.includesResult(forPuzzleID: "daily-1", puzzleDate: "2026-10-26"))
+    #expect(!fresh.includesResult(forPuzzleID: "another-puzzle", puzzleDate: "2026-10-26"))
+    #expect(!fresh.includesResult(forPuzzleID: "daily-1", puzzleDate: "2026-10-27"))
+
+    let previousWeek = try JSONDecoder().decode(
+        JourneyProgressSnapshot.self,
+        from: snapshotPayload(
+            asOfPuzzleDate: "2026-10-25",
+            currentWeekStart: "2026-10-19",
+            currentWeekEnd: "2026-10-25",
+            entries: progressEntries(outcome: "solved", attempts: 1, puzzleDate: "2026-10-25"),
+            reward: nil
+        )
+    )
+    #expect(!previousWeek.includesResult(forPuzzleID: "daily-1", puzzleDate: "2026-10-26"))
+
+    let incomplete = try JSONDecoder().decode(
+        JourneyProgressSnapshot.self,
+        from: snapshotPayload(status: "in_progress", summary: "null", entries: "[]", reward: nil)
+    )
+    #expect(!incomplete.includesResult(forPuzzleID: "daily-1", puzzleDate: "2026-10-26"))
 }
 
 @Test func incompleteSnapshotHasNoSummaryOrEntriesAndKeepsServerWeekBounds() throws {
