@@ -550,6 +550,10 @@ import StoreKitTest
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists, "Eve's feedback should wait for the confirmed response.")
 
         XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 8))
+        let signal = app.descendants(matching: .any)["guessSignal-1"].firstMatch
+        XCTAssertTrue(signal.waitForExistence(timeout: 5))
+        XCTAssertEqual(signal.value as? String, "Cold signal, one of three steps, snowflake icon.")
+        capture("Eve signal — cold")
         XCTAssertTrue(pendingGuess.waitForNonExistence(timeout: 5), "The temporary bubble should reconcile into the confirmed guess turn.")
         XCTAssertEqual(guessProgress.value as? String, "2 guesses remaining")
     }
@@ -1100,6 +1104,9 @@ import StoreKitTest
         XCTAssertTrue(app.navigationBars["Practice"].waitForExistence(timeout: 5))
 
         submitPractice("sunshine")
+        let signal = app.descendants(matching: .any)["guessSignal-1"].firstMatch
+        XCTAssertTrue(signal.waitForExistence(timeout: 5))
+        XCTAssertEqual(signal.value as? String, "Cold signal, one of three steps, snowflake icon.")
         let failure = app.staticTexts["practiceEveReplyFailure.1"]
         XCTAssertTrue(failure.waitForExistence(timeout: 5))
         XCTAssertTrue(failure.label.contains("Your guess is saved"))

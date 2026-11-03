@@ -31,6 +31,7 @@
 		6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */; };
 		792439E8303C75D4C1C8E68B /* Celebration.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBC36693865968AB36CE0625 /* Celebration.swift */; };
 		795EA28E446ACA22A9CAA2D2 /* PurchaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B1C0F63409D81A96104531 /* PurchaseStore.swift */; };
+		85C950A4D129FE030B71D8A6 /* EveSignalMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE5EECC930E0D35DF0D5C033 /* EveSignalMeter.swift */; };
 		8CCB749D5D325BFCC69EC63E /* VisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DD9980C84C32503F71017B /* VisualTests.swift */; };
 		8E4F18C24A3AAB1BDBB240AB /* RebuzzleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 61A388442626D26868384B67 /* RebuzzleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		991B50BB92A6C1B63CA32191 /* DailySolveDistributionAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94703AB1F1CBE45703270A4 /* DailySolveDistributionAPITests.swift */; };
@@ -143,6 +144,7 @@
 		A94703AB1F1CBE45703270A4 /* DailySolveDistributionAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySolveDistributionAPITests.swift; sourceTree = "<group>"; };
 		ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		ACC5EA0C0133FF00FEC6F504 /* DailyPuzzleLiveActivityCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPuzzleLiveActivityCoordinator.swift; sourceTree = "<group>"; };
+		AE5EECC930E0D35DF0D5C033 /* EveSignalMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveSignalMeter.swift; sourceTree = "<group>"; };
 		B0296681F6B145702B518962 /* Inter.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter.ttf; sourceTree = "<group>"; };
 		C61864440C1A74407936568F /* ProgressScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressScreen.swift; sourceTree = "<group>"; };
 		C62B307E9DA571BC57ADE91D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
@@ -299,6 +301,7 @@
 				129549FD225212AF76197AF5 /* DailyResultShareCard.swift */,
 				003E39205E6D983A152AF798 /* DailyReturnCard.swift */,
 				FB92C87F8FB0074EC6E0CD5D /* DailySolvePulseCard.swift */,
+				AE5EECC930E0D35DF0D5C033 /* EveSignalMeter.swift */,
 				64AF9729FDF72E252FC09FB3 /* EveTypingIndicator.swift */,
 				8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */,
 				265BEFC14F6F5011653FD71E /* JourneyRewards.swift */,
@@ -545,6 +548,7 @@
 				D6CC2EB0E2F84527E662812A /* DailyReturnCard.swift in Sources */,
 				9E6F16F91482297B6FE9658A /* DailySolvePulseCard.swift in Sources */,
 				ECE6239380306C5ADE9C4471 /* EveReplyStore.swift in Sources */,
+				85C950A4D129FE030B71D8A6 /* EveSignalMeter.swift in Sources */,
 				1CFA10F1D5C88BFFB79E0F5E /* EveTypingIndicator.swift in Sources */,
 				0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */,
 				DB16E04E84B4DA3CBD373891 /* JourneyRewards.swift in Sources */,

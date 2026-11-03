@@ -210,6 +210,9 @@ private struct PracticeTurnRevealEvent: Equatable {
             Text(guess.correct ? "You found the connection." : (guess.reaction?.line ?? "Try looking at the clue from a fresh angle."))
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
                 .accessibilityIdentifier("practiceFeedback.\(guess.attemptNumber)")
+            if let reaction = guess.reaction {
+                EveSignalMeter(tier: reaction.tier, attemptNumber: guess.attemptNumber)
+            }
             if let reply = practiceEve.replies[guess.attemptNumber] {
                 Text("Eve · \(reply)").font(Theme.font(14)).foregroundStyle(Theme.accent)
                     .fixedSize(horizontal: false, vertical: true)
