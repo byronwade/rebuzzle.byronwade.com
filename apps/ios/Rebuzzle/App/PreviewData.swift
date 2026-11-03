@@ -50,6 +50,10 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
                ProcessInfo.processInfo.arguments.contains("--ui-delayed-guess") {
                 Thread.sleep(forTimeInterval: 3)
             }
+            if request.url?.path == "/api/puzzles/nudge-reply",
+               ProcessInfo.processInfo.arguments.contains("--ui-delayed-nudge-reply") {
+                Thread.sleep(forTimeInterval: 4)
+            }
             if request.url?.path == "/api/puzzle/today",
                ProcessInfo.processInfo.arguments.contains("--ui-expired-daily") {
                 Thread.sleep(forTimeInterval: 3)
@@ -84,6 +88,7 @@ private final class FixtureServer: @unchecked Sendable {
     private let hiddenHistoryDeltaFixture = ProcessInfo.processInfo.arguments.contains("--ui-hidden-history-delta")
     private var dailyRequestCount = 0
     private var quipRequestCount = 0
+    private var nudgeReplyRequestCount = 0
     private var solveDistributionRequestCount = 0
     private var game = GameSession(puzzleId: "fixture-lighthouse", puzzleDate: FixtureServer.todayKey)
     private static var todayKey: String {
@@ -217,6 +222,12 @@ private final class FixtureServer: @unchecked Sendable {
             }
             let reply = game.wasSuccessful == true ? "That connection deserves a little victory lap." : "That guess took the scenic route."
             return (200, Data(reply.utf8))
+        case "/api/puzzles/nudge-reply":
+            if ProcessInfo.processInfo.arguments.contains("--ui-nudge-reply-fails-once") {
+                nudgeReplyRequestCount += 1
+                if nudgeReplyRequestCount == 1 { return (503, Data()) }
+            }
+            payload = ["success": true, "reply": "Notice how the parts are arranged."]
         case "/api/puzzles/solve-distribution":
             solveDistributionRequestCount += 1
             UserDefaults.standard.set(solveDistributionRequestCount, forKey: "uiFixtureDailySolvePulseRequestCount")

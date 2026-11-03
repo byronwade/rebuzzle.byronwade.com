@@ -215,6 +215,24 @@ struct TodayView: View {
                 }
             }
         }
+        .onChange(of: model.eve.requestedNudgeFollowUpHintIndexes.count) { old, new in
+            guard new > old, let hintIndex = model.eve.requestedNudgeFollowUpHintIndexes.max() else { return }
+            Task { @MainActor in
+                await Task.yield()
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                    scroll.scrollTo("eveNudge-\(hintIndex + 1)", anchor: .bottom)
+                }
+            }
+        }
+        .onChange(of: model.eve.nudgeFollowUpReplies.count) { old, new in
+            guard new > old, let hintIndex = model.eve.nudgeFollowUpReplies.keys.max() else { return }
+            Task { @MainActor in
+                await Task.yield()
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                    scroll.scrollTo("eveNudge-\(hintIndex + 1)", anchor: .bottom)
+                }
+            }
+        }
         .onChange(of: model.game?.scoreLocked) { old, isLocked in
             guard old != true, isLocked == true else { return }
             Task { @MainActor in
@@ -666,7 +684,19 @@ struct TodayView: View {
                         .id("turn-\(guess.attemptNumber)")
                 case .nudge(let reveal):
                     if let daily = model.daily, daily.puzzle.hints.indices.contains(reveal.hintIndex) {
-                        EveNudgeTurnView(number: reveal.hintIndex + 1, hint: daily.puzzle.hints[reveal.hintIndex])
+                        let followUpWasRequested = model.eve.requestedNudgeFollowUpHintIndexes.contains(reveal.hintIndex)
+                        EveNudgeTurnView(
+                            number: reveal.hintIndex + 1,
+                            hint: daily.puzzle.hints[reveal.hintIndex],
+                            followUpWasRequested: followUpWasRequested,
+                            followUpPending: model.eve.pendingNudgeFollowUpHintIndexes.contains(reveal.hintIndex),
+                            followUpFailed: model.eve.failedNudgeFollowUpHintIndexes.contains(reveal.hintIndex),
+                            followUpReply: model.eve.nudgeFollowUpReplies[reveal.hintIndex],
+                            canRetryFollowUp: model.game?.gameOver != true && model.eve.canRetryNudgeFollowUp(hintIndex: reveal.hintIndex),
+                            canAskFollowUp: model.game?.gameOver != true && !followUpWasRequested,
+                            onAskFollowUp: { model.requestEveNudgeFollowUp(hintIndex: reveal.hintIndex) },
+                            onRetryFollowUp: { model.requestEveNudgeFollowUp(hintIndex: reveal.hintIndex, retry: true) }
+                        )
                             .id("eveNudge-\(reveal.hintIndex + 1)")
                     }
                 }
@@ -1820,26 +1850,144 @@ private struct EveSignalMeter: View {
 }
 
 private struct EveNudgeTurnView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     let number: Int
     let hint: String
+    let followUpWasRequested: Bool
+    let followUpPending: Bool
+    let followUpFailed: Bool
+    let followUpReply: String?
+    let canRetryFollowUp: Bool
+    let canAskFollowUp: Bool
+    let onAskFollowUp: () -> Void
+    let onRetryFollowUp: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            EveAvatar().accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Eve · A nudge")
-                    .font(Theme.font(12, weight: .medium)).foregroundStyle(Theme.secondary)
-                VStack(alignment: .leading, spacing: 8) {
-                    Eyebrow(text: "NUDGE \(number)")
-                    Text(hint).font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("eveNudge-\(number)")
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                EveAvatar().accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Eve · A nudge")
+                        .font(metadataFont).foregroundStyle(Theme.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Eyebrow(text: "NUDGE \(number)")
+                        Text(hint).font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("eveNudge-\(number)")
+                    }
+                    .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
                 }
-                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
+            }
+
+            if canAskFollowUp {
+                HStack {
+                    Spacer(minLength: 40)
+                    Button(action: onAskFollowUp) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "sparkle.magnifyingglass")
+                                .font(.system(size: 14, weight: .semibold))
+                                .accessibilityHidden(true)
+                            Text("What should I look at?")
+                                .font(Theme.font(14, weight: .semibold))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Image(systemName: "arrow.up.left")
+                                .font(.system(size: 11, weight: .bold))
+                                .accessibilityHidden(true)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 48)
+                        .foregroundStyle(Theme.accent)
+                        .background(Theme.accent.opacity(0.09), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.18), lineWidth: 1))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Ask Eve what to look at")
+                    .accessibilityHint("Eve will give one short, answer-free observation about this nudge.")
+                    .accessibilityIdentifier("askEveAboutNudge-\(number)")
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            if followUpWasRequested {
+                HStack {
+                    Spacer(minLength: 56)
+                    Text("What should I look at?")
+                        .font(Theme.font(15, weight: .medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 12)
+                        .foregroundStyle(Theme.canvas)
+                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .accessibilityIdentifier("eveNudgeQuestion-\(number)")
+                }
+                .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
+
+            if followUpPending || followUpFailed || followUpReply != nil {
+                HStack(alignment: .top, spacing: 10) {
+                    EveAvatar(size: 34).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Eve · A closer look")
+                            .font(metadataFont).foregroundStyle(Theme.secondary)
+
+                        if followUpPending {
+                            HStack(alignment: .top, spacing: 10) {
+                                ProgressView().controlSize(.small).tint(Theme.accent)
+                                Text("Taking a closer look…")
+                                    .font(Theme.font(15)).foregroundStyle(Theme.secondary)
+                                    .accessibilityIdentifier("eveNudgePending-\(number)")
+                            }
+                            .padding(16).frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                        } else if let followUpReply {
+                            Text(followUpReply)
+                                .font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
+                                .padding(16).frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.accent.opacity(0.14), lineWidth: 1))
+                                .accessibilityIdentifier("eveNudgeFollowUp-\(number)")
+                        } else if followUpFailed {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("I couldn’t get that thought through.")
+                                    .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .accessibilityIdentifier("eveNudgeFailure-\(number)")
+                                if canRetryFollowUp {
+                                    Button(action: onRetryFollowUp) {
+                                        Label("Try again", systemImage: "arrow.clockwise")
+                                            .font(Theme.font(14, weight: .semibold))
+                                            .frame(minHeight: 44)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(Theme.accent)
+                                    .accessibilityIdentifier("retryEveNudgeFollowUp-\(number)")
+                                } else {
+                                    Text("No reply came through.")
+                                        .font(Theme.font(13, weight: .medium))
+                                        .foregroundStyle(Theme.secondary)
+                                }
+                            }
+                            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                        }
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
         .accessibilityElement(children: .contain)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: followUpWasRequested)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: followUpPending)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: followUpFailed)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: followUpReply)
+    }
+
+    private var metadataFont: Font {
+        .system(size: typeSize.isAccessibilitySize ? 16 : 12, weight: .medium)
     }
 }
 

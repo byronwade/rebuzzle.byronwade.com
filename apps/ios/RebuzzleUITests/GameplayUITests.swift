@@ -285,6 +285,101 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["eveNudge-2"].exists)
     }
 
+    func testEveNudgeFollowUpAddsOneQuestionAndASeparateReply() {
+        launchFixture()
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+        let hint = app.staticTexts["eveNudge-1"]
+        XCTAssertTrue(hint.waitForExistence(timeout: 5))
+
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        XCTAssertGreaterThanOrEqual(askAboutHint.frame.height, 44)
+        askAboutHint.tap()
+
+        let question = app.staticTexts["eveNudgeQuestion-1"]
+        let reply = app.staticTexts["eveNudgeFollowUp-1"]
+        XCTAssertTrue(question.waitForExistence(timeout: 5))
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertEqual(question.label, "What should I look at?")
+        XCTAssertEqual(reply.label, "Notice how the parts are arranged.")
+        XCTAssertLessThan(hint.frame.maxY, question.frame.minY)
+        XCTAssertLessThan(question.frame.maxY, reply.frame.minY)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "eveNudgeQuestion-1").count, 1)
+        XCTAssertFalse(askAboutHint.exists, "The same hint can only start one follow-up exchange")
+        XCTAssertEqual(askForNudge.value as? String, "2 hints left", "A follow-up does not consume a hint")
+        XCTAssertFalse(app.staticTexts["lighthouse"].exists)
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+        XCTAssertTrue(app.buttons["checkAnswer"].isEnabled)
+
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["eveNudgeFollowUp-1"].exists,
+                      "The conversation remains attached to its hint in the result transcript")
+        XCTAssertFalse(app.buttons["askEveAboutNudge-1"].exists,
+                       "A completed round does not allow new follow-ups")
+    }
+
+    func testEveNudgeFollowUpRetriesWithoutDuplicatingTheQuestion() {
+        launchFixture(extraArguments: ["--ui-nudge-reply-fails-once"])
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        askAboutHint.tap()
+
+        let question = app.staticTexts["eveNudgeQuestion-1"]
+        let retry = app.buttons["retryEveNudgeFollowUp-1"]
+        XCTAssertTrue(question.waitForExistence(timeout: 5))
+        XCTAssertTrue(retry.waitForExistence(timeout: 5), "The fixture should show one retry after its first failed response.")
+        retry.tap()
+
+        let reply = app.staticTexts["eveNudgeFollowUp-1"]
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts.matching(identifier: "eveNudgeQuestion-1").count, 1)
+        XCTAssertFalse(retry.exists)
+    }
+
+    func testEveNudgeFollowUpKeepsTheComposerUsableWhilePending() {
+        launchFixture(extraArguments: ["--ui-delayed-nudge-reply"])
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        askAboutHint.tap()
+        XCTAssertTrue(app.staticTexts["eveNudgePending-1"].waitForExistence(timeout: 3))
+
+        let field = focusAnswerField()
+        field.typeText("sun")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["checkAnswerFromKeyboard"].isHittable)
+        XCTAssertEqual(field.value as? String, "sun")
+        XCTAssertTrue(app.staticTexts["eveNudgeFollowUp-1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(field.isHittable)
+        XCTAssertEqual(field.value as? String, "sun", "Eve's reply must not replace the player's draft")
+    }
+
+    func testEveNudgeFollowUpControlFitsAccessibilitySize() {
+        launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        XCTAssertGreaterThanOrEqual(askAboutHint.frame.height, 44)
+        XCTAssertTrue(askAboutHint.isHittable)
+        askAboutHint.tap()
+
+        let reply = app.staticTexts["eveNudgeFollowUp-1"]
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertTrue(reply.isHittable)
+        capture("Eve hint follow-up — accessibility XXXL")
+    }
+
     func testNudgeActionIsHiddenWhenThereAreNoHints() {
         launchFixture(extraArguments: ["--ui-no-hints"])
         XCTAssertFalse(app.buttons["askEveForNudge"].exists)
@@ -306,12 +401,21 @@ import StoreKitTest
 
     func testNudgeRemainsAvailableDuringScoreLockedContinuation() {
         launchFixture(extraArguments: ["--ui-score-locked"])
+        let continueSolving = app.buttons["continueSolving"]
+        reveal(continueSolving)
+        continueSolving.tap()
+        let dismissKeyboard = app.buttons["dismissAnswerKeyboard"]
+        if dismissKeyboard.waitForExistence(timeout: 3) { dismissKeyboard.tap() }
         let ask = app.buttons["askEveForNudge"]
         reveal(ask)
         ask.tap()
         XCTAssertTrue(app.staticTexts["eveNudge-1"].waitForExistence(timeout: 5))
+        let followUp = app.buttons["askEveAboutNudge-1"]
+        reveal(followUp)
+        followUp.tap()
+        XCTAssertTrue(app.staticTexts["eveNudgeFollowUp-1"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["continueSolving"].exists)
+        XCTAssertTrue(app.staticTexts["continuedSolveStatus"].exists)
     }
 
     func testNudgeControlStaysTappableAtAccessibilitySizeAfterKeyboardDismissal() {

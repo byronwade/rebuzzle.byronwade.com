@@ -85,10 +85,10 @@
 - `EveNudgeTurnView` receives whether the fixed question was asked, pending/retry state, the reply text, and request/retry closures.
 - The fixture endpoint returns a deterministic answer-blind reply and supports a first-failure argument for UI retry coverage.
 
-- [ ] **Step 1: Add failing UI tests** for question/reply ordering, one request per hint, retry after a fixture failure, unchanged hint/guess state, no answer exposure, and the composer remaining tappable while Eve is pending.
-- [ ] **Step 2: Run the focused UI tests and verify they fail** because the follow-up control and response are missing.
-- [ ] **Step 3: Add the fixed-question action and chat turns** inside `EveNudgeTurnView`; show Eve composing, the buffered reply, and one retry action after an error. Gate new requests to revealed hints in unfinished daily play, preserve completed replies in the result transcript, and respect Reduce Motion and Dynamic Type.
-- [ ] **Step 4: Add the deterministic fixture response and failure mode.**
-- [ ] **Step 5: Run the focused UI tests** on the standard and Accessibility XXXL paths; verify the composer and follow-up remain reachable and every test passes.
-- [ ] **Step 6: Build the iOS Simulator app and run the focused server test files** as final integration verification.
-- [ ] **Step 7: Commit Task 3** as `Add Eve follow-up chat turns`.
+- [x] **Step 1: Add failing UI tests** for question/reply ordering, one request per hint, retry after a fixture failure, unchanged hint/guess state, no answer exposure, and the composer remaining tappable while Eve is pending.
+- [x] **Step 2: Run the focused UI tests and verify they fail** because the follow-up control and response are missing.
+- [x] **Step 3: Add the fixed-question action and chat turns** inside `EveNudgeTurnView`; show Eve composing, the buffered reply, and one retry action after an error. Gate new requests to revealed hints in unfinished daily play, preserve completed replies in the result transcript, and respect Reduce Motion and Dynamic Type.
+- [x] **Step 4: Add the deterministic fixture response and failure mode.**
+- [x] **Step 5: Run the focused UI tests** on the standard and Accessibility XXXL paths; verify the composer and follow-up remain reachable and every test passes.
+- [x] **Step 6: Build the iOS Simulator app and run the focused server test files** as final integration verification.
+- [x] **Step 7: Commit Task 3** as `Add Eve follow-up chat turns`.
