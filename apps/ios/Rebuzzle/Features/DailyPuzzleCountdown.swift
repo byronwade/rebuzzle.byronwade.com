@@ -55,32 +55,51 @@ struct DailyPuzzleCountdown: View {
         }
     }
 
+    @ViewBuilder
     private func compactCountdown(seconds: Int) -> some View {
-        let content = HStack(spacing: 7) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Theme.reward)
-                .accessibilityHidden(true)
-            Text(dynamicTypeSize.isAccessibilitySize ? "NEXT DAILY" : "NEXT")
-                .font(Theme.font(10, weight: .bold, relativeTo: .caption))
-                .tracking(0.7)
-                .foregroundStyle(Theme.secondary)
-            Text(clockString(seconds))
-                .font(Theme.font(12, weight: .semibold, relativeTo: .caption).monospacedDigit())
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
+        let icon = Image(systemName: "sparkles")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Theme.reward)
+            .accessibilityHidden(true)
+        let label = Text(dynamicTypeSize.isAccessibilitySize ? "NEXT DAILY" : "NEXT")
+            .font(Theme.font(10, weight: .bold, relativeTo: .caption))
+            .tracking(0.7)
+            .foregroundStyle(Theme.secondary)
+        let timer = Text(clockString(seconds))
+            .font(Theme.font(12, weight: .semibold, relativeTo: .caption).monospacedDigit())
+            .foregroundStyle(Theme.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
 
-        return content
-            .padding(.horizontal, 11)
-            .frame(minHeight: 44)
-            .background(Theme.panel, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Next daily puzzle")
-            .accessibilityValue(accessibilityCountdown(seconds: seconds))
-            .accessibilityIdentifier("activePuzzleCountdown")
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 7) {
+                        icon
+                        label
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    timer
+                        .minimumScaleFactor(0.65)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 7) {
+                    icon
+                    label
+                    timer
+                }
+            }
+        }
+        .padding(.horizontal, 11)
+        .frame(minHeight: 44)
+        .background(Theme.panel, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Next daily puzzle")
+        .accessibilityValue(accessibilityCountdown(seconds: seconds))
+        .accessibilityIdentifier("activePuzzleCountdown")
     }
 
     @ViewBuilder

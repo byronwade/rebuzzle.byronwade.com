@@ -45,6 +45,8 @@ import StoreKitTest
         XCTAssertGreaterThan(board.frame.width, 100)
         XCTAssertGreaterThan(board.frame.height, 20)
         XCTAssertEqual(board.frame.width / board.frame.height, 768.0 / 248.0, accuracy: 0.03, "Reviewed image must retain its aspect ratio")
+        XCTAssertEqual(board.frame.width, min(app.frame.width, 600) - 80, accuracy: 2,
+                       "The daily arena must keep the same 16-point board inset as the Study puzzle surface.")
         capture("Canonical board — exact reviewed pixels")
         app.buttons["studyPuzzle"].tap()
         XCTAssertTrue(app.images["canonicalPuzzleBoard"].waitForExistence(timeout: 5))
@@ -54,12 +56,47 @@ import StoreKitTest
     func testDailyPuzzleArenaContainsGuessProgress() {
         launchFixture()
         let arena = app.descendants(matching: .any)["dailyPuzzleArena"].firstMatch
-        let progress = app.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+        let progress = arena.descendants(matching: .any)["dailyGuessProgress"].firstMatch
 
         XCTAssertTrue(arena.waitForExistence(timeout: 5))
         XCTAssertTrue(progress.waitForExistence(timeout: 5))
         XCTAssertTrue(arena.frame.contains(progress.frame), "The turn meter belongs inside the puzzle arena.")
         XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+    }
+
+    func testDailyPuzzleArenaFitsAccessibilitySize() {
+        launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        let arena = app.descendants(matching: .any)["dailyPuzzleArena"].firstMatch
+        let difficulty = app.descendants(matching: .any)["dailyDifficultyTier"].firstMatch
+        let countdown = app.descendants(matching: .any)["activePuzzleCountdown"].firstMatch
+        let study = app.buttons["studyPuzzle"]
+        let progress = arena.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+
+        XCTAssertTrue(arena.waitForExistence(timeout: 5))
+        XCTAssertTrue(difficulty.exists)
+        XCTAssertTrue(countdown.waitForExistence(timeout: 5))
+        XCTAssertTrue((countdown.value as? String)?.contains("seconds remaining") == true)
+        capture("Puzzle arena — Accessibility XXXL before scroll")
+        let swipeStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.43))
+        let swipeEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12))
+        for _ in 0..<8 where !study.isHittable {
+            swipeStart.press(forDuration: 0.05, thenDragTo: swipeEnd)
+        }
+        XCTAssertTrue(study.isHittable, "Study puzzle should be reachable by scrolling. App frame: \(app.frame), study frame: \(study.frame)")
+        XCTAssertGreaterThanOrEqual(study.frame.height, 44)
+        capture("Puzzle arena — Accessibility XXXL metadata")
+
+        let eveNudge = app.buttons["askEveForNudge"]
+        XCTAssertTrue(eveNudge.waitForExistence(timeout: 5))
+        for _ in 0..<8 where !progress.isHittable || progress.frame.maxY > eveNudge.frame.minY {
+            swipeStart.press(forDuration: 0.05, thenDragTo: swipeEnd)
+        }
+        XCTAssertTrue(progress.isHittable)
+        XCTAssertTrue(arena.frame.contains(progress.frame))
+        XCTAssertLessThanOrEqual(progress.frame.maxY, eveNudge.frame.minY,
+                                 "The full turn meter should remain above the pinned answer composer.")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        capture("Puzzle arena — Accessibility XXXL turn meter")
     }
 
     func testInvalidCanonicalBoardNeverFallsBackToLegacyClue() {

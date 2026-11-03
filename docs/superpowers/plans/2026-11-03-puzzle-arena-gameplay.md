@@ -49,3 +49,25 @@
 - [x] Run the new UI test plus existing canonical-board, study-puzzle, keyboard, and Accessibility XXXL gameplay UI cases.
 - [x] Build the iOS Simulator app and visually inspect the normal play screen, keyboard-visible state, dark appearance, and Accessibility XXXL layout; confirm clue geometry and the pinned composer remain intact.
 - [x] Commit as `Build the Rebuzzle puzzle arena`.
+
+### Task 2: Preserve clue scale and prove the large-type arena
+
+**Files:**
+- Modify: `apps/ios/Rebuzzle/Features/PuzzleArenaView.swift`
+- Modify: `apps/ios/Rebuzzle/Features/DailyPuzzleCountdown.swift`
+- Modify: `apps/ios/RebuzzleUITests/GameplayUITests.swift`
+
+**Interfaces:**
+- The arena keeps a 16-point inset between the canonical board and the surrounding `Page` content, matching the Study puzzle surface.
+- The accessibility tree exposes `dailyGuessProgress` as a descendant of `dailyPuzzleArena`.
+- At accessibility text sizes, the compact daily countdown stacks its label and clock so the full time remains visible.
+
+- [x] Extend the canonical-board UI check to confirm its displayed width matches the Study puzzle surface's 16-point inset.
+- [x] Run the width check and confirm it fails because the arena adds a second horizontal inset.
+- [x] Remove only the extra outer 12-point horizontal padding; keep the paper surface and its curved rim.
+- [x] Query guess progress through `dailyPuzzleArena` and add an Accessibility XXXL test that captures the metadata row and the scrolled turn meter.
+- [x] Keep the entire guess meter above the pinned composer at Accessibility XXXL, not merely partially hittable.
+- [x] Stack the compact countdown label and clock at accessibility text sizes so the full timer remains visible.
+- [x] Run the arena, canonical-board, Study puzzle, keyboard-visible, and Accessibility XXXL UI checks.
+- [x] Build and visually inspect the Accessibility XXXL, countdown, and scrolled turn-meter states; confirm the canonical board scale is preserved.
+- [x] Commit as `Preserve Rebuzzle puzzle board geometry`.

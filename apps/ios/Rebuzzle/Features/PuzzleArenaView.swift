@@ -23,7 +23,6 @@ struct PuzzleArenaView: View {
                     RoundedRectangle(cornerRadius: 18)
                         .strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1)
                 }
-                .padding(.horizontal, 12)
 
             attemptHeader
                 .padding(.horizontal, 16)
