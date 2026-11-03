@@ -1788,13 +1788,17 @@ private struct EveNudgeTurnView: View {
 
 struct EveAvatar: View {
     var celebrating = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        Image(systemName: "face.smiling.inverse")
-            .font(.system(size: 30, weight: .regular))
-            .foregroundStyle(celebrating ? Theme.reward : Theme.accent)
+        Image("EveAvatar")
+            .resizable()
+            .scaledToFit()
             .frame(width: 38, height: 38)
             .background(celebrating ? Theme.reward.opacity(0.12) : Theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+            .scaleEffect(celebrating ? 1.06 : 1)
             .rotationEffect(.degrees(celebrating ? -8 : 0))
+            .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.56), value: celebrating)
             .accessibilityLabel("Eve")
     }
 }
