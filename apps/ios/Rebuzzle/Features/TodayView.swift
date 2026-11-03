@@ -1199,7 +1199,14 @@ private extension DailyQualityRating {
 
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let firstSession: Bool
+    @AppStorage("haptics") private var haptics = true
+    @FocusState private var tutorialAnswerFocused: Bool
+    @State private var tutorialAnswer = ""
+    @State private var tutorialHintShown = false
+    @State private var tutorialSolved = false
+    @State private var tutorialReply: String?
 
     init(firstSession: Bool = false) {
         self.firstSession = firstSession
@@ -1209,18 +1216,7 @@ struct HelpView: View {
         NavigationStack {
             Page {
                 if firstSession {
-                    Text("Make it click.").font(Theme.font(30, weight: .medium))
-                    Text("Pictures, words, and patterns can combine to make a familiar word or phrase.")
-                        .font(Theme.font(17)).fixedSize(horizontal: false, vertical: true)
-                    VStack(spacing: 12) {
-                        Eyebrow(text: "EXAMPLE")
-                        Text("☀️ + 🌼").font(.system(size: 42)).accessibilityLabel("Sun plus flower")
-                        Text("Sun + flower = sunflower").font(Theme.font(16, weight: .medium))
-                    }
-                    .frame(maxWidth: .infinity).padding(20)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
-                    Text("Three scored guesses. Then keep solving until it clicks.")
-                        .font(Theme.font(16, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                    firstSessionTutorial
                 } else {
                     Text("Small puzzle. Big aha.").font(Theme.font(30, weight: .medium))
                     Text("A few clues. One hidden connection. Read the pictures, words or patterns, then try the word or phrase that clicks.").font(Theme.font(17))
@@ -1242,11 +1238,14 @@ struct HelpView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if firstSession {
-                    Button { dismiss() } label: {
-                        Label("Let’s play", systemImage: "arrow.right")
+                    Button {
+                        dismissTutorialKeyboard()
+                        dismiss()
+                    } label: {
+                        Label(tutorialSolved ? "Let’s play today" : "Skip to today", systemImage: tutorialSolved ? "arrow.right" : "forward.end")
                     }
                     .buttonStyle(CommitStyle())
-                    .accessibilityLabel("Let’s play")
+                    .accessibilityLabel(tutorialSolved ? "Let’s play today" : "Skip to today")
                     .accessibilityIdentifier("quickStartStartPlaying")
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
@@ -1261,8 +1260,191 @@ struct HelpView: View {
                     Button("Close", systemImage: "xmark") { dismiss() }
                         .accessibilityIdentifier(firstSession ? "quickStartClose" : "closeHelp")
                 }
+                if firstSession {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") {
+                            dismissTutorialKeyboard(forceResign: true)
+                        }
+                        .accessibilityIdentifier("quickStartDismissKeyboard")
+                        Spacer()
+                        Button("Check answer", systemImage: "arrow.right") {
+                            checkTutorialAnswer()
+                        }
+                        .disabled(tutorialAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || tutorialSolved)
+                        .accessibilityIdentifier("quickStartCheckAnswerFromKeyboard")
+                    }
+                }
             }
         }
+        .sensoryFeedback(.success, trigger: tutorialSolved) { _, solved in solved && haptics }
+    }
+
+    private var firstSessionTutorial: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 8) {
+                Eyebrow(text: "QUICK PRACTICE ROUND")
+                Text("Make it click.")
+                    .font(Theme.font(30, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Try one tiny rebus with Eve. Nothing here counts toward today’s score.")
+                    .font(Theme.font(17)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 16) {
+                Eyebrow(text: tutorialSolved ? "THAT’S THE AHA" : "YOUR FIRST CLUE")
+                HStack(spacing: 12) {
+                    tutorialPicture("☀️", label: "Sun")
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Theme.secondary)
+                        .accessibilityHidden(true)
+                    tutorialPicture("🌼", label: "Flower")
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Sun plus flower")
+
+                if tutorialSolved {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("SUNFLOWER")
+                            .font(Theme.font(11, weight: .semibold)).tracking(1.1)
+                            .foregroundStyle(Theme.reward)
+                        Text("Sun + flower. A familiar word hiding in two pictures.")
+                            .font(Theme.font(16, weight: .medium))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("quickStartSolved")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Theme.reward.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+                    .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
+                } else {
+                    Text("Read the pictures from left to right. Join the two words.")
+                        .font(Theme.font(15, weight: .medium))
+                        .foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(18)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.ink.opacity(0.14), lineWidth: 1))
+
+            if let tutorialReply {
+                HStack(alignment: .top, spacing: 10) {
+                    EveAvatar()
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("EVE")
+                            .font(Theme.font(10, weight: .semibold)).tracking(1)
+                            .foregroundStyle(Theme.accent)
+                        Text(tutorialReply)
+                            .font(Theme.font(15))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("quickStartEveReply")
+                .transition(reduceMotion ? .identity : .move(edge: .top).combined(with: .opacity))
+            }
+
+            if !tutorialSolved {
+                VStack(alignment: .leading, spacing: 12) {
+                    TextField("Your answer", text: $tutorialAnswer, prompt: Text("Put the words together…"))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.go)
+                        .focused($tutorialAnswerFocused)
+                        .modifier(FieldStyle())
+                        .accessibilityLabel("Practice answer")
+                        .accessibilityIdentifier("quickStartTutorialAnswer")
+                        .onSubmit(checkTutorialAnswer)
+
+                    Button(action: checkTutorialAnswer) {
+                        Label("Check answer", systemImage: "arrow.right")
+                    }
+                    .buttonStyle(CommitStyle())
+                    .disabled(tutorialAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("quickStartCheckAnswer")
+
+                    if !tutorialHintShown {
+                        Button {
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+                                tutorialHintShown = true
+                                tutorialReply = "Say each picture’s name, then read them in order."
+                            }
+                            dismissTutorialKeyboard()
+                        } label: {
+                            Label("Ask Eve for a nudge", systemImage: "sparkles")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityIdentifier("quickStartAskEve")
+                    }
+                }
+                .padding(16)
+                .background(Theme.field.opacity(0.55), in: RoundedRectangle(cornerRadius: 16))
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles").foregroundStyle(Theme.reward)
+                Text("Practice only · your daily guesses stay fresh")
+                    .font(Theme.font(13, weight: .medium)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityIdentifier("quickStartPracticeOnly")
+
+            if !tutorialSolved {
+                Text("Today has three scored guesses. You can keep solving after that.")
+                    .font(Theme.font(14, weight: .medium)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .animation(reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.12), value: tutorialSolved)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: tutorialReply)
+    }
+
+    private func tutorialPicture(_ emoji: String, label: String) -> some View {
+        Text(emoji)
+            .font(.system(size: 40))
+            .frame(maxWidth: .infinity, minHeight: 76)
+            .background(Theme.field, in: RoundedRectangle(cornerRadius: 16))
+            .accessibilityLabel(label)
+    }
+
+    private func checkTutorialAnswer() {
+        guard !tutorialSolved else { return }
+        let cleaned = tutorialAnswer
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .filter { $0.isLetter }
+        guard !cleaned.isEmpty else { return }
+        dismissTutorialKeyboard()
+        if cleaned == "sunflower" {
+            withAnimation(reduceMotion ? nil : .spring(duration: 0.34, bounce: 0.18)) {
+                tutorialSolved = true
+                tutorialReply = "Exactly! You combined both pictures into one familiar word. That’s a rebus."
+            }
+        } else {
+            let hasPictureWord = cleaned.contains("sun") || cleaned.contains("flower")
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+                tutorialReply = hasPictureWord
+                    ? "You spotted one part. Try saying both pictures in order."
+                    : "Try naming each picture, then joining the two words."
+            }
+        }
+    }
+
+    private func dismissTutorialKeyboard(forceResign: Bool = false) {
+        let shouldResign = tutorialAnswerFocused || forceResign
+        tutorialAnswerFocused = false
+        guard shouldResign else { return }
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

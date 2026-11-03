@@ -157,12 +157,22 @@ import StoreKitTest
         launchFixture(freshInstall: true)
 
         XCTAssertTrue(app.navigationBars["Your first puzzle"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Sun + flower = sunflower"].exists)
-        XCTAssertTrue(app.staticTexts["Three scored guesses. Then keep solving until it clicks."].exists)
+        XCTAssertTrue(app.textFields["quickStartTutorialAnswer"].exists)
+        XCTAssertTrue(app.buttons["quickStartAskEve"].exists)
+        XCTAssertTrue(app.staticTexts["Today has three scored guesses. You can keep solving after that."].exists)
+        XCTAssertFalse(app.staticTexts["SUNFLOWER"].exists, "The practice clue should preserve its small aha until the player solves it")
         XCTAssertFalse(app.staticTexts["lighthouse"].exists, "The quick-start must not reveal today’s answer")
-        capture("First-session quick-start")
+
+        app.buttons["quickStartAskEve"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["quickStartEveReply"].waitForExistence(timeout: 5))
+        let tutorialAnswer = app.textFields["quickStartTutorialAnswer"]
+        tutorialAnswer.tap()
+        tutorialAnswer.typeText("sunflower\n")
+        XCTAssertTrue(app.staticTexts["quickStartSolved"].waitForExistence(timeout: 5))
+        capture("First-session tutorial — the aha")
         app.buttons["quickStartStartPlaying"].tap()
 
+        XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "3 guesses remaining", "The tutorial must not spend a daily guess")
         let answerField = app.descendants(matching: .any)["answerField"].firstMatch
         XCTAssertTrue(answerField.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable)
