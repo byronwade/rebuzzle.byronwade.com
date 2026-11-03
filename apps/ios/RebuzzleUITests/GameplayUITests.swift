@@ -389,6 +389,20 @@ import StoreKitTest
         XCTAssertEqual(guessProgress.value as? String, "2 guesses remaining")
     }
 
+    func testExpiredDailyRefreshDoesNotShowPendingGuess() {
+        launchFixture(extraArguments: ["--ui-expired-daily"])
+        let guessProgress = app.descendants(matching: .any)["dailyGuessProgress"]
+        XCTAssertTrue(guessProgress.waitForExistence(timeout: 5))
+
+        submit("sunshine")
+
+        let pendingGuess = app.descendants(matching: .any)["pendingGuessTurn"].firstMatch
+        XCTAssertFalse(pendingGuess.waitForExistence(timeout: 0.5), "Refreshing an expired daily is not a guess request.")
+        XCTAssertTrue(app.staticTexts["A new daily puzzle is ready. Take a look before submitting."]
+            .waitForExistence(timeout: 8))
+        XCTAssertEqual(guessProgress.value as? String, "3 guesses remaining")
+    }
+
     func testWrongGuessThenWin() {
         launchFixture()
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable, "The daily game should be ready to play without scrolling")

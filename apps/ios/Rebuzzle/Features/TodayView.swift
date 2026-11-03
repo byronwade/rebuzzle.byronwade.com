@@ -412,10 +412,14 @@ struct TodayView: View {
         let puzzleDate = model.daily?.puzzleDate
         let attemptCount = model.game?.attempts.count ?? 0
         let submittedGuess = model.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let dailyHasTimeRemaining = model.daily
+            .flatMap { ResultView.date($0.nextPuzzleTime) }
+            .map { $0 > Date() } == true
         let pendingSubmission: PendingGuessSubmission?
         if let puzzleID, let puzzleDate, let accountID = model.player?.id,
            model.sessionReady, !model.submitting, !model.busy, !model.needsReconciliation,
-           model.game?.gameOver == false, !submittedGuess.isEmpty, submittedGuess.count <= 200 {
+           model.game?.gameOver == false, dailyHasTimeRemaining,
+           !submittedGuess.isEmpty, submittedGuess.count <= 200 {
             let submission = PendingGuessSubmission(
                 puzzleID: puzzleID,
                 puzzleDate: puzzleDate,

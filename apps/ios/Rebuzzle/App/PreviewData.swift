@@ -50,6 +50,10 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
                ProcessInfo.processInfo.arguments.contains("--ui-delayed-guess") {
                 Thread.sleep(forTimeInterval: 3)
             }
+            if request.url?.path == "/api/puzzle/today",
+               ProcessInfo.processInfo.arguments.contains("--ui-expired-daily") {
+                Thread.sleep(forTimeInterval: 3)
+            }
             let (status, data) = try Self.state.respond(to: request)
             let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -69,6 +73,7 @@ private final class FixtureServer: @unchecked Sendable {
     private let expiredResetFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-reset-manual")
     private let scoreLockedFixture = ProcessInfo.processInfo.arguments.contains("--ui-score-locked")
     private let lateSolveFixture = ProcessInfo.processInfo.arguments.contains("--ui-late-solve")
+    private let expiredDailyFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-daily")
     private let expiredReviewFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-review")
     private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
     private let weeklyTrailFixture = ProcessInfo.processInfo.arguments.contains("--ui-journey-days-2")
@@ -171,7 +176,9 @@ private final class FixtureServer: @unchecked Sendable {
             if expiredResetFixture && dailyRequestCount > 1 && game.puzzleId == "fixture-lighthouse" {
                 game = GameSession(puzzleId: "fixture-next-daily", puzzleDate: Self.nextDayKey)
             }
-            let deadline = expiredResetFixture && dailyRequestCount == 1 ? expiredNextPuzzleTime : nextPuzzleTime
+            let deadline = (expiredResetFixture && dailyRequestCount == 1 || expiredDailyFixture)
+                ? expiredNextPuzzleTime
+                : nextPuzzleTime
             let hints: [String]
             if ProcessInfo.processInfo.arguments.contains("--ui-no-hints") {
                 hints = []
