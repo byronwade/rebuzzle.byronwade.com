@@ -25,7 +25,7 @@ struct TodayView: View {
     var body: some View {
         @Bindable var model = model
         ScrollViewReader { scroll in
-        Page(spacing: 18, bottomSafeAreaClearance: 72) {
+        Page(spacing: 18, bottomSafeAreaClearance: 0) {
             if let daily = model.daily {
                 VStack(alignment: .leading, spacing: 6) {
                     let masthead = typeSize.isAccessibilitySize
@@ -97,7 +97,6 @@ struct TodayView: View {
                         if model.game?.attempts.isEmpty == false || !model.nudgeReveals.isEmpty { conversation }
                         if model.game?.gameOver != true, model.hintsShown < daily.puzzle.hints.count {
                             Button {
-                                dismissAnswerKeyboard()
                                 let previous = model.hintsShown
                                 model.revealHint()
                                 if model.hintsShown > previous { hintFeedback += 1 }
@@ -139,25 +138,10 @@ struct TodayView: View {
                         if model.game?.scoreLocked == true {
                             scoreLockCard.id("scoreLockCard")
                         }
-                        if !awaitingScoreLockDecision {
-                            VStack(alignment: .leading, spacing: 12) {
-                                answerField
-                                if let error = model.error { Notice(message: error) }
-                                if model.needsReconciliation || !model.sessionReady {
-                                    Button { Task { await model.load() } } label: {
-                                        HStack { if model.busy { ProgressView().tint(Theme.canvas) }; Text("Refresh progress"); Image(systemName: "arrow.clockwise") }
-                                    }.buttonStyle(CommitStyle()).disabled(model.busy)
-                                } else if !answerFocused {
-                                    Button { submitAnswer() } label: {
-                                        HStack { Text("Check answer"); if model.submitting { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") } }
-                                    }.buttonStyle(CommitStyle()).disabled(model.submitting || model.busy).accessibilityIdentifier("checkAnswer")
-                                }
-                            }
-                        }
                         if let review = model.game?.expiredReview, dismissedExpiredReviewID != review.puzzleId {
                             expiredReviewCard(review)
                         }
-                    }.id("answerSection")
+                    }
                     if model.canSaveDailyThought {
                         Button {
                             dismissAnswerKeyboard()
@@ -222,14 +206,24 @@ struct TodayView: View {
             }
             if let error = model.storageError { Notice(message: error) }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if model.daily != nil, model.game?.gameOver != true, !awaitingScoreLockDecision {
+                answerComposer
+            }
+        }
         .onChange(of: model.game?.attempts.count) { old, new in
             guard let old, let new, new > old else { return }
             let isAwaitingScoreLockDecision = awaitingScoreLockDecision
-            let destination = model.game?.gameOver == true
-                ? "dailyHeader"
-                : isAwaitingScoreLockDecision
-                    ? "scoreLockCard"
-                    : "answerSection"
+            let destination: String
+            if model.game?.gameOver == true {
+                destination = "dailyHeader"
+            } else if isAwaitingScoreLockDecision {
+                destination = "scoreLockCard"
+            } else if let latestGuess = model.game?.attempts.last {
+                destination = "turn-\(latestGuess.attemptNumber)"
+            } else {
+                return
+            }
             let anchor: UnitPoint = model.game?.gameOver == true || isAwaitingScoreLockDecision
                 ? .top
                 : .bottom
@@ -240,22 +234,14 @@ struct TodayView: View {
                 }
             }
         }
-        .onChange(of: model.error) { _, error in
-            guard error != nil, answerFocused else { return }
-            Task { @MainActor in
-                await Task.yield()
-                guard answerFocused else { return }
-                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
-                    scroll.scrollTo("answerSection", anchor: .bottom)
-                }
-            }
-        }
         .onChange(of: model.nudgeReveals.count) { old, new in
             guard new > old else { return }
+            guard let latestHintIndex = model.nudgeReveals.map(\.hintIndex).max() else { return }
+            let destination = "eveNudge-\(latestHintIndex + 1)"
             Task { @MainActor in
                 await Task.yield()
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
-                    scroll.scrollTo("answerSection", anchor: .bottom)
+                    scroll.scrollTo(destination, anchor: .bottom)
                 }
             }
         }
@@ -335,7 +321,56 @@ struct TodayView: View {
         .modifier(GuessHapticFeedback(event: guessHapticEvent, enabled: haptics))
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: model.game?.gameOver)
     }
-    /// Kept out of `body`, which is already near the type checker's time budget.
+    private var answerComposer: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                answerField
+                if model.sessionReady && !model.needsReconciliation {
+                    Button { submitAnswer() } label: {
+                        Group {
+                            if model.submitting {
+                                ProgressView().controlSize(.small).tint(Theme.canvas)
+                            } else {
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+                        .frame(width: 52, height: 52)
+                        .foregroundStyle(Theme.canvas)
+                        .background(Theme.ink, in: RoundedRectangle(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.submitting || model.busy)
+                    .accessibilityLabel(model.submitting ? "Checking answer" : "Check answer")
+                    .accessibilityHint("Send your guess to Eve for feedback.")
+                    .accessibilityIdentifier("checkAnswer")
+                }
+            }
+            if let error = model.error { Notice(message: error) }
+            if model.needsReconciliation || !model.sessionReady {
+                Button { Task { await model.load() } } label: {
+                    HStack {
+                        if model.busy { ProgressView().tint(Theme.canvas) }
+                        Text("Refresh progress")
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .buttonStyle(CommitStyle())
+                .disabled(model.busy)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
+        .background(Theme.canvas)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
+        }
+        .accessibilityIdentifier("dailyAnswerComposer")
+    }
+    /// Kept out of `body`, which is already near the type checker’s time budget.
     private var answerField: some View {
         @Bindable var model = model
         return TextField("Your answer", text: $model.draft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
@@ -431,8 +466,15 @@ struct TodayView: View {
             if awaitingScoreLockDecision {
                 HStack(spacing: 10) {
                     Button {
-                        if let puzzleID = model.game?.puzzleId { continuedScoreLockedPuzzleID = puzzleID }
-                        dismissAnswerKeyboard()
+                        if let puzzleID = model.game?.puzzleId {
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                                continuedScoreLockedPuzzleID = puzzleID
+                            }
+                        }
+                        Task { @MainActor in
+                            await Task.yield()
+                            answerFocused = true
+                        }
                     } label: {
                         Label("Keep solving", systemImage: "arrow.right")
                             .frame(maxWidth: .infinity, minHeight: 44)
