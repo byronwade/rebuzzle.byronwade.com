@@ -38,6 +38,7 @@ targets:
     info:
       path: Rebuzzle/Resources/Info.plist
       properties:
+        NSSupportsLiveActivities: true
         RebuzzleAPIBaseURL: $(REBUZZLE_API_BASE_URL)
         UIAppFonts: [Inter.ttf]
         CFBundleURLTypes:

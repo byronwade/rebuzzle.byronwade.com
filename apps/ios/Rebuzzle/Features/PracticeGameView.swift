@@ -216,12 +216,10 @@ private struct PracticeTurnRevealEvent: Equatable {
                     .accessibilityIdentifier("practiceEveReply.\(guess.attemptNumber)")
             }
             if practiceEve.pendingAttempts.contains(guess.attemptNumber) {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.mini)
-                    Text("Eve is thinking…").font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                }
-                .accessibilityLabel("Eve is thinking")
-                .accessibilityIdentifier("practiceEvePending.\(guess.attemptNumber)")
+                EveTypingIndicator(
+                    label: "Eve is thinking…",
+                    identifier: "eveTypingIndicator-practice-\(guess.attemptNumber)"
+                )
             } else if practiceEve.failedAttempts.contains(guess.attemptNumber) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Eve couldn't reply just now. Your guess is saved.")

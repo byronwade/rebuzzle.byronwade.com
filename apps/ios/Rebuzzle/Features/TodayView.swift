@@ -1592,10 +1592,10 @@ struct GuessTurnView: View {
                                 .accessibilityIdentifier("eveReply-\(guess.id)")
                         }
                         if pending {
-                            HStack(spacing: 8) {
-                                ProgressView().controlSize(.mini)
-                                Text("Eve is thinking…").font(Theme.font(12)).foregroundStyle(Theme.secondary)
-                            }.accessibilityLabel("Eve is thinking")
+                            EveTypingIndicator(
+                                label: "Eve is thinking…",
+                                identifier: "eveTypingIndicator-guess-\(guess.attemptNumber)"
+                            )
                         } else if failed {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Eve couldn't reply just now. Your guess is saved.")
@@ -1861,12 +1861,10 @@ private struct EveNudgeTurnView: View {
                             .font(metadataFont).foregroundStyle(Theme.secondary)
 
                         if followUpPending {
-                            HStack(alignment: .top, spacing: 10) {
-                                ProgressView().controlSize(.small).tint(Theme.accent)
-                                Text("Taking a closer look…")
-                                    .font(Theme.font(15)).foregroundStyle(Theme.secondary)
-                                    .accessibilityIdentifier("eveNudgePending-\(number)")
-                            }
+                            EveTypingIndicator(
+                                label: "Taking a closer look…",
+                                identifier: "eveTypingIndicator-nudge-\(number)"
+                            )
                             .padding(16).frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
                         } else if let followUpReply {

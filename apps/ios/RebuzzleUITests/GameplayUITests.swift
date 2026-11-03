@@ -398,7 +398,9 @@ import StoreKitTest
         let askAboutHint = app.buttons["askEveAboutNudge-1"]
         reveal(askAboutHint)
         askAboutHint.tap()
-        XCTAssertTrue(app.staticTexts["eveNudgePending-1"].waitForExistence(timeout: 3))
+        let typingIndicator = app.descendants(matching: .any)["eveTypingIndicator-nudge-1"].firstMatch
+        XCTAssertTrue(typingIndicator.waitForExistence(timeout: 3))
+        XCTAssertEqual(typingIndicator.label, "Taking a closer look…")
 
         let field = focusAnswerField()
         field.typeText("sun")
