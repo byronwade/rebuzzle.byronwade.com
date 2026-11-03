@@ -658,8 +658,11 @@ import StoreKitTest
         XCTAssertEqual(reminder.label, "Remind me")
         XCTAssertGreaterThanOrEqual(reminder.frame.height, 44)
         reminder.tap()
-        XCTAssertTrue(app.switches["Daily reminder"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Your daily invitation"].exists)
+        XCTAssertTrue(app.navigationBars["A daily moment"].waitForExistence(timeout: 5))
+        let dailyReminder = app.switches["Daily reminder"]
+        for _ in 0..<8 where !dailyReminder.isHittable { app.swipeUp() }
+        XCTAssertTrue(dailyReminder.waitForExistence(timeout: 5))
+        XCTAssertTrue(dailyReminder.isHittable, "The daily reminder setting should be reachable after scrolling at accessibility text sizes")
         capture("Daily reminder settings")
     }
 

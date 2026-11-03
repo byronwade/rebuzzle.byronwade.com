@@ -28,5 +28,7 @@
 
 - Passed on iPhone 17 Pro simulator (iOS 26.3.1): `testEveNudgesBecomeConversationTurnsAndRemainAnswerBlind`, `testDailyResultShareOpensFromTheInitialResultViewport`, `testSolvedResultShowsCountdownAndOptionalReminderWithoutScrolling`, and `testWrongGuessThenWin`.
 - Passed on iPhone 17 Pro simulator (iOS 26.3.1): `testDailyResultShareRemainsAccessibleAtAccessibilityTextSize`; Xcode logged a non-failing “Invalid frame dimension (negative or non-finite)” runtime warning while focusing the answer field, so its source remains to be identified.
+- Passed on iPhone 17 Pro simulator (iOS 26.3.1): `testAccessibleCountdownAndReminders`; the test scrolls the Accessibility XXXL reminder form until the “Daily reminder” switch is reachable. The same non-failing frame warning was logged.
+- Release configuration compiles for generic iOS with code signing disabled. No Apple Distribution identity or App Store Connect API key is present in this workspace, so this validates compilation only and is not a TestFlight archive.
 - The standard and Accessibility XXXL `View puzzle` toolbar flows pass with the unsent answer draft preserved after returning from Study.
 - Follow-up code review found no actionable issues. Full CI has not been refreshed; its predecessor-head run failed 16 tests on iOS 26.0.1. VoiceOver, iPad, and physical-device checks remain open.

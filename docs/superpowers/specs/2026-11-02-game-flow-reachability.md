@@ -41,7 +41,7 @@ Keep the player’s next action visible during active play and make the result s
 | HIG-005 Navigation | Yes | Existing routes unchanged. |
 | HIG-006 Sheets/dismissal | No change | No sheet or dismissal changes. |
 | HIG-007 Safe areas/keyboard | Yes | Nudge order is tested above the pinned answer composer; the solved countdown and reminder pass first-viewport checks. |
-| HIG-008 System text/Dynamic Type | Yes | Standard result viewport, Accessibility XXXL puzzle-study route, and Accessibility XXXL result-share reachability are covered by simulator UI tests. |
+| HIG-008 System text/Dynamic Type | Yes | Standard result viewport, Accessibility XXXL puzzle-study route, result-share reachability, and countdown/reminder settings are covered by simulator UI tests. |
 | HIG-009 Assistive interaction | Yes | Existing labels/identifiers retained; VoiceOver runtime check pending. |
 | HIG-010 Appearance/contrast | Existing tokens | No color change; no new contrast claim. |
 | HIG-011 Motion | Existing motion | Existing Reduce Motion-aware scroll animation retained. |
@@ -54,9 +54,9 @@ Keep the player’s next action visible during active play and make the result s
 | HIG-018 Measured performance | Yes | No performance claim; physical-device measurement pending. |
 | HIG-019 Media/capture | No change | Spoiler-safe sharing remains unchanged. |
 | HIG-020 Shared contracts | No change | No cross-platform contract changes. |
-| HIG-021 Evidence | Yes | Nudge conversation, result share, countdown/reminder, and streak-order UI tests pass on iPhone 17 Pro simulator (iOS 26.3.1); toolbar draft-preservation tests pass in standard and Accessibility XXXL; Accessibility XXXL result sharing passes. The full CI run at the predecessor head failed 16 tests and has not been refreshed. |
+| HIG-021 Evidence | Yes | Nudge conversation, result share, countdown/reminder, and streak-order UI tests pass on iPhone 17 Pro simulator (iOS 26.3.1); toolbar draft-preservation tests pass in standard and Accessibility XXXL; Accessibility XXXL result sharing and countdown/reminder settings pass. The full CI run at the predecessor head failed 16 tests and has not been refreshed. |
 | HIG-022 Review/maintenance | Yes | Follow-up code review found no actionable issues; refreshed CI remains pending. |
 
 ## Release evidence still required
 
-Record build and commit; re-run full iOS CI; check VoiceOver order and a physical iPhone before claiming release readiness. The previous full CI run at the predecessor head failed 16 tests on iOS 26.0.1. The locally reproduced nudge, share, countdown, reminder, and streak-layout regressions now pass their focused simulator tests. Accessibility XXXL result sharing also passes, with a non-failing “Invalid frame dimension (negative or non-finite)” warning logged while focusing the answer field; its source has not been identified.
+Record build and commit; re-run full iOS CI; check VoiceOver order and a physical iPhone before claiming release readiness. The previous full CI run at the predecessor head failed 16 tests on iOS 26.0.1. The locally reproduced nudge, share, countdown, reminder, and streak-layout regressions now pass their focused simulator tests. Accessibility XXXL result sharing and countdown/reminder settings also pass, with a non-failing “Invalid frame dimension (negative or non-finite)” warning logged while focusing the answer field; its source has not been identified.
