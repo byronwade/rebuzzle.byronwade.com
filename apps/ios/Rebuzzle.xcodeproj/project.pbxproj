@@ -24,6 +24,7 @@
 		337DCC35B945F5A5824E3CAD /* PlusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D915DE26C2DDCDAB6087A8 /* PlusView.swift */; };
 		3AB299CEB8825E3823C05494 /* NativeGrowthReportingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E920656E04A5DD1847FEB7 /* NativeGrowthReportingTests.swift */; };
 		477B3015DCBC024B31C00110 /* PracticeAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4798FAEDFB166AF35C5E3901 /* PracticeAPIClientTests.swift */; };
+		5E897E5CA90568664EA5CB5D /* PuzzleNotebook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F05A3087FEC385B5F6E18C1 /* PuzzleNotebook.swift */; };
 		64582E5D3376061BEB464AF3 /* PurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */; };
 		665993D18AE71DA497CAE5EF /* DailyResultShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129549FD225212AF76197AF5 /* DailyResultShareCard.swift */; };
 		67C8DB586DBF1B0A57352057 /* Rebuzzle.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EF86991A32908751C121291 /* Rebuzzle.storekit */; };
@@ -113,6 +114,7 @@
 		124C2F26141BC60AD508780F /* VisualBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualBoard.swift; sourceTree = "<group>"; };
 		129549FD225212AF76197AF5 /* DailyResultShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyResultShareCard.swift; sourceTree = "<group>"; };
 		1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeGameView.swift; sourceTree = "<group>"; };
+		1F05A3087FEC385B5F6E18C1 /* PuzzleNotebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PuzzleNotebook.swift; sourceTree = "<group>"; };
 		265BEFC14F6F5011653FD71E /* JourneyRewards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyRewards.swift; sourceTree = "<group>"; };
 		2DA288848438C453BD345991 /* SubmissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionTests.swift; sourceTree = "<group>"; };
 		2F3337886F12C9BCA52BAEBC /* PuzzleArenaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PuzzleArenaView.swift; sourceTree = "<group>"; };
@@ -309,6 +311,7 @@
 				1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */,
 				C61864440C1A74407936568F /* ProgressScreen.swift */,
 				2F3337886F12C9BCA52BAEBC /* PuzzleArenaView.swift */,
+				1F05A3087FEC385B5F6E18C1 /* PuzzleNotebook.swift */,
 				7A644188B1C600803AADBDAD /* SettingsView.swift */,
 				ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */,
 				124C2F26141BC60AD508780F /* VisualBoard.swift */,
@@ -559,6 +562,7 @@
 				EA6277CE9901B0C34C9979F4 /* ProgressScreen.swift in Sources */,
 				795EA28E446ACA22A9CAA2D2 /* PurchaseStore.swift in Sources */,
 				2DCED167B9FC9C06E7981CB4 /* PuzzleArenaView.swift in Sources */,
+				5E897E5CA90568664EA5CB5D /* PuzzleNotebook.swift in Sources */,
 				CC209AC39DA24712E5B0AC28 /* RebuzzleApp.swift in Sources */,
 				DA428A581C6A0117D592D470 /* ReminderStore.swift in Sources */,
 				CDEA12895B0622352AA1AE61 /* ReturnRouter.swift in Sources */,

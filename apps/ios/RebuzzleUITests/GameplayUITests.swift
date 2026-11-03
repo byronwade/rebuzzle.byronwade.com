@@ -123,6 +123,59 @@ import StoreKitTest
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
     }
 
+    func testStudyPuzzleCanPinPrivateHypothesisWithoutSpendingGuess() {
+        launchFixture()
+        let field = focusAnswerField()
+        field.typeText("sun")
+        app.buttons["dismissAnswerKeyboard"].tap()
+
+        let progress = app.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        let study = app.buttons["studyPuzzle"]
+        for _ in 0..<5 where !study.isHittable { app.swipeDown() }
+        study.tap()
+        XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
+
+        let pinThought = app.buttons["pinPuzzleThought"]
+        XCTAssertTrue(pinThought.waitForExistence(timeout: 5))
+        pinThought.tap()
+        capture("Study notebook — pin placement mode")
+        let pinAtCenter = app.buttons["pinPuzzleThoughtAtCenter"]
+        XCTAssertTrue(pinAtCenter.waitForExistence(timeout: 5), app.debugDescription)
+        pinAtCenter.tap()
+
+        let editor = app.textViews["puzzlePinEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("The word is reversed")
+        app.buttons["dismissPuzzlePinKeyboard"].tap()
+        app.buttons["savePuzzlePin"].tap()
+        XCTAssertTrue(app.staticTexts["The word is reversed"].waitForExistence(timeout: 5))
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        XCTAssertEqual(field.value as? String, "sun")
+
+        pinThought.tap()
+        let board = app.descendants(matching: .any)["studyPuzzleBoardWithPins"].firstMatch
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        board.coordinate(withNormalizedOffset: CGVector(dx: 0.72, dy: 0.5)).tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("The spacing may be part of it")
+        app.buttons["dismissPuzzlePinKeyboard"].tap()
+        app.buttons["savePuzzlePin"].tap()
+        XCTAssertTrue(app.staticTexts["The spacing may be part of it"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["puzzleNotebookCount"].label, "2 ideas")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+
+        app.buttons["closeStudyPuzzle"].tap()
+        study.tap()
+        XCTAssertTrue(app.staticTexts["The word is reversed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["The spacing may be part of it"].exists)
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+        capture("Study notebook — pinned hypothesis stays private and unscored")
+    }
+
     func testDailyThoughtCanBeSavedAndReopenedWithoutChangingTheGuess() {
         launchFixture()
         let field = app.descendants(matching: .any)["answerField"].firstMatch

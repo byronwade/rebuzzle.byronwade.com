@@ -902,10 +902,7 @@ private struct PuzzleStudyView: View {
                 Text("Take your time. Your guesses stay here.")
                     .font(Theme.font(16)).foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                PuzzleBoard(puzzle: puzzle)
-                    .padding(16)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.secondary.opacity(0.20), lineWidth: 1))
+                PuzzleNotebookStudyContent(puzzle: puzzle)
             }
             .navigationTitle("Study puzzle")
             .navigationBarTitleDisplayMode(.inline)
