@@ -17,7 +17,7 @@ Make each scored answer feel like a clear turn in a small daily game run. The cu
 - Replace isolated numbered squares with a connected three-step track.
 - Show the active step in the Rebuzzle accent color, future steps in a quiet neutral, incorrect resolved steps in the error color, and a solved step in the success color.
 - Change the adjacent prompt by game state: “Make your move” before a scored guess, “Try a new angle” after a miss with multiple chances left, “One last try” with one scored chance left, and “Score banked” once scored play is locked.
-- Keep the existing textual remaining-guess count and the `dailyGuessProgress` accessibility label/value stable. Hide decorative track marks from VoiceOver and expose the prompt as a separate identified text element.
+- Keep the existing textual remaining-guess count and the `dailyGuessProgress` accessibility label/value stable. Hide decorative track marks and the visual duplicate count from VoiceOver, and expose the prompt as a separate identified text element.
 - Use the existing palette, type, animation style, and Reduce Motion setting. Add no new scoring, networking, data storage, notifications, or dependencies.
 
 ## Non-goals

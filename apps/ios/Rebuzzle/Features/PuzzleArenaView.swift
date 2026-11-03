@@ -113,9 +113,10 @@ struct PuzzleArenaView: View {
                 Text(scoreLocked ? "Keep solving for fun" : "\(remaining) \(remaining == 1 ? "guess" : "guesses") remaining")
                     .font(Theme.font(12, relativeTo: .caption))
                     .foregroundStyle(Theme.secondary)
+                    .accessibilityHidden(true)
             }
         }
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dailyGuessProgress")
         .accessibilityLabel("Guess progress")
         .accessibilityValue(progressValue)

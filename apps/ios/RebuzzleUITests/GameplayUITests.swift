@@ -62,7 +62,12 @@ import StoreKitTest
         XCTAssertTrue(arena.waitForExistence(timeout: 5))
         XCTAssertTrue(progress.waitForExistence(timeout: 5))
         XCTAssertTrue(turnTitle.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            progress.descendants(matching: .staticText)["dailyTurnTitle"].exists,
+            "The turn prompt should remain separately accessible inside the progress group."
+        )
         XCTAssertTrue(arena.frame.contains(progress.frame), "The turn meter belongs inside the puzzle arena.")
+        XCTAssertEqual(progress.label, "Guess progress")
         XCTAssertEqual(progress.value as? String, "3 guesses remaining")
         XCTAssertEqual(turnTitle.label, "Make your move")
     }
