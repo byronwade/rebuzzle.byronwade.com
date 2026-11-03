@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import type { PuzzleVisual as DatabasePuzzleVisual } from "@/db/models";
 import * as compiler from "../canonical-board";
 import { canonicalBoardForProfile, validateCanonicalBoard } from "../canonical-contract";
 import type { PuzzleVisual } from "../composition";
@@ -52,6 +53,20 @@ test("fails closed for remote images, missing pictograms and unsupported mode", 
   ).rejects.toThrow();
   await expect(compiler.compileCanonicalBoard({ ...visual, mode: "unicode" })).rejects.toThrow();
 });
+test("accepts persisted visual models and applies schema defaults before compiling", async () => {
+  const persistedVisual: DatabasePuzzleVisual = {
+    styleId: "ink-pictogram-v1",
+    mode: "composed",
+    layout: "row",
+    unicodeFallback: "UP",
+    layers: [{ kind: "text", content: "UP" }],
+  };
+
+  await expect(compiler.compileCanonicalBoard(persistedVisual)).resolves.toMatchObject({
+    version: 1,
+    profileVariants: expect.any(Object),
+  });
+}, 30_000);
 test("rejects modified, oversized and mismatched artifacts", async () => {
   const board = await compiler.compileCanonicalBoard(visual);
   await expect(validateCanonicalBoard({ ...board, sha256: "0".repeat(64) })).rejects.toThrow();

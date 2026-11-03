@@ -1,3 +1,4 @@
+import { compileCanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-board";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "../daily-puzzle-candidate-repository";
 import {
@@ -40,6 +41,7 @@ function memoryRepository() {
     | "findById"
     | "findByGenerationKey"
     | "list"
+    | "replacePayloadForReview"
     | "markPlaytestSubmitted"
     | "markPlaytestSubmissionFailed"
   > = {
@@ -62,16 +64,30 @@ function memoryRepository() {
           (!input.withoutPlaytestSubmission || !row.playtestSubmittedAt)
       );
     },
+    async replacePayloadForReview({ id, expectedStatusVersion, payload: nextPayload, updatedAt }) {
+      const row = rows.find(
+        (item) =>
+          item.id === id &&
+          item.status === "reviewing" &&
+          item.statusVersion === expectedStatusVersion &&
+          !item.playtestSubmittedAt
+      );
+      if (!row) return null;
+      row.payload = nextPayload;
+      row.updatedAt = updatedAt;
+      row.statusVersion += 1;
+      return row;
+    },
     async markPlaytestSubmitted({ id, submittedAt }) {
       const row = rows.find((item) => item.id === id);
-      if (!row || row.status !== "reviewing") return null;
+      if (row?.status !== "reviewing") return null;
       row.playtestSubmittedAt = submittedAt;
       row.playtestSubmissionError = undefined;
       return row;
     },
     async markPlaytestSubmissionFailed({ id, message, updatedAt }) {
       const row = rows.find((item) => item.id === id);
-      if (!row || row.status !== "reviewing") return null;
+      if (row?.status !== "reviewing") return null;
       row.playtestSubmissionError = message;
       row.updatedAt = updatedAt;
       return row;
@@ -104,13 +120,16 @@ describe("queueing daily puzzles for human playtesting", () => {
       generationKey: "2026-10-29",
       policyVersion: "human-reviewed-daily-v1",
       status: "reviewing",
-      payload,
+      payload: {
+        ...payload,
+        visual: { ...visual, canonicalBoard: await compileCanonicalBoard(visual) },
+      },
       playtestSubmittedAt: now,
     });
     expect(submitCandidate).toHaveBeenCalledWith({
       puzzleId: candidate.id,
       answer: payload.answer,
-      visual,
+      visual: candidate.payload.visual,
       difficultyScore: 7,
       techniqueId: "reversal-count",
       difficultyLevel: "Hard",
@@ -118,6 +137,128 @@ describe("queueing daily puzzles for human playtesting", () => {
       automatedEstimatedSolveRate: 0.42,
     });
   });
+
+  it("adds the canonical artwork to an existing unsubmitted review candidate before submitting it", async () => {
+    const legacyCandidate: DailyPuzzleCandidate = {
+      id: "existing-candidate",
+      generationKey: "2026-10-29",
+      policyVersion: "human-reviewed-daily-v1",
+      status: "reviewing",
+      statusVersion: 4,
+      payload,
+      createdAt: now,
+      updatedAt: now,
+    };
+    memory.rows.push(legacyCandidate);
+
+    const candidate = await queue.enqueue({ generationKey: "2026-10-29", payload });
+
+    expect(candidate.statusVersion).toBe(5);
+    expect(candidate.payload.visual?.canonicalBoard).toEqual(await compileCanonicalBoard(visual));
+    expect(submitCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ visual: candidate.payload.visual })
+    );
+  }, 30_000);
+
+  it("does not modify a candidate after its board has entered blind review", async () => {
+    const submittedAt = new Date("2026-10-28T11:00:00.000Z");
+    const legacyCandidate: DailyPuzzleCandidate = {
+      id: "already-submitted",
+      generationKey: "2026-10-29",
+      policyVersion: "human-reviewed-daily-v1",
+      status: "reviewing",
+      statusVersion: 4,
+      payload,
+      playtestSubmittedAt: submittedAt,
+      createdAt: now,
+      updatedAt: now,
+    };
+    memory.rows.push(legacyCandidate);
+
+    const candidate = await queue.enqueue({ generationKey: "2026-10-29", payload });
+
+    expect(candidate).toBe(legacyCandidate);
+    expect(candidate.payload).toBe(payload);
+    expect(candidate.statusVersion).toBe(4);
+    expect(submitCandidate).not.toHaveBeenCalled();
+  });
+
+  it("prepares a legacy pending candidate before retrying blind review", async () => {
+    const legacyCandidate: DailyPuzzleCandidate = {
+      id: "pending-legacy-candidate",
+      generationKey: "2026-10-29",
+      policyVersion: "human-reviewed-daily-v1",
+      status: "reviewing",
+      statusVersion: 2,
+      payload,
+      createdAt: now,
+      updatedAt: now,
+    };
+    memory.rows.push(legacyCandidate);
+
+    await expect(queue.retryPending()).resolves.toEqual({
+      attempted: 1,
+      submitted: 1,
+      failed: 0,
+    });
+
+    expect(legacyCandidate.statusVersion).toBe(3);
+    expect(legacyCandidate.payload.visual?.canonicalBoard).toEqual(
+      await compileCanonicalBoard(visual)
+    );
+    expect(submitCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ visual: legacyCandidate.payload.visual })
+    );
+  }, 30_000);
+
+  it("does not submit a stale board when its compare-and-set loses a race", async () => {
+    const legacyCandidate: DailyPuzzleCandidate = {
+      id: "racing-candidate",
+      generationKey: "2026-10-29",
+      policyVersion: "human-reviewed-daily-v1",
+      status: "reviewing",
+      statusVersion: 2,
+      payload,
+      createdAt: now,
+      updatedAt: now,
+    };
+    memory.rows.push(legacyCandidate);
+    const replacePayloadForReview = memory.repository.replacePayloadForReview;
+    const changedVisual = {
+      ...visual,
+      layers: [{ kind: "text" as const, content: "CHANGED", emphasis: "normal" as const }],
+    };
+    memory.repository.replacePayloadForReview = async ({ updatedAt }) => {
+      legacyCandidate.payload = {
+        ...legacyCandidate.payload,
+        visual: changedVisual,
+      };
+      legacyCandidate.statusVersion += 1;
+      legacyCandidate.updatedAt = updatedAt;
+      return null;
+    };
+
+    const returned = await queue.enqueue({ generationKey: "2026-10-29", payload });
+
+    expect(returned.statusVersion).toBe(3);
+    expect(returned.payload.visual).toEqual(changedVisual);
+    expect(submitCandidate).not.toHaveBeenCalled();
+
+    memory.repository.replacePayloadForReview = replacePayloadForReview;
+    await expect(queue.retryPending()).resolves.toEqual({
+      attempted: 1,
+      submitted: 1,
+      failed: 0,
+    });
+    expect(submitCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visual: {
+          ...changedVisual,
+          canonicalBoard: await compileCanonicalBoard(changedVisual),
+        },
+      })
+    );
+  }, 30_000);
 
   it("returns an existing generation-date candidate without creating or re-submitting it", async () => {
     await queue.enqueue({ generationKey: "2026-10-29", payload });

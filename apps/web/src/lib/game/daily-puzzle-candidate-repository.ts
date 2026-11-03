@@ -20,6 +20,12 @@ export type DailyPuzzleCandidateRepository = {
     withoutPlaytestSubmission?: boolean;
     limit?: number;
   }): Promise<DailyPuzzleCandidate[]>;
+  replacePayloadForReview(input: {
+    id: string;
+    expectedStatusVersion: number;
+    payload: DailyPuzzleCandidate["payload"];
+    updatedAt: Date;
+  }): Promise<DailyPuzzleCandidate | null>;
   markPlaytestSubmitted(input: {
     id: string;
     submittedAt: Date;
@@ -102,6 +108,25 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
         .sort({ createdAt: 1, id: 1 })
         .limit(Math.max(1, Math.min(500, input.limit ?? 100)))
         .toArray();
+    },
+
+    async replacePayloadForReview(input) {
+      return candidates().findOneAndUpdate(
+        {
+          id: input.id,
+          status: "reviewing",
+          statusVersion: input.expectedStatusVersion,
+          playtestSubmittedAt: { $exists: false },
+        },
+        {
+          $set: {
+            payload: input.payload,
+            updatedAt: input.updatedAt,
+          },
+          $inc: { statusVersion: 1 },
+        },
+        { returnDocument: "after" }
+      );
     },
 
     async markPlaytestSubmitted(input) {
