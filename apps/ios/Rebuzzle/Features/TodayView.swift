@@ -825,12 +825,9 @@ struct ResultView: View {
                     }
                     NavigationLink(value: RebuzzleRoute.archive) {
                         Label("Find another puzzle", systemImage: "arrow.right")
-                            .font(Theme.font(14, weight: .semibold))
-                            .frame(minHeight: 44, alignment: .leading)
-                            .contentShape(Rectangle())
+                            .padding(.horizontal, 16).padding(.vertical, 8)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Theme.accent)
+                    .buttonStyle(CommitStyle())
                     .accessibilityIdentifier("findAnotherPuzzle")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -838,37 +835,54 @@ struct ResultView: View {
                 .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(game.wasSuccessful == true ? Theme.reward.opacity(0.40) : Theme.secondary.opacity(0.20), lineWidth: 1))
                 .overlay(alignment: .top) { CelebrationBurst(isActive: celebrating) }
                 .onAppear { celebrateFirstSolve(of: game) }
+                JourneyRewards(game: game)
                 if let summary = game.dailyShareSummary {
                     dailyShareAction(summary)
                 } else {
-                    ShareLink(item: game.shareText) { Label("Challenge a friend", systemImage: "square.and.arrow.up") }
-                        .buttonStyle(CommitStyle())
+                    ShareLink(item: game.shareText) {
+                        Label("Challenge a friend", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                        .buttonStyle(.bordered)
+                        .tint(Theme.ink)
                         .accessibilityIdentifier("dailyResultShare")
                 }
                 Text("Same puzzle. Your answer stays a secret.").font(Theme.font(12)).foregroundStyle(Theme.secondary)
                 DailyReturnCard()
                 DailyStreakCard(presentation: model.streakPresentation(for: game), context: .result)
-                if let daily = model.daily,
-                   game.puzzleId == daily.puzzle.id,
-                   game.puzzleDate == daily.puzzleDate {
-                    DailySolvePulseCard(
-                        puzzleID: daily.puzzle.id,
-                        solvedAttemptNumber: game.attempts.first(where: \.correct)?.attemptNumber,
-                        isSolved: game.wasSuccessful == true,
-                        api: model.api,
-                        onViewed: { model.recordGrowthEvent(.dailySolvePulseViewed) }
-                    )
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 20) {
+                        if let daily = model.daily,
+                           game.puzzleId == daily.puzzle.id,
+                           game.puzzleDate == daily.puzzleDate {
+                            DailySolvePulseCard(
+                                puzzleID: daily.puzzle.id,
+                                solvedAttemptNumber: game.attempts.first(where: \.correct)?.attemptNumber,
+                                isSolved: game.wasSuccessful == true,
+                                api: model.api,
+                                onViewed: { model.recordGrowthEvent(.dailySolvePulseViewed) }
+                            )
+                        }
+                        let metrics = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(spacing: 32))
+                        metrics {
+                            resultMetric(
+                                hasContinuationGuesses ? "\(game.attempts.count)" : "\(game.attempts.count)/\(game.maxAttempts)",
+                                hasContinuationGuesses ? "Total guesses" : "Guesses"
+                            )
+                            resultMetric("\(model.hintsShown)", "Hints")
+                            resultMetric("\(model.journal.entries.count)", "Days played here")
+                        }
+                    }
+                    .padding(.top, 12)
+                } label: {
+                    Label("Your round", systemImage: "chart.bar.fill")
                 }
-                JourneyRewards(game: game)
-                let metrics = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 20)) : AnyLayout(HStackLayout(spacing: 32))
-                metrics {
-                    resultMetric(
-                        hasContinuationGuesses ? "\(game.attempts.count)" : "\(game.attempts.count)/\(game.maxAttempts)",
-                        hasContinuationGuesses ? "Total guesses" : "Guesses"
-                    )
-                    resultMetric("\(model.hintsShown)", "Hints")
-                    resultMetric("\(model.journal.entries.count)", "Days played here")
-                }
+                .font(Theme.font(14, weight: .medium))
+                .tint(Theme.ink)
+                .padding(18)
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
+                .accessibilityIdentifier("dailyResultRoundDetails")
                 if let daily = model.daily {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         if DailyQualityFeedbackEligibility.canRate(
@@ -925,8 +939,10 @@ struct ResultView: View {
             )
         } label: {
             Label("Challenge a friend", systemImage: "square.and.arrow.up")
+                .frame(maxWidth: .infinity, minHeight: 48)
         }
-        .buttonStyle(CommitStyle())
+        .buttonStyle(.bordered)
+        .tint(Theme.ink)
         .accessibilityLabel("Challenge a friend")
         .accessibilityHint("Share today's puzzle result without revealing your answer.")
         .accessibilityIdentifier("dailyResultShare")
