@@ -44,4 +44,4 @@
 - [x] Add a stable accessibility identifier without replacing `PuzzleBoard`’s existing accessibility label.
 - [x] Run `git diff --check` and build the iOS Simulator target.
 - [x] Inspect success, reveal, and accessibility-size result states on the iPhone simulator.
-- [ ] Commit the focused change.
+- [x] Commit the focused change (`b83700a`).
