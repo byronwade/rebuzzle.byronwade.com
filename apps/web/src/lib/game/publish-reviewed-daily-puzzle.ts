@@ -1,7 +1,9 @@
+import { isDeepStrictEqual } from "node:util";
 import {
   PUZZLE_PLAYTEST_CONTRACT_VERSION,
   type PuzzlePlaytestCandidateAdmission,
 } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
+import { compileCanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-board";
 import {
   type PublicationAssetCheck,
   verifyPublicationAssets,
@@ -79,23 +81,59 @@ export function createReviewedDailyPuzzlePublisher(input: {
     }
     const evidence = candidate.humanEvidence;
     const payload = candidate.payload;
+    if (!payload.visual) {
+      await input.repository.skip({
+        id: candidate.id,
+        reason: "Daily candidate is missing its reviewed visual board",
+        updatedAt: now(),
+      });
+      return null;
+    }
+
+    let canonicalBoard: Awaited<ReturnType<typeof compileCanonicalBoard>>;
+    try {
+      canonicalBoard = await compileCanonicalBoard(payload.visual);
+    } catch (error) {
+      await input.repository.skip({
+        id: candidate.id,
+        reason: `Canonical board could not be compiled: ${error instanceof Error ? error.message : "unsupported source"}`,
+        updatedAt: now(),
+      });
+      return null;
+    }
+    if (
+      payload.visual.canonicalBoard &&
+      !isDeepStrictEqual(payload.visual.canonicalBoard, canonicalBoard)
+    ) {
+      await input.repository.skip({
+        id: candidate.id,
+        reason: "Canonical board does not match the source visual reviewed for this candidate",
+        updatedAt: now(),
+      });
+      return null;
+    }
+
+    // Legacy candidates were reviewed against this same source renderer. Attach the raster
+    // now so publishing and gameplay consume the exact geometry used by the blind review.
+    const canonicalPayload = {
+      ...payload,
+      visual: { ...payload.visual, canonicalBoard },
+    };
     // Candidates can wait weeks in review; artwork approved at generation may since have
     // been quarantined. Recheck now (fail closed) and keep the candidate for a later retry.
-    if (payload.visual) {
-      const assets = await verifyAssets(payload.visual);
-      if (!assets.ok) {
-        await input.repository.releaseAssignment({
-          id: candidate.id,
-          dateString,
-          updatedAt: now(),
-        });
-        return null;
-      }
+    const assets = await verifyAssets(canonicalPayload.visual);
+    if (!assets.ok) {
+      await input.repository.releaseAssignment({
+        id: candidate.id,
+        dateString,
+        updatedAt: now(),
+      });
+      return null;
     }
     let persisted: PersistDailyPuzzleResult;
     try {
       persisted = await input.persist({
-        ...payload,
+        ...canonicalPayload,
         dateString,
         humanPlaytestAdmission: {
           policyVersion: candidate.policyVersion,
@@ -142,7 +180,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
     });
 
     return {
-      ...payload,
+      ...canonicalPayload,
       id: persisted.id,
       puzzle: payload.puzzleDisplay,
       date: dateString,
@@ -164,7 +202,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
         id: candidate.id,
         dateString,
       });
-      if (!claimed || claimed.status !== "assigned" || claimed.assignedDate !== dateString) {
+      if (claimed?.status !== "assigned" || claimed.assignedDate !== dateString) {
         continue;
       }
       const published = await publishAssignedCandidate(claimed, dateString);

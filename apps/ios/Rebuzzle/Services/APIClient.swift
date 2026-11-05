@@ -24,6 +24,11 @@ private struct JournalPageResponse: Decodable {
     let historyStatus: String
 }
 
+private struct EveNudgeReplyResponse: Decodable {
+    let success: Bool
+    let reply: String
+}
+
 private struct JournalEntryPayload: Decodable {
     let puzzleID: String
     let puzzleDate: String
@@ -66,7 +71,7 @@ private struct JournalEntryPayload: Decodable {
 }
 
 enum DailyEntrySource: String, Hashable, Sendable {
-    case app, notification, widget, shortcut, share
+    case app, notification, widget, shortcut, share, liveActivity
 }
 
 enum PlusOfferSource: String, Hashable, Sendable {
@@ -315,6 +320,18 @@ enum GrowthEvent: Sendable {
             throw APIError(status: 0, message: "The solving mix could not be opened. Please try again.")
         }
         return try await request(url.absoluteString)
+    }
+    func fetchEveNudgeReply(puzzleID: String, hintIndex: Int) async throws -> String {
+        let response: EveNudgeReplyResponse = try await request(
+            "/api/puzzles/nudge-reply",
+            method: "POST",
+            body: ["puzzleId": puzzleID, "hintIndex": hintIndex]
+        )
+        guard response.success,
+              !response.reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw APIError(status: 0, message: "Eve could not reply right now. Try again in a moment.")
+        }
+        return response.reply
     }
     func submitPracticeGuess(puzzleID: String, guess: String, attemptNumber: Int, roundToken: String?) async throws -> PracticeGuessResponse {
         var body: [String: Any] = ["puzzleId": puzzleID, "guess": guess, "attemptNumber": attemptNumber]

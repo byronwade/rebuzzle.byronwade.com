@@ -2,7 +2,20 @@ import SwiftUI
 import UIKit
 import RebuzzleCore
 
+private struct PracticeTurnRevealEvent: Equatable {
+    let puzzleID: String
+    let roundToken: String?
+    let attemptNumber: Int
+
+    func matches(_ guess: PracticeGuess, session: PracticeSession) -> Bool {
+        puzzleID == session.puzzleId &&
+            roundToken == session.roundToken &&
+            attemptNumber == guess.attemptNumber
+    }
+}
+
 @MainActor struct PracticeGameView: View {
+    @Environment(\.dismiss) private var dismiss
     let puzzle: Puzzle
     private let api: APIClient
     private let storage: LocalStore
@@ -18,6 +31,7 @@ import RebuzzleCore
     /// Set when the server no longer recognizes this round's token, e.g. after an accepted guess
     /// whose response was lost. Practice is unscored, so a fresh round is always safe.
     @State private var roundOutOfSync = false
+    @State private var practiceRevealEvent: PracticeTurnRevealEvent?
     @FocusState private var answerFocused: Bool
 
     init(puzzle: Puzzle, api: APIClient, storage: LocalStore, accountID: String, isFreeSample: Bool = false) {
@@ -133,6 +147,17 @@ import RebuzzleCore
                 }
                 .buttonStyle(CommitStyle()).accessibilityIdentifier("restartPracticeRound")
             }
+            if session.state != .playing {
+                Button {
+                    dismiss()
+                } label: {
+                    Label(isFreeSample ? "Back to archive" : "Choose another puzzle", systemImage: "square.grid.2x2")
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.ink)
+                .accessibilityIdentifier("chooseAnotherPracticePuzzle")
+            }
             if isFreeSample && session.state != .playing {
                 VStack(alignment: .leading, spacing: 12) {
                     Label("More daily aha moments", systemImage: "sparkles")
@@ -185,18 +210,19 @@ import RebuzzleCore
             Text(guess.correct ? "You found the connection." : (guess.reaction?.line ?? "Try looking at the clue from a fresh angle."))
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
                 .accessibilityIdentifier("practiceFeedback.\(guess.attemptNumber)")
+            if let reaction = guess.reaction {
+                EveSignalMeter(tier: reaction.tier, attemptNumber: guess.attemptNumber)
+            }
             if let reply = practiceEve.replies[guess.attemptNumber] {
                 Text("Eve · \(reply)").font(Theme.font(14)).foregroundStyle(Theme.accent)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("practiceEveReply.\(guess.attemptNumber)")
             }
             if practiceEve.pendingAttempts.contains(guess.attemptNumber) {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.mini)
-                    Text("Eve is thinking…").font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                }
-                .accessibilityLabel("Eve is thinking")
-                .accessibilityIdentifier("practiceEvePending.\(guess.attemptNumber)")
+                EveTypingIndicator(
+                    label: "Eve is thinking…",
+                    identifier: "eveTypingIndicator-practice-\(guess.attemptNumber)"
+                )
             } else if practiceEve.failedAttempts.contains(guess.attemptNumber) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Eve couldn't reply just now. Your guess is saved.")
@@ -224,8 +250,11 @@ import RebuzzleCore
                 }
             }
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+    .confirmedGuessReveal(
+        isNewlyConfirmed: practiceRevealEvent?.matches(guess, session: session) == true
+    )
     }
 
     private var solutionCard: some View {
@@ -325,12 +354,17 @@ import RebuzzleCore
                 roundToken: updated.roundToken
             )
             updated = session
-            guard updated.receive(response: result) else {
+            guard updated.receive(response: result), let confirmedGuess = updated.guesses.last else {
                 updated.cancelPendingSubmission()
                 session = updated
                 error = "That practice response didn’t match this round. Please try again."
                 return
             }
+            practiceRevealEvent = PracticeTurnRevealEvent(
+                puzzleID: updated.puzzleId,
+                roundToken: updated.roundToken,
+                attemptNumber: confirmedGuess.attemptNumber
+            )
             session = updated
             answerDraft = ""
             practiceEve.request(guess: Guess(
@@ -374,6 +408,7 @@ import RebuzzleCore
     private func restartRound() {
         var updated = session
         updated.restartRound()
+        practiceRevealEvent = nil
         session = updated
         answerDraft = ""
         error = nil

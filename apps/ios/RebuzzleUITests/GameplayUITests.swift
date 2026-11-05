@@ -45,10 +45,66 @@ import StoreKitTest
         XCTAssertGreaterThan(board.frame.width, 100)
         XCTAssertGreaterThan(board.frame.height, 20)
         XCTAssertEqual(board.frame.width / board.frame.height, 768.0 / 248.0, accuracy: 0.03, "Reviewed image must retain its aspect ratio")
+        XCTAssertEqual(board.frame.width, min(app.frame.width, 600) - 80, accuracy: 2,
+                       "The daily arena must keep the same 16-point board inset as the Study puzzle surface.")
         capture("Canonical board — exact reviewed pixels")
         app.buttons["studyPuzzle"].tap()
         XCTAssertTrue(app.images["canonicalPuzzleBoard"].waitForExistence(timeout: 5))
         capture("Canonical board — study")
+    }
+
+    func testDailyPuzzleArenaContainsGuessProgress() {
+        launchFixture()
+        let arena = app.descendants(matching: .any)["dailyPuzzleArena"].firstMatch
+        let progress = arena.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+        let turnTitle = arena.staticTexts["dailyTurnTitle"]
+
+        XCTAssertTrue(arena.waitForExistence(timeout: 5))
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertTrue(turnTitle.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            progress.descendants(matching: .staticText)["dailyTurnTitle"].exists,
+            "The turn prompt should remain separately accessible inside the progress group."
+        )
+        XCTAssertTrue(arena.frame.contains(progress.frame), "The turn meter belongs inside the puzzle arena.")
+        XCTAssertEqual(progress.label, "Guess progress")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        XCTAssertEqual(turnTitle.label, "Make your move")
+    }
+
+    func testDailyPuzzleArenaFitsAccessibilitySize() {
+        launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        let arena = app.descendants(matching: .any)["dailyPuzzleArena"].firstMatch
+        let difficulty = app.descendants(matching: .any)["dailyDifficultyTier"].firstMatch
+        let countdown = app.descendants(matching: .any)["activePuzzleCountdown"].firstMatch
+        let study = app.buttons["studyPuzzle"]
+        let progress = arena.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+
+        XCTAssertTrue(arena.waitForExistence(timeout: 5))
+        XCTAssertTrue(difficulty.exists)
+        XCTAssertTrue(countdown.waitForExistence(timeout: 5))
+        XCTAssertTrue((countdown.value as? String)?.contains("seconds remaining") == true)
+        capture("Puzzle arena — Accessibility XXXL before scroll")
+        let swipeStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.43))
+        let swipeEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12))
+        for _ in 0..<8 where !study.isHittable {
+            swipeStart.press(forDuration: 0.05, thenDragTo: swipeEnd)
+        }
+        XCTAssertTrue(study.isHittable, "Study puzzle should be reachable by scrolling. App frame: \(app.frame), study frame: \(study.frame)")
+        XCTAssertGreaterThanOrEqual(study.frame.height, 44)
+        capture("Puzzle arena — Accessibility XXXL metadata")
+
+        let eveNudge = app.buttons["askEveForNudge"]
+        XCTAssertTrue(eveNudge.waitForExistence(timeout: 5))
+        for _ in 0..<8 where !progress.isHittable || progress.frame.maxY > eveNudge.frame.minY {
+            swipeStart.press(forDuration: 0.05, thenDragTo: swipeEnd)
+        }
+        XCTAssertTrue(progress.isHittable)
+        XCTAssertTrue(arena.frame.contains(progress.frame))
+        XCTAssertLessThanOrEqual(progress.frame.maxY, eveNudge.frame.minY,
+                                 "The full turn meter should remain above the pinned answer composer.")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        capture("Puzzle arena — Accessibility XXXL turn meter")
     }
 
     func testInvalidCanonicalBoardNeverFallsBackToLegacyClue() {
@@ -73,6 +129,59 @@ import StoreKitTest
         XCTAssertEqual(field.value as? String, "sun")
         XCTAssertTrue(app.staticTexts["3 guesses remaining"].exists)
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+    }
+
+    func testStudyPuzzleCanPinPrivateHypothesisWithoutSpendingGuess() {
+        launchFixture()
+        let field = focusAnswerField()
+        field.typeText("sun")
+        app.buttons["dismissAnswerKeyboard"].tap()
+
+        let progress = app.descendants(matching: .any)["dailyGuessProgress"].firstMatch
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        let study = app.buttons["studyPuzzle"]
+        for _ in 0..<5 where !study.isHittable { app.swipeDown() }
+        study.tap()
+        XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
+
+        let pinThought = app.buttons["pinPuzzleThought"]
+        XCTAssertTrue(pinThought.waitForExistence(timeout: 5))
+        pinThought.tap()
+        capture("Study notebook — pin placement mode")
+        let pinAtCenter = app.buttons["pinPuzzleThoughtAtCenter"]
+        XCTAssertTrue(pinAtCenter.waitForExistence(timeout: 5), app.debugDescription)
+        pinAtCenter.tap()
+
+        let editor = app.textViews["puzzlePinEditor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("The word is reversed")
+        app.buttons["dismissPuzzlePinKeyboard"].tap()
+        app.buttons["savePuzzlePin"].tap()
+        XCTAssertTrue(app.staticTexts["The word is reversed"].waitForExistence(timeout: 5))
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        XCTAssertEqual(field.value as? String, "sun")
+
+        pinThought.tap()
+        let board = app.descendants(matching: .any)["studyPuzzleBoardWithPins"].firstMatch
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        board.coordinate(withNormalizedOffset: CGVector(dx: 0.72, dy: 0.5)).tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("The spacing may be part of it")
+        app.buttons["dismissPuzzlePinKeyboard"].tap()
+        app.buttons["savePuzzlePin"].tap()
+        XCTAssertTrue(app.staticTexts["The spacing may be part of it"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["puzzleNotebookCount"].label, "2 ideas")
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+
+        app.buttons["closeStudyPuzzle"].tap()
+        study.tap()
+        XCTAssertTrue(app.staticTexts["The word is reversed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["The spacing may be part of it"].exists)
+        XCTAssertEqual(progress.value as? String, "3 guesses remaining")
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+        capture("Study notebook — pinned hypothesis stays private and unscored")
     }
 
     func testDailyThoughtCanBeSavedAndReopenedWithoutChangingTheGuess() {
@@ -157,12 +266,22 @@ import StoreKitTest
         launchFixture(freshInstall: true)
 
         XCTAssertTrue(app.navigationBars["Your first puzzle"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Sun + flower = sunflower"].exists)
-        XCTAssertTrue(app.staticTexts["Three scored guesses. Then keep solving until it clicks."].exists)
+        XCTAssertTrue(app.textFields["quickStartTutorialAnswer"].exists)
+        XCTAssertTrue(app.buttons["quickStartAskEve"].exists)
+        XCTAssertTrue(app.staticTexts["Today has three scored guesses. You can keep solving after that."].exists)
+        XCTAssertFalse(app.staticTexts["SUNFLOWER"].exists, "The practice clue should preserve its small aha until the player solves it")
         XCTAssertFalse(app.staticTexts["lighthouse"].exists, "The quick-start must not reveal today’s answer")
-        capture("First-session quick-start")
+
+        app.buttons["quickStartAskEve"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["quickStartEveReply"].waitForExistence(timeout: 5))
+        let tutorialAnswer = app.textFields["quickStartTutorialAnswer"]
+        tutorialAnswer.tap()
+        tutorialAnswer.typeText("sunflower\n")
+        XCTAssertTrue(app.staticTexts["quickStartSolved"].waitForExistence(timeout: 5))
+        capture("First-session tutorial — the aha")
         app.buttons["quickStartStartPlaying"].tap()
 
+        XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "3 guesses remaining", "The tutorial must not spend a daily guess")
         let answerField = app.descendants(matching: .any)["answerField"].firstMatch
         XCTAssertTrue(answerField.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable)
@@ -242,8 +361,8 @@ import StoreKitTest
         )
         let answerField = app.descendants(matching: .any)["answerField"].firstMatch
         XCTAssertLessThan(firstNudge.frame.maxY, askForNudge.frame.minY)
-        XCTAssertLessThan(askForNudge.frame.maxY, answerField.frame.minY,
-                          "The nudge action should sit between the conversation and the next guess")
+        assertNudgeSitsBesideAnswerField(askForNudge, answerField)
+        XCTAssertTrue(askForNudge.isHittable, "The next nudge should remain available in the pinned answer composer")
         XCTAssertFalse(app.staticTexts["lighthouse"].exists)
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
 
@@ -258,7 +377,7 @@ import StoreKitTest
         for _ in 0..<6 where !secondAsk.isHittable { app.swipeUp() }
         XCTAssertTrue(secondAsk.isHittable)
         XCTAssertGreaterThan(secondAsk.frame.minY, firstGuess.frame.maxY)
-        XCTAssertLessThan(secondAsk.frame.maxY, answerField.frame.minY)
+        assertNudgeSitsBesideAnswerField(secondAsk, answerField)
         secondAsk.tap()
         let secondNudge = app.staticTexts["eveNudge-2"]
         XCTAssertTrue(secondNudge.waitForExistence(timeout: 5))
@@ -272,6 +391,103 @@ import StoreKitTest
         XCTAssertFalse(app.buttons["askEveForNudge"].exists)
         XCTAssertTrue(app.staticTexts["eveNudge-1"].exists)
         XCTAssertTrue(app.staticTexts["eveNudge-2"].exists)
+    }
+
+    func testEveNudgeFollowUpAddsOneQuestionAndASeparateReply() {
+        launchFixture()
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+        let hint = app.staticTexts["eveNudge-1"]
+        XCTAssertTrue(hint.waitForExistence(timeout: 5))
+
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        XCTAssertGreaterThanOrEqual(askAboutHint.frame.height, 44)
+        askAboutHint.tap()
+
+        let question = app.staticTexts["eveNudgeQuestion-1"]
+        let reply = app.staticTexts["eveNudgeFollowUp-1"]
+        XCTAssertTrue(question.waitForExistence(timeout: 5))
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertEqual(question.label, "What should I look at?")
+        XCTAssertEqual(reply.label, "Notice how the parts are arranged.")
+        XCTAssertLessThan(hint.frame.maxY, question.frame.minY)
+        XCTAssertLessThan(question.frame.maxY, reply.frame.minY)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "eveNudgeQuestion-1").count, 1)
+        XCTAssertFalse(askAboutHint.exists, "The same hint can only start one follow-up exchange")
+        XCTAssertEqual(askForNudge.value as? String, "2 hints left", "A follow-up does not consume a hint")
+        XCTAssertFalse(app.staticTexts["lighthouse"].exists)
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
+        XCTAssertTrue(app.buttons["checkAnswer"].isEnabled)
+
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["eveNudgeFollowUp-1"].exists,
+                      "The conversation remains attached to its hint in the result transcript")
+        XCTAssertFalse(app.buttons["askEveAboutNudge-1"].exists,
+                       "A completed round does not allow new follow-ups")
+    }
+
+    func testEveNudgeFollowUpRetriesWithoutDuplicatingTheQuestion() {
+        launchFixture(extraArguments: ["--ui-nudge-reply-fails-once"])
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        askAboutHint.tap()
+
+        let question = app.staticTexts["eveNudgeQuestion-1"]
+        let retry = app.buttons["retryEveNudgeFollowUp-1"]
+        XCTAssertTrue(question.waitForExistence(timeout: 5))
+        XCTAssertTrue(retry.waitForExistence(timeout: 5), "The fixture should show one retry after its first failed response.")
+        retry.tap()
+
+        let reply = app.staticTexts["eveNudgeFollowUp-1"]
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts.matching(identifier: "eveNudgeQuestion-1").count, 1)
+        XCTAssertFalse(retry.exists)
+    }
+
+    func testEveNudgeFollowUpKeepsTheComposerUsableWhilePending() {
+        launchFixture(extraArguments: ["--ui-delayed-nudge-reply"])
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        askAboutHint.tap()
+        let typingIndicator = app.descendants(matching: .any)["eveTypingIndicator-nudge-1"].firstMatch
+        XCTAssertTrue(typingIndicator.waitForExistence(timeout: 3))
+        XCTAssertEqual(typingIndicator.label, "Taking a closer look…")
+
+        let field = focusAnswerField()
+        field.typeText("sun")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["checkAnswerFromKeyboard"].isHittable)
+        XCTAssertEqual(field.value as? String, "sun")
+        XCTAssertTrue(app.staticTexts["eveNudgeFollowUp-1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(field.isHittable)
+        XCTAssertEqual(field.value as? String, "sun", "Eve's reply must not replace the player's draft")
+    }
+
+    func testEveNudgeFollowUpControlFitsAccessibilitySize() {
+        launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        let askForNudge = app.buttons["askEveForNudge"]
+        reveal(askForNudge)
+        askForNudge.tap()
+
+        let askAboutHint = app.buttons["askEveAboutNudge-1"]
+        reveal(askAboutHint)
+        XCTAssertGreaterThanOrEqual(askAboutHint.frame.height, 44)
+        XCTAssertTrue(askAboutHint.isHittable)
+        askAboutHint.tap()
+
+        let reply = app.staticTexts["eveNudgeFollowUp-1"]
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertTrue(reply.isHittable)
+        capture("Eve hint follow-up — accessibility XXXL")
     }
 
     func testNudgeActionIsHiddenWhenThereAreNoHints() {
@@ -295,20 +511,29 @@ import StoreKitTest
 
     func testNudgeRemainsAvailableDuringScoreLockedContinuation() {
         launchFixture(extraArguments: ["--ui-score-locked"])
+        let continueSolving = app.buttons["continueSolving"]
+        reveal(continueSolving)
+        continueSolving.tap()
+        let dismissKeyboard = app.buttons["dismissAnswerKeyboard"]
+        if dismissKeyboard.waitForExistence(timeout: 3) { dismissKeyboard.tap() }
         let ask = app.buttons["askEveForNudge"]
         reveal(ask)
         ask.tap()
         XCTAssertTrue(app.staticTexts["eveNudge-1"].waitForExistence(timeout: 5))
+        let followUp = app.buttons["askEveAboutNudge-1"]
+        reveal(followUp)
+        followUp.tap()
+        XCTAssertTrue(app.staticTexts["eveNudgeFollowUp-1"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["continueSolving"].exists)
+        XCTAssertTrue(app.staticTexts["continuedSolveStatus"].exists)
     }
 
     func testNudgeControlStaysTappableAtAccessibilitySizeAfterKeyboardDismissal() {
         launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
-        let nudgeDescription = app.staticTexts["A hint appears in your conversation"]
-        XCTAssertTrue(nudgeDescription.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(nudgeDescription.frame.width, 250,
-                                    "Accessibility-size hint copy should use a wide text layout")
+        let labeledNudge = app.buttons["askEveForNudge"]
+        XCTAssertTrue(labeledNudge.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(labeledNudge.frame.width, 250,
+                                    "Accessibility sizes should show the full, labeled nudge control above the answer field")
         let field = focusAnswerField()
         field.typeText("sun")
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
@@ -371,6 +596,78 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
     }
 
+    func testSubmittedGuessAppearsInConversationWhileEveChecksIt() {
+        launchFixture(extraArguments: ["--ui-delayed-guess"])
+        let guessProgress = app.descendants(matching: .any)["dailyGuessProgress"]
+        XCTAssertTrue(guessProgress.waitForExistence(timeout: 5))
+
+        submit("sunshine")
+
+        let pendingGuess = app.descendants(matching: .any)["pendingGuessTurn"].firstMatch
+        XCTAssertTrue(pendingGuess.waitForExistence(timeout: 5), "The submitted guess should appear before the server responds.")
+        XCTAssertTrue(pendingGuess.label.contains("Checking with Eve"))
+        XCTAssertEqual(guessProgress.value as? String, "3 guesses remaining", "Pending guesses must not consume a scored turn.")
+        XCTAssertFalse(app.staticTexts["guessFeedback"].exists, "Eve's feedback should wait for the confirmed response.")
+
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 15))
+        let signal = app.descendants(matching: .any)["guessSignal-1"].firstMatch
+        XCTAssertTrue(signal.waitForExistence(timeout: 5))
+        XCTAssertEqual(signal.value as? String, "Cold signal, one of three steps, snowflake icon.")
+        capture("Eve signal — cold")
+        XCTAssertTrue(pendingGuess.waitForNonExistence(timeout: 5), "The temporary bubble should reconcile into the confirmed guess turn.")
+        XCTAssertEqual(guessProgress.value as? String, "2 guesses remaining")
+    }
+
+    func testExpiredDailyRefreshDoesNotShowPendingGuess() {
+        launchFixture(extraArguments: ["--ui-expired-daily"])
+        let guessProgress = app.descendants(matching: .any)["dailyGuessProgress"]
+        XCTAssertTrue(guessProgress.waitForExistence(timeout: 5))
+
+        submit("sunshine")
+
+        let pendingGuess = app.descendants(matching: .any)["pendingGuessTurn"].firstMatch
+        XCTAssertFalse(pendingGuess.waitForExistence(timeout: 0.5), "Refreshing an expired daily is not a guess request.")
+        XCTAssertTrue(app.staticTexts["A new daily puzzle is ready. Take a look before submitting."]
+            .waitForExistence(timeout: 8))
+        XCTAssertEqual(guessProgress.value as? String, "3 guesses remaining")
+    }
+
+    func testPuzzleRemainsOneTapAwayDuringFeedback() {
+        verifyPuzzleRemainsOneTapAwayDuringFeedback()
+    }
+
+    func testAccessiblePuzzleRemainsOneTapAwayDuringFeedback() {
+        verifyPuzzleRemainsOneTapAwayDuringFeedback(extraArguments: [
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+    }
+
+    private func verifyPuzzleRemainsOneTapAwayDuringFeedback(extraArguments: [String] = []) {
+        launchFixture(extraArguments: extraArguments)
+        submit("sunshine")
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 5))
+
+        let viewPuzzle = app.buttons["viewPuzzleFromToolbar"]
+        XCTAssertTrue(viewPuzzle.waitForExistence(timeout: 5))
+        XCTAssertEqual(viewPuzzle.label, "View puzzle")
+        XCTAssertTrue(viewPuzzle.isHittable, "The puzzle should be one tap away while feedback is on screen")
+        XCTAssertTrue(app.buttons["How to play"].isHittable, "Puzzle access should not hide the existing help action")
+        let draft = focusAnswerField()
+        draft.typeText("light")
+        XCTAssertEqual(draft.value as? String, "light")
+        viewPuzzle.tap()
+
+        XCTAssertTrue(app.navigationBars["Study puzzle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["closeStudyPuzzle"].isHittable)
+        app.buttons["closeStudyPuzzle"].tap()
+
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "2 guesses remaining")
+        XCTAssertEqual(app.textFields["answerField"].value as? String, "light")
+        XCTAssertTrue(app.buttons["checkAnswer"].exists)
+    }
+
     func testWrongGuessThenWin() {
         launchFixture()
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable, "The daily game should be ready to play without scrolling")
@@ -382,6 +679,8 @@ import StoreKitTest
         submit("sunshine")
         XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
         XCTAssertEqual(guessProgress.value as? String, "2 guesses remaining")
+        XCTAssertEqual(app.staticTexts["dailyTurnTitle"].label, "Try a new angle")
+        XCTAssertFalse(app.staticTexts["continuedSolveStatus"].exists, "An in-round guess is still scored normally")
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["guessFeedback"].exists)
         XCTAssertTrue(app.staticTexts["A fresh angle might help."].exists)
@@ -424,6 +723,8 @@ import StoreKitTest
     func testScoreLockedDailyOffersContinueWithoutRevealingAnswer() {
         launchFixture(extraArguments: ["--ui-score-locked"])
 
+        let continuedStatus = app.staticTexts["continuedSolveStatus"]
+        XCTAssertFalse(continuedStatus.exists, "The open-solve status should wait until the player continues")
         XCTAssertTrue(app.staticTexts["scoreLockedMessage"].waitForExistence(timeout: 5))
         reveal(app.buttons["continueSolving"])
         XCTAssertTrue(app.buttons["continueSolving"].isHittable)
@@ -433,18 +734,53 @@ import StoreKitTest
 
         app.buttons["continueSolving"].tap()
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 5))
+        XCTAssertTrue(continuedStatus.waitForExistence(timeout: 5))
+        XCTAssertEqual(continuedStatus.label, "Score locked · solve at your pace")
+        let field = app.descendants(matching: .any)["answerField"].firstMatch
+        field.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(continuedStatus.isHittable, "The score-safety cue should stay beside the composer while typing")
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
 
+        submit("sunshine")
+        XCTAssertTrue(app.staticTexts["guessFeedback"].waitForExistence(timeout: 5))
+        XCTAssertTrue(continuedStatus.isHittable, "An unscored miss should not remove the open-solve cue")
+        XCTAssertEqual(app.descendants(matching: .any)["dailyGuessProgress"].value as? String, "Your score is saved. Keep solving.")
+
         submit("lighthouse")
+        XCTAssertFalse(continuedStatus.exists, "The cue should leave with the composer when the result opens")
         XCTAssertTrue(app.staticTexts["lateSolveMessage"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["You found it."].exists)
         XCTAssertTrue(app.staticTexts["lighthouse"].firstMatch.exists)
+    }
+
+    func testContinuedSolveStatusStaysVisibleAtAccessibilitySize() {
+        launchFixture(extraArguments: [
+            "--ui-score-locked",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+
+        reveal(app.buttons["continueSolving"])
+        app.buttons["continueSolving"].tap()
+
+        let status = app.descendants(matching: .any)["continuedSolveStatus"].firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(status.isHittable, "The status should remain visible above the keyboard at Accessibility XXXL")
+        capture("Daily open solve — Accessibility XXXL with keyboard")
     }
 
     func testLateSolveResultExplainsContinuationCount() {
         launchFixture(extraArguments: ["--ui-late-solve"])
 
         XCTAssertTrue(app.staticTexts["lateSolveMessage"].waitForExistence(timeout: 5))
+        // Round metrics are grouped under the collapsed "Your round" disclosure.
+        let roundDetails = app.buttons["dailyResultRoundDetails"]
+        XCTAssertTrue(roundDetails.waitForExistence(timeout: 5))
+        reveal(roundDetails)
+        roundDetails.tap()
+        XCTAssertTrue(app.staticTexts["Total guesses"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["4"].exists)
         XCTAssertTrue(app.staticTexts["Total guesses"].exists)
         XCTAssertFalse(app.staticTexts["4/3"].exists)
@@ -466,14 +802,17 @@ import StoreKitTest
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable)
     }
 
-    func testDailyResultShareOpensFromTheInitialResultViewport() {
+    func testDailyResultShareOpensTheNativeShareSheet() {
         launchFixture()
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["TODAY’S PUZZLE"].exists,
+                       "The duplicate daily masthead should give the result actions room")
 
+        // The solved board now follows the hero, so sharing is a secondary action further down the result.
         let share = app.buttons["dailyResultShare"]
         XCTAssertTrue(share.waitForExistence(timeout: 5))
-        XCTAssertTrue(share.isHittable, "The result share action should be visible without scrolling")
+        reveal(share)
         XCTAssertEqual(share.label, "Challenge a friend")
         capture("Daily result share action")
         share.tap()
@@ -483,22 +822,28 @@ import StoreKitTest
         capture("Daily result native share sheet")
     }
 
-    func testSolvedResultShowsCountdownAndOptionalReminderWithoutScrolling() {
+    func testSolvedResultShowsCountdownAndOptionalReminder() {
         launchFixture()
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
 
+        // The streak celebration comes before the return cue in the result flow.
+        let streakCard = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
+        XCTAssertTrue(streakCard.waitForExistence(timeout: 5))
+        reveal(streakCard)
+
+        // The solved board follows the hero, so the countdown sits below the first viewport.
         let countdown = app.otherElements["puzzleCountdown"]
         XCTAssertTrue(countdown.waitForExistence(timeout: 5))
-        XCTAssertTrue(countdown.isHittable, "The next-puzzle countdown should be visible on the completed result screen")
+        reveal(countdown)
+        XCTAssertGreaterThan(countdown.frame.minY, streakCard.frame.minY,
+                             "The return cue should follow, not displace, the streak celebration")
 
         let reminder = app.buttons["configureReminder"]
-        XCTAssertTrue(reminder.isHittable, "Setting an optional reminder should not require scrolling")
+        reveal(reminder)
         XCTAssertEqual(reminder.label, "Remind me", "The reminder action should explain its purpose without relying on its bell icon")
         XCTAssertGreaterThanOrEqual(reminder.frame.height, 44, "The optional reminder action should have a comfortable touch target")
-        let streakCard = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
-        XCTAssertTrue(streakCard.isHittable, "The return cue should not displace the streak celebration off screen")
-        capture("Result · countdown and optional reminder in first viewport")
+        capture("Result · countdown and optional reminder")
     }
 
     func testExpiredResultCanRefreshIntoTheNewDailyPuzzle() {
@@ -512,7 +857,7 @@ import StoreKitTest
 
         let refresh = app.buttons["checkForTodayPuzzle"]
         XCTAssertTrue(refresh.waitForExistence(timeout: 5))
-        XCTAssertTrue(refresh.isHittable)
+        reveal(refresh)
         refresh.tap()
 
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 5))
@@ -586,8 +931,11 @@ import StoreKitTest
         XCTAssertEqual(reminder.label, "Remind me")
         XCTAssertGreaterThanOrEqual(reminder.frame.height, 44)
         reminder.tap()
-        XCTAssertTrue(app.switches["Daily reminder"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Your daily invitation"].exists)
+        XCTAssertTrue(app.navigationBars["A daily moment"].waitForExistence(timeout: 5))
+        let dailyReminder = app.switches["Daily reminder"]
+        for _ in 0..<8 where !dailyReminder.isHittable { app.swipeUp() }
+        XCTAssertTrue(dailyReminder.waitForExistence(timeout: 5))
+        XCTAssertTrue(dailyReminder.isHittable, "The daily reminder setting should be reachable after scrolling at accessibility text sizes")
         capture("Daily reminder settings")
     }
 
@@ -725,6 +1073,17 @@ import StoreKitTest
         XCTAssertTrue(element.isHittable)
     }
 
+    /// Eve's nudge lives in the pinned composer, on the same row as (and leading) the answer field.
+    private func assertNudgeSitsBesideAnswerField(_ nudge: XCUIElement, _ answerField: XCUIElement,
+                                                  file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertLessThanOrEqual(nudge.frame.maxX, answerField.frame.minX,
+                                 "The nudge action should lead the answer field in the composer", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(nudge.frame.midY, answerField.frame.minY,
+                                    "The nudge action should share the answer field's row", file: file, line: line)
+        XCTAssertLessThanOrEqual(nudge.frame.midY, answerField.frame.maxY,
+                                 "The nudge action should share the answer field's row", file: file, line: line)
+    }
+
     private func revealTopWithinViewport(_ element: XCUIElement, below navigationBar: XCUIElement) {
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(navigationBar.waitForExistence(timeout: 5))
@@ -829,6 +1188,9 @@ import StoreKitTest
         XCTAssertTrue(app.navigationBars["Practice"].waitForExistence(timeout: 5))
 
         submitPractice("sunshine")
+        let signal = app.descendants(matching: .any)["guessSignal-1"].firstMatch
+        XCTAssertTrue(signal.waitForExistence(timeout: 5))
+        XCTAssertEqual(signal.value as? String, "Cold signal, one of three steps, snowflake icon.")
         let failure = app.staticTexts["practiceEveReplyFailure.1"]
         XCTAssertTrue(failure.waitForExistence(timeout: 5))
         XCTAssertTrue(failure.label.contains("Your guess is saved"))
@@ -976,8 +1338,12 @@ import StoreKitTest
         launchFixture()
         for (index, guess) in ["sunshine", "moonlight", "daybreak"].enumerated() {
             submit(guess)
-            if index < 2 { XCTAssertTrue(app.staticTexts["\(2 - index) \(index == 1 ? "guess" : "guesses") remaining"].waitForExistence(timeout: 5)) }
+            if index < 2 {
+                XCTAssertTrue(app.staticTexts["\(2 - index) \(index == 1 ? "guess" : "guesses") remaining"].waitForExistence(timeout: 5))
+                if index == 1 { XCTAssertEqual(app.staticTexts["dailyTurnTitle"].label, "One last try") }
+            }
         }
+        XCTAssertEqual(app.staticTexts["dailyTurnTitle"].label, "Score banked")
         XCTAssertTrue(app.staticTexts["scoreLockedMessage"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
         reveal(app.buttons["revealAnswer"])
@@ -1150,15 +1516,25 @@ import StoreKitTest
     }
 
     func testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle() {
-        launchFixture(extraArguments: ["--ui-journey-days-2"])
+        launchFixture(extraArguments: ["--ui-journey-days-2", "--ui-delayed-journey-progress"])
         selectTab("Journey")
-        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 12))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("50 XP"))
         XCTAssertTrue(app.staticTexts["Finish 3 puzzle days this week to earn +50 XP."].exists)
 
         selectTab("Play")
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+        let trailStatus = app.descendants(matching: .any)["resultWeeklyTrailStatus"].firstMatch
+        XCTAssertTrue(trailStatus.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["resultWeeklyTrailProgress"].exists)
+        XCTAssertFalse(app.staticTexts["+50 XP earned this week"].exists)
+        let resultTrail = app.descendants(matching: .any)["resultWeeklyTrailProgress"].firstMatch
+        XCTAssertTrue(resultTrail.waitForExistence(timeout: 15))
+        XCTAssertTrue(resultTrail.label.contains("3 of 3 days"))
+        XCTAssertTrue(resultTrail.label.contains("50 XP reward earned"))
+        XCTAssertTrue(app.staticTexts["+50 XP earned this week"].exists)
+
         let journey = app.buttons["viewJourney"]
         for _ in 0..<12 where !journey.isHittable { app.swipeUp() }
         journey.tap()
@@ -1170,6 +1546,31 @@ import StoreKitTest
         XCTAssertTrue(trail.exists)
         XCTAssertTrue(trail.label.contains("3 of 3 days"))
         XCTAssertTrue(trail.label.contains("50 XP reward earned"))
+    }
+
+    func testResultWeeklyTrailOfflineStateAvoidsStaleProgress() {
+        launchFixture(extraArguments: ["--ui-journey-days-2", "--ui-journey-unavailable"])
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+
+        let trailStatus = app.descendants(matching: .any)["resultWeeklyTrailStatus"].firstMatch
+        XCTAssertTrue(trailStatus.waitForExistence(timeout: 5))
+        XCTAssertTrue(trailStatus.label.localizedCaseInsensitiveContains("catch up"))
+        XCTAssertFalse(app.descendants(matching: .any)["resultWeeklyTrailProgress"].exists)
+        XCTAssertFalse(app.staticTexts["+50 XP earned this week"].exists)
+    }
+
+    func testResultWeeklyTrailWithoutRewardDoesNotInventXP() {
+        launchFixture(extraArguments: ["--ui-journey-days-2", "--ui-journey-no-reward"])
+        submit("lighthouse")
+        XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
+
+        let trail = app.descendants(matching: .any)["resultWeeklyTrailProgress"].firstMatch
+        XCTAssertTrue(trail.waitForExistence(timeout: 5))
+        XCTAssertTrue(trail.label.contains("3 of 3 days"))
+        XCTAssertTrue(trail.label.contains("weekly reward details unavailable"))
+        XCTAssertTrue(app.staticTexts["Your three-day trail is complete."].exists)
+        XCTAssertFalse(app.staticTexts["+50 XP earned this week"].exists)
     }
 
     func testTabNavigation() {

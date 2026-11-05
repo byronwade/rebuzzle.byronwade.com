@@ -24,6 +24,12 @@ TestFlight 1.0.0 (11), build `872d1fd7-9f15-479b-8ce9-76f41ee8713b`, is Testing 
 
 The motion-aware daily completion stars are in build 13 (`1.0.0`), archived and uploaded to App Store Connect on 2026-10-26 at 10:27 PM Eastern. Apple’s processing email arrived at 10:39 PM Eastern, followed by a TestFlight notice to the account holder saying build 13 was ready to test. This confirms processing and the account holder’s internal availability, not external Family-group distribution. The last Connect inspection (October 26) showed build 12 Waiting for Review in Family and no approved external build. Hayley is already listed in that existing group; its public link should be reused after an external build is approved. No duplicate tester or replacement link was created. A fresh group check is still needed because the current App Store Connect browser session is signed out.
 
+### 2026-11-03 native daily-turn update
+
+- Source: PR 219, `feat/guess-turn-reveal`; the iOS marketing version remains `1.0.0`, and the local build number is 15.
+- Simulator evidence: iOS simulator build succeeded. Focused gameplay checks covered the opening prompt, prompt progression, final scored guess, score lock, accessibility-size layout, and the turn-progress accessibility label/value.
+- TestFlight status: no build 15 archive or upload was produced. Automatic signing was attempted twice; Xcode rejected the saved Apple developer account session and reported missing provisioning profiles for the app and widget. Build 13 remains the latest documented upload. Refresh the Apple account session in Xcode before retrying; keep using the existing tester groups and link when a build is uploaded and available.
+
 Vercel deployment `dpl_AjbxX3mn69AAxVABJx5vEv4euoSc` is READY and aliased to `rebuzzle.byronwade.com`. Production smoke comparison confirmed the complete public daily puzzle payload unchanged: `604c4218-eecf-4733-9cd0-76312676bb60`, date 2026-10-26, reset 2026-10-27T04:00:00.000Z.
 
 No new production puzzle was published merely to exercise paid AI review. Provider success is covered by deterministic fixtures here, not a claim that a live candidate passed. Public App Store submission remains separate from this TestFlight release.

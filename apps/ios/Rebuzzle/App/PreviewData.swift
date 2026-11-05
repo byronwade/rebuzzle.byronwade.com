@@ -46,6 +46,24 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         do {
+            if request.url?.path == "/api/puzzles/guess",
+               ProcessInfo.processInfo.arguments.contains("--ui-delayed-guess") {
+                // Long enough for slow CI simulators to observe the pending turn before the response lands.
+                Thread.sleep(forTimeInterval: 8)
+            }
+            if request.url?.path == "/api/puzzles/nudge-reply",
+               ProcessInfo.processInfo.arguments.contains("--ui-delayed-nudge-reply") {
+                Thread.sleep(forTimeInterval: 4)
+            }
+            if request.url?.path == "/api/puzzle/today",
+               ProcessInfo.processInfo.arguments.contains("--ui-expired-daily") {
+                Thread.sleep(forTimeInterval: 3)
+            }
+            if request.url?.path == "/api/user/progress",
+               ProcessInfo.processInfo.arguments.contains("--ui-delayed-journey-progress") {
+                // Long enough for the result to show its syncing state before progress lands.
+                Thread.sleep(forTimeInterval: 6)
+            }
             let (status, data) = try Self.state.respond(to: request)
             let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -65,11 +83,14 @@ private final class FixtureServer: @unchecked Sendable {
     private let expiredResetFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-reset-manual")
     private let scoreLockedFixture = ProcessInfo.processInfo.arguments.contains("--ui-score-locked")
     private let lateSolveFixture = ProcessInfo.processInfo.arguments.contains("--ui-late-solve")
+    private let expiredDailyFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-daily")
     private let expiredReviewFixture = ProcessInfo.processInfo.arguments.contains("--ui-expired-review")
     private let existingInstallFixture = ProcessInfo.processInfo.arguments.contains("--ui-existing-install")
     private let weeklyTrailFixture = ProcessInfo.processInfo.arguments.contains("--ui-journey-days-2")
+    private let hiddenHistoryDeltaFixture = ProcessInfo.processInfo.arguments.contains("--ui-hidden-history-delta")
     private var dailyRequestCount = 0
     private var quipRequestCount = 0
+    private var nudgeReplyRequestCount = 0
     private var solveDistributionRequestCount = 0
     private var game = GameSession(puzzleId: "fixture-lighthouse", puzzleDate: FixtureServer.todayKey)
     private static var todayKey: String {
@@ -167,7 +188,9 @@ private final class FixtureServer: @unchecked Sendable {
             if expiredResetFixture && dailyRequestCount > 1 && game.puzzleId == "fixture-lighthouse" {
                 game = GameSession(puzzleId: "fixture-next-daily", puzzleDate: Self.nextDayKey)
             }
-            let deadline = expiredResetFixture && dailyRequestCount == 1 ? expiredNextPuzzleTime : nextPuzzleTime
+            let deadline = (expiredResetFixture && dailyRequestCount == 1 || expiredDailyFixture)
+                ? expiredNextPuzzleTime
+                : nextPuzzleTime
             let hints: [String]
             if ProcessInfo.processInfo.arguments.contains("--ui-no-hints") {
                 hints = []
@@ -191,6 +214,7 @@ private final class FixtureServer: @unchecked Sendable {
         case "/api/user/stats":
             payload = ["success": true, "stats": ["totalGames": existingInstallFixture || game.gameOver ? 1 : 0, "wins": game.wasSuccessful == true ? 1 : 0, "streak": game.wasSuccessful == true ? 1 : 0, "maxStreak": game.wasSuccessful == true ? 1 : 0]]
         case "/api/user/progress":
+            if ProcessInfo.processInfo.arguments.contains("--ui-journey-unavailable") { return (503, Data()) }
             payload = journeyProgressPayload()
         case "/api/puzzles/quip":
             if ProcessInfo.processInfo.arguments.contains("--ui-quip-unavailable") { return (503, Data()) }
@@ -200,6 +224,12 @@ private final class FixtureServer: @unchecked Sendable {
             }
             let reply = game.wasSuccessful == true ? "That connection deserves a little victory lap." : "That guess took the scenic route."
             return (200, Data(reply.utf8))
+        case "/api/puzzles/nudge-reply":
+            if ProcessInfo.processInfo.arguments.contains("--ui-nudge-reply-fails-once") {
+                nudgeReplyRequestCount += 1
+                if nudgeReplyRequestCount == 1 { return (503, Data()) }
+            }
+            payload = ["success": true, "reply": "Notice how the parts are arranged."]
         case "/api/puzzles/solve-distribution":
             solveDistributionRequestCount += 1
             UserDefaults.standard.set(solveDistributionRequestCount, forKey: "uiFixtureDailySolvePulseRequestCount")
@@ -322,14 +352,33 @@ private final class FixtureServer: @unchecked Sendable {
         let firstGuessSolve = solved && game.attempts.count == 1
         let unassistedSolve = solved && game.hintsUsed == 0
         let priorFinishes = weeklyTrailFixture ? 2 : 0
+        // Simulate an older finalized run omitted from the bounded recentEntries list.
+        let hiddenHistoryFinish = hiddenHistoryDeltaFixture && completed
         let completedThisWeek = priorFinishes + (completed ? 1 : 0)
         let weeklyRewardEarned = completedThisWeek >= 3
-        let xp = priorFinishes * 25 + (completed ? 25 + (solved ? 75 : 0) + (firstGuessSolve ? 25 : 0) + (unassistedSolve ? 25 : 0) : 0) + (weeklyRewardEarned ? 50 : 0)
+        let xp = priorFinishes * 25 + (hiddenHistoryFinish ? 25 : 0) + (completed ? 25 + (solved ? 75 : 0) + (firstGuessSolve ? 25 : 0) + (unassistedSolve ? 25 : 0) : 0) + (weeklyRewardEarned ? 50 : 0)
         var badges: [String] = []
-        if completed { badges.append("first-finish") }
+        if completed || hiddenHistoryFinish { badges.append("first-finish") }
         if firstGuessSolve { badges.append("first-guess-solve") }
+        let hasValidTerminalEntry = solved
+            ? game.attempts.count > 0
+            : game.attempts.count >= game.maxAttempts
+        var recentEntries: [[String: Any]] = []
+        if completed && hasValidTerminalEntry {
+            var entry: [String: Any] = [
+                "puzzleDate": game.puzzleDate,
+                "puzzleId": game.puzzleId,
+                "outcome": solved ? "solved" : "failed",
+                "attempts": game.attempts.count,
+                "hintCount": game.hintsUsed,
+                "completedAt": ISO8601DateFormatter().string(from: Date()),
+                "timeZone": "UTC"
+            ]
+            if game.attempts.count > game.maxAttempts { entry["playMode"] = "extended" }
+            recentEntries.append(entry)
+        }
 
-        return [
+        var payload: [String: Any] = [
             "asOfPuzzleDate": game.puzzleDate,
             "currentWeekStart": formatter.string(from: week.start),
             "currentWeekEnd": formatter.string(from: week.end.addingTimeInterval(-24 * 60 * 60)),
@@ -342,16 +391,20 @@ private final class FixtureServer: @unchecked Sendable {
                 "totalXP": xp,
                 "level": xp / 300 + 1,
                 "xpIntoLevel": xp % 300,
-                "finishes": priorFinishes + (completed ? 1 : 0),
+                "finishes": priorFinishes + (completed ? 1 : 0) + (hiddenHistoryFinish ? 1 : 0),
                 "solves": solved ? 1 : 0,
                 "firstGuessSolves": firstGuessSolve ? 1 : 0,
                 "unassistedSolves": unassistedSolve ? 1 : 0,
                 "completedThisWeek": completedThisWeek,
                 "badges": badges
             ],
-            "recentEntries": [],
+            "recentEntries": recentEntries,
             "backfill": ["status": "complete"]
         ]
+        if ProcessInfo.processInfo.arguments.contains("--ui-journey-no-reward") {
+            payload.removeValue(forKey: "weeklyTrailReward")
+        }
+        return payload
     }
 
     private func bodyData(_ request: URLRequest) -> Data {

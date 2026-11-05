@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
+import { compileCanonicalBoard } from "@/ai/puzzle-agent/visual/canonical-board";
 import type { DailyPuzzleCandidate } from "@/db/models";
 import type { DailyPuzzleCandidateRepository } from "./daily-puzzle-candidate-repository";
 
@@ -21,6 +23,7 @@ type QueueRepository = Pick<
   | "findById"
   | "findByGenerationKey"
   | "list"
+  | "replacePayloadForReview"
   | "markPlaytestSubmitted"
   | "markPlaytestSubmissionFailed"
 >;
@@ -37,6 +40,29 @@ function metadataString(
 ): string | undefined {
   const value = metadata?.[key];
   return typeof value === "string" ? value : undefined;
+}
+
+async function prepareCandidateForReview(
+  candidate: DailyPuzzleCandidate,
+  repository: QueueRepository,
+  now: () => Date
+): Promise<DailyPuzzleCandidate | null> {
+  if (candidate.status !== "reviewing" || candidate.playtestSubmittedAt) return candidate;
+  const visual = candidate.payload.visual;
+  if (!visual) throw new Error("Daily candidate requires a validated visual board");
+
+  const canonicalBoard = await compileCanonicalBoard(visual);
+  if (isDeepStrictEqual(visual.canonicalBoard, canonicalBoard)) return candidate;
+
+  return repository.replacePayloadForReview({
+    id: candidate.id,
+    expectedStatusVersion: candidate.statusVersion,
+    payload: {
+      ...candidate.payload,
+      visual: { ...visual, canonicalBoard },
+    },
+    updatedAt: now(),
+  });
 }
 
 async function submitForPlaytest(
@@ -104,21 +130,37 @@ export function createDailyPuzzleCandidateQueue(
         throw new Error("Daily candidate requires a validated visual board");
       }
 
-      const candidate =
-        (await repository.findByGenerationKey(input.generationKey)) ??
-        (await repository.insert({
-          id: randomUUID(),
+      let candidate = await repository.findByGenerationKey(input.generationKey);
+      let preparedForReview = false;
+      if (!candidate) {
+        const id = randomUUID();
+        const canonicalBoard = await compileCanonicalBoard(input.payload.visual);
+        const prepared = await repository.insert({
+          id,
           generationKey: input.generationKey,
           policyVersion: "human-reviewed-daily-v1",
           status: "reviewing",
           statusVersion: 0,
-          payload: input.payload,
+          payload: {
+            ...input.payload,
+            visual: { ...input.payload.visual, canonicalBoard },
+          },
           createdAt: now(),
           updatedAt: now(),
-        }));
+        });
+        candidate = prepared;
+        preparedForReview = prepared.id === id;
+      }
 
       if (candidate.status !== "reviewing" || candidate.playtestSubmittedAt) return candidate;
-      return submitForPlaytest(candidate, repository, playtest, now);
+      const reviewCandidate = preparedForReview
+        ? candidate
+        : await prepareCandidateForReview(candidate, repository, now);
+      if (!reviewCandidate) return (await repository.findById(candidate.id)) ?? candidate;
+      if (reviewCandidate.status !== "reviewing" || reviewCandidate.playtestSubmittedAt) {
+        return reviewCandidate;
+      }
+      return submitForPlaytest(reviewCandidate, repository, playtest, now);
     },
 
     async retryPending(
@@ -133,7 +175,11 @@ export function createDailyPuzzleCandidateQueue(
       let failed = 0;
       for (const candidate of pending) {
         try {
-          await submitForPlaytest(candidate, repository, playtest, now);
+          const reviewCandidate = await prepareCandidateForReview(candidate, repository, now);
+          if (reviewCandidate?.status !== "reviewing" || reviewCandidate.playtestSubmittedAt) {
+            continue;
+          }
+          await submitForPlaytest(reviewCandidate, repository, playtest, now);
           submitted++;
         } catch {
           failed++;

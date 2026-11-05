@@ -218,6 +218,14 @@ public struct JourneyProgressSnapshot: Codable, Equatable, Sendable {
             }
         }
     }
+
+    public func includesResult(forPuzzleID puzzleID: String, puzzleDate: String) -> Bool {
+        guard backfill.status == .complete,
+              summary != nil,
+              validPuzzleDate(puzzleDate),
+              asOfPuzzleDate >= puzzleDate else { return false }
+        return recentEntries.contains { $0.puzzleId == puzzleID && $0.puzzleDate == puzzleDate }
+    }
 }
 
 private func invalidPayload(_ decoder: Decoder, _ message: String) -> DecodingError {

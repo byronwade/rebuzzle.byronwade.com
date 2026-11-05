@@ -57,6 +57,67 @@ final class RuntimeTests: XCTestCase {
         XCTAssertNil(storage.lastDailyPuzzle(account: "bob"))
     }
 
+    @MainActor func testPuzzleNotebookStorageIsScopedByAccountAndPuzzle() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let storage = LocalStore(root: root)
+        let point = try XCTUnwrap(CanonicalBoardPinPoint(x: 0.25, y: 0.75))
+        let pin = PuzzlePin(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            profileID: "mobile-375",
+            point: point,
+            hypothesis: "The top word is flipped"
+        )
+        let aliceKey = PuzzleNotebook.storageKey(accountID: "alice", puzzleID: "today")
+
+        try storage.save(PuzzleNotebook(pins: [pin]), key: aliceKey)
+
+        let restored = try XCTUnwrap(storage.load(PuzzleNotebook.self, key: aliceKey))
+        XCTAssertEqual(restored.pins, [pin])
+        XCTAssertNil(try storage.load(PuzzleNotebook.self, key: PuzzleNotebook.storageKey(accountID: "bob", puzzleID: "today")))
+        XCTAssertNil(try storage.load(PuzzleNotebook.self, key: PuzzleNotebook.storageKey(accountID: "alice", puzzleID: "tomorrow")))
+
+        try storage.removeAccount("alice")
+        XCTAssertNil(try storage.load(PuzzleNotebook.self, key: aliceKey))
+    }
+
+    func testNotebookMarkerNumbersStayAlignedAcrossBoardProfiles() throws {
+        let point = try XCTUnwrap(CanonicalBoardPinPoint(x: 0.5, y: 0.5))
+        let first = PuzzlePin(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            profileID: "mobile-375",
+            point: point,
+            hypothesis: "first",
+            createdAt: Date(timeIntervalSince1970: 1),
+            updatedAt: Date(timeIntervalSince1970: 1)
+        )
+        let second = PuzzlePin(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+            profileID: "tablet",
+            point: point,
+            hypothesis: "second",
+            createdAt: Date(timeIntervalSince1970: 2),
+            updatedAt: Date(timeIntervalSince1970: 2)
+        )
+        let third = PuzzlePin(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            profileID: "mobile-375",
+            point: point,
+            hypothesis: "third",
+            createdAt: Date(timeIntervalSince1970: 3),
+            updatedAt: Date(timeIntervalSince1970: 3)
+        )
+        let notebook = PuzzleNotebook(pins: [third, second, first])
+
+        let phonePins = notebook.numberedPins(for: "mobile-375")
+        XCTAssertEqual(phonePins.map(\.pin.id), [first.id, third.id])
+        XCTAssertEqual(phonePins.map(\.number), [1, 3])
+
+        let tabletPins = notebook.numberedPins(for: "tablet")
+        XCTAssertEqual(tabletPins.map(\.pin.id), [second.id])
+        XCTAssertEqual(tabletPins.map(\.number), [2])
+    }
+
     func testInMemoryCredentialStorePersistsOnlyWithinItsFixtureInstance() throws {
         let first = CredentialStore(inMemory: true)
         let second = CredentialStore(inMemory: true)

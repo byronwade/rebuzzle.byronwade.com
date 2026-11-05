@@ -8,7 +8,7 @@ import {
   MAX_CANONICAL_BOARD_HEIGHT,
   validateCanonicalBoard,
 } from "./canonical-contract";
-import { type PuzzleVisual, PuzzleVisualSchema } from "./composition";
+import { PuzzleVisualSchema } from "./composition";
 import { layoutLayersLocked } from "./layout-plan";
 import {
   getPuzzleBoardRecognitionProfile,
@@ -18,15 +18,23 @@ import { renderPuzzleVisualProfile } from "./render-board";
 import { sanitizePictogramSvg } from "./sanitize-svg";
 
 const hash = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
-/** Never trusts incoming artifacts. Compile only supported, hydrated source layers. */
-export async function compileCanonicalBoard(input: PuzzleVisual): Promise<CanonicalBoard> {
-  const { canonicalBoard: _untrusted, ...source } = input;
+/** Never trusts incoming artifacts. Compile only schema-validated, hydrated source layers. */
+export async function compileCanonicalBoard(input: unknown): Promise<CanonicalBoard> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Canonical boards require a composed visual object");
+  }
+  const { canonicalBoard: _untrustedCanonicalBoard, ...source } = input as Record<string, unknown>;
+  void _untrustedCanonicalBoard;
   const visual = PuzzleVisualSchema.parse(source);
   if (
     Object.keys(source).some((key) => !(key in visual)) ||
-    source.layers.some((layer, index) =>
-      Object.keys(layer).some((key) => !(key in visual.layers[index]!))
-    )
+    (Array.isArray(source.layers) &&
+      source.layers.some(
+        (layer, index) =>
+          layer &&
+          typeof layer === "object" &&
+          Object.keys(layer).some((key) => !(key in visual.layers[index]!))
+      ))
   )
     throw new Error("Unsupported canonical source property");
   if (visual.mode === "unicode") throw new Error("Canonical boards require composed layers");

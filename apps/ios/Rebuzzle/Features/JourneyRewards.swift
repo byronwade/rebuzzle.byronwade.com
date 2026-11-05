@@ -1,5 +1,6 @@
 import SwiftUI
 import RebuzzleCore
+import UIKit
 
 struct JourneyLevelView: View {
     let progress: JourneyProgress
@@ -42,13 +43,123 @@ struct JourneyLevelView: View {
     }
 }
 
+struct WeeklyTrailTodayCard: View {
+    let progress: JourneyProgress
+    let reward: JourneyWeeklyTrailReward?
+    let onOpenJourney: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    private var completedDays: Int { min(progress.weeklyDays, 3) }
+    private var daysRemaining: Int { max(0, 3 - completedDays) }
+
+    private var rewardCopy: String {
+        if let reward, reward.earned {
+            return "Trail complete · +\(reward.bonusXP) XP"
+        }
+        guard daysRemaining > 0 else { return "Weekly trail complete" }
+        guard let reward else { return "Solve on three days this week" }
+        let dayWord = daysRemaining == 1 ? "day" : "days"
+        return "\(daysRemaining) more \(dayWord) for +\(reward.bonusXP) XP"
+    }
+
+    var body: some View {
+        Button(action: onOpenJourney) {
+            Group {
+                if typeSize.isAccessibilitySize {
+                    accessibilityContent
+                } else {
+                    compactContent
+                }
+            }
+            .padding(.horizontal, typeSize.isAccessibilitySize ? 16 : 12)
+            .padding(.vertical, typeSize.isAccessibilitySize ? 14 : 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.reward.opacity(0.22), lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Weekly trail, \(completedDays) of 3 days complete. \(rewardCopy).")
+        .accessibilityHint("Opens your Journey progress.")
+        .accessibilityIdentifier("todayWeeklyTrail")
+    }
+
+    private var compactContent: some View {
+        HStack(spacing: 10) {
+            trailMarkers(diameter: 20, connectorWidth: 7)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Eyebrow(text: "WEEKLY TRAIL")
+                    Spacer(minLength: 4)
+                    Text("\(completedDays)/3")
+                        .font(Theme.font(12, weight: .semibold, relativeTo: .caption))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.ink)
+                }
+                Text(rewardCopy)
+                    .font(Theme.font(12, weight: .medium, relativeTo: .caption))
+                    .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+            Spacer(minLength: 2)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.secondary)
+                .accessibilityHidden(true)
+        }
+        .frame(minHeight: 48)
+    }
+
+    private var accessibilityContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Eyebrow(text: "WEEKLY TRAIL")
+                Spacer(minLength: 8)
+                Text("\(completedDays) of 3 days")
+                    .font(Theme.font(15, weight: .semibold, relativeTo: .body))
+                    .monospacedDigit()
+            }
+            trailMarkers(diameter: 28, connectorWidth: 14)
+            Text(rewardCopy)
+                .font(Theme.font(15, weight: .medium, relativeTo: .body))
+                .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func trailMarkers(diameter: CGFloat, connectorWidth: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            ForEach(0..<3, id: \.self) { day in
+                let complete = day < completedDays
+                let current = day == completedDays
+                Image(systemName: complete ? "checkmark" : current ? "flag.fill" : "flag")
+                    .font(.system(size: diameter * 0.4, weight: .semibold))
+                    .foregroundStyle(complete ? Theme.panel : current ? Theme.accent : Theme.secondary)
+                    .frame(width: diameter, height: diameter)
+                    .background(complete ? Theme.success : Theme.field, in: Circle())
+                    .overlay(Circle().strokeBorder(current ? Theme.accent : .clear, lineWidth: 1.3))
+                if day < 2 {
+                    Rectangle()
+                        .fill(day < completedDays - 1 ? Theme.success : Theme.secondary.opacity(0.24))
+                        .frame(width: connectorWidth, height: 2)
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 struct JourneyRewards: View {
     let game: GameSession
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var badgeUnlock: JourneyBadgeUnlock?
     private var points: Int { JourneyProgress.points(won: game.wasSuccessful == true, attempts: game.attempts.count, hintsUsed: model.hintsShown) }
-    private var stars: Int { game.wasSuccessful == true ? max(1, 4 - game.attempts.count) : 0 }
+    private var stars: Int { JourneyProgress.stars(won: game.wasSuccessful == true, attempts: game.attempts.count) }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
@@ -71,12 +182,212 @@ struct JourneyRewards: View {
             }
             Text(game.wasSuccessful == true ? (stars == 3 ? "First guess. Nailed it." : "That’s your daily aha.") : "A new connection, even on the tricky days.")
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+            Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
+            if let badgeUnlock {
+                JourneyBadgeUnlockMoment(badges: badgeUnlock.badges)
+                    .transition(
+                        reduceMotion
+                            ? .identity
+                            : .opacity.combined(with: .scale(scale: 0.96, anchor: .leading))
+                    )
+            }
+            if let snapshot = model.journeySnapshot,
+               snapshot.includesResult(forPuzzleID: game.puzzleId, puzzleDate: game.puzzleDate),
+               let summary = snapshot.summary {
+                JourneyResultWeeklyTrail(
+                    progress: JourneyProgress(summary: summary),
+                    reward: snapshot.weeklyTrailReward
+                )
+            } else {
+                JourneyResultWeeklyTrailStatus(
+                    isSyncing: model.journeySyncing,
+                    isUnavailable: model.journeySyncError != nil
+                )
+            }
             Button { model.selectedTab = .journey } label: {
                 HStack { Text("See your Journey"); Spacer(); Image(systemName: "arrow.right") }
                     .font(Theme.font(14, weight: .medium)).frame(minHeight: 44).contentShape(Rectangle())
             }.foregroundStyle(Theme.ink).accessibilityIdentifier("viewJourney")
         }.padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
             .onAppear { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { appeared = true } }
+            .onAppear(perform: consumeBadgeUnlockIfAvailable)
+            .onChange(of: model.journeyBadgeUnlocks.map(\.id)) { _, _ in consumeBadgeUnlockIfAvailable() }
+            .onChange(of: model.player?.id) { _, _ in badgeUnlock = nil }
+    }
+
+    private func consumeBadgeUnlockIfAvailable() {
+        guard badgeUnlock == nil,
+              let unlock = model.consumeJourneyBadgeUnlock(for: game) else { return }
+        if UIAccessibility.isVoiceOverRunning {
+            let titles = unlock.badges.map(\.title)
+            let announcement: String
+            if titles.count == 1 {
+                announcement = "Badge unlocked: \(titles[0])."
+            } else {
+                announcement = "Badges unlocked: \(titles.joined(separator: ", "))."
+            }
+            UIAccessibility.post(notification: .announcement, argument: announcement)
+        }
+        if reduceMotion {
+            badgeUnlock = unlock
+        } else {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+                badgeUnlock = unlock
+            }
+        }
+    }
+}
+
+private struct JourneyBadgeUnlockMoment: View {
+    let badges: [JourneyProgress.Badge]
+
+    private var accessibilitySummary: String {
+        let heading = badges.count == 1 ? "Badge unlocked." : "Badges unlocked."
+        return heading + " " + badges.map { "\($0.title). \($0.detail)." }.joined(separator: " ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Eyebrow(text: badges.count == 1 ? "BADGE UNLOCKED" : "BADGES UNLOCKED")
+            ForEach(badges) { badge in
+                HStack(alignment: .top, spacing: 11) {
+                    Image(systemName: badge.symbol)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.reward)
+                        .frame(width: 34, height: 34)
+                        .background(Theme.reward.opacity(0.12), in: Circle())
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(badge.title)
+                            .font(Theme.font(15, weight: .semibold, relativeTo: .body))
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(badge.detail)
+                            .font(Theme.font(12, relativeTo: .caption))
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+        .accessibilityIdentifier("journeyBadgeUnlock")
+    }
+}
+
+private struct JourneyResultWeeklyTrail: View {
+    let progress: JourneyProgress
+    let reward: JourneyWeeklyTrailReward?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var revealed = false
+
+    private var completedDays: Int { min(progress.weeklyDays, 3) }
+    private var rewardCopy: String {
+        guard let reward else {
+            return completedDays == 3
+                ? "Your three-day trail is complete."
+                : "Solve on three days this week to build your trail."
+        }
+        if reward.earned { return "+\(reward.bonusXP) XP earned this week" }
+        let remainingDays = max(0, 3 - completedDays)
+        let dayWord = remainingDays == 1 ? "day" : "days"
+        return "\(remainingDays) more puzzle \(dayWord) to unlock +\(reward.bonusXP) XP."
+    }
+    private var accessibilitySummary: String {
+        let rewardState: String
+        if let reward {
+            rewardState = "\(reward.bonusXP) XP reward \(reward.earned ? "earned" : "available")"
+        } else {
+            rewardState = "weekly reward details unavailable"
+        }
+        return "\(completedDays) of 3 days completed this week, \(rewardState)"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Eyebrow(text: "WEEKLY TRAIL")
+                Spacer()
+                Text("\(completedDays)/3")
+                    .font(Theme.font(13, weight: .semibold)).monospacedDigit()
+                    .accessibilityHidden(true)
+            }
+            HStack(spacing: 0) {
+                ForEach(0..<3, id: \.self) { day in
+                    let complete = day < completedDays
+                    let current = day == completedDays
+                    Image(systemName: complete ? "checkmark" : current ? "flag.fill" : "flag")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(complete ? Theme.panel : current ? Theme.accent : Theme.secondary)
+                        .frame(width: 36, height: 36)
+                        .background(complete ? Theme.success : Theme.field, in: Circle())
+                        .overlay(Circle().strokeBorder(current ? Theme.accent : .clear, lineWidth: 1.5))
+                        .scaleEffect(complete && !revealed && !reduceMotion ? 0.72 : 1)
+                        .animation(
+                            reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.62).delay(Double(day) * 0.08),
+                            value: revealed
+                        )
+                    if day < 2 {
+                        Rectangle()
+                            .fill(day < completedDays - 1 ? Theme.success : Theme.secondary.opacity(0.24))
+                            .frame(maxWidth: 28).frame(height: 2)
+                    }
+                }
+            }
+            Text(rewardCopy)
+                .font(Theme.font(13, weight: .semibold))
+                .foregroundStyle(reward?.earned == true ? Theme.reward : Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+        .accessibilityIdentifier("resultWeeklyTrailProgress")
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { revealed = true }
+        }
+    }
+}
+
+private struct JourneyResultWeeklyTrailStatus: View {
+    let isSyncing: Bool
+    let isUnavailable: Bool
+
+    private var detail: String {
+        if isUnavailable { return "Your result is saved. Journey will catch up when you’re back online." }
+        if isSyncing { return "Updating your weekly trail…" }
+        return "Your result is saved. Weekly progress will appear when Journey refreshes."
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isUnavailable ? "icloud.slash" : "clock.arrow.circlepath")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(isUnavailable ? Theme.secondary : Theme.accent)
+                .frame(width: 36, height: 36)
+                .background(Theme.field, in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Eyebrow(text: "WEEKLY TRAIL")
+                Text(detail)
+                    .font(Theme.font(12))
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            if isSyncing {
+                ProgressView().controlSize(.mini).tint(Theme.accent)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.top, 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Weekly trail. \(detail)")
+        .accessibilityIdentifier("resultWeeklyTrailStatus")
     }
 }
 
@@ -134,6 +445,11 @@ struct DailyStreakCard: View {
         presentation.current.map(String.init) ?? "—"
     }
 
+    private var showsMilestoneFooter: Bool {
+        if case .journey = context { return true }
+        return false
+    }
+
     private var accessibilitySummary: String {
         var parts = ["Daily streak", headline, detail]
         if let current = presentation.current {
@@ -152,7 +468,7 @@ struct DailyStreakCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             header
-            if presentation.current != nil || presentation.best != nil {
+            if showsMilestoneFooter && (presentation.current != nil || presentation.best != nil) {
                 milestoneFooter
             }
         }

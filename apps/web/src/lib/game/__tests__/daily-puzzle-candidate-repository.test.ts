@@ -122,6 +122,48 @@ describe("daily puzzle candidate repository", () => {
     );
   });
 
+  it("replaces a review payload only while its revision is unsubmitted", async () => {
+    const nextPayload = {
+      ...candidate.payload,
+      visual: {
+        mode: "composed" as const,
+        styleId: "ink-pictogram-v1" as const,
+        layout: "row" as const,
+        unicodeFallback: "UP",
+        layers: [{ kind: "text" as const, content: "UP", emphasis: "normal" as const }],
+      },
+    };
+    const updatedAt = new Date("2026-10-28T12:00:00Z");
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({
+      ...candidate,
+      statusVersion: 1,
+      payload: nextPayload,
+      updatedAt,
+    });
+
+    await expect(
+      repository.replacePayloadForReview({
+        id: candidate.id,
+        expectedStatusVersion: 0,
+        payload: nextPayload,
+        updatedAt,
+      })
+    ).resolves.toMatchObject({ payload: nextPayload, statusVersion: 1 });
+    expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        id: candidate.id,
+        status: "reviewing",
+        statusVersion: 0,
+        playtestSubmittedAt: { $exists: false },
+      },
+      {
+        $set: { payload: nextPayload, updatedAt },
+        $inc: { statusVersion: 1 },
+      },
+      { returnDocument: "after" }
+    );
+  });
+
   it("recovers the same candidate assignment after a concurrent date claim", async () => {
     const assigned = {
       ...candidate,
