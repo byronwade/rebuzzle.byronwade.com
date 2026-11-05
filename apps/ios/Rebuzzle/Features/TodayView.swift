@@ -1082,14 +1082,16 @@ struct ResultView: View {
                     }
                     .padding(.top, 12)
                 } label: {
+                    // Identify only the toggle: an identifier on the whole group would
+                    // overwrite the solve-pulse and metric identifiers nested inside it.
                     Label("Your round", systemImage: "chart.bar.fill")
+                        .accessibilityIdentifier("dailyResultRoundDetails")
                 }
                 .font(Theme.font(14, weight: .medium))
                 .tint(Theme.ink)
                 .padding(18)
                 .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
                 .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
-                .accessibilityIdentifier("dailyResultRoundDetails")
                 if let daily = model.daily {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         if DailyQualityFeedbackEligibility.canRate(

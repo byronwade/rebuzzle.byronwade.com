@@ -361,9 +361,8 @@ import StoreKitTest
         )
         let answerField = app.descendants(matching: .any)["answerField"].firstMatch
         XCTAssertLessThan(firstNudge.frame.maxY, askForNudge.frame.minY)
-        XCTAssertLessThan(askForNudge.frame.maxY, answerField.frame.minY,
-                          "The nudge action should sit between the conversation and the next guess")
-        XCTAssertTrue(askForNudge.isHittable, "The next nudge should remain visible above the pinned answer composer")
+        assertNudgeSitsBesideAnswerField(askForNudge, answerField)
+        XCTAssertTrue(askForNudge.isHittable, "The next nudge should remain available in the pinned answer composer")
         XCTAssertFalse(app.staticTexts["lighthouse"].exists)
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
 
@@ -378,7 +377,7 @@ import StoreKitTest
         for _ in 0..<6 where !secondAsk.isHittable { app.swipeUp() }
         XCTAssertTrue(secondAsk.isHittable)
         XCTAssertGreaterThan(secondAsk.frame.minY, firstGuess.frame.maxY)
-        XCTAssertLessThan(secondAsk.frame.maxY, answerField.frame.minY)
+        assertNudgeSitsBesideAnswerField(secondAsk, answerField)
         secondAsk.tap()
         let secondNudge = app.staticTexts["eveNudge-2"]
         XCTAssertTrue(secondNudge.waitForExistence(timeout: 5))
@@ -531,10 +530,10 @@ import StoreKitTest
 
     func testNudgeControlStaysTappableAtAccessibilitySizeAfterKeyboardDismissal() {
         launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
-        let nudgeDescription = app.staticTexts["A hint appears in your conversation"]
-        XCTAssertTrue(nudgeDescription.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(nudgeDescription.frame.width, 250,
-                                    "Accessibility-size hint copy should use a wide text layout")
+        let labeledNudge = app.buttons["askEveForNudge"]
+        XCTAssertTrue(labeledNudge.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(labeledNudge.frame.width, 250,
+                                    "Accessibility sizes should show the full, labeled nudge control above the answer field")
         let field = focusAnswerField()
         field.typeText("sun")
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
@@ -610,7 +609,7 @@ import StoreKitTest
         XCTAssertEqual(guessProgress.value as? String, "3 guesses remaining", "Pending guesses must not consume a scored turn.")
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists, "Eve's feedback should wait for the confirmed response.")
 
-        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["A fresh angle might help."].waitForExistence(timeout: 15))
         let signal = app.descendants(matching: .any)["guessSignal-1"].firstMatch
         XCTAssertTrue(signal.waitForExistence(timeout: 5))
         XCTAssertEqual(signal.value as? String, "Cold signal, one of three steps, snowflake icon.")
@@ -776,6 +775,12 @@ import StoreKitTest
         launchFixture(extraArguments: ["--ui-late-solve"])
 
         XCTAssertTrue(app.staticTexts["lateSolveMessage"].waitForExistence(timeout: 5))
+        // Round metrics are grouped under the collapsed "Your round" disclosure.
+        let roundDetails = app.buttons["dailyResultRoundDetails"]
+        XCTAssertTrue(roundDetails.waitForExistence(timeout: 5))
+        reveal(roundDetails)
+        roundDetails.tap()
+        XCTAssertTrue(app.staticTexts["Total guesses"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["4"].exists)
         XCTAssertTrue(app.staticTexts["Total guesses"].exists)
         XCTAssertFalse(app.staticTexts["4/3"].exists)
@@ -797,16 +802,17 @@ import StoreKitTest
         XCTAssertTrue(app.buttons["checkAnswer"].isHittable)
     }
 
-    func testDailyResultShareOpensFromTheInitialResultViewport() {
+    func testDailyResultShareOpensTheNativeShareSheet() {
         launchFixture()
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["TODAY’S PUZZLE"].exists,
-                       "The duplicate daily masthead should give the result actions room in the first viewport")
+                       "The duplicate daily masthead should give the result actions room")
 
+        // The solved board now follows the hero, so sharing is a secondary action further down the result.
         let share = app.buttons["dailyResultShare"]
         XCTAssertTrue(share.waitForExistence(timeout: 5))
-        XCTAssertTrue(share.isHittable, "The result share action should be visible without scrolling")
+        reveal(share)
         XCTAssertEqual(share.label, "Challenge a friend")
         capture("Daily result share action")
         share.tap()
@@ -816,23 +822,28 @@ import StoreKitTest
         capture("Daily result native share sheet")
     }
 
-    func testSolvedResultShowsCountdownAndOptionalReminderWithoutScrolling() {
+    func testSolvedResultShowsCountdownAndOptionalReminder() {
         launchFixture()
         submit("lighthouse")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
 
+        // The streak celebration comes before the return cue in the result flow.
+        let streakCard = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
+        XCTAssertTrue(streakCard.waitForExistence(timeout: 5))
+        reveal(streakCard)
+
+        // The solved board follows the hero, so the countdown sits below the first viewport.
         let countdown = app.otherElements["puzzleCountdown"]
         XCTAssertTrue(countdown.waitForExistence(timeout: 5))
-        XCTAssertTrue(countdown.isHittable,
-                      "The next-puzzle countdown should be visible on the completed result screen; frame=\(countdown.frame), app=\(app.frame)")
+        reveal(countdown)
+        XCTAssertGreaterThan(countdown.frame.minY, streakCard.frame.minY,
+                             "The return cue should follow, not displace, the streak celebration")
 
         let reminder = app.buttons["configureReminder"]
-        XCTAssertTrue(reminder.isHittable, "Setting an optional reminder should not require scrolling")
+        reveal(reminder)
         XCTAssertEqual(reminder.label, "Remind me", "The reminder action should explain its purpose without relying on its bell icon")
         XCTAssertGreaterThanOrEqual(reminder.frame.height, 44, "The optional reminder action should have a comfortable touch target")
-        let streakCard = app.descendants(matching: .any)["dailyStreakCard"].firstMatch
-        XCTAssertTrue(streakCard.isHittable, "The return cue should not displace the streak celebration off screen")
-        capture("Result · countdown and optional reminder in first viewport")
+        capture("Result · countdown and optional reminder")
     }
 
     func testExpiredResultCanRefreshIntoTheNewDailyPuzzle() {
@@ -846,7 +857,7 @@ import StoreKitTest
 
         let refresh = app.buttons["checkForTodayPuzzle"]
         XCTAssertTrue(refresh.waitForExistence(timeout: 5))
-        XCTAssertTrue(refresh.isHittable)
+        reveal(refresh)
         refresh.tap()
 
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 5))
@@ -1060,6 +1071,17 @@ import StoreKitTest
     private func reveal(_ element: XCUIElement) {
         for _ in 0..<10 where !element.isHittable { app.swipeUp() }
         XCTAssertTrue(element.isHittable)
+    }
+
+    /// Eve's nudge lives in the pinned composer, on the same row as (and leading) the answer field.
+    private func assertNudgeSitsBesideAnswerField(_ nudge: XCUIElement, _ answerField: XCUIElement,
+                                                  file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertLessThanOrEqual(nudge.frame.maxX, answerField.frame.minX,
+                                 "The nudge action should lead the answer field in the composer", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(nudge.frame.midY, answerField.frame.minY,
+                                    "The nudge action should share the answer field's row", file: file, line: line)
+        XCTAssertLessThanOrEqual(nudge.frame.midY, answerField.frame.maxY,
+                                 "The nudge action should share the answer field's row", file: file, line: line)
     }
 
     private func revealTopWithinViewport(_ element: XCUIElement, below navigationBar: XCUIElement) {

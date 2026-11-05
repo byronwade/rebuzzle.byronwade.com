@@ -87,6 +87,13 @@ import StoreKitTest
     }
 
     private func revealDisclosure() -> XCUIElement {
+        // The solve comparison lives inside the collapsed "Your round" group on the result.
+        let roundDetails = app.buttons["dailyResultRoundDetails"]
+        XCTAssertTrue(roundDetails.waitForExistence(timeout: 5))
+        for _ in 0..<8 where !roundDetails.isHittable { app.swipeUp() }
+        XCTAssertTrue(roundDetails.isHittable)
+        roundDetails.tap()
+
         let disclosure = app.buttons["dailySolvePulseDisclosure"]
         XCTAssertTrue(disclosure.waitForExistence(timeout: 5))
         for _ in 0..<8 where !disclosure.isHittable { app.swipeUp() }

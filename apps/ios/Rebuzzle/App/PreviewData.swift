@@ -48,7 +48,8 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
         do {
             if request.url?.path == "/api/puzzles/guess",
                ProcessInfo.processInfo.arguments.contains("--ui-delayed-guess") {
-                Thread.sleep(forTimeInterval: 3)
+                // Long enough for slow CI simulators to observe the pending turn before the response lands.
+                Thread.sleep(forTimeInterval: 8)
             }
             if request.url?.path == "/api/puzzles/nudge-reply",
                ProcessInfo.processInfo.arguments.contains("--ui-delayed-nudge-reply") {
