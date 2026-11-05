@@ -61,7 +61,8 @@ private final class FixtureURLProtocol: URLProtocol, @unchecked Sendable {
             }
             if request.url?.path == "/api/user/progress",
                ProcessInfo.processInfo.arguments.contains("--ui-delayed-journey-progress") {
-                Thread.sleep(forTimeInterval: 3)
+                // Long enough for the result to show its syncing state before progress lands.
+                Thread.sleep(forTimeInterval: 6)
             }
             let (status, data) = try Self.state.respond(to: request)
             let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!

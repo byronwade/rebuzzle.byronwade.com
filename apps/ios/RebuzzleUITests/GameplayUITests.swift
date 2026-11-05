@@ -1518,7 +1518,7 @@ import StoreKitTest
     func testWeeklyTrailPreviewAndEarnedBonusUpdateAfterTodaysPuzzle() {
         launchFixture(extraArguments: ["--ui-journey-days-2", "--ui-delayed-journey-progress"])
         selectTab("Journey")
-        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 12))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("50 XP"))
         XCTAssertTrue(app.staticTexts["Finish 3 puzzle days this week to earn +50 XP."].exists)
 
@@ -1530,7 +1530,7 @@ import StoreKitTest
         XCTAssertFalse(app.descendants(matching: .any)["resultWeeklyTrailProgress"].exists)
         XCTAssertFalse(app.staticTexts["+50 XP earned this week"].exists)
         let resultTrail = app.descendants(matching: .any)["resultWeeklyTrailProgress"].firstMatch
-        XCTAssertTrue(resultTrail.waitForExistence(timeout: 8))
+        XCTAssertTrue(resultTrail.waitForExistence(timeout: 15))
         XCTAssertTrue(resultTrail.label.contains("3 of 3 days"))
         XCTAssertTrue(resultTrail.label.contains("50 XP reward earned"))
         XCTAssertTrue(app.staticTexts["+50 XP earned this week"].exists)
