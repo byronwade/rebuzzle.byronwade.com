@@ -39,37 +39,35 @@ import RebuzzleCore
                 Text(session.state == .solved ? "Aha, again." : "A fresh look.")
                     .font(Theme.display(36)).tracking(-1)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 10) {
-                    Text(puzzle.typeName).font(Theme.font(13, weight: .semibold))
-                    PuzzleDifficultyBadge(difficulty: puzzle.difficulty)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { headerPills }
+                    VStack(alignment: .leading, spacing: 6) { headerPills }
                 }
             }
 
-            VStack(spacing: 0) {
-                PuzzleBoard(puzzle: puzzle).padding(16)
-            }
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.ink.opacity(0.20), lineWidth: 1))
+            PuzzleBoard(puzzle: puzzle)
+                .padding(4)
+                .gameCard(padding: 14)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Practice · unscored", systemImage: "sparkles")
-                    .font(Theme.font(14, weight: .medium)).foregroundStyle(Theme.reward)
-                    .accessibilityIdentifier("practiceUnscored")
-                Text("Three fresh guesses. Your daily result, streak, and rewards stay untouched.")
-                    .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("practiceUnscoredNote")
+            HStack(alignment: .top, spacing: 12) {
+                IconTile(systemImage: "sparkles", face: Theme.gold, ledge: Theme.goldLedge, symbol: Theme.onGold, size: 40)
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Practice · unscored", systemImage: "sparkles")
+                        .labelStyle(.titleOnly)
+                        .font(Theme.font(15, weight: .heavy)).foregroundStyle(Theme.reward)
+                        .accessibilityIdentifier("practiceUnscored")
+                    Text("Three fresh guesses. Your daily result, streak, and rewards stay untouched.")
+                        .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("practiceUnscoredNote")
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16).background(Theme.reward.opacity(0.09), in: RoundedRectangle(cornerRadius: 14))
+            .gameCard(padding: 14)
 
             if session.state == .playing {
                 VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        Text("Your guesses").font(Theme.font(17, weight: .medium))
-                        Spacer()
-                        Text("\(session.attemptsRemaining) left")
-                            .font(Theme.font(13, weight: .medium)).monospacedDigit().foregroundStyle(Theme.secondary)
-                            .accessibilityIdentifier("practiceAttemptsRemaining")
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) { guessHeader }
+                        VStack(alignment: .leading, spacing: 8) { guessHeader }
                     }
                     ForEach(session.guesses) { guess in
                         practiceGuessCard(guess)
@@ -88,10 +86,9 @@ import RebuzzleCore
 
             if session.state == .outOfGuesses {
                 Button { Task { await revealSolution() } } label: {
-                    Label("Show the solution", systemImage: "eye")
-                        .padding(.horizontal, 16).padding(.vertical, 8)
+                    Label("Show the solution", systemImage: "eye.fill")
                 }
-                .buttonStyle(CommitStyle()).disabled(busy)
+                .buttonStyle(ChunkyButtonStyle(variant: .eve)).disabled(busy)
                 .accessibilityIdentifier("revealPracticeSolution")
             }
             if session.state != .playing {
@@ -99,9 +96,8 @@ import RebuzzleCore
                     restartRound()
                 } label: {
                     Label("Play this clue again", systemImage: "arrow.counterclockwise")
-                        .padding(.horizontal, 16).padding(.vertical, 8)
                 }
-                .buttonStyle(CommitStyle()).accessibilityIdentifier("restartPracticeRound")
+                .buttonStyle(ChunkyButtonStyle(variant: .primary)).accessibilityIdentifier("restartPracticeRound")
             }
             if let error, session.state != .playing { Notice(message: error) }
         }
@@ -124,11 +120,12 @@ import RebuzzleCore
                                 .font(.system(size: 12, weight: .semibold))
                                 .accessibilityHidden(true)
                         }
-                        .font(Theme.font(13, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
+                        .font(Theme.font(14, weight: .heavy))
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 44)
-                        .background(Theme.accent.opacity(0.08), in: Capsule())
+                        .background(Capsule().fill(Theme.accentFill))
+                        .background(Capsule().fill(Theme.accentLedge).offset(y: 3))
                         .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -254,19 +251,27 @@ import RebuzzleCore
 
     private func practiceGuessCard(_ guess: PracticeGuess) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(guess.text).font(Theme.font(16, weight: .medium))
-                Spacer()
-                Text(guess.correct ? "Aha" : "Guess \(guess.attemptNumber) of 3")
-                    .font(Theme.font(12, weight: .medium)).foregroundStyle(guess.correct ? Theme.success : Theme.secondary)
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: guess.correct ? "checkmark" : "xmark")
+                    .font(.system(size: 13, weight: .black)).foregroundStyle(.white)
+                    .frame(width: 28, height: 28)
+                    .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(guess.correct ? Theme.successFill : Theme.errorFill))
+                    .accessibilityHidden(true)
+                Text(guess.text).font(Theme.font(17, weight: .heavy))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Pill(text: guess.correct ? "Aha" : "Guess \(guess.attemptNumber) of 3", tint: guess.correct ? Theme.success : Theme.secondary)
             }
             Text(guess.correct ? "You found the connection." : (guess.reaction?.line ?? "Try looking at the clue from a fresh angle."))
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
                 .accessibilityIdentifier("practiceFeedback.\(guess.attemptNumber)")
             if let reply = practiceEve.replies[guess.attemptNumber],
                !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text("Eve · \(reply)").font(Theme.font(14)).foregroundStyle(Theme.accent)
+                Text("Eve · \(reply)").font(Theme.font(14, weight: .medium)).foregroundStyle(Theme.eve)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12).padding(.vertical, 9)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.eve.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .accessibilityIdentifier("practiceEveReply.\(guess.attemptNumber)")
             }
             if practiceEve.pendingAttempt == guess.attemptNumber {
@@ -280,35 +285,38 @@ import RebuzzleCore
                     .accessibilityIdentifier("practiceEveInterrupted.\(guess.attemptNumber)")
             }
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+        .gameCard(padding: 14)
         .id("practiceTurn-\(guess.attemptNumber)")
     }
 
     private var solutionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(session.state == .solved ? "YOU FOUND IT" : session.state == .outOfGuesses ? "THE NEXT CONNECTION" : "THE SOLUTION")
-                .font(Theme.font(12, weight: .semibold)).foregroundStyle(Theme.reward)
+            let solved = session.state == .solved
+            Pill(
+                text: solved ? "YOU FOUND IT" : session.state == .outOfGuesses ? "THE NEXT CONNECTION" : "THE SOLUTION",
+                systemImage: solved ? "star.fill" : "lightbulb.fill",
+                tint: solved ? .white : Theme.eve
+            )
             Text(session.state == .outOfGuesses ? "That was a thoughtful round." : "That connection deserves a little victory lap.")
-                .font(Theme.font(15)).foregroundStyle(Theme.secondary)
+                .font(Theme.font(15, weight: .medium)).foregroundStyle(solved ? .white.opacity(0.92) : Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             if let answer = session.answer {
-                Text(answer).font(Theme.display(32)).tracking(-0.8).fixedSize(horizontal: false, vertical: true)
+                Text(answer).font(Theme.display(34)).tracking(-0.6).fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(solved ? .white : Theme.ink)
                     .accessibilityIdentifier("practiceSolutionAnswer")
             }
             if let explanation = session.explanation, !explanation.isEmpty {
-                Text(explanation).font(Theme.font(16)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(explanation).font(Theme.font(16, weight: .medium)).foregroundStyle(solved ? .white.opacity(0.92) : Theme.secondary).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("practiceSolutionExplanation")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.reward.opacity(0.3), lineWidth: 1))
+        .gameCard(tint: session.state == .solved ? Theme.successFill : nil, ledge: session.state == .solved ? Theme.successLedge : nil, padding: 20)
         .id("practiceSolution")
     }
 
     private var hintsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("A gentle nudge").font(Theme.font(17, weight: .medium))
+            Text("A gentle nudge").font(Theme.display(20, relativeTo: .title3))
             if puzzle.hints.isEmpty {
                 Text("No hints were saved for this puzzle. You can still play or reveal the solution.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
@@ -319,16 +327,34 @@ import RebuzzleCore
                 }
                 ForEach(Array(session.revealedHints.enumerated()), id: \.offset) { index, hint in
                     HStack(alignment: .top, spacing: 12) {
-                        Text("\(index + 1)").font(Theme.font(14, weight: .semibold)).foregroundStyle(Theme.reward)
-                            .frame(width: 28, height: 28).background(Theme.reward.opacity(0.12), in: Circle())
-                        Text(hint).font(Theme.font(15)).fixedSize(horizontal: false, vertical: true)
+                        Text("\(index + 1)").font(Theme.font(14, weight: .heavy)).foregroundStyle(.white)
+                            .frame(width: 30, height: 30).background(Circle().fill(Theme.eveFill))
+                            .background(Circle().fill(Theme.eveLedge).offset(y: 2))
+                        Text(hint).font(Theme.font(15, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("practiceHint.\(index + 1)")
                             .frame(maxWidth: .infinity, alignment: .leading)
-                    }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+                    }.gameCard(padding: 14)
                 }
             }
         }
         .id("practiceHints")
+    }
+
+    @ViewBuilder private var headerPills: some View {
+        Pill(text: puzzle.typeName.capitalized, systemImage: "puzzlepiece.fill", tint: Theme.accent)
+        Pill(text: "Difficulty \(puzzle.difficulty)/10", systemImage: "dial.medium.fill", tint: Theme.eve)
+            .accessibilityLabel("Puzzle difficulty \(puzzle.difficulty) out of 10")
+    }
+
+    @ViewBuilder private var guessHeader: some View {
+        Text("Your guesses").font(Theme.display(20, relativeTo: .title3))
+        Spacer(minLength: 0)
+        HStack(spacing: 8) {
+            GuessSlots(total: session.maxAttempts, used: session.guesses.count, solved: session.state == .solved, size: 26)
+            Text("\(session.attemptsRemaining) left")
+                .font(Theme.font(14, weight: .heavy)).monospacedDigit().foregroundStyle(Theme.secondary)
+                .accessibilityIdentifier("practiceAttemptsRemaining")
+        }
     }
 
     private var practiceEveKey: String { "eve:\(accountID):\(puzzle.id):practice" }
