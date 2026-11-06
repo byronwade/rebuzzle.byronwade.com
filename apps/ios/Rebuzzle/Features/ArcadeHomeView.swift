@@ -31,17 +31,20 @@ struct ArcadeHomeView: View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(Theme.accent)
+                    .fill(Theme.accentLedge)
+                    .frame(width: 46, height: 46)
+                    .offset(y: 4)
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(Theme.accentFill)
                     .frame(width: 46, height: 46)
                 Text("R")
-                    .font(Theme.display(29, relativeTo: .title))
+                    .font(Theme.display(28, relativeTo: .title))
                     .foregroundStyle(.white)
-                    .offset(y: -1)
+                    .rotationEffect(.degrees(-6))
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text("REBUZZLE")
-                    .font(Theme.font(14, weight: .heavy, relativeTo: .headline))
-                    .tracking(1.15)
+                Text("Rebuzzle")
+                    .font(Theme.display(22, relativeTo: .title2))
                 Text("PUZZLE ARCADE")
                     .font(Theme.font(10, weight: .bold, relativeTo: .caption))
                     .tracking(1.3)
@@ -58,10 +61,10 @@ struct ArcadeHomeView: View {
     private var streakChip: some View {
         HStack(spacing: 6) {
             Image(systemName: "flame.fill")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.reward)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.orange, Theme.gold)
             Text("\(model.stats?.streak ?? 0)")
-                .font(Theme.display(16, relativeTo: .headline))
+                .font(Theme.display(20, relativeTo: .headline))
                 .monospacedDigit()
             Text("DAY\nSTREAK")
                 .font(Theme.font(8, weight: .bold, relativeTo: .caption2))
@@ -69,10 +72,11 @@ struct ArcadeHomeView: View {
                 .lineSpacing(-1)
                 .foregroundStyle(Theme.secondary)
         }
-        .padding(.horizontal, 11)
+        .padding(.horizontal, 12)
         .frame(minHeight: 44)
-        .background(Theme.panel, in: Capsule())
-        .overlay(Capsule().strokeBorder(Theme.secondary.opacity(0.12), lineWidth: 1))
+        .background(Capsule().fill(Theme.panel))
+        .overlay(Capsule().strokeBorder(Theme.panelLedge, lineWidth: 2))
+        .background(Capsule().fill(Theme.panelLedge).offset(y: 4))
         .accessibilityIdentifier("arcadeStreak")
     }
 
@@ -84,13 +88,17 @@ struct ArcadeHomeView: View {
     private var dailyChallenge: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
-                HStack(spacing: 7) {
-                    Circle().fill(ArcadePalette.accent).frame(width: 7, height: 7)
+                HStack(spacing: 6) {
+                    Image(systemName: "star.fill").font(.system(size: 11, weight: .black))
                     Text("DAILY CHALLENGE")
-                        .font(Theme.font(11, weight: .bold, relativeTo: .caption))
-                        .tracking(1.1)
-                        .foregroundStyle(Theme.ink)
+                        .font(Theme.font(12, weight: .heavy, relativeTo: .caption))
+                        .tracking(0.9)
                 }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Theme.accentFill))
+                .background(Capsule().fill(Theme.accentLedge).offset(y: 3))
                 Spacer(minLength: 8)
                 Text(dailyDateLabel.uppercased())
                     .font(Theme.font(10, weight: .semibold, relativeTo: .caption))
@@ -101,8 +109,8 @@ struct ArcadeHomeView: View {
             }
 
             Text(dailyTitle)
-                .font(Theme.font(typeSize.isAccessibilitySize ? 28 : 32, weight: .bold, relativeTo: .largeTitle))
-                .tracking(-0.8)
+                .font(Theme.display(typeSize.isAccessibilitySize ? 28 : 34, relativeTo: .largeTitle))
+                .tracking(-0.4)
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -110,11 +118,8 @@ struct ArcadeHomeView: View {
 
             HStack(spacing: 8) {
                 if let puzzle = model.daily?.puzzle {
-                    Text(puzzle.typeName.uppercased())
-                        .foregroundStyle(ArcadePalette.accent)
-                    Circle().fill(Theme.secondary.opacity(0.55)).frame(width: 3, height: 3)
-                    Text("DIFFICULTY \(puzzle.difficulty)/10")
-                        .foregroundStyle(Theme.secondary)
+                    Pill(text: puzzle.typeName.capitalized, systemImage: "puzzlepiece.fill", tint: Theme.accent)
+                    Pill(text: "Difficulty \(puzzle.difficulty)/10", systemImage: "dial.medium.fill", tint: Theme.eve)
                 } else {
                     Text(dailySubtitle).foregroundStyle(Theme.secondary)
                 }
@@ -129,19 +134,15 @@ struct ArcadeHomeView: View {
             Button(action: beginDailyAction) {
                 HStack(spacing: 11) {
                     Text(dailyButtonTitle)
-                        .font(Theme.font(16, weight: .bold))
+                        .font(Theme.font(18, weight: .heavy, relativeTo: .headline))
                     Spacer(minLength: 4)
                     Image(systemName: model.game?.gameOver == true ? "arrow.uturn.backward" : "play.fill")
                         .font(.system(size: 13, weight: .heavy))
                         .accessibilityHidden(true)
                 }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 18)
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .background(ArcadePalette.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(minHeight: 34)
             }
-            .buttonStyle(ArcadePressStyle())
+            .buttonStyle(ChunkyButtonStyle(variant: model.game?.gameOver == true ? .success : .primary))
             .disabled(model.daily == nil && model.busy)
             .accessibilityIdentifier("playDailyPuzzle")
             .accessibilityHint(model.game?.gameOver == true ? "Review the completed daily round." : "Open today's puzzle board.")
@@ -159,18 +160,15 @@ struct ArcadeHomeView: View {
             }
 
             if let reset = model.daily?.nextPuzzleTime {
-                Rectangle().fill(Theme.secondary.opacity(0.22)).frame(height: 1)
                 DailyPuzzleTicker(
                     resetAt: DailyReturnTiming.deadline(reset),
                     roundComplete: model.game?.gameOver == true
                 )
-                .environment(\.colorScheme, .dark)
+                .padding(.horizontal, 12)
+                .background(Theme.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
         }
-        .padding(20)
-        .background(Theme.field, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
-        .environment(\.colorScheme, .dark)
+        .gameCard(padding: 18)
         .accessibilityIdentifier("dailyChallengeCard")
     }
 
@@ -192,9 +190,8 @@ struct ArcadeHomeView: View {
                     .frame(maxWidth: .infinity, minHeight: 138)
             }
         }
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.secondary.opacity(0.14), lineWidth: 1))
-        .environment(\.colorScheme, .dark)
+        .background(Theme.field, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.panelLedge, lineWidth: 2))
         .accessibilityIdentifier("arcadePuzzlePreview")
     }
 
@@ -202,15 +199,9 @@ struct ArcadeHomeView: View {
         let guesses = model.game?.attempts.count ?? 0
         let maxAttempts = model.game?.maxAttempts ?? 3
         return HStack(spacing: 10) {
-            HStack(spacing: 5) {
-                ForEach(0..<maxAttempts, id: \.self) { index in
-                    Capsule()
-                        .fill(index < guesses ? ArcadePalette.accent : Theme.secondary.opacity(0.32))
-                        .frame(width: 24, height: 5)
-                }
-            }
+            GuessSlots(total: maxAttempts, used: guesses, solved: model.game?.wasSuccessful == true, size: 26)
             Text(dailyProgressText)
-                .font(Theme.font(12, weight: .semibold))
+                .font(Theme.font(13, weight: .bold))
                 .foregroundStyle(Theme.ink.opacity(0.9))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -279,19 +270,12 @@ struct ArcadeHomeView: View {
     private var progressStrip: some View {
         Button { model.selectedTab = .journey } label: {
             HStack(spacing: 13) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Theme.accent.opacity(0.10))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                }
+                IconTile(systemImage: "bolt.fill", face: Theme.eveFill, ledge: Theme.eveLedge, symbol: .white)
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 7) {
                         Text("JOURNEY")
-                            .font(Theme.font(10, weight: .bold, relativeTo: .caption))
-                            .tracking(0.85)
+                            .font(Theme.font(12, weight: .heavy, relativeTo: .caption))
+                            .tracking(0.8)
                             .foregroundStyle(Theme.secondary)
                         if let summary = model.journeySnapshot?.summary {
                             Text("LEVEL \(summary.level)")
@@ -301,8 +285,8 @@ struct ArcadeHomeView: View {
                         }
                     }
                     if let summary = model.journeySnapshot?.summary {
-                        ProgressView(value: Double(summary.xpIntoLevel), total: 300)
-                            .tint(Theme.accent)
+                        ChunkyProgressBar(value: Double(summary.xpIntoLevel) / 300, tint: Theme.successFill, height: 12)
+                            .accessibilityElement()
                             .accessibilityLabel("Journey level progress")
                             .accessibilityValue("\(summary.xpIntoLevel) of 300 XP")
                         Text("\(summary.totalXP) XP earned · \(summary.finishes) rounds finished")
@@ -323,11 +307,9 @@ struct ArcadeHomeView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.secondary)
             }
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 78)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 19))
-            .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(Theme.secondary.opacity(0.13), lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 19))
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .gameCard(padding: 14)
+            .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("arcadeJourneyPreview")
@@ -336,19 +318,12 @@ struct ArcadeHomeView: View {
     private var archiveFeature: some View {
         Button(action: model.purchases.hasPlus ? onOpenArchive : onOpenPlus) {
             HStack(alignment: .center, spacing: 13) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(Theme.reward.opacity(0.13))
-                        .frame(width: 46, height: 46)
-                    Image(systemName: model.purchases.hasPlus ? "books.vertical.fill" : "lock.open.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Theme.reward)
-                }
+                IconTile(systemImage: model.purchases.hasPlus ? "books.vertical.fill" : "crown.fill", face: Theme.gold, ledge: Theme.goldLedge, symbol: Theme.onGold)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 7) {
                         Text(model.purchases.hasPlus ? "THE ARCHIVE" : "REBUZZLE PLUS")
-                            .font(Theme.font(10, weight: .bold, relativeTo: .caption))
-                            .tracking(0.85)
+                            .font(Theme.font(12, weight: .heavy, relativeTo: .caption))
+                            .tracking(0.8)
                             .foregroundStyle(Theme.reward)
                         if model.purchases.hasPlus {
                             Text("UNLOCKED")
@@ -360,7 +335,7 @@ struct ArcadeHomeView: View {
                         }
                     }
                     Text(model.purchases.hasPlus ? "Replay past puzzles" : "Your puzzle collection")
-                        .font(Theme.font(16, weight: .semibold))
+                        .font(Theme.font(17, weight: .heavy))
                         .foregroundStyle(Theme.ink)
                     Text(model.purchases.hasPlus
                          ? "Past boards · fresh guesses · unscored"
@@ -392,11 +367,9 @@ struct ArcadeHomeView: View {
                         .foregroundStyle(Theme.secondary)
                 }
             }
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 19))
-            .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(Theme.secondary.opacity(0.13), lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 19))
+            .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            .gameCard(padding: 14)
+            .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -409,16 +382,5 @@ struct ArcadeHomeView: View {
         if model.purchases.hasPlus { return "Puzzle archive. Replay past puzzles. Plus unlocked." }
         let price = model.purchases.product?.displayPrice
         return "Rebuzzle Plus. Past puzzle replays, a private journal, and solving insights. One-time lifetime purchase. \(price ?? "Open to view price")."
-    }
-}
-
-private struct ArcadePressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
-            .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
