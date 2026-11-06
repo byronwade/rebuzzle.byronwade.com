@@ -48,7 +48,7 @@ struct GuessComposer: View {
                 Button(action: recoveryAction.action) {
                     HStack(spacing: 8) {
                         if recoveryAction.isLoading {
-                            ProgressView().tint(Theme.canvas)
+                            ProgressView().tint(.white)
                         } else {
                             Image(systemName: recoveryAction.symbol)
                         }
@@ -61,18 +61,13 @@ struct GuessComposer: View {
                 .accessibilityIdentifier(recoveryAction.accessibilityIdentifier)
             }
         }
-        .padding(12)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.secondary.opacity(0.18), lineWidth: 1))
+        .gameCard(padding: 12)
         .frame(maxWidth: 600)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 16)
         .padding(.top, 10)
-        .padding(.bottom, 8)
+        .padding(.bottom, 6)
         .frame(maxWidth: .infinity)
         .background(Theme.canvas)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
-        }
         .accessibilityElement(children: .contain)
     }
 
@@ -119,21 +114,19 @@ struct GuessComposer: View {
             Group {
                 if isSubmitting && typeSize.isAccessibilitySize {
                     VStack(spacing: 4) {
-                        ProgressView().controlSize(.mini).tint(Theme.canvas)
+                        ProgressView().controlSize(.mini).tint(.white)
                         Text("Checking…")
-                            .font(Theme.font(13, weight: .medium))
+                            .font(Theme.font(14, weight: .heavy))
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.vertical, 4)
                 } else if isSubmitting {
                     HStack(spacing: 8) {
-                        ProgressView().controlSize(.mini).tint(Theme.canvas)
+                        ProgressView().controlSize(.mini).tint(.white)
                         Text("Checking…")
-                            .font(Theme.font(13, weight: .medium))
+                            .font(Theme.font(14, weight: .heavy))
                             .fixedSize()
                     }
-                    .padding(.horizontal, typeSize.isAccessibilitySize ? 4 : 12)
                 } else if typeSize.isAccessibilitySize {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.right")
@@ -141,19 +134,15 @@ struct GuessComposer: View {
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .font(Theme.font(16, weight: .medium))
+                    .font(Theme.font(17, weight: .heavy))
                 } else {
                     Image(systemName: "arrow.right")
-                        .font(Theme.font(18, weight: .semibold))
+                        .font(.system(size: 20, weight: .black))
                 }
             }
-            .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil, minHeight: 52)
-            .frame(width: typeSize.isAccessibilitySize ? nil : (isSubmitting ? 128 : 52))
-            .foregroundStyle(Theme.canvas)
-            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 12))
-            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .frame(width: typeSize.isAccessibilitySize ? nil : (isSubmitting ? 92 : 16))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ChunkyButtonStyle(variant: .primary, fullWidth: typeSize.isAccessibilitySize))
         .disabled(isSubmitDisabled)
         .accessibilityLabel(isSubmitting ? "Checking your answer" : "Check answer")
         .accessibilityIdentifier(submitAccessibilityIdentifier)
@@ -171,16 +160,15 @@ struct GuessComposer: View {
                                 .fixedSize(horizontal: false, vertical: true)
                             if let detail = action.detail {
                                 Text(detail)
-                                    .font(Theme.font(14, weight: .medium, relativeTo: .caption))
-                                    .foregroundStyle(Theme.secondary)
+                                    .font(Theme.font(14, weight: .bold, relativeTo: .caption))
+                                    .foregroundStyle(.white.opacity(0.88))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                         Spacer(minLength: 0)
                     }
-                    .font(Theme.font(16, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-                    .padding(.horizontal, 12)
+                    .font(Theme.font(17, weight: .heavy))
+                    .multilineTextAlignment(.leading)
                 } else {
                     VStack(spacing: 1) {
                         HStack(spacing: 4) {
@@ -190,32 +178,22 @@ struct GuessComposer: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                         }
-                        .font(Theme.font(12, weight: .semibold))
+                        .font(Theme.font(13, weight: .heavy))
 
                         if let detail = action.detail {
                             Text(detail)
-                                .font(Theme.font(10, weight: .medium))
+                                .font(Theme.font(10, weight: .bold))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
-                                .foregroundStyle(Theme.secondary)
+                                .foregroundStyle(.white.opacity(0.88))
                         }
                     }
-                    .frame(width: 82)
-                    .frame(minHeight: 52)
+                    .frame(width: 58)
+                    .frame(minHeight: 36)
                 }
             }
-            .foregroundStyle(action.isDisabled ? Theme.secondary : Theme.ink)
-            .background(
-                action.isDisabled ? Theme.field : Theme.reward.opacity(0.14),
-                in: RoundedRectangle(cornerRadius: 12)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Theme.reward.opacity(action.isDisabled ? 0.16 : 0.42), lineWidth: 1)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ChunkyButtonStyle(variant: .eve, compact: !typeSize.isAccessibilitySize, fullWidth: typeSize.isAccessibilitySize))
         .disabled(action.isDisabled)
         .accessibilityLabel(action.accessibilityLabel)
         .accessibilityHint(action.accessibilityHint)

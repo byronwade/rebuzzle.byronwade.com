@@ -14,9 +14,10 @@ struct DailyPuzzleTicker: View {
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ready ? "Fresh puzzle ready" : "Next puzzle")
-                                    .font(Theme.font(14, weight: .semibold))
+                                    .font(Theme.font(15, weight: .heavy))
                                 Text(roundComplete ? "Your next puzzle arrives at reset" : "Your round stays safe until then")
-                                    .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                                    .font(Theme.font(13, weight: .medium)).foregroundStyle(Theme.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer(minLength: 4)
                             if ready {
@@ -29,12 +30,9 @@ struct DailyPuzzleTicker: View {
                         }
                     } else {
                         HStack(spacing: 9) {
-                            Image(systemName: ready ? "sparkles" : "hourglass")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(Theme.accent)
-                                .accessibilityHidden(true)
+                            IconTile(systemImage: ready ? "sparkles" : "hourglass", size: 28)
                             Text(ready ? "Fresh puzzle ready" : "Next puzzle")
-                                .font(Theme.font(12, weight: .medium))
+                                .font(Theme.font(13, weight: .heavy))
                                 .foregroundStyle(Theme.secondary)
                             Spacer(minLength: 4)
                             if ready {
@@ -47,7 +45,7 @@ struct DailyPuzzleTicker: View {
                         }
                     }
                 }
-                .padding(.horizontal, 4).padding(.vertical, 2)
+                .padding(.horizontal, 4).padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
                 .accessibilityHint(Text(roundComplete ? "Your next puzzle arrives at reset." : "Your round stays safe until the next puzzle."))
@@ -57,7 +55,8 @@ struct DailyPuzzleTicker: View {
 
     private func countdown(from now: Date, to resetAt: Date, size: CGFloat) -> some View {
         Text(timerInterval: now...resetAt, countsDown: true)
-            .font(Theme.font(size, weight: .semibold, relativeTo: .headline))
+            .font(Theme.display(size + 2, relativeTo: .headline))
+            .foregroundStyle(Theme.accent)
             .monospacedDigit().minimumScaleFactor(0.65).lineLimit(1)
             .accessibilityLabel("Time until the next daily puzzle")
     }

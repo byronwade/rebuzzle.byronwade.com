@@ -51,22 +51,20 @@ private struct DailyResultShareCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "puzzlepiece.extension.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
+                IconTile(systemImage: "puzzlepiece.extension.fill", size: 30)
                 Text("REBUZZLE")
-                    .font(Theme.font(13, weight: .bold))
+                    .font(Theme.font(14, weight: .heavy))
                     .tracking(2.4)
                 Spacer()
                 Image(systemName: "sparkle")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(Theme.reward)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(Theme.gold)
             }
 
             Spacer(minLength: 20)
 
             Text(Self.dateLabel(summary.puzzleDate).uppercased())
-                .font(Theme.font(11, weight: .semibold))
+                .font(Theme.font(11, weight: .heavy))
                 .tracking(1.4)
                 .foregroundStyle(Theme.secondary)
             Text(resultTitle)
@@ -75,70 +73,49 @@ private struct DailyResultShareCard: View {
                 .foregroundStyle(summary.outcome == .solved ? Theme.reward : Theme.ink)
                 .padding(.top, 7)
             Text(summary.headline)
-                .font(Theme.font(16, weight: .medium))
+                .font(Theme.font(16, weight: .bold))
                 .foregroundStyle(Theme.secondary)
                 .padding(.top, 5)
 
-            HStack(spacing: 9) {
-                ForEach(0..<summary.maxAttempts, id: \.self) { index in
-                    let attempted = index < summary.attemptMarks.count
-                    let solved = attempted && summary.attemptMarks[index]
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(solved ? Theme.accent : attempted ? Theme.field : Theme.canvas)
-                        .overlay {
-                            if !solved {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(Theme.secondary.opacity(attempted ? 0.25 : 0.38), lineWidth: 1)
-                            }
-                        }
-                        .overlay {
-                            if solved {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(.white)
-                            } else if attempted {
-                                Image(systemName: "minus")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(Theme.secondary)
-                            }
-                        }
-                        .frame(width: 46, height: 46)
-                }
-            }
-            .padding(.top, 20)
+            GuessSlots(
+                total: summary.maxAttempts,
+                used: summary.attemptMarks.count,
+                solved: summary.attemptMarks.last == true,
+                size: 44
+            )
+            .padding(.top, 18)
             .accessibilityHidden(true)
 
-            Label("\(summary.hintsUsed) \(summary.hintsUsed == 1 ? "hint" : "hints") used", systemImage: "lightbulb")
-                .font(Theme.font(12, weight: .medium))
-                .foregroundStyle(Theme.secondary)
-                .padding(.top, 12)
+            Pill(text: "\(summary.hintsUsed) \(summary.hintsUsed == 1 ? "hint" : "hints") used", systemImage: "lightbulb.fill", tint: Theme.eve)
+                .padding(.top, 14)
 
             Spacer(minLength: 24)
 
             Rectangle()
-                .fill(Theme.secondary.opacity(0.2))
-                .frame(height: 1)
+                .fill(Theme.panelLedge)
+                .frame(height: 2)
             Text("ONE PUZZLE. ONE CONNECTION.")
-                .font(Theme.font(10, weight: .semibold))
+                .font(Theme.font(10, weight: .heavy))
                 .tracking(1.1)
                 .foregroundStyle(Theme.secondary)
-                .padding(.top, 18)
+                .padding(.top, 14)
             Text("Can you find today’s?")
-                .font(Theme.font(18, weight: .semibold))
-                .padding(.top, 5)
+                .font(Theme.display(19, relativeTo: .headline))
+                .padding(.top, 4)
             Text("REBUZZLE.BYRONWADE.COM")
-                .font(Theme.font(10, weight: .medium))
+                .font(Theme.font(10, weight: .heavy))
                 .tracking(0.8)
                 .foregroundStyle(Theme.accent)
                 .padding(.top, 7)
         }
-        .padding(30)
+        .padding(22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .gameCard(padding: 0)
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
         .frame(width: 360, height: 450)
         .background(Theme.canvas)
-        .overlay {
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(Theme.ink.opacity(0.08), lineWidth: 1)
-        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
     }
