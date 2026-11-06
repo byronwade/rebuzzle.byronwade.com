@@ -5,40 +5,30 @@ struct JourneyLevelView: View {
     let progress: JourneyProgress
     @Environment(\.dynamicTypeSize) private var typeSize
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             Eyebrow(text: "YOUR SOLVER’S CLUB")
             let identityLayout = typeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
                 : AnyLayout(HStackLayout(spacing: 16))
             identityLayout {
-                ZStack {
-                    Circle().fill(Theme.accent.opacity(0.10))
-                    Circle().strokeBorder(Theme.accent.opacity(0.24), lineWidth: 1)
-                    Text("\(progress.level)")
-                        .font(Theme.display(36)).monospacedDigit()
-                        .foregroundStyle(Theme.accent)
-                    Image(systemName: "sparkle")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Theme.reward)
-                        .offset(x: 25, y: -25)
-                        .accessibilityHidden(true)
-                }
-                .frame(width: 76, height: 76)
-                .accessibilityHidden(true)
+                levelBadge
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Level \(progress.level)")
-                        .font(Theme.font(13, weight: .semibold, relativeTo: .subheadline))
+                        .font(Theme.font(13, weight: .heavy, relativeTo: .subheadline))
+                        .foregroundStyle(Theme.accent)
                         .accessibilityIdentifier("journeyLevel")
                     Text(progress.title)
-                        .font(Theme.display(typeSize.isAccessibilitySize ? 30 : 26))
+                        .font(Theme.display(typeSize.isAccessibilitySize ? 30 : 28))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            VStack(alignment: .leading, spacing: 9) {
-                ProgressView(value: Double(progress.levelXP), total: 300)
-                    .tint(Theme.accent)
-                    .accessibilityLabel("Level progress")
-                    .accessibilityValue("\(progress.levelXP) of 300 XP")
+            VStack(alignment: .leading, spacing: 10) {
+                ChunkyProgressBar(value: Double(progress.levelXP) / 300, tint: Theme.successFill, height: 16)
+                    .accessibilityRepresentation {
+                        ProgressView(value: Double(progress.levelXP), total: 300)
+                            .accessibilityLabel("Level progress")
+                            .accessibilityValue("\(progress.levelXP) of 300 XP")
+                    }
                 ViewThatFits(in: .horizontal) {
                     HStack {
                         xpLabel
@@ -49,19 +39,49 @@ struct JourneyLevelView: View {
                 }
             }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
+        .gameCard(padding: 20)
+    }
+    private var levelBadge: some View {
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        return Text("\(progress.level)")
+            .font(Theme.display(40))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.4)
+            .padding(8)
+            .frame(width: 82, height: 82)
+            .background(shape.fill(Theme.accentFill))
+            .background(shape.fill(Theme.accentLedge).offset(y: Theme.ledge))
+            .padding(.bottom, Theme.ledge)
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(Theme.onGold)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(Theme.gold))
+                    .background(Circle().fill(Theme.goldLedge).offset(y: 3))
+                    .offset(x: 9, y: -9)
+            }
+            .accessibilityHidden(true)
     }
     private var xpLabel: some View {
-        Text("\(progress.totalXP) XP earned").font(Theme.font(14, weight: .semibold))
-            .accessibilityIdentifier("journeyXP")
+        HStack(spacing: 6) {
+            Image(systemName: "bolt.fill")
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(Theme.reward)
+                .accessibilityHidden(true)
+            Text("\(progress.totalXP) XP earned")
+                .font(Theme.font(15, weight: .heavy))
+                .monospacedDigit()
+                .accessibilityIdentifier("journeyXP")
+        }
     }
     private var nextLevelLabel: some View {
         Text("\(max(0, 300 - progress.levelXP)) to level \(progress.level + 1)")
-            .font(Theme.font(12, relativeTo: .caption)).foregroundStyle(Theme.secondary)
-
+            .font(Theme.font(13, weight: .semibold, relativeTo: .caption))
+            .monospacedDigit()
+            .foregroundStyle(Theme.secondary)
     }
 }
 
@@ -88,10 +108,8 @@ struct ActiveJourneyProgress: View {
                         .font(Theme.font(10, weight: .semibold, relativeTo: .caption))
                         .tracking(0.25)
                         .fixedSize()
-                    ProgressView(value: displayedXP, total: 300)
-                        .tint(Theme.accent)
+                    ChunkyProgressBar(value: displayedXP / 300, tint: Theme.successFill, height: 8)
                         .frame(width: 42)
-                        .accessibilityHidden(true)
                     Text("\(remainingXP) XP to next")
                         .font(Theme.font(10, weight: .medium, relativeTo: .caption))
                         .monospacedDigit()
@@ -178,9 +196,7 @@ struct ActiveJourneyProgress: View {
     }
 
     private var progressBar: some View {
-        ProgressView(value: displayedXP, total: 300)
-            .tint(Theme.accent)
-            .accessibilityHidden(true)
+        ChunkyProgressBar(value: displayedXP / 300, tint: Theme.successFill, height: 10)
     }
 
     private func revealProgress() {
@@ -217,9 +233,10 @@ struct DailyRewardSummary: View {
             rewardLayout {
                 HStack(spacing: 6) {
                     ForEach(0..<3) { index in
-                        Image(systemName: index < stars ? "star.fill" : "star")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(index < stars ? Theme.reward : Theme.secondary.opacity(0.5))
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 24, weight: .black))
+                            .foregroundStyle(index < stars ? Theme.gold : Theme.panelLedge)
+                            .shadow(color: index < stars ? Theme.goldLedge : .clear, radius: 0, x: 0, y: 2)
                             .scaleEffect(index < stars && !appeared && !reduceMotion ? 0.6 : 1)
                             .rotationEffect(.degrees(index < stars && !appeared && !reduceMotion ? -14 : 0))
                             .animation(
@@ -234,7 +251,7 @@ struct DailyRewardSummary: View {
                 if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
 
                 Text("+\(displayedPoints) XP")
-                    .font(Theme.font(typeSize.isAccessibilitySize ? 25 : 20, weight: .semibold, relativeTo: .title3))
+                    .font(Theme.display(typeSize.isAccessibilitySize ? 26 : 22, relativeTo: .title3))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .foregroundStyle(Theme.reward)
@@ -315,19 +332,14 @@ struct JourneyProgressUpdate: View {
         VStack(alignment: .leading, spacing: 12) {
             if let level = newlyEarnedLevel, let progress = confirmedProgress {
                 HStack(spacing: 14) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(Theme.reward)
-                        .frame(width: 48, height: 48)
-                        .background(Theme.reward.opacity(0.14), in: Circle())
-                        .accessibilityHidden(true)
+                    IconTile(systemImage: "arrow.up", face: Theme.gold, ledge: Theme.goldLedge, symbol: Theme.onGold, size: 48)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("LEVEL UP!")
                             .font(Theme.font(10, weight: .bold, relativeTo: .caption))
                             .tracking(1)
                             .foregroundStyle(Theme.reward)
                         Text("Level \(level) · \(progress.title)")
-                            .font(Theme.font(17, weight: .semibold, relativeTo: .headline))
+                            .font(Theme.display(18, relativeTo: .headline))
                             .fixedSize(horizontal: false, vertical: true)
                         Text("A new milestone on your Journey.")
                             .font(Theme.font(12, relativeTo: .caption))
@@ -336,17 +348,7 @@ struct JourneyProgressUpdate: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    LinearGradient(
-                        colors: [Theme.reward.opacity(0.17), Theme.reward.opacity(0.07)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 17)
-                )
-                .overlay(RoundedRectangle(cornerRadius: 17).strokeBorder(Theme.reward.opacity(0.28), lineWidth: 1))
+                .gameCard(padding: 14)
                 .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("journeyLevelUp")
@@ -357,12 +359,7 @@ struct JourneyProgressUpdate: View {
                     Eyebrow(text: newlyEarnedBadges.count == 1 ? "NEW BADGE" : "NEW BADGES")
                     ForEach(newlyEarnedBadges) { badge in
                         HStack(alignment: .center, spacing: 12) {
-                            Image(systemName: badge.symbol)
-                                .font(.system(size: 21, weight: .semibold))
-                                .foregroundStyle(Theme.reward)
-                                .frame(width: 44, height: 44)
-                                .background(Theme.reward.opacity(0.12), in: Circle())
-                                .accessibilityHidden(true)
+                            IconTile(systemImage: badge.symbol, face: Theme.gold, ledge: Theme.goldLedge, symbol: Theme.onGold, size: 44)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(badge.title).font(Theme.font(15, weight: .semibold))
                                 Text(badge.detail).font(Theme.font(12)).foregroundStyle(Theme.secondary)
@@ -376,9 +373,7 @@ struct JourneyProgressUpdate: View {
                         .accessibilityElement(children: .combine)
                     }
                 }
-                .padding(14)
-                .background(Theme.reward.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.reward.opacity(0.22), lineWidth: 1))
+                .gameCard(padding: 14)
                 .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.94, anchor: .leading)))
                 .accessibilityIdentifier("journeyBadgeUnlock")
             }
@@ -410,9 +405,7 @@ struct JourneyProgressUpdate: View {
                                 .foregroundStyle(Theme.secondary)
                                 .lineLimit(1)
                     }
-                        ProgressView(value: Double(progress.levelXP), total: 300)
-                            .tint(Theme.reward)
-                            .accessibilityHidden(true)
+                        ChunkyProgressBar(value: Double(progress.levelXP) / 300, tint: Theme.successFill, height: 12)
                     }
                 }
                 .padding(.top, 4)
@@ -522,21 +515,7 @@ struct DailyStreakCard: View {
                 milestoneFooter
             }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(Theme.reward.opacity(isMilestone ? 0.48 : 0.24), lineWidth: 1)
-        }
-        .overlay(alignment: .topTrailing) {
-            Circle()
-                .fill(Theme.reward.opacity(0.08))
-                .frame(width: 96, height: 96)
-                .blur(radius: 20)
-                .offset(x: 16, y: -18)
-                .accessibilityHidden(true)
-        }
+        .gameCard(padding: 20)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
         .accessibilityIdentifier(identifier)
@@ -555,17 +534,11 @@ struct DailyStreakCard: View {
                         .tracking(1.1)
                         .foregroundStyle(Theme.secondary)
                     if isMilestone {
-                        Text("MILESTONE")
-                            .font(Theme.font(9, weight: .bold, relativeTo: .caption2))
-                            .tracking(0.7)
-                            .foregroundStyle(Theme.reward)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Theme.reward.opacity(0.12), in: Capsule())
+                        Pill(text: "MILESTONE", systemImage: "sparkle", tint: Theme.reward)
                     }
                 }
                 Text(headline)
-                    .font(Theme.font(19, weight: .semibold, relativeTo: .title3))
+                    .font(Theme.display(20, relativeTo: .title3))
                     .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(Theme.font(14, relativeTo: .body))
@@ -578,33 +551,28 @@ struct DailyStreakCard: View {
 
     private var medallion: some View {
         ZStack {
-            Circle().stroke(Theme.reward.opacity(0.16), lineWidth: 5)
+            Circle().fill(Theme.goldLedge).offset(y: Theme.ledge)
+            Circle().fill(Theme.gold)
             Circle()
                 .trim(from: 0, to: ringProgress)
-                .stroke(Theme.reward, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .stroke(Theme.goldLedge, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            VStack(spacing: -3) {
+                .padding(4)
+            VStack(spacing: -2) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(Color(hex: 0xE8590C))
                 Text(currentCountText)
-                    .font(Theme.display(29))
+                    .font(Theme.display(26))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                    .foregroundStyle(Theme.ink)
-                if let current = presentation.current, !dynamicTypeSize.isAccessibilitySize {
-                    Text(current == 1 ? "DAY" : "DAYS")
-                        .font(Theme.font(8, weight: .bold, relativeTo: .caption2))
-                        .tracking(0.7)
-                        .foregroundStyle(Theme.secondary)
-                }
+                    .foregroundStyle(Theme.onGold)
             }
-            .padding(7)
-            Image(systemName: isMilestone ? "sparkle" : "circle.fill")
-                .font(.system(size: isMilestone ? 12 : 5, weight: .bold))
-                .foregroundStyle(Theme.reward)
-                .offset(x: 27, y: -25)
-                .accessibilityHidden(true)
+            .padding(10)
         }
-        .frame(width: 68, height: 68)
+        .frame(width: 80, height: 80)
+        .padding(.bottom, Theme.ledge)
         .accessibilityHidden(true)
     }
 
@@ -620,7 +588,7 @@ struct DailyStreakCard: View {
                         .tracking(0.8)
                         .foregroundStyle(Theme.secondary)
                     Text(dayCount(best))
-                        .font(Theme.font(17, weight: .semibold, relativeTo: .headline))
+                        .font(Theme.display(18, relativeTo: .headline))
                         .monospacedDigit()
                         .accessibilityHidden(true)
                 }
@@ -639,16 +607,14 @@ struct DailyStreakCard: View {
                             .monospacedDigit()
                             .foregroundStyle(Theme.reward)
                     }
-                    ProgressView(value: Double(current), total: Double(target))
-                        .tint(Theme.reward)
-                        .accessibilityHidden(true)
+                    ChunkyProgressBar(value: Double(current) / Double(max(1, target)), tint: Theme.gold, height: 12)
                 }
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding(.top, 2)
+        .padding(.top, 14)
         .overlay(alignment: .top) {
-            Rectangle().fill(Theme.secondary.opacity(0.16)).frame(height: 1)
+            Capsule().fill(Theme.panelLedge).frame(height: 2)
         }
     }
 

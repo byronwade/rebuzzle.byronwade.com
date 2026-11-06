@@ -22,10 +22,13 @@ struct ArcadeHomeButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "house.fill")
-                .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(Theme.ink)
-                .frame(width: 44, height: 44)
-                .background(Theme.field.opacity(0.72), in: RoundedRectangle(cornerRadius: 14))
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 44, height: 40)
+                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.panel))
+                .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(Theme.panelLedge, lineWidth: 2))
+                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.panelLedge).offset(y: 4))
+                .padding(.bottom, 4)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -47,7 +50,7 @@ struct AppScreenHeader: View {
             ArcadeHomeButton(action: onOpenMenu)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(Theme.font(16, weight: .semibold))
+                    .font(Theme.display(19, relativeTo: .headline))
                     .foregroundStyle(Theme.ink)
                 if let subtitle {
                     Text(subtitle.uppercased())

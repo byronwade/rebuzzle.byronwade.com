@@ -19,24 +19,26 @@ struct ArchiveView: View {
                 Text("Past daily puzzles, ready for a fresh solve.")
                     .font(Theme.font(15)).foregroundStyle(Theme.secondary)
             }
-            Label("Unscored practice", systemImage: "sparkles")
-                .font(Theme.font(14, weight: .medium)).foregroundStyle(Theme.reward)
-            Text("Replay a puzzle with three fresh guesses and progressive hints. Your daily result, streak, and rewards stay as they are.")
-                .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 10) {
+                Pill(text: "Unscored practice", systemImage: "sparkles", tint: Theme.reward)
+                Text("Replay a puzzle with three fresh guesses and progressive hints. Your daily result, streak, and rewards stay as they are.")
+                    .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+            }
 
             if !model.purchases.hasPlus {
                 VStack(alignment: .leading, spacing: 14) {
-                    Image(systemName: "lock.open")
-                        .font(.system(size: 28, weight: .light)).foregroundStyle(Theme.reward)
+                    IconTile(systemImage: "lock.fill", face: Theme.gold, ledge: Theme.goldLedge, symbol: Theme.onGold, size: 50)
                     Text("A little more to explore")
-                        .font(Theme.font(20, weight: .medium))
+                        .font(Theme.display(22, relativeTo: .title2))
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("The puzzle archive is part of Rebuzzle Plus. Unlock it from the Plus page to revisit past dailies.")
                         .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     NavigationLink { PlusView() } label: {
-                        Text("Explore Rebuzzle Plus").padding(.horizontal, 16).padding(.vertical, 8)
-                    }.buttonStyle(CommitStyle())
-                }.frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+                        Text("Explore Rebuzzle Plus")
+                    }.buttonStyle(ChunkyButtonStyle(variant: .reward))
+                }
+                    .gameCard(padding: 20)
             } else if loading && puzzles.isEmpty {
                 ProgressView("Finding past puzzles…")
                     .frame(maxWidth: .infinity, minHeight: 140)
@@ -51,7 +53,7 @@ struct ArchiveView: View {
                 ContentUnavailableView("The archive is warming up", systemImage: "calendar", description: Text("There aren’t any earlier daily puzzles to replay yet."))
                     .accessibilityIdentifier("archiveEmpty")
             } else {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 12) {
                     ForEach(puzzles) { puzzle in
                         NavigationLink {
                             PracticeGameView(puzzle: puzzle, api: model.api, storage: model.storage, accountID: model.player?.id ?? "")
@@ -66,11 +68,12 @@ struct ArchiveView: View {
                             Task { await load(reset: false) }
                         } label: {
                             HStack(spacing: 10) {
-                                if loading { ProgressView().tint(Theme.canvas) }
+                                if loading { ProgressView().tint(Theme.ink) }
                                 Text(loading ? "Loading more puzzles…" : "Load more puzzles")
                             }
                         }
-                        .buttonStyle(CommitStyle()).disabled(loading)
+                        .buttonStyle(ChunkyButtonStyle(variant: .secondary)).disabled(loading)
+                        .padding(.top, 4)
                         .accessibilityIdentifier("loadMoreArchive")
                     }
                 }
@@ -92,27 +95,38 @@ struct ArchiveView: View {
     }
 
     private func archiveRow(_ puzzle: Puzzle) -> some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(puzzle.date ?? "Past daily")
-                    .font(Theme.font(12, weight: .medium)).foregroundStyle(Theme.secondary)
-                Text(puzzle.typeName)
-                    .font(Theme.font(18, weight: .medium)).foregroundStyle(Theme.ink)
-                Text("Difficulty \(puzzle.difficulty) of 10 · Three fresh guesses")
-                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+        HStack(spacing: 13) {
+            IconTile(systemImage: "puzzlepiece.fill", face: Theme.accentFill, ledge: Theme.accentLedge, size: 44)
+            VStack(alignment: .leading, spacing: 6) {
+                Text((puzzle.date ?? "Past daily").uppercased())
+                    .font(Theme.font(11, weight: .heavy, relativeTo: .caption)).tracking(0.6)
+                    .foregroundStyle(Theme.secondary)
+                Text(puzzle.typeName.capitalized)
+                    .font(Theme.font(17, weight: .heavy)).foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) { archivePills(puzzle) }
+                    VStack(alignment: .leading, spacing: 6) { archivePills(puzzle) }
+                }
             }
             Spacer(minLength: 4)
-            Image(systemName: "arrow.up.right")
-                .font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.accent)
-                .frame(width: 44, height: 44)
-                .background(Theme.accent.opacity(0.08), in: Circle())
+            Image(systemName: "play.fill")
+                .font(.system(size: 14, weight: .heavy)).foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(Theme.successFill))
+                .background(Circle().fill(Theme.successLedge).offset(y: 3))
+                .padding(.bottom, 3)
+                .accessibilityHidden(true)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.secondary.opacity(0.16), lineWidth: 1))
+        .gameCard(padding: 14)
+        .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(puzzle.date ?? "Past daily"), \(puzzle.typeName), difficulty \(puzzle.difficulty) of 10. Unscored practice.")
+    }
+
+    @ViewBuilder private func archivePills(_ puzzle: Puzzle) -> some View {
+        Pill(text: "Difficulty \(puzzle.difficulty)/10", systemImage: "dial.medium.fill", tint: Theme.eve)
+        Pill(text: "3 fresh guesses", systemImage: "sparkles", tint: Theme.success)
     }
 
     @MainActor private func load(reset: Bool) async {
