@@ -169,6 +169,8 @@ struct ArcadeHomeView: View {
             }
         }
         .gameCard(padding: 18)
+        // Keep the card a container so its Play button keeps its own identifier.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dailyChallengeCard")
     }
 

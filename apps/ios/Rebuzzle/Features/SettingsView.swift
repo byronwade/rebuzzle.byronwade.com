@@ -38,7 +38,7 @@ struct SettingsView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            AppScreenHeader(title: "Profile", onOpenMenu: onOpenMenu)
+            AppScreenHeader(title: "You", onOpenMenu: onOpenMenu)
         }
         .toolbar(.hidden, for: .navigationBar)
         .task { liveActivitiesAvailable = DailyLiveActivityStore.shared.activitiesAreEnabled }

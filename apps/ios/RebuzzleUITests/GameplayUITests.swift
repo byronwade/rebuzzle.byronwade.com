@@ -27,6 +27,9 @@ import StoreKitTest
         app = XCUIApplication()
         app.launchArguments = ["--ui-fixture", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extraArguments
         app.launch()
+        // The app opens on the Arcade hub; the daily round is one tap away.
+        let play = app.buttons["playDailyPuzzle"]
+        if play.waitForExistence(timeout: 15) { play.tap() }
         XCTAssertTrue(app.buttons["checkAnswer"].waitForExistence(timeout: 15))
     }
 
@@ -63,7 +66,7 @@ import StoreKitTest
         capture("Study puzzle")
         app.buttons["closeStudyPuzzle"].tap()
         XCTAssertEqual(field.value as? String, "sun")
-        XCTAssertTrue(app.staticTexts["3 guesses remaining"].exists)
+        XCTAssertTrue(app.staticTexts["3 guesses left"].exists)
         XCTAssertFalse(app.staticTexts["guessFeedback"].exists)
     }
 
@@ -120,7 +123,7 @@ import StoreKitTest
         XCTAssertTrue(submitFromKeyboard.waitForExistence(timeout: 5))
         XCTAssertTrue(submitFromKeyboard.isHittable)
         submitFromKeyboard.tap()
-        XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["2 guesses left"].waitForExistence(timeout: 5))
     }
 
     func testWrongGuessThenWin() {
@@ -132,7 +135,7 @@ import StoreKitTest
         }
         capture("Today — ready")
         submit("sunshine")
-        XCTAssertTrue(app.staticTexts["2 guesses remaining"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["2 guesses left"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["lighthouse"].firstMatch.exists)
         XCTAssertTrue(app.staticTexts["guessFeedback"].exists)
         XCTAssertTrue(app.staticTexts["A fresh angle might help."].exists)
@@ -289,7 +292,7 @@ import StoreKitTest
         XCTAssertTrue(note.waitForExistence(timeout: 5))
         XCTAssertEqual(note.value as? String, "Light and house made the connection click.")
         capture("Plus — purchased journal and note")
-        selectTab("Progress")
+        selectTab("Journey")
         let insights = app.staticTexts["How you find the answer"]
         reveal(insights)
         XCTAssertTrue(insights.exists)
@@ -299,7 +302,7 @@ import StoreKitTest
         // Gameplay fixture intentionally starts fresh storage each launch; StoreKit ownership must survive.
         app.terminate()
         launchFixture()
-        selectTab("Profile")
+        selectTab("You")
         let plus = app.buttons["openPlusFromProfile"]
         reveal(plus)
         plus.tap()
@@ -365,10 +368,11 @@ import StoreKitTest
 
     private func revealTopWithinViewport(_ element: XCUIElement, below navigationBar: XCUIElement) {
         let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(navigationBar.waitForExistence(timeout: 5))
+        // Game screens hide the navigation bar; fall back to the safe-area top.
+        let topLimit = navigationBar.waitForExistence(timeout: 2) ? navigationBar.frame.maxY : app.windows.firstMatch.frame.minY + 120
         XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
         for _ in 0..<8 {
-            if element.frame.minY < navigationBar.frame.maxY {
+            if element.frame.minY < topLimit {
                 app.swipeDown()
             } else if element.frame.minY >= tabBar.frame.minY {
                 app.swipeUp()
@@ -376,7 +380,7 @@ import StoreKitTest
                 break
             }
         }
-        XCTAssertGreaterThanOrEqual(element.frame.minY, navigationBar.frame.maxY,
+        XCTAssertGreaterThanOrEqual(element.frame.minY, topLimit,
                                     "The card should begin below the navigation bar")
         XCTAssertLessThan(element.frame.minY, tabBar.frame.minY,
                           "The card should begin within the visible scroll area")
@@ -399,7 +403,7 @@ import StoreKitTest
 
     func testArchiveEntryStaysLockedUntilPlusIsVerified() {
         launchFixture()
-        selectTab("Profile")
+        selectTab("You")
         let plus = app.buttons["openPlusFromProfile"]
         reveal(plus)
         plus.tap()
@@ -411,7 +415,7 @@ import StoreKitTest
 
     func testPlusArchivePracticeIsUnscoredHintedAndAnswerBlindUntilSolvedOrRevealed() throws {
         launchFixture()
-        selectTab("Profile")
+        selectTab("You")
         let plus = app.buttons["openPlusFromProfile"]
         reveal(plus)
         plus.tap()
@@ -493,7 +497,7 @@ import StoreKitTest
         XCTAssertEqual(app.staticTexts["practiceAttemptsRemaining"].label, "3 left")
 
         selectTab("Play")
-        XCTAssertTrue(app.staticTexts["3 guesses remaining"].waitForExistence(timeout: 5), "Archive practice must leave today's guesses untouched")
+        XCTAssertTrue(app.staticTexts["3 guesses left"].waitForExistence(timeout: 5), "Archive practice must leave today's guesses untouched")
         capture("Plus archive — unscored practice")
     }
 
@@ -567,7 +571,7 @@ import StoreKitTest
         XCTAssertTrue(journeyStreak.waitForExistence(timeout: 5))
         XCTAssertLessThan(journeyStreak.frame.minY, app.staticTexts["journeyXP"].frame.minY,
                           "The streak should lead the Journey progress summary")
-        let journeyNavigationBar = app.navigationBars["Progress"]
+        let journeyNavigationBar = app.navigationBars["Journey"]
         revealTopWithinViewport(journeyStreak, below: journeyNavigationBar)
         XCTAssertTrue(journeyStreak.isHittable)
         XCTAssertTrue(journeyStreak.label.contains("Current streak: 1 day"))
@@ -604,7 +608,7 @@ import StoreKitTest
 
     func testRewardJourneyNavigationPreservesCompletedGame() {
         launchFixture()
-        selectTab("Progress")
+        selectTab("Journey")
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("0 XP"))
         selectTab("Play")
@@ -639,7 +643,7 @@ import StoreKitTest
         capture("Journey — journal link clear of navigation chrome")
         journal.tap()
         XCTAssertTrue(app.staticTexts["Keep the moments when it clicked."].waitForExistence(timeout: 5))
-        selectTab("Profile")
+        selectTab("You")
         XCTAssertTrue(app.staticTexts["Appearance"].waitForExistence(timeout: 5))
         selectTab("Play")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
@@ -647,7 +651,7 @@ import StoreKitTest
 
     func testTabNavigation() {
         launchFixture()
-        for (tab, heading) in [("Progress", "Curious mind"), ("Profile", "Appearance")] {
+        for (tab, heading) in [("Journey", "Curious mind"), ("You", "Appearance")] {
             selectTab(tab)
             XCTAssertTrue(app.staticTexts[heading].waitForExistence(timeout: 5))
             capture(tab)
