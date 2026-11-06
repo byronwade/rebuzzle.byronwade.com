@@ -1542,11 +1542,13 @@ private struct RewardStage: View {
 /// A short, dependency-free confetti burst drawn with Canvas. It runs about two seconds.
 private struct ConfettiBurst: View {
     @State private var start = Date()
+    @State private var finished = false
     private static let colors: [Color] = [Theme.gold, Theme.accentFill, Theme.successFill, Theme.errorFill, Theme.eveFill]
     private static let duration: Double = 2.0
 
     var body: some View {
-        TimelineView(.animation) { context in
+        // Pause the timeline once the burst is over so the screen can go idle.
+        TimelineView(.animation(minimumInterval: nil, paused: finished)) { context in
             let elapsed = context.date.timeIntervalSince(start)
             Canvas { canvas, size in
                 guard elapsed < Self.duration else { return }
@@ -1570,6 +1572,10 @@ private struct ConfettiBurst: View {
                     piece.fill(Path(roundedRect: rect, cornerRadius: 1.5), with: .color(Self.colors[index % Self.colors.count]))
                 }
             }
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(Self.duration + 0.1))
+            finished = true
         }
     }
 
