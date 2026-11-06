@@ -348,7 +348,9 @@ struct JourneyProgressUpdate: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .gameCard(padding: 14)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.field, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("journeyLevelUp")
@@ -373,7 +375,9 @@ struct JourneyProgressUpdate: View {
                         .accessibilityElement(children: .combine)
                     }
                 }
-                .gameCard(padding: 14)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.field, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.94, anchor: .leading)))
                 .accessibilityIdentifier("journeyBadgeUnlock")
             }
