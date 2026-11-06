@@ -1,4 +1,5 @@
 import XCTest
+import Vision
 import StoreKitTest
 
 @MainActor final class GameplayUITests: XCTestCase {
@@ -153,13 +154,13 @@ import StoreKitTest
         XCTAssertTrue(streakCard.label.contains("2 days left to the 3-day mark"))
         let earnedXP = app.staticTexts["earnedXP"]
         XCTAssertTrue(earnedXP.exists)
-        XCTAssertLessThan(streakCard.frame.minY, earnedXP.frame.minY,
-                          "The new streak reward should follow the solve before the XP summary")
+        XCTAssertLessThan(earnedXP.frame.minY, streakCard.frame.minY,
+                          "The solve and its XP reward should land before the streak recap")
         let resultNavigationBar = app.navigationBars["Rebuzzle"]
         let resultTabBar = app.tabBars.firstMatch
         XCTAssertGreaterThanOrEqual(streakCard.frame.minY, resultNavigationBar.frame.maxY)
-        XCTAssertLessThan(streakCard.frame.minY, resultTabBar.frame.minY,
-                          "The streak reward should appear in the initial solve viewport")
+        XCTAssertLessThan(earnedXP.frame.minY, resultTabBar.frame.minY,
+                          "The solve and XP reward should appear in the initial result viewport")
         capture("Today — solved")
         let journal = app.buttons["keepConnection"]
         for _ in 0..<6 where !journal.isHittable { app.swipeUp() }
@@ -168,6 +169,52 @@ import StoreKitTest
         XCTAssertTrue(app.staticTexts["Keep the moments when it clicked."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Explore Rebuzzle Plus"].exists)
         capture("Journal — from result")
+    }
+
+    func testCompletedResultOpensNativeShareSheet() throws {
+        launchFixture()
+        submit("lighthouse")
+
+        let share = app.buttons["shareDailyResult"]
+        XCTAssertTrue(share.waitForExistence(timeout: 10), "A completed daily should offer the spoiler-free share card")
+        reveal(share)
+        XCTAssertTrue(share.isHittable)
+        share.tap()
+
+        var screenshot = app.screenshot()
+        var visibleText = ""
+        let deadline = Date().addingTimeInterval(8)
+        repeat {
+            guard let cgImage = screenshot.image.cgImage else {
+                XCTFail("The native share sheet screenshot should contain a CGImage")
+                return
+            }
+            let request = VNRecognizeTextRequest()
+            request.recognitionLevel = .accurate
+            try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
+            visibleText = request.results?.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n") ?? ""
+            if visibleText.contains("Copy") { break }
+            Thread.sleep(forTimeInterval: 0.25)
+            screenshot = app.screenshot()
+        } while Date() < deadline
+        XCTAssertTrue(visibleText.contains("Copy"), "The native share sheet should show its Copy action. Visible text: \(visibleText)")
+
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "Completed result — native share sheet"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testAccessibleCompletedResultKeepsShareInvitationDiscoverable() {
+        launchFixture(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        submit("lighthouse")
+
+        let share = app.buttons["shareDailyResult"]
+        XCTAssertTrue(share.waitForExistence(timeout: 10))
+        XCTAssertEqual(share.label, "Challenge a friend with today's result")
+        XCTAssertGreaterThanOrEqual(share.frame.height, 44)
+        reveal(share)
+        XCTAssertTrue(share.isHittable, "The share invitation should remain reachable with accessibility-size text")
     }
 
     func testCountdownAndReminderDiscovery() { verifyCountdownAndReminders() }
@@ -242,7 +289,7 @@ import StoreKitTest
         XCTAssertTrue(note.waitForExistence(timeout: 5))
         XCTAssertEqual(note.value as? String, "Light and house made the connection click.")
         capture("Plus — purchased journal and note")
-        selectTab("Journey")
+        selectTab("Progress")
         let insights = app.staticTexts["How you find the answer"]
         reveal(insights)
         XCTAssertTrue(insights.exists)
@@ -252,12 +299,12 @@ import StoreKitTest
         // Gameplay fixture intentionally starts fresh storage each launch; StoreKit ownership must survive.
         app.terminate()
         launchFixture()
-        selectTab("You")
-        let plus = app.buttons["Rebuzzle Plus"]
+        selectTab("Profile")
+        let plus = app.buttons["openPlusFromProfile"]
         reveal(plus)
         plus.tap()
         XCTAssertTrue(app.staticTexts["You have Rebuzzle Plus"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch.exists)
+        XCTAssertFalse(app.buttons["Get Rebuzzle Plus"].exists)
         let restore = app.buttons["Restore purchases"]
         reveal(restore)
         restore.tap()
@@ -293,7 +340,7 @@ import StoreKitTest
         let explore = app.buttons["Explore Rebuzzle Plus"]
         reveal(explore)
         explore.tap()
-        let unlock = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch
+        let unlock = app.buttons["Get Rebuzzle Plus"]
         XCTAssertTrue(unlock.waitForExistence(timeout: 15), "Real StoreKit product must load")
         reveal(unlock)
         unlock.tap()
@@ -352,8 +399,8 @@ import StoreKitTest
 
     func testArchiveEntryStaysLockedUntilPlusIsVerified() {
         launchFixture()
-        selectTab("You")
-        let plus = app.buttons["Rebuzzle Plus"]
+        selectTab("Profile")
+        let plus = app.buttons["openPlusFromProfile"]
         reveal(plus)
         plus.tap()
 
@@ -364,11 +411,11 @@ import StoreKitTest
 
     func testPlusArchivePracticeIsUnscoredHintedAndAnswerBlindUntilSolvedOrRevealed() throws {
         launchFixture()
-        selectTab("You")
-        let plus = app.buttons["Rebuzzle Plus"]
+        selectTab("Profile")
+        let plus = app.buttons["openPlusFromProfile"]
         reveal(plus)
         plus.tap()
-        let unlock = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Unlock Plus")).firstMatch
+        let unlock = app.buttons["Get Rebuzzle Plus"]
         XCTAssertTrue(unlock.waitForExistence(timeout: 15))
         reveal(unlock)
         unlock.tap()
@@ -520,7 +567,7 @@ import StoreKitTest
         XCTAssertTrue(journeyStreak.waitForExistence(timeout: 5))
         XCTAssertLessThan(journeyStreak.frame.minY, app.staticTexts["journeyXP"].frame.minY,
                           "The streak should lead the Journey progress summary")
-        let journeyNavigationBar = app.navigationBars["Journey"]
+        let journeyNavigationBar = app.navigationBars["Progress"]
         revealTopWithinViewport(journeyStreak, below: journeyNavigationBar)
         XCTAssertTrue(journeyStreak.isHittable)
         XCTAssertTrue(journeyStreak.label.contains("Current streak: 1 day"))
@@ -557,7 +604,7 @@ import StoreKitTest
 
     func testRewardJourneyNavigationPreservesCompletedGame() {
         launchFixture()
-        selectTab("Journey")
+        selectTab("Progress")
         XCTAssertTrue(app.staticTexts["journeyXP"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["journeyXP"].label.contains("0 XP"))
         selectTab("Play")
@@ -592,7 +639,7 @@ import StoreKitTest
         capture("Journey — journal link clear of navigation chrome")
         journal.tap()
         XCTAssertTrue(app.staticTexts["Keep the moments when it clicked."].waitForExistence(timeout: 5))
-        selectTab("You")
+        selectTab("Profile")
         XCTAssertTrue(app.staticTexts["Appearance"].waitForExistence(timeout: 5))
         selectTab("Play")
         XCTAssertTrue(app.staticTexts["You found it."].waitForExistence(timeout: 5))
@@ -600,7 +647,7 @@ import StoreKitTest
 
     func testTabNavigation() {
         launchFixture()
-        for (tab, heading) in [("Journey", "Curious mind"), ("You", "Appearance")] {
+        for (tab, heading) in [("Progress", "Curious mind"), ("Profile", "Appearance")] {
             selectTab(tab)
             XCTAssertTrue(app.staticTexts[heading].waitForExistence(timeout: 5))
             capture(tab)

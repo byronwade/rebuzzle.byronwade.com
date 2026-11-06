@@ -5,11 +5,14 @@ import RebuzzleCore
 struct VisualBoard: View {
     let visual: PuzzleVisual
     let layers: [VisualLayer]
+    var compactForReveal = false
+    private var spatialLayout: Bool { visual.layout == "free" || visual.layout == "overlay" }
+    private var layerSpacing: CGFloat { compactForReveal ? 8 : 12 }
     var body: some View {
         Group {
             switch visual.layout {
-            case "stack": VStack(spacing: 12) { layerViews }
-            case "grid": LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) { layerViews }
+            case "stack": VStack(spacing: layerSpacing) { layerViews }
+            case "grid": LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: layerSpacing) { layerViews }
             case "overlay", "free":
                 GeometryReader { geometry in
                     ForEach(Array(layers.enumerated()), id: \.offset) { _, layer in
@@ -17,9 +20,11 @@ struct VisualBoard: View {
                             .position(x: geometry.size.width * min(100, max(0, layer.x ?? 50)) / 100, y: geometry.size.height * min(100, max(0, layer.y ?? 50)) / 100)
                     }
                 }.frame(height: 220)
-            default: HStack(spacing: 12) { layerViews }
+            default: HStack(spacing: layerSpacing) { layerViews }
             }
-        }.frame(maxWidth: .infinity, minHeight: 190).padding(.vertical, 12)
+        }
+        .frame(maxWidth: .infinity, minHeight: compactForReveal && !spatialLayout ? 116 : 190)
+        .padding(.vertical, compactForReveal && !spatialLayout ? 4 : 12)
     }
     private var layerViews: some View {
         ForEach(Array(layers.enumerated()), id: \.offset) { _, layer in VisualLayerView(layer: layer).frame(maxWidth: .infinity) }
@@ -27,14 +32,17 @@ struct VisualBoard: View {
 }
 struct VisualLayerView: View {
     let layer: VisualLayer
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var renderedSVGKey: String?
+
     var body: some View {
         Group {
             if layer.kind == "pictogram" {
                 switch PictogramContent.resolve(svg: layer.svg, fallback: layer.emojiFallback ?? "Picture clue unavailable") {
                 case .svg(let source):
-                    SVGVectorView(source: source).frame(minHeight: 90).accessibilityLabel(layer.emojiFallback ?? "Picture clue")
+                    svgPictogram(source: source, fallback: layer.emojiFallback ?? "Picture clue")
                 case .fallback(let text):
-                    Text(text).font(Theme.font(34, weight: .medium, relativeTo: .title))
+                    Text(text).font(pictogramFallbackFont).fixedSize(horizontal: false, vertical: true)
                 }
             } else if layer.kind == "image", let src = layer.src, let url = approvedImage(src) {
                 AsyncImage(url: url) { phase in
@@ -52,6 +60,35 @@ struct VisualLayerView: View {
             }
         }
     }
+
+    private func svgPictogram(source: String, fallback: String) -> some View {
+        let appearanceKey = colorScheme == .dark ? "dark" : "light"
+        let renderKey = "\(appearanceKey):\(source)"
+
+        return ZStack {
+            if renderedSVGKey != renderKey {
+                Text(fallback)
+                    .font(pictogramFallbackFont)
+                    .frame(maxWidth: .infinity, minHeight: 90)
+                    .accessibilityHidden(true)
+            }
+            SVGVectorView(source: source) {
+                renderedSVGKey = renderKey
+            }
+            .frame(minHeight: 90)
+            .opacity(renderedSVGKey == renderKey ? 1 : 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 90)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(fallback)
+    }
+
+    private var pictogramFallbackFont: Font {
+        layer.emojiFallback == nil
+            ? Theme.font(34, weight: .medium, relativeTo: .title)
+            : .system(size: 48)
+    }
+
     private var textSize: CGFloat {
         switch layer.emphasis { case "tiny": 12; case "small": 20; case "large": 48; default: layer.kind == "operator" ? 24 : 34 }
     }
@@ -64,6 +101,7 @@ struct VisualLayerView: View {
 // XML is reconstructed from a geometry-only allowlist before reaching the renderer.
 struct SVGVectorView: UIViewRepresentable {
     let source: String
+    let onReady: () -> Void
     @Environment(\.colorScheme) private var scheme
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -72,18 +110,34 @@ struct SVGVectorView: UIViewRepresentable {
         let view = WKWebView(frame: .zero, configuration: config)
         view.isOpaque = false; view.backgroundColor = .clear
         view.scrollView.isScrollEnabled = false; view.isUserInteractionEnabled = false
+        view.navigationDelegate = context.coordinator
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {
+        context.coordinator.onReady = onReady
         let safe = SVGGeometry.sanitize(source)
         let color = scheme == .dark ? "#f7f4ed" : "#202020"
         let key = safe + color
         guard context.coordinator.last != key else { return }
         context.coordinator.last = key
-        view.loadHTMLString("<html lang='en'><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\"><style>html,body{margin:0;width:100%;height:100%;background:transparent;color:\(color)}svg{display:block;width:100%;height:100%;color:inherit}</style></head><body>\(safe)</body></html>", baseURL: nil)
+        context.coordinator.pendingNavigation = view.loadHTMLString("<html lang='en'><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\"><style>html,body{margin:0;width:100%;height:100%;background:transparent;color:\(color)}svg{display:block;width:100%;height:100%;color:inherit}</style></head><body>\(safe)</body></html>", baseURL: nil)
     }
-    func makeCoordinator() -> Coordinator { Coordinator() }
-    final class Coordinator { var last = "" }
+    func makeCoordinator() -> Coordinator { Coordinator(onReady: onReady) }
+    @MainActor final class Coordinator: NSObject, WKNavigationDelegate {
+        var last = ""
+        var onReady: () -> Void
+        var pendingNavigation: WKNavigation?
+
+        init(onReady: @escaping () -> Void) {
+            self.onReady = onReady
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard let pendingNavigation, navigation === pendingNavigation else { return }
+            self.pendingNavigation = nil
+            onReady()
+        }
+    }
 }
 enum PictogramContent: Equatable {
     case svg(String)

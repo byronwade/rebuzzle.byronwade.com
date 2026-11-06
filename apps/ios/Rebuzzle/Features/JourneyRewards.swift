@@ -7,51 +7,214 @@ struct JourneyLevelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Eyebrow(text: "YOUR SOLVER’S CLUB")
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("\(progress.level)")
-                    .font(Theme.display(typeSize.isAccessibilitySize ? 48 : 72)).monospacedDigit()
-                    .foregroundStyle(Theme.accent).accessibilityHidden(true)
+            let identityLayout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 16))
+            identityLayout {
+                ZStack {
+                    Circle().fill(Theme.accent.opacity(0.10))
+                    Circle().strokeBorder(Theme.accent.opacity(0.24), lineWidth: 1)
+                    Text("\(progress.level)")
+                        .font(Theme.display(36)).monospacedDigit()
+                        .foregroundStyle(Theme.accent)
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.reward)
+                        .offset(x: 25, y: -25)
+                        .accessibilityHidden(true)
+                }
+                .frame(width: 76, height: 76)
+                .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Level \(progress.level)").font(Theme.font(13, weight: .semibold))
+                    Text("Level \(progress.level)")
+                        .font(Theme.font(13, weight: .semibold, relativeTo: .subheadline))
                         .accessibilityIdentifier("journeyLevel")
-                    Text(progress.title).font(Theme.display(26)).fixedSize(horizontal: false, vertical: true)
+                    Text(progress.title)
+                        .font(Theme.display(typeSize.isAccessibilitySize ? 30 : 26))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            ProgressView(value: Double(progress.levelXP), total: 300)
-                .tint(Theme.accent)
-                .accessibilityLabel("Level progress")
-                .accessibilityValue("\(progress.levelXP) of 300 XP")
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    xpLabel
-                    Spacer(minLength: 12)
-                    nextLevelLabel
+            VStack(alignment: .leading, spacing: 9) {
+                ProgressView(value: Double(progress.levelXP), total: 300)
+                    .tint(Theme.accent)
+                    .accessibilityLabel("Level progress")
+                    .accessibilityValue("\(progress.levelXP) of 300 XP")
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        xpLabel
+                        Spacer(minLength: 12)
+                        nextLevelLabel
+                    }
+                    VStack(alignment: .leading, spacing: 5) { xpLabel; nextLevelLabel }
                 }
-                VStack(alignment: .leading, spacing: 6) { xpLabel; nextLevelLabel }
             }
-        }.padding(.vertical, 8)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.accent.opacity(0.16), lineWidth: 1))
     }
     private var xpLabel: some View {
         Text("\(progress.totalXP) XP earned").font(Theme.font(14, weight: .semibold))
             .accessibilityIdentifier("journeyXP")
     }
     private var nextLevelLabel: some View {
-        Text("\(300 - progress.levelXP) to level \(progress.level + 1)")
-            .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+        Text("\(max(0, 300 - progress.levelXP)) to level \(progress.level + 1)")
+            .font(Theme.font(12, relativeTo: .caption)).foregroundStyle(Theme.secondary)
 
     }
 }
 
-struct JourneyRewards: View {
+/// A compact, server-confirmed progression cue for the active daily round.
+struct ActiveJourneyProgress: View {
+    let progress: JourneyProgress
+    var compact = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var displayedXP = 0.0
+
+    private var levelXP: Int { min(300, max(0, progress.levelXP)) }
+    private var remainingXP: Int { 300 - levelXP }
+
+    var body: some View {
+        Group {
+            if compact {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityHidden(true)
+                    Text("LV \(progress.level)")
+                        .font(Theme.font(10, weight: .semibold, relativeTo: .caption))
+                        .tracking(0.25)
+                        .fixedSize()
+                    ProgressView(value: displayedXP, total: 300)
+                        .tint(Theme.accent)
+                        .frame(width: 42)
+                        .accessibilityHidden(true)
+                    Text("\(remainingXP) XP to next")
+                        .font(Theme.font(10, weight: .medium, relativeTo: .caption))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.secondary)
+                        .fixedSize()
+                        .contentTransition(.numericText())
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 7)
+            } else if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(Theme.accent)
+                            .accessibilityHidden(true)
+                        Text("LEVEL \(progress.level)")
+                            .font(Theme.font(12, weight: .semibold, relativeTo: .caption))
+                            .tracking(0.35)
+                            .foregroundStyle(Theme.accent)
+                    }
+                    Text(progress.title)
+                        .font(Theme.display(24, relativeTo: .title3))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(levelXP) of 300 XP")
+                        .font(Theme.font(14, weight: .medium, relativeTo: .subheadline))
+                        .monospacedDigit()
+                    xpLabel
+                    progressBar
+                }
+                .padding(16)
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityHidden(true)
+                    Text("LEVEL \(progress.level)")
+                        .font(Theme.font(10, weight: .semibold, relativeTo: .caption))
+                        .tracking(0.35)
+                        .fixedSize()
+                    progressBar
+                    Text("\(remainingXP) XP TO NEXT")
+                        .font(Theme.font(10, weight: .medium, relativeTo: .caption))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.secondary)
+                        .fixedSize()
+                        .contentTransition(.numericText())
+                }
+            }
+        }
+        .padding(.horizontal, compact ? 0 : typeSize.isAccessibilitySize ? 16 : 24)
+        .padding(.vertical, compact ? 0 : typeSize.isAccessibilitySize ? 16 : 8)
+        .frame(maxWidth: compact ? nil : 600)
+        .frame(maxWidth: compact ? nil : .infinity)
+        .background {
+            if compact {
+                Capsule().fill(Theme.accent.opacity(0.06))
+            } else if typeSize.isAccessibilitySize {
+                RoundedRectangle(cornerRadius: 18).fill(Theme.panel)
+            } else {
+                Theme.canvas
+            }
+        }
+        .overlay {
+            if !compact && typeSize.isAccessibilitySize {
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(Theme.ink.opacity(0.12), lineWidth: 1)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Journey progress")
+        .accessibilityValue("Level \(progress.level), \(progress.title), \(levelXP) of 300 XP, \(remainingXP) XP to level \(progress.level + 1)")
+        .accessibilityIdentifier("activeJourneyProgress")
+        .onAppear(perform: revealProgress)
+        .onChange(of: progress.levelXP) { _, _ in revealProgress() }
+    }
+
+    private var xpLabel: some View {
+        Text(typeSize.isAccessibilitySize ? "\(remainingXP) XP to next level" : "\(remainingXP) XP to next")
+            .font(Theme.font(typeSize.isAccessibilitySize ? 14 : 10, weight: .medium, relativeTo: .caption))
+            .monospacedDigit()
+            .foregroundStyle(Theme.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var progressBar: some View {
+        ProgressView(value: displayedXP, total: 300)
+            .tint(Theme.accent)
+            .accessibilityHidden(true)
+    }
+
+    private func revealProgress() {
+        let target = Double(levelXP)
+        guard !reduceMotion else {
+            displayedXP = target
+            return
+        }
+        withAnimation(.easeOut(duration: 0.42)) {
+            displayedXP = target
+        }
+    }
+}
+
+struct DailyRewardSummary: View {
     let game: GameSession
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var appeared = false
-    private var points: Int { JourneyProgress.points(won: game.wasSuccessful == true, attempts: game.attempts.count, hintsUsed: model.hintsShown) }
+    @State private var displayedPoints = 0
+
+    private var points: Int {
+        JourneyProgress.points(won: game.wasSuccessful == true, attempts: game.attempts.count, hintsUsed: model.hintsShown)
+    }
+
     private var stars: Int { game.wasSuccessful == true ? max(1, 4 - game.attempts.count) : 0 }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
+            let rewardLayout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 16))
+            rewardLayout {
                 HStack(spacing: 6) {
                     ForEach(0..<3) { index in
                         Image(systemName: index < stars ? "star.fill" : "star")
@@ -64,20 +227,223 @@ struct JourneyRewards: View {
                                 value: appeared
                             )
                     }
-                }.accessibilityLabel("\(stars) of 3 stars")
-                Spacer()
-                Text("+\(points) XP").font(Theme.font(20, weight: .semibold)).monospacedDigit()
-                    .foregroundStyle(Theme.reward).accessibilityIdentifier("earnedXP")
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(stars) of 3 stars")
+
+                if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+
+                Text("+\(displayedPoints) XP")
+                    .font(Theme.font(typeSize.isAccessibilitySize ? 25 : 20, weight: .semibold, relativeTo: .title3))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .foregroundStyle(Theme.reward)
+                    .accessibilityLabel("\(points) experience points earned")
+                    .accessibilityIdentifier("earnedXP")
             }
+
             Text(game.wasSuccessful == true ? (stars == 3 ? "First guess. Nailed it." : "That’s your daily aha.") : "A new connection, even on the tricky days.")
-                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
-            Button { model.selectedTab = .journey } label: {
-                HStack { Text("See your Journey"); Spacer(); Image(systemName: "arrow.right") }
-                    .font(Theme.font(14, weight: .medium)).frame(minHeight: 44).contentShape(Rectangle())
-            }.foregroundStyle(Theme.ink).accessibilityIdentifier("viewJourney")
-        }.padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
-            .onAppear { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { appeared = true } }
+                .font(Theme.font(14, relativeTo: .subheadline)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear(perform: revealSummary)
     }
+
+    private func revealSummary() {
+        if reduceMotion {
+            displayedPoints = points
+            appeared = true
+            return
+        }
+        displayedPoints = 0
+        withAnimation(.easeOut(duration: 0.72).delay(0.12)) {
+            displayedPoints = points
+        }
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.62).delay(0.08)) {
+            appeared = true
+        }
+    }
+}
+
+struct JourneyProgressUpdate: View {
+    let game: GameSession
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @AppStorage("haptics") private var haptics = true
+
+    private var confirmedProgress: JourneyProgress? {
+        guard let snapshot = model.journeySnapshot,
+              snapshot.backfill.status == .complete,
+              let summary = snapshot.summary,
+              snapshot.recentEntries.contains(where: { entry in
+                  entry.puzzleId == game.puzzleId
+                      && entry.puzzleDate == game.puzzleDate
+                      && entry.attempts == game.attempts.count
+                      && entry.outcome == (game.wasSuccessful == true ? .solved : .failed)
+              }) else { return nil }
+        return JourneyProgress(summary: summary)
+    }
+
+    private var newlyEarnedBadges: [JourneyProgress.Badge] {
+        guard let celebration = model.journeyBadgeCelebration,
+              celebration.puzzleID == game.puzzleId,
+              celebration.puzzleDate == game.puzzleDate,
+              let progress = confirmedProgress else { return [] }
+        return progress.badges.filter { $0.earned && celebration.badgeIDs.contains($0.id) }
+    }
+
+    private var newlyEarnedLevel: Int? {
+        guard let celebration = model.journeyLevelCelebration,
+              celebration.puzzleID == game.puzzleId,
+              celebration.puzzleDate == game.puzzleDate,
+              let progress = confirmedProgress,
+              progress.level >= celebration.level else { return nil }
+        return celebration.level
+    }
+
+    private var badgeCelebrationKey: String {
+        newlyEarnedBadges.map(\.id).sorted().joined(separator: "|")
+    }
+
+    private var rewardCelebrationKey: String {
+        let levelKey = newlyEarnedLevel.map { "level:\($0)" }
+        return ([badgeCelebrationKey, levelKey].compactMap { $0 }.filter { !$0.isEmpty }).joined(separator: "|")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let level = newlyEarnedLevel, let progress = confirmedProgress {
+                HStack(spacing: 14) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(Theme.reward)
+                        .frame(width: 48, height: 48)
+                        .background(Theme.reward.opacity(0.14), in: Circle())
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("LEVEL UP!")
+                            .font(Theme.font(10, weight: .bold, relativeTo: .caption))
+                            .tracking(1)
+                            .foregroundStyle(Theme.reward)
+                        Text("Level \(level) · \(progress.title)")
+                            .font(Theme.font(17, weight: .semibold, relativeTo: .headline))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("A new milestone on your Journey.")
+                            .font(Theme.font(12, relativeTo: .caption))
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    LinearGradient(
+                        colors: [Theme.reward.opacity(0.17), Theme.reward.opacity(0.07)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 17)
+                )
+                .overlay(RoundedRectangle(cornerRadius: 17).strokeBorder(Theme.reward.opacity(0.28), lineWidth: 1))
+                .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("journeyLevelUp")
+            }
+
+            if !newlyEarnedBadges.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Eyebrow(text: newlyEarnedBadges.count == 1 ? "NEW BADGE" : "NEW BADGES")
+                    ForEach(newlyEarnedBadges) { badge in
+                        HStack(alignment: .center, spacing: 12) {
+                            Image(systemName: badge.symbol)
+                                .font(.system(size: 21, weight: .semibold))
+                                .foregroundStyle(Theme.reward)
+                                .frame(width: 44, height: 44)
+                                .background(Theme.reward.opacity(0.12), in: Circle())
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(badge.title).font(Theme.font(15, weight: .semibold))
+                                Text(badge.detail).font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Theme.reward)
+                                .accessibilityHidden(true)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                .padding(14)
+                .background(Theme.reward.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.reward.opacity(0.22), lineWidth: 1))
+                .transition(reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.94, anchor: .leading)))
+                .accessibilityIdentifier("journeyBadgeUnlock")
+            }
+
+            if let progress = confirmedProgress {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Theme.reward)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 8) {
+                        let progressHeader = typeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 5))
+                            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+                        progressHeader {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("YOUR JOURNEY")
+                                    .font(Theme.font(10, weight: .semibold, relativeTo: .caption))
+                                    .tracking(0.8)
+                                    .foregroundStyle(Theme.secondary)
+                                Text("Level \(progress.level) · \(progress.title)")
+                                    .font(Theme.font(14, weight: .semibold, relativeTo: .subheadline))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
+                            Text("\(progress.levelXP)/300 XP")
+                                .font(Theme.font(12, weight: .medium, relativeTo: .caption))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.secondary)
+                                .lineLimit(1)
+                    }
+                        ProgressView(value: Double(progress.levelXP), total: 300)
+                            .tint(Theme.reward)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .padding(.top, 4)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Journey progress")
+                .accessibilityValue("Level \(progress.level), \(progress.title), \(progress.levelXP) of 300 XP to level \(progress.level + 1)")
+                .accessibilityIdentifier("journeyLevelProgress")
+            }
+
+            Button { model.selectedTab = .journey } label: {
+                HStack(spacing: 8) {
+                    Text("See your Journey")
+                    Image(systemName: "arrow.right")
+                }
+                .font(Theme.font(14, weight: .medium, relativeTo: .subheadline))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .foregroundStyle(Theme.ink)
+            .accessibilityIdentifier("viewJourney")
+        }
+        .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.74), value: rewardCelebrationKey)
+        .sensoryFeedback(.success, trigger: rewardCelebrationKey) { old, new in
+            haptics && old.isEmpty && !new.isEmpty
+        }
+        .onChange(of: rewardCelebrationKey) { old, new in
+            guard old.isEmpty, !new.isEmpty else { return }
+            GameSoundPlayer.shared.play(.reward)
+        }
+    }
+
 }
 
 struct DailyStreakCard: View {

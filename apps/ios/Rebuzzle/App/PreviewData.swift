@@ -184,6 +184,20 @@ private final class FixtureServer: @unchecked Sendable {
         var badges: [String] = []
         if completed { badges.append("first-finish") }
         if firstGuessSolve { badges.append("first-guess-solve") }
+        let recentEntries: [[String: Any]]
+        if completed {
+            recentEntries = [[
+                "puzzleDate": game.puzzleDate,
+                "puzzleId": game.puzzleId,
+                "outcome": solved ? "solved" : "failed",
+                "attempts": game.attempts.count,
+                "hintCount": game.hintsUsed,
+                "completedAt": ISO8601DateFormatter().string(from: Date()),
+                "timeZone": "UTC"
+            ]]
+        } else {
+            recentEntries = []
+        }
 
         return [
             "asOfPuzzleDate": game.puzzleDate,
@@ -200,7 +214,7 @@ private final class FixtureServer: @unchecked Sendable {
                 "completedThisWeek": completed ? 1 : 0,
                 "badges": badges
             ],
-            "recentEntries": [],
+            "recentEntries": recentEntries,
             "backfill": ["status": "complete"]
         ]
     }

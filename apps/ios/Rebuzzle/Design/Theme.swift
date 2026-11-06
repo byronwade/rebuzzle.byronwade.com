@@ -10,13 +10,14 @@ enum Theme {
     static let accent = Color(red: 0.22, green: 0.39, blue: 0.86)
     static let success = adaptive(light: 0x26733C, dark: 0x8FC29A)
     static let reward = adaptive(light: 0x8B5915, dark: 0xEDBF74)
+    static let chill = adaptive(light: 0x2B7286, dark: 0x8CC9D3)
     static let error = adaptive(light: 0xB32D37, dark: 0xF59A9E)
     static func font(_ size: CGFloat, weight: Font.Weight = .regular, relativeTo: Font.TextStyle = .body) -> Font {
         Font.custom("Inter-Regular", size: size, relativeTo: relativeTo).weight(weight)
     }
     /// A distinct display voice for the game; utility copy stays Inter.
-    static func display(_ size: CGFloat) -> Font {
-        Font.custom("ArialRoundedMTBold", size: size, relativeTo: .largeTitle)
+    static func display(_ size: CGFloat, relativeTo textStyle: Font.TextStyle = .largeTitle) -> Font {
+        Font.custom("ArialRoundedMTBold", size: size, relativeTo: textStyle)
     }
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
         Color(uiColor: UIColor { traits in
@@ -51,13 +52,70 @@ struct Eyebrow: View {
     var body: some View { Text(text).font(Theme.font(12, weight: .medium, relativeTo: .caption)).foregroundStyle(Theme.secondary) }
 }
 struct Page<Content: View>: View {
-    @ViewBuilder var content: Content
+    private let spacing: CGFloat
+    private let onNearBottomChange: ((Bool) -> Void)?
+    private let scrollTrackingReady: Bool
+    private let content: Content
+    @State private var isUserScrolling = false
+    @State private var didReportInitialScrollPosition = false
+    @State private var hasUserScrolled = false
+
+    init(
+        spacing: CGFloat = 24,
+        onNearBottomChange: ((Bool) -> Void)? = nil,
+        scrollTrackingReady: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.spacing = spacing
+        self.onNearBottomChange = onNearBottomChange
+        self.scrollTrackingReady = scrollTrackingReady
+        self.content = content()
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) { content }
+            VStack(alignment: .leading, spacing: spacing) { content }
                 .padding(.horizontal, 24).padding(.vertical, 20).frame(maxWidth: 600).frame(maxWidth: .infinity)
-        }.scrollDismissesKeyboard(.interactively)
+        }
+        .onScrollGeometryChange(for: PageScrollMetrics.self) { geometry in
+            PageScrollMetrics(geometry: geometry, isReady: scrollTrackingReady)
+        } action: { previous, current in
+            let userOffsetChanged = isUserScrolling && abs(current.contentOffsetY - previous.contentOffsetY) > 0.5
+            if userOffsetChanged { hasUserScrolled = true }
+            guard current.isReady else { return }
+            guard didReportInitialScrollPosition else {
+                didReportInitialScrollPosition = true
+                onNearBottomChange?(current.isNearBottom)
+                return
+            }
+            if !previous.isReady && !hasUserScrolled {
+                onNearBottomChange?(current.isNearBottom)
+                return
+            }
+            guard userOffsetChanged,
+                  previous.isNearBottom != current.isNearBottom else { return }
+            onNearBottomChange?(current.isNearBottom)
+        }
+        .onScrollPhaseChange { _, phase, context in
+            isUserScrolling = phase == .interacting || phase == .decelerating
+            if phase == .interacting, didReportInitialScrollPosition {
+                let metrics = PageScrollMetrics(geometry: context.geometry, isReady: scrollTrackingReady)
+                if metrics.isReady { onNearBottomChange?(metrics.isNearBottom) }
+            }
+        }
+        .scrollDismissesKeyboard(.interactively)
             .background(Theme.canvas).foregroundStyle(Theme.ink)
+    }
+}
+private struct PageScrollMetrics: Equatable {
+    let contentOffsetY: CGFloat
+    let isNearBottom: Bool
+    let isReady: Bool
+
+    init(geometry: ScrollGeometry, isReady: Bool) {
+        contentOffsetY = geometry.contentOffset.y
+        isNearBottom = max(0, geometry.contentSize.height - geometry.visibleRect.maxY) <= 24
+        self.isReady = isReady
     }
 }
 struct Notice: View {

@@ -61,7 +61,10 @@ struct JournalView: View {
             }
             Notice(message: "Saved on this device for this Rebuzzle account. Export a copy before changing devices. Restoring Plus restores the purchase, not journal data.")
             if let error = model.storageError { Notice(message: error) }
-        }.navigationTitle("Journal").navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationTitle("Journal")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
     }
 }
 struct JournalDetail: View {
@@ -140,7 +143,10 @@ struct JournalDetail: View {
                 }.buttonStyle(CommitStyle()).accessibilityIdentifier("revealJournalAnswer")
             }
             if let error = model.storageError { Notice(message: error) }
-        }.navigationTitle("Study puzzle").navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationTitle("Study puzzle")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
             .onAppear { note = model.journal.entries.first(where: { $0.id == entry.id })?.note ?? entry.note }
             .onChange(of: note) { _, value in
                 guard answerRevealed, model.player?.id == accountID, model.purchases.hasPlus,

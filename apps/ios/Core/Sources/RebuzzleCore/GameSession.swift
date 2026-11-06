@@ -13,6 +13,36 @@ public struct Guess: Codable, Sendable, Identifiable {
         self.reaction = reaction; self.similarity = similarity; self.wordResults = wordResults
     }
 }
+
+public enum DailyShareOutcome: Equatable, Sendable {
+    case inProgress
+    case solved
+    case revealed
+}
+
+/// The only game data permitted in a shared daily result.
+/// It intentionally contains no puzzle answer, explanation, or typed guesses.
+public struct DailyShareSummary: Equatable, Sendable {
+    public let puzzleDate: String
+    public let outcome: DailyShareOutcome
+    public let attemptMarks: [Bool]
+    public let maxAttempts: Int
+    public let hintsUsed: Int
+
+    public var headline: String {
+        switch outcome {
+        case .inProgress: "Today's puzzle is waiting"
+        case .solved: "Solved in \(attemptMarks.count)/\(maxAttempts)"
+        case .revealed: "A good challenge"
+        }
+    }
+
+    public var text: String {
+        let marks = attemptMarks.map { $0 ? "🟦" : "⬜" }.joined()
+        return "Rebuzzle · \(puzzleDate)\n\(headline)\n\(marks)\n\(hintsUsed) hint\(hintsUsed == 1 ? "" : "s") used\nCan you find the connection?\nhttps://rebuzzle.byronwade.com"
+    }
+}
+
 public struct GameSession: Codable, Sendable {
     public var success: Bool
     public var puzzleId: String
@@ -26,11 +56,20 @@ public struct GameSession: Codable, Sendable {
     public var answer: String?
     public var explanation: String?
     public var revealedAnswer: String? { gameOver ? answer : nil }
-    public var shareText: String {
-        let result = gameOver ? (wasSuccessful == true ? "Solved in \(attempts.count)/\(maxAttempts)" : "A good challenge") : "Today's puzzle is waiting"
-        let marks = attempts.map { $0.correct ? "🟦" : "⬜" }.joined()
-        return "Rebuzzle · \(puzzleDate)\n\(result)\n\(marks)\n\(hintsUsed) hint\(hintsUsed == 1 ? "" : "s") used\nCan you find the connection?\nhttps://rebuzzle.byronwade.com"
+    public var shareSummary: DailyShareSummary {
+        let outcome: DailyShareOutcome
+        if !gameOver { outcome = .inProgress }
+        else if wasSuccessful == true { outcome = .solved }
+        else { outcome = .revealed }
+        return DailyShareSummary(
+            puzzleDate: puzzleDate,
+            outcome: outcome,
+            attemptMarks: attempts.map(\.correct),
+            maxAttempts: maxAttempts,
+            hintsUsed: hintsUsed
+        )
     }
+    public var shareText: String { shareSummary.text }
     public init(puzzleId: String, puzzleDate: String) {
         success = true; self.puzzleId = puzzleId; self.puzzleDate = puzzleDate
         attempts = []; hintsUsed = 0; attemptsLeft = 3; maxAttempts = 3; gameOver = false

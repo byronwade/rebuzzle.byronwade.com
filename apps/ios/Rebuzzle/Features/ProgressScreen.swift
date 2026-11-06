@@ -4,6 +4,8 @@ import RebuzzleCore
 struct ProgressViewScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    var onOpenMenu: () -> Void = {}
+    var onOpenToday: () -> Void = {}
     private var progress: JourneyProgress? {
         guard let summary = model.journeySnapshot?.summary else { return nil }
         return JourneyProgress(summary: summary)
@@ -11,25 +13,30 @@ struct ProgressViewScreen: View {
 
     var body: some View {
         Page {
-            DailyStreakCard(presentation: .journey(stats: model.stats), context: .journey)
             if let progress {
                 JourneyLevelView(progress: progress)
+                DailyStreakCard(presentation: .journey(stats: model.stats), context: .journey)
+                weeklyChallenge(progress)
             } else {
+                DailyStreakCard(presentation: .journey(stats: model.stats), context: .journey)
                 journeyUnavailable
             }
-            NavigationLink { JournalView() } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "book.closed").font(.system(size: 22)).foregroundStyle(Theme.reward)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Your aha collection").font(Theme.font(16, weight: .medium))
-                        Text("Revisit the connections you’ve made.").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+            if model.purchases.hasPlus || !model.journal.entries.isEmpty {
+                NavigationLink { JournalView() } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "book.closed").font(.system(size: 22)).foregroundStyle(Theme.reward)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Your aha collection").font(Theme.font(16, weight: .medium))
+                            Text("Revisit the connections you’ve made.").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
                     }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
-                }.foregroundStyle(Theme.ink).frame(minHeight: 56)
-            }.accessibilityIdentifier("openJournal")
+                    .foregroundStyle(Theme.ink).frame(minHeight: 56)
+                }
+                .accessibilityIdentifier("openJournal")
+            }
             if let progress, let summary = model.journeySnapshot?.summary {
-                weeklyChallenge(progress)
                 badgeCollection(progress)
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Your story so far").font(Theme.font(20, weight: .medium))
@@ -84,7 +91,12 @@ struct ProgressViewScreen: View {
                 Text("Finish a puzzle: 25 XP. Solve it: +75. Solve on your first guess: +25. Solve without hints: +25. Each level takes 300 XP. Revealing the answer still counts toward your weekly challenge.")
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary).padding(.top, 8)
             }.font(Theme.font(14)).tint(Theme.ink)
-        }.navigationTitle("Journey").navigationBarTitleDisplayMode(.inline).refreshable {
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AppScreenHeader(title: "Journey", onOpenMenu: onOpenMenu)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .refreshable {
             await model.refreshJourneyProgress()
             await model.refreshStreakProgress()
         }
@@ -96,9 +108,17 @@ struct ProgressViewScreen: View {
             Text(journeyStatusMessage)
                 .font(Theme.font(14)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Button {
+                onOpenToday()
+            } label: {
+                Label(model.game?.gameOver == true ? "See today’s result" : "Play today’s puzzle", systemImage: "arrow.right")
+            }
+            .buttonStyle(CommitStyle())
+            .accessibilityIdentifier("playFromJourneyUnavailable")
             if !model.journeySyncing {
                 Button("Try again") { Task { await model.refreshJourneyProgress() } }
-                    .buttonStyle(CommitStyle())
+                    .buttonStyle(.plain)
+                    .font(Theme.font(13, weight: .medium))
                     .accessibilityIdentifier("retryJourneySync")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -159,7 +179,7 @@ struct ProgressViewScreen: View {
             }.accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(min(progress.weeklyDays, 3)) of 3 days completed this week")
             if model.game?.gameOver != true {
-                Button { model.selectedTab = .play } label: { Label("Play today’s puzzle", systemImage: "arrow.right") }
+                Button(action: onOpenToday) { Label("Play today’s puzzle", systemImage: "arrow.right") }
                     .buttonStyle(CommitStyle())
             } else {
                 Label(progress.weeklyDays >= 3 ? "Trail complete. Every extra day is a bonus." : "Today counts. See you at the next stop.", systemImage: "checkmark.circle")

@@ -5,13 +5,42 @@ import Testing
 @Test func activeSessionNeverSharesAnAnswer() throws {
     let session = try JSONDecoder().decode(GameSession.self, from: Data(#"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-25","attempts":[],"hintsUsed":0,"attemptsLeft":3,"maxAttempts":3,"gameOver":false,"answer":"secret"}"#.utf8))
     #expect(session.revealedAnswer == nil)
+    #expect(session.shareSummary.outcome == .inProgress)
+    #expect(session.shareSummary.attemptMarks.isEmpty)
+    #expect(session.shareSummary.hintsUsed == 0)
     #expect(!session.shareText.contains("secret"))
+    #expect(!session.shareSummary.text.contains("secret"))
 }
 @Test func completedResultSharesOnlyPerformance() throws {
     let session = try JSONDecoder().decode(GameSession.self, from: Data(#"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-25","attempts":[{"guess":"lighthouse","correct":true,"attemptNumber":1}],"hintsUsed":1,"attemptsLeft":2,"maxAttempts":3,"gameOver":true,"wasSuccessful":true,"answer":"lighthouse","explanation":"light plus house"}"#.utf8))
     #expect(session.revealedAnswer == "lighthouse")
     #expect(session.shareText.contains("1/3"))
     #expect(!session.shareText.contains("lighthouse"))
+}
+@Test func dailyShareSummaryDescribesSolvedPatternWithoutGuessText() throws {
+    let session = try JSONDecoder().decode(GameSession.self, from: Data(#"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-25","attempts":[{"guess":"private first guess","correct":false,"attemptNumber":1},{"guess":"lighthouse","correct":true,"attemptNumber":2}],"hintsUsed":2,"attemptsLeft":1,"maxAttempts":3,"gameOver":true,"wasSuccessful":true,"answer":"lighthouse","explanation":"private explanation"}"#.utf8))
+    let summary = session.shareSummary
+    #expect(summary.outcome == .solved)
+    #expect(summary.puzzleDate == "2026-10-25")
+    #expect(summary.attemptMarks == [false, true])
+    #expect(summary.maxAttempts == 3)
+    #expect(summary.hintsUsed == 2)
+    #expect(summary.text.contains("2/3"))
+    #expect(summary.text.contains("2 hints"))
+    #expect(!summary.text.contains("private first guess"))
+    #expect(!summary.text.contains("lighthouse"))
+    #expect(!summary.text.contains("private explanation"))
+}
+@Test func dailyShareSummaryDescribesRevealWithoutPuzzleSolution() throws {
+    let session = try JSONDecoder().decode(GameSession.self, from: Data(#"{"success":true,"puzzleId":"a","puzzleDate":"2026-10-25","attempts":[{"guess":"private guess one","correct":false,"attemptNumber":1},{"guess":"private guess two","correct":false,"attemptNumber":2},{"guess":"private guess three","correct":false,"attemptNumber":3}],"hintsUsed":1,"attemptsLeft":0,"maxAttempts":3,"gameOver":true,"wasSuccessful":false,"answer":"secret answer","explanation":"secret explanation"}"#.utf8))
+    let summary = session.shareSummary
+    #expect(summary.outcome == .revealed)
+    #expect(summary.attemptMarks == [false, false, false])
+    #expect(summary.text.contains("A good challenge"))
+    #expect(summary.text.contains("1 hint"))
+    #expect(!summary.text.contains("private guess"))
+    #expect(!summary.text.contains("secret answer"))
+    #expect(!summary.text.contains("secret explanation"))
 }
 @Test func duplicateCompletionPreservesNotesAndOneEntry() {
     var journal = Journal()

@@ -12,7 +12,10 @@ import RebuzzleCore
     @State private var answerDraft = ""
     @State private var busy = false
     @State private var error: String?
+    @State private var isFollowingLatestTurn = true
+    @State private var unseenFeedbackAttempt: Int?
     @FocusState private var answerFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(puzzle: Puzzle, api: APIClient, storage: LocalStore, accountID: String) {
         self.puzzle = puzzle
@@ -26,7 +29,11 @@ import RebuzzleCore
     }
 
     var body: some View {
-        Page {
+        ScrollViewReader { scroll in
+        Page(onNearBottomChange: { isNearBottom in
+            isFollowingLatestTurn = isNearBottom
+            if isNearBottom { unseenFeedbackAttempt = nil }
+        }) {
             VStack(alignment: .leading, spacing: 8) {
                 Eyebrow(text: puzzle.date ?? "PAST DAILY")
                 Text(session.state == .solved ? "Aha, again." : "A fresh look.")
@@ -34,7 +41,7 @@ import RebuzzleCore
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 10) {
                     Text(puzzle.typeName).font(Theme.font(13, weight: .semibold))
-                    Text("LEVEL \(puzzle.difficulty) / 10").font(Theme.font(11, weight: .medium)).monospacedDigit().foregroundStyle(Theme.secondary)
+                    PuzzleDifficultyBadge(difficulty: puzzle.difficulty)
                 }
             }
 
@@ -65,48 +72,16 @@ import RebuzzleCore
                             .accessibilityIdentifier("practiceAttemptsRemaining")
                     }
                     ForEach(session.guesses) { guess in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(guess.text).font(Theme.font(16, weight: .medium))
-                                Spacer()
-                                Text(guess.correct ? "Aha" : "Guess \(guess.attemptNumber) of 3")
-                                    .font(Theme.font(12, weight: .medium)).foregroundStyle(guess.correct ? Theme.success : Theme.secondary)
-                            }
-                            Text(guess.correct ? "You found the connection." : (guess.reaction?.line ?? "Try looking at the clue from a fresh angle."))
-                                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
-                                .accessibilityIdentifier("practiceFeedback.\(guess.attemptNumber)")
-                            if let reply = practiceEve.replies[guess.attemptNumber] {
-                                Text("Eve · \(reply)").font(Theme.font(14)).foregroundStyle(Theme.accent)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .accessibilityIdentifier("practiceEveReply.\(guess.attemptNumber)")
-                            } else if practiceEve.pendingAttempt == guess.attemptNumber {
-                                Text("Eve is thinking…").font(Theme.font(13)).foregroundStyle(Theme.secondary)
-                            }
-                        }
-                        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+                        practiceGuessCard(guess)
                     }
-                    VStack(alignment: .leading, spacing: 12) {
-                        TextField("Your answer", text: $answerDraft, prompt: Text("Your answer…").foregroundStyle(Theme.secondary), axis: .horizontal)
-                            .lineLimit(1...3).textInputAutocapitalization(.never).autocorrectionDisabled()
-                            .submitLabel(.go).focused($answerFocused).modifier(FieldStyle())
-                            .accessibilityLabel("Your answer")
-                            .accessibilityIdentifier("practiceAnswerField")
-                            .onSubmit { answerFocused = false; Task { await submit() } }
-                        if let error { Notice(message: error) }
-                        Button { Task { await submit() } } label: {
-                            HStack {
-                                Text("Check answer")
-                                if busy { ProgressView().tint(Theme.canvas) } else { Image(systemName: "arrow.right") }
-                            }
-                        }
-                        .buttonStyle(CommitStyle()).disabled(busy)
-                        .accessibilityIdentifier("checkPracticeAnswer")
-                    }
-                    .padding(14).background(Theme.field.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
                 }
             } else {
-                solutionCard
+                VStack(alignment: .leading, spacing: 16) {
+                    solutionCard
+                    if !session.guesses.isEmpty {
+                        practiceRoundDebrief
+                    }
+                }
             }
 
             hintsSection
@@ -130,8 +105,126 @@ import RebuzzleCore
             }
             if let error, session.state != .playing { Notice(message: error) }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                if let unseenAttempt = unseenFeedbackAttempt {
+                    Button {
+                        isFollowingLatestTurn = true
+                        unseenFeedbackAttempt = nil
+                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                            scroll.scrollTo("practiceTurn-\(unseenAttempt)", anchor: .bottom)
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .accessibilityHidden(true)
+                            Text("New feedback")
+                            Spacer(minLength: 8)
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .accessibilityHidden(true)
+                        }
+                        .font(Theme.font(13, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 44)
+                        .background(Theme.accent.opacity(0.08), in: Capsule())
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Jump to new feedback, guess \(unseenAttempt)")
+                    .accessibilityIdentifier("practiceNewFeedbackButton")
+                    .frame(maxWidth: 552)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+                    .frame(maxWidth: .infinity)
+                    .transition(reduceMotion ? .identity : .move(edge: .bottom).combined(with: .opacity))
+                }
+                if session.state == .playing {
+                    GuessComposer(
+                        text: $answerDraft,
+                        isFocused: $answerFocused,
+                        fieldAccessibilityIdentifier: "practiceAnswerField",
+                        submitAccessibilityIdentifier: "checkPracticeAnswer",
+                        error: error,
+                        isFieldDisabled: busy || accountID.isEmpty,
+                        isSubmitting: busy,
+                        isSubmitDisabled: busy || accountID.isEmpty,
+                        recoveryAction: nil,
+                        hintAction: GuessComposer.HintAction(
+                            title: session.canRevealHint ? "Nudge" : puzzle.hints.isEmpty ? "No hints" : "All used",
+                            detail: session.canRevealHint ? "\(puzzle.hints.count - session.revealedHintCount) left" : nil,
+                            symbol: session.canRevealHint ? "lightbulb" : puzzle.hints.isEmpty ? "lightbulb.slash" : "checkmark",
+                            accessibilityLabel: session.canRevealHint
+                                ? "Reveal hint \(session.revealedHintCount + 1), \(puzzle.hints.count - session.revealedHintCount) remaining"
+                                : puzzle.hints.isEmpty ? "No hints are available for this puzzle" : "All hints have been revealed",
+                            accessibilityHint: "Reveals the next clue without using a guess.",
+                            accessibilityIdentifier: "practiceHintComposer",
+                            isDisabled: busy || accountID.isEmpty || !session.canRevealHint,
+                            action: { revealHint() }
+                        ),
+                        onDraftChange: {},
+                        onSubmit: { Task { await submit() } }
+                    )
+                }
+            }
+        }
+        .onChange(of: session.guesses.count) { oldCount, newCount in
+            guard newCount > oldCount else { return }
+            isFollowingLatestTurn = true
+            unseenFeedbackAttempt = nil
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
+                if session.state == .playing {
+                    scroll.scrollTo("practiceTurn-\(newCount)", anchor: .bottom)
+                } else {
+                    scroll.scrollTo("practiceSolution", anchor: .top)
+                }
+            }
+        }
+        .onChange(of: session.revealedHints.count) { oldCount, newCount in
+            guard newCount > oldCount else { return }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                scroll.scrollTo("practiceHints", anchor: .bottom)
+            }
+        }
+        .onChange(of: practiceEve.replies) { oldReplies, newReplies in
+            guard let latestAttempt = session.guesses.last?.attemptNumber,
+                  oldReplies[latestAttempt] != newReplies[latestAttempt] else { return }
+            if isFollowingLatestTurn {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
+                    scroll.scrollTo("practiceTurn-\(latestAttempt)", anchor: .bottom)
+                }
+            } else {
+                unseenFeedbackAttempt = latestAttempt
+            }
+        }
+        .onChange(of: practiceEve.unavailableAttempts) { oldAttempts, newAttempts in
+            guard oldAttempts != newAttempts,
+                  let latestAttempt = session.guesses.last?.attemptNumber else { return }
+            if isFollowingLatestTurn {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
+                    scroll.scrollTo("practiceTurn-\(latestAttempt)", anchor: .bottom)
+                }
+            } else {
+                unseenFeedbackAttempt = latestAttempt
+            }
+        }
+        .onChange(of: practiceEve.interruptedAttempts) { oldAttempts, newAttempts in
+            guard oldAttempts != newAttempts,
+                  let latestAttempt = session.guesses.last?.attemptNumber else { return }
+            if isFollowingLatestTurn {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
+                    scroll.scrollTo("practiceTurn-\(latestAttempt)", anchor: .bottom)
+                }
+            } else {
+                unseenFeedbackAttempt = latestAttempt
+            }
+        }
+        }
         .navigationTitle("Practice")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") { answerFocused = false }
@@ -147,6 +240,49 @@ import RebuzzleCore
             try? storage.remove(key: practiceEveKey)
             practiceEve.activate(accountID: accountID, puzzleID: puzzle.id, scope: .practice)
         }
+    }
+
+    private var practiceRoundDebrief: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Eyebrow(text: "ROUND RECAP")
+            ForEach(session.guesses) { guess in
+                practiceGuessCard(guess)
+            }
+        }
+        .accessibilityIdentifier("practiceRoundDebrief")
+    }
+
+    private func practiceGuessCard(_ guess: PracticeGuess) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(guess.text).font(Theme.font(16, weight: .medium))
+                Spacer()
+                Text(guess.correct ? "Aha" : "Guess \(guess.attemptNumber) of 3")
+                    .font(Theme.font(12, weight: .medium)).foregroundStyle(guess.correct ? Theme.success : Theme.secondary)
+            }
+            Text(guess.correct ? "You found the connection." : (guess.reaction?.line ?? "Try looking at the clue from a fresh angle."))
+                .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                .accessibilityIdentifier("practiceFeedback.\(guess.attemptNumber)")
+            if let reply = practiceEve.replies[guess.attemptNumber],
+               !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text("Eve · \(reply)").font(Theme.font(14)).foregroundStyle(Theme.accent)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("practiceEveReply.\(guess.attemptNumber)")
+            }
+            if practiceEve.pendingAttempt == guess.attemptNumber {
+                Text("Eve is thinking…").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+            } else if practiceEve.unavailableAttempts.contains(guess.attemptNumber) {
+                EveReplyStatusNote(message: "Eve’s note didn’t arrive. Your guess is saved.")
+                    .accessibilityIdentifier("practiceEveUnavailable.\(guess.attemptNumber)")
+            }
+            if practiceEve.interruptedAttempts.contains(guess.attemptNumber) {
+                EveReplyStatusNote(message: "Eve’s note didn’t finish. Your guess is saved.")
+                    .accessibilityIdentifier("practiceEveInterrupted.\(guess.attemptNumber)")
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
+        .id("practiceTurn-\(guess.attemptNumber)")
     }
 
     private var solutionCard: some View {
@@ -167,6 +303,7 @@ import RebuzzleCore
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.reward.opacity(0.3), lineWidth: 1))
+        .id("practiceSolution")
     }
 
     private var hintsSection: some View {
@@ -177,7 +314,7 @@ import RebuzzleCore
                     .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
             } else {
                 if session.revealedHints.isEmpty {
-                    Text("Give the clue a fresh read before revealing your first hint.")
+                    Text("Use the Hint button beside your answer whenever you want a little help.")
                         .font(Theme.font(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(Array(session.revealedHints.enumerated()), id: \.offset) { index, hint in
@@ -189,24 +326,19 @@ import RebuzzleCore
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 12))
                 }
-                if session.canRevealHint {
-                    Button {
-                        var updated = session
-                        _ = updated.revealNextHint()
-                        session = updated
-                    } label: {
-                        Label("Reveal hint \(session.revealedHintCount + 1)", systemImage: "lightbulb")
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                            .foregroundStyle(Theme.ink)
-                            .background(Theme.field, in: RoundedRectangle(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.secondary.opacity(0.24), lineWidth: 1))
-                    }.buttonStyle(.plain).accessibilityIdentifier("revealPracticeHint")
-                }
             }
         }
+        .id("practiceHints")
     }
 
     private var practiceEveKey: String { "eve:\(accountID):\(puzzle.id):practice" }
+
+    private func revealHint() {
+        var updated = session
+        guard updated.revealNextHint() != nil else { return }
+        session = updated
+        GameSoundPlayer.shared.play(.hint)
+    }
 
     private func submit() async {
         guard !busy else { return }
@@ -237,6 +369,13 @@ import RebuzzleCore
                 return
             }
             session = updated
+            if result.correct {
+                GameSoundPlayer.shared.play(.solve)
+            } else if updated.state == .playing,
+                      let tier = result.reaction?.tier.lowercased(),
+                      ["close", "warm"].contains(tier) {
+                GameSoundPlayer.shared.play(.closeGuess)
+            }
             answerDraft = ""
             practiceEve.request(guess: Guess(
                 guess: updated.guesses.last?.text ?? "",
@@ -273,6 +412,8 @@ import RebuzzleCore
         var updated = session
         updated.restartRound()
         session = updated
+        isFollowingLatestTurn = true
+        unseenFeedbackAttempt = nil
         answerDraft = ""
         error = nil
         practiceEve.reset()

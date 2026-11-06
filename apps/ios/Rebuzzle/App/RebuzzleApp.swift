@@ -31,28 +31,53 @@ enum AppTab: Hashable { case play, journey, you }
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
-    @State private var playNavigation = UUID()
+    @State private var playPath: [RebuzzleRoute] = []
     private let returnRouter = ReturnRouter.shared
+
     var body: some View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
-            NavigationStack { TodayView() }
-                .id("play-" + (model.player?.id ?? "signed-out") + playNavigation.uuidString)
-                .tabItem { Label("Play", systemImage: "puzzlepiece") }.tag(AppTab.play)
-            NavigationStack { ProgressViewScreen() }
-                .id("journey-" + (model.player?.id ?? "signed-out"))
-                .tabItem { Label("Journey", systemImage: "map") }.tag(AppTab.journey)
-            NavigationStack { SettingsView() }
+            NavigationStack(path: $playPath) {
+                ArcadeHomeView(
+                    onPlayDaily: openDaily,
+                    onOpenArchive: openArchive,
+                    onOpenPlus: { openDestination(.plus) }
+                )
+                .navigationDestination(for: RebuzzleRoute.self) { route in
+                    switch route {
+                    case .daily: TodayView(onOpenMenu: openArcade)
+                    case .archive: ArchiveView()
+                    case .plus: PlusView()
+                    case .journal: JournalView()
+                    }
+                }
+            }
+            .toolbar(playPath.isEmpty ? .hidden : .visible, for: .navigationBar)
+            .id("play-" + (model.player?.id ?? "signed-out"))
+            .tabItem { Label("Arcade", systemImage: "gamecontroller.fill") }
+            .tag(AppTab.play)
+
+            NavigationStack {
+                ProgressViewScreen(onOpenMenu: openArcade, onOpenToday: openDaily)
+            }
+            .id("journey-" + (model.player?.id ?? "signed-out"))
+            .tabItem { Label("Journey", systemImage: "chart.bar.fill") }
+            .tag(AppTab.journey)
+
+            NavigationStack { SettingsView(onOpenMenu: openArcade) }
                 .id("you-" + (model.player?.id ?? "signed-out"))
-                .tabItem { Label("You", systemImage: "person.crop.circle") }.tag(AppTab.you)
+                .tabItem { Label("You", systemImage: "person.crop.circle.fill") }
+                .tag(AppTab.you)
         }
+        .tint(Theme.accent)
+        .toolbarBackground(Theme.panel, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .onOpenURL { returnRouter.open($0) }
         .task(id: returnRouter.request) {
             guard let request = returnRouter.request else { return }
             let source = returnRouter.entrySource
             model.saveDraft()
-            model.selectedTab = .play
-            playNavigation = UUID()
+            openDaily()
             await model.load(entrySource: source)
             if returnRouter.request == request { returnRouter.request = nil }
         }
@@ -79,5 +104,24 @@ struct RootView: View {
             if next == .active { Task { await model.reminders.refreshAuthorization(); await model.load(); await model.purchases.refreshEntitlements() } }
             if next == .background { model.saveDraft() }
         }
+    }
+
+    private func openArcade() {
+        model.selectedTab = .play
+        playPath = []
+    }
+
+    private func openDaily() {
+        model.selectedTab = .play
+        playPath = [.daily]
+    }
+
+    private func openDestination(_ destination: RebuzzleRoute) {
+        model.selectedTab = .play
+        playPath = [destination]
+    }
+
+    private func openArchive() {
+        openDestination(model.purchases.hasPlus ? .archive : .plus)
     }
 }

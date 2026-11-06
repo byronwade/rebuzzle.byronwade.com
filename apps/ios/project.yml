@@ -1,6 +1,7 @@
 name: Rebuzzle
 options:
   bundleIdPrefix: com.byronwade
+  postGenCommand: python3 scripts/normalize-xcodegen-capabilities.py
   deploymentTarget:
     iOS: '18.0'
 packages:
@@ -11,14 +12,18 @@ settings:
     SWIFT_VERSION: '6.0'
     TARGETED_DEVICE_FAMILY: '1,2'
     MARKETING_VERSION: '1.0.0'
-    CURRENT_PROJECT_VERSION: '13'
+    CURRENT_PROJECT_VERSION: '54'
     GENERATE_INFOPLIST_FILE: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    DEVELOPMENT_TEAM: ''
+    DEVELOPMENT_TEAM: T677262U5B
 targets:
   Rebuzzle:
     type: application
     platform: iOS
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
     sources: [Rebuzzle]
     dependencies:
       - package: RebuzzleCore
@@ -33,16 +38,22 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        CODE_SIGN_ENTITLEMENTS: Rebuzzle/Resources/Rebuzzle.entitlements
     info:
       path: Rebuzzle/Resources/Info.plist
       properties:
         UIAppFonts: [Inter.ttf]
+        NSSupportsLiveActivities: true
         CFBundleURLTypes:
           - CFBundleURLName: com.byronwade.rebuzzle.play
             CFBundleURLSchemes: [rebuzzle]
   RebuzzleWidgets:
     type: app-extension
     platform: iOS
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
     sources: [RebuzzleWidgets]
     dependencies:
       - package: RebuzzleCore
@@ -52,6 +63,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Rebuzzle
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_ENTITLEMENTS: RebuzzleWidgets/Resources/RebuzzleWidgets.entitlements
     info:
       path: RebuzzleWidgets/Info.plist
       properties:

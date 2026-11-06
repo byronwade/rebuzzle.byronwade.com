@@ -78,6 +78,7 @@ struct ArchiveView: View {
         }
         .navigationTitle("Puzzle archive")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .task {
             await model.purchases.refreshEntitlements()
             guard model.purchases.hasPlus else { return }

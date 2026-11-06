@@ -1,12 +1,53 @@
 import Foundation
 import Observation
 import RebuzzleCore
+import WidgetKit
 
 enum CompletedStreakRefreshState: Equatable {
     case idle
     case refreshing(puzzleID: String, celebrates: Bool)
     case fresh(puzzleID: String, celebrates: Bool)
     case failed(puzzleID: String)
+}
+
+struct JourneyBadgeCelebration: Equatable {
+    let puzzleID: String
+    let puzzleDate: String
+    let badgeIDs: Set<String>
+}
+
+struct JourneyLevelCelebration: Equatable {
+    let puzzleID: String
+    let puzzleDate: String
+    let level: Int
+}
+
+struct DailyHintReveal: Codable, Equatable, Identifiable {
+    let hintIndex: Int
+    let afterAttemptCount: Int
+
+    var id: Int { hintIndex }
+}
+
+private struct DailyHintProgressRecord: Codable, Equatable {
+    let revealedCount: Int
+    let reveals: [DailyHintReveal]
+}
+
+private struct JourneyBadgeBaseline {
+    let accountID: String
+    let earnedBadgeIDs: Set<String>
+    let level: Int
+}
+
+private struct PendingJourneyBadgeCheck {
+    let accountID: String
+    let puzzleID: String
+    let puzzleDate: String
+    let attempts: Int
+    let solved: Bool
+    let previouslyEarnedBadgeIDs: Set<String>
+    let previouslyEarnedLevel: Int
 }
 
 @MainActor @Observable final class AppModel {
@@ -23,6 +64,8 @@ enum CompletedStreakRefreshState: Equatable {
     var stats: PlayerStats?
     var completedStreakRefreshState: CompletedStreakRefreshState = .idle
     var journeySnapshot: JourneyProgressSnapshot?
+    var journeyBadgeCelebration: JourneyBadgeCelebration?
+    var journeyLevelCelebration: JourneyLevelCelebration?
     var journeySyncError: String?
     var journeySyncing = false
     var draft = ""
@@ -35,6 +78,7 @@ enum CompletedStreakRefreshState: Equatable {
     var sessionReady = false
     private var journalWritable = false
     var hintsShown = 0
+    var hintReveals: [DailyHintReveal] = []
     let eve: EveReplyStore
     let purchases = PurchaseStore()
     let reminders = ReminderStore()
@@ -45,6 +89,7 @@ enum CompletedStreakRefreshState: Equatable {
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var journeyIdentityID: String?
     @ObservationIgnored private var journeyRefreshGeneration = 0
+    @ObservationIgnored private var pendingJourneyBadgeCheck: PendingJourneyBadgeCheck?
     @ObservationIgnored private var pendingEntrySource: DailyEntrySource?
     @ObservationIgnored let api: APIClient
 
@@ -79,10 +124,13 @@ enum CompletedStreakRefreshState: Equatable {
             let response: DailyResponse = try await api.request("/api/puzzle/today")
             if daily?.puzzle.id != response.puzzle.id {
                 eve.reset()
-                game = nil; sessionReady = false; draft = ""; hintsShown = 0; started = Date()
+                game = nil; sessionReady = false; draft = ""; hintsShown = 0; hintReveals = []; started = Date()
                 completedStreakRefreshState = .idle
             }
             daily = response
+            if DailyResetSnapshotStore.save(nextPuzzleTime: response.nextPuzzleTime) {
+                WidgetCenter.shared.reloadTimelines(ofKind: "RebuzzleDaily")
+            }
             try? storage.save(response, key: "daily-cache")
             try await authenticate()
             if !journalWritable { try loadJournal() }
@@ -108,7 +156,7 @@ enum CompletedStreakRefreshState: Equatable {
                 if response.authenticated == true, let user = response.user {
                     if player?.id != user.id {
                         generation += 1
-                        eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil
+                        eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil; hintsShown = 0; hintReveals = []
                         completedStreakRefreshState = .idle
                     }
                     player = user
@@ -135,7 +183,7 @@ enum CompletedStreakRefreshState: Equatable {
         try credentials.write(user.guest ? "guest" : "member", key: "identity-kind")
         if player?.id != user.id {
             generation += 1
-            eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil
+            eve.reset(); game = nil; sessionReady = false; draft = ""; stats = nil; hintsShown = 0; hintReveals = []
             completedStreakRefreshState = .idle
         }
         api.token = token; player = user
@@ -149,16 +197,57 @@ enum CompletedStreakRefreshState: Equatable {
         guard restored.puzzleId == daily.puzzle.id else { throw APIError(status: 0, message: "The puzzle changed. Reload today’s puzzle to continue.") }
         eve.activate(accountID: player.id, puzzleID: daily.puzzle.id)
         game = restored
-        hintsShown = max(restored.hintsUsed, (try? storage.load(Int.self, key: "hints:\(player.id):\(daily.puzzle.id)")) ?? 0)
+        restoreHintProgress(for: player.id, puzzleID: daily.puzzle.id, serverCount: restored.hintsUsed, attemptCount: restored.attempts.count, availableCount: daily.puzzle.hints.count)
         draft = storage.draft(account: player.id, puzzle: daily.puzzle.id)
         needsReconciliation = false; sessionReady = true
         recordCompletion()
+        await DailyLiveActivityStore.shared.reconcile(daily: daily, game: restored)
         scheduleJourneyRefresh()
+    }
+    private func restoreHintProgress(for accountID: String, puzzleID: String, serverCount: Int, attemptCount: Int, availableCount: Int) {
+        let progressKey = "hint-progress:\(accountID):\(puzzleID)"
+        let legacyKey = "hints:\(accountID):\(puzzleID)"
+        let saved = try? storage.load(DailyHintProgressRecord.self, key: progressKey)
+        let legacyCount = (try? storage.load(Int.self, key: legacyKey)) ?? 0
+        let describedCount = (saved?.reveals.compactMap { $0.hintIndex }.max().map { $0 + 1 }) ?? 0
+        let requestedCount = max(serverCount, legacyCount, saved?.revealedCount ?? 0, describedCount)
+        let count = min(max(0, requestedCount), max(0, availableCount))
+        let clampedAttempts = max(0, attemptCount)
+
+        var positions: [Int: DailyHintReveal] = [:]
+        for reveal in saved?.reveals ?? [] where (0..<count).contains(reveal.hintIndex) {
+            guard positions[reveal.hintIndex] == nil else { continue }
+            positions[reveal.hintIndex] = DailyHintReveal(
+                hintIndex: reveal.hintIndex,
+                afterAttemptCount: min(max(0, reveal.afterAttemptCount), clampedAttempts)
+            )
+        }
+        let normalizedReveals = (0..<count).map { index in
+            positions[index] ?? DailyHintReveal(hintIndex: index, afterAttemptCount: clampedAttempts)
+        }
+
+        hintsShown = count
+        hintReveals = normalizedReveals
+        let normalized = DailyHintProgressRecord(revealedCount: count, reveals: normalizedReveals)
+        if saved != normalized || legacyCount != count {
+            persistHintProgress(normalized, legacyKey: legacyKey, progressKey: progressKey)
+        }
+    }
+    private func persistHintProgress(_ progress: DailyHintProgressRecord, legacyKey: String, progressKey: String) {
+        do {
+            try storage.save(progress, key: progressKey)
+            try storage.save(progress.revealedCount, key: legacyKey)
+        } catch {
+            storageError = "Your hint progress could not be saved on this device."
+        }
     }
     private func loadJourneyCache(for userID: String) {
         guard journeyIdentityID != userID else { return }
         journeyRefreshGeneration += 1
         journeyIdentityID = userID
+        journeyBadgeCelebration = nil
+        journeyLevelCelebration = nil
+        pendingJourneyBadgeCheck = nil
         journeySnapshot = try? storage.load(JourneyProgressSnapshot.self, key: "journey:\(userID)")
         journeySyncError = nil
         journeySyncing = false
@@ -174,22 +263,61 @@ enum CompletedStreakRefreshState: Equatable {
             await self.api.report(event)
         }
     }
-    func refreshJourneyProgress() async {
-        guard let userID = player?.id else { return }
+    @discardableResult
+    func refreshJourneyProgress() async -> Bool {
+        guard let userID = player?.id else { return false }
         journeyRefreshGeneration += 1
         let requestGeneration = journeyRefreshGeneration
         journeySyncing = true
         do {
             let snapshot = try await api.fetchJourneyProgress()
             try? storage.save(snapshot, key: "journey:\(userID)")
-            guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return }
+            guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return false }
+            if let pending = pendingJourneyBadgeCheck,
+               pending.accountID == userID,
+               snapshot.backfill.status == .complete {
+                if let summary = snapshot.summary {
+                    let confirmsCompletion = snapshot.recentEntries.contains { entry in
+                        entry.puzzleId == pending.puzzleID
+                            && entry.puzzleDate == pending.puzzleDate
+                            && entry.attempts == pending.attempts
+                            && entry.outcome == (pending.solved ? .solved : .failed)
+                    }
+                    let newBadgeIDs = Set(summary.badges).subtracting(pending.previouslyEarnedBadgeIDs)
+                    journeyBadgeCelebration = confirmsCompletion && !newBadgeIDs.isEmpty
+                        ? JourneyBadgeCelebration(
+                            puzzleID: pending.puzzleID,
+                            puzzleDate: pending.puzzleDate,
+                            badgeIDs: newBadgeIDs
+                        )
+                        : nil
+                    journeyLevelCelebration = confirmsCompletion && summary.level > pending.previouslyEarnedLevel
+                        ? JourneyLevelCelebration(
+                            puzzleID: pending.puzzleID,
+                            puzzleDate: pending.puzzleDate,
+                            level: summary.level
+                        )
+                        : nil
+                } else {
+                    journeyBadgeCelebration = nil
+                    journeyLevelCelebration = nil
+                }
+                pendingJourneyBadgeCheck = nil
+            }
             journeySnapshot = snapshot
             journeySyncError = nil
             journeySyncing = false
+            return true
         } catch {
-            guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return }
+            guard requestGeneration == journeyRefreshGeneration, player?.id == userID else { return false }
+            if pendingJourneyBadgeCheck?.accountID == userID {
+                pendingJourneyBadgeCheck = nil
+                journeyBadgeCelebration = nil
+                journeyLevelCelebration = nil
+            }
             journeySyncError = error.localizedDescription
             journeySyncing = false
+            return false
         }
     }
     func submit() async {
@@ -211,19 +339,52 @@ enum CompletedStreakRefreshState: Equatable {
                 error = "Progress refreshed. Review your guesses before checking another answer."
                 return
             }
+            let hasFreshProgress = await refreshJourneyProgress()
+            guard run == generation else { return }
+            let badgeBaseline: JourneyBadgeBaseline? = {
+                guard hasFreshProgress,
+                      journeyIdentityID == player.id,
+                      let snapshot = journeySnapshot,
+                      snapshot.backfill.status == .complete,
+                      let summary = snapshot.summary else { return nil }
+                return JourneyBadgeBaseline(accountID: player.id, earnedBadgeIDs: Set(summary.badges), level: summary.level)
+            }()
             let result: GuessResponse = try await api.request("/api/puzzles/guess", method: "POST", body: ["puzzleId": daily.puzzle.id, "guess": guess, "hintsUsed": hintsShown, "consecutiveCold": game?.attempts.reversed().prefix(while: { $0.reaction?.tier == "cold" }).count ?? 0, "timeSpentSeconds": max(0, Int(Date().timeIntervalSince(started)))])
             guard run == generation else { return }
             if result.gameOver {
                 completedStreakRefreshState = .refreshing(puzzleID: daily.puzzle.id, celebrates: true)
             }
             game?.apply(result, guess: guess)
+            if result.gameOver && game?.wasSuccessful == true {
+                GameSoundPlayer.shared.play(.solve)
+            } else if !result.gameOver,
+                      let tier = game?.attempts.last?.reaction?.tier.lowercased(),
+                      ["close", "warm"].contains(tier) {
+                GameSoundPlayer.shared.play(.closeGuess)
+            }
             game?.hintsUsed = hintsShown
             eve.activate(accountID: player.id, puzzleID: daily.puzzle.id)
             if let confirmed = game?.attempts.last { eve.request(guess: confirmed) }
             draft = ""
             try storage.saveDraft("", account: player.id, puzzle: daily.puzzle.id)
             recordCompletion()
+            await DailyLiveActivityStore.shared.reconcile(daily: daily, game: game)
             if game?.gameOver == true {
+                journeyBadgeCelebration = nil
+                journeyLevelCelebration = nil
+                if let badgeBaseline {
+                    pendingJourneyBadgeCheck = PendingJourneyBadgeCheck(
+                        accountID: badgeBaseline.accountID,
+                        puzzleID: daily.puzzle.id,
+                        puzzleDate: daily.puzzleDate,
+                        attempts: game?.attempts.count ?? 0,
+                        solved: game?.wasSuccessful == true,
+                        previouslyEarnedBadgeIDs: badgeBaseline.earnedBadgeIDs,
+                        previouslyEarnedLevel: badgeBaseline.level
+                    )
+                } else {
+                    pendingJourneyBadgeCheck = nil
+                }
                 try? await reminders.schedule(completedToday: true)
                 await refreshPlayerStats(forCompletedPuzzleID: daily.puzzle.id, celebrates: true)
                 scheduleJourneyRefresh()
@@ -239,6 +400,9 @@ enum CompletedStreakRefreshState: Equatable {
         busy = true; defer { busy = false }
         do { try await restore(); error = nil }
         catch { self.error = error.localizedDescription }
+    }
+    func setLiveRoundEnabled(_ enabled: Bool) async -> Bool {
+        await DailyLiveActivityStore.shared.setEnabled(enabled, daily: daily, game: game)
     }
     func streakPresentation(for game: GameSession) -> DailyStreakPresentation {
         let freshness: DailyStreakFreshness
@@ -294,10 +458,15 @@ enum CompletedStreakRefreshState: Equatable {
         )
     }
     func revealHint() {
-        guard let daily, let player, sessionReady, game?.gameOver == false, hintsShown < daily.puzzle.hints.count else { return }
+        guard !busy, !submitting, !needsReconciliation,
+              let daily, let player, sessionReady, game?.gameOver == false,
+              hintsShown < daily.puzzle.hints.count else { return }
+        let reveal = DailyHintReveal(hintIndex: hintsShown, afterAttemptCount: game?.attempts.count ?? 0)
         hintsShown += 1
-        do { try storage.save(hintsShown, key: "hints:\(player.id):\(daily.puzzle.id)") }
-        catch { storageError = "Your hint progress could not be saved on this device." }
+        hintReveals.append(reveal)
+        let progress = DailyHintProgressRecord(revealedCount: hintsShown, reveals: hintReveals)
+        persistHintProgress(progress, legacyKey: "hints:\(player.id):\(daily.puzzle.id)", progressKey: "hint-progress:\(player.id):\(daily.puzzle.id)")
+        GameSoundPlayer.shared.play(.hint)
     }
     func saveDraft() {
         guard let player, let daily else { return }
@@ -396,6 +565,7 @@ enum CompletedStreakRefreshState: Equatable {
         generation += 1; api.token = nil; player = nil; game = nil; stats = nil
         completedStreakRefreshState = .idle
         journeyRefreshGeneration += 1; journeyIdentityID = nil; journeySnapshot = nil; journeySyncError = nil; journeySyncing = false
-        draft = ""; journal = Journal(); journalWritable = false; hintsShown = 0; sessionReady = false; error = nil
+        journeyBadgeCelebration = nil; journeyLevelCelebration = nil; pendingJourneyBadgeCheck = nil
+        draft = ""; journal = Journal(); journalWritable = false; hintsShown = 0; hintReveals = []; sessionReady = false; error = nil
     }
 }

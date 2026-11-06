@@ -4,8 +4,14 @@ import RebuzzleCore
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var phase
+    var onOpenMenu: () -> Void = {}
     @AppStorage("appearance") private var appearance = "system"
     @AppStorage("haptics") private var haptics = true
+    @AppStorage("soundEffectsEnabled") private var soundEffectsEnabled = true
+    @AppStorage("liveRoundEnabled") private var liveRoundEnabled = false
+    @State private var liveActivitiesAvailable = true
+    @State private var liveActivityMessage: String?
     var body: some View {
         Form {
             Section {
@@ -18,6 +24,27 @@ struct SettingsView: View {
                             .font(Theme.font(13)).foregroundStyle(Theme.secondary)
                     }
                 }.padding(.vertical, 8)
+            }
+            Section("Rebuzzle Plus") {
+                NavigationLink { PlusView() } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: model.purchases.hasPlus ? "checkmark.seal.fill" : "sparkles")
+                            .font(.system(size: 22)).foregroundStyle(model.purchases.hasPlus ? Theme.success : Theme.reward)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(model.purchases.hasPlus ? "Plus is yours" : "Unlock Rebuzzle Plus")
+                                .font(Theme.font(15, weight: .medium))
+                            Text("Past puzzles · journal · solve insights")
+                                .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                            Text(model.purchases.hasPlus ? "Unlocked" : plusPrice)
+                                .font(Theme.font(12, weight: .semibold)).foregroundStyle(Theme.reward)
+                        }
+                        Spacer(minLength: 4)
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .accessibilityIdentifier("openPlusFromProfile")
             }
             Section {
                 if let player = model.player {
@@ -41,13 +68,44 @@ struct SettingsView: View {
             Section("Make it yours") {
                 Picker("Appearance", selection: $appearance) { Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark") }
                 Toggle("Haptic feedback", isOn: $haptics)
+                Toggle(isOn: $soundEffectsEnabled) {
+                    Label("Sound effects", systemImage: "speaker.wave.2")
+                }
+                .accessibilityHint("Play soft game sounds for hints, close guesses, and celebrations.")
+                .onChange(of: soundEffectsEnabled) { _, enabled in
+                    if !enabled { GameSoundPlayer.shared.stop() }
+                }
+                Text("Soft game cues follow iPhone Silent mode and mix with other audio.")
+                    .font(.footnote).foregroundStyle(Theme.secondary)
+                Toggle("Live round on Lock Screen", isOn: $liveRoundEnabled)
+                    .onChange(of: liveRoundEnabled) { _, enabled in
+                        liveActivityMessage = nil
+                        Task {
+                            let accepted = await model.setLiveRoundEnabled(enabled)
+                            liveActivitiesAvailable = DailyLiveActivityStore.shared.activitiesAreEnabled
+                            if !accepted {
+                                liveRoundEnabled = false
+                                liveActivityMessage = "Live Activities are off for Rebuzzle in iPhone Settings. Turn them on there, then try again."
+                            }
+                        }
+                    }
+                Text("See guesses left and the next puzzle countdown. Your answer and guesses never appear.")
+                    .font(.footnote).foregroundStyle(Theme.secondary)
+                if let liveActivityMessage {
+                    Text(liveActivityMessage).font(.footnote).foregroundStyle(Theme.secondary)
+                } else if liveRoundEnabled && !liveActivitiesAvailable {
+                    Text("Live Activities are off for Rebuzzle in iPhone Settings.")
+                        .font(.footnote).foregroundStyle(Theme.secondary)
+                }
+                if (liveActivityMessage != nil) || (liveRoundEnabled && !liveActivitiesAvailable) {
+                    Link("Open iPhone settings", destination: URL(string: UIApplication.openSettingsURLString)!)
+                }
                 NavigationLink("Daily reminder") { ReminderView() }
             }
             Section {
-                NavigationLink("Rebuzzle Plus") { PlusView() }
                 Button("Restore purchases") { Task { await model.purchases.restore() } }.disabled(model.purchases.busy)
                 if let message = model.purchases.message { Text(message).font(.footnote).foregroundStyle(Theme.secondary) }
-            } header: { Text("A little more Rebuzzle") }
+            } header: { Text("Purchases") }
             Section("About") {
                 NavigationLink("How to play") { HelpView() }
                 Link("Privacy policy", destination: URL(string: "https://rebuzzle.byronwade.com/privacy")!)
@@ -65,7 +123,19 @@ struct SettingsView: View {
             }
         }
         .scrollContentBackground(.hidden).background(Theme.canvas).foregroundStyle(Theme.ink)
-        .navigationTitle("You").navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            AppScreenHeader(title: "Profile", onOpenMenu: onOpenMenu)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .task { liveActivitiesAvailable = DailyLiveActivityStore.shared.activitiesAreEnabled }
+        .onChange(of: phase) { _, next in
+            if next == .active { liveActivitiesAvailable = DailyLiveActivityStore.shared.activitiesAreEnabled }
+        }
+    }
+
+    private var plusPrice: String {
+        guard let price = model.purchases.product?.displayPrice else { return "one-time purchase" }
+        return "one-time · \(price)"
     }
 }
 struct GuestUpgradeView: View {
@@ -114,6 +184,7 @@ struct GuestUpgradeView: View {
             Notice(message: "This converts your guest account in place. Your puzzle history stays with it; private journal notes remain on this device. Signing into another account does not merge progress.")
         }
         .navigationTitle("Create account").navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -142,7 +213,10 @@ struct SignInView: View {
                 Link("Forgot your password?", destination: URL(string: "https://rebuzzle.byronwade.com/forgot-password")!).font(Theme.font(14)).frame(minHeight: 44)
             }
             Notice(message: "Guest progress and journal entries remain with your guest identity. Signing in switches to your account; it does not merge guest history.")
-        }.navigationTitle("Sign in").navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationTitle("Sign in")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
     }
 }
 struct DeleteAccountView: View {
@@ -160,7 +234,10 @@ struct DeleteAccountView: View {
             }
             if let error = model.accountError { Notice(message: error) }
             Button("Delete my account", role: .destructive) { confirmation = true }.buttonStyle(CommitStyle()).disabled(model.busy || model.submitting)
-        }.navigationTitle("Delete account").navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationTitle("Delete account")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
             .alert("Permanently delete your account?", isPresented: $confirmation) {
                 Button("Keep account", role: .cancel) {}
                 Button("Delete account", role: .destructive) { Task { if await model.deleteAccount(password: password) { dismiss() } } }
@@ -211,6 +288,7 @@ struct ReminderView: View {
             }
         }.scrollContentBackground(.hidden).background(Theme.canvas)
             .navigationTitle("A daily moment").navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
             .task {
                 await model.reminders.refreshAuthorization()
                 enabled = model.reminders.enabled

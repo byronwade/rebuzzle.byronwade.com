@@ -10,7 +10,10 @@
 		008EE794056149197CEC05D6 /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B1F8BD8F4BBCDCB0435F0DA /* CredentialStore.swift */; };
 		038400E6AF2CE286AC2274C0 /* RebuzzleCore in Frameworks */ = {isa = PBXBuildFile; productRef = FF1979FC80E572D39514BA34 /* RebuzzleCore */; };
 		0C6B69B973C70656980CC090 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 116205D9538019F049FCA9CD /* Assets.xcassets */; };
+		0D0598EC48993351A62FC0B8 /* GameSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4603BDB509F4EEACB137CD8C /* GameSoundPlayer.swift */; };
 		0EA74FBE313E4E4FAE4D0036 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */; };
+		EACF0320F5D273BDAA3145D1 /* ArcadeHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEB924BA8D65C732F1940B2 /* ArcadeHomeView.swift */; };
+		A144E65217864C28A581E89A /* NavigationDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A144E65217864C28A581E89B /* NavigationDrawer.swift */; };
 		0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */; };
 		204460933C36A26B4797190F /* GameplayUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */; };
 		23D5626DE99DB5C8E5F330C8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8ADE7D9D79BE0F1DE6FEC864 /* PrivacyInfo.xcprivacy */; };
@@ -19,31 +22,42 @@
 		2B387063BD4572478BD436B4 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08B7A7C9332B5A28EBCDB5C6 /* LocalStore.swift */; };
 		332D4A22003F027D74734846 /* SubmissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA288848438C453BD345991 /* SubmissionTests.swift */; };
 		337DCC35B945F5A5824E3CAD /* PlusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D915DE26C2DDCDAB6087A8 /* PlusView.swift */; };
+		357FFFCE6981D3F1523983F2 /* DailyPuzzleTicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2840D0BFC48B0BF5F09FA0F8 /* DailyPuzzleTicker.swift */; };
 		3AB299CEB8825E3823C05494 /* NativeGrowthReportingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E920656E04A5DD1847FEB7 /* NativeGrowthReportingTests.swift */; };
 		477B3015DCBC024B31C00110 /* PracticeAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4798FAEDFB166AF35C5E3901 /* PracticeAPIClientTests.swift */; };
 		64582E5D3376061BEB464AF3 /* PurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */; };
+		665993D18AE71DA497CAE5EF /* DailyResultShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129549FD225212AF76197AF5 /* DailyResultShareCard.swift */; };
 		67C8DB586DBF1B0A57352057 /* Rebuzzle.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EF86991A32908751C121291 /* Rebuzzle.storekit */; };
 		68F7EB05659BA3B7725673C0 /* Inter-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 81EC6F3B7EEA1B6424FCE082 /* Inter-LICENSE.txt */; };
 		6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */; };
 		795EA28E446ACA22A9CAA2D2 /* PurchaseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B1C0F63409D81A96104531 /* PurchaseStore.swift */; };
 		8CCB749D5D325BFCC69EC63E /* VisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DD9980C84C32503F71017B /* VisualTests.swift */; };
 		8E4F18C24A3AAB1BDBB240AB /* RebuzzleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 61A388442626D26868384B67 /* RebuzzleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8F170BEAF81B30E55BA9A567 /* DailyRoundLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186665EC0F970694C0069B7D /* DailyRoundLiveActivity.swift */; };
+		9D0738FED45D446D8F65952E /* close.wav in Resources */ = {isa = PBXBuildFile; fileRef = D9102625A8A1100B6917F2CD /* close.wav */; };
 		9DE11D302674AF759A8E2FAA /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE425F112F0C6729727D564 /* PreviewData.swift */; };
 		A12AB77947C0F6758AB3E3B6 /* ArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAF7BA641A3CD33255264BC /* ArchiveView.swift */; };
 		A151C788EC90FD72B593D8C1 /* CanonicalBoardFixture.json in Resources */ = {isa = PBXBuildFile; fileRef = 51B971313B5E0CD6824192C1 /* CanonicalBoardFixture.json */; };
 		A619DFE7183A1F093D7857C0 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62B307E9DA571BC57ADE91D /* AppModel.swift */; };
 		AB38228E20708790BE02B519 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8A17876FA80DF4A73F0134 /* APIClient.swift */; };
+		B0657F7CC27D52ADED4F1556 /* reward.wav in Resources */ = {isa = PBXBuildFile; fileRef = F4694027B63F1DA7C183D3C8 /* reward.wav */; };
 		B4935EE7599FD9BDDB47FD32 /* CanonicalBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */; };
 		BC0F558FDC9CF64D04711ACD /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A644188B1C600803AADBDAD /* SettingsView.swift */; };
 		C2AB0C36CBA54484136565A0 /* ReturnTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008E8374FB9274C42DF329A0 /* ReturnTests.swift */; };
 		CA65ED7D4C1BB7A64798FCCF /* Rebuzzle.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 5EF86991A32908751C121291 /* Rebuzzle.storekit */; };
+		CBC6CC11383A32B060F2EF95 /* DailyLiveActivityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8C3238AF57A8B0485F302A /* DailyLiveActivityStore.swift */; };
 		CC209AC39DA24712E5B0AC28 /* RebuzzleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9406EAD9DA7C76C0F7A95E02 /* RebuzzleApp.swift */; };
 		CDEA12895B0622352AA1AE61 /* ReturnRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC41A3A59FA99CEB4C55C91E /* ReturnRouter.swift */; };
 		D6CC2EB0E2F84527E662812A /* DailyReturnCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003E39205E6D983A152AF798 /* DailyReturnCard.swift */; };
+		D778D47901472055EA25A64E /* FirstRunTutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B727A5CE045D5B6E258F92E8 /* FirstRunTutorialView.swift */; };
 		DA428A581C6A0117D592D470 /* ReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E74F7577CC547034168ACF15 /* ReminderStore.swift */; };
 		DB16E04E84B4DA3CBD373891 /* JourneyRewards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265BEFC14F6F5011653FD71E /* JourneyRewards.swift */; };
+		DF4D73E756D13D8C5C19D2A4 /* hint.wav in Resources */ = {isa = PBXBuildFile; fileRef = A7D6C5976E8E322F2D38A752 /* hint.wav */; };
 		DF8FAF83322B78C9BC4A6468 /* PracticeGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */; };
+		E0D65DF7049522D7D3AC6408 /* solve.wav in Resources */ = {isa = PBXBuildFile; fileRef = EE4C58E6FC7A6FE7D78C2D11 /* solve.wav */; };
+		E275147566FBFF99C98A9188 /* GuessComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5A6B06AC045B75B7959D76 /* GuessComposer.swift */; };
 		E67A910F2D2A7F02AEE397B4 /* RebuzzleCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2717B274CD2417AA0C29D2A2 /* RebuzzleCore */; };
+		E6F30F5A57AAEDF87762BAEB /* DailyResultShareCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A29EB682F7FB125E971893 /* DailyResultShareCardTests.swift */; };
 		EA6277CE9901B0C34C9979F4 /* ProgressScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61864440C1A74407936568F /* ProgressScreen.swift */; };
 		ECE6239380306C5ADE9C4471 /* EveReplyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B5EFE92277FF96810B07859 /* EveReplyStore.swift */; };
 		ED8FF5B3477B1363C51B0574 /* RuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */; };
@@ -99,11 +113,15 @@
 		116205D9538019F049FCA9CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		11D915DE26C2DDCDAB6087A8 /* PlusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlusView.swift; sourceTree = "<group>"; };
 		124C2F26141BC60AD508780F /* VisualBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualBoard.swift; sourceTree = "<group>"; };
+		129549FD225212AF76197AF5 /* DailyResultShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyResultShareCard.swift; sourceTree = "<group>"; };
+		186665EC0F970694C0069B7D /* DailyRoundLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyRoundLiveActivity.swift; sourceTree = "<group>"; };
 		1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeGameView.swift; sourceTree = "<group>"; };
 		265BEFC14F6F5011653FD71E /* JourneyRewards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyRewards.swift; sourceTree = "<group>"; };
+		2840D0BFC48B0BF5F09FA0F8 /* DailyPuzzleTicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPuzzleTicker.swift; sourceTree = "<group>"; };
 		2DA288848438C453BD345991 /* SubmissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionTests.swift; sourceTree = "<group>"; };
 		344E3325BAE7E6F5430236CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3E1F0D339FF78CA797B78FC7 /* RuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeTests.swift; sourceTree = "<group>"; };
+		4603BDB509F4EEACB137CD8C /* GameSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSoundPlayer.swift; sourceTree = "<group>"; };
 		4798FAEDFB166AF35C5E3901 /* PracticeAPIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeAPIClientTests.swift; sourceTree = "<group>"; };
 		48F1C269FB5408DBE57C73AE /* DailyPuzzleWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPuzzleWidget.swift; sourceTree = "<group>"; };
 		4A8A17876FA80DF4A73F0134 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -112,6 +130,7 @@
 		5CE425F112F0C6729727D564 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
 		5EF86991A32908751C121291 /* Rebuzzle.storekit */ = {isa = PBXFileReference; path = Rebuzzle.storekit; sourceTree = "<group>"; };
 		61A388442626D26868384B67 /* RebuzzleWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = RebuzzleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		62A5E0E2EC9E9E1002B1879B /* RebuzzleWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RebuzzleWidgets.entitlements; sourceTree = "<group>"; };
 		64E920656E04A5DD1847FEB7 /* NativeGrowthReportingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGrowthReportingTests.swift; sourceTree = "<group>"; };
 		6B1F8BD8F4BBCDCB0435F0DA /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
 		6B5EFE92277FF96810B07859 /* EveReplyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveReplyStore.swift; sourceTree = "<group>"; };
@@ -122,19 +141,30 @@
 		8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalView.swift; sourceTree = "<group>"; };
 		910D2915D2B873A8D5015B48 /* RebuzzleTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RebuzzleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9406EAD9DA7C76C0F7A95E02 /* RebuzzleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RebuzzleApp.swift; sourceTree = "<group>"; };
+		9C8C3238AF57A8B0485F302A /* DailyLiveActivityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLiveActivityStore.swift; sourceTree = "<group>"; };
+		A2A29EB682F7FB125E971893 /* DailyResultShareCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyResultShareCardTests.swift; sourceTree = "<group>"; };
 		A7A1F67C65BA8FD5FAB904F8 /* Rebuzzle.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Rebuzzle.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A7D6C5976E8E322F2D38A752 /* hint.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = hint.wav; sourceTree = "<group>"; };
 		ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		FDEB924BA8D65C732F1940B2 /* ArcadeHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArcadeHomeView.swift; sourceTree = "<group>"; };
+		A144E65217864C28A581E89B /* NavigationDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDrawer.swift; sourceTree = "<group>"; };
 		B0296681F6B145702B518962 /* Inter.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter.ttf; sourceTree = "<group>"; };
+		B727A5CE045D5B6E258F92E8 /* FirstRunTutorialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunTutorialView.swift; sourceTree = "<group>"; };
 		C61864440C1A74407936568F /* ProgressScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressScreen.swift; sourceTree = "<group>"; };
 		C62B307E9DA571BC57ADE91D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		C75275B0B43507AD24CDA8AF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C8FAAFF764887E00942D8F73 /* GameplayUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayUITests.swift; sourceTree = "<group>"; };
 		CCEFBA8769049F1976D3DB1A /* PurchaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseTests.swift; sourceTree = "<group>"; };
+		CD5A6B06AC045B75B7959D76 /* GuessComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuessComposer.swift; sourceTree = "<group>"; };
 		D63BEA008263AB548D99CB36 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D9102625A8A1100B6917F2CD /* close.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = close.wav; sourceTree = "<group>"; };
 		DCAF7BA641A3CD33255264BC /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
 		E0DD9980C84C32503F71017B /* VisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTests.swift; sourceTree = "<group>"; };
+		E507D0FE0263ABD217E2DA3B /* Rebuzzle.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Rebuzzle.entitlements; sourceTree = "<group>"; };
 		E74F7577CC547034168ACF15 /* ReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderStore.swift; sourceTree = "<group>"; };
+		EE4C58E6FC7A6FE7D78C2D11 /* solve.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = solve.wav; sourceTree = "<group>"; };
 		F2B711BF40A0A3DB6098E304 /* RebuzzleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RebuzzleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F4694027B63F1DA7C183D3C8 /* reward.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = reward.wav; sourceTree = "<group>"; };
 		F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonicalBoardView.swift; sourceTree = "<group>"; };
 		FC41A3A59FA99CEB4C55C91E /* ReturnRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnRouter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -172,7 +202,9 @@
 			children = (
 				4A8A17876FA80DF4A73F0134 /* APIClient.swift */,
 				6B1F8BD8F4BBCDCB0435F0DA /* CredentialStore.swift */,
+				9C8C3238AF57A8B0485F302A /* DailyLiveActivityStore.swift */,
 				6B5EFE92277FF96810B07859 /* EveReplyStore.swift */,
+				4603BDB509F4EEACB137CD8C /* GameSoundPlayer.swift */,
 				08B7A7C9332B5A28EBCDB5C6 /* LocalStore.swift */,
 				85B1C0F63409D81A96104531 /* PurchaseStore.swift */,
 				E74F7577CC547034168ACF15 /* ReminderStore.swift */,
@@ -200,6 +232,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		455846B4FFCFB9B887B85B64 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				62A5E0E2EC9E9E1002B1879B /* RebuzzleWidgets.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		52F695987D69F600EF78ACD6 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -209,6 +249,8 @@
 				81EC6F3B7EEA1B6424FCE082 /* Inter-LICENSE.txt */,
 				B0296681F6B145702B518962 /* Inter.ttf */,
 				8ADE7D9D79BE0F1DE6FEC864 /* PrivacyInfo.xcprivacy */,
+				E507D0FE0263ABD217E2DA3B /* Rebuzzle.entitlements */,
+				AF0E2CF2FCE6AA9963F2FA2B /* Sounds */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -226,6 +268,7 @@
 		888B120FEFEA8C1006742284 /* RebuzzleTests */ = {
 			isa = PBXGroup;
 			children = (
+				A2A29EB682F7FB125E971893 /* DailyResultShareCardTests.swift */,
 				04F0374F6B1572A6B7C5620D /* DirectPurchaseTests.swift */,
 				5BCFB0E67A92A9F6D61433A4 /* EveReplyTests.swift */,
 				64E920656E04A5DD1847FEB7 /* NativeGrowthReportingTests.swift */,
@@ -268,18 +311,35 @@
 			isa = PBXGroup;
 			children = (
 				DCAF7BA641A3CD33255264BC /* ArchiveView.swift */,
+				FDEB924BA8D65C732F1940B2 /* ArcadeHomeView.swift */,
 				F8BA3112B0822B644C33EB75 /* CanonicalBoardView.swift */,
+				2840D0BFC48B0BF5F09FA0F8 /* DailyPuzzleTicker.swift */,
+				129549FD225212AF76197AF5 /* DailyResultShareCard.swift */,
 				003E39205E6D983A152AF798 /* DailyReturnCard.swift */,
+				B727A5CE045D5B6E258F92E8 /* FirstRunTutorialView.swift */,
+				CD5A6B06AC045B75B7959D76 /* GuessComposer.swift */,
 				8E6A83DFC06AA48C28BD0A9B /* JournalView.swift */,
 				265BEFC14F6F5011653FD71E /* JourneyRewards.swift */,
 				11D915DE26C2DDCDAB6087A8 /* PlusView.swift */,
 				1DCAF80FAC073F0CD3295862 /* PracticeGameView.swift */,
 				C61864440C1A74407936568F /* ProgressScreen.swift */,
 				7A644188B1C600803AADBDAD /* SettingsView.swift */,
+				A144E65217864C28A581E89B /* NavigationDrawer.swift */,
 				ABCCCCA7888E44CA151C9EA5 /* TodayView.swift */,
 				124C2F26141BC60AD508780F /* VisualBoard.swift */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		AF0E2CF2FCE6AA9963F2FA2B /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				D9102625A8A1100B6917F2CD /* close.wav */,
+				A7D6C5976E8E322F2D38A752 /* hint.wav */,
+				F4694027B63F1DA7C183D3C8 /* reward.wav */,
+				EE4C58E6FC7A6FE7D78C2D11 /* solve.wav */,
+			);
+			path = Sounds;
 			sourceTree = "<group>";
 		};
 		B0565005CA97D98682A0CC32 /* RebuzzleUITests */ = {
@@ -294,7 +354,9 @@
 			isa = PBXGroup;
 			children = (
 				48F1C269FB5408DBE57C73AE /* DailyPuzzleWidget.swift */,
+				186665EC0F970694C0069B7D /* DailyRoundLiveActivity.swift */,
 				C75275B0B43507AD24CDA8AF /* Info.plist */,
+				455846B4FFCFB9B887B85B64 /* Resources */,
 			);
 			path = RebuzzleWidgets;
 			sourceTree = "<group>";
@@ -391,17 +453,27 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					44CFD5A544E064B7997AF265 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = T677262U5B;
 					};
 					5D21DDE78700E556B34573D8 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = T677262U5B;
 						TestTargetID = C2E7BB794CD1A95D4ACBD01E;
 					};
 					C2E7BB794CD1A95D4ACBD01E = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = T677262U5B;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 					FDB2B8F875935075D76706C8 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = T677262U5B;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -448,6 +520,10 @@
 				68F7EB05659BA3B7725673C0 /* Inter-LICENSE.txt in Resources */,
 				FFC955A3CB1A30FB514AB254 /* Inter.ttf in Resources */,
 				23D5626DE99DB5C8E5F330C8 /* PrivacyInfo.xcprivacy in Resources */,
+				9D0738FED45D446D8F65952E /* close.wav in Resources */,
+				DF4D73E756D13D8C5C19D2A4 /* hint.wav in Resources */,
+				B0657F7CC27D52ADED4F1556 /* reward.wav in Resources */,
+				E0D65DF7049522D7D3AC6408 /* solve.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -474,6 +550,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E6F30F5A57AAEDF87762BAEB /* DailyResultShareCardTests.swift in Sources */,
 				6941D83F65E97E505BFA6144 /* DirectPurchaseTests.swift in Sources */,
 				254EF4828C224146D49A04C9 /* EveReplyTests.swift in Sources */,
 				3AB299CEB8825E3823C05494 /* NativeGrowthReportingTests.swift in Sources */,
@@ -491,6 +568,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F41ED06415803FF438E58923 /* DailyPuzzleWidget.swift in Sources */,
+				8F170BEAF81B30E55BA9A567 /* DailyRoundLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,8 +581,14 @@
 				A12AB77947C0F6758AB3E3B6 /* ArchiveView.swift in Sources */,
 				B4935EE7599FD9BDDB47FD32 /* CanonicalBoardView.swift in Sources */,
 				008EE794056149197CEC05D6 /* CredentialStore.swift in Sources */,
+				CBC6CC11383A32B060F2EF95 /* DailyLiveActivityStore.swift in Sources */,
+				357FFFCE6981D3F1523983F2 /* DailyPuzzleTicker.swift in Sources */,
+				665993D18AE71DA497CAE5EF /* DailyResultShareCard.swift in Sources */,
 				D6CC2EB0E2F84527E662812A /* DailyReturnCard.swift in Sources */,
 				ECE6239380306C5ADE9C4471 /* EveReplyStore.swift in Sources */,
+				D778D47901472055EA25A64E /* FirstRunTutorialView.swift in Sources */,
+				0D0598EC48993351A62FC0B8 /* GameSoundPlayer.swift in Sources */,
+				E275147566FBFF99C98A9188 /* GuessComposer.swift in Sources */,
 				0F3EC1B8E34F0AE9297D864D /* JournalView.swift in Sources */,
 				DB16E04E84B4DA3CBD373891 /* JourneyRewards.swift in Sources */,
 				2B387063BD4572478BD436B4 /* LocalStore.swift in Sources */,
@@ -517,6 +601,8 @@
 				DA428A581C6A0117D592D470 /* ReminderStore.swift in Sources */,
 				CDEA12895B0622352AA1AE61 /* ReturnRouter.swift in Sources */,
 				BC0F558FDC9CF64D04711ACD /* SettingsView.swift in Sources */,
+				A144E65217864C28A581E89A /* NavigationDrawer.swift in Sources */,
+				EACF0320F5D273BDAA3145D1 /* ArcadeHomeView.swift in Sources */,
 				FAB53A6F032B4E120AB54893 /* Theme.swift in Sources */,
 				0EA74FBE313E4E4FAE4D0036 /* TodayView.swift in Sources */,
 				259DD512FDEA823516C5CC87 /* VisualBoard.swift in Sources */,
@@ -548,6 +634,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Rebuzzle/Resources/Rebuzzle.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Rebuzzle/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Rebuzzle;
@@ -617,9 +704,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 54;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = T677262U5B;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -727,9 +814,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 54;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = T677262U5B;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -766,6 +853,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = RebuzzleWidgets/Resources/RebuzzleWidgets.entitlements;
 				INFOPLIST_FILE = RebuzzleWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Rebuzzle;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -784,6 +872,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Rebuzzle/Resources/Rebuzzle.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Rebuzzle/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Rebuzzle;
@@ -807,6 +896,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = RebuzzleWidgets/Resources/RebuzzleWidgets.entitlements;
 				INFOPLIST_FILE = RebuzzleWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Rebuzzle;
 				LD_RUNPATH_SEARCH_PATHS = (

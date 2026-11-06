@@ -7,16 +7,20 @@ struct PlusView: View {
     var body: some View {
         Page {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Keep your aha moments.")
+                Text("Replay the puzzle. Keep the aha.")
                     .font(Theme.font(24, weight: .medium, relativeTo: .title2))
                     .tracking(-0.5)
-                Text("Turn daily discoveries into puzzles you can study, remember, and return to.")
+                Text("Return to past dailies, write down what clicked, and see how your solving changes.")
                     .font(Theme.font(15)).foregroundStyle(Theme.secondary)
+            }
+            VStack(alignment: .leading, spacing: 24) {
+                feature("calendar.badge.clock", "Replay past puzzles", "Try earlier daily puzzles with fresh guesses and feedback. Practice never changes your score, streak, or rewards.")
+                feature("book.closed", "Keep a puzzle journal", "Revisit completed puzzles and save a note about what made the answer click.")
+                feature("chart.bar.xaxis", "See how you solve", "Explore your guess distribution, solve rate, and hint-free wins.")
             }
             if let entry = model.journal.entries.first, !model.purchases.hasPlus {
                 journalPreview(entry)
             }
-            purchase
             if model.purchases.hasPlus {
                 NavigationLink {
                     ArchiveView()
@@ -27,15 +31,9 @@ struct PlusView: View {
                 .buttonStyle(CommitStyle())
                 .accessibilityIdentifier("openPuzzleArchive")
             }
-            VStack(alignment: .leading, spacing: 24) {
-                feature("calendar.badge.clock", "Past daily puzzles", "Replay earlier clues with fresh guesses, progressive hints, and answer-blind feedback. Practice never changes your score, streak, or rewards.")
-                feature("book.closed", "A journal of discoveries", "Study completed puzzles again, reveal available hints one at a time, then see the answer.")
-                feature("pencil.line", "A place for the aha", "Save a note about what made the answer click.")
-                feature("chart.bar.xaxis", "Your solving patterns", "Explore guess distribution, solve rate, and hint-free wins.")
-            }
             VStack(alignment: .leading, spacing: 8) {
-                Text("Yours to keep. Yours to export.").font(Theme.font(15, weight: .medium))
-                Text("Plus applies to your Apple Account. Your journal stays on this device for this Rebuzzle account. Export a copy before changing devices. Restoring Plus restores the purchase, not your journal data.")
+                Text("Your Plus access is tied to your Apple Account.").font(Theme.font(15, weight: .medium))
+                Text("Your journal and notes are stored on this device. Export them before changing devices. Restoring Plus does not restore journal contents.")
                     .font(Theme.font(13)).foregroundStyle(Theme.secondary)
             }
             HStack(spacing: 24) {
@@ -43,8 +41,13 @@ struct PlusView: View {
                 Link("Terms", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!).frame(minHeight: 44)
             }.font(Theme.font(13))
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            purchaseActionBar
+        }
         .navigationTitle("Rebuzzle Plus")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .task {
             await model.purchases.load()
             if !model.purchases.hasPlus { model.recordGrowthEvent(.plusOfferViewed) }
@@ -72,42 +75,70 @@ struct PlusView: View {
             .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    private var purchase: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var purchaseActionBar: some View {
+        VStack(spacing: 8) {
             if model.purchases.hasPlus {
-                Label("You have Rebuzzle Plus", systemImage: "checkmark.seal.fill")
-                    .font(Theme.font(18, weight: .medium)).foregroundStyle(Theme.success)
-                Text("Your journal and deeper insights are unlocked.")
-                    .font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                Label("Rebuzzle Plus is yours", systemImage: "checkmark.seal.fill")
+                    .font(Theme.font(16, weight: .medium)).foregroundStyle(Theme.success)
                 NavigationLink { JournalView() } label: {
                     Label("Open your journal", systemImage: "book.closed")
-                }.buttonStyle(CommitStyle()).accessibilityIdentifier("openPlusJournal")
+                }
+                .buttonStyle(CommitStyle())
+                .accessibilityIdentifier("openPlusJournal")
             } else if let product = model.purchases.product {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(product.displayPrice).font(Theme.font(32, weight: .medium, relativeTo: .largeTitle)).monospacedDigit()
-                    Text("One-time purchase. No subscription.").font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Lifetime access").font(Theme.font(16, weight: .semibold))
+                        Text("One-time payment. No subscription.")
+                            .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Text(product.displayPrice)
+                        .font(Theme.font(25, weight: .medium, relativeTo: .title2))
+                        .monospacedDigit()
                 }
                 Button { Task { await model.purchases.purchase() } } label: {
                     HStack(spacing: 12) {
-                        Text("Unlock Plus · \(product.displayPrice)")
+                        Text("Unlock Rebuzzle Plus")
                         if model.purchases.busy { ProgressView().tint(Theme.canvas) }
                     }.padding(.horizontal, 16).padding(.vertical, 8)
-                }.buttonStyle(CommitStyle()).disabled(model.purchases.busy)
+                }
+                .buttonStyle(CommitStyle())
+                .disabled(model.purchases.busy)
+                .accessibilityIdentifier("purchaseRebuzzlePlus")
             } else {
-                Text("One-time purchase. No subscription.").font(Theme.font(16, weight: .medium))
-                Text("Connect to the App Store to see the price.").font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Lifetime access").font(Theme.font(16, weight: .semibold))
+                        Text("One-time purchase. No subscription.")
+                            .font(Theme.font(12)).foregroundStyle(Theme.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Text("—").font(Theme.font(25, weight: .medium, relativeTo: .title2))
+                }
+                Text("Connect to the App Store to see the price.")
+                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
                 Button { Task { await model.purchases.load() } } label: {
                     HStack(spacing: 12) {
                         Text("Check store availability")
                         if model.purchases.busy { ProgressView().tint(Theme.canvas) }
                     }.padding(.horizontal, 16).padding(.vertical, 8)
-                }.buttonStyle(CommitStyle()).disabled(model.purchases.busy)
+                }
+                .buttonStyle(CommitStyle())
+                .disabled(model.purchases.busy)
             }
-            Text("Daily puzzles, hints, and sharing stay free.").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+            Text("Daily puzzles, hints, and sharing stay free.")
+                .font(Theme.font(12)).foregroundStyle(Theme.secondary)
             if let message = model.purchases.message { Notice(message: message) }
             Button("Restore purchases") { Task { await model.purchases.restore() } }
-                .font(Theme.font(14)).frame(minHeight: 44).disabled(model.purchases.busy)
+                .font(Theme.font(13)).frame(minHeight: 44).disabled(model.purchases.busy)
         }
+        .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 8)
+        .background(Theme.canvas)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Theme.secondary.opacity(0.18)).frame(height: 1)
+        }
+        .frame(maxWidth: 600).frame(maxWidth: .infinity)
     }
 
     private func feature(_ symbol: String, _ title: String, _ copy: String) -> some View {
