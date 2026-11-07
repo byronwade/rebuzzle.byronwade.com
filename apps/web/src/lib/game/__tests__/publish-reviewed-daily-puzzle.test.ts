@@ -585,34 +585,85 @@ describe("owner approval required", () => {
     expect(result).toMatchObject({ id: "puzzle-3", servedFromBackup: false });
   });
 
-  it("stops instead of re-claiming the same backup after its artwork fails the asset check", async () => {
-    const backup: DailyPuzzleCandidate = {
+  it("rejects a backup whose artwork fails the asset recheck and serves the next backup", async () => {
+    const broken: DailyPuzzleCandidate = {
       ...makeCandidate("assigned", "2026-11-20"),
       id: "backup-1",
       humanEvidence: storedEvidence(),
       ownerApproval: validApproval("backup"),
     };
-    const persist = jest.fn();
+    const next: DailyPuzzleCandidate = { ...broken, id: "backup-2" };
+    const persist = jest.fn().mockResolvedValue({ id: "puzzle-4", alreadyExisted: false });
     const repository = mockRepository({
-      claimOldestBackupForDate: jest.fn().mockResolvedValue(backup),
+      claimOldestBackupForDate: jest
+        .fn()
+        .mockResolvedValueOnce(broken)
+        .mockResolvedValueOnce(next)
+        .mockResolvedValue(null),
     });
-    const failingAssets = jest
-      .fn()
-      .mockResolvedValue({ ok: false, reason: "quarantined" } as PublicationAssetCheck);
+    const verifyAssets = jest
+      .fn<Promise<PublicationAssetCheck>, [unknown]>()
+      .mockResolvedValueOnce({ ok: false, reason: "quarantined" })
+      .mockResolvedValue({ ok: true });
 
     const result = await publishReviewedDailyPuzzle({
       dateString: "2026-11-20",
       repository,
       reviewService,
       persist,
-      verifyAssets: failingAssets,
+      verifyAssets,
     });
 
-    expect(result).toBeNull();
-    expect(persist).not.toHaveBeenCalled();
-    expect(repository.claimOldestBackupForDate).toHaveBeenCalledTimes(2);
-    expect(repository.releaseAssignment).toHaveBeenLastCalledWith(
-      expect.objectContaining({ id: "backup-1", dateString: "2026-11-20" })
+    expect(repository.skip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "backup-1",
+        reason: "Approved puzzle artwork failed the publication asset recheck",
+      })
     );
+    expect(repository.releaseAssignment).not.toHaveBeenCalled();
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ id: "puzzle-4", servedFromBackup: true });
+  });
+
+  it("rejects a scheduled candidate whose artwork fails the asset recheck and serves a backup", async () => {
+    const scheduled: DailyPuzzleCandidate = {
+      ...makeCandidate("assigned", "2026-11-20"),
+      humanEvidence: storedEvidence(),
+      ownerApproval: validApproval("scheduled"),
+    };
+    const backup: DailyPuzzleCandidate = {
+      ...scheduled,
+      id: "backup-1",
+      ownerApproval: validApproval("backup"),
+    };
+    const persist = jest.fn().mockResolvedValue({ id: "puzzle-5", alreadyExisted: false });
+    const repository = mockRepository({
+      findAssignmentForDate: jest.fn().mockResolvedValue(scheduled),
+      claimOldestBackupForDate: jest.fn().mockResolvedValueOnce(backup).mockResolvedValue(null),
+    });
+    const verifyAssets = jest
+      .fn<Promise<PublicationAssetCheck>, [unknown]>()
+      .mockResolvedValueOnce({ ok: false, reason: "quarantined" })
+      .mockResolvedValue({ ok: true });
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString: "2026-11-20",
+      repository,
+      reviewService,
+      persist,
+      verifyAssets,
+    });
+
+    expect(repository.skip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "candidate-1",
+        reason: "Approved puzzle artwork failed the publication asset recheck",
+      })
+    );
+    expect(repository.releaseAssignment).not.toHaveBeenCalled();
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerApproval: backup.ownerApproval })
+    );
+    expect(result).toMatchObject({ id: "puzzle-5", servedFromBackup: true });
   });
 });

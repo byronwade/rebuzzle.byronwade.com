@@ -58,6 +58,8 @@ function hasRequiredCoverage(admission: PuzzlePlaytestCandidateAdmission): boole
 const SUPERSEDED = Symbol("daily-date-already-published");
 const MAX_BACKUP_ATTEMPTS = 10;
 const STALE_APPROVAL_REASON = "Owner approval missing or no longer matches the puzzle content";
+const APPROVED_ASSET_RECHECK_REASON =
+  "Approved puzzle artwork failed the publication asset recheck";
 
 function isDuplicateAnswer(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -88,6 +90,16 @@ export function createReviewedDailyPuzzlePublisher(input: {
     if (payload.visual) {
       const assets = await verifyAssets(payload.visual);
       if (!assets.ok) {
+        if (candidate.ownerApproval && isOwnerApprovalRequired(dateString)) {
+          // Releasing would leave an approved candidate stuck (or re-claimed as the oldest
+          // backup forever); reject it so the owner can re-review it.
+          await input.repository.skip({
+            id: candidate.id,
+            reason: APPROVED_ASSET_RECHECK_REASON,
+            updatedAt: now(),
+          });
+          return null;
+        }
         await input.repository.releaseAssignment({
           id: candidate.id,
           dateString,
@@ -255,20 +267,12 @@ export function createReviewedDailyPuzzlePublisher(input: {
       }
     }
 
-    const tried = new Set<string>();
     for (let attempt = 0; attempt < MAX_BACKUP_ATTEMPTS; attempt += 1) {
       const backup = await input.repository.claimOldestBackupForDate({
         dateString,
         updatedAt: now(),
       });
       if (!backup) return null;
-      if (tried.has(backup.id)) {
-        // The oldest backup was released (its artwork failed the asset check) and claimed
-        // again; leave it for a later retry rather than spending every attempt on it.
-        await input.repository.releaseAssignment({ id: backup.id, dateString, updatedAt: now() });
-        return null;
-      }
-      tried.add(backup.id);
       if (!hasValidOwnerApproval(backup.payload, backup.ownerApproval)) {
         await input.repository.skip({
           id: backup.id,
