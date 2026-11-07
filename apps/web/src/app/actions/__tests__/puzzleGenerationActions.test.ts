@@ -178,6 +178,26 @@ describe("getTodaysPuzzle with owner approval required", () => {
     expect(mockTrySelectUgcLotteryFiller).not.toHaveBeenCalled();
   });
 
+  it("never falls back to the UGC lottery or reserve when queued generation fails", async () => {
+    mockGetCachedDailyPuzzleFromDb.mockResolvedValueOnce(null);
+    mockCreateMongoDailyPuzzleCandidateRepository.mockReturnValue({
+      findByGenerationKey: jest.fn().mockResolvedValue(null),
+    });
+    mockCreateDailyPuzzleCandidateQueue.mockReturnValue({
+      retryPending: jest.fn().mockResolvedValue(undefined),
+    });
+    // The generation mock returns nothing, so generation throws.
+
+    const result = await getTodaysPuzzle("rebus", "2026-11-21", {
+      allowAiGenerate: true,
+      queueForPlaytest: true,
+    });
+
+    expect(result).toMatchObject({ success: false, unavailable: true });
+    expect(mockTrySelectUgcLotteryFiller).not.toHaveBeenCalled();
+    expect(selectMongoReservePuzzle).not.toHaveBeenCalled();
+  });
+
   it("alerts when a backup was served", async () => {
     mockGetCachedDailyPuzzleFromDb.mockResolvedValueOnce(null);
     jest

@@ -70,6 +70,11 @@ async function calculateDailyDifficulty(date?: Date): Promise<{
 }
 
 async function persistReservePuzzle(dateString: string, fallbackReason: string) {
+  // The UGC lottery below publishes with a direct write that skips persistDailyPuzzle's
+  // approval gate, so no reserve path may run once owner approval is required.
+  if (isOwnerApprovalRequired(dateString)) {
+    throw new DailyPuzzleUnavailableError(dateString, `Reserve not allowed (${fallbackReason})`);
+  }
   // Studio lottery: occasionally fill reserve days with approved player puzzles.
   try {
     const { trySelectUgcLotteryFiller } = await import("@/lib/ugc/lottery");
