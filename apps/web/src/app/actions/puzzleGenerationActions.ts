@@ -267,31 +267,33 @@ async function getOrGenerateDailyPuzzle(
   }
 
   // Double-check once more before generating (race with concurrent requests)
-  let raceCheck: Awaited<ReturnType<typeof db.puzzleOps.findByDate>> = null;
+  let raceFormatted: ReturnType<typeof formatPuzzleFromDb> | null = null;
   try {
-    raceCheck = await db.puzzleOps.findByDate(dateString);
+    const raceCheck = await db.puzzleOps.findByDate(dateString);
+    if (raceCheck) {
+      if (queueForPlaytest) {
+        logger.info("Skipping candidate queue because this date was just published", {
+          dateString,
+          puzzleId: raceCheck.id,
+        });
+        return skippedCandidateQueueResult(dateString);
+      }
+      // The cached miss is stale; serve the row we just read instead of generating.
+      revalidateDailyPuzzle(dateString);
+      raceFormatted = formatPuzzleFromDb(raceCheck, dateString);
+    }
   } catch (finalCheckError) {
     logger.error(
       "Final pre-generation check failed",
       finalCheckError instanceof Error ? finalCheckError : new Error(String(finalCheckError))
     );
   }
-  if (raceCheck) {
-    if (queueForPlaytest) {
-      logger.info("Skipping candidate queue because this date was just published", {
-        dateString,
-        puzzleId: raceCheck.id,
-      });
-      return skippedCandidateQueueResult(dateString);
-    }
-    // The cached miss is stale; serve the row we just read instead of generating.
-    revalidateDailyPuzzle(dateString);
-    const formatted = formatPuzzleFromDb(raceCheck, dateString);
+  if (raceFormatted) {
     // Checked outside the try above so a refusal cannot fall through to generation.
-    if (ownerApprovalRequired && !formatted.ownerApproved) {
-      return rejectUnapprovedRow(dateString, formatted.id);
+    if (ownerApprovalRequired && !raceFormatted.ownerApproved) {
+      return rejectUnapprovedRow(dateString, raceFormatted.id);
     }
-    return formatted;
+    return raceFormatted;
   }
 
   if (queueForPlaytest) {
