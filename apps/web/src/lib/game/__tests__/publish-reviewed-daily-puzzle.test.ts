@@ -625,6 +625,45 @@ describe("owner approval required", () => {
     expect(result).toMatchObject({ id: "puzzle-4", servedFromBackup: true });
   });
 
+  it("rejects a backup whose approval no longer matches and serves the next backup", async () => {
+    const stale: DailyPuzzleCandidate = {
+      ...makeCandidate("assigned", "2026-11-20"),
+      id: "backup-stale",
+      humanEvidence: storedEvidence(),
+      ownerApproval: { ...validApproval("backup"), contentHash: "stale" },
+    };
+    const next: DailyPuzzleCandidate = {
+      ...stale,
+      id: "backup-2",
+      ownerApproval: validApproval("backup"),
+    };
+    const persist = jest.fn().mockResolvedValue({ id: "puzzle-6", alreadyExisted: false });
+    const repository = mockRepository({
+      claimOldestBackupForDate: jest
+        .fn()
+        .mockResolvedValueOnce(stale)
+        .mockResolvedValueOnce(next)
+        .mockResolvedValue(null),
+    });
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString: "2026-11-20",
+      repository,
+      reviewService,
+      persist,
+      verifyAssets: okAssets,
+    });
+
+    expect(repository.skip).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "backup-stale", reason: expect.stringContaining("approval") })
+    );
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerApproval: next.ownerApproval })
+    );
+    expect(result).toMatchObject({ id: "puzzle-6", servedFromBackup: true });
+  });
+
   it("marks the scheduled candidate published when a concurrent request loses the race", async () => {
     const scheduled: DailyPuzzleCandidate = {
       ...makeCandidate("assigned", "2026-11-20"),
