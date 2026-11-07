@@ -99,3 +99,25 @@ describe("isOwnerApprovalRequired", () => {
     expect(isOwnerApprovalRequired("2027-01-05")).toBe(true);
   });
 });
+
+describe("content hash across a MongoDB round trip", () => {
+  it("is unchanged after BSON serialize/deserialize, including undefined optionals", () => {
+    const { BSON } = jest.requireActual<typeof import("mongodb")>("mongodb");
+    const content = {
+      answer: "two left feet",
+      acceptedAnswers: undefined,
+      visual: {
+        ...visual,
+        styleId: undefined,
+        layers: [
+          { kind: "text" as const, content: "TEEF", emphasis: "normal" as const, rotation: 0.5 },
+          { kind: "text" as const, content: "TEEF", emphasis: undefined },
+        ],
+      },
+    };
+    const stored = BSON.deserialize(BSON.serialize({ ...content })) as typeof content;
+
+    expect(stored.visual).not.toHaveProperty("styleId");
+    expect(computeOwnerContentHash(stored)).toBe(computeOwnerContentHash(content));
+  });
+});
