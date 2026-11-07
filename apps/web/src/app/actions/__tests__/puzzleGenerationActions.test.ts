@@ -138,6 +138,8 @@ describe("getTodaysPuzzle with owner approval required", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.OWNER_APPROVAL_REQUIRED_FROM = "2026-11-01";
+    // 2026-11-20 is the live date for these tests.
+    jest.useFakeTimers({ now: new Date("2026-11-20T12:00:00.000Z") });
     mockSendOwnerAlert.mockResolvedValue("sent");
     mockFindByDate.mockResolvedValue(null);
     mockTrySelectUgcLotteryFiller.mockResolvedValue(null);
@@ -145,6 +147,7 @@ describe("getTodaysPuzzle with owner approval required", () => {
     jest.mocked(selectMongoReservePuzzle).mockRejectedValue(new Error("reserve not expected"));
   });
   afterEach(() => {
+    jest.useRealTimers();
     if (original === undefined) Reflect.deleteProperty(process.env, "OWNER_APPROVAL_REQUIRED_FROM");
     else process.env.OWNER_APPROVAL_REQUIRED_FROM = original;
   });
@@ -160,6 +163,19 @@ describe("getTodaysPuzzle with owner approval required", () => {
     expect(mockSendOwnerAlert).toHaveBeenCalledWith(
       expect.objectContaining({ type: "daily_puzzle_unavailable", dateKey: "2026-11-20" })
     );
+  });
+
+  it("refuses a date that is not live anywhere without touching candidates", async () => {
+    mockGetCachedDailyPuzzleFromDb.mockResolvedValueOnce(null);
+
+    const result = await getTodaysPuzzle(undefined, "2026-12-25", { allowAiGenerate: false });
+
+    expect(result).toMatchObject({ success: false, unavailable: true });
+    // Publishing would claim (and burn) an approved backup for a future date.
+    expect(publishReviewedDailyPuzzle).not.toHaveBeenCalled();
+    expect(mockCreateMongoDailyPuzzleCandidateRepository).not.toHaveBeenCalled();
+    expect(selectMongoReservePuzzle).not.toHaveBeenCalled();
+    expect(mockTrySelectUgcLotteryFiller).not.toHaveBeenCalled();
   });
 
   it("alerts when a backup was served", async () => {

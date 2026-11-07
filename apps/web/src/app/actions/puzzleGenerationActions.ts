@@ -320,6 +320,11 @@ async function getOrGenerateDailyPuzzle(
   // or use the existing community/curated reserve path.
   if (!allowAiGenerate) {
     if (ownerApprovalRequired) {
+      // Publishing for a date no one can play yet would assign (and burn) an approved
+      // backup for that future date, leaving nothing for the days in between.
+      if (!isLocalPuzzleDateLiveSomewhere(dateString)) {
+        throw new DailyPuzzleUnavailableError(dateString, "Date is not live in any time zone");
+      }
       const approved = await publishReviewedDailyPuzzle({
         dateString,
         repository: createMongoDailyPuzzleCandidateRepository(),
