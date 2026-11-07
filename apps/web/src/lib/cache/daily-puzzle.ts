@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import type { Puzzle, PuzzleVisual } from "@/db/models";
+import { hasValidOwnerApproval } from "@/lib/game/owner-approval";
 import { logger } from "@/lib/logger";
 
 export type CachedDailyPuzzle = {
@@ -20,6 +21,8 @@ export type CachedDailyPuzzle = {
   seoMetadata: Record<string, unknown>;
   aiGenerated: boolean;
   fromDatabase: true;
+  /** Stored owner approval still matches this row's answer, accepted answers and board. */
+  ownerApproved: boolean;
   /** Generative composed board when Eve built custom pictograms */
   visual?: PuzzleVisual;
   source?: string;
@@ -76,6 +79,10 @@ export function formatPuzzleFromDb(puzzle: Puzzle, dateString: string): CachedDa
     seoMetadata: (puzzle.metadata?.seoMetadata as Record<string, unknown>) || {},
     aiGenerated: puzzle.metadata?.aiGenerated !== false && puzzle.metadata?.source !== "user",
     fromDatabase: true,
+    ownerApproved: hasValidOwnerApproval(
+      { answer: puzzle.answer, acceptedAnswers: puzzle.acceptedAnswers, visual: puzzle.visual },
+      puzzle.metadata?.ownerApproval
+    ),
     visual: puzzle.visual,
     source: puzzle.metadata?.source,
     attribution: puzzle.metadata?.attribution,
