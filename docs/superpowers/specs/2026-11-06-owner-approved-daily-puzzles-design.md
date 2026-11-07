@@ -130,7 +130,7 @@ The puzzle stores `acceptedAnswers: string[]`. The canonical answer is always in
 
 Players already submit ratings and difficulty feedback. Add a "this puzzle seems broken" report reason, limited to one report per player per puzzle.
 
-The alert threshold is reached at 3 distinct reports, or at 5% of players who finished that puzzle, whichever comes first, with a minimum of 3 reports.
+The alert threshold is 3 distinct player reports for that puzzle and date key.
 
 ### The Pull action
 
