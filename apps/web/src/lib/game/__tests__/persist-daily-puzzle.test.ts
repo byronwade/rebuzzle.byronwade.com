@@ -279,4 +279,24 @@ describe("owner approval choke point", () => {
       })
     );
   });
+
+  it("reports a same-date winner whose answer it just collided with as already existing", async () => {
+    const ownerApproval = {
+      approvedBy: "owner",
+      approvedAt: new Date("2026-07-20T00:00:00Z"),
+      role: "scheduled" as const,
+      contentHash: computeOwnerContentHash(input),
+    };
+    // A concurrent request publishing this same candidate inserted between our date
+    // check and our answer check.
+    (db.puzzleOps.findByDate as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "winner" });
+    (isAnswerRegistered as jest.Mock).mockResolvedValueOnce({ taken: true, puzzleId: "winner" });
+
+    await expect(
+      persistDailyPuzzle({ ...input, aiGenerated: false, ownerApproval })
+    ).resolves.toEqual({ id: "winner", alreadyExisted: true });
+    expect(db.puzzleOps.create).not.toHaveBeenCalled();
+  });
 });

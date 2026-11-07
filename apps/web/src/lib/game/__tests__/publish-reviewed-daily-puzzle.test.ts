@@ -625,6 +625,49 @@ describe("owner approval required", () => {
     expect(result).toMatchObject({ id: "puzzle-4", servedFromBackup: true });
   });
 
+  it("marks the scheduled candidate published when a concurrent request loses the race", async () => {
+    const scheduled: DailyPuzzleCandidate = {
+      ...makeCandidate("assigned", "2026-11-20"),
+      humanEvidence: storedEvidence(),
+      ownerApproval: validApproval("scheduled"),
+    };
+    const { repository, rows } = memoryRepository([scheduled]);
+    let finishWinner: (value: { id: string; alreadyExisted: boolean }) => void = () => {};
+    const persist = jest
+      .fn()
+      // Winner inserts the row but is slow to return.
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishWinner = resolve;
+          })
+      )
+      // Loser sees the winner's row for this date.
+      .mockResolvedValueOnce({ id: "puzzle-race", alreadyExisted: true });
+    const publish = () =>
+      publishReviewedDailyPuzzle({
+        dateString: "2026-11-20",
+        repository,
+        reviewService,
+        persist,
+        verifyAssets: okAssets,
+      });
+
+    const winner = publish();
+    const loser = await publish();
+    finishWinner({ id: "puzzle-race", alreadyExisted: false });
+    const won = await winner;
+
+    expect(loser).toBeNull();
+    expect(won).toMatchObject({ id: "puzzle-race", servedFromBackup: false });
+    // Releasing would strand an approved scheduled candidate as "ready" with no date.
+    expect(rows[0]).toMatchObject({
+      status: "published",
+      assignedDate: "2026-11-20",
+      publishedPuzzleId: "puzzle-race",
+    });
+  });
+
   it("rejects a scheduled candidate whose artwork fails the asset recheck and serves a backup", async () => {
     const scheduled: DailyPuzzleCandidate = {
       ...makeCandidate("assigned", "2026-11-20"),

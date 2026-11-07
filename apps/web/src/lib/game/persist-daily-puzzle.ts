@@ -126,6 +126,13 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
   // Never persist a duplicate answer — archive (retired) puzzles still count
   const answerCheck = await isAnswerRegistered(input.answer);
   if (answerCheck.taken) {
+    if (isOwnerApprovalRequired(input.dateString)) {
+      // A concurrent publish of this same approved candidate can land between the date
+      // check above and the answer check. Report the date as taken rather than letting the
+      // publisher reject the candidate whose board is now live.
+      const concurrent = await db.puzzleOps.findByDate(input.dateString);
+      if (concurrent) return { id: concurrent.id, alreadyExisted: true };
+    }
     throw new Error(
       `Refusing to persist duplicate answer (matches puzzle ${answerCheck.puzzleId}). Generate a unique answer.`
     );

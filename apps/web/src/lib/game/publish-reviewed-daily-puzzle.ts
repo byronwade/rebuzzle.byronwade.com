@@ -140,6 +140,12 @@ export function createReviewedDailyPuzzlePublisher(input: {
     }
 
     if (persisted.alreadyExisted) {
+      if (candidate.ownerApproval && isOwnerApprovalRequired(dateString)) {
+        // Usually a concurrent request publishing this same candidate. Releasing it would
+        // make that request's markPublished a no-op and strand the approval as "ready" with
+        // no date, where neither the scheduler nor the backup queue can reach it.
+        return SUPERSEDED;
+      }
       // Another publication (e.g. a concurrent reserve) won this date. Its row, not this
       // candidate's board, is what guesses validate against, so keep the candidate for
       // a later date and let the caller serve the persisted puzzle.
