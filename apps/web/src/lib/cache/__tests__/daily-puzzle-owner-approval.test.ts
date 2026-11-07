@@ -4,7 +4,9 @@ jest.mock("next/cache", () => ({
   revalidateTag: jest.fn(),
 }));
 jest.mock("@/db", () => ({ db: { puzzleOps: { findByDate: jest.fn() } } }));
-jest.mock("@/lib/logger", () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock("@/lib/logger", () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import type { Puzzle } from "@/db/models";
 import { computeOwnerContentHash } from "@/lib/game/owner-approval";

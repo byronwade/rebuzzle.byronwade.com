@@ -662,6 +662,13 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
     ],
   },
   {
+    collection: "ownerAlerts",
+    indexes: [
+      { spec: { key: 1 }, options: { unique: true, name: "owner_alert_key_unique" } },
+      { spec: { createdAt: -1 }, options: { name: "owner_alert_created" } },
+    ],
+  },
+  {
     collection: "puzzlePlaytestCandidates",
     indexes: [
       { spec: { id: 1 }, options: { unique: true } },
