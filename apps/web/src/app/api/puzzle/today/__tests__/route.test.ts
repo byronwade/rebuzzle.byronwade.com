@@ -99,3 +99,37 @@ it("selects the official puzzle by the authenticated account's stable reset zone
   expect(getTodaysPuzzle).toHaveBeenCalledWith(undefined, "2026-10-25", { allowAiGenerate: false });
   expect((await response.json()).timeZone).toBe("America/Los_Angeles");
 });
+
+describe("GET /api/puzzle/today when no puzzle is available", () => {
+  it("returns 503 daily_puzzle_unavailable with Retry-After", async () => {
+    jest
+      .mocked(getTodaysPuzzle)
+      .mockResolvedValueOnce({ success: false, unavailable: true } as never);
+
+    const response = await GET(new Request("https://rebuzzle.test/api/puzzle/today"));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Retry-After")).toBe("300");
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(body).toMatchObject({
+      success: false,
+      code: "daily_puzzle_unavailable",
+      retryAfterSeconds: 300,
+      puzzleDate: "2026-10-26",
+      timeZone: "UTC",
+    });
+  });
+
+  it("never returns 500 for an unexpected failure", async () => {
+    jest.mocked(getTodaysPuzzle).mockRejectedValueOnce(new Error("boom"));
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await GET(new Request("https://rebuzzle.test/api/puzzle/today"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Retry-After")).toBe("300");
+    expect(await response.json()).toMatchObject({ code: "daily_puzzle_unavailable" });
+    consoleError.mockRestore();
+  });
+});

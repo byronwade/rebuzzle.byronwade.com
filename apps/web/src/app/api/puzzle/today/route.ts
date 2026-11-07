@@ -8,6 +8,27 @@ import { resolveStableJourneyTimeZone } from "@/lib/journey-timezone";
 import { resolveRequestTimeZone } from "@/lib/timezone";
 import { getTodaysPuzzle } from "../../../actions/puzzleGenerationActions";
 
+const RETRY_AFTER_SECONDS = 300;
+
+function unavailable(extra: Record<string, unknown>) {
+  return NextResponse.json(
+    {
+      success: false,
+      code: "daily_puzzle_unavailable",
+      error: "Today's puzzle is on its way",
+      retryAfterSeconds: RETRY_AFTER_SECONDS,
+      ...extra,
+    },
+    {
+      status: 503,
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Retry-After": String(RETRY_AFTER_SECONDS),
+      },
+    }
+  );
+}
+
 /**
  * GET /api/puzzle/today
  *
@@ -81,28 +102,18 @@ export async function GET(request?: Request) {
       );
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to load puzzle",
-        serverTime: now.toISOString(),
-        puzzleDate: localDateKey,
-        timeZone,
-        nextPuzzleTime,
-      },
-      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
-    );
+    return unavailable({
+      serverTime: now.toISOString(),
+      puzzleDate: localDateKey,
+      timeZone,
+      nextPuzzleTime,
+    });
   } catch (error) {
     console.error("Error in puzzle API:", error);
     const now = new Date();
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Internal server error",
-        serverTime: now.toISOString(),
-        nextPuzzleTime: getNextLocalMidnight(now).toISOString(),
-      },
-      { status: 500, headers: { "Cache-Control": buildCacheControl({ private: true }) } }
-    );
+    return unavailable({
+      serverTime: now.toISOString(),
+      nextPuzzleTime: getNextLocalMidnight(now).toISOString(),
+    });
   }
 }
