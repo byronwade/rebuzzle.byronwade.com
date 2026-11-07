@@ -655,6 +655,10 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         spec: { status: 1, createdAt: 1 },
         options: { name: "daily_candidate_status_created" },
       },
+      {
+        spec: { status: 1, "ownerApproval.role": 1, "ownerApproval.approvedAt": 1 },
+        options: { name: "daily_candidate_owner_backup_queue" },
+      },
     ],
   },
   {
