@@ -7,7 +7,9 @@ import {
   verifyPublicationAssets,
 } from "@/ai/puzzle-agent/visual/publication-assets";
 import type { DailyPuzzleCandidate, DailyPuzzleCandidateHumanEvidence } from "@/db/models";
+import { logger } from "@/lib/logger";
 import type { DailyPuzzleCandidateRepository } from "./daily-puzzle-candidate-repository";
+import { hasValidOwnerApproval, isOwnerApprovalRequired } from "./owner-approval";
 import type { PersistDailyPuzzleInput } from "./persist-daily-puzzle";
 
 const DAILY_CANDIDATE_REVIEW_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
@@ -54,6 +56,11 @@ function hasRequiredCoverage(admission: PuzzlePlaytestCandidateAdmission): boole
 }
 
 const SUPERSEDED = Symbol("daily-date-already-published");
+const MAX_BACKUP_ATTEMPTS = 10;
+const STALE_APPROVAL_REASON = "Owner approval missing or no longer matches the puzzle content";
+const APPROVED_ASSET_RECHECK_REASON =
+  "Approved puzzle artwork failed the publication asset recheck";
+const SCHEDULED_PUBLISH_FAILED_REASON = "Scheduled puzzle failed to publish";
 
 function isDuplicateAnswer(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -84,6 +91,16 @@ export function createReviewedDailyPuzzlePublisher(input: {
     if (payload.visual) {
       const assets = await verifyAssets(payload.visual);
       if (!assets.ok) {
+        if (candidate.ownerApproval && isOwnerApprovalRequired(dateString)) {
+          // Releasing would leave an approved candidate stuck (or re-claimed as the oldest
+          // backup forever); reject it so the owner can re-review it.
+          await input.repository.skip({
+            id: candidate.id,
+            reason: APPROVED_ASSET_RECHECK_REASON,
+            updatedAt: now(),
+          });
+          return null;
+        }
         await input.repository.releaseAssignment({
           id: candidate.id,
           dateString,
@@ -111,6 +128,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
           visualFailureReports: evidence.visualFailureReports,
           admittedAt: evidence.admittedAt,
         },
+        ...(candidate.ownerApproval ? { ownerApproval: candidate.ownerApproval } : {}),
       });
     } catch (error) {
       if (!isDuplicateAnswer(error)) throw error;
@@ -123,6 +141,12 @@ export function createReviewedDailyPuzzlePublisher(input: {
     }
 
     if (persisted.alreadyExisted) {
+      if (candidate.ownerApproval && isOwnerApprovalRequired(dateString)) {
+        // Usually a concurrent request publishing this same candidate. Releasing it would
+        // make that request's markPublished a no-op and strand the approval as "ready" with
+        // no date, where neither the scheduler nor the backup queue can reach it.
+        return SUPERSEDED;
+      }
       // Another publication (e.g. a concurrent reserve) won this date. Its row, not this
       // candidate's board, is what guesses validate against, so keep the candidate for
       // a later date and let the caller serve the persisted puzzle.
@@ -151,6 +175,9 @@ export function createReviewedDailyPuzzlePublisher(input: {
       fromDatabase: true,
       aiGenerated: true,
       humanReviewed: true,
+      ...(candidate.ownerApproval
+        ? { servedFromBackup: candidate.ownerApproval.role === "backup" }
+        : {}),
     };
   }
 
@@ -160,6 +187,8 @@ export function createReviewedDailyPuzzlePublisher(input: {
       limit: 100,
     });
     for (const candidate of readyCandidates) {
+      // Owner-approved candidates belong to the approval gate, even before its cutover date.
+      if (candidate.ownerApproval) continue;
       const claimed = await input.repository.claimReadyForDate({
         id: candidate.id,
         dateString,
@@ -173,8 +202,133 @@ export function createReviewedDailyPuzzlePublisher(input: {
     return null;
   }
 
+  async function promoteReviewedCandidates() {
+    const reviewingCandidates = await input.repository.list({
+      statuses: ["reviewing"],
+      limit: 100,
+    });
+    for (const candidate of reviewingCandidates) {
+      if (now().getTime() - candidate.createdAt.getTime() > DAILY_CANDIDATE_REVIEW_EXPIRY_MS) {
+        await input.repository.skip({
+          id: candidate.id,
+          reason: "Candidate expired after 60 days without completing blind review",
+          updatedAt: now(),
+        });
+        continue;
+      }
+      if (!candidate.playtestSubmittedAt) continue;
+      const admission = await input.reviewService.getCandidateAdmission(candidate.id, now());
+      const evidence = evidenceForCandidate(admission, now());
+      const eligible = Boolean(
+        admission.eligible &&
+          admission.candidateStatus === "complete" &&
+          hasRequiredCoverage(admission) &&
+          admission.solveEvidence?.passes &&
+          admission.ambiguityReports <= 1 &&
+          admission.visualFailureReports === 0 &&
+          evidence
+      );
+
+      if (eligible && evidence) {
+        await input.repository.markReady({
+          id: candidate.id,
+          expectedStatusVersion: candidate.statusVersion,
+          updatedAt: now(),
+          humanEvidence: evidence,
+        });
+      } else if (admission.candidateStatus === "complete") {
+        await input.repository.skip({
+          id: candidate.id,
+          reason: admission.reasons.join("; ") || "Candidate failed daily admission",
+          updatedAt: now(),
+        });
+      }
+    }
+  }
+
+  async function publishOwnerApprovedForDate(dateString: string) {
+    // Promotion only fills the owner's review queue; it never decides today's puzzle,
+    // so a playtest outage must not block an already-approved board.
+    try {
+      await promoteReviewedCandidates();
+    } catch (error) {
+      logger.warn("Could not promote reviewed daily candidates", {
+        dateString,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const scheduled = await input.repository.findAssignmentForDate(dateString);
+    if (scheduled?.status === "published") {
+      throw new Error("Published daily candidate has no matching public puzzle row");
+    }
+    if (scheduled?.status === "assigned") {
+      if (hasValidOwnerApproval(scheduled.payload, scheduled.ownerApproval)) {
+        let published: Awaited<ReturnType<typeof publishAssignedCandidate>> = null;
+        try {
+          published = await publishAssignedCandidate(scheduled, dateString);
+        } catch (error) {
+          // Its assignedDate would block every backup; reject it so the owner can re-review
+          // it and fall through to the backup pool.
+          const message = error instanceof Error ? error.message : String(error);
+          logger.error(
+            "Scheduled daily puzzle failed to publish",
+            error instanceof Error ? error : new Error(message),
+            { dateString, candidateId: scheduled.id }
+          );
+          await input.repository.skip({
+            id: scheduled.id,
+            reason: `${SCHEDULED_PUBLISH_FAILED_REASON}: ${message}`,
+            updatedAt: now(),
+          });
+        }
+        if (published === SUPERSEDED) return null;
+        if (published) return published;
+      } else {
+        await input.repository.skip({
+          id: scheduled.id,
+          reason: STALE_APPROVAL_REASON,
+          updatedAt: now(),
+        });
+      }
+    }
+
+    for (let attempt = 0; attempt < MAX_BACKUP_ATTEMPTS; attempt += 1) {
+      const backup = await input.repository.claimOldestBackupForDate({
+        dateString,
+        updatedAt: now(),
+      });
+      if (!backup) return null;
+      if (!hasValidOwnerApproval(backup.payload, backup.ownerApproval)) {
+        await input.repository.skip({
+          id: backup.id,
+          reason: STALE_APPROVAL_REASON,
+          updatedAt: now(),
+        });
+        continue;
+      }
+      let published: Awaited<ReturnType<typeof publishAssignedCandidate>>;
+      try {
+        published = await publishAssignedCandidate(backup, dateString);
+      } catch (error) {
+        // Likely an infrastructure failure that would hit every backup the same way: put
+        // this one back in the pool rather than rejecting the rest one by one.
+        await input.repository.releaseAssignment({
+          id: backup.id,
+          dateString,
+          updatedAt: now(),
+        });
+        throw error;
+      }
+      if (published === SUPERSEDED) return null;
+      if (published) return published;
+    }
+    return null;
+  }
+
   return {
     async publishForDate(dateString: string) {
+      if (isOwnerApprovalRequired(dateString)) return publishOwnerApprovedForDate(dateString);
       const existingAssignment = await input.repository.findAssignmentForDate(dateString);
       if (existingAssignment?.status === "assigned") {
         const resumed = await publishAssignedCandidate(existingAssignment, dateString);
@@ -188,47 +342,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
       if (previouslyAdmitted === SUPERSEDED) return null;
       if (previouslyAdmitted) return previouslyAdmitted;
 
-      const reviewingCandidates = await input.repository.list({
-        statuses: ["reviewing"],
-        limit: 100,
-      });
-      for (const candidate of reviewingCandidates) {
-        if (now().getTime() - candidate.createdAt.getTime() > DAILY_CANDIDATE_REVIEW_EXPIRY_MS) {
-          await input.repository.skip({
-            id: candidate.id,
-            reason: "Candidate expired after 60 days without completing blind review",
-            updatedAt: now(),
-          });
-          continue;
-        }
-        if (!candidate.playtestSubmittedAt) continue;
-        const admission = await input.reviewService.getCandidateAdmission(candidate.id, now());
-        const evidence = evidenceForCandidate(admission, now());
-        const eligible = Boolean(
-          admission.eligible &&
-            admission.candidateStatus === "complete" &&
-            hasRequiredCoverage(admission) &&
-            admission.solveEvidence?.passes &&
-            admission.ambiguityReports <= 1 &&
-            admission.visualFailureReports === 0 &&
-            evidence
-        );
-
-        if (eligible && evidence) {
-          await input.repository.markReady({
-            id: candidate.id,
-            expectedStatusVersion: candidate.statusVersion,
-            updatedAt: now(),
-            humanEvidence: evidence,
-          });
-        } else if (admission.candidateStatus === "complete") {
-          await input.repository.skip({
-            id: candidate.id,
-            reason: admission.reasons.join("; ") || "Candidate failed daily admission",
-            updatedAt: now(),
-          });
-        }
-      }
+      await promoteReviewedCandidates();
 
       const admitted = await publishReadyCandidate(dateString);
       return admitted === SUPERSEDED ? null : admitted;

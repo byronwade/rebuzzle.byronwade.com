@@ -21,6 +21,7 @@ jest.mock("@/ai/puzzle-agent/review/puzzle-playtest-server", () => ({
 import { isAnswerRegistered } from "@/ai/learning/answer-registry";
 import { puzzlePlaytestService } from "@/ai/puzzle-agent/review/puzzle-playtest-server";
 import { db } from "@/db";
+import { computeOwnerContentHash } from "../owner-approval";
 import { type PersistDailyPuzzleInput, persistDailyPuzzle } from "../persist-daily-puzzle";
 
 const input: PersistDailyPuzzleInput = {
@@ -214,5 +215,88 @@ describe("daily puzzle publication locks", () => {
       humanPlaytestAdmission
     );
     expect(submitPlaytestCandidate).not.toHaveBeenCalled();
+  });
+});
+
+describe("owner approval choke point", () => {
+  const original = process.env.OWNER_APPROVAL_REQUIRED_FROM;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (db.puzzleOps.findByDate as jest.Mock).mockResolvedValue(null);
+    (isAnswerRegistered as jest.Mock).mockResolvedValue({ taken: false });
+    process.env.OWNER_APPROVAL_REQUIRED_FROM = "2026-08-01";
+  });
+  afterEach(() => {
+    if (original === undefined) delete process.env.OWNER_APPROVAL_REQUIRED_FROM;
+    else process.env.OWNER_APPROVAL_REQUIRED_FROM = original;
+  });
+
+  it("refuses to persist without an owner approval when required", async () => {
+    await expect(persistDailyPuzzle({ ...input, aiGenerated: false })).rejects.toThrow(
+      "Owner approval is required"
+    );
+    expect(db.puzzleOps.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses an approval whose hash does not match the content", async () => {
+    await expect(
+      persistDailyPuzzle({
+        ...input,
+        aiGenerated: false,
+        ownerApproval: {
+          approvedBy: "owner",
+          approvedAt: new Date(),
+          role: "scheduled",
+          contentHash: "stale",
+        },
+      })
+    ).rejects.toThrow("Owner approval is required");
+  });
+
+  it("persists approved content with accepted answers and the approval record", async () => {
+    const ownerApproval = {
+      approvedBy: "owner",
+      approvedAt: new Date("2026-07-20T00:00:00Z"),
+      role: "scheduled" as const,
+      contentHash: computeOwnerContentHash({
+        answer: input.answer,
+        acceptedAnswers: ["2 left feet"],
+        visual: input.visual,
+      }),
+    };
+
+    await persistDailyPuzzle({
+      ...input,
+      aiGenerated: false,
+      acceptedAnswers: ["2 left feet"],
+      ownerApproval,
+    });
+
+    expect(db.puzzleOps.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        acceptedAnswers: ["2 left feet"],
+        metadata: expect.objectContaining({ ownerApproval }),
+      })
+    );
+  });
+
+  it("reports a same-date winner whose answer it just collided with as already existing", async () => {
+    const ownerApproval = {
+      approvedBy: "owner",
+      approvedAt: new Date("2026-07-20T00:00:00Z"),
+      role: "scheduled" as const,
+      contentHash: computeOwnerContentHash(input),
+    };
+    // A concurrent request publishing this same candidate inserted between our date
+    // check and our answer check.
+    (db.puzzleOps.findByDate as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "winner" });
+    (isAnswerRegistered as jest.Mock).mockResolvedValueOnce({ taken: true, puzzleId: "winner" });
+
+    await expect(
+      persistDailyPuzzle({ ...input, aiGenerated: false, ownerApproval })
+    ).resolves.toEqual({ id: "winner", alreadyExisted: true });
+    expect(db.puzzleOps.create).not.toHaveBeenCalled();
   });
 });

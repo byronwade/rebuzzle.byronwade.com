@@ -20,10 +20,13 @@ import { formatPuzzleFromDb, getCachedDailyPuzzleFromDb } from "@/lib/cache/dail
 import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
 import { isLocalPuzzleDateLiveSomewhere } from "@/lib/game/daily-lock";
 import { createMongoDailyPuzzleCandidateRepository } from "@/lib/game/daily-puzzle-candidate-repository";
+import { DailyPuzzleUnavailableError } from "@/lib/game/daily-puzzle-unavailable";
+import { isOwnerApprovalRequired } from "@/lib/game/owner-approval";
 import { persistDailyPuzzle } from "@/lib/game/persist-daily-puzzle";
 import { publishReviewedDailyPuzzle } from "@/lib/game/publish-reviewed-daily-puzzle";
 import { createDailyPuzzleCandidateQueue } from "@/lib/game/queue-daily-puzzle-candidate";
 import { logger } from "@/lib/logger";
+import { sendOwnerAlert } from "@/lib/notifications/owner-alerts";
 
 /**
  * Get today's date string in YYYY-MM-DD format
@@ -67,6 +70,11 @@ async function calculateDailyDifficulty(date?: Date): Promise<{
 }
 
 async function persistReservePuzzle(dateString: string, fallbackReason: string) {
+  // The UGC lottery below publishes with a direct write that skips persistDailyPuzzle's
+  // approval gate, so no reserve path may run once owner approval is required.
+  if (isOwnerApprovalRequired(dateString)) {
+    throw new DailyPuzzleUnavailableError(dateString, `Reserve not allowed (${fallbackReason})`);
+  }
   // Studio lottery: occasionally fill reserve days with approved player puzzles.
   try {
     const { trySelectUgcLotteryFiller } = await import("@/lib/ugc/lottery");
@@ -181,6 +189,17 @@ function queuedCandidateResult(candidate: DailyPuzzleCandidate, dateString: stri
   };
 }
 
+/** A row is stored for a required date without a matching owner approval: alert and fail closed. */
+async function rejectUnapprovedRow(dateString: string, puzzleId: string): Promise<never> {
+  await sendOwnerAlert({
+    type: "unapproved_live_row",
+    level: "urgent",
+    dateKey: dateString,
+    message: `Puzzle ${puzzleId} is stored for ${dateString} without a matching owner approval. Pull it and assign an approved puzzle.`,
+  });
+  throw new DailyPuzzleUnavailableError(dateString, "Stored puzzle is not owner-approved");
+}
+
 function skippedCandidateQueueResult(dateString: string) {
   return {
     puzzle: "",
@@ -217,6 +236,7 @@ async function getOrGenerateDailyPuzzle(
   const allowAiGenerate = options?.allowAiGenerate === true && options?.queueForPlaytest === true;
   const failOnAiError = options?.failOnAiError === true;
   const queueForPlaytest = options?.queueForPlaytest === true;
+  const ownerApprovalRequired = isOwnerApprovalRequired(dateString);
   logger.info("Getting puzzle for date", {
     dateString,
     allowAiGenerate,
@@ -224,18 +244,9 @@ async function getOrGenerateDailyPuzzle(
   });
 
   // STEP 1: Cross-request cached DB read via Cache Components ("use cache")
+  let cached: Awaited<ReturnType<typeof getCachedDailyPuzzleFromDb>>;
   try {
-    const cached = await getCachedDailyPuzzleFromDb(dateString);
-    if (cached) {
-      if (queueForPlaytest) {
-        logger.info("Skipping candidate queue because this date is already published", {
-          dateString,
-          puzzleId: cached.id,
-        });
-        return skippedCandidateQueueResult(dateString);
-      }
-      return cached;
-    }
+    cached = await getCachedDailyPuzzleFromDb(dateString);
   } catch (dbError) {
     logger.error(
       "Cached daily puzzle lookup failed. Refusing to generate to prevent duplicates.",
@@ -245,8 +256,23 @@ async function getOrGenerateDailyPuzzle(
       "Cannot verify puzzle existence in database. Refusing to generate new puzzle to prevent duplicates. Please check database connection."
     );
   }
+  if (cached) {
+    if (queueForPlaytest) {
+      logger.info("Skipping candidate queue because this date is already published", {
+        dateString,
+        puzzleId: cached.id,
+      });
+      return skippedCandidateQueueResult(dateString);
+    }
+    // Checked outside the try above so the typed error is not rewrapped.
+    if (ownerApprovalRequired && !cached.ownerApproved) {
+      return rejectUnapprovedRow(dateString, cached.id);
+    }
+    return cached;
+  }
 
   // Double-check once more before generating (race with concurrent requests)
+  let raceFormatted: ReturnType<typeof formatPuzzleFromDb> | null = null;
   try {
     const raceCheck = await db.puzzleOps.findByDate(dateString);
     if (raceCheck) {
@@ -259,13 +285,20 @@ async function getOrGenerateDailyPuzzle(
       }
       // The cached miss is stale; serve the row we just read instead of generating.
       revalidateDailyPuzzle(dateString);
-      return formatPuzzleFromDb(raceCheck, dateString);
+      raceFormatted = formatPuzzleFromDb(raceCheck, dateString);
     }
   } catch (finalCheckError) {
     logger.error(
       "Final pre-generation check failed",
       finalCheckError instanceof Error ? finalCheckError : new Error(String(finalCheckError))
     );
+  }
+  if (raceFormatted) {
+    // Checked outside the try above so a refusal cannot fall through to generation.
+    if (ownerApprovalRequired && !raceFormatted.ownerApproved) {
+      return rejectUnapprovedRow(dateString, raceFormatted.id);
+    }
+    return raceFormatted;
   }
 
   if (queueForPlaytest) {
@@ -291,6 +324,44 @@ async function getOrGenerateDailyPuzzle(
   // Interactive play path: never block TTFB on Eve. Only publish a reviewed candidate
   // or use the existing community/curated reserve path.
   if (!allowAiGenerate) {
+    if (ownerApprovalRequired) {
+      // Publishing for a date no one can play yet would assign (and burn) an approved
+      // backup for that future date, leaving nothing for the days in between.
+      if (!isLocalPuzzleDateLiveSomewhere(dateString)) {
+        throw new DailyPuzzleUnavailableError(dateString, "Date is not live in any time zone");
+      }
+      const approved = await publishReviewedDailyPuzzle({
+        dateString,
+        repository: createMongoDailyPuzzleCandidateRepository(),
+        reviewService: puzzlePlaytestService,
+        persist: persistDailyPuzzle,
+      });
+      if (!approved) {
+        // The publisher also returns null when a concurrent request persisted this date
+        // first (alreadyExisted). Serve that row if, and only if, it is owner-approved.
+        const persisted = await db.puzzleOps.findByDate(dateString);
+        if (persisted) {
+          revalidateDailyPuzzle(dateString);
+          const formatted = formatPuzzleFromDb(persisted, dateString);
+          if (!formatted.ownerApproved) {
+            return rejectUnapprovedRow(dateString, formatted.id);
+          }
+          return formatted;
+        }
+        throw new DailyPuzzleUnavailableError(dateString, "No scheduled or backup approval");
+      }
+      if ("servedFromBackup" in approved && approved.servedFromBackup) {
+        await sendOwnerAlert({
+          type: "backup_used",
+          level: "urgent",
+          dateKey: dateString,
+          message: `No scheduled puzzle for ${dateString}; served approved backup ${approved.id}.`,
+        });
+      }
+      return approved;
+    }
+
+    // Legacy path (before OWNER_APPROVAL_REQUIRED_FROM): unchanged.
     // Callers request their *local* date, which can be a day ahead of or behind UTC.
     if (isLocalPuzzleDateLiveSomewhere(dateString)) {
       try {
@@ -741,6 +812,27 @@ export async function getTodaysPuzzle(
 
     // Last resort still uses the archive-aware reserve; never recycle a known answer.
     const todayString = dateString || getTodayDateString();
+
+    if (isOwnerApprovalRequired(todayString)) {
+      // Alerts are de-duplicated per date: an early request for a date no one can play yet
+      // must not use up the alert for that day's real outage.
+      if (isLocalPuzzleDateLiveSomewhere(todayString)) {
+        await sendOwnerAlert({
+          type: "daily_puzzle_unavailable",
+          level: "urgent",
+          dateKey: todayString,
+          message: `Players are seeing "today's puzzle is on its way" for ${todayString}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        });
+      }
+      return {
+        success: false,
+        unavailable: true,
+        error: "Today's puzzle is on its way",
+        generatedAt: new Date().toISOString(),
+      };
+    }
 
     try {
       const reserve = await persistReservePuzzle(todayString, "Emergency reserve");

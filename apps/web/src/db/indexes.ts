@@ -655,6 +655,17 @@ const INDEX_DEFINITIONS: IndexDefinition[] = [
         spec: { status: 1, createdAt: 1 },
         options: { name: "daily_candidate_status_created" },
       },
+      {
+        spec: { status: 1, "ownerApproval.role": 1, "ownerApproval.approvedAt": 1 },
+        options: { name: "daily_candidate_owner_backup_queue" },
+      },
+    ],
+  },
+  {
+    collection: "ownerAlerts",
+    indexes: [
+      { spec: { key: 1 }, options: { unique: true, name: "owner_alert_key_unique" } },
+      { spec: { createdAt: -1 }, options: { name: "owner_alert_created" } },
     ],
   },
   {

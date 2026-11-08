@@ -141,6 +141,7 @@ export interface Puzzle {
   puzzle: string; // Generic puzzle display field (was rebusPuzzle, now works for all types)
   puzzleType?: string; // Type of puzzle (e.g., "rebus", "word-puzzle")
   answer: string;
+  acceptedAnswers?: string[];
   difficulty: "easy" | "medium" | "hard" | number; // Support both string and number
   category?: string;
   explanation?: string;
@@ -173,6 +174,7 @@ export interface Puzzle {
     /** Numeric difficulty 1–10 from generation */
     difficultyScore?: number;
     reasoningEvidence?: import("@/ai/puzzle-agent/visual/reasoning-evidence").ReasoningEvidence;
+    ownerApproval?: DailyPuzzleCandidateOwnerApproval;
     reasoningEvidenceSource?: "curated" | "independent-editorial";
     dailyChallengePolicy?: string;
     /** Canonical tier: Hard | Difficult | Evil | Impossible */
@@ -1391,6 +1393,15 @@ export interface DailyPuzzleCandidateHumanEvidence {
   admittedAt: string;
 }
 
+/** The owner's sign-off on one exact version of a candidate's player-facing content. */
+export interface DailyPuzzleCandidateOwnerApproval {
+  approvedBy: string;
+  approvedAt: Date;
+  /** sha256 of answer + accepted answers + board; any edit invalidates the approval. */
+  contentHash: string;
+  role: "scheduled" | "backup";
+}
+
 /** Private, unpublished snapshot awaiting qualified human playtesting and a daily date. */
 export interface DailyPuzzleCandidate {
   _id?: string;
@@ -1404,6 +1415,8 @@ export interface DailyPuzzleCandidate {
     puzzleDisplay: string;
     puzzleType: string;
     answer: string;
+    /** Owner-approved alternate phrasings that also count as correct. */
+    acceptedAnswers?: string[];
     difficulty: number;
     category: string;
     explanation: string;
@@ -1416,6 +1429,7 @@ export interface DailyPuzzleCandidate {
   playtestSubmittedAt?: Date;
   playtestSubmissionError?: string;
   humanEvidence?: DailyPuzzleCandidateHumanEvidence;
+  ownerApproval?: DailyPuzzleCandidateOwnerApproval;
   assignedDate?: string;
   publishedPuzzleId?: string;
   rejectionReason?: string;

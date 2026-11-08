@@ -67,7 +67,12 @@ describe("daily puzzle candidate repository", () => {
       })
     ).resolves.toEqual(assigned);
     expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
-      { id: candidate.id, status: "ready", assignedDate: { $exists: false } },
+      {
+        id: candidate.id,
+        status: "ready",
+        assignedDate: { $exists: false },
+        ownerApproval: { $exists: false },
+      },
       {
         $set: {
           status: "assigned",
@@ -200,6 +205,104 @@ describe("daily puzzle candidate repository", () => {
         $unset: { assignedDate: "" },
       },
       { returnDocument: "after" }
+    );
+  });
+
+  it("approves a ready candidate onto a date, guarded by status version", async () => {
+    const approval = {
+      approvedBy: "owner",
+      approvedAt: new Date("2026-11-06T00:00:00Z"),
+      contentHash: "hash",
+      role: "scheduled" as const,
+    };
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({ ...candidate, status: "assigned" });
+
+    await repository.approve({
+      id: "candidate-1",
+      expectedStatusVersion: 2,
+      approval,
+      scheduledDate: "2026-11-20",
+      updatedAt: approval.approvedAt,
+    });
+
+    expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
+      { id: "candidate-1", status: "ready", statusVersion: 2, ownerApproval: { $exists: false } },
+      {
+        $set: {
+          ownerApproval: approval,
+          updatedAt: approval.approvedAt,
+          status: "assigned",
+          assignedDate: "2026-11-20",
+        },
+        $inc: { statusVersion: 1 },
+      },
+      { returnDocument: "after" }
+    );
+  });
+
+  it("keeps a backup approval in the ready pool", async () => {
+    const approval = {
+      approvedBy: "owner",
+      approvedAt: new Date("2026-11-06T00:00:00Z"),
+      contentHash: "hash",
+      role: "backup" as const,
+    };
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({ ...candidate, status: "ready" });
+
+    await repository.approve({
+      id: "candidate-1",
+      expectedStatusVersion: 2,
+      approval,
+      updatedAt: approval.approvedAt,
+    });
+
+    expect(mockCollection.findOneAndUpdate.mock.calls[0][1]).toEqual({
+      $set: { ownerApproval: approval, updatedAt: approval.approvedAt },
+      $inc: { statusVersion: 1 },
+    });
+  });
+
+  it("returns null when a scheduled date is already taken", async () => {
+    mockCollection.findOneAndUpdate.mockRejectedValueOnce({ code: 11000 });
+    await expect(
+      repository.approve({
+        id: "candidate-1",
+        expectedStatusVersion: 2,
+        approval: {
+          approvedBy: "owner",
+          approvedAt: new Date(),
+          contentHash: "hash",
+          role: "scheduled",
+        },
+        scheduledDate: "2026-11-20",
+        updatedAt: new Date(),
+      })
+    ).resolves.toBeNull();
+  });
+
+  it("claims the oldest approved backup for a date", async () => {
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({
+      ...candidate,
+      status: "assigned",
+      assignedDate: "2026-11-21",
+    });
+
+    await repository.claimOldestBackupForDate({
+      dateString: "2026-11-21",
+      updatedAt: new Date("2026-11-21T00:00:00Z"),
+    });
+
+    expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
+      { status: "ready", "ownerApproval.role": "backup", assignedDate: { $exists: false } },
+      {
+        $set: {
+          status: "assigned",
+          assignedDate: "2026-11-21",
+          updatedAt: new Date("2026-11-21T00:00:00Z"),
+        },
+        $inc: { statusVersion: 1 },
+      },
+      { sort: { "ownerApproval.approvedAt": 1, id: 1 }, returnDocument: "after" }
     );
   });
 });

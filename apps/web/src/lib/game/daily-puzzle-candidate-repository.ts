@@ -2,6 +2,7 @@ import type { Filter } from "mongodb";
 import type {
   DailyPuzzleCandidate,
   DailyPuzzleCandidateHumanEvidence,
+  DailyPuzzleCandidateOwnerApproval,
   DailyPuzzleCandidateStatus,
 } from "@/db/models";
 import { getCollection } from "@/db/mongodb";
@@ -54,6 +55,19 @@ export type DailyPuzzleCandidateRepository = {
     id: string;
     dateString: string;
     puzzleId: string;
+    updatedAt: Date;
+  }): Promise<DailyPuzzleCandidate | null>;
+  /** Record the owner's approval; with scheduledDate the candidate is assigned to that date. */
+  approve(input: {
+    id: string;
+    expectedStatusVersion: number;
+    approval: DailyPuzzleCandidateOwnerApproval;
+    scheduledDate?: string;
+    updatedAt: Date;
+  }): Promise<DailyPuzzleCandidate | null>;
+  /** Assign the longest-waiting approved backup to a date that has no scheduled puzzle. */
+  claimOldestBackupForDate(input: {
+    dateString: string;
     updatedAt: Date;
   }): Promise<DailyPuzzleCandidate | null>;
 };
@@ -153,7 +167,12 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
     async claimReadyForDate(input) {
       try {
         const claimed = await candidates().findOneAndUpdate(
-          { id: input.id, status: "ready", assignedDate: { $exists: false } },
+          {
+            id: input.id,
+            status: "ready",
+            assignedDate: { $exists: false },
+            ownerApproval: { $exists: false },
+          },
           {
             $set: {
               status: "assigned",
@@ -212,6 +231,55 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
         },
         { returnDocument: "after" }
       );
+    },
+
+    async approve(input) {
+      try {
+        return await candidates().findOneAndUpdate(
+          {
+            id: input.id,
+            status: "ready",
+            statusVersion: input.expectedStatusVersion,
+            ownerApproval: { $exists: false },
+          },
+          {
+            $set: {
+              ownerApproval: input.approval,
+              updatedAt: input.updatedAt,
+              ...(input.scheduledDate
+                ? { status: "assigned" as const, assignedDate: input.scheduledDate }
+                : {}),
+            },
+            $inc: { statusVersion: 1 },
+          },
+          { returnDocument: "after" }
+        );
+      } catch (error) {
+        // assignedDate is unique: another puzzle already holds this date.
+        if (duplicateKey(error)) return null;
+        throw error;
+      }
+    },
+
+    async claimOldestBackupForDate(input) {
+      try {
+        return await candidates().findOneAndUpdate(
+          { status: "ready", "ownerApproval.role": "backup", assignedDate: { $exists: false } },
+          {
+            $set: {
+              status: "assigned",
+              assignedDate: input.dateString,
+              updatedAt: input.updatedAt,
+            },
+            $inc: { statusVersion: 1 },
+          },
+          { sort: { "ownerApproval.approvedAt": 1, id: 1 }, returnDocument: "after" }
+        );
+      } catch (error) {
+        if (!duplicateKey(error)) throw error;
+        // A concurrent request assigned this date first; serve that assignment.
+        return this.findAssignmentForDate(input.dateString);
+      }
     },
   };
 }

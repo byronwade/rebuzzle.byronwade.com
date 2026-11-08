@@ -7,9 +7,10 @@ import { assertDailyChallenge, DAILY_CHALLENGE_POLICY } from "@/ai/puzzle-agent/
 import { PUZZLE_PLAYTEST_CONTRACT_VERSION } from "@/ai/puzzle-agent/review/puzzle-playtest-service";
 import { PUZZLE_BOARD_RECOGNITION_PROFILES } from "@/ai/puzzle-agent/visual/presentation";
 import { db } from "@/db";
-import type { PuzzleVisual } from "@/db/models";
+import type { DailyPuzzleCandidateOwnerApproval, PuzzleVisual } from "@/db/models";
 import { revalidateDailyPuzzle } from "@/lib/cache/revalidate-daily-puzzle";
 import { logger } from "@/lib/logger";
+import { hasValidOwnerApproval, isOwnerApprovalRequired } from "./owner-approval";
 import { toLegacyDifficultyLabel } from "./published-puzzle";
 
 export type DailyHumanPlaytestAdmission = {
@@ -69,6 +70,7 @@ export type PersistDailyPuzzleInput = {
   puzzleDisplay: string;
   puzzleType: string;
   answer: string;
+  acceptedAnswers?: string[];
   difficulty: number;
   category: string;
   explanation: string;
@@ -78,6 +80,7 @@ export type PersistDailyPuzzleInput = {
   visual?: PuzzleVisual;
   metadataExtra?: Record<string, unknown>;
   humanPlaytestAdmission?: DailyHumanPlaytestAdmission;
+  ownerApproval?: DailyPuzzleCandidateOwnerApproval;
 };
 
 /**
@@ -91,6 +94,18 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
   const existing = await db.puzzleOps.findByDate(input.dateString);
   if (existing) {
     return { id: existing.id, alreadyExisted: true };
+  }
+
+  if (
+    isOwnerApprovalRequired(input.dateString) &&
+    !hasValidOwnerApproval(
+      { answer: input.answer, acceptedAnswers: input.acceptedAnswers, visual: input.visual },
+      input.ownerApproval
+    )
+  ) {
+    throw new Error(
+      `Owner approval is required to publish the daily puzzle for ${input.dateString}`
+    );
   }
 
   if (input.puzzleType === "rebus")
@@ -111,6 +126,13 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
   // Never persist a duplicate answer — archive (retired) puzzles still count
   const answerCheck = await isAnswerRegistered(input.answer);
   if (answerCheck.taken) {
+    if (isOwnerApprovalRequired(input.dateString)) {
+      // A concurrent publish of this same approved candidate can land between the date
+      // check above and the answer check. Report the date as taken rather than letting the
+      // publisher reject the candidate whose board is now live.
+      const concurrent = await db.puzzleOps.findByDate(input.dateString);
+      if (concurrent) return { id: concurrent.id, alreadyExisted: true };
+    }
     throw new Error(
       `Refusing to persist duplicate answer (matches puzzle ${answerCheck.puzzleId}). Generate a unique answer.`
     );
@@ -126,6 +148,7 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
       puzzle: input.puzzleDisplay,
       puzzleType: input.puzzleType,
       answer: input.answer,
+      ...(input.acceptedAnswers?.length ? { acceptedAnswers: input.acceptedAnswers } : {}),
       difficulty: toLegacyDifficultyLabel(input.difficulty),
       category: input.category || "general",
       explanation: input.explanation,
@@ -148,6 +171,7 @@ export async function persistDailyPuzzle(input: PersistDailyPuzzleInput): Promis
         ...(input.humanPlaytestAdmission
           ? { humanPlaytestAdmission: input.humanPlaytestAdmission }
           : {}),
+        ...(input.ownerApproval ? { ownerApproval: input.ownerApproval } : {}),
         // Permanent uniqueness key (survives soft-retire / archive)
         answerKey,
         uniquenessContract: "archive-v1",
