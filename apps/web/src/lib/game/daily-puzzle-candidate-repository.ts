@@ -204,7 +204,7 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
 
     async skip(input) {
       return candidates().findOneAndUpdate(
-        { id: input.id, status: { $in: ["reviewing", "ready", "assigned"] } },
+        { id: input.id, status: { $in: ["reviewing", "ready", "assigned", "published"] } },
         {
           $set: {
             status: "rejected",

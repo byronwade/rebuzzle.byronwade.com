@@ -194,7 +194,7 @@ describe("daily puzzle candidate repository", () => {
     });
 
     expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
-      { id: candidate.id, status: { $in: ["reviewing", "ready", "assigned"] } },
+      { id: candidate.id, status: { $in: ["reviewing", "ready", "assigned", "published"] } },
       {
         $set: {
           status: "rejected",

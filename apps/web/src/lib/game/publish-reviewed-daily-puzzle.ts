@@ -245,6 +245,27 @@ export function createReviewedDailyPuzzlePublisher(input: {
     }
   }
 
+  async function publishOwnerApprovedCandidate(
+    candidate: DailyPuzzleCandidate,
+    dateString: string
+  ) {
+    try {
+      return await publishAssignedCandidate(candidate, dateString);
+    } catch (error) {
+      logger.warn("Approved daily candidate could not be published; trying a backup", {
+        dateString,
+        candidateId: candidate.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await input.repository.skip({
+        id: candidate.id,
+        reason: error instanceof Error ? error.message : "Publication failed",
+        updatedAt: now(),
+      });
+      return null;
+    }
+  }
+
   async function publishOwnerApprovedForDate(dateString: string) {
     // Promotion only fills the owner's review queue; it never decides today's puzzle,
     // so a playtest outage must not block an already-approved board.
@@ -258,12 +279,9 @@ export function createReviewedDailyPuzzlePublisher(input: {
     }
 
     const scheduled = await input.repository.findAssignmentForDate(dateString);
-    if (scheduled?.status === "published") {
-      throw new Error("Published daily candidate has no matching public puzzle row");
-    }
-    if (scheduled?.status === "assigned") {
+    if (scheduled?.status === "assigned" || scheduled?.status === "published") {
       if (hasValidOwnerApproval(scheduled.payload, scheduled.ownerApproval)) {
-        const published = await publishAssignedCandidate(scheduled, dateString);
+        const published = await publishOwnerApprovedCandidate(scheduled, dateString);
         if (published === SUPERSEDED) return null;
         if (published) return published;
       } else {
@@ -289,7 +307,7 @@ export function createReviewedDailyPuzzlePublisher(input: {
         });
         continue;
       }
-      const published = await publishAssignedCandidate(backup, dateString);
+      const published = await publishOwnerApprovedCandidate(backup, dateString);
       if (published === SUPERSEDED) return null;
       if (published) return published;
     }
