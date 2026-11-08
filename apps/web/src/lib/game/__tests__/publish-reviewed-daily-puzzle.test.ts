@@ -772,4 +772,70 @@ describe("owner approval required", () => {
     );
     expect(result).toMatchObject({ id: "puzzle-5", servedFromBackup: true });
   });
+
+  it("rejects a scheduled candidate that fails to publish and serves a backup", async () => {
+    const scheduled: DailyPuzzleCandidate = {
+      ...makeCandidate("assigned", "2026-11-20"),
+      humanEvidence: storedEvidence(),
+      ownerApproval: validApproval("scheduled"),
+    };
+    const backup: DailyPuzzleCandidate = {
+      ...scheduled,
+      id: "backup-1",
+      ownerApproval: validApproval("backup"),
+    };
+    const persist = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("Daily challenge check failed"))
+      .mockResolvedValue({ id: "puzzle-6", alreadyExisted: false });
+    const repository = mockRepository({
+      findAssignmentForDate: jest.fn().mockResolvedValue(scheduled),
+      claimOldestBackupForDate: jest.fn().mockResolvedValueOnce(backup).mockResolvedValue(null),
+    });
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString: "2026-11-20",
+      repository,
+      reviewService,
+      persist,
+      verifyAssets: okAssets,
+    });
+
+    expect(repository.skip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "candidate-1",
+        reason: expect.stringContaining("Daily challenge check failed"),
+      })
+    );
+    expect(result).toMatchObject({ id: "puzzle-6", servedFromBackup: true });
+  });
+
+  it("returns a backup that fails to publish to the pool instead of burning the rest", async () => {
+    const backup: DailyPuzzleCandidate = {
+      ...makeCandidate("assigned", "2026-11-20"),
+      id: "backup-1",
+      humanEvidence: storedEvidence(),
+      ownerApproval: validApproval("backup"),
+    };
+    const persist = jest.fn().mockRejectedValue(new Error("mongo unavailable"));
+    const repository = mockRepository({
+      claimOldestBackupForDate: jest.fn().mockResolvedValue(backup),
+    });
+
+    await expect(
+      publishReviewedDailyPuzzle({
+        dateString: "2026-11-20",
+        repository,
+        reviewService,
+        persist,
+        verifyAssets: okAssets,
+      })
+    ).rejects.toThrow("mongo unavailable");
+
+    expect(repository.releaseAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "backup-1", dateString: "2026-11-20" })
+    );
+    expect(repository.skip).not.toHaveBeenCalled();
+    expect(repository.claimOldestBackupForDate).toHaveBeenCalledTimes(1);
+  });
 });

@@ -60,6 +60,7 @@ const MAX_BACKUP_ATTEMPTS = 10;
 const STALE_APPROVAL_REASON = "Owner approval missing or no longer matches the puzzle content";
 const APPROVED_ASSET_RECHECK_REASON =
   "Approved puzzle artwork failed the publication asset recheck";
+const SCHEDULED_PUBLISH_FAILED_REASON = "Scheduled puzzle failed to publish";
 
 function isDuplicateAnswer(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -263,7 +264,24 @@ export function createReviewedDailyPuzzlePublisher(input: {
     }
     if (scheduled?.status === "assigned") {
       if (hasValidOwnerApproval(scheduled.payload, scheduled.ownerApproval)) {
-        const published = await publishAssignedCandidate(scheduled, dateString);
+        let published: Awaited<ReturnType<typeof publishAssignedCandidate>> = null;
+        try {
+          published = await publishAssignedCandidate(scheduled, dateString);
+        } catch (error) {
+          // Its assignedDate would block every backup; reject it so the owner can re-review
+          // it and fall through to the backup pool.
+          const message = error instanceof Error ? error.message : String(error);
+          logger.error(
+            "Scheduled daily puzzle failed to publish",
+            error instanceof Error ? error : new Error(message),
+            { dateString, candidateId: scheduled.id }
+          );
+          await input.repository.skip({
+            id: scheduled.id,
+            reason: `${SCHEDULED_PUBLISH_FAILED_REASON}: ${message}`,
+            updatedAt: now(),
+          });
+        }
         if (published === SUPERSEDED) return null;
         if (published) return published;
       } else {
@@ -289,7 +307,19 @@ export function createReviewedDailyPuzzlePublisher(input: {
         });
         continue;
       }
-      const published = await publishAssignedCandidate(backup, dateString);
+      let published: Awaited<ReturnType<typeof publishAssignedCandidate>>;
+      try {
+        published = await publishAssignedCandidate(backup, dateString);
+      } catch (error) {
+        // Likely an infrastructure failure that would hit every backup the same way: put
+        // this one back in the pool rather than rejecting the rest one by one.
+        await input.repository.releaseAssignment({
+          id: backup.id,
+          dateString,
+          updatedAt: now(),
+        });
+        throw error;
+      }
       if (published === SUPERSEDED) return null;
       if (published) return published;
     }
