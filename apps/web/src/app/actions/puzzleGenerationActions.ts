@@ -814,14 +814,18 @@ export async function getTodaysPuzzle(
     const todayString = dateString || getTodayDateString();
 
     if (isOwnerApprovalRequired(todayString)) {
-      await sendOwnerAlert({
-        type: "daily_puzzle_unavailable",
-        level: "urgent",
-        dateKey: todayString,
-        message: `Players are seeing "today's puzzle is on its way" for ${todayString}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      });
+      // Alerts are de-duplicated per date: an early request for a date no one can play yet
+      // must not use up the alert for that day's real outage.
+      if (isLocalPuzzleDateLiveSomewhere(todayString)) {
+        await sendOwnerAlert({
+          type: "daily_puzzle_unavailable",
+          level: "urgent",
+          dateKey: todayString,
+          message: `Players are seeing "today's puzzle is on its way" for ${todayString}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        });
+      }
       return {
         success: false,
         unavailable: true,

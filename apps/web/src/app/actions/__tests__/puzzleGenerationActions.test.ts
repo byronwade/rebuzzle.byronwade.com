@@ -176,6 +176,9 @@ describe("getTodaysPuzzle with owner approval required", () => {
     expect(mockCreateMongoDailyPuzzleCandidateRepository).not.toHaveBeenCalled();
     expect(selectMongoReservePuzzle).not.toHaveBeenCalled();
     expect(mockTrySelectUgcLotteryFiller).not.toHaveBeenCalled();
+    // The alert is de-duplicated per date, so a stray early request would swallow the
+    // real outage alert for that day.
+    expect(mockSendOwnerAlert).not.toHaveBeenCalled();
   });
 
   it("never falls back to the UGC lottery or reserve when queued generation fails", async () => {

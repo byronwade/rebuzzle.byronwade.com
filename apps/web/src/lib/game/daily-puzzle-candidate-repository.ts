@@ -167,7 +167,12 @@ export function createMongoDailyPuzzleCandidateRepository(): DailyPuzzleCandidat
     async claimReadyForDate(input) {
       try {
         const claimed = await candidates().findOneAndUpdate(
-          { id: input.id, status: "ready", assignedDate: { $exists: false } },
+          {
+            id: input.id,
+            status: "ready",
+            assignedDate: { $exists: false },
+            ownerApproval: { $exists: false },
+          },
           {
             $set: {
               status: "assigned",

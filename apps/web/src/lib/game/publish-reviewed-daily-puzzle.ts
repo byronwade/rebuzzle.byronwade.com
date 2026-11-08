@@ -186,6 +186,8 @@ export function createReviewedDailyPuzzlePublisher(input: {
       limit: 100,
     });
     for (const candidate of readyCandidates) {
+      // Owner-approved candidates belong to the approval gate, even before its cutover date.
+      if (candidate.ownerApproval) continue;
       const claimed = await input.repository.claimReadyForDate({
         id: candidate.id,
         dateString,

@@ -67,7 +67,12 @@ describe("daily puzzle candidate repository", () => {
       })
     ).resolves.toEqual(assigned);
     expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
-      { id: candidate.id, status: "ready", assignedDate: { $exists: false } },
+      {
+        id: candidate.id,
+        status: "ready",
+        assignedDate: { $exists: false },
+        ownerApproval: { $exists: false },
+      },
       {
         $set: {
           status: "assigned",

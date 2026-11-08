@@ -308,6 +308,30 @@ describe("publishing human-reviewed daily puzzles", () => {
     expect(reviewService.getCandidateAdmission).not.toHaveBeenCalled();
   });
 
+  it("leaves owner-approved candidates for the approval gate before the cutover", async () => {
+    const approved = makeCandidate("ready");
+    approved.humanEvidence = storedEvidence();
+    approved.ownerApproval = {
+      approvedBy: "owner",
+      approvedAt: new Date("2026-10-27T00:00:00Z"),
+      role: "backup",
+      contentHash: computeOwnerContentHash(payload),
+    };
+    const { repository, rows } = memoryRepository([approved]);
+
+    const result = await publishReviewedDailyPuzzle({
+      dateString,
+      repository,
+      reviewService,
+      persist,
+    });
+
+    expect(result).toBeNull();
+    expect(persist).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({ status: "ready" });
+    expect(rows[0]?.assignedDate).toBeUndefined();
+  });
+
   it("retires candidates that remain in review for more than 60 days", async () => {
     const stale = makeCandidate();
     stale.createdAt = new Date("2026-08-01T00:00:00Z");
